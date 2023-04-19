@@ -9,10 +9,10 @@ from fastapi.responses import StreamingResponse
 
 from uuid import uuid4
 
-from self_hosting.params import TextSamplingParams
-from self_hosting.params import DiffSamplingParams
+from refact_self_hosting.params import TextSamplingParams
+from refact_self_hosting.params import DiffSamplingParams
 
-from self_hosting.inference import Inference
+from refact_self_hosting.inference import Inference
 
 from typing import Dict, Any
 

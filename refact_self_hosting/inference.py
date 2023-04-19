@@ -19,7 +19,7 @@ from code_contrast import ScratchpadDiff
 from code_contrast import ScratchpadCompletion
 from code_contrast import ScratchpadBigCode
 
-from self_hosting import known_models
+from refact_self_hosting import known_models
 
 from code_contrast import CodifyModel
 from code_contrast import HFModel

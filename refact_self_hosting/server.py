@@ -9,11 +9,11 @@ from datetime import datetime
 from pathlib import Path
 from fastapi import FastAPI
 
-from self_hosting.gen_certificate import gen_certificate
-from self_hosting.inference import Inference
-from self_hosting.routers import ActivateRouter
-from self_hosting.routers import CompletionRouter
-from self_hosting.routers import ContrastRouter
+from refact_self_hosting.gen_certificate import gen_certificate
+from refact_self_hosting.inference import Inference
+from refact_self_hosting.routers import ActivateRouter
+from refact_self_hosting.routers import CompletionRouter
+from refact_self_hosting.routers import ContrastRouter
 
 
 if __name__ == "__main__":
