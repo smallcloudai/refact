@@ -1,9 +1,21 @@
 <div align="center">
 
 # <font color="red">[{</font> Refact.ai Inference Server
-### Self-hosted server for [Refact.ai](https://www.refact.ai) coding assistant.
 
 </div>
+
+This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding assistant.
+
+With Refact you can run high-quality AI code completions on-premise and use a number of 
+functions for code transformation.
+
+Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai) 
+products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
+
+This server allows you to run AI coding models on your hardware, your code doesn't go outside your control.
+
+At the moment, you can choose between 2 of our own [models](https://huggingface.co/smallcloudai) that 
+support 20+ languages and are state-of-the-art in size and latency. But stay tune for more!
 
 
 ## Demo
@@ -15,29 +27,23 @@
 </table>
 
 
-## Features
-* Plugins for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai) products and
-  [VSCode IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
-* Multilingual [models](https://huggingface.co/smallcloudai) under the hood we trained ourselves!
-* 20+ languages support: Python, Java, C++, PHP, Javascript, Go and others
-* This server allows you to run these models on your hardware, your code doesn't go outside your control
-* Use the the 3b version if you have 12 GB of GPU memory for best results
-* Real-time code completion
-* Privacy settings for projects or even single files
-
-Join our [Discord server](https://www.smallcloud.ai/discord) and follow our
-[Twitter](https://twitter.com/refact_ai) to get the latest updates.
-
-
 ## Prerequisities
-- Install plugin for your IDE: [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai) or
-  [VSCode](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
-- Sign up or login in to your account
-- Large Language Models require a lot of computing resources and memory.
-  We recommend using this server with **Nvidia GPU with at least 4Gb VRAM**.
-  Another option is to use it with CPU, but it's quite slow and unusable in practice yet.
+We recommend using this server with **Nvidia GPU**. Another option is to use ıt wıth CPU, but it'll be slower.
+Check system requrements below before you [choose](https://refact.smallcloud.ai) the model:
 
-## Running Server in Docker
+| Model                     | GPU (VRAM) | CPU (RAM) |
+| ------------------------- | ---------- | --------- |
+| CONTRASTcode/medium/multi |        3Gb |       3Gb |
+| CONTRASTcode/3b/multi     |        8Gb |      12Gb |
+
+## Getting started
+
+Install plugin for your IDE:
+[JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai) or
+[VSCode](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
+and sign up or login in to your account.
+
+### Running Server in Docker
 The recommended way to run server is a pre-build Docker image.
 
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
@@ -89,7 +95,7 @@ After start, container will automatically check for updates and download the cho
 (see in your [account](https://codify.smallcloud.ai/account)).
 
 
-## Running Manually
+### Running Manually
 
 To run server manually, install this repo first (this might install a lot of packages on your computer):
 ```commandline
@@ -135,6 +141,12 @@ and set up this inference url in plugin:
 https://inference.smallcloud.local:8008
 ```
 </details>
+
+
+## Community & Support
+Join our [Discord server](https://www.smallcloud.ai/discord) and follow our
+[Twitter](https://twitter.com/refact_ai) to get the latest updates.
+
 
 
 ## Contributing
