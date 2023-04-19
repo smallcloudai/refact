@@ -48,7 +48,7 @@ The recommended way to run server is a pre-build Docker image.
 
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
-Get your **API Key** from refact.ai [account](https://codify.smallcloud.ai/account) page or alternatively from plugin settings.
+Get your **API Key** from refact.ai [account](https://refact.smallcloud.ai) page or alternatively from plugin settings.
 
 
 <details><summary>Docker tips & tricks</summary>
@@ -96,7 +96,7 @@ Next time you can start it with following command:
 docker start -i refact_self_hosting
 ```
 After start, container will automatically check for updates and download the chosen model
-(see in your [account](https://codify.smallcloud.ai/account)).
+(see in your [account](https://refact.smallcloud.ai)).
 
 
 ### Running Manually
