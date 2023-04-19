@@ -13,7 +13,15 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
 RUN echo "export PATH=/usr/local/cuda/bin:\$PATH" > /etc/profile.d/50-smc.sh
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
-RUN pip install --no-cache-dir torch==1.13.1+cu116 --extra-index-url https://download.pytorch.org/whl/cu116
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+      pip install --no-cache-dir torch==1.13.1+cu116 --extra-index-url https://download.pytorch.org/whl/cu116; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+      pip install --no-cache-dir torch==1.13.1; \
+    else \
+      exit 1; \
+    fi
+
 RUN pip install --no-cache-dir IPython numpy tokenizers tiktoken fastapi hypercorn termcolor cdifflib
 RUN pip install --no-cache-dir cloudpickle dataclasses_json huggingface_hub blobfile
 
