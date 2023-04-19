@@ -1,7 +1,7 @@
 <div align="center">
 
 # <font color="red">[{</font> Refact.ai Inference Server
-### Self-hosted server for [refact.ai](https://www.refact.ai) coding assistant.
+### Self-hosted server for [Refact.ai](https://www.refact.ai) coding assistant.
 
 </div>
 

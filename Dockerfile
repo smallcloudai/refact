@@ -17,10 +17,11 @@ RUN pip install --no-cache-dir torch==1.13.1+cu116 --extra-index-url https://dow
 RUN pip install --no-cache-dir IPython numpy tokenizers tiktoken fastapi hypercorn termcolor cdifflib
 RUN pip install --no-cache-dir cloudpickle dataclasses_json huggingface_hub blobfile
 RUN pip install --no-cache-dir git+https://github.com/smallcloudai/code-contrast.git
+RUN pip install --no-cache-dir git+https://github.com/smallcloudai/refact-self-hosting.git
 
 RUN mkdir /workdir
 ENV SERVER_WORKDIR=/workdir
 ENV SERVER_PORT=8008
 EXPOSE $SERVER_PORT
 
-CMD ["python", "-m", "self_hosting.watchdog", "--workdir", "/workdir"]
+CMD ["python", "-m", "refact_self_hosting.watchdog", "--workdir", "/workdir"]
