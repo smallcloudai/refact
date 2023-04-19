@@ -87,6 +87,10 @@ Run docker container with following command:
 ```commandline
 docker run -p 8008:8008 --gpus 0 --name refact_self_hosting --env SERVER_API_TOKEN={API Key} smallcloud/refact_self_hosting
 ```
+If you don't have a suitable GPU run it on CPU: 
+```commandline
+docker run -p 8008:8008 --name refact_self_hosting --env SERVER_API_TOKEN={API Key} smallcloud/refact_self_hosting
+```
 Next time you can start it with following command:
 ```commandline
 docker start -i refact_self_hosting
@@ -100,6 +104,7 @@ After start, container will automatically check for updates and download the cho
 To run server manually, install this repo first (this might install a lot of packages on your computer):
 ```commandline
 pip install git+https://github.com/smallcloudai/code-contrast.git
+pip install git+https://github.com/smallcloudai/refact-self-hosting.git
 ```
 Now you can run server with following command:
 ```commandline
