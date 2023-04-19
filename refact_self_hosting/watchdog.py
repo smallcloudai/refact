@@ -24,14 +24,15 @@ class Watchdog:
         self._failed_upgrade_quit = failed_upgrade_quit
 
         self._quit_flag = False
-        self._package_url = "git+https://github.com/smallcloudai/code-contrast.git"
+        self._package1_url = "git+https://github.com/smallcloudai/code-contrast.git"
+        self._package2_url = "git+https://github.com/smallcloudai/refact-self-hosting.git"
 
         signal.signal(signal.SIGUSR1, self._catch_sigkill)
 
-    def _update_package(self) -> bool:
+    def _update_package(self, package_url) -> bool:
         try:
             subprocess.check_output(
-                [sys.executable, "-m", "pip", "install", "--upgrade", "--no-cache-dir", self._package_url],
+                [sys.executable, "-m", "pip", "install", "--upgrade", "--no-cache-dir", package_url],
                 stderr=subprocess.DEVNULL)
             package_info = subprocess.check_output(
                 [sys.executable, "-m", "pip", "show", "code-contrast"],
@@ -49,7 +50,7 @@ class Watchdog:
             command = [
                 sys.executable,
                 "-m",
-                "self_hosting.server",
+                "refact_self_hosting.server",
                 f"--port={self._port}",
                 f"--workdir={self._workdir}",
                 f"--token={self._token}",
@@ -71,7 +72,10 @@ class Watchdog:
 
     def run(self):
         while not self._quit_flag:
-            successful = self._update_package()
+            successful = self._update_package(self._package1_url)
+            if self._failed_upgrade_quit and not successful:
+                break
+            successful = self._update_package(self._package2_url)
             if self._failed_upgrade_quit and not successful:
                 break
             process = self._start_server()

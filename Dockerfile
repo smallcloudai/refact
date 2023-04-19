@@ -16,6 +16,9 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 RUN pip install --no-cache-dir torch==1.13.1+cu116 --extra-index-url https://download.pytorch.org/whl/cu116
 RUN pip install --no-cache-dir IPython numpy tokenizers tiktoken fastapi hypercorn termcolor cdifflib
 RUN pip install --no-cache-dir cloudpickle dataclasses_json huggingface_hub blobfile
+
+# ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
+
 RUN pip install --no-cache-dir git+https://github.com/smallcloudai/code-contrast.git
 RUN pip install --no-cache-dir git+https://github.com/smallcloudai/refact-self-hosting.git
 
