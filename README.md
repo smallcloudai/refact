@@ -15,7 +15,7 @@ products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=s
 This server allows you to run AI coding models on your hardware, your code doesn't go outside your control.
 
 At the moment, you can choose between 2 of our own [models](https://huggingface.co/smallcloudai) that 
-support 20+ languages and are state-of-the-art in size and latency. But stay tune for more!
+support 20+ languages and are state-of-the-art in size and latency. In the future, we plan to add support to other models.
 
 
 ## Demo
