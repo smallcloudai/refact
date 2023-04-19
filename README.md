@@ -79,12 +79,7 @@ docker logs -f
 
 Run docker container with following command:
 ```commandline
-docker run \
-       -p 8008:8008 \
-       --gpus 0 \
-       --name refact_self_hosting \
-       --env SERVER_API_TOKEN={API Key} \
-       smallcloud/self_hosting
+docker run -p 8008:8008 --gpus 0 --name refact_self_hosting --env SERVER_API_TOKEN={API Key} smallcloud/refact_self_hosting
 ```
 Next time you can start it with following command:
 ```commandline
@@ -102,9 +97,7 @@ pip install git+https://github.com/smallcloudai/code-contrast.git
 ```
 Now you can run server with following command:
 ```commandline
-python -m self_hosting.server \
-       --workdir /workdir \
-       --token {API Key}
+python -m refact_self_hosting.server --workdir /workdir --token {API Key}
 ```
 
 
