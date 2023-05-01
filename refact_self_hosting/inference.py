@@ -47,7 +47,7 @@ def non_blocking_lock(lock: Lock):
 
 class Inference:
 
-    def __init__(self, token: str, workdir: Path, force_cpu: bool, model_name: str = ""):
+    def __init__(self, workdir: Path, force_cpu: bool, model_name: str = ""):
         self._device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
 
         self._model_lock = Lock()
@@ -62,7 +62,7 @@ class Inference:
             target=self._model_setup,
             kwargs={
                 'workdir': workdir,
-                "token": token,
+                'model_name': model_name
             })
         self._model_setup_thread.start()
 
@@ -215,30 +215,9 @@ class Inference:
         if not scratchpad.finish_reason:
             scratchpad.finish_reason = "maxlen"
 
-    @staticmethod
-    def _fetch_model_settings(token) -> Tuple[str, str]:
-        url = "https://www.smallcloud.ai/v1/codify-model"
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
-        response = requests.get(url=url, headers=headers, timeout=30).json()
-        if response["retcode"] != "OK":
-            raise RuntimeError(response.get("human_readable_message", "unknown error"))
-        tenant_model = json.loads(response["tenant_model"])
-        model_name = tenant_model["model_name"]
-        return model_name
-
-    def _model_setup(self, token: str, workdir: Path):
+    def _model_setup(self, model_name: str, workdir: Path):
         fetch_timeout = 300
         while True:
-            try:
-                model_name = self._model_name_arg or self._fetch_model_settings(token)
-            except Exception as e:
-                self._model = None
-                self._encoding = None
-                self._loaded_model_name = None
-                self._last_error = f"model fetch failed: {e}"
-                logging.error(self._last_error)
-                time.sleep(fetch_timeout)
-                continue
             if model_name not in known_models.models_mini_db:
                 logging.error(f"unknown model \"{model_name}\", try upgrading this repo")
                 time.sleep(fetch_timeout)

@@ -16,11 +16,11 @@ class Watchdog:
     def __init__(self,
                  port: int,
                  workdir: str,
-                 token: str,
+                 model: str,
                  failed_upgrade_quit: bool = False):
         self._port = port
         self._workdir = workdir
-        self._token = token
+        self._model = model
         self._failed_upgrade_quit = failed_upgrade_quit
 
         self._quit_flag = False
@@ -35,7 +35,7 @@ class Watchdog:
                 "refact_self_hosting.server",
                 f"--port={self._port}",
                 f"--workdir={self._workdir}",
-                f"--token={self._token}",
+                f"--model={self._model}",
             ]
             process = subprocess.Popen(
                 command,
@@ -71,7 +71,7 @@ class Watchdog:
 if __name__ == "__main__":
     workdir = str(os.environ.get("SERVER_WORKDIR"))
     port = int(os.environ.get("SERVER_PORT"))
-    token = os.environ.get("SERVER_API_TOKEN", None)
+    model = os.environ.get("SERVER_MODEL")
 
     logdir = Path(workdir) / "logs"
     logdir.mkdir(exist_ok=True, parents=False)
@@ -86,6 +86,6 @@ if __name__ == "__main__":
     watchdog = Watchdog(
         port=port,
         workdir=workdir,
-        token=token,
+        model=model,
     )
     watchdog.run()
