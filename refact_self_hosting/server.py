@@ -11,7 +11,7 @@ from fastapi import FastAPI
 
 from refact_self_hosting.gen_certificate import gen_certificate
 from refact_self_hosting.inference import Inference
-from refact_self_hosting.routers import ActivateRouter
+from refact_self_hosting.routers import LongthinkFunctionGetterRouter
 from refact_self_hosting.routers import CompletionRouter
 from refact_self_hosting.routers import ContrastRouter
 
@@ -38,6 +38,7 @@ if __name__ == "__main__":
     app = FastAPI(docs_url=None)
     app.include_router(CompletionRouter(inference))
     app.include_router(ContrastRouter(inference))
+    app.include_router(LongthinkFunctionGetterRouter(inference))
 
     key_filename, cert_filename = gen_certificate(args.workdir)
 

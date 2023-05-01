@@ -42,6 +42,21 @@ def parse_authorization_header(authorization: str = Header(None)) -> str:
     return bearer_hdr[1]
 
 
+class LongthinkFunctionGetterRouter(APIRouter):
+    def __init__(self, inference: Inference, *args, **kwargs):
+        self._inference = inference
+        super(LongthinkFunctionGetterRouter, self).__init__(*args, **kwargs)
+        super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/longthink-functions",
+                                                                 self._longthink_functions, methods=["GET"])
+
+    def _longthink_functions(self, authorization: str = Header(None)):
+        response = {
+            "retcode": "OK",
+            "longthink-functions": self._inference.longthink_functions
+        }
+        return Response(content=json.dumps(response))
+
+
 class CompletionRouter(APIRouter):
 
     def __init__(self,

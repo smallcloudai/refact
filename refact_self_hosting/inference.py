@@ -329,3 +329,9 @@ class Inference:
     @property
     def last_error(self):
         return self._last_error
+
+    @property
+    def longthink_functions(self) -> Dict:
+        if 'longthink_functions' in self._model_dict:
+            return self._model_dict['longthink_functions']
+        return {}
