@@ -24,26 +24,8 @@ class Watchdog:
         self._failed_upgrade_quit = failed_upgrade_quit
 
         self._quit_flag = False
-        self._package1_url = "git+https://github.com/smallcloudai/code-contrast.git"
-        self._package2_url = "git+https://github.com/smallcloudai/refact-self-hosting.git"
 
         signal.signal(signal.SIGUSR1, self._catch_sigkill)
-
-    def _update_package(self, package_url) -> bool:
-        try:
-            subprocess.check_output(
-                [sys.executable, "-m", "pip", "install", "--upgrade", "--no-cache-dir", package_url],
-                stderr=subprocess.DEVNULL)
-            package_info = subprocess.check_output(
-                [sys.executable, "-m", "pip", "show", "code-contrast"],
-                stderr=subprocess.DEVNULL)
-            logging.info(f"package updated")
-            for info in package_info.decode("utf8").split("\n"):
-                logging.info(info)
-            return True
-        except subprocess.CalledProcessError as e:
-            logging.error(e)
-            return False
 
     def _start_server(self) -> Optional[subprocess.Popen]:
         try:
@@ -72,12 +54,6 @@ class Watchdog:
 
     def run(self):
         while not self._quit_flag:
-            successful = self._update_package(self._package1_url)
-            if self._failed_upgrade_quit and not successful:
-                break
-            successful = self._update_package(self._package2_url)
-            if self._failed_upgrade_quit and not successful:
-                break
             process = self._start_server()
             while True:
                 if self._quit_flag:
