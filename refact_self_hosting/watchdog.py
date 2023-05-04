@@ -17,11 +17,13 @@ class Watchdog:
                  port: int,
                  workdir: str,
                  token: str,
+                 disable_updates: bool,
                  failed_upgrade_quit: bool = False):
         self._port = port
         self._workdir = workdir
         self._token = token
         self._failed_upgrade_quit = failed_upgrade_quit
+        self._disable_updates = disable_updates
 
         self._quit_flag = False
         self._package1_url = "git+https://github.com/smallcloudai/code-contrast.git"
@@ -72,12 +74,15 @@ class Watchdog:
 
     def run(self):
         while not self._quit_flag:
-            successful = self._update_package(self._package1_url)
-            if self._failed_upgrade_quit and not successful:
-                break
-            successful = self._update_package(self._package2_url)
-            if self._failed_upgrade_quit and not successful:
-                break
+            if not self._disable_updates:
+                successful = self._update_package(self._package1_url)
+                if self._failed_upgrade_quit and not successful:
+                    break
+                successful = self._update_package(self._package2_url)
+                if self._failed_upgrade_quit and not successful:
+                    break
+            else:
+                logging.info('DISABLE_UPDATES is set, not updating')
             process = self._start_server()
             while True:
                 if self._quit_flag:
@@ -96,6 +101,7 @@ if __name__ == "__main__":
     workdir = str(os.environ.get("SERVER_WORKDIR"))
     port = int(os.environ.get("SERVER_PORT"))
     token = os.environ.get("SERVER_API_TOKEN", None)
+    disable_updates = bool(os.environ.get("DISABLE_UPDATES", False))
 
     logdir = Path(workdir) / "logs"
     logdir.mkdir(exist_ok=True, parents=False)
@@ -111,5 +117,6 @@ if __name__ == "__main__":
         port=port,
         workdir=workdir,
         token=token,
+        disable_updates=disable_updates
     )
     watchdog.run()
