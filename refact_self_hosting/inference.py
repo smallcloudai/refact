@@ -238,10 +238,11 @@ class Inference:
                     elif self._model_dict["model_class"] == HFModel:
                         self._model = HFModel.from_pretrained(self._model_dict["model_path"])
                         self._model.T = self._model_dict["T"]
-                    else:
-                        self._model = self._model_dict["model_class"](
-                            model=self._model_dict["model_path"],
+                    elif self._model_dict["model_class"] == GPTQBigCodeModel:
+                        self._model = GPTQBigCodeModel(
+                            model_name=self._model_dict["model_path"],
                             device=self._device,
+                            cache_dir=str(workdir / "weights"),
                             **self._model_dict["model_class_kwargs"])
                         self._model.T = self._model_dict["T"]
                     self._model = self._model.eval()

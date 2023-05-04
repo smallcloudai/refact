@@ -44,17 +44,16 @@ models_mini_db = {
     "T": 2048,
     "filter_caps": ["starcoder"],
 },
-"bigcode/large-model": {
+"starcoder/15b/base4bit": {
     "model_path_type": "huggingface",
-    "model_path": "bigcode/large-model",
+    "model_path": "smallcloudai/starcoder_15b_4bit",
     "diff_scratchpad_class": ScratchpadBigCode,
+    "chat_scratchpad_class": ScratchpadBigChat,
     "model_class": GPTQBigCodeModel,
-    "chat_scratchpad_class": None,
     "model_class_kwargs": {
-        "checkpoint": "/home/user/starcoder-GPTQ/4-bit/model.pt",
         "bits": 4,
-        "groupsize": 128,
     },
-    "T": 1024,
+    "T": 2048,
+    "filter_caps": ["starcoder"],
 },
 }
