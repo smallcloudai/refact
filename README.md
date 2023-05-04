@@ -27,9 +27,9 @@ support 20+ languages and are state-of-the-art in size and latency. In the futur
 </table>
 
 
-## Prerequisities
-We recommend using this server with **Nvidia GPU**. Another option is to use ıt wıth CPU, but it'll be slower.
-Check system requrements below before you [choose](https://refact.smallcloud.ai) the model:
+## Prerequisites
+We recommend using this server with **Nvidia GPU**. Another option is to use it with CPU, but it'll be slower.
+Check system requirements below before you [choose](https://refact.smallcloud.ai) the model:
 
 | Model                     | GPU (VRAM) | CPU (RAM) |                  |
 | ------------------------- | ---------- | --------- | ---------------- |
