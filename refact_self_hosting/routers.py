@@ -1,21 +1,16 @@
 import asyncio
 import json
-
-from fastapi import Header
 from fastapi import APIRouter
 from fastapi import HTTPException
+from fastapi import Header
 from fastapi import Response
 from fastapi.responses import StreamingResponse
-
+from typing import Dict, Any
 from uuid import uuid4
 
-from refact_self_hosting.params import TextSamplingParams
-from refact_self_hosting.params import DiffSamplingParams
-
 from refact_self_hosting.inference import Inference
-
-from typing import Dict, Any
-
+from refact_self_hosting.params import DiffSamplingParams
+from refact_self_hosting.params import TextSamplingParams
 
 __all__ = ["ActivateRouter", "CompletionRouter", "ContrastRouter"]
 
@@ -47,24 +42,17 @@ def parse_authorization_header(authorization: str = Header(None)) -> str:
     return bearer_hdr[1]
 
 
-class ActivateRouter(APIRouter):
+class LongthinkFunctionGetterRouter(APIRouter):
+    def __init__(self, inference: Inference, *args, **kwargs):
+        self._inference = inference
+        super(LongthinkFunctionGetterRouter, self).__init__(*args, **kwargs)
+        super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/longthink-functions",
+                                                                 self._longthink_functions, methods=["GET"])
 
-    def __init__(self,
-                 token: str,
-                 *args, **kwargs):
-        self._token = token
-        super(ActivateRouter, self).__init__(*args, **kwargs)
-        super(ActivateRouter, self).add_api_route("/v1/secret-key-activate", self._activate, methods=["GET"])
-
-    async def _activate(self,
-                        authorization: str = Header(None)):
-        token = parse_authorization_header(authorization)
-        if self._token != token:
-            raise HTTPException(status_code=401,
-                                detail="server doesn't match with your API key")
+    def _longthink_functions(self, authorization: str = Header(None)):
         response = {
             "retcode": "OK",
-            "human_readable_message": "API key verified"
+            "longthink-functions": self._inference.longthink_functions
         }
         return Response(content=json.dumps(response))
 
@@ -72,10 +60,8 @@ class ActivateRouter(APIRouter):
 class CompletionRouter(APIRouter):
 
     def __init__(self,
-                 token: str,
                  inference: Inference,
                  *args, **kwargs):
-        self._token = token
         self._inference = inference
         super(CompletionRouter, self).__init__(*args, **kwargs)
         super(CompletionRouter, self).add_api_route("/v1/completions", self._completion, methods=["POST"])
@@ -83,10 +69,6 @@ class CompletionRouter(APIRouter):
     async def _completion(self,
                           post: TextSamplingParams,
                           authorization: str = Header(None)):
-        token = parse_authorization_header(authorization)
-        if self._token != token:
-            raise HTTPException(status_code=401,
-                                detail="server doesn't match with your API key")
         request = post.clamp()
         request.update({
             "id": str(uuid4()),
@@ -110,10 +92,8 @@ class CompletionRouter(APIRouter):
 class ContrastRouter(APIRouter):
 
     def __init__(self,
-                 token: str,
                  inference: Inference,
                  *args, **kwargs):
-        self._token = token
         self._inference = inference
         super(ContrastRouter, self).__init__(*args, **kwargs)
         super(ContrastRouter, self).add_api_route("/v1/contrast", self._contrast, methods=["POST"])
@@ -121,15 +101,11 @@ class ContrastRouter(APIRouter):
     async def _contrast(self,
                         post: DiffSamplingParams,
                         authorization: str = Header(None)):
-        token = parse_authorization_header(authorization)
-        if self._token != token:
-            raise HTTPException(status_code=401,
-                                detail="server doesn't match with your API key")
         if post.function != "diff-anywhere":
             if post.cursor_file not in post.sources:
                 raise HTTPException(status_code=400,
                                     detail="cursor_file='%s' is not in sources=%s" % (
-                post.cursor_file, list(post.sources.keys())))
+                                        post.cursor_file, list(post.sources.keys())))
             if post.cursor0 < 0 or post.cursor1 < 0:
                 raise HTTPException(status_code=400,
                                     detail="cursor0=%d or cursor1=%d is negative" % (post.cursor0, post.cursor1))
@@ -137,7 +113,7 @@ class ContrastRouter(APIRouter):
             if post.cursor0 > len(filetext) or post.cursor1 > len(filetext):
                 raise HTTPException(status_code=400,
                                     detail="cursor0=%d or cursor1=%d is beyond file length=%d" % (
-                post.cursor0, post.cursor1, len(filetext)))
+                                        post.cursor0, post.cursor1, len(filetext)))
         else:
             post.cursor0 = -1
             post.cursor1 = -1

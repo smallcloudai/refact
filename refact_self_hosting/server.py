@@ -11,7 +11,7 @@ from fastapi import FastAPI
 
 from refact_self_hosting.gen_certificate import gen_certificate
 from refact_self_hosting.inference import Inference
-from refact_self_hosting.routers import ActivateRouter
+from refact_self_hosting.routers import LongthinkFunctionGetterRouter
 from refact_self_hosting.routers import CompletionRouter
 from refact_self_hosting.routers import ContrastRouter
 
@@ -24,7 +24,6 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=8008)
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--workdir", type=Path)
-    parser.add_argument("--token", type=str)
     parser.add_argument("--model", type=str)
     args = parser.parse_args()
 
@@ -34,12 +33,12 @@ if __name__ == "__main__":
     stream_handler = logging.StreamHandler(stream=sys.stdout)
     logging.basicConfig(level=logging.INFO, handlers=[stream_handler, file_handler])
 
-    inference = Inference(token=args.token, workdir=args.workdir, model_name=args.model, force_cpu=args.cpu)
+    inference = Inference(workdir=args.workdir, model_name=args.model, force_cpu=args.cpu)
 
     app = FastAPI(docs_url=None)
-    app.include_router(ActivateRouter(args.token))
-    app.include_router(CompletionRouter(args.token, inference))
-    app.include_router(ContrastRouter(args.token, inference))
+    app.include_router(CompletionRouter(inference))
+    app.include_router(ContrastRouter(inference))
+    app.include_router(LongthinkFunctionGetterRouter(inference))
 
     key_filename, cert_filename = gen_certificate(args.workdir)
 

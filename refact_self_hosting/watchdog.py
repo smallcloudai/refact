@@ -16,34 +16,16 @@ class Watchdog:
     def __init__(self,
                  port: int,
                  workdir: str,
-                 token: str,
+                 model: str,
                  failed_upgrade_quit: bool = False):
         self._port = port
         self._workdir = workdir
-        self._token = token
+        self._model = model
         self._failed_upgrade_quit = failed_upgrade_quit
 
         self._quit_flag = False
-        self._package1_url = "git+https://github.com/smallcloudai/code-contrast.git"
-        self._package2_url = "git+https://github.com/smallcloudai/refact-self-hosting.git"
 
         signal.signal(signal.SIGUSR1, self._catch_sigkill)
-
-    def _update_package(self, package_url) -> bool:
-        try:
-            subprocess.check_output(
-                [sys.executable, "-m", "pip", "install", "--upgrade", "--no-cache-dir", package_url],
-                stderr=subprocess.DEVNULL)
-            package_info = subprocess.check_output(
-                [sys.executable, "-m", "pip", "show", "code-contrast"],
-                stderr=subprocess.DEVNULL)
-            logging.info(f"package updated")
-            for info in package_info.decode("utf8").split("\n"):
-                logging.info(info)
-            return True
-        except subprocess.CalledProcessError as e:
-            logging.error(e)
-            return False
 
     def _start_server(self) -> Optional[subprocess.Popen]:
         try:
@@ -53,7 +35,7 @@ class Watchdog:
                 "refact_self_hosting.server",
                 f"--port={self._port}",
                 f"--workdir={self._workdir}",
-                f"--token={self._token}",
+                f"--model={self._model}",
             ]
             process = subprocess.Popen(
                 command,
@@ -72,12 +54,6 @@ class Watchdog:
 
     def run(self):
         while not self._quit_flag:
-            successful = self._update_package(self._package1_url)
-            if self._failed_upgrade_quit and not successful:
-                break
-            successful = self._update_package(self._package2_url)
-            if self._failed_upgrade_quit and not successful:
-                break
             process = self._start_server()
             while True:
                 if self._quit_flag:
@@ -95,7 +71,7 @@ class Watchdog:
 if __name__ == "__main__":
     workdir = str(os.environ.get("SERVER_WORKDIR"))
     port = int(os.environ.get("SERVER_PORT"))
-    token = os.environ.get("SERVER_API_TOKEN", None)
+    model = os.environ.get("SERVER_MODEL")
 
     logdir = Path(workdir) / "logs"
     logdir.mkdir(exist_ok=True, parents=False)
@@ -110,6 +86,6 @@ if __name__ == "__main__":
     watchdog = Watchdog(
         port=port,
         workdir=workdir,
-        token=token,
+        model=model,
     )
     watchdog.run()
