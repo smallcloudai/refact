@@ -7,6 +7,7 @@ from fastapi import Response
 from fastapi.responses import StreamingResponse
 from typing import Dict, Any
 from uuid import uuid4
+import logging
 
 from refact_self_hosting.inference import Inference
 from refact_self_hosting.params import DiffSamplingParams
@@ -28,9 +29,11 @@ async def inference_streamer(
             data = json.dumps(response)
             if stream:
                 data = "data: " + data + "\n\n"
+            # logging.info(data)
             yield data
         if stream:
             yield "data: [DONE]" + "\n\n"
+            # logging.info("data: [DONE]")
     except asyncio.CancelledError:
         pass
 
@@ -48,12 +51,11 @@ class LongthinkFunctionGetterRouter(APIRouter):
     def __init__(self, inference: Inference, *args, **kwargs):
         self._inference = inference
         super(LongthinkFunctionGetterRouter, self).__init__(*args, **kwargs)
-        super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/longthink-functions",
-                                                                 self._longthink_functions, methods=["GET"])
-        super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/functions-available-today",
+        super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/login",
                                                                  self._longthink_functions, methods=["GET"])
 
     def _longthink_functions(self, authorization: str = Header(None)):
+        assert "filter_caps" in self._inference._model_dict, "filter_caps not present in %s" % list(self._inference._model_dict.keys())
         filter_caps = self._inference._model_dict["filter_caps"]
         accum = dict()
         for rec in modelcap_records.db:
@@ -65,11 +67,18 @@ class LongthinkFunctionGetterRouter(APIRouter):
                 if test in filter_caps:
                     take_this_one = True
             if take_this_one:
-                accum[rec.function_name] = rec.to_json()
+                j = json.loads(rec.to_json())
+                j["is_liked"] = False
+                j["likes"] = 0
+                j["third_party"] = False
+                j["model"] = self._inference._model_name_arg
+                accum[rec.function_name] = j
         response = {
+            "account": "self-hosted",
             "retcode": "OK",
-            # "longthink-functions": self._inference.longthink_functions
-            "longthink-functions": accum,
+            "longthink-functions-today": 1,
+            "longthink-functions-today-v2": accum,
+            "longthink-filters": [],
         }
         return Response(content=json.dumps(response))
 
@@ -118,6 +127,7 @@ class ContrastRouter(APIRouter):
     async def _contrast(self,
                         post: DiffSamplingParams,
                         authorization: str = Header(None)):
+        logging.info("running /v1/contrast function=%s" % post.function)
         if post.function != "diff-anywhere":
             if post.cursor_file not in post.sources:
                 raise HTTPException(status_code=400,

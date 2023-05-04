@@ -5,7 +5,7 @@ from typing import Union, Dict, List
 
 
 class SamplingParams(BaseModel):
-    model: str = Query(default="", regex="^[a-z/A-Z0-9_\.]+$")
+    model: str = Query(default="", regex="^[a-z/A-Z0-9_\.\-]+$")
     max_tokens: int = 50
     temperature: float = 0.7
     top_p: float = 1.0
@@ -41,6 +41,6 @@ class DiffSamplingParams(SamplingParams):
     cursor1: int
     function: str = Query(
         default=Required,
-        regex="^(highlight|infill|diff-anywhere|diff-atcursor|diff-selection|edit-chain)$"
+        regex="^([a-z0-9\.\-]+)$"
     )
     max_edits: int = 4

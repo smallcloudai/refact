@@ -169,6 +169,7 @@ class Inference:
                 assert past_key_values is not None
                 seq_len, cache_len = 1, past_key_values[0][0].shape[2]
                 input_tokens = output_tokens
+            # TODO: remove for bigcode models
             attention_mask = self._make_mask(seq_len, cache_len)
 
             hidden_state, past_key_values = self._model(
