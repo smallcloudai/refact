@@ -1,0 +1,13 @@
+blobfile==2.0.1
+cdifflib==1.2.6
+cloudpickle==2.2.1
+dataclasses-json==0.5.7
+fastapi==0.95.1
+hypercorn==0.14.3
+ipython==8.12.0
+numpy==1.24.2
+termcolor==2.2.0
+tiktoken==0.3.3
+tokenizers==0.13.3
+# probably needs specific commit that is guaranteed to be compatible with current commit
+git+https://github.com/smallcloudai/code-contrast.git
