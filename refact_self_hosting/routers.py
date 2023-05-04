@@ -11,6 +11,8 @@ from uuid import uuid4
 from refact_self_hosting.inference import Inference
 from refact_self_hosting.params import DiffSamplingParams
 from refact_self_hosting.params import TextSamplingParams
+from code_contrast.model_caps import modelcap_records
+
 
 __all__ = ["ActivateRouter", "CompletionRouter", "ContrastRouter"]
 
@@ -48,11 +50,26 @@ class LongthinkFunctionGetterRouter(APIRouter):
         super(LongthinkFunctionGetterRouter, self).__init__(*args, **kwargs)
         super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/longthink-functions",
                                                                  self._longthink_functions, methods=["GET"])
+        super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/functions-available-today",
+                                                                 self._longthink_functions, methods=["GET"])
 
     def _longthink_functions(self, authorization: str = Header(None)):
+        filter_caps = self._inference._model_dict["filter_caps"]
+        accum = dict()
+        for rec in modelcap_records.db:
+            rec_models = rec.model
+            if not isinstance(rec_models, list):
+                rec_models = [rec_models]
+            take_this_one = False
+            for test in rec_models:
+                if test in filter_caps:
+                    take_this_one = True
+            if take_this_one:
+                accum[rec.function_name] = rec.to_json()
         response = {
             "retcode": "OK",
-            "longthink-functions": self._inference.longthink_functions
+            # "longthink-functions": self._inference.longthink_functions
+            "longthink-functions": accum,
         }
         return Response(content=json.dumps(response))
 

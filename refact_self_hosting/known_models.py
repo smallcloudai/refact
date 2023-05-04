@@ -2,7 +2,6 @@ from code_contrast import ScratchpadDiff
 from code_contrast import ScratchpadBigCode
 from code_contrast import CodifyModel
 from code_contrast import HFModel
-from .known_functions import *
 from code_contrast import ScratchpadBigChat
 
 
@@ -14,8 +13,7 @@ models_mini_db = {
     "chat_scratchpad_class": None,
     "model_class": CodifyModel,
     "T": 2048,
-    "longthink_functions": {"hl_and_fix": hl_and_fix,
-                            "select_and_refactor": select_and_refactor}
+    "filter_caps": ["CONTRASTcode"],
 },
 "CONTRASTcode/3b/multi": {
     "model_path_type": "huggingface",
@@ -24,8 +22,7 @@ models_mini_db = {
     "chat_scratchpad_class": None,
     "model_class": CodifyModel,
     "T": 2048,
-    "longthink_functions": {"hl_and_fix": hl_and_fix,
-                            "select_and_refactor": select_and_refactor}
+    "filter_caps": ["CONTRASTcode"],
 },
 "bigcode/santacoder": {
     "model_path_type": "huggingface",
@@ -34,6 +31,7 @@ models_mini_db = {
     "chat_scratchpad_class": None,
     "model_class": HFModel,
     "T": 1024,
+    "filter_caps": ["starcoder"],
 },
 "starcoder/15b": {
     "model_path_type": "huggingface",
@@ -41,6 +39,7 @@ models_mini_db = {
     "diff_scratchpad_class": ScratchpadBigCode,
     "chat_scratchpad_class": ScratchpadBigChat,
     "model_class": HFModel,
-    "T": 1024,
+    "T": 2048,
+    "filter_caps": ["starcoder"],
 },
 }
