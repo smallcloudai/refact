@@ -51,9 +51,7 @@ class LongthinkFunctionGetterRouter(APIRouter):
     def __init__(self, inference: Inference, *args, **kwargs):
         self._inference = inference
         super(LongthinkFunctionGetterRouter, self).__init__(*args, **kwargs)
-        super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/longthink-functions",
-                                                                 self._longthink_functions, methods=["GET"])
-        super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/functions-available-today",
+        super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/login",
                                                                  self._longthink_functions, methods=["GET"])
 
     def _longthink_functions(self, authorization: str = Header(None)):
