@@ -1,8 +1,5 @@
-import json
-
 import torch
 import logging
-import requests
 import time
 import traceback
 
@@ -17,15 +14,16 @@ from smallcloud.inference_server import head_and_tail
 from code_contrast import ScratchpadBase
 from code_contrast import ScratchpadDiff
 from code_contrast import ScratchpadCompletion
-from code_contrast import ScratchpadBigCode
+from code_contrast import ScratchpadBigChat
 
 from refact_self_hosting import known_models
 
 from code_contrast import CodifyModel
 from code_contrast import HFModel
+from code_contrast import GPTQBigCodeModel
 
 
-from typing import Optional, Dict, Any, Iterable, Tuple, List
+from typing import Optional, Dict, Any, Iterable, List
 
 
 __all__ = ["Inference", "LockedError"]
@@ -73,7 +71,7 @@ class Inference:
             logging.debug(args)
 
         object_type = request["object"]
-        assert object_type in ["diff_completion_req", "text_completion_req"]
+        assert object_type in ["diff_completion_req", "text_completion_req", "chat_completion_req"]
 
         if object_type == "diff_completion_req":
             DiffScratchpadClass = self._model_dict["diff_scratchpad_class"]
@@ -82,12 +80,20 @@ class Inference:
                 logger=logger,
                 created=created_ts,
                 **request)
-        else:
+        elif object_type == "text_completion_req":
             scratchpad = ScratchpadCompletion(
                 enc=self._encoding,
                 logger=logger,
                 created=created_ts,
                 **request)
+        else:
+            ChatScratchpadClass = self._model_dict["chat_scratchpad_class"]
+            scratchpad = ChatScratchpadClass(
+                enc=self._encoding,
+                logger=logger,
+                created=created_ts,
+                **request)
+
         p = scratchpad.prompt(self._model.T)
         if len(p) == 0:
             raise RuntimeError("empty tokens prompt")
@@ -267,6 +273,9 @@ class Inference:
 
         if isinstance(scratchpad, ScratchpadCompletion):
             completion = scratchpad.completion(final=bool(status == "completed"))
+        elif isinstance(scratchpad, ScratchpadBigChat):
+            completion = scratchpad.completion(final=bool(status == "completed"))
+            completion = {"role": completion["chat__role"], "content": completion["chat__content"]}
         else:
             completion = {"files": scratchpad.completion(final=bool(status == "completed"))}
 
@@ -343,3 +352,7 @@ class Inference:
         if 'longthink_functions' in self._model_dict:
             return self._model_dict['longthink_functions']
         return {}
+
+    @property
+    def chat_is_available(self) -> bool:
+        return self._model_dict["chat_scratchpad_class"] is not None

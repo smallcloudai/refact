@@ -44,3 +44,22 @@ class DiffSamplingParams(SamplingParams):
         regex="^([a-z0-9\.\-]+)$"
     )
     max_edits: int = 4
+
+
+class ChatSamplingParams(BaseModel):
+    model: str = Query(default="", regex="^[a-z/A-Z0-9_\.\-]+$")
+    messages: List[Dict[str, str]]
+    max_tokens: int = 50
+    temperature: float = 0.7
+    stop: Union[List[str], str] = []
+    stream: bool = False
+
+    def clamp(self):
+        def _clamp(a, b, x):
+            return max(a, min(b, x))
+        self.temperature = _clamp(0, 4, self.temperature)
+        self.max_tokens = _clamp(0, 8192, self.max_tokens)
+        return {
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+        }

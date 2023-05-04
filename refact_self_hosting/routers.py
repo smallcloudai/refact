@@ -12,10 +12,11 @@ import logging
 from refact_self_hosting.inference import Inference
 from refact_self_hosting.params import DiffSamplingParams
 from refact_self_hosting.params import TextSamplingParams
+from refact_self_hosting.params import ChatSamplingParams
 from code_contrast.model_caps import modelcap_records
 
 
-__all__ = ["ActivateRouter", "CompletionRouter", "ContrastRouter"]
+__all__ = ["LongthinkFunctionGetterRouter", "CompletionRouter", "ContrastRouter", "ChatRouter"]
 
 
 async def inference_streamer(
@@ -166,6 +167,41 @@ class ContrastRouter(APIRouter):
             last_error = self._inference.last_error
             raise HTTPException(status_code=401,
                                 detail="model loading" if last_error is None else last_error)
+        if post.model != "CONTRASTcode" and self._inference.model_name != post.model:
+            raise HTTPException(status_code=401,
+                                detail=f"requested model '{post.model}' doesn't match "
+                                       f"server model '{self._inference.model_name}'")
+        return StreamingResponse(inference_streamer(request, self._inference))
+
+
+class ChatRouter(APIRouter):
+
+    def __init__(self,
+                 inference: Inference,
+                 *args, **kwargs):
+        self._inference = inference
+        super(ChatRouter, self).__init__(*args, **kwargs)
+        super(ChatRouter, self).add_api_route("/v1/chat", self._chat, methods=["POST"])
+
+    async def _chat(self,
+                    post: ChatSamplingParams,
+                    authorization: str = Header(None)):
+        request = post.clamp()
+        request.update({
+            "id": str(uuid4()),
+            "object": "chat_completion_req",
+            "model": post.model,
+            "messages": post.messages,
+            "stop_tokens": post.stop,
+            "stream": post.stream,
+        })
+        if self._inference.model_name is None:
+            last_error = self._inference.last_error
+            raise HTTPException(status_code=401,
+                                detail="model loading" if last_error is None else last_error)
+        if not self._inference.chat_is_available:
+            raise HTTPException(status_code=401,
+                                detail=f"chat is not available for {self._inference.model_name} model")
         if post.model != "CONTRASTcode" and self._inference.model_name != post.model:
             raise HTTPException(status_code=401,
                                 detail=f"requested model '{post.model}' doesn't match "

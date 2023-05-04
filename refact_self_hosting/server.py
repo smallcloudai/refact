@@ -14,6 +14,7 @@ from refact_self_hosting.inference import Inference
 from refact_self_hosting.routers import LongthinkFunctionGetterRouter
 from refact_self_hosting.routers import CompletionRouter
 from refact_self_hosting.routers import ContrastRouter
+from refact_self_hosting.routers import ChatRouter
 
 
 if __name__ == "__main__":
@@ -39,6 +40,7 @@ if __name__ == "__main__":
     app.include_router(CompletionRouter(inference))
     app.include_router(ContrastRouter(inference))
     app.include_router(LongthinkFunctionGetterRouter(inference))
+    app.include_router(ChatRouter(inference))
 
     key_filename, cert_filename = gen_certificate(args.workdir)
 
