@@ -44,7 +44,9 @@ models_mini_db = {
     "T": 2048,
     "filter_caps": ["starcoder"],
 },
-"bigcode/large-model": {
+# starcoder/15b/base4bit
+# starcoder/15b/base8bit
+"bigcodde/large-moel": {
     "model_path_type": "huggingface",
     "model_path": "bigcode/large-model",
     "diff_scratchpad_class": ScratchpadBigCode,
