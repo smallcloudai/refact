@@ -235,8 +235,14 @@ class Inference:
                         self._model = CodifyModel.from_pretrained(
                             str(workdir / "weights"), device=self._device, repo_id=self._model_dict["model_path"])
                         self._model.T = self._model.config.T
-                    else:
+                    elif self._model_dict["model_class"] == HFModel:
                         self._model = HFModel.from_pretrained(self._model_dict["model_path"])
+                        self._model.T = self._model_dict["T"]
+                    else:
+                        self._model = self._model_dict["model_class"](
+                            model=self._model_dict["model_path"],
+                            device=self._device,
+                            **self._model_dict["model_class_kwargs"])
                         self._model.T = self._model_dict["T"]
                     self._model = self._model.eval()
                     self._encoding = self._model.encoding

@@ -1,8 +1,10 @@
 from code_contrast import ScratchpadDiff
 from code_contrast import ScratchpadBigCode
+from code_contrast import ScratchpadBigChat
+
 from code_contrast import CodifyModel
 from code_contrast import HFModel
-from code_contrast import ScratchpadBigChat
+from code_contrast import GPTQBigCodeModel
 
 
 models_mini_db = {
@@ -41,5 +43,18 @@ models_mini_db = {
     "model_class": HFModel,
     "T": 2048,
     "filter_caps": ["starcoder"],
+},
+"bigcode/large-model": {
+    "model_path_type": "huggingface",
+    "model_path": "bigcode/large-model",
+    "diff_scratchpad_class": ScratchpadBigCode,
+    "model_class": GPTQBigCodeModel,
+    "chat_scratchpad_class": None,
+    "model_class_kwargs": {
+        "checkpoint": "/home/user/starcoder-GPTQ/4-bit/model.pt",
+        "bits": 4,
+        "groupsize": 128,
+    },
+    "T": 1024,
 },
 }
