@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.6.2-cudnn8-runtime-ubuntu20.04
+FROM nvidia/cuda:11.6.2-cudnn8-devel-ubuntu20.04
 
 RUN apt-get update
 RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
@@ -25,12 +25,10 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
 RUN pip install --no-cache-dir IPython numpy tokenizers tiktoken fastapi hypercorn termcolor cdifflib
 RUN pip install --no-cache-dir cloudpickle dataclasses_json huggingface_hub blobfile
 
-# ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
-
-RUN pip install --no-cache-dir git+https://github.com/smallcloudai/code-contrast.git
+ENV TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6+PTX"
+RUN BUILD_QUANT_CUDA=1 pip install --no-cache-dir git+https://github.com/smallcloudai/code-contrast.git
 RUN pip install --no-cache-dir git+https://github.com/smallcloudai/refact-self-hosting.git
 
-RUN mkdir /workdir
 ENV SERVER_WORKDIR=/workdir
 ENV SERVER_PORT=8008
 EXPOSE $SERVER_PORT
