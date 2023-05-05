@@ -111,7 +111,6 @@ class CompletionRouter(APIRouter):
                 status_code=401,
                 detail="model is loading" if last_error is None else last_error
             )
-        logging.info("hello world", type(post.model))
         if post.model != "" and post.model != "CONTRASTcode" and self._inference.model_name != post.model:
             raise HTTPException(
                 status_code=401,
@@ -191,6 +190,7 @@ class ChatRouter(APIRouter):
     async def _chat(self,
                     post: ChatSamplingParams,
                     authorization: str = Header(None)):
+        logging.info("running /v1/chat with %i input messages" % len(post.messages))
         request = post.clamp()
         request.update({
             "id": str(uuid4()),
@@ -198,7 +198,7 @@ class ChatRouter(APIRouter):
             "model": post.model,
             "messages": post.messages,
             "stop_tokens": post.stop,
-            "stream": post.stream,
+            "stream": True,
         })
         if self._inference.model_name is None:
             last_error = self._inference.last_error
@@ -212,4 +212,30 @@ class ChatRouter(APIRouter):
                 status_code=401,
                 detail=f"requested model '{post.model}' doesn't match server model '{self._inference.model_name}'"
             )
-        return StreamingResponse(inference_streamer(request, self._inference))
+        return StreamingResponse(chat_delta_streamer(request, self._inference))
+
+
+async def chat_delta_streamer(
+    request: Dict[str, Any],
+    inference: Inference
+):
+    seen: Dict[int, str] = dict()
+    try:
+        for response in inference.infer(request, True):
+            if response is None:
+                continue
+            # data = json.dumps(response)
+            if "choices" in response:
+                for ch in response["choices"]:
+                    idx = ch["index"]
+                    seen_here = seen.get(idx, "")
+                    content = ch.get("content", "")
+                    ch["delta"] = content[len(seen_here):]
+                    seen[idx] = content
+                    if "content" in ch:
+                        del ch["content"]
+            tmp = json.dumps(response)
+            yield "data: " + tmp + "\n\n"
+        yield "data: [DONE]" + "\n\n"
+    except asyncio.CancelledError:
+        pass
