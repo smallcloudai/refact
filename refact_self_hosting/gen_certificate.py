@@ -35,7 +35,7 @@ def gen_certificate(workdir: Path) -> Tuple[Path, Path]:
         s = subprocess.Popen(f"openssl genrsa 2048 > {key_filename}", shell=True)
         s.communicate()
         if not key_filename.exists():
-            RuntimeError(f"failed to generate ssl key")
+            raise RuntimeError(f"failed to generate ssl key")
 
     cert_filename = cert_dir / "server.cert"
     if not cert_filename.exists():
@@ -63,6 +63,6 @@ def gen_certificate(workdir: Path) -> Tuple[Path, Path]:
         s.communicate()
 
         if not cert_filename.exists():
-            RuntimeError(f"failed to generate certificate")
+            raise RuntimeError(f"failed to generate certificate")
 
     return key_filename, cert_filename
