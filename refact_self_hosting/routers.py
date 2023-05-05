@@ -24,17 +24,16 @@ async def inference_streamer(
         inference: Inference):
     try:
         stream = request["stream"]
-        for response in inference.infer(request, stream):
+        async for response in inference.infer(request, stream):
             if response is None:
                 continue
             data = json.dumps(response)
             if stream:
                 data = "data: " + data + "\n\n"
-            # logging.info(data)
+            await asyncio.sleep(0)
             yield data
         if stream:
             yield "data: [DONE]" + "\n\n"
-            # logging.info("data: [DONE]")
     except asyncio.CancelledError:
         pass
 
@@ -80,6 +79,7 @@ class LongthinkFunctionGetterRouter(APIRouter):
             "longthink-functions-today": 1,
             "longthink-functions-today-v2": accum,
             "longthink-filters": [],
+            "chat-v1-style": True,
         }
         return Response(content=json.dumps(response))
 
@@ -221,7 +221,7 @@ async def chat_delta_streamer(
 ):
     seen: Dict[int, str] = dict()
     try:
-        for response in inference.infer(request, True):
+        async for response in inference.infer(request, True):
             if response is None:
                 continue
             if "choices" in response:
@@ -234,6 +234,7 @@ async def chat_delta_streamer(
                     if "content" in ch:
                         del ch["content"]
             tmp = json.dumps(response)
+            await asyncio.sleep(0)
             yield "data: " + tmp + "\n\n"
         yield "data: [DONE]" + "\n\n"
     except asyncio.CancelledError:

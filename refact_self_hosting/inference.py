@@ -162,7 +162,7 @@ class Inference:
             chosen_token=chosen_tokens[0]
         )
 
-    def _generate_scratchpad(self,
+    def _generate_using_scratchpad(self,
                              sequence: torch.Tensor,
                              scratchpad: ScratchpadBase,
                              max_length: int) -> torch.Tensor:
@@ -325,12 +325,12 @@ class Inference:
 
         return result
 
-    def infer(self, request: Dict[str, Any], stream: bool) -> Iterable[Optional[Dict[str, Any]]]:
+    async def infer(self, request: Dict[str, Any], stream: bool) -> Iterable[Optional[Dict[str, Any]]]:
         try:
             with non_blocking_lock(self._model_lock):
                 scratchpad, tokens_prompt = self._prepare_scratchpad(request)
                 with torch.inference_mode():
-                    for _ in self._generate_scratchpad(tokens_prompt, scratchpad, max_length=request["max_tokens"]):
+                    for _ in self._generate_using_scratchpad(tokens_prompt, scratchpad, max_length=request["max_tokens"]):
                         yield self._json_result(
                             scratchpad,
                             model=self._loaded_model_name,
