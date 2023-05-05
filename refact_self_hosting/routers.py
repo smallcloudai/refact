@@ -107,12 +107,16 @@ class CompletionRouter(APIRouter):
         })
         if self._inference.model_name is None:
             last_error = self._inference.last_error
-            raise HTTPException(status_code=401,
-                                detail="model loading" if last_error is None else last_error)
+            raise HTTPException(
+                status_code=401,
+                detail="model is loading" if last_error is None else last_error
+            )
+        logging.info("hello world", type(post.model))
         if post.model != "" and post.model != "CONTRASTcode" and self._inference.model_name != post.model:
-            raise HTTPException(status_code=401,
-                                detail=f"requested model '{post.model}' doesn't match "
-                                       f"server model '{self._inference.model_name}'")
+            raise HTTPException(
+                status_code=401,
+                detail=f"requested model '{post.model}' doesn't match server model '{self._inference.model_name}'"
+            )
         return StreamingResponse(inference_streamer(request, self._inference))
 
 
@@ -167,10 +171,11 @@ class ContrastRouter(APIRouter):
             last_error = self._inference.last_error
             raise HTTPException(status_code=401,
                                 detail="model loading" if last_error is None else last_error)
-        if post.model != "CONTRASTcode" and self._inference.model_name != post.model:
-            raise HTTPException(status_code=401,
-                                detail=f"requested model '{post.model}' doesn't match "
-                                       f"server model '{self._inference.model_name}'")
+        if post.model != "" and post.model != "CONTRASTcode" and self._inference.model_name != post.model:
+            raise HTTPException(
+                status_code=401,
+                detail=f"requested model '{post.model}' doesn't match server model '{self._inference.model_name}'"
+            )
         return StreamingResponse(inference_streamer(request, self._inference))
 
 
@@ -202,8 +207,9 @@ class ChatRouter(APIRouter):
         if not self._inference.chat_is_available:
             raise HTTPException(status_code=401,
                                 detail=f"chat is not available for {self._inference.model_name} model")
-        if post.model != "CONTRASTcode" and self._inference.model_name != post.model:
-            raise HTTPException(status_code=401,
-                                detail=f"requested model '{post.model}' doesn't match "
-                                       f"server model '{self._inference.model_name}'")
+        if post.model != "" and self._inference.model_name != post.model:
+            raise HTTPException(
+                status_code=401,
+                detail=f"requested model '{post.model}' doesn't match server model '{self._inference.model_name}'"
+            )
         return StreamingResponse(inference_streamer(request, self._inference))
