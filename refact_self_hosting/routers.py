@@ -224,7 +224,6 @@ async def chat_delta_streamer(
         for response in inference.infer(request, True):
             if response is None:
                 continue
-            # data = json.dumps(response)
             if "choices" in response:
                 for ch in response["choices"]:
                     idx = ch["index"]

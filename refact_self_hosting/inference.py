@@ -68,7 +68,8 @@ class Inference:
         created_ts = time.time()
 
         def logger(*args):
-            logging.debug(args)
+            s = " ".join([str(a) for a in args])
+            logging.debug(s)
 
         object_type = request["object"]
         assert object_type in ["diff_completion_req", "text_completion_req", "chat_completion_req"]
@@ -270,6 +271,7 @@ class Inference:
 
         if not scratchpad.needs_upload and status not in ["completed"]:
             return None
+        scratchpad.needs_upload = False
 
         if isinstance(scratchpad, ScratchpadCompletion):
             completion = scratchpad.completion(final=bool(status == "completed"))
