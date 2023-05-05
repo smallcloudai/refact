@@ -1,7 +1,6 @@
 import logging
 import asyncio
 import sys
-import os
 
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
@@ -16,9 +15,6 @@ from refact_self_hosting.routers import LongthinkFunctionGetterRouter
 from refact_self_hosting.routers import CompletionRouter
 from refact_self_hosting.routers import ContrastRouter
 from refact_self_hosting.routers import ChatRouter
-
-
-DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
 if __name__ == "__main__":
@@ -36,10 +32,7 @@ if __name__ == "__main__":
     logdir.mkdir(exist_ok=True, parents=False)
     file_handler = logging.FileHandler(filename=logdir / f"server_{datetime.now():%Y-%m-%d-%H-%M-%S}.log")
     stream_handler = logging.StreamHandler(stream=sys.stdout)
-    logging.basicConfig(
-        level=logging.DEBUG if DEBUG else logging.INFO,
-        handlers=[stream_handler, file_handler]
-        )
+    logging.basicConfig(level=logging.INFO, handlers=[stream_handler, file_handler])
 
     inference = Inference(workdir=args.workdir, model_name=args.model, force_cpu=args.cpu)
 

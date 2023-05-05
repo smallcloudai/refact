@@ -1,3 +1,4 @@
+import os
 import torch
 import logging
 import time
@@ -31,6 +32,9 @@ __all__ = ["Inference", "LockedError"]
 
 class LockedError(Exception):
     pass
+
+
+DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
 @contextmanager
@@ -68,8 +72,10 @@ class Inference:
         created_ts = time.time()
 
         def logger(*args):
+            if not DEBUG:
+                return
             s = " ".join([str(a) for a in args])
-            logging.debug(s)
+            logging.info(s)
 
         object_type = request["object"]
         assert object_type in ["diff_completion_req", "text_completion_req", "chat_completion_req"]
