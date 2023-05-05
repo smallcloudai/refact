@@ -29,21 +29,20 @@ support 20+ languages and are state-of-the-art in size and latency. In the futur
 
 ## Prerequisities
 We recommend using this server with **Nvidia GPU**. Another option is to use ıt wıth CPU, but it'll be slower.
-Check system requrements below before you [choose](https://refact.smallcloud.ai) the model:
+Check system requrements below before you choose the model:
 
-| Model                     | GPU (VRAM) | CPU (RAM) |                  |
-| ------------------------- | ---------- | --------- | ---------------- |
-| CONTRASTcode/medium/multi |        3Gb |       3Gb |                  |
-| CONTRASTcode/3b/multi     |        8Gb |      12Gb |                  |
-| starcoder/15b/base4bit    |       12Gb |         - | Available ~May 5 |
-| starcoder/15b/base8bit    |       24Gb |         - | Available ~May 5 |
+| Model                     | GPU (VRAM) | CPU (RAM) |
+| ------------------------- | ---------- | --------- |
+| CONTRASTcode/medium/multi |        3Gb |       3Gb |
+| CONTRASTcode/3b/multi     |        8Gb |      12Gb |
+| starcoder/15b/base4bit    |       12Gb |         - |
+| starcoder/15b/base8bit    |       24Gb |         - |
 
 
 ## Getting started
 Install plugin for your IDE:
 [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai) or
-[VSCode](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
-and sign up or login in to your account.
+[VSCode](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
 
 
 ### Running Server in Docker
@@ -51,7 +50,6 @@ The recommended way to run server is a pre-build Docker image.
 
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
-Get your **API Key** from refact.ai [account](https://refact.smallcloud.ai) page or alternatively from plugin settings.
 
 
 <details><summary>Docker tips & tricks</summary>
@@ -77,8 +75,6 @@ Remove a container and all its data:
 ```commandline
 docker rm
 ```
-Model weights are saved inside the container. If you remove the container, it will
-download the weights again.
 
 Shows messages from the container:
 ```commandline
@@ -86,20 +82,17 @@ docker logs -f
 ```
 </details>
 
+Choose model from available ones (see table in [prerequisities](#prerequisities)).
+
 Run docker container with following command:
 ```commandline
-docker run -p 8008:8008 --gpus 0 --name refact_self_hosting smallcloud/refact_self_hosting --env MODEL=MODEL
+docker run --rm --gpus 0 -p 8008:8008 -v refact_workdir:/workdir --env SERVER_MODEL=<model name> smallcloud/refact_self_hosting
 ```
 If you don't have a suitable GPU run it on CPU:
 ```commandline
-docker run -p 8008:8008 --name refact_self_hosting smallcloud/refact_self_hosting
+docker run --rm -p 8008:8008 -v refact_workdir:/workdir --env SERVER_MODEL=<model name> smallcloud/refact_self_hosting
 ```
-Next time you can start it with following command:
-```commandline
-docker start -i refact_self_hosting
-```
-After start, container will automatically check for updates and download the chosen model
-(see in your [account](https://refact.smallcloud.ai)).
+After start container will automatically download the chosen model.
 
 
 ### Running Manually
@@ -111,7 +104,7 @@ pip install git+https://github.com/smallcloudai/refact-self-hosting.git
 ```
 Now you can run server with following command:
 ```commandline
-python -m refact_self_hosting.server --workdir /workdir --model MODEL
+python -m refact_self_hosting.server --workdir /workdir --model <model name>
 ```
 
 
