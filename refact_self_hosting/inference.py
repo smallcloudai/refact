@@ -275,12 +275,15 @@ class Inference:
     def _json_result(scratchpad: ScratchpadBase, model: str, stream: bool, status: str) -> Optional[Dict]:
         assert status in ["in_progress", "completed"]
 
-        if not scratchpad.needs_upload and status not in ["completed"]:
+        if (not scratchpad.needs_upload or not stream) and (status not in ["completed"]):
             return None
         scratchpad.needs_upload = False
-
         if isinstance(scratchpad, ScratchpadCompletion):
             completion = scratchpad.completion(final=bool(status == "completed"))
+            text = completion["text"]
+            delta = text[len(scratchpad.sent or ""):]
+            scratchpad.sent = text
+            completion["text"] = delta
         elif isinstance(scratchpad, ScratchpadBigChat):
             completion = scratchpad.completion(final=bool(status == "completed"))
             completion = {"role": completion["chat__role"], "content": completion["chat__content"]}

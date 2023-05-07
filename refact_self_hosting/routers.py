@@ -24,16 +24,19 @@ async def inference_streamer(
         inference: Inference):
     try:
         stream = request["stream"]
+        data_str = ""
         async for response in inference.infer(request, stream):
             if response is None:
                 continue
-            data = json.dumps(response)
+            data_str = json.dumps(response)
             if stream:
-                data = "data: " + data + "\n\n"
+                data_str = "data: " + data_str + "\n\n"
+                yield data_str
             await asyncio.sleep(0)
-            yield data
         if stream:
             yield "data: [DONE]" + "\n\n"
+        else:
+            yield data_str
     except asyncio.CancelledError:
         pass
 
@@ -104,6 +107,7 @@ class CompletionRouter(APIRouter):
             "prompt": post.prompt,
             "stop_tokens": post.stop,
             "stream": post.stream,
+            "echo": post.echo,
         })
         if self._inference.model_name is None:
             last_error = self._inference.last_error
