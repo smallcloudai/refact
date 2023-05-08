@@ -51,6 +51,7 @@ The recommended way to run server is a pre-build Docker image.
 
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
+Get your **API Key** from refact.ai [account](https://refact.smallcloud.ai) page or alternatively from plugin settings.
 
 
 <details><summary>Docker tips & tricks</summary>
@@ -87,11 +88,11 @@ docker logs -f
 
 Run docker container with following command:
 ```commandline
-docker run -p 8008:8008 --gpus 0 --name refact_self_hosting smallcloud/refact_self_hosting --env MODEL=MODEL
+docker run -p 8008:8008 --gpus 0 --name refact_self_hosting --env SERVER_API_TOKEN={API Key} smallcloud/refact_self_hosting
 ```
 If you don't have a suitable GPU run it on CPU:
 ```commandline
-docker run -p 8008:8008 --name refact_self_hosting smallcloud/refact_self_hosting
+docker run -p 8008:8008 --name refact_self_hosting --env SERVER_API_TOKEN={API Key} smallcloud/refact_self_hosting
 ```
 Next time you can start it with following command:
 ```commandline
@@ -110,7 +111,7 @@ pip install git+https://github.com/smallcloudai/refact-self-hosting.git
 ```
 Now you can run server with following command:
 ```commandline
-python -m refact_self_hosting.server --workdir /workdir --model MODEL
+python -m refact_self_hosting.server --workdir /workdir --token {API Key}
 ```
 
 
