@@ -33,7 +33,7 @@ models_mini_db = {
     "chat_scratchpad_class": None,
     "model_class": HFModel,
     "T": 2048,
-    "filter_caps": ["starcoder"],
+    "filter_caps": ["santacoder"],
 },
 "starcoder/15b": {
     "model_path_type": "huggingface",
