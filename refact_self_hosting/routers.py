@@ -120,6 +120,11 @@ class CompletionRouter(APIRouter):
                 status_code=401,
                 detail=f"requested model '{post.model}' doesn't match server model '{self._inference.model_name}'"
             )
+        if len(self._inference._model_dict) == 0:
+            raise HTTPException(
+                status_code=401,
+                detail="unknown model '%s'" % self._inference.model_name
+            )
         return StreamingResponse(inference_streamer(request, self._inference))
 
 
@@ -179,6 +184,11 @@ class ContrastRouter(APIRouter):
                 status_code=401,
                 detail=f"requested model '{post.model}' doesn't match server model '{self._inference.model_name}'"
             )
+        if len(self._inference._model_dict) == 0:
+            raise HTTPException(
+                status_code=401,
+                detail="unknown model '%s'" % self._inference.model_name
+            )
         return StreamingResponse(inference_streamer(request, self._inference))
 
 
@@ -215,6 +225,11 @@ class ChatRouter(APIRouter):
             raise HTTPException(
                 status_code=401,
                 detail=f"requested model '{post.model}' doesn't match server model '{self._inference.model_name}'"
+            )
+        if len(self._inference._model_dict) == 0:
+            raise HTTPException(
+                status_code=401,
+                detail="unknown model '%s'" % self._inference.model_name
             )
         return StreamingResponse(chat_delta_streamer(request, self._inference))
 

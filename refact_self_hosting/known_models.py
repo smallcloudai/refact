@@ -26,13 +26,13 @@ models_mini_db = {
     "T": 2048,
     "filter_caps": ["CONTRASTcode"],
 },
-"bigcode/santacoder": {
+"starcoder/santacoder": {
     "model_path_type": "huggingface",
     "model_path": "bigcode/santacoder",
     "diff_scratchpad_class": ScratchpadBigCode,
     "chat_scratchpad_class": None,
     "model_class": HFModel,
-    "T": 1024,
+    "T": 2048,
     "filter_caps": ["starcoder"],
 },
 "starcoder/15b": {
