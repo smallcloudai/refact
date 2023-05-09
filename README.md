@@ -7,15 +7,21 @@
 This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding assistant.
 
 With Refact you can run high-quality AI code completions on-premise and use a number of
-functions for code transformation.
-
-Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
-products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
+functions for code transformation and ask questions in the chat.
 
 This server allows you to run AI coding models on your hardware, your code doesn't go outside your control.
 
-At the moment, you can choose between 2 of our own [models](https://huggingface.co/smallcloudai) that
-support 20+ languages and are state-of-the-art in size and latency. In the future, we plan to add support to other models.
+At the moment, you can choose between following models:
+
+| Model                     | GPU (VRAM) | CPU (RAM) | Completion | AI Toolbox | Chat |
+| ------------------------- | ---------- | --------- | ---------- | ---------- | ---- |
+| CONTRASTcode/medium/multi |        3Gb |       3Gb |          + |            |      |    
+| CONTRASTcode/3b/multi     |        8Gb |      12Gb |          + |            |      |
+| starcoder/15b/base4bit    |       12Gb |         - |          + |          + |    + |
+| starcoder/15b/base8bit    |       24Gb |         - |          + |          + |    + |
+
+Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
+products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
 
 
 ## Demo
@@ -25,19 +31,6 @@ support 20+ languages and are state-of-the-art in size and latency. In the futur
 <th><img src="https://plugins.jetbrains.com/files/20647/screenshot_277b57c5-2104-4ca8-9efc-1a63b8cb330f" align="center"/></th>
 </tr>
 </table>
-
-
-## Prerequisities
-We recommend using this server with **Nvidia GPU**. Another option is to use ıt wıth CPU, but it'll be slower.
-Check system requrements below before you choose the model:
-
-| Model                     | GPU (VRAM) | CPU (RAM) |
-| ------------------------- | ---------- | --------- |
-| CONTRASTcode/medium/multi |        3Gb |       3Gb |
-| CONTRASTcode/3b/multi     |        8Gb |      12Gb |
-| starcoder/15b/base4bit    |       12Gb |         - |
-| starcoder/15b/base8bit    |       24Gb |         - |
-
 
 ## Getting started
 Install plugin for your IDE:
@@ -82,7 +75,7 @@ docker logs -f
 ```
 </details>
 
-Choose model from available ones (see table in [prerequisities](#prerequisities)).
+Choose model from available ones.
 
 Run docker container with following command:
 ```commandline
