@@ -245,18 +245,24 @@ class Inference:
                 try:
                     self._loaded_model_name = None
                     self._last_error = None
+                    cache_dir = str(workdir / "weights")
                     if self._model_dict["model_class"] == CodifyModel:
                         self._model = CodifyModel.from_pretrained(
-                            str(workdir / "weights"), device=self._device, repo_id=self._model_dict["model_path"])
+                            repo_id=self._model_dict["model_path"],
+                            path=cache_dir,
+                            device=self._device)
                         self._model.T = self._model.config.T
                     elif self._model_dict["model_class"] == HFModel:
-                        self._model = HFModel.from_pretrained(self._model_dict["model_path"])
+                        self._model = HFModel.from_pretrained(
+                            path=self._model_dict["model_path"],
+                            cache_dir=cache_dir,
+                            device=self._device)
                         self._model.T = self._model_dict["T"]
                     elif self._model_dict["model_class"] == GPTQBigCodeModel:
                         self._model = GPTQBigCodeModel(
                             model_name=self._model_dict["model_path"],
+                            cache_dir=cache_dir,
                             device=self._device,
-                            cache_dir=str(workdir / "weights"),
                             **self._model_dict["model_class_kwargs"])
                         self._model.T = self._model_dict["T"]
                     self._model = self._model.eval()
