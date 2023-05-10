@@ -24,8 +24,8 @@ Refact is currently available as a plugin for [JetBrains](https://plugins.jetbra
 products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
 
 ## Known limitations
-- for best results on smaller GPUs we recommend using CONTRASTcode models as the starcoder models can be quite slow
-- starcoder ai toolbox and chat in JetBrains will be available later (May 12-14)
+- for best results on smaller GPUs we recommend using CONTRASTcode models as the StarCoder models can be quite slow
+- StarCoder AI Toolbox and Chat in JetBrains will be available later (May 12-14)
 
 ## Demo
 
