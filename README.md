@@ -7,16 +7,25 @@
 This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding assistant.
 
 With Refact you can run high-quality AI code completions on-premise and use a number of
-functions for code transformation.
+functions for code transformation and ask questions in the chat.
+
+This server allows you to run AI coding models on your hardware, your code doesn't go outside your control.
+
+At the moment, you can choose between following models:
+
+| Model                                                                                | GPU (VRAM) | CPU (RAM) | Completion | AI Toolbox | Chat | Languages supported                                |
+| ------------------------------------------------------------------------------------ | ---------- | --------- | ---------- | ---------- | ---- | -------------------------------------------------- |
+| [CONTRASTcode/medium/multi](https://huggingface.co/smallcloudai/codify_medium_multi) |        3Gb |       3Gb |          + |            |      | [20+ Programming Languages](https://refact.ai/faq) |
+| [CONTRASTcode/3b/multi](https://huggingface.co/smallcloudai/codify_3b_multi)         |        8Gb |      12Gb |          + |            |      | [20+ Programming Languages](https://refact.ai/faq) |
+| [starcoder/15b/base4bit](https://huggingface.co/smallcloudai/starcoder_15b_4bit)     |       12Gb |         - |          + |          + |    + | [80+ Programming languages](https://huggingface.co/blog/starcoder) |
+| [starcoder/15b/base8bit](https://huggingface.co/smallcloudai/starcoder_15b_8bit)     |       24Gb |         - |          + |          + |    + | [80+ Programming languages](https://huggingface.co/blog/starcoder) |
 
 Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
 products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
 
-This server allows you to run AI coding models on your hardware, your code doesn't go outside your control.
-
-At the moment, you can choose between 2 of our own [models](https://huggingface.co/smallcloudai) that
-support 20+ languages and are state-of-the-art in size and latency. In the future, we plan to add support to other models.
-
+## Known limitations
+- for best results on smaller GPUs we recommend using CONTRASTcode models as the StarCoder models can be quite slow
+- StarCoder AI Toolbox and Chat in JetBrains will be available later (May 12-14)
 
 ## Demo
 
@@ -26,24 +35,10 @@ support 20+ languages and are state-of-the-art in size and latency. In the futur
 </tr>
 </table>
 
-
-## Prerequisities
-We recommend using this server with **Nvidia GPU**. Another option is to use ıt wıth CPU, but it'll be slower.
-Check system requrements below before you [choose](https://refact.smallcloud.ai) the model:
-
-| Model                     | GPU (VRAM) | CPU (RAM) |                  |
-| ------------------------- | ---------- | --------- | ---------------- |
-| CONTRASTcode/medium/multi |        3Gb |       3Gb |                  |
-| CONTRASTcode/3b/multi     |        8Gb |      12Gb |                  |
-| starcoder/15b/base4bit    |       12Gb |         - | Available ~May 5 |
-| starcoder/15b/base8bit    |       24Gb |         - | Available ~May 5 |
-
-
 ## Getting started
 Install plugin for your IDE:
 [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai) or
-[VSCode](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
-and sign up or login in to your account.
+[VSCode](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
 
 
 ### Running Server in Docker
@@ -51,7 +46,6 @@ The recommended way to run server is a pre-build Docker image.
 
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
-Get your **API Key** from refact.ai [account](https://refact.smallcloud.ai) page or alternatively from plugin settings.
 
 
 <details><summary>Docker tips & tricks</summary>
@@ -77,8 +71,6 @@ Remove a container and all its data:
 ```commandline
 docker rm
 ```
-Model weights are saved inside the container. If you remove the container, it will
-download the weights again.
 
 Shows messages from the container:
 ```commandline
@@ -86,20 +78,17 @@ docker logs -f
 ```
 </details>
 
+Choose model from available ones.
+
 Run docker container with following command:
 ```commandline
-docker run -p 8008:8008 --gpus 0 --name refact_self_hosting --env SERVER_API_TOKEN={API Key} smallcloud/refact_self_hosting
+docker run --rm --gpus 0 -p 8008:8008 -v refact_workdir:/workdir --env SERVER_MODEL=<model name> smallcloud/refact_self_hosting
 ```
 If you don't have a suitable GPU run it on CPU:
 ```commandline
-docker run -p 8008:8008 --name refact_self_hosting --env SERVER_API_TOKEN={API Key} smallcloud/refact_self_hosting
+docker run --rm -p 8008:8008 -v refact_workdir:/workdir --env SERVER_MODEL=<model name> smallcloud/refact_self_hosting
 ```
-Next time you can start it with following command:
-```commandline
-docker start -i refact_self_hosting
-```
-After start, container will automatically check for updates and download the chosen model
-(see in your [account](https://refact.smallcloud.ai)).
+After start container will automatically download the chosen model.
 
 
 ### Running Manually
@@ -111,7 +100,7 @@ pip install git+https://github.com/smallcloudai/refact-self-hosting.git
 ```
 Now you can run server with following command:
 ```commandline
-python -m refact_self_hosting.server --workdir /workdir --token {API Key}
+python -m refact_self_hosting.server --workdir /workdir --model <model name>
 ```
 
 

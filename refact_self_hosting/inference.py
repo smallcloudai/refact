@@ -1,8 +1,6 @@
-import json
-
+import os
 import torch
 import logging
-import requests
 import time
 import traceback
 
@@ -17,15 +15,16 @@ from smallcloud.inference_server import head_and_tail
 from code_contrast import ScratchpadBase
 from code_contrast import ScratchpadDiff
 from code_contrast import ScratchpadCompletion
-from code_contrast import ScratchpadBigCode
+from code_contrast import ScratchpadBigChat
 
 from refact_self_hosting import known_models
 
 from code_contrast import CodifyModel
 from code_contrast import HFModel
+from code_contrast import GPTQBigCodeModel
 
 
-from typing import Optional, Dict, Any, Iterable, Tuple, List
+from typing import Optional, Dict, Any, Iterable, List
 
 
 __all__ = ["Inference", "LockedError"]
@@ -33,6 +32,9 @@ __all__ = ["Inference", "LockedError"]
 
 class LockedError(Exception):
     pass
+
+
+DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
 @contextmanager
@@ -47,7 +49,7 @@ def non_blocking_lock(lock: Lock):
 
 class Inference:
 
-    def __init__(self, token: str, workdir: Path, force_cpu: bool, model_name: str = ""):
+    def __init__(self, workdir: Path, force_cpu: bool, model_name: str = ""):
         self._device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
 
         self._model_lock = Lock()
@@ -62,7 +64,7 @@ class Inference:
             target=self._model_setup,
             kwargs={
                 'workdir': workdir,
-                "token": token,
+                'model_name': model_name
             })
         self._model_setup_thread.start()
 
@@ -70,10 +72,13 @@ class Inference:
         created_ts = time.time()
 
         def logger(*args):
-            logging.debug(args)
+            if not DEBUG:
+                return
+            s = " ".join([str(a) for a in args])
+            logging.info(s)
 
         object_type = request["object"]
-        assert object_type in ["diff_completion_req", "text_completion_req"]
+        assert object_type in ["diff_completion_req", "text_completion_req", "chat_completion_req"]
 
         if object_type == "diff_completion_req":
             DiffScratchpadClass = self._model_dict["diff_scratchpad_class"]
@@ -82,12 +87,20 @@ class Inference:
                 logger=logger,
                 created=created_ts,
                 **request)
-        else:
+        elif object_type == "text_completion_req":
             scratchpad = ScratchpadCompletion(
                 enc=self._encoding,
                 logger=logger,
                 created=created_ts,
                 **request)
+        else:
+            ChatScratchpadClass = self._model_dict["chat_scratchpad_class"]
+            scratchpad = ChatScratchpadClass(
+                enc=self._encoding,
+                logger=logger,
+                created=created_ts,
+                **request)
+
         p = scratchpad.prompt(self._model.T)
         if len(p) == 0:
             raise RuntimeError("empty tokens prompt")
@@ -149,7 +162,7 @@ class Inference:
             chosen_token=chosen_tokens[0]
         )
 
-    def _generate_scratchpad(self,
+    def _generate_using_scratchpad(self,
                              sequence: torch.Tensor,
                              scratchpad: ScratchpadBase,
                              max_length: int) -> torch.Tensor:
@@ -169,6 +182,7 @@ class Inference:
                 assert past_key_values is not None
                 seq_len, cache_len = 1, past_key_values[0][0].shape[2]
                 input_tokens = output_tokens
+            # TODO: remove for bigcode models
             attention_mask = self._make_mask(seq_len, cache_len)
 
             hidden_state, past_key_values = self._model(
@@ -215,30 +229,9 @@ class Inference:
         if not scratchpad.finish_reason:
             scratchpad.finish_reason = "maxlen"
 
-    @staticmethod
-    def _fetch_model_settings(token) -> Tuple[str, str]:
-        url = "https://www.smallcloud.ai/v1/codify-model"
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
-        response = requests.get(url=url, headers=headers, timeout=30).json()
-        if response["retcode"] != "OK":
-            raise RuntimeError(response.get("human_readable_message", "unknown error"))
-        tenant_model = json.loads(response["tenant_model"])
-        model_name = tenant_model["model_name"]
-        return model_name
-
-    def _model_setup(self, token: str, workdir: Path):
+    def _model_setup(self, model_name: str, workdir: Path):
         fetch_timeout = 300
         while True:
-            try:
-                model_name = self._model_name_arg or self._fetch_model_settings(token)
-            except Exception as e:
-                self._model = None
-                self._encoding = None
-                self._loaded_model_name = None
-                self._last_error = f"model fetch failed: {e}"
-                logging.error(self._last_error)
-                time.sleep(fetch_timeout)
-                continue
             if model_name not in known_models.models_mini_db:
                 logging.error(f"unknown model \"{model_name}\", try upgrading this repo")
                 time.sleep(fetch_timeout)
@@ -252,12 +245,25 @@ class Inference:
                 try:
                     self._loaded_model_name = None
                     self._last_error = None
+                    cache_dir = str(workdir / "weights")
                     if self._model_dict["model_class"] == CodifyModel:
                         self._model = CodifyModel.from_pretrained(
-                            str(workdir / "weights"), device=self._device, repo_id=self._model_dict["model_path"])
+                            repo_id=self._model_dict["model_path"],
+                            path=cache_dir,
+                            device=self._device)
                         self._model.T = self._model.config.T
-                    else:
-                        self._model = HFModel.from_pretrained(self._model_dict["model_path"])
+                    elif self._model_dict["model_class"] == HFModel:
+                        self._model = HFModel.from_pretrained(
+                            path=self._model_dict["model_path"],
+                            cache_dir=cache_dir,
+                            device=self._device)
+                        self._model.T = self._model_dict["T"]
+                    elif self._model_dict["model_class"] == GPTQBigCodeModel:
+                        self._model = GPTQBigCodeModel(
+                            model_name=self._model_dict["model_path"],
+                            cache_dir=cache_dir,
+                            device=self._device,
+                            **self._model_dict["model_class_kwargs"])
                         self._model.T = self._model_dict["T"]
                     self._model = self._model.eval()
                     self._encoding = self._model.encoding
@@ -275,11 +281,18 @@ class Inference:
     def _json_result(scratchpad: ScratchpadBase, model: str, stream: bool, status: str) -> Optional[Dict]:
         assert status in ["in_progress", "completed"]
 
-        if not scratchpad.needs_upload and status not in ["completed"]:
+        if (not scratchpad.needs_upload or not stream) and (status not in ["completed"]):
             return None
-
+        scratchpad.needs_upload = False
         if isinstance(scratchpad, ScratchpadCompletion):
             completion = scratchpad.completion(final=bool(status == "completed"))
+            text = completion["text"]
+            delta = text[len(scratchpad.sent or ""):]
+            scratchpad.sent = text
+            completion["text"] = delta
+        elif isinstance(scratchpad, ScratchpadBigChat):
+            completion = scratchpad.completion(final=bool(status == "completed"))
+            completion = {"role": completion["chat__role"], "content": completion["chat__content"]}
         else:
             completion = {"files": scratchpad.completion(final=bool(status == "completed"))}
 
@@ -321,12 +334,12 @@ class Inference:
 
         return result
 
-    def infer(self, request: Dict[str, Any], stream: bool) -> Iterable[Optional[Dict[str, Any]]]:
+    async def infer(self, request: Dict[str, Any], stream: bool) -> Iterable[Optional[Dict[str, Any]]]:
         try:
             with non_blocking_lock(self._model_lock):
                 scratchpad, tokens_prompt = self._prepare_scratchpad(request)
                 with torch.inference_mode():
-                    for _ in self._generate_scratchpad(tokens_prompt, scratchpad, max_length=request["max_tokens"]):
+                    for _ in self._generate_using_scratchpad(tokens_prompt, scratchpad, max_length=request["max_tokens"]):
                         yield self._json_result(
                             scratchpad,
                             model=self._loaded_model_name,
@@ -350,3 +363,13 @@ class Inference:
     @property
     def last_error(self):
         return self._last_error
+
+    @property
+    def longthink_functions(self) -> Dict:
+        if 'longthink_functions' in self._model_dict:
+            return self._model_dict['longthink_functions']
+        return {}
+
+    @property
+    def chat_is_available(self) -> bool:
+        return self._model_dict["chat_scratchpad_class"] is not None
