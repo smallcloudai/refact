@@ -26,7 +26,14 @@ RUN pip install --no-cache-dir IPython numpy tokenizers tiktoken fastapi hyperco
 RUN pip install --no-cache-dir cloudpickle dataclasses_json huggingface_hub blobfile
 
 ENV TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6+PTX"
-RUN BUILD_QUANT_CUDA=1 pip install --no-cache-dir git+https://github.com/smallcloudai/code-contrast.git
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+      BUILD_QUANT_CUDA=1 pip install --no-cache-dir git+https://github.com/smallcloudai/code-contrast.git; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+      pip install --no-cache-dir git+https://github.com/smallcloudai/code-contrast.git; \
+    else \
+      exit 1; \
+    fi
+
 RUN pip install --no-cache-dir git+https://github.com/smallcloudai/refact-self-hosting.git
 
 ENV SERVER_WORKDIR=/workdir
