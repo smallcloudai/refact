@@ -23,6 +23,9 @@ At the moment, you can choose between following models:
 Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
 products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
 
+## Known limitations
+- for best results on smaller GPUs we recommend using CONTRASTcode models as the starcoder models can be quite slow
+- starcoder ai toolbox and chat in JetBrains will be available later (May 12-14)
 
 ## Demo
 
