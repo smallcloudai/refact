@@ -17,8 +17,8 @@ At the moment, you can choose between following models:
 | ------------------------------------------------------------------------------------ | ---------- | --------- | ---------- | ---------- | ---- | -------------------------------------------------- |
 | [CONTRASTcode/medium/multi](https://huggingface.co/smallcloudai/codify_medium_multi) |        3Gb |       3Gb |          + |            |      | [20+ Programming Languages](https://refact.ai/faq) |
 | [CONTRASTcode/3b/multi](https://huggingface.co/smallcloudai/codify_3b_multi)         |        8Gb |      12Gb |          + |            |      | [20+ Programming Languages](https://refact.ai/faq) |
-| [starcoder/15b/base4bit](https://huggingface.co/smallcloudai/starcoder_15b_4bit)     |       12Gb |         - |          + |          + |    + | [80+ Programming languages](https://huggingface.co/blog/starcoder) |
-| [starcoder/15b/base8bit](https://huggingface.co/smallcloudai/starcoder_15b_8bit)     |       24Gb |         - |          + |          + |    + | [80+ Programming languages](https://huggingface.co/blog/starcoder) |
+| [starcoder/15b/base4bit](https://huggingface.co/smallcloudai/starcoder_15b_4bit)     |       16Gb |         - |          + |          + |    + | [80+ Programming languages](https://huggingface.co/blog/starcoder) |
+| [starcoder/15b/base8bit](https://huggingface.co/smallcloudai/starcoder_15b_8bit)     |       32Gb |         - |          + |          + |    + | [80+ Programming languages](https://huggingface.co/blog/starcoder) |
 
 Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
 products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
