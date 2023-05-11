@@ -38,7 +38,7 @@ async def inference_streamer(
         else:
             yield data_str
     except asyncio.CancelledError:
-        pass
+        logging.info("inference streamer cancelled")
 
 
 def parse_authorization_header(authorization: str = Header(None)) -> str:
@@ -253,8 +253,8 @@ async def chat_delta_streamer(
                     if "content" in ch:
                         del ch["content"]
             tmp = json.dumps(response)
-            await asyncio.sleep(0)
             yield "data: " + tmp + "\n\n"
+            await asyncio.sleep(0)
         yield "data: [DONE]" + "\n\n"
     except asyncio.CancelledError:
-        pass
+        logging.info("chat streamer cancelled")

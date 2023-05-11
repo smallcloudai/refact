@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from threading import Thread
 from threading import Lock
+import asyncio
 
 from smallcloud.inference_server import head_and_tail
 
@@ -340,6 +341,7 @@ class Inference:
                 scratchpad, tokens_prompt = self._prepare_scratchpad(request)
                 with torch.inference_mode():
                     for _ in self._generate_using_scratchpad(tokens_prompt, scratchpad, max_length=request["max_tokens"]):
+                        await asyncio.sleep(0)
                         yield self._json_result(
                             scratchpad,
                             model=self._loaded_model_name,
