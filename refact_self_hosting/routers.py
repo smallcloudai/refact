@@ -20,8 +20,9 @@ __all__ = ["LongthinkFunctionGetterRouter", "CompletionRouter", "ContrastRouter"
 
 
 async def inference_streamer(
-        request: Dict[str, Any],
-        inference: Inference):
+    request: Dict[str, Any],
+    inference: Inference,
+):
     try:
         stream = request["stream"]
         data_str = ""
@@ -74,7 +75,7 @@ class LongthinkFunctionGetterRouter(APIRouter):
                 j["is_liked"] = False
                 j["likes"] = 0
                 j["third_party"] = False
-                j["model"] = self._inference._model_name_arg
+                j["model"] = self._inference._loaded_model_name
                 accum[rec.function_name] = j
         response = {
             "account": "self-hosted",
@@ -137,9 +138,7 @@ class ContrastRouter(APIRouter):
         super(ContrastRouter, self).__init__(*args, **kwargs)
         super(ContrastRouter, self).add_api_route("/v1/contrast", self._contrast, methods=["POST"])
 
-    async def _contrast(self,
-                        post: DiffSamplingParams,
-                        authorization: str = Header(None)):
+    async def _contrast(self, post: DiffSamplingParams, authorization: str = Header(None)):
         logging.info("running /v1/contrast function=%s" % post.function)
         if post.function != "diff-anywhere":
             if post.cursor_file not in post.sources:

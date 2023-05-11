@@ -7,8 +7,6 @@ import traceback
 from collections import defaultdict
 from contextlib import contextmanager
 from pathlib import Path
-from threading import Thread
-from threading import Lock
 import asyncio
 
 from smallcloud.inference_server import head_and_tail
@@ -24,6 +22,8 @@ from code_contrast import CodifyModel
 from code_contrast import HFModel
 from code_contrast import GPTQBigCodeModel
 
+from fastapi import Response, Request
+
 
 from typing import Optional, Dict, Any, Iterable, List
 
@@ -38,36 +38,17 @@ class LockedError(Exception):
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
-@contextmanager
-def non_blocking_lock(lock: Lock):
-    if not lock.acquire(blocking=False):
-        raise LockedError
-    try:
-        yield lock
-    finally:
-        lock.release()
-
-
 class Inference:
 
-    def __init__(self, workdir: Path, force_cpu: bool, model_name: str = ""):
+    def __init__(self, force_cpu: bool):
         self._device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
 
-        self._model_lock = Lock()
+        self._model_load_lock: Optional[asyncio.Lock] = None    # must be created after event loop is started
         self._model: Optional[torch.nn.Module] = None
         self._encoding = None
         self._loaded_model_name = ""
-        self._model_name_arg = model_name
         self._model_dict = dict()
         self._last_error = None
-
-        self._model_setup_thread = Thread(
-            target=self._model_setup,
-            kwargs={
-                'workdir': workdir,
-                'model_name': model_name
-            })
-        self._model_setup_thread.start()
 
     def _prepare_scratchpad(self, request: Dict[str, Any]):
         created_ts = time.time()
@@ -230,19 +211,19 @@ class Inference:
         if not scratchpad.finish_reason:
             scratchpad.finish_reason = "maxlen"
 
-    def _model_setup(self, model_name: str, workdir: Path):
+    async def model_setup_loop_forever(self, model_name: str, workdir: Path):
         fetch_timeout = 300
+        self._model_load_lock = asyncio.Lock()
         while True:
             if model_name not in known_models.models_mini_db:
                 logging.error(f"unknown model \"{model_name}\", try upgrading this repo")
-                time.sleep(fetch_timeout)
+                await asyncio.sleep(fetch_timeout)
                 continue
-
             if model_name == self._loaded_model_name:
-                time.sleep(fetch_timeout)
+                await asyncio.sleep(fetch_timeout)
                 continue
             self._model_dict = known_models.models_mini_db[model_name]
-            with self._model_lock:
+            async with self._model_load_lock:
                 try:
                     self._loaded_model_name = None
                     self._last_error = None
@@ -276,7 +257,7 @@ class Inference:
                     self._loaded_model_name = None
                     self._last_error = f"model {model_name} loading failed: {e}"
                     logging.error(self._last_error)
-            time.sleep(fetch_timeout)
+            await asyncio.sleep(fetch_timeout)
 
     @staticmethod
     def _json_result(scratchpad: ScratchpadBase, model: str, stream: bool, status: str) -> Optional[Dict]:
@@ -336,8 +317,11 @@ class Inference:
         return result
 
     async def infer(self, request: Dict[str, Any], stream: bool) -> Iterable[Optional[Dict[str, Any]]]:
+        if self._model_load_lock is None:
+            return
         try:
-            with non_blocking_lock(self._model_lock):
+            async with self._model_load_lock:
+                await asyncio.sleep(0)    # Might catch cancel here, a good thing
                 scratchpad, tokens_prompt = self._prepare_scratchpad(request)
                 with torch.inference_mode():
                     for _ in self._generate_using_scratchpad(tokens_prompt, scratchpad, max_length=request["max_tokens"]):
