@@ -13,6 +13,7 @@ from smallcloud.inference_server import head_and_tail
 from code_contrast import ScratchpadBase
 from code_contrast import ScratchpadDiff
 from code_contrast import ScratchpadCompletion
+from code_contrast import ScratchpadBigCode
 from code_contrast import ScratchpadBigChat
 
 from refact_self_hosting import known_models
@@ -294,7 +295,7 @@ class Inference:
             **scratchpad.toplevel_fields(),
         }
 
-        if stream and isinstance(scratchpad, ScratchpadDiff):
+        if stream and isinstance(scratchpad, (ScratchpadDiff, ScratchpadBigCode)):
             for choice in result["choices"]:
                 files_head_mid_tail = dict()
                 generated = choice.pop("files")
