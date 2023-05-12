@@ -2,12 +2,12 @@ import logging
 import asyncio
 import sys
 
-from hypercorn.config import Config
-from hypercorn.asyncio import serve
-
 from datetime import datetime
 from pathlib import Path
 from fastapi import FastAPI
+
+from hypercorn.config import Config
+from hypercorn.asyncio import serve
 
 from refact_self_hosting.gen_certificate import gen_certificate
 from refact_self_hosting.inference import Inference
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     stream_handler = logging.StreamHandler(stream=sys.stdout)
     logging.basicConfig(level=logging.INFO, handlers=[stream_handler, file_handler])
 
-    inference = Inference(workdir=args.workdir, model_name=args.model, force_cpu=args.cpu)
+    inference = Inference(force_cpu=args.cpu)
 
     app = FastAPI(docs_url=None)
     app.include_router(CompletionRouter(inference))
@@ -42,6 +42,7 @@ if __name__ == "__main__":
     app.include_router(LongthinkFunctionGetterRouter(inference))
     app.include_router(ChatRouter(inference))
 
+    # Hypercorn supports http/2, but request cancellation is delayed a lot, not fun.
     key_filename, cert_filename = gen_certificate(args.workdir)
 
     config = Config()
@@ -52,4 +53,9 @@ if __name__ == "__main__":
     config.keep_alive_timeout = 600
     config.graceful_timeout = 600
 
-    asyncio.run(serve(app=app, config=config))
+    @app.on_event("startup")
+    async def startup_event():
+        asyncio.create_task(inference.model_setup_loop_forever(model_name=args.model, workdir=args.workdir))
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(serve(app=app, config=config))
