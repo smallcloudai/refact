@@ -42,6 +42,32 @@ async def inference_streamer(
         logging.info("inference streamer cancelled")
 
 
+async def chat_delta_streamer(
+    request: Dict[str, Any],
+    inference: Inference
+):
+    seen: Dict[int, str] = dict()
+    try:
+        async for response in inference.infer(request, True):
+            if response is None:
+                continue
+            if "choices" in response:
+                for ch in response["choices"]:
+                    idx = ch["index"]
+                    seen_here = seen.get(idx, "")
+                    content = ch.get("content", "")
+                    ch["delta"] = content[len(seen_here):]
+                    seen[idx] = content
+                    if "content" in ch:
+                        del ch["content"]
+            tmp = json.dumps(response)
+            yield "data: " + tmp + "\n\n"
+            await asyncio.sleep(0)
+        yield "data: [DONE]" + "\n\n"
+    except asyncio.CancelledError:
+        logging.info("chat streamer cancelled")
+
+
 def parse_authorization_header(authorization: str = Header(None)) -> str:
     if authorization is None:
         raise HTTPException(status_code=401, detail="missing authorization header")
@@ -233,29 +259,3 @@ class ChatRouter(APIRouter):
                 detail="unknown model '%s'" % self._inference.model_name
             )
         return StreamingResponse(chat_delta_streamer(request, self._inference))
-
-
-async def chat_delta_streamer(
-    request: Dict[str, Any],
-    inference: Inference
-):
-    seen: Dict[int, str] = dict()
-    try:
-        async for response in inference.infer(request, True):
-            if response is None:
-                continue
-            if "choices" in response:
-                for ch in response["choices"]:
-                    idx = ch["index"]
-                    seen_here = seen.get(idx, "")
-                    content = ch.get("content", "")
-                    ch["delta"] = content[len(seen_here):]
-                    seen[idx] = content
-                    if "content" in ch:
-                        del ch["content"]
-            tmp = json.dumps(response)
-            yield "data: " + tmp + "\n\n"
-            await asyncio.sleep(0)
-        yield "data: [DONE]" + "\n\n"
-    except asyncio.CancelledError:
-        logging.info("chat streamer cancelled")
