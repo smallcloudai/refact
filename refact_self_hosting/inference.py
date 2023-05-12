@@ -5,7 +5,6 @@ import time
 import traceback
 
 from collections import defaultdict
-from contextlib import contextmanager
 from pathlib import Path
 import asyncio
 
@@ -21,8 +20,6 @@ from refact_self_hosting import known_models
 from code_contrast import CodifyModel
 from code_contrast import HFModel
 from code_contrast import GPTQBigCodeModel
-
-from fastapi import Response, Request
 
 
 from typing import Optional, Dict, Any, Iterable, List
