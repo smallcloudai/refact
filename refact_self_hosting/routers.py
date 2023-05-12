@@ -52,15 +52,17 @@ def parse_authorization_header(authorization: str = Header(None)) -> str:
 
 
 class LongthinkFunctionGetterRouter(APIRouter):
+
     def __init__(self, inference: Inference, *args, **kwargs):
         self._inference = inference
         super(LongthinkFunctionGetterRouter, self).__init__(*args, **kwargs)
-        super(LongthinkFunctionGetterRouter, self).add_api_route("/v1/login",
-                                                                 self._longthink_functions, methods=["GET"])
+        super(LongthinkFunctionGetterRouter, self).add_api_route(
+            "/v1/login",self._longthink_functions, methods=["GET"])
 
     def _longthink_functions(self, authorization: str = Header(None)):
-        assert "filter_caps" in self._inference._model_dict, "filter_caps not present in %s" % list(self._inference._model_dict.keys())
-        filter_caps = self._inference._model_dict["filter_caps"]
+        assert "filter_caps" in self._inference.model_dict, \
+            "filter_caps not present in %s" % list(self._inference.model_dict.keys())
+        filter_caps = self._inference.model_dict["filter_caps"]
         accum = dict()
         for rec in modelcap_records.db:
             rec_models = rec.model
@@ -75,7 +77,7 @@ class LongthinkFunctionGetterRouter(APIRouter):
                 j["is_liked"] = False
                 j["likes"] = 0
                 j["third_party"] = False
-                j["model"] = self._inference._loaded_model_name
+                j["model"] = self._inference.model_name
                 accum[rec.function_name] = j
         response = {
             "account": "self-hosted",
@@ -121,7 +123,7 @@ class CompletionRouter(APIRouter):
                 status_code=401,
                 detail=f"requested model '{post.model}' doesn't match server model '{self._inference.model_name}'"
             )
-        if len(self._inference._model_dict) == 0:
+        if not self._inference.model_dict == 0:
             raise HTTPException(
                 status_code=401,
                 detail="unknown model '%s'" % self._inference.model_name
@@ -183,7 +185,7 @@ class ContrastRouter(APIRouter):
                 status_code=401,
                 detail=f"requested model '{post.model}' doesn't match server model '{self._inference.model_name}'"
             )
-        if len(self._inference._model_dict) == 0:
+        if not self._inference.model_dict:
             raise HTTPException(
                 status_code=401,
                 detail="unknown model '%s'" % self._inference.model_name
@@ -225,7 +227,7 @@ class ChatRouter(APIRouter):
                 status_code=401,
                 detail=f"requested model '{post.model}' doesn't match server model '{self._inference.model_name}'"
             )
-        if len(self._inference._model_dict) == 0:
+        if not self._inference.model_dict:
             raise HTTPException(
                 status_code=401,
                 detail="unknown model '%s'" % self._inference.model_name

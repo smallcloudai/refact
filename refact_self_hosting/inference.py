@@ -21,8 +21,8 @@ from code_contrast import CodifyModel
 from code_contrast import HFModel
 from code_contrast import GPTQBigCodeModel
 
-
-from typing import Optional, Dict, Any, Iterable, List
+from collections import AsyncIterable
+from typing import Optional, Dict, Any, List
 
 
 __all__ = ["Inference", "LockedError"]
@@ -313,7 +313,7 @@ class Inference:
 
         return result
 
-    async def infer(self, request: Dict[str, Any], stream: bool) -> Iterable[Optional[Dict[str, Any]]]:
+    async def infer(self, request: Dict[str, Any], stream: bool) -> AsyncIterable:
         if self._model_load_lock is None:
             return
         try:
@@ -356,3 +356,7 @@ class Inference:
     @property
     def chat_is_available(self) -> bool:
         return self._model_dict["chat_scratchpad_class"] is not None
+
+    @property
+    def model_dict(self):
+        return self._model_dict
