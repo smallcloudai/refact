@@ -6,8 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from fastapi import FastAPI
 
-from hypercorn.config import Config
-from hypercorn.asyncio import serve
+import uvicorn
 
 from refact_self_hosting.gen_certificate import gen_certificate
 from refact_self_hosting.inference import Inference
@@ -42,20 +41,12 @@ if __name__ == "__main__":
     app.include_router(LongthinkFunctionGetterRouter(inference))
     app.include_router(ChatRouter(inference))
 
-    # Hypercorn supports http/2, but request cancellation is delayed a lot, not fun.
-    key_filename, cert_filename = gen_certificate(args.workdir)
-
-    config = Config()
-    config.bind = f"{args.host}:{args.port}"
-    config.accesslog = "-"
-    config.keyfile = key_filename
-    config.certfile = cert_filename
-    config.keep_alive_timeout = 600
-    config.graceful_timeout = 600
-
     @app.on_event("startup")
     async def startup_event():
         asyncio.create_task(inference.model_setup_loop_forever(model_name=args.model, workdir=args.workdir))
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(serve(app=app, config=config))
+    key_filename, cert_filename = gen_certificate(args.workdir)
+    uvicorn.run(
+        app, host=args.host, port=args.port,
+        loop="uvloop", timeout_keep_alive=600,
+        ssl_keyfile=key_filename, ssl_certfile=cert_filename)

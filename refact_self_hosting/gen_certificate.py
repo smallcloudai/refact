@@ -26,7 +26,7 @@ DNS.2=inference.smallcloud.local
 """
 
 
-def gen_certificate(workdir: Path) -> Tuple[Path, Path]:
+def gen_certificate(workdir: Path) -> Tuple[str, str]:
     cert_dir = workdir / "cert"
     cert_dir.mkdir(parents=False, exist_ok=True)
 
@@ -65,4 +65,4 @@ def gen_certificate(workdir: Path) -> Tuple[Path, Path]:
         if not cert_filename.exists():
             raise RuntimeError(f"failed to generate certificate")
 
-    return key_filename, cert_filename
+    return str(key_filename), str(cert_filename)
