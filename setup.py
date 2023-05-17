@@ -11,7 +11,7 @@ setup(
     install_requires=["numpy", "tokenizers", "fastapi", "uvicorn", "termcolor",
                       "huggingface_hub", "tiktoken", "cdifflib", "cloudpickle",
                       "sentencepiece", "dataclasses_json", "torch", "transformers",
-                      "smallcloud", "code_contrast",
+                      "smallcloud", "code_contrast", "uvloop",
                       ],
 )
 

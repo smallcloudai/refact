@@ -22,7 +22,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
       exit 1; \
     fi
 
-RUN pip install --no-cache-dir IPython numpy tokenizers tiktoken fastapi uvicorn termcolor cdifflib
+RUN pip install --no-cache-dir IPython numpy tokenizers tiktoken fastapi uvicorn uvloop termcolor cdifflib
 RUN pip install --no-cache-dir cloudpickle dataclasses_json huggingface_hub blobfile
 
 ENV TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6+PTX"
