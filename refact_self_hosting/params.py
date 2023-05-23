@@ -6,7 +6,7 @@ from typing import Union, Dict, List
 
 class SamplingParams(BaseModel):
     model: str = Query(default="", regex="^[a-z/A-Z0-9_\.\-]+$")
-    max_tokens: int = 50
+    max_tokens: int = 500
     temperature: float = 0.2
     top_p: float = 1.0
     top_n: int = 0
@@ -50,8 +50,8 @@ class DiffSamplingParams(SamplingParams):
 class ChatSamplingParams(BaseModel):
     model: str = Query(default="", regex="^[a-z/A-Z0-9_\.\-]+$")
     messages: List[Dict[str, str]]
-    max_tokens: int = 50
-    temperature: float = 0.7
+    max_tokens: int = 500
+    temperature: float = 0.2
     stop: Union[List[str], str] = []
     stream: bool = False
 

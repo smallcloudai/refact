@@ -18,9 +18,9 @@ from code_contrast import ScratchpadBigChat
 
 from refact_self_hosting import known_models
 
-from code_contrast import CodifyModel
-from code_contrast import HFModel
-from code_contrast import GPTQBigCodeModel
+from code_contrast.modeling import CodifyModel
+from code_contrast.modeling import HFModel
+from code_contrast.modeling import GPTQBigCodeModel
 
 from collections import AsyncIterable
 from typing import Optional, Dict, Any, List
@@ -330,6 +330,8 @@ class Inference:
                             stream=stream,
                             status="in_progress")
                 assert scratchpad.finish_reason
+                if DEBUG:
+                    scratchpad.debuglog("finish_reason", scratchpad.finish_reason)
                 yield self._json_result(
                     scratchpad,
                     model=self._loaded_model_name,

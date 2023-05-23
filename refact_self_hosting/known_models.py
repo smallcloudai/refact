@@ -2,9 +2,9 @@ from code_contrast import ScratchpadDiff
 from code_contrast import ScratchpadBigCode
 from code_contrast import ScratchpadBigChat
 
-from code_contrast import CodifyModel
-from code_contrast import HFModel
-from code_contrast import GPTQBigCodeModel
+from code_contrast.modeling import CodifyModel
+from code_contrast.modeling import HFModel
+from code_contrast.modeling import GPTQBigCodeModel
 
 
 models_mini_db = {
