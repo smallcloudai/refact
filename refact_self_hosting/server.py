@@ -21,6 +21,7 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("--host", type=str, default="0.0.0.0")
+    parser.add_argument("--scheme", type=str, default="https")
     parser.add_argument("--port", type=int, default=8008)
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--workdir", type=Path)
@@ -45,8 +46,13 @@ if __name__ == "__main__":
     async def startup_event():
         asyncio.create_task(inference.model_setup_loop_forever(model_name=args.model, workdir=args.workdir))
 
-    key_filename, cert_filename = gen_certificate(args.workdir)
-    uvicorn.run(
-        app, host=args.host, port=args.port,
-        loop="uvloop", timeout_keep_alive=600,
-        ssl_keyfile=key_filename, ssl_certfile=cert_filename)
+    if args.scheme == "https":
+        key_filename, cert_filename = gen_certificate(args.workdir)
+        uvicorn.run(
+            app, host=args.host, port=args.port,
+            loop="uvloop", timeout_keep_alive=600,
+            ssl_keyfile=key_filename, ssl_certfile=cert_filename)
+    else:
+        uvicorn.run(
+            app, host=args.host, port=args.port,
+            loop="uvloop", timeout_keep_alive=600)

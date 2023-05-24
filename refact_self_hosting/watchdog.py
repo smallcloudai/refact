@@ -14,10 +14,12 @@ from typing import Optional
 class Watchdog:
 
     def __init__(self,
+                 scheme: str,
                  port: int,
                  workdir: str,
                  model: str,
                  failed_upgrade_quit: bool = False):
+        self._scheme = scheme
         self._port = port
         self._workdir = workdir
         self._model = model
@@ -33,6 +35,7 @@ class Watchdog:
                 sys.executable,
                 "-m",
                 "refact_self_hosting.server",
+                f"--scheme={self._scheme}",
                 f"--port={self._port}",
                 f"--workdir={self._workdir}",
                 f"--model={self._model}",
@@ -70,6 +73,10 @@ class Watchdog:
 
 if __name__ == "__main__":
     workdir = str(os.environ.get("SERVER_WORKDIR"))
+    scheme = os.environ.get("SERVER_SCHEME")
+    if scheme not in ("http", "https"):
+        print("SERVER_SCHEME must be http or https")
+        exit(1)
     port = int(os.environ.get("SERVER_PORT"))
     model = os.environ.get("SERVER_MODEL")
 
@@ -84,6 +91,7 @@ if __name__ == "__main__":
                         datefmt='%Y-%m-%d %H:%M:%S')
 
     watchdog = Watchdog(
+        scheme=scheme,
         port=port,
         workdir=workdir,
         model=model,
