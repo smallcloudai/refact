@@ -1,0 +1,10 @@
+h2:not(:first-of-type) {
+    margin-top: 1rem !important;
+    color: red;
+}
+.log-container {
+    height: 300px;
+    overflow-y: scroll;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
