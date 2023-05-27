@@ -21,6 +21,7 @@ from refact_self_hosting import known_models
 from code_contrast.modeling import CodifyModel
 from code_contrast.modeling import HFModel
 from code_contrast.modeling import GPTQBigCodeModel
+from code_contrast.modeling.checkpoint_loader import load_finetune_checkpoint
 
 from collections import AsyncIterable
 from typing import Optional, Dict, Any, List
@@ -209,7 +210,12 @@ class Inference:
         if not scratchpad.finish_reason:
             scratchpad.finish_reason = "maxlen"
 
-    async def model_setup_loop_forever(self, model_name: str, workdir: Path):
+    async def model_setup_loop_forever(
+            self,
+            model_name: str,
+            workdir: Path,
+            finetune: Optional[str] = None
+    ):
         fetch_timeout = 300
         self._model_load_lock = asyncio.Lock()
         while True:
@@ -246,6 +252,8 @@ class Inference:
                             **self._model_dict["model_class_kwargs"])
                         self._model.T = self._model_dict["T"]
                     self._model = self._model.eval()
+                    if finetune is not None:
+                        self._model = load_finetune_checkpoint(self._model, finetune)
                     self._encoding = self._model.encoding
                     self._loaded_model_name = model_name
                     logging.info(f"model {model_name} loaded sucessfully")

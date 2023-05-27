@@ -25,6 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--workdir", type=Path)
     parser.add_argument("--model", type=str)
+    parser.add_argument("--finetune", type=str)
     args = parser.parse_args()
 
     logdir = args.workdir / "logs"
@@ -43,7 +44,9 @@ if __name__ == "__main__":
 
     @app.on_event("startup")
     async def startup_event():
-        asyncio.create_task(inference.model_setup_loop_forever(model_name=args.model, workdir=args.workdir))
+        asyncio.create_task(inference.model_setup_loop_forever(
+            model_name=args.model, workdir=args.workdir, finetune=args.finetune
+        ))
 
     key_filename, cert_filename = gen_certificate(args.workdir)
     uvicorn.run(
