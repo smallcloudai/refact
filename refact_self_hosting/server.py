@@ -2,6 +2,7 @@ import logging
 import asyncio
 import sys
 import os
+import signal
 
 from datetime import datetime
 from pathlib import Path
@@ -45,8 +46,13 @@ if __name__ == "__main__":
     app.include_router(LongthinkFunctionGetterRouter(inference))
     app.include_router(ChatRouter(inference))
 
+    def handle_sigint(*args):
+        print("Received SIGINT, exiting...")
+        exit(1)
+
     @app.on_event("startup")
     async def startup_event():
+        signal.signal(signal.SIGINT, handle_sigint)
         asyncio.create_task(inference.model_setup_loop_forever(
             model_name=args.model, workdir=Path(WORKDIR), finetune=args.finetune
         ))
