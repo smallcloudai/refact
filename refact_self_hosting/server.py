@@ -48,10 +48,10 @@ if __name__ == "__main__":
     @app.on_event("startup")
     async def startup_event():
         asyncio.create_task(inference.model_setup_loop_forever(
-            model_name=args.model, workdir=WORKDIR, finetune=args.finetune
+            model_name=args.model, workdir=Path(WORKDIR), finetune=args.finetune
         ))
 
-    key_filename, cert_filename = gen_certificate(WORKDIR)
+    key_filename, cert_filename = gen_certificate(Path(WORKDIR))
     uvicorn.run(
         app, host=args.host, port=args.port,
         loop="uvloop", timeout_keep_alive=600,
