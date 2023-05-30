@@ -73,7 +73,7 @@ models_mini_db = {
 }
 
 
-def resolve(model_name: str, cursor_file: str, function: str) -> Tuple[str, str]:
+def resolve_model(model_name: str, cursor_file: str, function: str) -> Tuple[str, str]:
     """
     Allow client to specify less, including an empty string.
     """
