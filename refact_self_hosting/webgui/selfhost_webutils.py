@@ -20,3 +20,6 @@ def log(*args):
         with open("/home/user/uvicorn-pymsg-%s.log" % ymd, "a") as f:
             f.write("%s %s\n" % (hms, tmp))
 
+
+def clamp(lower, upper, x):
+    return max(lower, min(upper, x))

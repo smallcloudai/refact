@@ -111,11 +111,16 @@ async def nlp_upload_response(
     # ac_dict = await fastapi_auth.lookup_bearer(authorization, red, ip=ip, infserver_mode=True)
     model_name = nlp_response.model_name
     resp: SingleNlpResponse
-    for ticket, resp in nlp_response.progress.items():
-        ticket_safe = fu.safe_for_redis(ticket)
-        saveto = "call_" + ticket_safe + "_resp"
-        subname = "call_" + ticket_safe
-        # log(termcolor.colored("save resp infengine=%s %s" % (infeng_guid, saveto), "red"))
+    cancelled_tickets = []
+    for ticket_id, resp in nlp_response.progress.items():
+        ticket = selfhost_req_queue.global_id2ticket.get(ticket_id)
+        if ticket is None:
+            log("  ", red_time(resp.created), "%s result arrived too late" % ticket_id)
+            continue
+        if ticket.cancelled:
+            log("  ", red_time(resp.created), "%s result arrived, but ticket is cancelled" % ticket_id)
+            cancelled_tickets.append(ticket_id)
+            continue
         msgj = {
             "id": resp.id,
             "object": resp.object,
@@ -152,7 +157,7 @@ async def nlp_upload_response(
             msgj["choices"].append(choice)
         if resp.status == "completed":
             created = resp.created
-            log("  ", red_time(resp.created), "%s" % ticket,
+            log("  ", red_time(resp.created), "%s" % ticket_id,
                 "(arrived to gpu %0.1fms prompt %+0.2fms first %+0.2fms onebyone %+0.2fms/%i)" % (
                     1000*(nlp_response.ts_arrived - created),
                     1000*(nlp_response.ts_prompt - nlp_response.ts_arrived),
@@ -160,13 +165,5 @@ async def nlp_upload_response(
                     1000*(nlp_response.ts_batch_finished - nlp_response.ts_first_token),
                     resp.generated_tokens_n,
                 ))
-        msg: str = json.dumps(msgj)
-        await red.setex(saveto, 30, msg)
-        await red.publish(subname, msg)
-    cancelled_tickets = []
-    l = len(nlp_response.check_cancelled)
-    if 0 < l <= 32:
-        is_canceled = await red.mget(["call_" + fu.safe_for_redis(x) + "_cancelled" for x in nlp_response.check_cancelled])
-        cancelled_tickets = [x for x, y in zip(nlp_response.check_cancelled, is_canceled) if y]
+        await ticket.streaming_queue.put(msgj)
     return {"retcode": "OK", "cancelled": cancelled_tickets}
-

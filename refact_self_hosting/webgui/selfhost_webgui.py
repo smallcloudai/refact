@@ -7,11 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 # from deploy_front_py import fastapi_nlp
 # from deploy_front_py import fastapi_infengine
 from refact_self_hosting.webgui import selfhost_static
+from refact_self_hosting.webgui import selfhost_fastapi_completions
+from refact_self_hosting.webgui import selfhost_fastapi_gpu
 
 
 app = FastAPI(docs_url=None, redoc_url=None)
-# app.include_router(fastapi_nlp.router, prefix="/v1")
-# app.include_router(fastapi_infengine.router, prefix="/infengine-v1")
+app.include_router(selfhost_fastapi_completions.router, prefix="/v1")
+app.include_router(selfhost_fastapi_gpu.router, prefix="/infengine-v1")
 app.include_router(selfhost_static.router)
 
 

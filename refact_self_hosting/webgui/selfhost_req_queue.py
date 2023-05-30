@@ -14,6 +14,12 @@ class Ticket:
         self.processed_by_infmod_guid: str = ""
         self.streaming_queue = asyncio.queues.Queue()
 
+    def id(self):
+        return self.call.get("id", None)
+
+    def done(self):
+        del self.call["id"]
+
 
 global_stats = defaultdict(int)  # set of keys is finite
 

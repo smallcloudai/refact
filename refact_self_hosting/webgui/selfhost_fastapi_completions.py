@@ -1,8 +1,8 @@
 import time, threading, json, copy, asyncio, termcolor, collections
 from fastapi import APIRouter, Request, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from refact_self_hosting import known_models
 from refact_self_hosting.webgui import selfhost_req_queue
+from refact_self_hosting.webgui import selfhost_model_resolve
 from refact_self_hosting.webgui.selfhost_webutils import clamp, log
 from pydantic import BaseModel, Required
 from typing import List, Dict, Tuple, Optional, Callable, Union, Any
@@ -73,13 +73,12 @@ async def completions(
     account = "XXX"
     ticket = selfhost_req_queue.Ticket("comp-")
     req = post.clamp()
-    model_name, err_msg = known_models.resolve_model(post.model, "", "")
+    model_name, err_msg = selfhost_model_resolve.resolve_model(post.model, "", "")
     if err_msg:
-        log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.ticket, post.model, err_msg, account))
+        log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
         raise HTTPException(status_code=400, detail=err_msg)
-    log("%s model resolve \"%s\" -> \"%s\" from %s" % (ticket.ticket, post.model, model_name, account))
+    log("%s model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
     req.update({
-        "id": ticket.ticket,
         "object": "text_completion_req",
         "account": account,
         "prompt": post.prompt,
@@ -87,17 +86,24 @@ async def completions(
         "stream": post.stream,
         "echo": post.echo,
     })
+    ticket.call.update(req)
+    if model_name not in selfhost_req_queue.global_user2gpu_queue:
+        log("%s model \"%s\" is not working at this moment" % (ticket.id(), model_name))
+        raise HTTPException(status_code=400, detail="no model '%s' found." % model_name)
+    selfhost_req_queue.global_id2ticket[ticket.id()] = ticket
+    q = selfhost_req_queue.global_user2gpu_queue[model_name]
+    await q.put(ticket)
     seen = ([""]*post.n) if post.echo else ([post.prompt]*post.n)
     return StreamingResponse(completion_streamer(ticket, post, seen, req["created"]))
 
 
-async def completion_streamer(ticket: selfhost_req_queue.Ticket, post: NlpCompletion, seen, created_ts, kt, kcomp):
+async def completion_streamer(ticket: selfhost_req_queue.Ticket, post: NlpCompletion, seen, created_ts):
     try:
         while 1:
             try:
-                msg = await asyncio.wait_for(ticket.queue.get(), TIMEOUT)
+                msg = await asyncio.wait_for(ticket.streaming_queue.get(), TIMEOUT)
             except asyncio.TimeoutError:
-                log("TIMEOUT %s" % ticket.ticket)
+                log("TIMEOUT %s" % ticket.id())
                 msg = {"status": "error", "human_readable_message": "timeout"}
             not_seen_resp = copy.deepcopy(msg)
             if "choices" in not_seen_resp:
@@ -120,14 +126,14 @@ async def completion_streamer(ticket: selfhost_req_queue.Ticket, post: NlpComple
                 break
         if post.stream:
             yield "data: [DONE]" + "\n\n"
-        log(red_time(created_ts), "/finished %s" % ticket.ticket)
+        log(red_time(created_ts), "/finished %s" % ticket.id())
         ticket.done()
         # fastapi_stats.stats_accum[kt] += msg.get("generated_tokens_n", 0)
         # fastapi_stats.stats_accum[kcomp] += 1
         # fastapi_stats.stats_lists_accum["stat_latency_" + post.model].append(time.time() - created_ts)
     finally:
-        if ticket.ticket is not None:
-            log("   ***  CANCEL  ***  cancelling %s" % ticket.ticket, red_time(created_ts))
+        if ticket.id() is not None:
+            log("   ***  CANCEL  ***  cancelling %s" % ticket.id(), red_time(created_ts))
             # fastapi_stats.stats_accum["stat_api_cancelled"] += 1
             # fastapi_stats.stats_accum["stat_m_" + post.model + "_cancelled"] += 1
         ticket.cancelled = True
