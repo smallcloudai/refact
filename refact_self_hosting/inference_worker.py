@@ -30,6 +30,8 @@ __all__ = ["Inference"]
 
 quit_flag = False
 DEBUG = int(os.environ.get("DEBUG", "0"))
+if DEBUG:
+    inference_server.DEBUG_UPLOAD_NOT_SEPARATE_PROCESS = True
 
 
 class Inference:
@@ -332,9 +334,9 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("--model", type=str)
-    parser.add_argument("--workdir", type=Path)
     parser.add_argument("--cpu", action="store_true")
     args = parser.parse_args()
 
+    WORKDIR = os.path.expanduser("~/perm-storage")
     signal.signal(signal.SIGUSR1, catch_sigkill)
-    worker_loop(args.model, args.workdir, args.cpu)
+    worker_loop(args.model, Path(WORKDIR), args.cpu)
