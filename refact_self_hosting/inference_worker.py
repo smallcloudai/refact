@@ -40,7 +40,7 @@ class Inference:
                  model_name: str,
                  workdir: Path,
                  force_cpu: bool = False,
-                 finetune: Optional[str] = None):
+                 load_lora: Optional[str] = None):
         if model_name not in known_models.models_mini_db:
             raise RuntimeError(f"unknown model \"{model_name}\", try upgrading this repo")
         self._model_name = model_name
@@ -50,8 +50,8 @@ class Inference:
         try:
             self._model, self._encoding = self._model_setup(
                 self._model_dict, workdir, self._device)
-            if finetune is not None:
-                self._model = load_finetune_checkpoint(self._model, finetune)
+            if load_lora is not None:
+                self._model = load_finetune_checkpoint(self._model, load_lora)
         except Exception as e:
             raise RuntimeError(f"model {model_name} loading failed: {e}")
 
@@ -278,11 +278,11 @@ class Inference:
             logging.error(traceback.format_exc())
 
 
-def worker_loop(model: str, workdir: Path, cpu: bool):
+def worker_loop(model: str, workdir: Path, cpu: bool, load_lora: str):
     stream_handler = logging.StreamHandler(stream=sys.stdout)
     logging.basicConfig(level=logging.INFO, handlers=[stream_handler])
 
-    inference_model = Inference(model_name=model, workdir=workdir, force_cpu=cpu)
+    inference_model = Inference(model_name=model, workdir=workdir, force_cpu=cpu, load_lora=load_lora)
 
     # TODO: model name with docker suffix must be removed
     model_name = model + "/docker"
@@ -335,8 +335,9 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model", type=str)
     parser.add_argument("--cpu", action="store_true")
+    parser.add_argument("--load-lora")
     args = parser.parse_args()
 
     WORKDIR = os.path.expanduser("~/perm-storage")
     signal.signal(signal.SIGUSR1, catch_sigkill)
-    worker_loop(args.model, Path(WORKDIR), args.cpu)
+    worker_loop(args.model, Path(WORKDIR), args.cpu, args.load_lora)
