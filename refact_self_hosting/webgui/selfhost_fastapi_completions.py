@@ -93,12 +93,13 @@ async def completions(
     selfhost_req_queue.global_id2ticket[ticket.id()] = ticket
     q = selfhost_req_queue.global_user2gpu_queue[model_name]
     await q.put(ticket)
-    seen = ([""]*post.n) if post.echo else ([post.prompt]*post.n)
+    seen = [""] * post.n
     return StreamingResponse(completion_streamer(ticket, post, seen, req["created"]))
 
 
 async def completion_streamer(ticket: selfhost_req_queue.Ticket, post: NlpCompletion, seen, created_ts):
     try:
+        packets_cnt = 0
         while 1:
             try:
                 msg = await asyncio.wait_for(ticket.streaming_queue.get(), TIMEOUT)
@@ -108,7 +109,8 @@ async def completion_streamer(ticket: selfhost_req_queue.Ticket, post: NlpComple
             not_seen_resp = copy.deepcopy(msg)
             if "choices" in not_seen_resp:
                 for i in range(post.n):
-                    if not_seen_resp["choices"][i]["text"].startswith(seen[i]):
+                    newtext = not_seen_resp["choices"][i]["text"]
+                    if newtext.startswith(seen[i]):
                         l = len(seen[i])
                         tmp = not_seen_resp["choices"][i]["text"]
                         not_seen_resp["choices"][i]["text"] = tmp[l:]
@@ -122,11 +124,12 @@ async def completion_streamer(ticket: selfhost_req_queue.Ticket, post: NlpComple
                 yield json.dumps(not_seen_resp)
                 break
             yield "data: " + json.dumps(not_seen_resp) + "\n\n"
+            packets_cnt += 1
             if msg.get("status", "") != "in_progress":
                 break
         if post.stream:
             yield "data: [DONE]" + "\n\n"
-        log(red_time(created_ts), "/finished %s" % ticket.id())
+        log(red_time(created_ts), "/finished %s, streamed %i packets" % (ticket.id(), packets_cnt))
         ticket.done()
         # fastapi_stats.stats_accum[kt] += msg.get("generated_tokens_n", 0)
         # fastapi_stats.stats_accum[kcomp] += 1

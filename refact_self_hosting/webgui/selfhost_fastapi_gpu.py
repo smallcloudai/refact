@@ -46,7 +46,7 @@ async def nlp_wait_batch(
             else:
                 user_req = model_queue.get_nowait()
             if user_req.cancelled:
-                log(red_time(user_req.call.get("created", 0)), "cancelled %s, drop" % user_req.call["call_id"])
+                log(red_time(user_req.call.get("created", 0)), "cancelled %s, drop" % user_req.call["id"])
                 continue
             user_reqs.append(user_req)
         except (asyncio.TimeoutError, asyncio.queues.QueueEmpty):
@@ -115,10 +115,10 @@ async def nlp_upload_response(
     for ticket_id, resp in nlp_response.progress.items():
         ticket = selfhost_req_queue.global_id2ticket.get(ticket_id)
         if ticket is None:
-            log("  ", red_time(resp.created), "%s result arrived too late" % ticket_id)
+            log(red_time(resp.created), "%s result arrived too late" % ticket_id)
             continue
         if ticket.cancelled:
-            log("  ", red_time(resp.created), "%s result arrived, but ticket is cancelled" % ticket_id)
+            log(red_time(resp.created), "%s result arrived, but ticket is cancelled" % ticket_id)
             cancelled_tickets.append(ticket_id)
             continue
         msgj = {
@@ -157,7 +157,7 @@ async def nlp_upload_response(
             msgj["choices"].append(choice)
         if resp.status == "completed":
             created = resp.created
-            log("  ", red_time(resp.created), "%s" % ticket_id,
+            log(red_time(resp.created), "%s" % ticket_id,
                 "(arrived to gpu %0.1fms prompt %+0.2fms first %+0.2fms onebyone %+0.2fms/%i)" % (
                     1000*(nlp_response.ts_arrived - created),
                     1000*(nlp_response.ts_prompt - nlp_response.ts_arrived),

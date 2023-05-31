@@ -19,13 +19,11 @@ from code_contrast.modeling import CodifyModel
 from code_contrast.modeling import HFModel
 from code_contrast.modeling import GPTQBigCodeModel
 from code_contrast.modeling.checkpoint_loader import load_finetune_checkpoint
-
-from smallcloud import inference_server
-
 from typing import Optional, Dict, Any, List
 
 
-__all__ = ["Inference"]
+from smallcloud import inference_server
+inference_server.override_urls("http://127.0.0.1:8008/infengine-v1/")
 
 
 quit_flag = False
@@ -250,6 +248,7 @@ class Inference:
                     if idx == 0:
                         upload_proxy_args["ts_first_token"] = time.time()
                     if scratchpad.needs_upload:
+                        scratchpad.needs_upload = False
                         if request_id in upload_proxy.check_cancelled():
                             scratchpad.finish_reason = "cancelled"
                             break
@@ -316,8 +315,12 @@ def worker_loop(model: str, workdir: Path, cpu: bool, load_lora: str):
                     "ts_batch_finished": 0,
                 }
                 inference_model.infer(request, upload_proxy, upload_proxy_args)
+        elif retcode == "WAIT":
+            # Normal, no requests
+            pass
         else:
-            time.sleep(0.001)
+            # No connectivity, connection refused, other errors go there
+            time.sleep(10)
 
     upload_proxy.stop()
 
