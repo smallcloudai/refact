@@ -116,6 +116,7 @@ async def nlp_upload_response(
         ticket = selfhost_req_queue.global_id2ticket.get(ticket_id)
         if ticket is None:
             log(red_time(resp.created), "%s result arrived too late" % ticket_id)
+            cancelled_tickets.append(ticket_id)
             continue
         if ticket.cancelled:
             log(red_time(resp.created), "%s result arrived, but ticket is cancelled" % ticket_id)
