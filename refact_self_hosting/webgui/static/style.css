@@ -1,0 +1,89 @@
+.temp-disabled {
+    opacity: 0.2;
+    pointer-events: none !important;
+    position: relative;
+    z-index: 0;
+}
+.temp-info {
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 1px;
+    position: absolute;
+    border: 3px solid #999;
+    color: #999;
+    padding: 10px;
+    border-radius: 5px;
+    transform: rotate(-15deg);
+}
+.header-tabs {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+.header-tabs a {
+    margin-right: 30px;
+}
+.header-tabs ul {
+    width: 100%;
+}
+h2 {
+    margin-top: 5rem !important;
+    margin-bottom: 30px !important;
+}
+.log-container {
+    margin-top: 15px;
+    height: 300px;
+    overflow-y: scroll;
+    border: 1px solid #ccc;
+    padding: 10px;
+    font-family: monospace;
+}
+.log-container p {
+    margin-bottom: 0;
+}
+.table-models tr:hover {
+    cursor: pointer;
+}
+.table-models tbody td:first-child {
+    min-width: 300px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.table-files tbody td,
+.table-files thead th,
+.table-types tbody td,
+.table-types thead th {
+    text-align: center;
+}
+.table-files thead th:first-child {
+    min-width: 300px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-align: left;
+}
+.table-files tbody td:first-child {
+    min-width: 300px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-align: left;
+}
+.table-types thead th:first-child {
+    min-width: 100px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-align: left;
+}
+.table-types tbody td:first-child {
+    min-width: 100px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-align: left;
+}
+.store-input {
+    width: 70px;
+    margin: 0 10px;
+}
+.store-block {
+    display: flex;
+    align-items: center;
+}
