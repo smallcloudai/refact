@@ -18,7 +18,8 @@ class Ticket:
         return self.call.get("id", None)
 
     def done(self):
-        del self.call["id"]
+        if "id" in self.call:
+            del self.call["id"]
 
 
 global_stats = defaultdict(int)  # set of keys is finite

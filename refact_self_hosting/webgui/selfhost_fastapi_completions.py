@@ -142,11 +142,118 @@ async def completion_streamer(ticket: selfhost_req_queue.Ticket, post: NlpComple
         ticket.cancelled = True
 
 
-# class POI(BaseModel):
-#     filename: str
-#     cursor0: int
-#     cursor1: int
-#     priority: float
+
+class POI(BaseModel):
+    filename: str
+    cursor0: int
+    cursor1: int
+    priority: float
+
+
+class DiffCompletion(NlpSamplingParams):
+    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.]+$")
+    intent: str
+    sources: Dict[str, str]
+    cursor_file: str
+    cursor0: int
+    cursor1: int
+    function: str = Query(
+        default=Required, regex="^([a-z0-9\.\-]+)$"
+    )
+    max_edits: int = 4
+    stream: bool = False
+    poi: List[POI] = []
+    # n: int = 1
+
+
+@router.post("/contrast")
+async def contrast(
+    post: DiffCompletion,
+    request: Request,
+    authorization: str = Header(None),
+):
+    # ip = request.client.host
+    # ac_dict = await fastapi_auth.lookup_bearer(authorization, red, ip=ip)
+    account = "XXX"
+    if post.function != "diff-anywhere":
+        if post.cursor_file not in post.sources:
+            raise HTTPException(status_code=400, detail="cursor_file='%s' is not in sources=%s" % (post.cursor_file, list(post.sources.keys())))
+        if post.cursor0 < 0 or post.cursor1 < 0:
+            raise HTTPException(status_code=400, detail="cursor0=%d or cursor1=%d is negative" % (post.cursor0, post.cursor1))
+        filetext = post.sources[post.cursor_file]
+        if post.cursor0 > len(filetext) or post.cursor1 > len(filetext):
+            raise HTTPException(status_code=400, detail="cursor0=%d or cursor1=%d is beyond file length=%d" % (post.cursor0, post.cursor1, len(filetext)))
+    for fn, text in post.sources.items():
+        if len(text) > 180*1024:
+            raise HTTPException(status_code=400, detail="file '%s' is too long (%d bytes)" % (fn, len(text)))
+    ticket = selfhost_req_queue.Ticket("comp-")
+    model_name, err_msg = selfhost_model_resolve.resolve_model(post.model, post.cursor_file, post.function)
+    if err_msg:
+        log("%s model resolve \"%s\" func \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, post.function, err_msg, account))
+        raise HTTPException(status_code=400, detail=err_msg)
+    log("%s model resolve \"%s\" func \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, post.function, model_name, account))
+    if post.function == "highlight":
+        post.max_tokens = 0
+    req = post.clamp()
+    req.update({
+        "object": "diff_completion_req",
+        "account": account,
+        "model": model_name,
+        "intent": post.intent,
+        "sources": post.sources,
+        "cursor_file": post.cursor_file,
+        "cursor0": post.cursor0,
+        "cursor1": post.cursor1,
+        "function": post.function,
+        "max_edits": post.max_edits,
+        "stream": post.stream,
+    })
+    post_raw = await request.json()
+    if "poi" in post_raw:
+        req["poi"] = post_raw["poi"]
+    ticket.call.update(req)
+    if model_name not in selfhost_req_queue.global_user2gpu_queue:
+        log("%s model \"%s\" is not working at this moment" % (ticket.id(), model_name))
+        raise HTTPException(status_code=400, detail="no model '%s' found." % model_name)
+    # kt, kcomp = await _model_hit(red, ticket, req, model_name, account)
+    selfhost_req_queue.global_id2ticket[ticket.id()] = ticket
+    q = selfhost_req_queue.global_user2gpu_queue[model_name]
+    await q.put(ticket)
+    return StreamingResponse(diff_streamer(ticket, post, req["created"]))
+
+
+async def diff_streamer(ticket: selfhost_req_queue.Ticket, post: DiffCompletion, created_ts):
+    try:
+        while 1:
+            try:
+                msg = await asyncio.wait_for(ticket.streaming_queue.get(), TIMEOUT)
+            except asyncio.TimeoutError:
+                log("TIMEOUT %s" % ticket.id())
+                msg = {"status": "error", "human_readable_message": "timeout"}
+            if not post.stream:
+                if msg.get("status", "") == "in_progress":
+                    continue
+                yield json.dumps(msg)
+                break
+            tmp = json.dumps(msg)
+            yield "data: " + tmp + "\n\n"
+            log("  ", red_time(created_ts), "stream %s <- %i bytes" % (ticket.id(), len(tmp)))
+            if msg.get("status", "") != "in_progress":
+                break
+        if post.stream:
+            yield "data: [DONE]" + "\n\n"
+        log(red_time(created_ts), "/finished call %s" % ticket.id())
+        ticket.done()
+        # fastapi_stats.stats_accum[kt] += msg.get("generated_tokens_n", 0)
+        # fastapi_stats.stats_accum[kcomp] += 1
+        # fastapi_stats.stats_lists_accum["stat_latency_" + post.model].append(time.time() - created_ts)
+    finally:
+        if ticket.id() is not None:
+            log("   ***  CANCEL  ***  cancelling %s" % ticket.id(), red_time(created_ts))
+            # fastapi_stats.stats_accum["stat_api_cancelled"] += 1
+            # fastapi_stats.stats_accum["stat_m_" + post.model + "_cancelled"] += 1
+        ticket.cancelled = True
+        ticket.done()
 
 
 async def static_string_streamer(ticket_id, static_message, account, created_ts):

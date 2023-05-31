@@ -277,14 +277,13 @@ class Inference:
             logging.error(traceback.format_exc())
 
 
-def worker_loop(model: str, workdir: Path, cpu: bool, load_lora: str):
+def worker_loop(model_name: str, workdir: Path, cpu: bool, load_lora: str):
     stream_handler = logging.StreamHandler(stream=sys.stdout)
     logging.basicConfig(level=logging.INFO, handlers=[stream_handler])
 
-    inference_model = Inference(model_name=model, workdir=workdir, force_cpu=cpu, load_lora=load_lora)
+    inference_model = Inference(model_name=model_name, workdir=workdir, force_cpu=cpu, load_lora=load_lora)
 
     # TODO: model name with docker suffix must be removed
-    model_name = model + "/docker"
     req_session = inference_server.infserver_session()
     description_dict = inference_server.validate_description_dict(
         model_name + "_" + socket.getfqdn(),
