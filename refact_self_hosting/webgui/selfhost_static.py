@@ -13,11 +13,6 @@ async def index():
     html_path = os.path.join(this_file_dir, "static", "index.html")
     return FileResponse(html_path, media_type="text/html")
 
-@router.get("/style.css")
-async def style():
-    html_path = os.path.join(this_file_dir, "static", "style.css")
-    return FileResponse(html_path, media_type="text/css")
-
 
 @router.get("/{file_path:path}")
 async def static_file(file_path: str):
