@@ -11,9 +11,9 @@ from typing import Dict, List, Optional, Any
 router = APIRouter()
 
 
-@router.get("/tab-finetune-settings-and-runs")
-async def tab_finetune_settings_and_runs(request: Request):
-    uploaded_path = os.path.expanduser("~/perm-stor/finetune")
+@router.get("/tab-finetune-config-and-runs")
+async def tab_finetune_config_and_runs(request: Request):
+    uploaded_path = os.path.expanduser("~/perm-storage/finetune")
     result = {
         "finetune_runs": [],
         "config": {
@@ -31,7 +31,7 @@ async def tab_finetune_settings_and_runs(request: Request):
             "worked_minutes": "480",
             "worked_steps": "1337",
         })
-    cfg_fn = os.path.expanduser("~/data/tab-finetune.cfg")
+    cfg_fn = os.path.expanduser("~/perm-storage/tab-finetune.cfg")
     if os.path.exists(cfg_fn):
         result["config"] = json.load(open(cfg_fn, "r"))
     return Response(json.dumps(result, indent=4) + "\n")
@@ -62,7 +62,7 @@ class TabFinetuneConfig(BaseModel):
 
 @router.post("/tab-finetune-config-save")
 async def tab_files_config_save(config: TabFinetuneConfig, request: Request):
-    cfg_fn = os.path.expanduser("~/data/tab-finetune.cfg")
+    cfg_fn = os.path.expanduser("~/perm-storage/tab-finetune.cfg")
     with open(cfg_fn, "w") as f:
         json.dump(config.dict(), f, indent=4)
 

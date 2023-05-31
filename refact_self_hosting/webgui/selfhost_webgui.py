@@ -8,12 +8,14 @@ from refact_self_hosting.webgui import selfhost_static
 from refact_self_hosting.webgui import selfhost_fastapi_completions
 from refact_self_hosting.webgui import selfhost_fastapi_gpu
 from refact_self_hosting.webgui import tab_upload
+from refact_self_hosting.webgui import tab_finetune
 
 
 app = FastAPI(docs_url=None, redoc_url=None)
 app.include_router(selfhost_fastapi_completions.router, prefix="/v1")
 app.include_router(selfhost_fastapi_gpu.router, prefix="/infengine-v1")
 app.include_router(tab_upload.router)
+app.include_router(tab_finetune.router)
 app.include_router(selfhost_static.router)
 
 
