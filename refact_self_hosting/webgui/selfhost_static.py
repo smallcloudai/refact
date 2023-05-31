@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 
@@ -22,8 +22,10 @@ async def style():
 @router.get("/{file_path:path}")
 async def static_file(file_path: str):
     if ".." in file_path:
-        raise Exception("Invalid file path")
+        raise HTTPException(404, "Path \"%s\" not found" % file_path)
     static_path = os.path.join(this_file_dir, "static", file_path)
+    if not os.path.exists(static_path):
+        raise HTTPException(404, "Path \"%s\" not found" % file_path)
     return FileResponse(static_path)
 
 
