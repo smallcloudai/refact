@@ -65,7 +65,8 @@
                 test.innerHTML = `<input class="form-check-input" class="file-radio" value="test" name="file-which[${i}]" type="radio" checked="checked">`;
             }
             context.innerHTML = context_input;
-            delete_file.innerHTML = `<button data-file="${item}" type="button" class="btn file-remove btn-danger btn-sm"><i class="bi bi-trash3-fill"></i></button>`;
+            // delete_file.innerHTML = `<button data-file="${item}" type="button" class="btn file-remove btn-danger btn-sm"><i class="bi bi-trash3-fill"></i></button>`;
+            delete_file.innerHTML = `<div class="btn-group dropup"><button type="button" class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-trash3-fill"></i></button><ul class="dropdown-menu"><li><span class="file-remove dropdown-item btn btn-sm" data-file="${item}">Delete file</a></span></ul></div>`;
             row.appendChild(name);
             row.appendChild(train);
             row.appendChild(test);
@@ -214,4 +215,92 @@
             get_tab_files();
         });
     }
+
+    function finetune_data() {
+        fetch("/tab-finetune-config-and-runs")
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            console.log(data);
+            render_finetune_settings(data);
+            render_runs(data);
+        });
+    }
+    finetune_data();
+
+    function render_finetune_settings(data = {}) {
+        if(data.config.auto_delete_n_runs) {
+            document.querySelector('.store-input').value = data.config.auto_delete_n_runs;
+        }
+        if(data.config.limit_training_time_minutes) {
+            const radio_limit_time = document.querySelector(`input[name="limit_training_time_minutes"][value="${data.config.limit_training_time_minutes}"]`);
+            if(radio_limit_time) {
+                radio_limit_time.checked = true;
+            }
+        }
+        if(data.config.run_at_night) {
+            document.querySelector('#night_run').checked = true;
+        }
+        if(data.config.run_at_night_time) {
+            const selectElement = document.querySelector('.night-time');
+            const optionToSelect = selectElement.querySelector(`option[value="${data.config.run_at_night_time}"]`);
+            if(optionToSelect) {
+                optionToSelect.selected = true;
+            }
+        }
+    }
+
+    function render_runs(data = {}) {
+        document.querySelector('.run-table').innerHTML = '';
+        data.finetune_runs.forEach(element => {
+            const row = document.createElement('tr');
+            const run_name = document.createElement("td");
+            const run_minutes = document.createElement("td"); 
+            const run_steps = document.createElement("td");
+
+            run_name.innerHTML = element.run_id;
+            run_name.dataset.run_id = element.run_id;
+            run_minutes.innerHTML = element.worked_minutes;
+            run_steps.innerHTML = element.worked_steps;
+            row.appendChild(run_name);
+            row.appendChild(run_minutes);
+            row.appendChild(run_steps);
+            document.querySelector('.run-table').appendChild(row);
+            const rows = document.querySelectorAll('.run-table tr');
+            rows.forEach(function(row) {
+                row.addEventListener('click', function() {
+                    const run_id = this.dataset.run_id;
+                    document.querySelector('.fine-gfx').innerHTML = data.svg;
+                });
+            });
+        });
+    }
+
+    function get_gfx(run_id) {
+        fetch(`/tab-finetune-progress-svg/${run_id}`)
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            document.querySelector('.fine-gfx').innerHTML = data.svg;
+        });
+    }
+
+    function get_log(run_id) {
+
+    }
+
+    function render_time_dropdown() {
+        const selectElement = document.querySelector('.night-time');
+        for (let hour = 0; hour < 24; hour++) {
+            const option = document.createElement("option");
+            const formattedHour = hour.toString().padStart(2, "0");
+
+            option.value = formattedHour + ":00";
+            option.text = formattedHour + ":00";
+            selectElement.appendChild(option);
+        }
+    }
+    render_time_dropdown();
 })();
