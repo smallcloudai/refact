@@ -261,7 +261,7 @@
             const run_steps = document.createElement("td");
 
             run_name.innerHTML = element.run_id;
-            run_name.dataset.run = element.run_id;
+            row.dataset.run = element.run_id;
             run_minutes.innerHTML = element.worked_minutes;
             run_steps.innerHTML = element.worked_steps;
             row.appendChild(run_name);
@@ -285,6 +285,7 @@
     }
 
    function get_log(run_id) {
+        console.log('get_log', run_id);
         fetch(`/tab-finetune-log/${run_id}`)
         .then(function(response) {
             return response.json();
