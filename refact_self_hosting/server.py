@@ -32,7 +32,7 @@ if __name__ == "__main__":
     parser.add_argument("--finetune", type=str)
     args = parser.parse_args()
 
-    logdir = Path(WORKDIR) / "infserver-logs"
+    logdir = Path(WORKDIR) / "logs-infserver"
     logdir.mkdir(exist_ok=True, parents=True)
     file_handler = logging.FileHandler(filename=logdir / f"server_{datetime.now():%Y-%m-%d-%H-%M-%S}.log")
     stream_handler = logging.StreamHandler(stream=sys.stdout)
