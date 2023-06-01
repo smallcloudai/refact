@@ -6,7 +6,7 @@ setup(
     name="refact-self-hosting",
     py_modules=["refact_self_hosting"],
     packages=find_packages(),
-    package_data={"code_contrast": ["encoding/*.json"]},
+    package_data={"refact_self_hosting": ["webgui/static/*"]},
     version="0.0.4",
     install_requires=["numpy", "tokenizers", "fastapi", "uvicorn", "termcolor",
                       "huggingface_hub", "tiktoken", "cdifflib", "cloudpickle",
