@@ -116,12 +116,17 @@ class CloneRepo(BaseModel):
 
 @router.post("/tab-repo-upload")
 async def tab_repo_upload(request: Request, repo: CloneRepo):
-    from subprocess import check_output, DEVNULL
     upload_dir = os.path.expanduser("~/data/uploaded_files")
     try:
         branch_args = ["-b", repo.branch] if repo.branch else []
-        check_output(["git", "-C", upload_dir, "clone", "--no-recursive",
-                      "--depth", "1", *branch_args, repo.url], stderr=DEVNULL)
+        proc = await asyncio.create_subprocess_exec(
+            "git", "-C", upload_dir, "clone", "--no-recursive",
+            "--depth", "1", *branch_args, repo.url,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE)
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(stderr.decode())
     except Exception as e:
         return Response(f"Error: {e}", status_code=500)
     return Response("OK")
