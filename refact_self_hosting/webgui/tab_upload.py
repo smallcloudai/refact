@@ -109,6 +109,24 @@ async def upload_file_from_url(request: Request, post: FileToDownload):
     return Response("OK")
 
 
+class CloneRepo(BaseModel):
+    url: str
+    branch: Optional[str] = None
+
+
+@router.post("/tab-repo-upload")
+async def tab_repo_upload(request: Request, repo: CloneRepo):
+    from subprocess import check_output, DEVNULL
+    upload_dir = os.path.expanduser("~/data/uploaded_files")
+    try:
+        branch_args = ["-b", repo.branch] if repo.branch else []
+        check_output(["git", "-C", upload_dir, "clone", "--no-recursive",
+                      "--depth", "1", *branch_args, repo.url], stderr=DEVNULL)
+    except Exception as e:
+        return Response(f"Error: {e}", status_code=500)
+    return Response("OK")
+
+
 @router.post("/tab-files-delete")
 async def tab_files_delete(request: Request):
     file_name = await request.json()
