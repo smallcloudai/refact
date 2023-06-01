@@ -19,10 +19,17 @@ async def tab_files_get(request: Request):
     }
     uploaded_path = os.path.expanduser("~/data/uploaded_files")
     cfg_fn = os.path.expanduser("~/data/how_to_process.cfg")
+    stats_fn = os.path.expanduser("~/data/processing_stats.json")
     if os.path.isfile(cfg_fn):
         config = json.load(open(cfg_fn, "r"))
     else:
         config = {'uploaded_files': {}}
+    if os.path.isfile(stats_fn):
+        stats = json.load(open(stats_fn, "r"))
+        stats_uploaded_files = stats.get("uploaded_files", {})
+    else:
+        stats = {"uploaded_files": {}}
+        stats_uploaded_files = {}
     default = {
         "which_set": "train",
         "to_db": True,
@@ -31,7 +38,10 @@ async def tab_files_get(request: Request):
         result["uploaded_files"][fn] = {
             "which_set": config["uploaded_files"].get(fn, default)["which_set"],
             "to_db": config["uploaded_files"].get(fn, default)["to_db"],
+            **stats_uploaded_files.get(fn, {})
         }
+    del stats["uploaded_files"]
+    result.update(stats)
     return Response(json.dumps(result, indent=4) + "\n")
 
 
