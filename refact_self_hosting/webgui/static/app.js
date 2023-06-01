@@ -66,7 +66,7 @@
             }
             context.innerHTML = context_input;
             // delete_file.innerHTML = `<button data-file="${item}" type="button" class="btn file-remove btn-danger btn-sm"><i class="bi bi-trash3-fill"></i></button>`;
-            delete_file.innerHTML = `<div class="btn-group dropup"><button type="button" class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-trash3-fill"></i></button><ul class="dropdown-menu"><li><span class="file-remove dropdown-item btn btn-sm" data-file="${item}">Delete file</a></span></ul></div>`;
+            delete_file.innerHTML = `<div class="btn-group dropend"><button type="button" class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-trash3-fill"></i></button><ul class="dropdown-menu"><li><span class="file-remove dropdown-item btn btn-sm" data-file="${item}">Delete file</a></span></ul></div>`;
             row.appendChild(name);
             row.appendChild(train);
             row.appendChild(test);
@@ -308,4 +308,31 @@
         }
     }
     render_time_dropdown();
+
+    const finetune_inputs = document.querySelectorAll('.fine-tune-input');
+    for (let i = 0; i < finetune_inputs.length; i++) {
+        finetune_inputs[i].addEventListener('change', function() {
+            save_finetune_settings();
+        });
+    }
+    function save_finetune_settings() {
+        const data = {
+            "limit_training_time_minutes": document.querySelector('input[name="limit_training_time_minutes"]:checked').value,
+            "run_at_night": document.querySelector('#night_run').checked,
+            "run_at_night_time": document.querySelector('.night-time').value,
+            "auto_delete_n_runs": document.querySelector('.store-input').value,
+        }
+        console.log('save_finetune_settings', data);
+        fetch("/tab-finetune-config-save", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(function(response) {
+            console.log(response);
+            finetune_data();
+        });
+    }
 })();
