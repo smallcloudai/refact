@@ -64,16 +64,20 @@ async def tab_files_save_config(config: TabFilesConfig):
 @router.post("/tab-files-upload")
 async def tab_files_upload(request: Request, file: UploadFile):
     file_path = os.path.expanduser("~/data/uploaded_files")
+    tmp_path = os.path.join(file_path, f".{file.filename}")
     file_path = os.path.join(file_path, file.filename)
+    if os.path.exists(file_path):
+        return Response("File with this name already exists", status_code=409)
     try:
-        with open(file_path, "wb") as f:
+        with open(tmp_path, "wb") as f:
             while True:
                 contents = await file.read(1024)
                 if not contents:
                     break
                 f.write(contents)
+        os.rename(tmp_path, file_path)
     except OSError as e:
-        return Response(f"Error: {e}")
+        return Response(f"Error: {e}", status_code=500)
     return Response("OK")
 
 
