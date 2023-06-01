@@ -253,6 +253,7 @@
 
     function render_runs(data = {}) {
         document.querySelector('.run-table').innerHTML = '';
+        let i = 0;
         data.finetune_runs.forEach(element => {
             const row = document.createElement('tr');
             const run_name = document.createElement("td");
@@ -260,7 +261,7 @@
             const run_steps = document.createElement("td");
 
             run_name.innerHTML = element.run_id;
-            run_name.dataset.run_id = element.run_id;
+            run_name.dataset.run = element.run_id;
             run_minutes.innerHTML = element.worked_minutes;
             run_steps.innerHTML = element.worked_steps;
             row.appendChild(run_name);
@@ -268,27 +269,31 @@
             row.appendChild(run_steps);
             document.querySelector('.run-table').appendChild(row);
             const rows = document.querySelectorAll('.run-table tr');
+            if(i === 0) {
+                document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${element.run_id}`;
+                get_log(element.run_id);
+            }
             rows.forEach(function(row) {
                 row.addEventListener('click', function() {
-                    const run_id = this.dataset.run_id;
-                    document.querySelector('.fine-gfx').innerHTML = data.svg;
+                    const run_id = this.dataset.run;
+                    document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${run_id}`;
+                    get_log(run_id);
                 });
             });
+            i++;
         });
     }
 
-    function get_gfx(run_id) {
-        fetch(`/tab-finetune-progress-svg/${run_id}`)
+   function get_log(run_id) {
+        fetch(`/tab-finetune-log/${run_id}`)
         .then(function(response) {
             return response.json();
         })
         .then(function(data) {
-            document.querySelector('.fine-gfx').innerHTML = data.svg;
+            const logs_container = document.querySelector('.finetune-logs');
+            logs_container.innerHTML = '';
+            logs_container.innerHTML = data.log.join('<br>');
         });
-    }
-
-    function get_log(run_id) {
-
     }
 
     function render_time_dropdown() {

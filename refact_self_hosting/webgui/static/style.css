@@ -90,3 +90,6 @@ h2 {
 .fine-gfx {
     width: 100% !important;
 }
+.run-table tr {
+    cursor: pointer;
+}
