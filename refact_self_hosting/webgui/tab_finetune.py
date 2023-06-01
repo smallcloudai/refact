@@ -30,6 +30,7 @@ async def tab_finetune_config_and_runs(request: Request):
             "run_id": dirname,
             "worked_minutes": "480",
             "worked_steps": "1337",
+            "status": "completed",  # failed, working, starting
         })
     cfg_fn = os.path.expanduser("~/perm-storage/tab-finetune.cfg")
     if os.path.exists(cfg_fn):
