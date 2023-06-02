@@ -21,5 +21,7 @@ FLAG_LAUNCH_FINETUNE = os.path.join(DIR_CONFIG, "_launch_finetune.flag")
 os.makedirs(DIR_CONFIG, exist_ok=True)
 os.makedirs(DIR_WEIGHTS, exist_ok=True)
 os.makedirs(DIR_LORAS, exist_ok=True)
-os.makedirs(DIR_UNPACKED, exist_ok=True)
 os.makedirs(DIR_LOGS, exist_ok=True)
+os.makedirs(DIR_UPLOADS, exist_ok=True)
+
+os.makedirs(DIR_UNPACKED, exist_ok=True)

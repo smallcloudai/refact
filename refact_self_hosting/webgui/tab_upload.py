@@ -17,7 +17,7 @@ async def tab_files_get(request: Request):
     result = {
         "uploaded_files": {}
     }
-    uploaded_path = env.DIR_UNPACKED
+    uploaded_path = env.DIR_UPLOADS
     if os.path.isfile(env.CONFIG_HOW_TO_PROCESS):
         config = json.load(open(env.CONFIG_HOW_TO_PROCESS, "r"))
     else:
