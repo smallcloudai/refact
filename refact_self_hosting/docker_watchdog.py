@@ -63,7 +63,19 @@ class TrackedJob:
             return
         if self.please_shutdown:
             return
-        self.start()
+        policy = self.cfg.get("policy", [])
+        assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority"}, policy
+        if "when_file_appears" in policy:
+            the_file = self.cfg["when_file_appears"]
+            if the_file.startswith("~"):
+                the_file = os.path.expanduser(the_file)
+            if os.path.exists(the_file):
+                os.remove(the_file)
+                self.start()
+        elif "always_on" in policy:
+            self.start()
+        elif "at_night" in policy:
+            pass
 
     def poll_logs(self) -> bool:
         if self.p is None:

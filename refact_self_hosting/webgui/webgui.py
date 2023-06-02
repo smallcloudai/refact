@@ -1,5 +1,8 @@
+import logging
 import asyncio
 import uvloop
+import sys
+import datetime
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 from fastapi import FastAPI
@@ -33,11 +36,23 @@ app.add_middleware(
 
 
 if __name__ == "__main__":
+    class MyLogHandler(logging.Handler):
+        def emit(self, record):
+            timestamp = datetime.datetime.now().strftime("%Y%m%d %H:%M:%S")
+            sys.stderr.write(timestamp + " " + self.format(record) + "\n")
+            sys.stderr.flush()
+    handler = MyLogHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter('WEBUI %(message)s'))
+    root = logging.getLogger()
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)
     import uvicorn
     uvicorn.run(app,
         workers=1,
         host="127.0.0.1",
         port=8008,
+        log_config=None,
         # debug=True,
         # loop="asyncio",
     )
