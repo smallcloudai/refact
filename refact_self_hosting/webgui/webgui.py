@@ -2,7 +2,6 @@ import logging
 import asyncio
 import uvloop
 import sys
-import datetime
 import signal
 import uvicorn
 import weakref
@@ -33,20 +32,14 @@ if __name__ == "__main__":
     parser.add_argument("--port", default=8008, type=int)
     args = parser.parse_args()
 
-    class MyLogHandler(logging.Handler):
-        def emit(self, record):
-            timestamp = datetime.datetime.now().strftime("%Y%m%d %H:%M:%S")
-            sys.stderr.write(timestamp + " " + self.format(record) + "\n")
-            sys.stderr.flush()
-    handler = MyLogHandler()
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(logging.Formatter('WEBUI %(message)s'))
-    root = logging.getLogger()
-    root.addHandler(handler)
-    root.setLevel(logging.INFO)
-
     user2gpu_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)  # for each model there is a queue
     id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s WEBUI %(message)s',
+        datefmt='%Y%m%d %H:%M:%S',
+        handlers=[logging.StreamHandler(stream=sys.stderr)])
 
     app = FastAPI(docs_url=None, redoc_url=None)
 
