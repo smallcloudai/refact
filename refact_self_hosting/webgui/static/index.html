@@ -219,7 +219,7 @@
                     </tbody>
                 </table>
                 <h3 class="mt-5">Selected Model</h3>
-                <button id="run_now" type="button" class="btn mt-2 btn-success">Run Now</button>
+                <button id="run_now" type="button" class="btn mt-2 btn-success process-now">Process now</button>
                 <div class="text-bg-light mt-3 p-3">
                     <h5>Limit training time</h5>
                     <div class="btn-group" role="group" aria-label="Basic radio toggle button group">
@@ -303,9 +303,11 @@
         <div class="mb-3">
             <input type="file" id="fileInput" class="form-control">
         </div>
-        <progress id="progressBar" value="0" max="100" style="width:300px;"></progress>
-        <h3 id="status"></h3>
-        <p id="loaded_n_total"></p>
+        <div class="progress d-none">
+          <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div id="loaded_n_total" class="uploaded-total"></div>
+        <div id="status" class="uploaded-status"></div>
         <button class="submit-file btn btn-primary">Submit</button>
         </div>
       </div>
@@ -323,6 +325,7 @@
         <div class="mb-3">
             <input placeholder="https://yourserver.com/file.zip" type="url" id="urlInput" class="form-control">
         </div>
+        <div id="status-url" class="uploaded-status"></div>
         <button class="submit-url btn btn-primary">Submit</button>
         </div>
       </div>
@@ -338,9 +341,21 @@
         </div>
         <div class="modal-body">
         <div class="mb-3">
-            <input placeholder="https://github.com/my_repo/my.git" type="url" id="gitInput" class="form-control">
+          <label class="form-label">Repository URL</label>
+          <input placeholder="https://github.com/my_repo/my.git" type="url" id="gitInput" class="form-control">
+          <div class="form-text">
+            Any valid Git repo URL is accepted.
+          </div>
         </div>
-        <button class="submit-url btn btn-primary">Submit</button>
+        <div class="mb-3">
+          <label class="form-label">Branch</label>
+          <input placeholder="Main" type="text" id="gitBranch" class="form-control">
+          <div class="form-text">
+            Optional. If not specified, the master branch will be used.
+          </div>
+        </div>
+        <div id="status-git" class="uploaded-status"></div>
+        <button class="submit-git btn btn-primary">Submit</button>
         </div>
       </div>
     </div>

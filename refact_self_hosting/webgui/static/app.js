@@ -98,6 +98,27 @@
         upload_url();
     });
 
+    const submit_git_button = document.querySelector('.submit-git');
+    submit_git_button.addEventListener('click', function() {
+        upload_repo();
+    });
+
+    const process_button = document.querySelector('.process-now');
+    process_button.addEventListener('click', function() {
+        process_now();
+    });
+
+    function process_now() {
+        fetch("/tab-files-process-now")
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                console.log(data);
+                render_tab_files(data);
+            });
+    }
+
     function upload_url() {
         const fileInput = document.querySelector('#urlInput');
         if(!fileInput || fileInput.value == '') {
@@ -128,22 +149,29 @@
             url_modal.hide();
         })
         .catch(error => {
-            console.error('There was a problem with the fetch operation:', error);
+            document.querySelector('#status-url').innerHTML = error;
         });
     }
 
-    function upload_file() {
-        const fileInput = document.querySelector('#fileInput');
-        if(fileInput.files.length === 0) {
+    function upload_repo() {
+        const gitUrl = document.querySelector('#gitInput');
+        const gitBranch = document.querySelector('#gitBranch');   
+        if(!gitUrl || gitUrl.value == '') {
             return;
         }
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        // console.log('formData', formData);
+        const formData = {
+            'url' : gitUrl.value
+        }
+        if(gitBranch.value && gitBranch.value !== '') {
+            formData['branch'] = gitBranch.value;
+        }
 
-        fetch('/tab-files-upload', {
+        fetch('/tab-repo-upload', {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
         })
         .then(response => {
             if (!response.ok) {
@@ -153,13 +181,60 @@
         })
         .then(data => {
             get_tab_files();
+            document.querySelector('#gitInput').value = '';
+            let git_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('gitModal'));
+            git_modal.hide();
+        })
+        .catch(error => {
+            document.querySelector('#status-git').innerHTML = error;
+        });
+    }
+
+    function upload_file() {
+        const fileInput = document.querySelector('#fileInput');
+        if(fileInput.files.length === 0) {
+            return;
+        }
+        var formdata = new FormData();
+        formdata.append("file", fileInput.files[0]);
+        document.querySelector('.progress').classList.toggle('d-none');
+        document.querySelector('.submit-file').classList.toggle('d-none');
+        var ajax = new XMLHttpRequest();
+        ajax.upload.addEventListener("progress", progressHandler, false);
+        ajax.addEventListener("load", completeHandler, false);
+        ajax.addEventListener("error", errorHandler, false);
+        ajax.addEventListener("abort", abortHandler, false);
+        ajax.open("POST", "/tab-files-upload");
+        ajax.send(formdata);
+    }
+
+    function progressHandler(event) {
+        document.querySelector('#loaded_n_total').innerHTML = "Uploaded " + event.loaded + " bytes of " + event.total;
+        var percent = (event.loaded / event.total) * 100;
+        document.querySelector('.progress-bar').setAttribute('aria-valuenow', Math.round(percent));
+        document.querySelector('.progress-bar').style.width = Math.round(percent) + "%";
+        document.querySelector('#status').innerHTML = Math.round(percent) + "% uploaded... please wait";
+      }
+      
+      function completeHandler(event) {
+        document.querySelector('#status').innerHTML = event.target.responseText;
+        setTimeout(() => {
+            document.querySelector('.progress-bar').setAttribute('aria-valuenow', 0);
+            document.querySelector('.progress').classList.toggle('d-none');
+            document.querySelector('.submit-file').classList.toggle('d-none');
+            get_tab_files();
             document.querySelector('#fileInput').value = '';
             let file_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('uploadModal'));
             file_modal.hide();
-        })
-        .catch(error => {
-            console.error('There was a problem with the fetch operation:', error);
-        });
+        }, 2000);
+      }
+      
+      function errorHandler(event) {
+        document.querySelector('#status').innerHTML = event.target.responseText;
+      }
+      
+      function abortHandler(event) {
+        document.querySelector('#status').innerHTML = "Upload Aborted";
     }
 
     function delete_file(file) {

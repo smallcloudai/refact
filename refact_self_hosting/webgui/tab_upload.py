@@ -2,7 +2,7 @@ import time, json, termcolor, os
 import asyncio
 import aiohttp
 from fastapi import APIRouter, Request, Query, Header, File, UploadFile, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from pydantic import BaseModel, Required
 from refact_self_hosting.webgui.selfhost_webutils import log
 from typing import Dict, List, Optional, Any
@@ -76,8 +76,10 @@ async def tab_files_upload(request: Request, file: UploadFile):
                 f.write(contents)
         os.rename(tmp_path, file_path)
     except OSError as e:
-        return Response(f"Error: {e}", status_code=500)
-    return Response("OK")
+        # return Response(json.dump(f"Error: {e}", status_code=500))
+        response_data = {"message": f"Error: {e}"}
+        return JSONResponse(content=response_data, status_code=500)
+    return JSONResponse("OK")
 
 
 async def download_file_from_url(url: str):
@@ -108,8 +110,9 @@ async def upload_file_from_url(request: Request, post: FileToDownload):
         with open(file_path, "wb") as f:
             f.write(bin)
     except OSError as e:
-        return Response(f"Error: {e}")
-    return Response("OK")
+        # return Response(f"Error: {e}")
+        return JSONResponse(content={"message": f"Error: {e}"}, status_code=500)
+    return JSONResponse("OK")
 
 
 class CloneRepo(BaseModel):
@@ -131,8 +134,10 @@ async def tab_repo_upload(request: Request, repo: CloneRepo):
         if proc.returncode != 0:
             raise RuntimeError(stderr.decode())
     except Exception as e:
-        return Response(f"Error: {e}", status_code=500)
-    return Response("OK")
+        # return Response(f"Error: {e}", status_code=500)
+        return JSONResponse(content={"message": f"Error: {e}"}, status_code=500)
+    # return Response("OK")
+    return JSONResponse("OK")
 
 
 @router.post("/tab-files-delete")
@@ -142,9 +147,13 @@ async def tab_files_delete(request: Request):
     file_path = os.path.join(file_path, file_name)
     try:
         os.remove(file_path)
-        return Response("OK")
+        # return Response("OK")
+        return JSONResponse("OK")
+
     except OSError as e:
-        return Response(f"Error: {e}")
+        # return Response(f"Error: {e}")
+        return JSONResponse(content={"message": f"Error: {e}"}, status_code=500)
+
 
 
 @router.post("/tab-files-process-now")
@@ -152,4 +161,4 @@ async def upload_files_process_now(request: Request):
     file_path = os.path.expanduser("~/perm-storage/cfg/_launch_process_uploaded.flag")
     with open(file_path, "w") as f:
         f.write("1")
-    return Response("OK")
+    return JSONResponse("OK")
