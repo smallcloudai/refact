@@ -1,7 +1,7 @@
-import time, json, termcolor, os
+import time, json, termcolor, os, re
 import asyncio
-from fastapi import APIRouter, Request, Query, Header
-from fastapi.responses import Response
+from fastapi import APIRouter, Request, Query, Header, HTTPException
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Required
 from refact_self_hosting.webgui import selfhost_req_queue
 from refact_self_hosting.webgui.selfhost_webutils import log
@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.get("/tab-finetune-config-and-runs")
 async def tab_finetune_config_and_runs(request: Request):
-    uploaded_path = os.path.expanduser("~/perm-storage/finetune")
+    ft_path = os.path.expanduser("~/perm-storage/finetune")
     result = {
         "finetune_runs": [],
         "config": {
@@ -23,8 +23,8 @@ async def tab_finetune_config_and_runs(request: Request):
             "auto_delete_n_runs": "5",
         },
     }
-    for dirname in os.listdir(uploaded_path):
-        if not os.path.isdir(os.path.join(uploaded_path, dirname)):
+    for dirname in os.listdir(ft_path):
+        if not os.path.isdir(os.path.join(ft_path, dirname)):
             continue
         result["finetune_runs"].append({
             "run_id": dirname,
@@ -38,20 +38,55 @@ async def tab_finetune_config_and_runs(request: Request):
     return Response(json.dumps(result, indent=4) + "\n")
 
 
+def sanitize_run_id(run_id: str):
+    if not re.fullmatch(r"[0-9a-fA-Z-\.]{2,30}", run_id):
+        raise HTTPException(status_code=400, detail="Invalid run id")
+
+
+async def stream_text_file(ft_path):
+    cnt = 0
+    f = open(ft_path, "r")
+    anything_new_ts = time.time()
+    try:
+        while True:
+            cnt += 1
+            line = f.readline()
+            if not line:
+                if anything_new_ts + 120 < time.time():
+                    break
+                await asyncio.sleep(1)
+                continue
+            anything_new_ts = time.time()
+            yield line
+    finally:
+        f.close()
+
+
 @router.get("/tab-finetune-log/{run_id}")
 async def tab_funetune_log(request: Request, run_id: str):
-    result = {
-        "log": ["Line1", "Line2", "Line3", "It was run \"%s\"" % run_id],
-    }
-    return Response(json.dumps(result, indent=4) + "\n")
+    sanitize_run_id(run_id)
+    ft_path = os.path.expanduser("~/perm-storage/finetune/%s/log.txt" % run_id)
+    return StreamingResponse(
+        stream_text_file(ft_path),
+        media_type="text/plain",
+        headers={
+            "Content-Disposition": "attachment; filename=finetune.log",
+            "Content-Type": "text/plain",
+        },
+    )
 
 
 @router.get("/tab-finetune-progress-svg/{run_id}")
 async def tab_funetune_progress_svg(request: Request, run_id: str):
-    svg = "<svg width=\"100%\" height=\"100%\" viewBox=\"0 0 100 100\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n"
-    svg += "<circle cx=\"50\" cy=\"50\" r=\"40\" stroke=\"black\" stroke-width=\"2\" fill=\"white\" />\n"
-    svg += "</svg>"
-    return Response(svg + "\n", media_type="image/svg+xml")
+    sanitize_run_id(run_id)
+    svg_path = os.path.expanduser("~/perm-storage/finetune/%s/progress.svg" % run_id)
+    if os.path.exists(svg_path):
+        svg = open(svg_path, "r").read()
+    else:
+        svg = "<svg width=\"432\" height=\"216\" xmlns=\"http://www.w3.org/2000/svg\">"
+        svg += '<path d="M 50 10 L 200 150 L 350 200 L 50 200 L 50 10" stroke="#AAA" stroke-width="2" fill="#DDD" />'
+        svg += "</svg>"
+    return Response(svg, media_type="image/svg+xml")
 
 
 class TabFinetuneConfig(BaseModel):
