@@ -149,7 +149,7 @@
             url_modal.hide();
         })
         .catch(error => {
-            document.querySelector('#status-url').innerHTML = error;
+            document.querySelector('#status-url').innerHTML = error.message;
         });
     }
 
@@ -186,7 +186,7 @@
             git_modal.hide();
         })
         .catch(error => {
-            document.querySelector('#status-git').innerHTML = error;
+            document.querySelector('#status-git').innerHTML = error.message;
         });
     }
 
@@ -230,7 +230,7 @@
       }
       
       function errorHandler(event) {
-        document.querySelector('#status').innerHTML = event.target.responseText;
+        document.querySelector('#status').innerHTML = event.target.responseText.message;
       }
       
       function abortHandler(event) {
