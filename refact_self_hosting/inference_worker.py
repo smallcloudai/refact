@@ -8,7 +8,6 @@ import signal
 import socket
 import datetime
 
-from pathlib import Path
 from collections import defaultdict
 
 from code_contrast import ScratchpadBase
@@ -22,6 +21,7 @@ from code_contrast.modeling import GPTQBigCodeModel
 from code_contrast.modeling.checkpoint_loader import load_finetune_checkpoint
 from typing import Optional, Dict, Any, List
 
+from refact_self_hosting import env
 
 from smallcloud import inference_server
 inference_server.override_urls("http://127.0.0.1:8008/infengine-v1/")
@@ -40,7 +40,6 @@ class Inference:
 
     def __init__(self,
                  model_name: str,
-                 workdir: Path,
                  force_cpu: bool = False,
                  load_lora: Optional[str] = None):
         if model_name not in known_models.models_mini_db:
@@ -51,31 +50,30 @@ class Inference:
 
         try:
             self._model, self._encoding = self._model_setup(
-                self._model_dict, workdir, self._device)
+                self._model_dict, self._device)
             if load_lora is not None:
                 self._model = load_finetune_checkpoint(self._model, load_lora)
         except Exception as e:
             raise RuntimeError(f"model {model_name} loading failed: {e}")
 
     @staticmethod
-    def _model_setup(model_dict: Dict, workdir: Path, device: str):
-        cache_dir = str(workdir / "weights")
+    def _model_setup(model_dict: Dict, device: str):
         if model_dict["model_class"] == CodifyModel:
             model = CodifyModel.from_pretrained(
                 repo_id=model_dict["model_path"],
-                path=cache_dir,
+                path=env.DIR_WEIGHTS,
                 device=device)
             model.T = model.config.T
         elif model_dict["model_class"] == HFModel:
             model = HFModel.from_pretrained(
                 path=model_dict["model_path"],
-                cache_dir=cache_dir,
+                cache_dir=env.DIR_WEIGHTS,
                 device=device)
             model.T = model_dict["T"]
         elif model_dict["model_class"] == GPTQBigCodeModel:
             model = GPTQBigCodeModel(
                 model_name=model_dict["model_path"],
-                cache_dir=cache_dir,
+                cache_dir=env.DIR_WEIGHTS,
                 device=device,
                 **model_dict["model_class_kwargs"])
             model.T = model_dict["T"]
@@ -282,11 +280,11 @@ class Inference:
             logging.error(traceback.format_exc())
 
 
-def worker_loop(model_name: str, workdir: Path, cpu: bool, load_lora: str, compile: bool):
+def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
     stream_handler = logging.StreamHandler(stream=sys.stdout)
     logging.basicConfig(level=logging.INFO, handlers=[stream_handler])
 
-    inference_model = Inference(model_name=model_name, workdir=workdir, force_cpu=cpu, load_lora=load_lora)
+    inference_model = Inference(model_name=model_name, force_cpu=cpu, load_lora=load_lora)
     class DummyUploadProxy:
         def upload_result(*args, **kwargs):
             pass
@@ -377,5 +375,4 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGUSR1, catch_sigkill)
 
-    WORKDIR = os.path.expanduser("~/perm-storage")
-    worker_loop(args.model, Path(WORKDIR), args.cpu, args.load_lora, compile=args.compile)
+    worker_loop(args.model, args.cpu, args.load_lora, compile=args.compile)

@@ -3,6 +3,8 @@ import asyncio
 import uvloop
 import sys
 import datetime
+import signal
+import uvicorn
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 from fastapi import FastAPI
@@ -47,7 +49,15 @@ if __name__ == "__main__":
     root = logging.getLogger()
     root.addHandler(handler)
     root.setLevel(logging.INFO)
-    import uvicorn
+
+    def handle_sigint(*args):
+        print("Received SIGINT, exiting...")
+        exit(1)
+
+    @app.on_event("startup")
+    async def startup_event():
+        signal.signal(signal.SIGINT, handle_sigint)
+
     uvicorn.run(app,
         workers=1,
         host="127.0.0.1",

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Required
 from refact_self_hosting.webgui import selfhost_req_queue
 from refact_self_hosting.webgui.selfhost_webutils import log
 from typing import Dict, List, Optional, Any
+from refact_self_hosting import env
 
 
 router = APIRouter()
@@ -13,7 +14,6 @@ router = APIRouter()
 
 @router.get("/tab-finetune-config-and-runs")
 async def tab_finetune_config_and_runs(request: Request):
-    ft_path = os.path.expanduser("~/perm-storage/finetune")
     result = {
         "finetune_runs": [],
         "config": {
@@ -23,8 +23,8 @@ async def tab_finetune_config_and_runs(request: Request):
             "auto_delete_n_runs": "5",
         },
     }
-    for dirname in sorted(os.listdir(ft_path)):
-        if not os.path.isdir(os.path.join(ft_path, dirname)):
+    for dirname in sorted(os.listdir(env.DIR_LORAS)):
+        if not os.path.isdir(os.path.join(env.DIR_LORAS, dirname)):
             continue
         d = {
             "run_id": dirname,
@@ -36,9 +36,8 @@ async def tab_finetune_config_and_runs(request: Request):
         if os.path.exists(status_fn):
             d.update(json.load(open(status_fn, "r")))
         result["finetune_runs"].append(d)
-    cfg_fn = os.path.expanduser("~/perm-storage/tab-finetune.cfg")
-    if os.path.exists(cfg_fn):
-        result["config"] = json.load(open(cfg_fn, "r"))
+    if os.path.exists(env.CONFIG_FINETUNE):
+        result["config"] = json.load(open(env.CONFIG_FINETUNE, "r"))
     return Response(json.dumps(result, indent=4) + "\n")
 
 
@@ -70,7 +69,7 @@ async def stream_text_file(ft_path):
 @router.get("/tab-finetune-log/{run_id}")
 async def tab_funetune_log(request: Request, run_id: str):
     sanitize_run_id(run_id)
-    ft_path = os.path.expanduser("~/perm-storage/finetune/%s/log.txt" % run_id)
+    ft_path = os.path.join(env.DIR_LORAS, run_id, "log.txt")
     return StreamingResponse(
         stream_text_file(ft_path),
         media_type="text/plain",
@@ -84,7 +83,7 @@ async def tab_funetune_log(request: Request, run_id: str):
 @router.get("/tab-finetune-progress-svg/{run_id}")
 async def tab_funetune_progress_svg(request: Request, run_id: str):
     sanitize_run_id(run_id)
-    svg_path = os.path.expanduser("~/perm-storage/finetune/%s/progress.svg" % run_id)
+    svg_path = os.path.join(env.DIR_LORAS, run_id, "progress.svg")
     if os.path.exists(svg_path):
         svg = open(svg_path, "r").read()
     else:
@@ -103,7 +102,6 @@ class TabFinetuneConfig(BaseModel):
 
 @router.post("/tab-finetune-config-save")
 async def tab_files_config_save(config: TabFinetuneConfig, request: Request):
-    cfg_fn = os.path.expanduser("~/perm-storage/tab-finetune.cfg")
-    with open(cfg_fn, "w") as f:
+    with open(env.CONFIG_FINETUNE, "w") as f:
         json.dump(config.dict(), f, indent=4)
 
