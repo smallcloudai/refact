@@ -35,10 +35,8 @@ class TrackedJob:
             return
         global compile_required, compiling_now
         alt_env = os.environ.copy()
-        CUDA_VISIBLE_DEVICES = ""
+        CUDA_VISIBLE_DEVICES = ",".join(["%d" % x for x in self.cfg["gpus"]])
         cmdline = list(self.cfg["command_line"])
-        for gpu in self.cfg["gpus"]:
-            CUDA_VISIBLE_DEVICES += "," + str(gpu)
         if self.cfg.get("needs_compile", False):
             compile_required.add(self.cmdline_str)
             if compiling_now:
@@ -47,7 +45,7 @@ class TrackedJob:
                 compiling_now = self.cmdline_str
                 cmdline.append("--compile")
         alt_env["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
-        log("%s СVD=%s starting %s" % (time.strftime("%Y%m%d %H:%M:%S"), CUDA_VISIBLE_DEVICES, self.cmdline_str))
+        log("%s CVD=%s starting %s" % (time.strftime("%Y%m%d %H:%M:%S"), CUDA_VISIBLE_DEVICES, self.cmdline_str))
         self.start_ts = time.time()
         self.p = subprocess.Popen(
             cmdline,
@@ -73,6 +71,8 @@ class TrackedJob:
                 os.remove(the_file)
                 self.start()
         elif "always_on" in policy:
+            self.start()
+        elif "always_on_low_priority" in policy:
             self.start()
         elif "at_night" in policy:
             pass
@@ -182,6 +182,4 @@ if __name__ == '__main__':
     main_loop()
 
 
-# workdir = str(os.environ.get("SERVER_WORKDIR"))
-# port = int(os.environ.get("SERVER_PORT"))
 # model = os.environ.get("SERVER_MODEL")

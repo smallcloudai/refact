@@ -129,14 +129,14 @@ async def completion_streamer(ticket: selfhost_req_queue.Ticket, post: NlpComple
                 break
         if post.stream:
             yield "data: [DONE]" + "\n\n"
-        log(red_time(created_ts), "/finished %s, streamed %i packets" % (ticket.id(), packets_cnt))
+        log(red_time(created_ts) + " /finished %s, streamed %i packets" % (ticket.id(), packets_cnt))
         ticket.done()
         # fastapi_stats.stats_accum[kt] += msg.get("generated_tokens_n", 0)
         # fastapi_stats.stats_accum[kcomp] += 1
         # fastapi_stats.stats_lists_accum["stat_latency_" + post.model].append(time.time() - created_ts)
     finally:
         if ticket.id() is not None:
-            log("   ***  CANCEL  ***  cancelling %s" % ticket.id(), red_time(created_ts))
+            log("   ***  CANCEL  ***  cancelling %s " % ticket.id() + red_time(created_ts))
             # fastapi_stats.stats_accum["stat_api_cancelled"] += 1
             # fastapi_stats.stats_accum["stat_m_" + post.model + "_cancelled"] += 1
         ticket.cancelled = True
@@ -237,19 +237,19 @@ async def diff_streamer(ticket: selfhost_req_queue.Ticket, post: DiffCompletion,
                 break
             tmp = json.dumps(msg)
             yield "data: " + tmp + "\n\n"
-            log("  ", red_time(created_ts), "stream %s <- %i bytes" % (ticket.id(), len(tmp)))
+            log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
             if msg.get("status", "") != "in_progress":
                 break
         if post.stream:
             yield "data: [DONE]" + "\n\n"
-        log(red_time(created_ts), "/finished call %s" % ticket.id())
+        log(red_time(created_ts) + " /finished call %s" % ticket.id())
         ticket.done()
         # fastapi_stats.stats_accum[kt] += msg.get("generated_tokens_n", 0)
         # fastapi_stats.stats_accum[kcomp] += 1
         # fastapi_stats.stats_lists_accum["stat_latency_" + post.model].append(time.time() - created_ts)
     finally:
         if ticket.id() is not None:
-            log("   ***  CANCEL  ***  cancelling %s" % ticket.id(), red_time(created_ts))
+            log("   ***  CANCEL  ***  cancelling %s " % ticket.id() + red_time(created_ts))
             # fastapi_stats.stats_accum["stat_api_cancelled"] += 1
             # fastapi_stats.stats_accum["stat_m_" + post.model + "_cancelled"] += 1
         ticket.cancelled = True
@@ -259,4 +259,4 @@ async def diff_streamer(ticket: selfhost_req_queue.Ticket, post: DiffCompletion,
 async def static_string_streamer(ticket_id, static_message, account, created_ts):
     yield "data: " + json.dumps({"object": "smc.chat.chunk", "role": "assistant", "delta": static_message, "finish_reason": "END"}) + "\n\n"
     yield "data: [ERROR]" + "\n\n"
-    log("  ", red_time(created_ts), "%s chat static message to %s: %s" % (ticket_id, account, static_message))
+    log("  " + red_time(created_ts) + " %s chat static message to %s: %s" % (ticket_id, account, static_message))

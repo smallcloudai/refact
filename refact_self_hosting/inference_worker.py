@@ -6,6 +6,7 @@ import time
 import traceback
 import signal
 import socket
+import datetime
 
 from pathlib import Path
 from collections import defaultdict
@@ -24,6 +25,9 @@ from typing import Optional, Dict, Any, List
 
 from smallcloud import inference_server
 inference_server.override_urls("http://127.0.0.1:8008/infengine-v1/")
+
+
+log = logging.getLogger("MODEL").info
 
 
 quit_flag = False
@@ -84,7 +88,7 @@ class Inference:
             if not DEBUG:
                 return
             s = " ".join([str(a) for a in args])
-            logging.info(s)
+            log(s)
 
         object_type = request["object"]
         assert object_type in ["diff_completion_req", "text_completion_req", "chat_completion_req"]
@@ -213,7 +217,8 @@ class Inference:
                 **before_kwargs
             )
             if DEBUG and "top3" in select_kwargs:
-                print("%6.1fms" % (1000*(time.time() - t0)), select_kwargs["top3"][0])
+                sys.stderr.write("%6.1fms %s" % ((1000*(time.time() - t0)), select_kwargs["top3"][0]) + "\n")
+                sys.stderr.flush()
 
             sequence = torch.cat([sequence, output_tokens], dim=-1)
 
@@ -277,13 +282,30 @@ class Inference:
             logging.error(traceback.format_exc())
 
 
-def worker_loop(model_name: str, workdir: Path, cpu: bool, load_lora: str):
+def worker_loop(model_name: str, workdir: Path, cpu: bool, load_lora: str, compile: bool):
     stream_handler = logging.StreamHandler(stream=sys.stdout)
     logging.basicConfig(level=logging.INFO, handlers=[stream_handler])
 
     inference_model = Inference(model_name=model_name, workdir=workdir, force_cpu=cpu, load_lora=load_lora)
+    class DummyUploadProxy:
+        def upload_result(*args, **kwargs):
+            pass
+        def check_cancelled():
+            return set()
+    dummy_calls = [
+        {
+            'function': 'completion',
+            'temperature': 0.8, 'top_p': 0.95, 'max_tokens': 40, 'id': 'comp-wkCX57Le8giP-1337', 'created': 0,
+            'stop_tokens': [],
+            'prompt': 'Hello world',
+            'echo': False,
+            'object': 'text_completion_req',
+        }
+    ]
+    inference_model.infer(dummy_calls[0], DummyUploadProxy, {})
+    if compile:
+        return
 
-    # TODO: model name with docker suffix must be removed
     req_session = inference_server.infserver_session()
     description_dict = inference_server.validate_description_dict(
         model_name + "_" + socket.getfqdn(),
@@ -338,8 +360,22 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str)
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--load-lora")
+    parser.add_argument("--compile", action="store_true", help="download and compile triton kernels, quit")
     args = parser.parse_args()
 
-    WORKDIR = os.path.expanduser("~/perm-storage")
+    class MyLogHandler(logging.Handler):
+        def emit(self, record):
+            timestamp = datetime.datetime.now().strftime("%Y%m%d %H:%M:%S")
+            sys.stderr.write(timestamp + " " + self.format(record) + "\n")
+            sys.stderr.flush()
+    handler = MyLogHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter('MODEL %(message)s'))
+    root = logging.getLogger()
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)
+
     signal.signal(signal.SIGUSR1, catch_sigkill)
-    worker_loop(args.model, Path(WORKDIR), args.cpu, args.load_lora)
+
+    WORKDIR = os.path.expanduser("~/perm-storage")
+    worker_loop(args.model, Path(WORKDIR), args.cpu, args.load_lora, compile=args.compile)
