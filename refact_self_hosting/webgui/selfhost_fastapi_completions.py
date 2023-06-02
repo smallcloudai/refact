@@ -1,31 +1,22 @@
-import time, threading, json, copy, asyncio, termcolor, collections
-from fastapi import APIRouter, Request, Header, HTTPException, Query
+import time
+import json
+import copy
+import asyncio
+import termcolor
+
+from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from refact_self_hosting.webgui import selfhost_req_queue
+
+# from refact_self_hosting.webgui import selfhost_req_queue
 from refact_self_hosting.webgui import selfhost_model_resolve
+from refact_self_hosting.webgui.selfhost_req_queue import Ticket
 from refact_self_hosting.webgui.selfhost_webutils import clamp, log
+
 from pydantic import BaseModel, Required
-from typing import List, Dict, Tuple, Optional, Callable, Union, Any
+from typing import List, Dict, Union
 
 
-TIMEOUT = 30
-
-
-router = APIRouter()
-
-
-@router.get("/secret-key-activate")
-async def secret_key_activate(
-    request: Request,
-    authorization: str = Header(None),
-):
-    # red = fu.get_inf_red()
-    # ip = request.client.host
-    # _ac_dict = await fastapi_auth.lookup_bearer(authorization, red, force_www_req=True, ip=ip)
-    return {
-        "retcode": "OK",
-        "human_readable_message": "API key verified",
-    }
+__all__ = ["CompletionsRouter"]
 
 
 def red_time(base_ts):
@@ -38,6 +29,7 @@ class NlpSamplingParams(BaseModel):
     top_p: float = 1.0
     top_n: int = 0
     stop: Union[List[str], str] = []
+
     def clamp(self):
         self.temperature = clamp(0, 4, self.temperature)
         self.top_p = clamp(0.0, 1.0, self.top_p)
@@ -61,48 +53,34 @@ class NlpCompletion(NlpSamplingParams):
     stream: bool = False
 
 
-@router.post("/completions")
-async def completions(
-    post: NlpCompletion,
-    request: Request,
-    authorization: str = Header(None),
-):
-    # ip = request.client.host
-    # ac_dict = await fastapi_auth.lookup_bearer(authorization, red, ip=ip)
-    # account = ac_dict["account"]
-    account = "XXX"
-    ticket = selfhost_req_queue.Ticket("comp-")
-    req = post.clamp()
-    model_name, err_msg = selfhost_model_resolve.resolve_model(post.model, "", "")
-    if err_msg:
-        log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
-        raise HTTPException(status_code=400, detail=err_msg)
-    log("%s model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
-    req.update({
-        "object": "text_completion_req",
-        "account": account,
-        "prompt": post.prompt,
-        "model": model_name,
-        "stream": post.stream,
-        "echo": post.echo,
-    })
-    ticket.call.update(req)
-    if model_name not in selfhost_req_queue.global_user2gpu_queue:
-        log("%s model \"%s\" is not working at this moment" % (ticket.id(), model_name))
-        raise HTTPException(status_code=400, detail="no model '%s' found." % model_name)
-    selfhost_req_queue.global_id2ticket[ticket.id()] = ticket
-    q = selfhost_req_queue.global_user2gpu_queue[model_name]
-    await q.put(ticket)
-    seen = [""] * post.n
-    return StreamingResponse(completion_streamer(ticket, post, seen, req["created"]))
+class POI(BaseModel):
+    filename: str
+    cursor0: int
+    cursor1: int
+    priority: float
 
 
-async def completion_streamer(ticket: selfhost_req_queue.Ticket, post: NlpCompletion, seen, created_ts):
+class DiffCompletion(NlpSamplingParams):
+    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.]+$")
+    intent: str
+    sources: Dict[str, str]
+    cursor_file: str
+    cursor0: int
+    cursor1: int
+    function: str = Query(
+        default=Required, regex="^([a-z0-9\.\-]+)$"
+    )
+    max_edits: int = 4
+    stream: bool = False
+    poi: List[POI] = []
+
+
+async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts):
     try:
         packets_cnt = 0
         while 1:
             try:
-                msg = await asyncio.wait_for(ticket.streaming_queue.get(), TIMEOUT)
+                msg = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
             except asyncio.TimeoutError:
                 log("TIMEOUT %s" % ticket.id())
                 msg = {"status": "error", "human_readable_message": "timeout"}
@@ -142,91 +120,11 @@ async def completion_streamer(ticket: selfhost_req_queue.Ticket, post: NlpComple
         ticket.cancelled = True
 
 
-
-class POI(BaseModel):
-    filename: str
-    cursor0: int
-    cursor1: int
-    priority: float
-
-
-class DiffCompletion(NlpSamplingParams):
-    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.]+$")
-    intent: str
-    sources: Dict[str, str]
-    cursor_file: str
-    cursor0: int
-    cursor1: int
-    function: str = Query(
-        default=Required, regex="^([a-z0-9\.\-]+)$"
-    )
-    max_edits: int = 4
-    stream: bool = False
-    poi: List[POI] = []
-    # n: int = 1
-
-
-@router.post("/contrast")
-async def contrast(
-    post: DiffCompletion,
-    request: Request,
-    authorization: str = Header(None),
-):
-    # ip = request.client.host
-    # ac_dict = await fastapi_auth.lookup_bearer(authorization, red, ip=ip)
-    account = "XXX"
-    if post.function != "diff-anywhere":
-        if post.cursor_file not in post.sources:
-            raise HTTPException(status_code=400, detail="cursor_file='%s' is not in sources=%s" % (post.cursor_file, list(post.sources.keys())))
-        if post.cursor0 < 0 or post.cursor1 < 0:
-            raise HTTPException(status_code=400, detail="cursor0=%d or cursor1=%d is negative" % (post.cursor0, post.cursor1))
-        filetext = post.sources[post.cursor_file]
-        if post.cursor0 > len(filetext) or post.cursor1 > len(filetext):
-            raise HTTPException(status_code=400, detail="cursor0=%d or cursor1=%d is beyond file length=%d" % (post.cursor0, post.cursor1, len(filetext)))
-    for fn, text in post.sources.items():
-        if len(text) > 180*1024:
-            raise HTTPException(status_code=400, detail="file '%s' is too long (%d bytes)" % (fn, len(text)))
-    ticket = selfhost_req_queue.Ticket("comp-")
-    model_name, err_msg = selfhost_model_resolve.resolve_model(post.model, post.cursor_file, post.function)
-    if err_msg:
-        log("%s model resolve \"%s\" func \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, post.function, err_msg, account))
-        raise HTTPException(status_code=400, detail=err_msg)
-    log("%s model resolve \"%s\" func \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, post.function, model_name, account))
-    if post.function == "highlight":
-        post.max_tokens = 0
-    req = post.clamp()
-    req.update({
-        "object": "diff_completion_req",
-        "account": account,
-        "model": model_name,
-        "intent": post.intent,
-        "sources": post.sources,
-        "cursor_file": post.cursor_file,
-        "cursor0": post.cursor0,
-        "cursor1": post.cursor1,
-        "function": post.function,
-        "max_edits": post.max_edits,
-        "stream": post.stream,
-    })
-    post_raw = await request.json()
-    if "poi" in post_raw:
-        req["poi"] = post_raw["poi"]
-    ticket.call.update(req)
-    if model_name not in selfhost_req_queue.global_user2gpu_queue:
-        log("%s model \"%s\" is not working at this moment" % (ticket.id(), model_name))
-        raise HTTPException(status_code=400, detail="no model '%s' found." % model_name)
-    # kt, kcomp = await _model_hit(red, ticket, req, model_name, account)
-    selfhost_req_queue.global_id2ticket[ticket.id()] = ticket
-    q = selfhost_req_queue.global_user2gpu_queue[model_name]
-    await q.put(ticket)
-    return StreamingResponse(diff_streamer(ticket, post, req["created"]))
-
-
-async def diff_streamer(ticket: selfhost_req_queue.Ticket, post: DiffCompletion, created_ts):
+async def diff_streamer(ticket: Ticket, post: DiffCompletion, timeout, created_ts):
     try:
         while 1:
             try:
-                msg = await asyncio.wait_for(ticket.streaming_queue.get(), TIMEOUT)
+                msg = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
             except asyncio.TimeoutError:
                 log("TIMEOUT %s" % ticket.id())
                 msg = {"status": "error", "human_readable_message": "timeout"}
@@ -256,7 +154,98 @@ async def diff_streamer(ticket: selfhost_req_queue.Ticket, post: DiffCompletion,
         ticket.done()
 
 
-async def static_string_streamer(ticket_id, static_message, account, created_ts):
-    yield "data: " + json.dumps({"object": "smc.chat.chunk", "role": "assistant", "delta": static_message, "finish_reason": "END"}) + "\n\n"
-    yield "data: [ERROR]" + "\n\n"
-    log("  " + red_time(created_ts) + " %s chat static message to %s: %s" % (ticket_id, account, static_message))
+class CompletionsRouter(APIRouter):
+
+    def __init__(self,
+                 user2gpu_queue: Dict[str, asyncio.Queue],
+                 id2ticket: Dict[str, Ticket],
+                 timeout: int = 30,
+                 *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        super().add_api_route("/secret-key-activate", self._secret_key_activate, methods=["GET"])
+        super().add_api_route("/completions", self._completions, methods=["POST"])
+        super().add_api_route("/contrast", self._secret_key_activate, methods=["POST"])
+        self._user2gpu_queue = user2gpu_queue
+        self._id2ticket = id2ticket
+        self._timeout = timeout
+
+    async def _secret_key_activate(self, *args, **kwargs):
+        return {
+            "retcode": "OK",
+            "human_readable_message": "API key verified",
+        }
+
+    async def _completions(self, post: NlpCompletion, *args, **kwargs):
+        account = "XXX"
+        ticket = Ticket("comp-")
+        req = post.clamp()
+        model_name, err_msg = selfhost_model_resolve.resolve_model(post.model, "", "")
+        if err_msg:
+            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
+            raise HTTPException(status_code=400, detail=err_msg)
+        log("%s model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
+        req.update({
+            "object": "text_completion_req",
+            "account": account,
+            "prompt": post.prompt,
+            "model": model_name,
+            "stream": post.stream,
+            "echo": post.echo,
+        })
+        ticket.call.update(req)
+        if model_name not in self._user2gpu_queue:
+            log("%s model \"%s\" is not working at this moment" % (ticket.id(), model_name))
+            raise HTTPException(status_code=400, detail="no model '%s' found." % model_name)
+        self._id2ticket[ticket.id()] = ticket
+        q = self._user2gpu_queue[model_name]
+        await q.put(ticket)
+        seen = [""] * post.n
+        return StreamingResponse(completion_streamer(ticket, post, self._timeout, seen, req["created"]))
+
+    async def _contrast(self, post: DiffCompletion, request: Request, *args, **kwargs):
+        account = "XXX"
+        if post.function != "diff-anywhere":
+            if post.cursor_file not in post.sources:
+                raise HTTPException(status_code=400, detail="cursor_file='%s' is not in sources=%s" % (post.cursor_file, list(post.sources.keys())))
+            if post.cursor0 < 0 or post.cursor1 < 0:
+                raise HTTPException(status_code=400, detail="cursor0=%d or cursor1=%d is negative" % (post.cursor0, post.cursor1))
+            filetext = post.sources[post.cursor_file]
+            if post.cursor0 > len(filetext) or post.cursor1 > len(filetext):
+                raise HTTPException(status_code=400, detail="cursor0=%d or cursor1=%d is beyond file length=%d" % (post.cursor0, post.cursor1, len(filetext)))
+        for fn, text in post.sources.items():
+            if len(text) > 180*1024:
+                raise HTTPException(status_code=400, detail="file '%s' is too long (%d bytes)" % (fn, len(text)))
+        ticket = Ticket("comp-")
+        model_name, err_msg = selfhost_model_resolve.resolve_model(post.model, post.cursor_file, post.function)
+        if err_msg:
+            log("%s model resolve \"%s\" func \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, post.function, err_msg, account))
+            raise HTTPException(status_code=400, detail=err_msg)
+        log("%s model resolve \"%s\" func \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, post.function, model_name, account))
+        if post.function == "highlight":
+            post.max_tokens = 0
+        req = post.clamp()
+        req.update({
+            "object": "diff_completion_req",
+            "account": account,
+            "model": model_name,
+            "intent": post.intent,
+            "sources": post.sources,
+            "cursor_file": post.cursor_file,
+            "cursor0": post.cursor0,
+            "cursor1": post.cursor1,
+            "function": post.function,
+            "max_edits": post.max_edits,
+            "stream": post.stream,
+        })
+        post_raw = await request.json()
+        if "poi" in post_raw:
+            req["poi"] = post_raw["poi"]
+        ticket.call.update(req)
+        if model_name not in self._user2gpu_queue:
+            log("%s model \"%s\" is not working at this moment" % (ticket.id(), model_name))
+            raise HTTPException(status_code=400, detail="no model '%s' found." % model_name)
+        # kt, kcomp = await _model_hit(red, ticket, req, model_name, account)
+        self._id2ticket[ticket.id()] = ticket
+        q = self._user2gpu_queue[model_name]
+        await q.put(ticket)
+        return StreamingResponse(diff_streamer(ticket, post, self._timeout, req["created"]))

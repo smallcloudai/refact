@@ -1,9 +1,11 @@
-from collections import defaultdict, deque
-from typing import Dict, List, Optional, Any
 import asyncio
-import weakref
+
 from refact_self_hosting.webgui import selfhost_webutils
 
+from typing import Dict, Any
+
+
+__all__ = ["Ticket"]
 
 
 class Ticket:
@@ -20,13 +22,3 @@ class Ticket:
     def done(self):
         if "id" in self.call:
             del self.call["id"]
-
-
-global_stats = defaultdict(int)  # set of keys is finite
-
-
-global_user2gpu_queue = defaultdict(asyncio.Queue)   # for each model there is a queue
-
-
-global_id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
-

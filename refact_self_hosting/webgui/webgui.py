@@ -5,32 +5,38 @@ import sys
 import datetime
 import signal
 import uvicorn
+import weakref
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from refact_self_hosting.webgui import selfhost_static
-from refact_self_hosting.webgui import selfhost_fastapi_completions
-from refact_self_hosting.webgui import selfhost_fastapi_gpu
-from refact_self_hosting.webgui import tab_upload
-from refact_self_hosting.webgui import tab_finetune
+from refact_self_hosting.webgui.selfhost_req_queue import Ticket
+from refact_self_hosting.webgui.selfhost_static import StaticRouter
+from refact_self_hosting.webgui.selfhost_fastapi_completions import CompletionsRouter
+from refact_self_hosting.webgui.selfhost_fastapi_gpu import GPURouter
+from refact_self_hosting.webgui.tab_upload import TabUploadRouter
+from refact_self_hosting.webgui.tab_finetune import TabFinetuneRouter
+
+from collections import defaultdict
+from typing import Dict
+
+
+user2gpu_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)   # for each model there is a queue
+id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
 
 
 app = FastAPI(docs_url=None, redoc_url=None)
-app.include_router(selfhost_fastapi_completions.router, prefix="/v1")
-app.include_router(selfhost_fastapi_gpu.router, prefix="/infengine-v1")
-app.include_router(tab_upload.router)
-app.include_router(tab_finetune.router)
-app.include_router(selfhost_static.router)
-
-
-origins = [
-]
+app.include_router(StaticRouter())
+app.include_router(CompletionsRouter(prefix="/v1", id2ticket=id2ticket, user2gpu_queue=user2gpu_queue))
+app.include_router(GPURouter(prefix="/infengine-v1", id2ticket=id2ticket, user2gpu_queue=user2gpu_queue))
+app.include_router(TabUploadRouter())
+app.include_router(TabFinetuneRouter())
 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
