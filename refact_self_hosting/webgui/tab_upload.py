@@ -4,7 +4,6 @@ import aiohttp
 from fastapi import APIRouter, Request, Query, Header, File, UploadFile, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Required
-from refact_self_hosting.webgui import selfhost_req_queue
 from refact_self_hosting.webgui.selfhost_webutils import log
 from typing import Dict, List, Optional, Any
 
@@ -146,3 +145,11 @@ async def tab_files_delete(request: Request):
         return Response("OK")
     except OSError as e:
         return Response(f"Error: {e}")
+
+
+@router.post("/tab-files-process-now")
+async def upload_files_process_now(request: Request):
+    file_path = os.path.expanduser("~/perm-storage/cfg/_launch_process_uploaded.flag")
+    with open(file_path, "w") as f:
+        f.write("1")
+    return Response("OK")
