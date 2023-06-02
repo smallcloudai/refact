@@ -23,7 +23,7 @@ async def tab_finetune_config_and_runs(request: Request):
             "auto_delete_n_runs": "5",
         },
     }
-    for dirname in os.listdir(ft_path):
+    for dirname in sorted(os.listdir(ft_path)):
         if not os.path.isdir(os.path.join(ft_path, dirname)):
             continue
         result["finetune_runs"].append({
@@ -52,6 +52,7 @@ async def stream_text_file(ft_path):
             cnt += 1
             line = f.readline()
             if not line:
+                print("sleep", f.fileno())
                 if anything_new_ts + 120 < time.time():
                     break
                 await asyncio.sleep(1)
