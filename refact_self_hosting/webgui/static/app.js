@@ -270,13 +270,18 @@
             document.querySelector('.run-table').appendChild(row);
             const rows = document.querySelectorAll('.run-table tr');
             if(i === 0) {
-                document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${element.run_id}`;
-                get_log(element.run_id);
+                document.querySelector('.fine-gfx').src = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=`;
+                document.querySelector('.fine-gfx').style.height = '200px';
             }
             rows.forEach(function(row) {
                 row.addEventListener('click', function() {
+                    rows.forEach(function(row) {
+                        row.classList.remove('table-primary');
+                    });
+                    this.classList.add('table-primary');
                     const run_id = this.dataset.run;
                     document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${run_id}`;
+                    document.querySelector('.fine-gfx').style.height = '';
                     get_log(run_id);
                 });
             });
