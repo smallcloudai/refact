@@ -26,12 +26,16 @@ async def tab_finetune_config_and_runs(request: Request):
     for dirname in sorted(os.listdir(ft_path)):
         if not os.path.isdir(os.path.join(ft_path, dirname)):
             continue
-        result["finetune_runs"].append({
+        d = {
             "run_id": dirname,
-            "worked_minutes": "480",
-            "worked_steps": "1337",
-            "status": "completed",  # failed, working, starting
-        })
+            "worked_minutes": "0",
+            "worked_steps": "0",
+            "status": "unknown",  # working, starting, completed, failed
+        }
+        status_fn = os.path.join(ft_path, dirname, "status.json")
+        if os.path.exists(status_fn):
+            d.update(json.load(open(status_fn, "r")))
+        result["finetune_runs"].append(d)
     cfg_fn = os.path.expanduser("~/perm-storage/tab-finetune.cfg")
     if os.path.exists(cfg_fn):
         result["config"] = json.load(open(cfg_fn, "r"))
