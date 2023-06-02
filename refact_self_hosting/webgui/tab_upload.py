@@ -154,8 +154,6 @@ async def tab_files_delete(request: Request):
         # return Response(f"Error: {e}")
         return JSONResponse(content={"message": f"Error: {e}"}, status_code=500)
 
-
-
 @router.post("/tab-files-process-now")
 async def upload_files_process_now(request: Request):
     file_path = os.path.expanduser("~/perm-storage/cfg/_launch_process_uploaded.flag")
