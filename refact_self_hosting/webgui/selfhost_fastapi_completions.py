@@ -7,16 +7,19 @@ import termcolor
 from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-# from refact_self_hosting.webgui import selfhost_req_queue
 from refact_self_hosting.webgui import selfhost_model_resolve
 from refact_self_hosting.webgui.selfhost_req_queue import Ticket
-from refact_self_hosting.webgui.selfhost_webutils import clamp, log
+from refact_self_hosting.webgui.selfhost_webutils import log
 
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union
 
 
 __all__ = ["CompletionsRouter"]
+
+
+def clamp(lower, upper, x):
+    return max(lower, min(upper, x))
 
 
 def red_time(base_ts):
