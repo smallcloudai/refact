@@ -25,6 +25,7 @@ models_mini_db = {
     "model_class": "code_contrast.modeling:HFModel",
     "T": 2048,
     "filter_caps": ["santacoder"],
+    "hidden": True,   # only for debugging because it doesn't work well
 },
 "starcoder/15b": {
     "model_path_type": "huggingface",
@@ -33,7 +34,7 @@ models_mini_db = {
     "chat_scratchpad_class": "code_contrast:ScratchpadBigChat",
     "model_class": "code_contrast.modeling:HFModel",
     "T": 2048,
-    "filter_caps": ["starcoder"],
+    "filter_caps": ["starcoderbase"],
 },
 "starcoder/15b/base4bit": {
     "model_path_type": "huggingface",
@@ -45,7 +46,7 @@ models_mini_db = {
         "bits": 4,
     },
     "T": 2048,
-    "filter_caps": ["starcoder"],
+    "filter_caps": ["starcoderbase"],
 },
 "starcoder/15b/base8bit": {
     "model_path_type": "huggingface",
@@ -57,6 +58,6 @@ models_mini_db = {
         "bits": 8,
     },
     "T": 2048,
-    "filter_caps": ["starcoder"],
+    "filter_caps": ["starcoderbase"],
 },
 }

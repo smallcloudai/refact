@@ -106,7 +106,7 @@ class TabUploadRouter(APIRouter):
             os.rename(tmp_path, file_path)
         except OSError as e:
             response_data = {"message": f"Error: {e}"}
-            return JSONResponse(content=response_data, status_code=500)
+            return JSONResponse(response_data, status_code=500)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
@@ -122,7 +122,7 @@ class TabUploadRouter(APIRouter):
             with open(file_path, "wb") as f:
                 f.write(bin)
         except OSError as e:
-            return JSONResponse(content={"message": f"Error: {e}"}, status_code=500)
+            return JSONResponse({"message": f"Error: {e}"}, status_code=500)
         return JSONResponse("OK")
 
     async def _tab_repo_upload(self, repo: CloneRepo):
@@ -137,7 +137,7 @@ class TabUploadRouter(APIRouter):
             if proc.returncode != 0:
                 raise RuntimeError(stderr.decode())
         except Exception as e:
-            return JSONResponse(content={"message": f"Error: {e}"}, status_code=500)
+            return JSONResponse({"message": f"Error: {e}"}, status_code=500)
         return JSONResponse("OK")
 
     async def _tab_files_delete(self, request: Request):
@@ -148,7 +148,7 @@ class TabUploadRouter(APIRouter):
             return JSONResponse("OK")
 
         except OSError as e:
-            return JSONResponse(content={"message": f"Error: {e}"}, status_code=500)
+            return JSONResponse({"message": f"Error: {e}"}, status_code=500)
 
     async def _upload_files_process_now(self):
         log("set flag %s" % env.FLAG_LAUNCH_PROCESS_UPLOADS)
