@@ -51,10 +51,10 @@ class TabFinetuneRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        super().add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
-        super().add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
-        super().add_api_route("/tab-finetune-progress-svg/{run_id}", self._tab_funetune_progress_svg, methods=["GET"])
-        super().add_api_route("/tab-finetune-config-save", self._tab_files_config_save, methods=["POST"])
+        self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
+        self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
+        self.add_api_route("/tab-finetune-progress-svg/{run_id}", self._tab_funetune_progress_svg, methods=["GET"])
+        self.add_api_route("/tab-finetune-config-save", self._tab_files_config_save, methods=["POST"])
 
     async def _tab_finetune_config_and_runs(self):
         result = {

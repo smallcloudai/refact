@@ -165,9 +165,9 @@ class CompletionsRouter(APIRouter):
                  timeout: int = 30,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        super().add_api_route("/secret-key-activate", self._secret_key_activate, methods=["GET"])
-        super().add_api_route("/completions", self._completions, methods=["POST"])
-        super().add_api_route("/contrast", self._secret_key_activate, methods=["POST"])
+        self.add_api_route("/secret-key-activate", self._secret_key_activate, methods=["GET"])
+        self.add_api_route("/completions", self._completions, methods=["POST"])
+        self.add_api_route("/contrast", self._secret_key_activate, methods=["POST"])
         self._user2gpu_queue = user2gpu_queue
         self._id2ticket = id2ticket
         self._timeout = timeout

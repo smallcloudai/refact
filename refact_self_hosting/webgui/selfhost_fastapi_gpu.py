@@ -74,8 +74,8 @@ class GPURouter(APIRouter):
                  engine_wait_timeout: int = 10,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        super().add_api_route("/completions-wait-batch", self._nlp_wait_batch, methods=["POST"])
-        super().add_api_route("/completion-upload-results", self._nlp_upload_response, methods=["POST"])
+        self.add_api_route("/completions-wait-batch", self._nlp_wait_batch, methods=["POST"])
+        self.add_api_route("/completion-upload-results", self._nlp_upload_response, methods=["POST"])
         self._user2gpu_queue = user2gpu_queue
         self._id2ticket = id2ticket
         self._engine_wait_timeout = engine_wait_timeout

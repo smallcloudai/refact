@@ -43,11 +43,11 @@ if __name__ == "__main__":
 
     app = FastAPI(docs_url=None, redoc_url=None)
 
-    app.include_router(StaticRouter())
     app.include_router(CompletionsRouter(prefix="/v1", id2ticket=id2ticket, user2gpu_queue=user2gpu_queue))
     app.include_router(GPURouter(prefix="/infengine-v1", id2ticket=id2ticket, user2gpu_queue=user2gpu_queue))
     app.include_router(TabUploadRouter())
     app.include_router(TabFinetuneRouter())
+    app.include_router(StaticRouter())
 
     app.add_middleware(
         CORSMiddleware,

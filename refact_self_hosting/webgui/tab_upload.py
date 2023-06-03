@@ -50,13 +50,13 @@ class TabUploadRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        super().add_api_route("/tab-files-get", self._tab_files_get, methods=["GET"])
-        super().add_api_route("/tab-files-save-config", self._tab_files_save_config, methods=["POST"])
-        super().add_api_route("/tab-files-upload", self._tab_files_upload, methods=["POST"])
-        super().add_api_route("/tab-files-upload-url", self._upload_file_from_url, methods=["POST"])
-        super().add_api_route("/tab-repo-upload", self._tab_repo_upload, methods=["POST"])
-        super().add_api_route("/tab-files-delete", self._tab_files_delete, methods=["POST"])
-        super().add_api_route("/tab-files-process-now", self._upload_files_process_now, methods=["POST"])
+        self.add_api_route("/tab-files-get", self._tab_files_get, methods=["GET"])
+        self.add_api_route("/tab-files-save-config", self._tab_files_save_config, methods=["POST"])
+        self.add_api_route("/tab-files-upload", self._tab_files_upload, methods=["POST"])
+        self.add_api_route("/tab-files-upload-url", self._upload_file_from_url, methods=["POST"])
+        self.add_api_route("/tab-repo-upload", self._tab_repo_upload, methods=["POST"])
+        self.add_api_route("/tab-files-delete", self._tab_files_delete, methods=["POST"])
+        self.add_api_route("/tab-files-process-now", self._upload_files_process_now, methods=["POST"])
 
     async def _tab_files_get(self):
         result = {
