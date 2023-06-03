@@ -281,9 +281,6 @@ class Inference:
 
 
 def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
-    stream_handler = logging.StreamHandler(stream=sys.stdout)
-    logging.basicConfig(level=logging.INFO, handlers=[stream_handler])
-
     inference_model = Inference(model_name=model_name, force_cpu=cpu, load_lora=load_lora)
     class DummyUploadProxy:
         def upload_result(*args, **kwargs):
@@ -298,6 +295,7 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
             'prompt': 'Hello world',
             'echo': False,
             'object': 'text_completion_req',
+            'created': time.time(),
         }
     ]
     inference_model.infer(dummy_calls[0], DummyUploadProxy, {})
