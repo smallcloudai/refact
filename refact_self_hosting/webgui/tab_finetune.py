@@ -67,7 +67,8 @@ class TabFinetuneRouter(APIRouter):
             },
         }
         for dirname in sorted(os.listdir(env.DIR_LORAS)):
-            if not os.path.isdir(os.path.join(env.DIR_LORAS, dirname)):
+            dir_path = os.path.join(env.DIR_LORAS, dirname)
+            if not os.path.isdir(dir_path):
                 continue
             d = {
                 "run_id": dirname,
@@ -75,7 +76,7 @@ class TabFinetuneRouter(APIRouter):
                 "worked_steps": "0",
                 "status": "unknown",  # working, starting, completed, failed
             }
-            status_fn = os.path.join(ft_path, dirname, "status.json")
+            status_fn = os.path.join(dir_path, "status.json")
             if os.path.exists(status_fn):
                 d.update(json.load(open(status_fn, "r")))
             result["finetune_runs"].append(d)
@@ -85,9 +86,9 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_funetune_log(self, run_id: str):
         sanitize_run_id(run_id)
-        ft_path = os.path.join(env.DIR_LORAS, run_id, "log.txt")
+        log_path = os.path.join(env.DIR_LORAS, run_id, "log.txt")
         return StreamingResponse(
-            stream_text_file(ft_path),
+            stream_text_file(log_path),
             media_type="text/plain",
             headers={
                 "Content-Disposition": "attachment; filename=finetune.log",
