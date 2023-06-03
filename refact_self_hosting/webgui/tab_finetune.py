@@ -103,7 +103,7 @@ class TabFinetuneRouter(APIRouter):
             svg = open(svg_path, "r").read()
         else:
             svg = "<svg width=\"432\" height=\"216\" xmlns=\"http://www.w3.org/2000/svg\">"
-            svg += '<path d="M 50 10 L 200 150 L 350 200 L 50 200 L 50 10" stroke="#AAA" stroke-width="2" fill="#DDD" />'
+            svg += '<path d="M 50 10 L 140 110 L 350 200 L 50 200 L 50 10" stroke="#AAA" stroke-width="2" fill="#DDD" />'
             svg += "</svg>"
         return Response(svg, media_type="image/svg+xml")
 

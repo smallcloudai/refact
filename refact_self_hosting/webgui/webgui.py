@@ -8,6 +8,7 @@ import weakref
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from refact_self_hosting.webgui.selfhost_req_queue import Ticket
 from refact_self_hosting.webgui.selfhost_static import StaticRouter
 from refact_self_hosting.webgui.selfhost_fastapi_completions import CompletionsRouter
@@ -56,6 +57,13 @@ if __name__ == "__main__":
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    class NoCacheMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            response.headers["Cache-Control"] = "no-cache"
+            return response
+    app.add_middleware(NoCacheMiddleware)
 
     @app.on_event("startup")
     async def startup_event():
