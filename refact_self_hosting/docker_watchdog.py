@@ -119,7 +119,7 @@ class TrackedJob:
             if retcode:
                 log("%s crashed %s, retcode %i" % (time.strftime("%Y%m%d %H:%M:%S"), self.cmdline_str, retcode))
             else:
-                log("%s finished %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.cmdline_str))
+                log("%s %s finished %s" % (self.p.pid, time.strftime("%Y%m%d %H:%M:%S"), self.cmdline_str))
             if self.cmdline_str == compiling_now:
                 log("/finished compiling as recognized by watchdog")
                 compiling_now = None
