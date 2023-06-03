@@ -1,9 +1,22 @@
-import time, sys, os, subprocess, signal, requests, json
-from typing import List, Optional, Dict
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
+from typing import Dict, List, Optional
+
+import requests
+
+from refact_self_hosting import env
 
 
-LOGDIR = os.path.expanduser("~/perm-storage/logs-watchdog")
-CONFIGDIR = os.path.expanduser("~/perm-storage/cfg/watchdog.d")
+def replace_variable_names_from_env(s):
+    s = s.replace("%PYTHON%", sys.executable)
+    for k, v in env.__dict__.items():
+        if k.startswith("FLAG_") or k.startswith("DIR_") or k.startswith("CONFIG_"):
+            s = s.replace("%" + k + "%", v)
+    return s
 
 
 def log(*args):
@@ -11,7 +24,7 @@ def log(*args):
     sys.stderr.write(msg + "\n")
     sys.stderr.flush()
     date = time.strftime("%Y%m%d")
-    with open(os.path.join(LOGDIR, "%s_inf_watchdog.log" % date), "a") as f:
+    with open(os.path.join(env.DIR_LOGS, "watchdog_%s.log" % date), "a") as f:
         f.write(msg + "\n")
 
 
@@ -64,9 +77,7 @@ class TrackedJob:
         policy = self.cfg.get("policy", [])
         assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority"}, policy
         if "when_file_appears" in policy:
-            the_file = self.cfg["when_file_appears"]
-            if the_file.startswith("~"):
-                the_file = os.path.expanduser(the_file)
+            the_file = replace_variable_names_from_env(self.cfg["when_file_appears"])
             if os.path.exists(the_file):
                 os.remove(the_file)
                 self.start()
@@ -141,15 +152,12 @@ tracked: Dict[str, TrackedJob] = {}
 
 def create_tracked_jobs_from_configs():
     now_missing = set(tracked.keys())
-    for fn in os.listdir(CONFIGDIR):
+    for fn in os.listdir(env.DIR_WATCHDOG_D):
         if not fn.endswith(".cfg"):
             continue
-        cfg = json.load(open(os.path.join(CONFIGDIR, fn)))
+        cfg = json.load(open(os.path.join(env.DIR_WATCHDOG_D, fn)))
         for i in range(len(cfg["command_line"])):
-            if cfg["command_line"][i].startswith("~"):
-                cfg["command_line"][i] = os.path.expanduser(cfg["command_line"][i])
-            if cfg["command_line"][i] == "python":
-                cfg["command_line"][i] = sys.executable
+            cfg["command_line"][i] = replace_variable_names_from_env(cfg["command_line"][i])
         if fn in tracked:
             tracked[fn].cfg = cfg
         else:
@@ -178,7 +186,6 @@ def main_loop():
 
 
 if __name__ == '__main__':
-    os.makedirs(LOGDIR, exist_ok=True)
     main_loop()
 
 

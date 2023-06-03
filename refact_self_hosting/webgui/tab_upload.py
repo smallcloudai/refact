@@ -56,7 +56,7 @@ class TabUploadRouter(APIRouter):
         self.add_api_route("/tab-files-upload-url", self._upload_file_from_url, methods=["POST"])
         self.add_api_route("/tab-repo-upload", self._tab_repo_upload, methods=["POST"])
         self.add_api_route("/tab-files-delete", self._tab_files_delete, methods=["POST"])
-        self.add_api_route("/tab-files-process-now", self._upload_files_process_now, methods=["POST"])
+        self.add_api_route("/tab-files-process-now", self._upload_files_process_now, methods=["GET"])
 
     async def _tab_files_get(self):
         result = {
@@ -151,6 +151,7 @@ class TabUploadRouter(APIRouter):
             return JSONResponse(content={"message": f"Error: {e}"}, status_code=500)
 
     async def _upload_files_process_now(self):
+        log("set flag %s" % env.FLAG_LAUNCH_PROCESS_UPLOADS)
         with open(env.FLAG_LAUNCH_PROCESS_UPLOADS, "w") as f:
             f.write("1")
         return JSONResponse("OK")
