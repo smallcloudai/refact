@@ -13,7 +13,7 @@ DIR_UPLOADS    = os.path.join(PERMDIR, "uploaded-files")
 DIR_UNPACKED = os.path.join(TMPDIR, "unpacked-files")
 
 CONFIG_FINETUNE = os.path.join(DIR_CONFIG, "finetune.cfg")
-CONFIG_ENUM_GPUS = os.path.join(DIR_CONFIG, "enum_gpus.cfg")
+CONFIG_ENUM_GPUS = os.path.join(DIR_CONFIG, "enum_gpus_result.cfg")
 CONFIG_HOW_TO_PROCESS = os.path.join(DIR_CONFIG, "process_uploads.cfg")
 CONFIG_PROCESSING_STATS = os.path.join(DIR_CONFIG, "process_stats.cfg")
 
