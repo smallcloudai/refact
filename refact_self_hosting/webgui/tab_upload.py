@@ -95,7 +95,8 @@ class TabUploadRouter(APIRouter):
         tmp_path = os.path.join(env.DIR_UPLOADS, file.filename + ".tmp")
         file_path = os.path.join(env.DIR_UPLOADS, file.filename)
         if os.path.exists(file_path):
-            return Response("File with this name already exists", status_code=409)
+            response_data = {"message": f"File with this name already exists"}
+            return JSONResponse(content=response_data, status_code=409)
         try:
             with open(tmp_path, "wb") as f:
                 while True:

@@ -49,31 +49,31 @@ h2 {
     overflow: hidden;
     white-space: nowrap;
 }
-.table-files tbody td,
-.table-files thead th,
-.table-types tbody td,
-.table-types thead th {
+.upload-tab-table-files tbody td,
+.upload-tab-table-files thead th,
+.upload-tab-table-files tbody td,
+.upload-tab-table-files thead th {
     text-align: center;
 }
-.table-files thead th:first-child {
+.upload-tab-table-files thead th:first-child {
     min-width: 300px;
     overflow: hidden;
     white-space: nowrap;
     text-align: left;
 }
-.table-files tbody td:first-child {
+.upload-tab-table-files tbody td:first-child {
     min-width: 300px;
     overflow: hidden;
     white-space: nowrap;
     text-align: left;
 }
-.table-types thead th:first-child {
+.upload-tab-table-types thead th:first-child {
     min-width: 100px;
     overflow: hidden;
     white-space: nowrap;
     text-align: left;
 }
-.table-types tbody td:first-child {
+.upload-tab-table-types tbody td:first-child {
     min-width: 100px;
     overflow: hidden;
     white-space: nowrap;
