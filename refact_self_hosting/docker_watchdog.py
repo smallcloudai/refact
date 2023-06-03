@@ -75,7 +75,7 @@ class TrackedJob:
         if self.please_shutdown:
             return
         policy = self.cfg.get("policy", [])
-        assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority"}, policy
+        assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority", "periodic"}, policy
         if "when_file_appears" in policy:
             the_file = replace_variable_names_from_env(self.cfg["when_file_appears"])
             if os.path.exists(the_file):
@@ -87,6 +87,9 @@ class TrackedJob:
             self.start()
         elif "at_night" in policy:
             pass
+        elif "periodic" in policy:
+            if self.start_ts + self.cfg["restart_every"] < time.time():
+                self.start()
 
     def poll_logs(self) -> bool:
         if self.p is None:
@@ -124,12 +127,13 @@ class TrackedJob:
                     compile_successful.add(self.cmdline_str)
             self.p.communicate()
             self.p = None
-            self.start_ts = 0
             self.sent_sigusr1_ts = 0
             self.please_shutdown = False
         return not self.p
 
     def maybe_needs_restart(self):
+        if not self.p:
+            return
         restart_every = self.cfg.get("restart_every", 0)
         if not restart_every:
             return
