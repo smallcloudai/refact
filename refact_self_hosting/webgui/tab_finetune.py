@@ -16,8 +16,8 @@ __all__ = ["TabFinetuneRouter"]
 
 
 def sanitize_run_id(run_id: str):
-    if not re.fullmatch(r"[0-9a-fA-Z-\.]{2,30}", run_id):
-        raise HTTPException(status_code=400, detail="Invalid run id")
+    if not re.fullmatch(r"[0-9a-zA-Z-\.]{2,40}", run_id):
+        raise HTTPException(status_code=400, detail="Invalid run id \"%s\"" % run_id)
 
 
 async def stream_text_file(ft_path):

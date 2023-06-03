@@ -281,6 +281,7 @@ class Inference:
 
 
 def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
+    log("loading model '%s'" % model_name)
     inference_model = Inference(model_name=model_name, force_cpu=cpu, load_lora=load_lora)
     class DummyUploadProxy:
         def upload_result(*args, **kwargs):
@@ -289,15 +290,14 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
             return set()
     dummy_calls = [
         {
+            'temperature': 0.8, 'top_p': 0.95, 'max_tokens': 40, 'id': 'comp-wkCX57Le8giP-1337', 'object': 'text_completion_req',
             'function': 'completion',
-            'temperature': 0.8, 'top_p': 0.95, 'max_tokens': 40, 'id': 'comp-wkCX57Le8giP-1337', 'created': 0,
-            'stop_tokens': [],
-            'prompt': 'Hello world',
             'echo': False,
-            'object': 'text_completion_req',
+            'prompt': 'Hello world',
             'created': time.time(),
         }
     ]
+    log("running a test batch")
     inference_model.infer(dummy_calls[0], DummyUploadProxy, {})
     if compile:
         return
