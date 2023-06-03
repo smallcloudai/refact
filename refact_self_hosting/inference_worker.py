@@ -7,6 +7,7 @@ import traceback
 import signal
 import socket
 import datetime
+import importlib
 
 from collections import defaultdict
 
@@ -36,6 +37,13 @@ if DEBUG:
     inference_server.DEBUG_UPLOAD_NOT_SEPARATE_PROCESS = True
 
 
+def modload(import_str):
+    import_mod, import_class = import_str.rsplit(":", 1)
+    model = importlib.import_module(import_mod)
+    Class = getattr(model, import_class, None)
+    return Class
+
+
 class Inference:
 
     def __init__(self,
@@ -58,19 +66,19 @@ class Inference:
 
     @staticmethod
     def _model_setup(model_dict: Dict, device: str):
-        if model_dict["model_class"] == CodifyModel:
+        if model_dict["model_class"].endswith("CodifyModel"):
             model = CodifyModel.from_pretrained(
                 repo_id=model_dict["model_path"],
                 path=env.DIR_WEIGHTS,
                 device=device)
             model.T = model.config.T
-        elif model_dict["model_class"] == HFModel:
+        elif model_dict["model_class"].endswith("HFModel"):
             model = HFModel.from_pretrained(
                 path=model_dict["model_path"],
                 cache_dir=env.DIR_WEIGHTS,
                 device=device)
             model.T = model_dict["T"]
-        elif model_dict["model_class"] == GPTQBigCodeModel:
+        elif model_dict["model_class"].endswith("GPTQBigCodeModel"):
             model = GPTQBigCodeModel(
                 model_name=model_dict["model_path"],
                 cache_dir=env.DIR_WEIGHTS,
@@ -92,8 +100,8 @@ class Inference:
         assert object_type in ["diff_completion_req", "text_completion_req", "chat_completion_req"]
 
         if object_type == "diff_completion_req":
-            DiffScratchpadClass = self._model_dict["diff_scratchpad_class"]
-            scratchpad = DiffScratchpadClass(
+            Klass = modload(self._model_dict["diff_scratchpad_class"])
+            scratchpad = Klass(
                 enc=self._encoding,
                 logger=logger,
                 **request)
@@ -103,8 +111,8 @@ class Inference:
                 logger=logger,
                 **request)
         else:
-            ChatScratchpadClass = self._model_dict["chat_scratchpad_class"]
-            scratchpad = ChatScratchpadClass(
+            Klass = modload(self._model_dict["chat_scratchpad_class"])
+            scratchpad = Klass(
                 enc=self._encoding,
                 logger=logger,
                 **request)
@@ -293,6 +301,7 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
             'temperature': 0.8, 'top_p': 0.95, 'max_tokens': 40, 'id': 'comp-wkCX57Le8giP-1337', 'object': 'text_completion_req',
             'function': 'completion',
             'echo': False,
+            'stop_tokens': [],
             'prompt': 'Hello world',
             'created': time.time(),
         }
