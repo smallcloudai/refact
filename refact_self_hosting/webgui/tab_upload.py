@@ -28,7 +28,7 @@ async def download_file_from_url(url: str):
             return file
 
 
-class FileToDownload(BaseModel):
+class UploadViaURL(BaseModel):
     url: str
 
 
@@ -112,7 +112,7 @@ class TabUploadRouter(APIRouter):
                 os.remove(tmp_path)
         return JSONResponse("OK")
 
-    async def _upload_file_from_url(self, post: FileToDownload):
+    async def _upload_file_from_url(self, post: UploadViaURL):
         log("downloading \"%s\"" % post.url)
         bin = await download_file_from_url(post.url)
         log("/download")

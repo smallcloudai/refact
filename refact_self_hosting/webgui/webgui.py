@@ -15,6 +15,8 @@ from refact_self_hosting.webgui.selfhost_fastapi_completions import CompletionsR
 from refact_self_hosting.webgui.selfhost_fastapi_gpu import GPURouter
 from refact_self_hosting.webgui.tab_upload import TabUploadRouter
 from refact_self_hosting.webgui.tab_finetune import TabFinetuneRouter
+from refact_self_hosting.webgui.tab_models_host import TabHostRouter
+
 
 from collections import defaultdict
 from typing import Dict
@@ -48,6 +50,7 @@ if __name__ == "__main__":
     app.include_router(GPURouter(prefix="/infengine-v1", id2ticket=id2ticket, user2gpu_queue=user2gpu_queue))
     app.include_router(TabUploadRouter())
     app.include_router(TabFinetuneRouter())
+    app.include_router(TabHostRouter())
     app.include_router(StaticRouter())
 
     app.add_middleware(
