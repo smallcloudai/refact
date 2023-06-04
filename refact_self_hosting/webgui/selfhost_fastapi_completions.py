@@ -64,7 +64,7 @@ class POI(BaseModel):
 
 
 class DiffCompletion(NlpSamplingParams):
-    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.]+$")
+    model: str = Query(default="", regex="^[a-z/A-Z0-9_\.]+$")
     intent: str
     sources: Dict[str, str]
     cursor_file: str
@@ -167,18 +167,18 @@ class CompletionsRouter(APIRouter):
         super().__init__(*args, **kwargs)
         self.add_api_route("/secret-key-activate", self._secret_key_activate, methods=["GET"])
         self.add_api_route("/completions", self._completions, methods=["POST"])
-        self.add_api_route("/contrast", self._secret_key_activate, methods=["POST"])
+        self.add_api_route("/contrast", self._contrast, methods=["POST"])
         self._user2gpu_queue = user2gpu_queue
         self._id2ticket = id2ticket
         self._timeout = timeout
 
-    async def _secret_key_activate(self, *args, **kwargs):
+    async def _secret_key_activate(self):
         return {
             "retcode": "OK",
             "human_readable_message": "API key verified",
         }
 
-    async def _completions(self, post: NlpCompletion, *args, **kwargs):
+    async def _completions(self, post: NlpCompletion):
         account = "XXX"
         ticket = Ticket("comp-")
         req = post.clamp()
@@ -205,7 +205,7 @@ class CompletionsRouter(APIRouter):
         seen = [""] * post.n
         return StreamingResponse(completion_streamer(ticket, post, self._timeout, seen, req["created"]))
 
-    async def _contrast(self, post: DiffCompletion, request: Request, *args, **kwargs):
+    async def _contrast(self, post: DiffCompletion, request: Request):
         account = "XXX"
         if post.function != "diff-anywhere":
             if post.cursor_file not in post.sources:

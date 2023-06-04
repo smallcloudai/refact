@@ -19,7 +19,7 @@ def random_guid(n=12):
 class Ticket:
     def __init__(self, id_prefix):
         self.call: Dict[str, Any] = dict()
-        self.call["id"] = id_prefix + selfhost_webutils.random_guid()
+        self.call["id"] = id_prefix + random_guid()
         self.cancelled: bool = False
         self.processed_by_infmod_guid: str = ""
         self.streaming_queue = asyncio.queues.Queue()
