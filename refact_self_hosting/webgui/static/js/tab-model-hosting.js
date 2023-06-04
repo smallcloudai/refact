@@ -11,16 +11,7 @@ function get_gpus() {
 function render_gpus(gpus) {
     const gpus_table = document.querySelector('.table-gpus tbody');
     gpus_table.innerHTML = '';
-    let us = [
-        {
-            id: 1,
-            name: 'GPU 1',
-            mem_used_mb: 10000,
-            mem_total_mb: 20000,
-            temp_celsius: 20
-        },
-    ]
-    us.forEach(element => {
+    gpus.forEach(element => {
         const row = document.createElement('tr');
         row.setAttribute('gpu',element.id);
         const gpu_name = document.createElement("td");
