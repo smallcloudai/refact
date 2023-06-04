@@ -1,33 +1,34 @@
 let stream_running = false;
+let stream_stop = false;
 function finetune_data() {
     fetch("/tab-finetune-config-and-runs")
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(data) {
-        console.log(data);
-        render_finetune_settings(data);
-        render_runs(data);
-    });
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (data) {
+            console.log('config-and-runs',data);
+            render_finetune_settings(data);
+            render_runs(data);
+        });
 }
 
 function render_finetune_settings(data = {}) {
-    if(data.config.auto_delete_n_runs) {
+    if (data.config.auto_delete_n_runs) {
         document.querySelector('.store-input').value = data.config.auto_delete_n_runs;
     }
-    if(data.config.limit_training_time_minutes) {
+    if (data.config.limit_training_time_minutes) {
         const radio_limit_time = document.querySelector(`input[name="limit_training_time_minutes"][value="${data.config.limit_training_time_minutes}"]`);
-        if(radio_limit_time) {
+        if (radio_limit_time) {
             radio_limit_time.checked = true;
         }
     }
-    if(data.config.run_at_night) {
+    if (data.config.run_at_night) {
         document.querySelector('#night_run').checked = true;
     }
-    if(data.config.run_at_night_time) {
+    if (data.config.run_at_night_time) {
         const selectElement = document.querySelector('.night-time');
         const optionToSelect = selectElement.querySelector(`option[value="${data.config.run_at_night_time}"]`);
-        if(optionToSelect) {
+        if (optionToSelect) {
             optionToSelect.selected = true;
         }
     }
@@ -51,17 +52,18 @@ function render_runs(data = {}) {
         row.appendChild(run_steps);
         document.querySelector('.run-table').appendChild(row);
         const rows = document.querySelectorAll('.run-table tr');
-        rows.forEach(function(row) {
-            row.addEventListener('click', function() {
-                rows.forEach(function(row) {
+        rows.forEach(function (row) {
+            row.addEventListener('click', function () {
+                if(stream_running && !stream_stop) {
+                    stream_stop = !stream_stop;
+                }
+                rows.forEach(function (row) {
                     row.classList.remove('table-primary');
                 });
                 this.classList.add('table-primary');
                 const run_id = this.dataset.run;
                 document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${run_id}`;
-                if(!stream_running) {
-                    render_log_stream(run_id);
-                }
+                render_log_stream(run_id);
             });
         });
         i++;
@@ -81,7 +83,7 @@ function render_time_dropdown() {
 }
 const finetune_inputs = document.querySelectorAll('.fine-tune-input');
 for (let i = 0; i < finetune_inputs.length; i++) {
-    finetune_inputs[i].addEventListener('change', function() {
+    finetune_inputs[i].addEventListener('change', function () {
         save_finetune_settings();
     });
 }
@@ -100,38 +102,39 @@ function save_finetune_settings() {
         },
         body: JSON.stringify(data)
     })
-    .then(function(response) {
-        console.log(response);
-        finetune_data();
-    });
+        .then(function (response) {
+            console.log(response);
+            finetune_data();
+        });
 }
 
 function render_log_stream(id) {
     const run_id = id;
     const log_div = document.querySelector('.tab-upload-finetune-logs');
+    log_div.innerHTML = '';
 
-    fetch(`/tab-finetune-log/${run_id}`)
-    .then(response => {
-        if (!response.ok) {
-        throw new Error('Network response was not ok');
-        }
-
+    const streamTextFile = async () => {
+        const response = await fetch(`/tab-finetune-log/${run_id}`);
         const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
+        const decoder = new TextDecoder();
         let partialLine = '';
 
-        const processChunk = ({ done, value }) => {
-            if (!stream_running) {
+        const processResult = ({ done, value }) => {
+            if (stream_running && stream_stop) {
+                stream_running = false;
+                stream_stop = false;
                 console.log('Function stopped');
                 return;
             }
+
             if (done) {
+                stream_running = false;
+                stream_stop = false;
                 console.log('Streaming complete');
                 return;
             }
-            stream_running = true;
 
-            const chunk = decoder.decode(value, { stream: true });
+            const chunk = decoder.decode(value);
             const lines = (partialLine + chunk).split('\n');
 
             for (let i = 0; i < lines.length - 1; i++) {
@@ -142,17 +145,19 @@ function render_log_stream(id) {
             }
 
             partialLine = lines[lines.length - 1];
-
+            stream_stop = false;
+            stream_running = true;
             finetune_data();
-
-            reader.read().then(processChunk);
+            return reader.read().then(processResult);
         };
+        return reader.read().then(processResult);
+    };
 
-        reader.read().then(processChunk);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
+    streamTextFile()
+        .catch(error => {
+            // Handle any errors that occur during the fetch
+            console.log('Error:', error);
+        });
 }
 
 export function init() {
@@ -160,9 +165,9 @@ export function init() {
     render_time_dropdown();
 
     const process_button = document.querySelector('.tab-finetune-run-now');
-    process_button.addEventListener('click', function() {
+    process_button.addEventListener('click', function () {
         fetch("/tab-finetune-run-now")
-            .then(function(response) {
+            .then(function (response) {
             })
     });
 }

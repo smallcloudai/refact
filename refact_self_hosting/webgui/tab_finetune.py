@@ -36,7 +36,7 @@ async def stream_text_file(ft_path):
                 await asyncio.sleep(1)
                 continue
             anything_new_ts = time.time()
-            yield line
+            yield line + "\n"
     finally:
         f.close()
 
@@ -91,11 +91,7 @@ class TabFinetuneRouter(APIRouter):
         log_path = os.path.join(env.DIR_LORAS, run_id, "log.txt")
         return StreamingResponse(
             stream_text_file(log_path),
-            media_type="text/plain",
-            headers={
-                "Content-Disposition": "attachment; filename=finetune.log",
-                "Content-Type": "text/plain",
-            },
+            media_type="text/event-stream"
         )
 
     async def _tab_funetune_progress_svg(self, run_id: str):

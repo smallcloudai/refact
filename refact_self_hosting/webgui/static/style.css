@@ -1,3 +1,7 @@
+body {
+    font-family: 'Space Grotesk',sans-serif;
+    font-size: .9rem;
+}
 .temp-disabled {
     opacity: 0.2;
     pointer-events: none !important;
