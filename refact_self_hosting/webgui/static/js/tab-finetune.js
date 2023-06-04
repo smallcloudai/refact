@@ -39,7 +39,7 @@ function render_runs(data = {}) {
     data.finetune_runs.forEach(element => {
         const row = document.createElement('tr');
         const run_name = document.createElement("td");
-        const run_minutes = document.createElement("td"); 
+        const run_minutes = document.createElement("td");
         const run_steps = document.createElement("td");
 
         run_name.innerHTML = element.run_id;
@@ -158,4 +158,12 @@ function render_log_stream(id) {
 export function init() {
     finetune_data();
     render_time_dropdown();
+
+    const process_button = document.querySelector('.tab-finetune-run-now');
+    process_button.addEventListener('click', function() {
+        fetch("/tab-finetune-run-now")
+            .then(function(response) {
+            })
+    });
 }
+

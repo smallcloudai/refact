@@ -160,6 +160,7 @@
                 <button id="upload-tab-file-button" data-bs-toggle="modal" data-bs-target="#upload-tab-files-modal" type="button" class="btn btn-primary">Upload files…</button>
                 <button id="upload-tab-url-button" data-bs-toggle="modal" data-bs-target="#upload-tab-url-modal" type="button" class="btn btn-primary">Add file from URL</button>
                 <button id="upload-tab-git-button" data-bs-toggle="modal" data-bs-target="#upload-tab-git-modal" type="button" class="btn btn-primary">Add git repo...</button>
+<button id="tab_files_process_now" type="button" class="btn mt-2 btn-success tab-files-process-now">Process now</button>
             </div>
         </div>
         <br/><br/><br/><br/>
@@ -219,7 +220,7 @@
                     </tbody>
                 </table>
                 <h3 class="mt-5">Selected Model</h3>
-                <button id="run_now" type="button" class="btn mt-2 btn-success process-now">Process now</button>
+<button id="run_now" type="button" class="btn mt-2 btn-success tab-finetune-run-now">Run Finetune Now</button>
                 <div class="text-bg-light mt-3 p-3">
                     <h5>Limit training time</h5>
                     <div class="btn-group" role="group" aria-label="Basic radio toggle button group">
@@ -243,11 +244,11 @@
                         </label>
                       </div>
                       <div class="col-md-3">
-                        <select class="form-select fine-tune-input night-time" aria-label="Default select example">       
+                        <select class="form-select fine-tune-input night-time" aria-label="Default select example">
                         </select>
                       </div>
                     </div>
-                    
+
                     <div class="store-block mt-3">
                         Store<input type="number" value="3" class="fine-tune-input form-control store-input"> finished runs
                     </div>

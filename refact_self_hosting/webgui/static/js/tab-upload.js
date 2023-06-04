@@ -16,7 +16,7 @@ function render_tab_files(data) {
     for(let item in data.uploaded_files) {
         const row = document.createElement('tr');
         const name = document.createElement("td");
-        const train = document.createElement("td"); 
+        const train = document.createElement("td");
         const test = document.createElement("td");
         const context = document.createElement("td");
         const delete_file = document.createElement("td");
@@ -55,17 +55,6 @@ function delete_events() {
     });
 }
 
-function process_now() {
-    fetch("/tab-files-process-now")
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(data) {
-            console.log(data);
-            render_tab_files(data);
-        });
-}
-
 function upload_url() {
     const fileInput = document.querySelector('#tab-upload-url-input');
     if(!fileInput || fileInput.value == '') {
@@ -102,7 +91,7 @@ function upload_url() {
 
 function upload_repo() {
     const gitUrl = document.querySelector('#tab-upload-git-input');
-    const gitBranch = document.querySelector('#tab-upload-git-brach-input');   
+    const gitBranch = document.querySelector('#tab-upload-git-brach-input');
     if(!gitUrl || gitUrl.value == '') {
         return;
     }
@@ -164,7 +153,7 @@ function progressHandler(event) {
     document.querySelector('.progress-bar').style.width = Math.round(percent) + "%";
     document.querySelector('#status').innerHTML = Math.round(percent) + "% uploaded... please wait";
   }
-  
+
   function completeHandler(event) {
     document.querySelector('#status').innerHTML = event.target.responseText;
     if(event.target.status === 200) {
@@ -182,11 +171,11 @@ function progressHandler(event) {
         // document.querySelector('#status').innerHTML = event.target.responseText.message;
     }
   }
-  
+
   function errorHandler(event) {
     document.querySelector('#status').innerHTML = event.target.responseText.message;
   }
-  
+
   function abortHandler(event) {
     document.querySelector('#status').innerHTML = "Upload Aborted";
 }
@@ -264,8 +253,10 @@ export function init() {
         upload_repo();
     });
 
-    // const process_button = document.querySelector('.process-now');
-    // process_button.addEventListener('click', function() {
-    //     process_now();
-    // });
+    const process_button = document.querySelector('.tab-files-process-now');
+    process_button.addEventListener('click', function() {
+        fetch("/tab-files-process-now")
+            .then(function(response) {
+            });
+    });
 }

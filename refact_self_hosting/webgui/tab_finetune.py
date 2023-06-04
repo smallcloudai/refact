@@ -5,9 +5,10 @@ import re
 import asyncio
 
 from fastapi import APIRouter, Query, HTTPException
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response, StreamingResponse, JSONResponse
 
 from refact_self_hosting import env
+from refact_self_hosting.webgui.selfhost_webutils import log
 
 from pydantic import BaseModel
 
@@ -54,7 +55,8 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
         self.add_api_route("/tab-finetune-progress-svg/{run_id}", self._tab_funetune_progress_svg, methods=["GET"])
-        self.add_api_route("/tab-finetune-config-save", self._tab_files_config_save, methods=["POST"])
+        self.add_api_route("/tab-finetune-config-save", self._tab_finetune_config_save, methods=["POST"])
+        self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
 
     async def _tab_finetune_config_and_runs(self):
         result = {
@@ -107,7 +109,10 @@ class TabFinetuneRouter(APIRouter):
             svg += "</svg>"
         return Response(svg, media_type="image/svg+xml")
 
-    async def _tab_files_config_save(self, config: TabFinetuneConfig):
+    async def _tab_finetune_config_save(self, config: TabFinetuneConfig):
         with open(env.CONFIG_FINETUNE, "w") as f:
             json.dump(config.dict(), f, indent=4)
 
+    async def _tab_finetune_run_now(self):
+        log("LAUNCH")
+        return JSONResponse("OK")
