@@ -1,5 +1,4 @@
-let stream_running = false;
-let stream_stop = false;
+let stream_reader = null;
 function finetune_data() {
     fetch("/tab-finetune-config-and-runs")
         .then(function (response) {
@@ -40,23 +39,47 @@ function render_runs(data = {}) {
     data.finetune_runs.forEach(element => {
         const row = document.createElement('tr');
         const run_name = document.createElement("td");
+        const run_status = document.createElement("td");
         const run_minutes = document.createElement("td");
         const run_steps = document.createElement("td");
 
         run_name.innerHTML = element.run_id;
+        let status_color;
+        switch (element.status) {
+            case 'unknown':
+                status_color = `bg-warning text-dark`;
+                break;
+            case 'starting':
+                status_color = `bg-success`;
+                break;
+            case 'working':
+                status_color = `bg-secondary`;
+                break;
+            case 'completed':
+                status_color = `bg-light text-dark`;
+                break;
+            case 'failed':
+                status_color = `bg-danger`;
+                break;
+        }
+
+
         row.dataset.run = element.run_id;
+        if(element.status === 'working') {
+            run_status.innerHTML = `<span class="badge rounded-pill ${status_color}"><div class="finetune-spinner spinner-border spinner-border-sm" role="status"></div>${element.status}</span>`;
+        } else {
+            run_status.innerHTML = `<span class="badge rounded-pill ${status_color}">${element.status}</span>`;
+        }
         run_minutes.innerHTML = element.worked_minutes;
         run_steps.innerHTML = element.worked_steps;
         row.appendChild(run_name);
+        row.appendChild(run_status);
         row.appendChild(run_minutes);
         row.appendChild(run_steps);
         document.querySelector('.run-table').appendChild(row);
         const rows = document.querySelectorAll('.run-table tr');
         rows.forEach(function (row) {
             row.addEventListener('click', function () {
-                if(stream_running && !stream_stop) {
-                    stream_stop = !stream_stop;
-                }
                 rows.forEach(function (row) {
                     row.classList.remove('table-primary');
                 });
@@ -120,16 +143,8 @@ function render_log_stream(id) {
         let partialLine = '';
 
         const processResult = ({ done, value }) => {
-            if (stream_running && stream_stop) {
-                stream_running = false;
-                stream_stop = false;
-                console.log('Function stopped');
-                return;
-            }
 
             if (done) {
-                stream_running = false;
-                stream_stop = false;
                 console.log('Streaming complete');
                 return;
             }
@@ -145,11 +160,15 @@ function render_log_stream(id) {
             }
 
             partialLine = lines[lines.length - 1];
-            stream_stop = false;
-            stream_running = true;
             finetune_data();
             return reader.read().then(processResult);
         };
+
+        if (stream_reader) {
+            stream_reader.cancel();
+        }
+        stream_reader = reader;
+
         return reader.read().then(processResult);
     };
 

@@ -108,3 +108,11 @@ h2 {
     font-weight: bold;
     margin-bottom: 15px;
 }
+.finetune-spinner {
+    margin-right: 5px;
+    width: 10px;
+    height: 10px;   
+}
+.table-types tr td:first-of-type {
+    width: 50%;
+}

@@ -36,7 +36,7 @@ async def stream_text_file(ft_path):
                 await asyncio.sleep(1)
                 continue
             anything_new_ts = time.time()
-            yield line + "\n"
+            yield line
     finally:
         f.close()
 
