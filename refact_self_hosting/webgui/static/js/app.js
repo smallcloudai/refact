@@ -33,6 +33,7 @@ function comming_soon_resize()  {
     });
 }
 display_comming_soon();
+model_hosting_tab.init();
 document.addEventListener('shown.bs.tab', function(e) {
     switch (e.target.id) {
         case "model-tab":

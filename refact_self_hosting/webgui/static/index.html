@@ -69,46 +69,26 @@
   <div class="container mt-4">
     <div class="tab-content">
       <div class="tab-pane fade show active" id="model-hosting">
-        <table class="table table-hover table-models temp-disabled">
+        <table class="table table-hover table-gpus">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Memory</th>
+              <th>Temp</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+      </table>
+      <table class="mt-10 table table-hover table-models">
             <thead>
               <tr>
                 <th>Model</th>
-                <th>Size</th>
-                <th>Human Eval</th>
-                <th>Features</th>
+                <th>Chat</th>
+                <th>Toolbox</th>
               </tr>
             </thead>
             <tbody>
-              <tr data-model="model_1">
-                <td>Model 1</td>
-                <td>10 MB</td>
-                <td>Yes</td>
-                <td>Feature A, Feature B</td>
-              </tr>
-              <tr data-model="model_2">
-                <td>Model 2</td>
-                <td>5 MB</td>
-                <td>No</td>
-                <td>Feature C, Feature D</td>
-              </tr>
-              <tr data-model="model_3">
-                <td>Model 3</td>
-                <td>8 MB</td>
-                <td>Yes</td>
-                <td>Feature B, Feature E</td>
-              </tr>
-              <tr data-model="model_4">
-                <td>Model 4</td>
-                <td>12 MB</td>
-                <td>Yes</td>
-                <td>Feature A, Feature C, Feature F</td>
-              </tr>
-              <tr data-model="model_5">
-                <td>Model 5</td>
-                <td>15 MB</td>
-                <td>No</td>
-                <td>Feature D, Feature E, Feature G</td>
-              </tr>
             </tbody>
         </table>
         <h2>Server Logs</h2>
@@ -129,16 +109,6 @@
             <p>Log entry 8</p>
             <p>Log entry 9</p>
             <p>Log entry 10</p>
-            <p>Log entry 11</p>
-            <p>Log entry 12</p>
-            <p>Log entry 13</p>
-            <p>Log entry 14</p>
-            <p>Log entry 15</p>
-            <p>Log entry 16</p>
-            <p>Log entry 17</p>
-            <p>Log entry 18</p>
-            <p>Log entry 19</p>
-            <p>Log entry 20</p>
         </div>
       </div>
       <div class="tab-pane fade" id="upload">
@@ -161,7 +131,7 @@
                 <button id="upload-tab-file-button" data-bs-toggle="modal" data-bs-target="#upload-tab-files-modal" type="button" class="btn btn-primary">Upload files…</button>
                 <button id="upload-tab-url-button" data-bs-toggle="modal" data-bs-target="#upload-tab-url-modal" type="button" class="btn btn-primary">Add file from URL</button>
                 <button id="upload-tab-git-button" data-bs-toggle="modal" data-bs-target="#upload-tab-git-modal" type="button" class="btn btn-primary">Add git repo...</button>
-<button id="tab_files_process_now" type="button" class="btn mt-2 btn-success tab-files-process-now">Process now</button>
+                <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Process now</button>
             </div>
         </div>
         <br/><br/><br/><br/>

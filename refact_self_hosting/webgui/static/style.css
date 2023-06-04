@@ -1,6 +1,6 @@
 body {
     font-family: 'Space Grotesk',sans-serif;
-    font-size: .9rem;
+    font-size: .94rem;
 }
 .temp-disabled {
     opacity: 0.2;
@@ -115,4 +115,42 @@ h2 {
 }
 .table-types tr td:first-of-type {
     width: 50%;
+}
+.upload-spinner {
+    margin-right: 5px;
+}
+.table-models td:nth-child(2),
+.table-models td:nth-child(3),
+.table-models th:nth-child(2),
+.table-models th:nth-child(3) {
+    text-align: center;
+}
+
+.table-gpu-card {
+    margin-right: 10px;
+}
+.table-gpu-mem {
+    height: 10px;
+    width: 100px;
+    background-color: #efefef;
+    position: relative;
+    display: inline-flex;
+    margin-right: 10px;
+}
+.table-gpu-mem span {
+    background-color: rosybrown;
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 10px;
+}
+.table-gpus td:nth-child(2),
+.table-gpus td:nth-child(3),
+.table-gpus th:nth-child(2),
+.table-gpus th:nth-child(3) {
+    text-align: center;
+}
+h3 {
+    font-size: 1.3rem;
+    font-weight: bold;
 }

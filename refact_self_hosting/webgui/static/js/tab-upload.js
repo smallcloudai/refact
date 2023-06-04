@@ -232,6 +232,18 @@ function save_tab_files() {
         get_tab_files();
     });
 }
+let processing_interval = null;
+function processing_timer() {
+    // make button .tab-files-process-now disabled, add loader, and start timer each second
+
+    const process_button = document.querySelector('.tab-files-process-now');
+    process_button.disabled = true;
+    const process_button_text = process_button.innerHTML;
+    process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
+    processing_interval = setInterval(function() {
+        console.log('1000');
+    }, 1000);
+}
 
 export function init() {
     get_tab_files();
@@ -257,6 +269,7 @@ export function init() {
     process_button.addEventListener('click', function() {
         fetch("/tab-files-process-now")
             .then(function(response) {
+                processing_timer();
             });
     });
 }
