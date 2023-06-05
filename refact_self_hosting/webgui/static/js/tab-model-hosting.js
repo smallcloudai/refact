@@ -4,22 +4,27 @@ function get_gpus() {
         return response.json();
     })
     .then(function(data) {
-        console.log('gpus',data);
+        console.log('gpus',data);     
         render_gpus(data);
     });
 }
 function render_gpus(gpus) {
+    if(gpus.gpus.length == 0) {
+        document.querySelector('.table-gpus').style.display = 'none';
+    } else {
+        document.querySelector('.table-gpus').style.display = 'table';
+    }
     const gpus_table = document.querySelector('.table-gpus tbody');
     gpus_table.innerHTML = '';
-    gpus.forEach(element => {
+    gpus.gpus.forEach(element => {
         const row = document.createElement('tr');
         row.setAttribute('gpu',element.id);
         const gpu_name = document.createElement("td");
         const gpu_mem = document.createElement("td");
         const gpu_temp = document.createElement("td");
         
-        const used_gb = Math.round(element.mem_used_mb / 1024);
-        const total_gb = Math.round(element.mem_total_mb /1024);
+        const used_gb = format_memory(element.mem_used_mb);
+        const total_gb = format_memory(element.mem_total_mb);
         const used_mem = Math.round(element.mem_used_mb / (element.mem_total_mb / 100));
         gpu_name.innerHTML = `<i class="table-gpu-card bi bi-gpu-card"></i>` + element.name;
         gpu_mem.innerHTML = `<div class="table-gpu-mem"><span style="width: ${used_mem}%"></span></div>${used_gb}/${total_gb} GB`;
@@ -65,6 +70,11 @@ function render_models(models) {
             console.log('model',model_name);
         });
     }
+}
+
+function format_memory(memory_in_mb, decimalPlaces = 2) {
+    const memory_in_gb = (memory_in_mb / 1024).toFixed(decimalPlaces);
+    return memory_in_gb;
 }
 
 export function init() {

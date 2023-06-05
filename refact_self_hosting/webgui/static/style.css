@@ -41,6 +41,8 @@ h2 {
     border: 1px solid #ccc;
     padding: 10px;
     font-family: monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 .log-container p {
     margin-bottom: 0;
@@ -153,4 +155,21 @@ h2 {
 h3 {
     font-size: 1.3rem;
     font-weight: bold;
+}
+.file-status {
+    font-weight: normal;
+    width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.upload-tab-table-files td:nth-child(2),
+.upload-tab-table-files th:nth-child(2) {
+    width: 100px;
+}
+
+.tooltip-inner {
+    white-space:pre;
+    max-width:none;
+    text-align: left;
 }

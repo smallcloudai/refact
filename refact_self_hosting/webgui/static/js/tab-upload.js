@@ -4,7 +4,7 @@ function get_tab_files() {
             return response.json();
         })
         .then(function(data) {
-            console.log(data);
+            console.log('tab-files-get',data);
             render_tab_files(data);
         });
 }
@@ -15,7 +15,9 @@ function render_tab_files(data) {
     let i = 0;
     for(let item in data.uploaded_files) {
         const row = document.createElement('tr');
+        row.setAttribute('data-file', item);
         const name = document.createElement("td");
+        const status = document.createElement("td");
         const train = document.createElement("td");
         const test = document.createElement("td");
         const context = document.createElement("td");
@@ -35,6 +37,7 @@ function render_tab_files(data) {
         // delete_file.innerHTML = `<button data-file="${item}" type="button" class="btn file-remove btn-danger btn-sm"><i class="bi bi-trash3-fill"></i></button>`;
         delete_file.innerHTML = `<div class="btn-group dropend"><button type="button" class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-trash3-fill"></i></button><ul class="dropdown-menu"><li><span class="file-remove dropdown-item btn btn-sm" data-file="${item}">Delete file</a></span></ul></div>`;
         row.appendChild(name);
+        row.appendChild(status);
         row.appendChild(train);
         row.appendChild(test);
         row.appendChild(context);
@@ -232,17 +235,127 @@ function save_tab_files() {
         get_tab_files();
     });
 }
-let processing_interval = null;
-function processing_timer() {
-    // make button .tab-files-process-now disabled, add loader, and start timer each second
 
+const test = {
+    "files_after_dedup": 0,
+    "files_before_dedup": 68,
+    "finished": false,
+    "finished_ts": "",
+    "uploaded_files": {
+        "23S1-Daytona-AMGGT4-SG-Q.sto": {
+            "generated": 0,
+            "good": 60,
+            "status": "completed",
+            "too_large": 6,
+            "vendored": 1
+        },
+        "CSS-23S2-ESS-LeMans-P217-YL.sto": {
+            "generated": 0,
+            "good": 7,
+            "status": "completed",
+            "too_large": 0,
+            "vendored": 0
+        },
+        "bootstrap.min.css": {
+            "status": "completed"
+        },
+        "custom.sass": {
+            "generated": 0,
+            "good": 0,
+            "status": "completed",
+            "too_large": 0,
+            "vendored": 0
+        },
+        "git-flow-cheatsheet": {
+            "status": "starting"
+        },
+        "temp": {
+            "status": "starting"
+        },
+    }
+};
+
+const updateTable = async () => {
+    const table = document.querySelector('#upload-tab-table-body-files');
     const process_button = document.querySelector('.tab-files-process-now');
     process_button.disabled = true;
     const process_button_text = process_button.innerHTML;
     process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
-    processing_interval = setInterval(function() {
-        console.log('1000');
-    }, 1000);
+    while (true) {
+      try {
+        const response = await fetch('/tab-files-process-now');
+        let data = await response.json();
+        data = test;
+  
+        if (data.finished === true) {
+          process_button.disabled = false;
+          process_button.innerHTML = process_button_text;
+          const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+          const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+          break;
+        }
+        
+        for (const [item,item_object] of Object.entries(data.uploaded_files)) {
+            const rows = table.querySelectorAll('tr');
+            for (const row of rows) {
+                const row_file_name = row.getAttribute('data-file');
+                if (row_file_name === item) {
+                    const target_cell = row.querySelector('td:nth-child(2)');
+                    const current_status = item_object.status;
+                    const status_color = file_status_color(current_status);
+                    let popup_data = `Status: ${item_object.status}`;
+                    if(item_object.generated) {
+                        popup_data += ` \nGenerated: ${item_object.generated}`;
+                    }
+                    if(item_object.good) {
+                        popup_data += ` \nGood: ${item_object.good}`;
+                    }
+                    if(item_object.too_large) {
+                        popup_data += ` \nToo Large: ${item_object.too_large}`;
+                    }
+                    if(item_object.vendored) {
+                        popup_data += ` \nVendored: ${item_object.vendored}`;
+                    }
+                    target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}" class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
+                    break;
+                }
+            }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+  
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+};
+
+function file_status_color(status) {
+    let status_color;
+    switch (status) {
+        case 'starting':
+            status_color = `bg-success`;
+            break;
+        case 'working':
+            status_color = `bg-secondary`;
+            break;
+        case 'completed':
+            status_color = `bg-light text-dark`;
+            break;
+        case 'failed':
+            status_color = `bg-danger`;
+            break;
+    }
+    return status_color;
+}
+
+function updateTest() {
+    setTimeout(function() {
+        test.finished = true;
+        test.finished_ts = new Date().toISOString();
+        test.uploaded_files = test.uploaded_files;
+        test.files_after_dedup = test.files_after_dedup + 33;
+        test.files_before_dedup = test.files_before_dedup + 55;
+    }, 10000);
 }
 
 export function init() {
@@ -264,12 +377,53 @@ export function init() {
     tab_upload_git_submit.addEventListener('click', function() {
         upload_repo();
     });
-
+    const test = {
+        "files_after_dedup": 0,
+        "files_before_dedup": 68,
+        "finished": false,
+        "finished_ts": "",
+        "uploaded_files": {
+            "code-contrast": {
+                "generated": 0,
+                "good": 60,
+                "status": "completed",
+                "too_large": 6,
+                "vendored": 1
+            },
+            "codify-0.1.35.zip": {
+                "generated": 0,
+                "good": 7,
+                "status": "completed",
+                "too_large": 0,
+                "vendored": 0
+            },
+            "database_set.json": {
+                "status": "completed"
+            },
+            "datacollection.tar.bz2": {
+                "generated": 0,
+                "good": 0,
+                "status": "completed",
+                "too_large": 0,
+                "vendored": 0
+            },
+            "datacollection.tar.gz": {
+                "status": "starting"
+            },
+            "stars.py": {
+                "status": "starting"
+            },
+            "test_set.jsonl": {
+                "status": "starting"
+            },
+            "train_set.jsonl": {
+                "status": "starting"
+            }
+        }
+    };
     const process_button = document.querySelector('.tab-files-process-now');
     process_button.addEventListener('click', function() {
-        fetch("/tab-files-process-now")
-            .then(function(response) {
-                processing_timer();
-            });
+        updateTable();
+        updateTest();
     });
 }

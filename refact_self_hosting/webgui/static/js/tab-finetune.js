@@ -134,7 +134,7 @@ function save_finetune_settings() {
 function render_log_stream(id) {
     const run_id = id;
     const log_div = document.querySelector('.tab-upload-finetune-logs');
-    log_div.innerHTML = '';
+    log_div.textContent = '';
 
     const streamTextFile = async () => {
         const response = await fetch(`/tab-finetune-log/${run_id}`);
@@ -154,9 +154,11 @@ function render_log_stream(id) {
 
             for (let i = 0; i < lines.length - 1; i++) {
                 const line = lines[i];
-                const content_div = document.createElement('div');
-                content_div.textContent = line;
-                log_div.appendChild(content_div);
+                log_div.textContent += line + '\n';
+
+                // const content_div = document.createElement('div');
+                // content_div.textContent = line;
+                // log_div.appendChild(content_div);
             }
 
             partialLine = lines[lines.length - 1];
