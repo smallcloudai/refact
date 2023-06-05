@@ -58,7 +58,6 @@ class TrackedJob:
                 compiling_now = self.cmdline_str
                 cmdline.append("--compile")
         alt_env["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
-        log("%s CVD=%s starting %s" % (time.strftime("%Y%m%d %H:%M:%S"), CUDA_VISIBLE_DEVICES, self.cmdline_str))
         self.start_ts = time.time()
         self.p = subprocess.Popen(
             cmdline,
@@ -66,7 +65,12 @@ class TrackedJob:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
         )
-        log("%s pid=%s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid))
+        log("%s CVD=%s starting %s\n -> pid %s" % (
+            time.strftime("%Y%m%d %H:%M:%S"),
+            CUDA_VISIBLE_DEVICES,
+            " ".join(cmdline),   # not self.cmdline_str so we can see "--compile"
+            self.p.pid,
+            ))
         os.set_blocking(self.p.stderr.fileno(), False)
 
     def maybe_can_start(self):

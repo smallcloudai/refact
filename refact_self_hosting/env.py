@@ -28,3 +28,5 @@ os.makedirs(DIR_LOGS, exist_ok=True)
 os.makedirs(DIR_UPLOADS, exist_ok=True)
 
 os.makedirs(DIR_UNPACKED, exist_ok=True)
+
+DIR_WATCHDOG_TEMPLATES = os.path.join(os.path.dirname(__file__), "watchdog.d")
