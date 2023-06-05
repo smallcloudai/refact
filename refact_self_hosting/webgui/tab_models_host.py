@@ -112,6 +112,7 @@ def _update_watchdog_d():
                 model_cfg_j = copy.deepcopy(model_cfg_template)
                 model_cfg_j["command_line"].append("--model")
                 model_cfg_j["command_line"].append(gpu["run-me"])
+                model_cfg_j["gpus"].append(gpu_i)
                 json.dump(model_cfg_j, f, indent=4)
         else:
             try:
