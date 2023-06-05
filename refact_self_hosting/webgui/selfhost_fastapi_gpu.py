@@ -1,8 +1,10 @@
+import os
 import time
 import termcolor
 import asyncio
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request, Header
+from fastapi.exceptions import HTTPException
 
 from refact_self_hosting.webgui.selfhost_req_queue import Ticket
 from refact_self_hosting.webgui.selfhost_webutils import log
@@ -18,6 +20,16 @@ def red_time(base_ts):
     if base_ts == 0:
         return "???ms"
     return termcolor.colored("%0.1fms" % (1000*(time.time() - base_ts)), "red")
+
+
+local_key = os.environ.get("SMALLCLOUD_API_KEY")
+
+
+def check_local_auth(request):
+    if "Authorization" not in request.headers:
+        raise HTTPException(status_code=401, detail="No auth header")
+    if request.headers.get("Authorization") != "Bearer " + local_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 class EngineDescription(BaseModel):
@@ -80,7 +92,8 @@ class GPURouter(APIRouter):
         self._id2ticket = id2ticket
         self._engine_wait_timeout = engine_wait_timeout
 
-    async def _nlp_wait_batch(self, description: EngineDescription):
+    async def _nlp_wait_batch(self, description: EngineDescription, request: Request):
+        check_local_auth(request)
         model_queue = self._user2gpu_queue[description.model]
         user_reqs = []
         t0 = time.time()

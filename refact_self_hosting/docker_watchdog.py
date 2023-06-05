@@ -1,3 +1,4 @@
+import uuid
 import json
 import os
 import signal
@@ -195,6 +196,6 @@ def main_loop():
 
 
 if __name__ == '__main__':
-    os.environ["SMALLCLOUD_API_KEY"] = "dummy-auth"
+    os.environ["SMALLCLOUD_API_KEY"] = str(uuid.uuid4())
     subprocess.check_call([sys.executable, "-m", "refact_self_hosting.first_run"])
     main_loop()
