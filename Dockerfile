@@ -22,9 +22,6 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
       exit 1; \
     fi
 
-RUN pip install --no-cache-dir IPython numpy tokenizers tiktoken fastapi uvicorn uvloop termcolor cdifflib
-RUN pip install --no-cache-dir cloudpickle dataclasses_json huggingface_hub blobfile
-
 ENV TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6+PTX"
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
       BUILD_QUANT_CUDA=1 pip install --no-cache-dir git+https://github.com/smallcloudai/code-contrast.git; \
@@ -34,10 +31,12 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
       exit 1; \
     fi
 
-RUN pip install --no-cache-dir git+https://github.com/smallcloudai/refact-self-hosting.git
+COPY . /tmp/app
+RUN pip install /tmp/app && rm -rf /tmp/app
 
-ENV SERVER_WORKDIR=/workdir
-ENV SERVER_PORT=8008
-EXPOSE $SERVER_PORT
+ENV REFACT_PERM_DIR "/perm_storage"
+ENV REFACT_TMP_DIR "/tmp"
 
-CMD ["python", "-m", "refact_self_hosting.watchdog", "--workdir", "/workdir"]
+EXPOSE 8008
+
+CMD ["python", "-m", "refact_self_hosting.docker_watchdog"]
