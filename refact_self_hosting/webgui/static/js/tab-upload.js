@@ -236,45 +236,6 @@ function save_tab_files() {
     });
 }
 
-const test = {
-    "files_after_dedup": 0,
-    "files_before_dedup": 68,
-    "finished": false,
-    "finished_ts": "",
-    "uploaded_files": {
-        "23S1-Daytona-AMGGT4-SG-Q.sto": {
-            "generated": 0,
-            "good": 60,
-            "status": "completed",
-            "too_large": 6,
-            "vendored": 1
-        },
-        "CSS-23S2-ESS-LeMans-P217-YL.sto": {
-            "generated": 0,
-            "good": 7,
-            "status": "completed",
-            "too_large": 0,
-            "vendored": 0
-        },
-        "bootstrap.min.css": {
-            "status": "completed"
-        },
-        "custom.sass": {
-            "generated": 0,
-            "good": 0,
-            "status": "completed",
-            "too_large": 0,
-            "vendored": 0
-        },
-        "git-flow-cheatsheet": {
-            "status": "starting"
-        },
-        "temp": {
-            "status": "starting"
-        },
-    }
-};
-
 const updateTable = async () => {
     const table = document.querySelector('#upload-tab-table-body-files');
     const process_button = document.querySelector('.tab-files-process-now');
@@ -285,7 +246,6 @@ const updateTable = async () => {
       try {
         const response = await fetch('/tab-files-process-now');
         let data = await response.json();
-        data = test;
   
         if (data.finished === true) {
           process_button.disabled = false;
@@ -377,50 +337,6 @@ export function init() {
     tab_upload_git_submit.addEventListener('click', function() {
         upload_repo();
     });
-    const test = {
-        "files_after_dedup": 0,
-        "files_before_dedup": 68,
-        "finished": false,
-        "finished_ts": "",
-        "uploaded_files": {
-            "code-contrast": {
-                "generated": 0,
-                "good": 60,
-                "status": "completed",
-                "too_large": 6,
-                "vendored": 1
-            },
-            "codify-0.1.35.zip": {
-                "generated": 0,
-                "good": 7,
-                "status": "completed",
-                "too_large": 0,
-                "vendored": 0
-            },
-            "database_set.json": {
-                "status": "completed"
-            },
-            "datacollection.tar.bz2": {
-                "generated": 0,
-                "good": 0,
-                "status": "completed",
-                "too_large": 0,
-                "vendored": 0
-            },
-            "datacollection.tar.gz": {
-                "status": "starting"
-            },
-            "stars.py": {
-                "status": "starting"
-            },
-            "test_set.jsonl": {
-                "status": "starting"
-            },
-            "train_set.jsonl": {
-                "status": "starting"
-            }
-        }
-    };
     const process_button = document.querySelector('.tab-files-process-now');
     process_button.addEventListener('click', function() {
         updateTable();
