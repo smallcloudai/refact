@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 import requests
 
 from refact_self_hosting import env
+from refact_self_hosting import first_run
 
 
 def replace_variable_names_from_env(s):
@@ -195,4 +196,5 @@ def main_loop():
 
 if __name__ == '__main__':
     os.environ["SMALLCLOUD_API_KEY"] = "dummy-auth"
+    subprocess.check_call([sys.executable, "-m", "refact_self_hosting.first_run"])
     main_loop()
