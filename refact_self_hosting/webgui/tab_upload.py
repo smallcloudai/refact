@@ -64,9 +64,9 @@ class TabUploadRouter(APIRouter):
         }
         uploaded_path = env.DIR_UPLOADS
         if os.path.isfile(env.CONFIG_HOW_TO_PROCESS):
-            config = json.load(open(env.CONFIG_HOW_TO_PROCESS, "r"))
+            how_to_process = json.load(open(env.CONFIG_HOW_TO_PROCESS, "r"))
         else:
-            config = {'uploaded_files': {}}
+            how_to_process = {'uploaded_files': {}}
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
             stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
             stats_uploaded_files = stats.get("uploaded_files", {})
@@ -79,8 +79,8 @@ class TabUploadRouter(APIRouter):
         }
         for fn in sorted(os.listdir(uploaded_path)):
             result["uploaded_files"][fn] = {
-                "which_set": config["uploaded_files"].get(fn, default)["which_set"],
-                "to_db": config["uploaded_files"].get(fn, default)["to_db"],
+                "which_set": how_to_process["uploaded_files"].get(fn, default)["which_set"],
+                "to_db": how_to_process["uploaded_files"].get(fn, default)["to_db"],
                 **stats_uploaded_files.get(fn, {})
             }
         del stats["uploaded_files"]
