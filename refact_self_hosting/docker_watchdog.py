@@ -194,7 +194,5 @@ def main_loop():
 
 
 if __name__ == '__main__':
+    os.environ["SMALLCLOUD_API_KEY"] = "dummy-auth"
     main_loop()
-
-
-# model = os.environ.get("SERVER_MODEL")

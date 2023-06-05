@@ -41,7 +41,11 @@ def run_nvidia_smi():
     return j
 
 
-if __name__ == '__main__':
+def enum_gpus():
     result = run_nvidia_smi()
     with open(env.CONFIG_ENUM_GPUS, 'w') as f:
         json.dump(result, f, indent=4)
+
+
+if __name__ == '__main__':
+    enum_gpus()
