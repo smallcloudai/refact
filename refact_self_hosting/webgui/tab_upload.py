@@ -155,4 +155,8 @@ class TabUploadRouter(APIRouter):
         log("set flag %s" % env.FLAG_LAUNCH_PROCESS_UPLOADS)
         with open(env.FLAG_LAUNCH_PROCESS_UPLOADS, "w") as f:
             f.write("1")
+        try:
+            os.remove(env.CONFIG_PROCESSING_STATS)
+        except OSError as e:
+            pass
         return JSONResponse("OK")

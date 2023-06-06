@@ -236,7 +236,7 @@ function save_tab_files() {
     });
 }
 
-const updateTable = async () => {
+const process_now_update_until_finished = async () => {
     const table = document.querySelector('#upload-tab-table-body-files');
     const process_button = document.querySelector('.tab-files-process-now');
     process_button.disabled = true;
@@ -246,14 +246,6 @@ const updateTable = async () => {
       try {
         const response = await fetch('/tab-files-get');
         let data = await response.json();
-
-        if (data.finished === true) {
-          process_button.disabled = false;
-          process_button.innerHTML = process_button_text;
-          const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-          const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-          break;
-        }
 
         for (const [item,item_object] of Object.entries(data.uploaded_files)) {
             const rows = table.querySelectorAll('tr');
@@ -281,6 +273,14 @@ const updateTable = async () => {
                 }
             }
         }
+
+        if (data.finished === true) {
+            process_button.disabled = false;
+            process_button.innerHTML = process_button_text;
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+            break;
+          }
       } catch (error) {
         console.error(error);
       }
@@ -339,7 +339,9 @@ export function init() {
     });
     const process_button = document.querySelector('.tab-files-process-now');
     process_button.addEventListener('click', function() {
-        updateTable();
-        updateTest();
+        fetch("/tab-files-process-now")
+            .then(function(response) {
+                process_now_update_until_finished();
+            });
     });
 }
