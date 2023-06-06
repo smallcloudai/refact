@@ -13,7 +13,6 @@ function finetune_data() {
         .then(function (data) {
             console.log('config-and-runs',data);
             render_finetune_settings(data);
-            render_checkpoints(data);
             downloaded_data = data;
             render_loras();
             render_runs();
@@ -102,6 +101,7 @@ function render_runs() {
             const run_id = this.dataset.run;
             selected_lora = run_id;
             render_runs();
+            render_checkpoints(element.checkpoints);
         });
     });
 }
@@ -121,8 +121,8 @@ function render_loras() {
 function render_checkpoints(data = {}) {
     const checkpoints = document.querySelector('.checkpoints');
     checkpoints.innerHTML = '';
-    if (data.checkpoints.length === 0) {
-        data.checkpoints.forEach(element => {
+    if (data.length > 0) {
+        data.forEach(element => {
             const row = document.createElement('div');
             row.classList.add('checkpoints-row');
             row.dataset.checkpoint = element.checkpoint_name;
