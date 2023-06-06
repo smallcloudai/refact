@@ -48,6 +48,12 @@ class TabFinetuneConfig(BaseModel):
     auto_delete_n_runs: int = Query(default=5, ge=2, le=100)
 
 
+class TabFinetuneActivate(BaseModel):
+    model: str
+    lora_run_id: str   # specific or "latest"
+    checkpoint: str    # specific or "best"
+
+
 class TabFinetuneRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
@@ -56,6 +62,7 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
         self.add_api_route("/tab-finetune-progress-svg/{run_id}", self._tab_funetune_progress_svg, methods=["GET"])
         self.add_api_route("/tab-finetune-config-save", self._tab_finetune_config_save, methods=["POST"])
+        self.add_api_route("/tab-finetune-activate", self._tab_finetune_activate, methods=["POST"])
         self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
 
     async def _tab_finetune_config_and_runs(self):
@@ -100,6 +107,8 @@ class TabFinetuneRouter(APIRouter):
             result["finetune_runs"].append(d)
         if os.path.exists(env.CONFIG_FINETUNE):
             result["config"] = json.load(open(env.CONFIG_FINETUNE, "r"))
+        if os.path.exists(env.CONFIG_ACTIVE_LORA):
+            result["active"] = json.load(open(env.CONFIG_ACTIVE_LORA, "r"))
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_funetune_log(self, run_id: str):
@@ -128,4 +137,9 @@ class TabFinetuneRouter(APIRouter):
     async def _tab_finetune_run_now(self):
         with open(env.FLAG_LAUNCH_FINETUNE, "w") as f:
             f.write("1")
+        return JSONResponse("OK")
+
+    async def _tab_finetune_activate(self, activate: TabFinetuneActivate):
+        with open(env.CONFIG_ACTIVE_LORA, "w") as f:
+            f.write(activate.json())
         return JSONResponse("OK")
