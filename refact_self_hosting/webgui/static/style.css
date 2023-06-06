@@ -194,10 +194,12 @@ h3 {
     text-align: left;
 }
 .gpus-pane {
+    margin-bottom: 20px;
+}
+.gpus-list {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr;
     grid-gap: 10px;
-    margin-bottom: 20px;
 }
 .gpus-item {
     display: flex;
