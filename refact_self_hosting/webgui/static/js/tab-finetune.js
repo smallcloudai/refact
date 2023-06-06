@@ -101,10 +101,19 @@ function render_runs() {
             const run_id = this.dataset.run;
             selected_lora = run_id;
             render_runs();
-            render_checkpoints(element.checkpoints);
+            render_checkpoints(find_checkpoints_by_run(run_id));
         });
     });
 }
+
+const find_checkpoints_by_run = (run_id) => {
+    const finetune_run = downloaded_data.finetune_runs.find((run) => run.run_id === run_id);
+    if (finetune_run) {
+      return finetune_run.checkpoints;
+    } else {
+      return null;
+    }
+};
 
 function render_loras() {
     const loras = document.querySelectorAll('.lora-input');
