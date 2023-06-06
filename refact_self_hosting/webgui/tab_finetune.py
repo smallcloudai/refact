@@ -114,5 +114,6 @@ class TabFinetuneRouter(APIRouter):
             json.dump(config.dict(), f, indent=4)
 
     async def _tab_finetune_run_now(self):
-        log("LAUNCH")
+        with open(env.FLAG_LAUNCH_FINETUNE, "w") as f:
+            f.write("1")
         return JSONResponse("OK")
