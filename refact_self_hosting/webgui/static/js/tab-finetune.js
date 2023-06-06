@@ -79,18 +79,24 @@ function render_runs(data = {}) {
         document.querySelector('.run-table').appendChild(row);
         const rows = document.querySelectorAll('.run-table tr');
         rows.forEach(function (row) {
-            row.addEventListener('click', function () {
-                rows.forEach(function (row) {
-                    row.classList.remove('table-primary');
-                });
-                this.classList.add('table-primary');
+            row.addEventListener('click', function (event) {
+                event.target.parentNode.classList.add('table-primary');
                 const run_id = this.dataset.run;
+                console.log('image changed on click', document.querySelector('.fine-gfx').src);
                 document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${run_id}`;
                 render_log_stream(run_id);
             });
         });
         i++;
     });
+}
+
+function row_selected(row_item) {
+    // const rows = document.querySelectorAll('.run-table tr');
+    // rows.forEach(function (row) {
+    //     row.classList.remove('table-primary');
+    // });
+    // row_item.classList.add('table-primary');
 }
 
 function render_time_dropdown() {
@@ -154,7 +160,7 @@ function render_log_stream(id) {
 
             for (let i = 0; i < lines.length - 1; i++) {
                 const line = lines[i];
-                log_div.textContent += line + '\n';
+                log_div.innerHTML += '<p>' + line + '</p>';
                 handle_auto_scroll();
             }
 
