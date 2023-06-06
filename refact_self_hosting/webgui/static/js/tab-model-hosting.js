@@ -18,14 +18,14 @@ function render_gpus(gpus) {
     gpus_list.innerHTML = '';
     gpus.gpus.forEach(element => {
         const row = document.createElement('div');
-        row.classList.add('.gpus-item');
+        row.classList.add('gpus-item');
         row.setAttribute('gpu',element.id);
         const gpu_name = document.createElement("h3");
-        gpu_name.classList.add('.gpus-title');
+        gpu_name.classList.add('gpus-title');
         const gpu_mem = document.createElement("div");
-        gpu_mem.classList.add('.gpus-mem');
+        gpu_mem.classList.add('gpus-mem');
         const gpu_temp = document.createElement("div");
-        gpu_temp.classList.add('.gpus-temp');
+        gpu_temp.classList.add('gpus-temp');
 
         const used_gb = format_memory(element.mem_used_mb);
         const total_gb = format_memory(element.mem_total_mb);
