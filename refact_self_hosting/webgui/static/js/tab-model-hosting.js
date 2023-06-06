@@ -63,7 +63,7 @@ function render_models(models) {
         const has_chat = document.createElement("td");
         const has_toolbox = document.createElement("td");
         model_name.textContent = models.models[index].name;
-        gpu_qty.innerHTML = `<input type="number" step="1" min="0" value="0" class="table-models-gpu form-control">`;
+        gpu_qty.innerHTML = `<input type="number" step="1" min="0" value="1" class="table-models-gpu form-control">`;
         has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
         has_toolbox.innerHTML = models.models[index].has_toolbox ? '<i class="bi bi-check"></i>' : '';
         row.appendChild(model_name);

@@ -228,35 +228,48 @@
           </div>
           <div class="col-7">
             <div class="pane">
-              <h3>Apply finetune</h3>
+              <h3>Use in inference: <span></span></h3>
               <div class="lora-group">
                 <div class="btn-group" role="group" aria-label="basic radio toggle button group">
                   <input type="radio" class="lora-input btn-check" name="finetune_lora" value="off"
                     id="loraradio1" autocomplete="off" checked>
-                  <label class="btn btn-outline-primary" for="loraradio1">Off</label>
-  
-                  <input type="radio" class="lora-input btn-check" name="finetune_lora" value="55"
-                    id="loraradio2" autocomplete="off">
-                  <label class="btn btn-outline-primary" for="loraradio2">55</label>
-  
-                  <input type="radio" class="lora-input btn-check" name="finetune_lora" value="65"
-                    id="loraradio3" autocomplete="off">
-                  <label class="btn btn-outline-primary" for="loraradio3">65 (best)</label>
+                  <label class="btn btn-outline-primary" for="loraradio1">Turn Off</label>
   
                   <input type="radio" class="lora-input btn-check" name="finetune_lora" value="latest"
                     id="loraradio4" autocomplete="off">
-                  <label class="btn btn-outline-primary" for="loraradio4">Latest / Best</label>
+                  <label class="btn btn-outline-primary" for="loraradio4">Use Latest / Best</label>
                 </div>
               </div>
             </div>
             <div class="pane">
               <img src="/tab-finetune-progress-svg/none" class="fine-gfx" alt="">
             </div>
-            <div class="pane">
-            <h3>Logs</h3>
-              <pre class="log-container tab-upload-finetune-logs">
-              </pre>
+            <div class="pane"> 
+              <ul class="nav nav-tabs" id="myTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button"
+                    role="tab" aria-controls="logs" aria-selected="true">Logs</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="checkpoints-tab" data-bs-toggle="tab" data-bs-target="#checkpoints" type="button"
+                    role="tab" aria-controls="checkpoints" aria-selected="false">Checkpoints</button>
+                </li>
+              </ul>
+
+              <div class="tab-content mt-2" id="myTabContent">
+                <div class="tab-pane fade show active" id="logs" role="tabpanel" aria-labelledby="logs-tab">
+                  <pre class="log-container tab-upload-finetune-logs">
+                  </pre>
+                </div>
+                <div class="tab-pane fade" id="checkpoints" role="tabpanel" aria-labelledby="checkpoints-tab">
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus a ligula quis lectus pharetra tristique
+                    quis et nibh. Proin ac turpis pretium, interdum nisl et, ultricies mauris. Nulla auctor arcu sed elit congue,
+                    sed facilisis ex luctus. Ut dictum, sapien vel interdum dapibus, turpis massa ultrices tellus, vel ultrices
+                    enim nunc sit amet libero.</p>
+                </div>
+              </div>
             </div>
+
           </div>
         </div>
       </div>
