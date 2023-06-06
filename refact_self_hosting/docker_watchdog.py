@@ -7,8 +7,6 @@ import sys
 import time
 from typing import Dict, List, Optional
 
-import requests
-
 from refact_self_hosting import env
 from refact_self_hosting import first_run
 
@@ -85,12 +83,18 @@ class TrackedJob:
         if "when_file_appears" in policy:
             the_file = replace_variable_names_from_env(self.cfg["when_file_appears"])
             if os.path.exists(the_file):
-                os.remove(the_file)
-                self.start()
+                can_start = preempt_low_priority(self.cfg["gpus"])
+                if can_start:
+                    os.remove(the_file)
+                    self.start()
         elif "always_on" in policy:
-            self.start()
+            can_start = preempt_low_priority(self.cfg["gpus"])
+            if can_start:
+                self.start()
         elif "always_on_low_priority" in policy:
-            self.start()
+            can_start = low_priority_can_start(self.cfg["gpus"])
+            if can_start:
+                self.start()
         elif "at_night" in policy:
             pass
         elif "periodic" in policy:
@@ -109,11 +113,15 @@ class TrackedJob:
             garbage = False
             for test in [
                 "Loading extension module",
+                "Building extension module",
                 "ninja",
                 "Detected CUDA files",
+                "skipping build step",
                 "PyTorch extensions root",
                 "RequestsDependencyWarning",
                 "warnings.warn(\"urllib3",
+                "Positional args are being",
+                "warnings.warn",
             ]:
                 if test in line:
                     garbage = True
@@ -122,10 +130,8 @@ class TrackedJob:
                 log("-- %s -- %s" % (self.p.pid, line))
         if self.p.poll() is not None:
             retcode = self.p.returncode
-            if retcode:
-                log("%s crashed %s, retcode %i" % (time.strftime("%Y%m%d %H:%M:%S"), self.cmdline_str, retcode))
-            else:
-                log("%s %s finished %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, self.cmdline_str))
+            log("%s %s finished %s, retcode %i" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, self.cmdline_str, retcode))
+            # retcode -10 is SIGUSR1
             if self.cmdline_str == compiling_now:
                 log("/finished compiling as recognized by watchdog")
                 compiling_now = None
@@ -150,10 +156,11 @@ class TrackedJob:
     def maybe_send_usr1(self):
         if not self.p:
             return
-        if self.please_shutdown:
+        if self.please_shutdown and self.sent_sigusr1_ts == 0:
             self.p.send_signal(signal.SIGUSR1)
             self.sent_sigusr1_ts = time.time()
         if self.please_shutdown and self.sent_sigusr1_ts > time.time() + 30:
+            log("%s SIGUSR1 timed out, sending kill %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid))
             self.p.kill()
 
 
@@ -179,6 +186,29 @@ def create_tracked_jobs_from_configs():
         tracked[fn].remove_this = True
 
 
+def preempt_low_priority(gpus):
+    can_start = True
+    for job in tracked.values():
+        if "always_on_low_priority" not in job.cfg["policy"]:
+            continue
+        if set(gpus) & set(job.cfg["gpus"]):
+            if job.p is not None:
+                can_start = False
+            if not job.please_shutdown:
+                log("%s shutdown low priority job %s" % (time.strftime("%Y%m%d %H:%M:%S"), job.cmdline_str))
+                job.please_shutdown = True
+    return can_start
+
+
+def low_priority_can_start(gpus):
+    can_start = True
+    for job in tracked.values():
+        if set(gpus) & set(job.cfg["gpus"]):
+            if job.p is not None:
+                can_start = False
+    return can_start
+
+
 def main_loop():
     global quit_flag
     while 1:
@@ -189,7 +219,7 @@ def main_loop():
             job.maybe_send_usr1()
             dead = job.poll_logs()
             if dead and job.remove_this:
-                log("%s removing %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
+                log("%s cleanup %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
                 del tracked[fn]
                 break
         time.sleep(1)

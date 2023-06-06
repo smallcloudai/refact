@@ -349,10 +349,11 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
             time.sleep(10)
 
     upload_proxy.stop()
+    log("clean shutdown")
 
 
 def catch_sigkill(signum, frame):
-    sys.stderr.write("caught SIGUSR1")
+    sys.stderr.write("caught SIGUSR1\n")
     sys.stderr.flush()
     global quit_flag
     quit_flag = True

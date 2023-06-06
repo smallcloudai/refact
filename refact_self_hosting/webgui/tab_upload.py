@@ -152,7 +152,6 @@ class TabUploadRouter(APIRouter):
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
 
     async def _upload_files_process_now(self):
-        log("set flag %s" % env.FLAG_LAUNCH_PROCESS_UPLOADS)
         with open(env.FLAG_LAUNCH_PROCESS_UPLOADS, "w") as f:
             f.write("1")
         try:
