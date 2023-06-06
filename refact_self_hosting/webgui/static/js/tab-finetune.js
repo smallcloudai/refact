@@ -107,7 +107,7 @@ function render_runs() {
 }
 
 function render_loras() {
-    const loras = document.querySelector('.lora-input');
+    const loras = document.querySelectorAll('.lora-input');
     loras.forEach(element => {
         element.addEventListener('change', function () {
             if(element.checked === true) {
