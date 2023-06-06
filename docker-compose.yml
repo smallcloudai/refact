@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  refact_self_hosted:
+    image: smallcloud/refact_self_hosting:latest
+    volumes:
+      - perm_storage:/perm_storage
+  nginx:
+    image: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  perm_storage:
