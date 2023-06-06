@@ -155,10 +155,7 @@ function render_log_stream(id) {
             for (let i = 0; i < lines.length - 1; i++) {
                 const line = lines[i];
                 log_div.textContent += line + '\n';
-
-                // const content_div = document.createElement('div');
-                // content_div.textContent = line;
-                // log_div.appendChild(content_div);
+                handle_auto_scroll();
             }
 
             partialLine = lines[lines.length - 1];
@@ -180,6 +177,20 @@ function render_log_stream(id) {
             console.log('Error:', error);
         });
 }
+
+const log_container = document.querySelector('.log-container');
+function is_scroll_at_bottom() {
+    return log_container.scrollHeight - log_container.scrollTop === log_container.clientHeight;
+}
+function scroll_to_bottom() {
+    log_container.scrollTop = log_container.scrollHeight;
+}
+function handle_auto_scroll() {
+    if (scroll_to_bottom()) {
+        scroll_to_bottom();
+    }
+}
+log_container.addEventListener('scroll', handle_auto_scroll);
 
 export function init() {
     const process_button = document.querySelector('.tab-finetune-run-now');

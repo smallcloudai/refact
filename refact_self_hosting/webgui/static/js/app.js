@@ -37,6 +37,7 @@ model_hosting_tab.init();
 upload_tab.init();
 finetune_tab.init();
 access_control_tab.init();
+
 document.addEventListener('shown.bs.tab', function(e) {
     switch (e.target.id) {
         case "model-tab":
