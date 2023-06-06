@@ -56,7 +56,7 @@ function render_runs(data = {}) {
                 status_color = `bg-secondary`;
                 break;
             case 'completed':
-                status_color = `bg-light text-dark`;
+                status_color = `bg-primary`;
                 break;
             case 'failed':
                 status_color = `bg-danger`;
