@@ -121,17 +121,19 @@ function render_loras() {
 function render_checkpoints(data = {}) {
     const checkpoints = document.querySelector('.checkpoints');
     checkpoints.innerHTML = '';
-    data.checkpoints.forEach(element => {
-        const row = document.createElement('div');
-        row.classList.add('checkpoints-row');
-        row.dataset.checkpoint = element.checkpoint_name;
-        row.innerHTML = `${element.checkpoint_name}`;
-        checkpoints.appendChild(row);
-        row.addEventListener('click', () => {
-            checkpoint_name = this.dataset.checkpoint;
-            finetune_activate();
+    if (data.checkpoints.length === 0) {
+        data.checkpoints.forEach(element => {
+            const row = document.createElement('div');
+            row.classList.add('checkpoints-row');
+            row.dataset.checkpoint = element.checkpoint_name;
+            row.innerHTML = `${element.checkpoint_name}`;
+            checkpoints.appendChild(row);
+            row.addEventListener('click', () => {
+                checkpoint_name = this.dataset.checkpoint;
+                finetune_activate();
+            });
         });
-    });
+    }
 }
 
 function finetune_activate() {
