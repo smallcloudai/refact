@@ -244,9 +244,9 @@ const updateTable = async () => {
     process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
     while (true) {
       try {
-        const response = await fetch('/tab-files-process-now');
+        const response = await fetch('/tab-files-get');
         let data = await response.json();
-  
+
         if (data.finished === true) {
           process_button.disabled = false;
           process_button.innerHTML = process_button_text;
@@ -254,7 +254,7 @@ const updateTable = async () => {
           const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
           break;
         }
-        
+
         for (const [item,item_object] of Object.entries(data.uploaded_files)) {
             const rows = table.querySelectorAll('tr');
             for (const row of rows) {
@@ -284,7 +284,7 @@ const updateTable = async () => {
       } catch (error) {
         console.error(error);
       }
-  
+
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 };
