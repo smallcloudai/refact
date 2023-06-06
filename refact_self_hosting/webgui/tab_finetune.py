@@ -85,6 +85,18 @@ class TabFinetuneRouter(APIRouter):
                 mtime = os.path.getmtime(status_fn)
                 if mtime + 600 < time.time():
                     d["status"] = "failed"
+            d["checkpoints"] = []
+            checkpoints_dir = os.path.join(dir_path, "checkpoints")
+            print(checkpoints_dir)
+            if os.path.isdir(checkpoints_dir):
+                for checkpoint_dir in sorted(os.listdir(checkpoints_dir)):
+                    print(checkpoint_dir)
+                    checkpoint_path = os.path.join(checkpoints_dir, checkpoint_dir)
+                    if not os.path.isdir(checkpoint_path):
+                        continue
+                    d["checkpoints"].append({
+                        "checkpoint_name": checkpoint_dir,
+                        })
             result["finetune_runs"].append(d)
         if os.path.exists(env.CONFIG_FINETUNE):
             result["config"] = json.load(open(env.CONFIG_FINETUNE, "r"))
