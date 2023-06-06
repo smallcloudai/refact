@@ -1,7 +1,9 @@
 let logstream_reader = null;
 let logstream_runid = null;
-let selected_lora = null;
 let downloaded_data = null;
+let checkpoint_name = "best";
+let selected_lora = "latest";
+let selected_model = "";
 
 function finetune_data() {
     fetch("/tab-finetune-config-and-runs")
@@ -11,7 +13,9 @@ function finetune_data() {
         .then(function (data) {
             console.log('config-and-runs',data);
             render_finetune_settings(data);
+            render_checkpoints(data);
             downloaded_data = data;
+            render_loras();
             render_runs();
         });
 }
@@ -102,12 +106,49 @@ function render_runs() {
     });
 }
 
-function row_selected(row_item) {
-    // const rows = document.querySelectorAll('.run-table tr');
-    // rows.forEach(function (row) {
-    //     row.classList.remove('table-primary');
-    // });
-    // row_item.classList.add('table-primary');
+function render_loras() {
+    const loras = document.querySelector('.lora-input');
+    loras.forEach(element => {
+        element.addEventListener('change', function () {
+            if(element.checked === true) {
+                selected_lora = element.value;
+            }
+            finetune_activate();
+        });
+    }
+}
+
+function render_checkpoints(data = {}) {
+    const checkpoints = document.querySelector('.checkpoints');
+    checkpoints.innerHTML = '';
+    data.checkpoints.forEach(element => {
+        const row = document.createElement('div');
+        row.classList.add('checkpoints-row');
+        row.dataset.checkpoint = element.checkpoint_name;
+        row.innerHTML = `${element.checkpoint_name}`;
+        checkpoints.appendChild(row);
+        row.addEventListener('click', () => {
+            checkpoint_name = this.dataset.checkpoint;
+            finetune_activate();
+        });
+    });
+}
+
+function finetune_activate() {
+    fetch("/tab-finetune-activate", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            "model": selected_model,
+            "lora_run_id": selected_lora,
+            "checkpoint": checkpoint_name
+        })
+    })
+    .then(function (response) {
+        console.log(response);
+    });
 }
 
 function render_time_dropdown() {
