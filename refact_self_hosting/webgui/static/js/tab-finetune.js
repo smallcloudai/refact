@@ -115,7 +115,7 @@ function render_loras() {
             }
             finetune_activate();
         });
-    }
+    });
 }
 
 function render_checkpoints(data = {}) {
