@@ -8,7 +8,6 @@ import time
 from typing import Dict, List, Optional
 
 from refact_self_hosting import env
-from refact_self_hosting import first_run
 
 
 def replace_variable_names_from_env(s):
@@ -155,6 +154,7 @@ class TrackedJob:
 
     def maybe_send_usr1(self):
         if not self.p:
+            self.please_shutdown = False    # this overrides True from "preempt" that sometimes happens (because of the task order)
             return
         if self.please_shutdown and self.sent_sigusr1_ts == 0:
             self.p.send_signal(signal.SIGUSR1)
