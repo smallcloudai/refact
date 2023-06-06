@@ -23,7 +23,7 @@ from typing import Dict
 
 
 def handle_sigint(*args):
-    print("Received SIGINT, exiting...")
+    print("Received SIGINT or SIGUSR1, exiting...")
     exit(1)
 
 
@@ -71,6 +71,7 @@ if __name__ == "__main__":
     @app.on_event("startup")
     async def startup_event():
         signal.signal(signal.SIGINT, handle_sigint)
+        signal.signal(signal.SIGUSR1, handle_sigint)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     uvicorn.run(app, host=args.host, port=args.port, log_config=None)

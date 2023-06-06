@@ -57,8 +57,7 @@ h2 {
     border: 1px solid #ccc;
     padding: 10px;
     font-family: monospace;
-    white-space: nowrap;
-    overflow-x: auto; 
+    overflow-x: auto;
 }
 .log-container p {
     margin-bottom: 0;
@@ -133,7 +132,7 @@ h2 {
 .finetune-spinner {
     margin-right: 5px;
     width: 10px;
-    height: 10px;   
+    height: 10px;
 }
 .table-types tr td:first-of-type {
     width: 50%;

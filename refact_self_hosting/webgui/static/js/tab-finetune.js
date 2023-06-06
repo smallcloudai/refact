@@ -1,4 +1,8 @@
-let stream_reader = null;
+let logstream_reader = null;
+let logstream_runid = null;
+let selected_lora = null;
+let downloaded_data = null;
+
 function finetune_data() {
     fetch("/tab-finetune-config-and-runs")
         .then(function (response) {
@@ -7,7 +11,8 @@ function finetune_data() {
         .then(function (data) {
             console.log('config-and-runs',data);
             render_finetune_settings(data);
-            render_runs(data);
+            downloaded_data = data;
+            render_runs();
         });
 }
 
@@ -33,9 +38,9 @@ function render_finetune_settings(data = {}) {
     }
 }
 
-function render_runs(data = {}) {
+function render_runs() {
+    let data = downloaded_data;
     document.querySelector('.run-table').innerHTML = '';
-    let i = 0;
     data.finetune_runs.forEach(element => {
         const row = document.createElement('tr');
         const run_name = document.createElement("td");
@@ -63,9 +68,11 @@ function render_runs(data = {}) {
                 break;
         }
 
-
         row.dataset.run = element.run_id;
-        if(element.status === 'working') {
+        if (element.status === 'working') {
+            if (!selected_lora) {
+                selected_lora = element.run_id;
+            }
             run_status.innerHTML = `<span class="badge rounded-pill ${status_color}"><div class="finetune-spinner spinner-border spinner-border-sm" role="status"></div>${element.status}</span>`;
         } else {
             run_status.innerHTML = `<span class="badge rounded-pill ${status_color}">${element.status}</span>`;
@@ -77,17 +84,21 @@ function render_runs(data = {}) {
         row.appendChild(run_minutes);
         row.appendChild(run_steps);
         document.querySelector('.run-table').appendChild(row);
-        const rows = document.querySelectorAll('.run-table tr');
-        rows.forEach(function (row) {
-            row.addEventListener('click', function (event) {
-                event.target.parentNode.classList.add('table-primary');
-                const run_id = this.dataset.run;
-                console.log('image changed on click', document.querySelector('.fine-gfx').src);
-                document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${run_id}`;
-                render_log_stream(run_id);
-            });
+        if (selected_lora == element.run_id) {
+            row.classList.add('table-primary');
+            document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${element.run_id}`;
+            console.log(`/tab-finetune-progress-svg/${element.run_id}`);
+            start_log_stream(element.run_id);
+        }
+    });
+    const rows = document.querySelectorAll('.run-table tr');
+    rows.forEach(function (row) {
+        row.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const run_id = this.dataset.run;
+            selected_lora = run_id;
+            render_runs();
         });
-        i++;
     });
 }
 
@@ -137,42 +148,54 @@ function save_finetune_settings() {
         });
 }
 
-function render_log_stream(id) {
-    const run_id = id;
+function start_log_stream(run_id) {
+    if (run_id === logstream_runid) {
+        return;
+    }
+    if (logstream_reader) {
+        logstream_reader.cancel();
+    }
+
     const log_div = document.querySelector('.tab-upload-finetune-logs');
     log_div.textContent = '';
 
     const streamTextFile = async () => {
+        const decoder = new TextDecoder();
+        // let partialLine = '';
         const response = await fetch(`/tab-finetune-log/${run_id}`);
         const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let partialLine = '';
+        logstream_reader = reader;
+        logstream_runid = run_id;
+        let refresh_timeout = null;
 
         const processResult = ({ done, value }) => {
-
             if (done) {
                 console.log('Streaming complete');
                 return;
             }
 
             const chunk = decoder.decode(value);
-            const lines = (partialLine + chunk).split('\n');
+            // const lines = (partialLine + chunk).split('\n');
 
-            for (let i = 0; i < lines.length - 1; i++) {
-                const line = lines[i];
-                log_div.innerHTML += '<p>' + line + '</p>';
-                handle_auto_scroll();
-            }
+            log_div.textContent += chunk;
 
-            partialLine = lines[lines.length - 1];
-            finetune_data();
+            // for (let i = 0; i < lines.length - 1; i++) {
+            //     const line = lines[i];
+            //     log_div.textContent += line + "\n";
+            //     handle_auto_scroll();
+            // }
+
+            // partialLine = lines[lines.length - 1];
+
+            // if (!refresh_timeout) {
+            //     refresh_timeout = setTimeout(() => {
+            //         render_runs();
+            //         refresh_timeout = null;
+            //     }, 1000);
+            // }
+
             return reader.read().then(processResult);
         };
-
-        if (stream_reader) {
-            stream_reader.cancel();
-        }
-        stream_reader = reader;
 
         return reader.read().then(processResult);
     };
@@ -185,15 +208,9 @@ function render_log_stream(id) {
 }
 
 const log_container = document.querySelector('.log-container');
-function is_scroll_at_bottom() {
-    return log_container.scrollHeight - log_container.scrollTop === log_container.clientHeight;
-}
-function scroll_to_bottom() {
-    log_container.scrollTop = log_container.scrollHeight;
-}
 function handle_auto_scroll() {
-    if (scroll_to_bottom()) {
-        scroll_to_bottom();
+    if (log_container.scrollHeight - log_container.scrollTop === log_container.clientHeight) {
+        log_container.scrollTop = log_container.scrollHeight;
     }
 }
 log_container.addEventListener('scroll', handle_auto_scroll);
