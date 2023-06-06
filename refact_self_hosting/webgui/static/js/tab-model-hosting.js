@@ -22,6 +22,8 @@ function render_gpus(gpus) {
         row.setAttribute('gpu',element.id);
         const gpu_name = document.createElement("h3");
         gpu_name.classList.add('gpus-title');
+        const gpu_image = document.createElement("div");
+        gpu_image.classList.add('gpus-card');
         const gpu_mem = document.createElement("div");
         gpu_mem.classList.add('gpus-mem');
         const gpu_temp = document.createElement("div");
@@ -33,6 +35,7 @@ function render_gpus(gpus) {
         gpu_name.innerHTML = element.name;
         gpu_mem.innerHTML = `<div class="table-gpu-mem"><span style="width: ${used_mem}%"></span></div>${used_gb}/${total_gb} GB`;
         gpu_temp.textContent = element.temp_celsius + '°C';
+        row.appendChild(gpu_image);
         row.appendChild(gpu_name);
         row.appendChild(gpu_mem);
         row.appendChild(gpu_temp);
