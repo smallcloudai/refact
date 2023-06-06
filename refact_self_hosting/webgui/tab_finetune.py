@@ -81,6 +81,10 @@ class TabFinetuneRouter(APIRouter):
             status_fn = os.path.join(dir_path, "status.json")
             if os.path.exists(status_fn):
                 d.update(json.load(open(status_fn, "r")))
+            if d["status"] == "working":
+                mtime = os.path.getmtime(status_fn)
+                if mtime + 600*60 < time.time():
+                    d["status"] = "failed"
             result["finetune_runs"].append(d)
         if os.path.exists(env.CONFIG_FINETUNE):
             result["config"] = json.load(open(env.CONFIG_FINETUNE, "r"))

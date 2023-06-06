@@ -268,7 +268,11 @@ const process_now_update_until_finished = async () => {
                     if(item_object.vendored) {
                         popup_data += ` \nVendored: ${item_object.vendored}`;
                     }
-                    target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}" class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
+                    if (current_status == "completed") {
+                        target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}">${item_object.good} files</span>`;
+                    } else {
+                        target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}" class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
+                    }
                     break;
                 }
             }
@@ -285,7 +289,7 @@ const process_now_update_until_finished = async () => {
         console.error(error);
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
 };
 
@@ -319,7 +323,6 @@ function updateTest() {
 }
 
 export function init() {
-    get_tab_files();
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());
     tab_upload_file_submit.addEventListener('click', function() {
@@ -337,6 +340,7 @@ export function init() {
     tab_upload_git_submit.addEventListener('click', function() {
         upload_repo();
     });
+
     const process_button = document.querySelector('.tab-files-process-now');
     process_button.addEventListener('click', function() {
         fetch("/tab-files-process-now")
@@ -344,4 +348,8 @@ export function init() {
                 process_now_update_until_finished();
             });
     });
+}
+
+export function tab_switched_here() {
+    get_tab_files();
 }

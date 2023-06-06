@@ -34,19 +34,21 @@ function comming_soon_resize()  {
 }
 display_comming_soon();
 model_hosting_tab.init();
+upload_tab.init();
+finetune_tab.init();
+access_control_tab.init();
 document.addEventListener('shown.bs.tab', function(e) {
     switch (e.target.id) {
         case "model-tab":
-            model_hosting_tab.init();
+            model_hosting_tab.tab_switched_here();
             break;
         case "upload-tab":
-            upload_tab.init();
+            upload_tab.tab_switched_here();
             break;
         case "finetune-tab":
-            finetune_tab.init();
+            finetune_tab.tab_switched_here();
             break;
         case "access-control-tab":
-            access_control_tab.init();
             break;
     }
 });

@@ -4,7 +4,7 @@ function get_gpus() {
         return response.json();
     })
     .then(function(data) {
-        console.log('gpus',data);     
+        console.log('gpus',data);
         render_gpus(data);
     });
 }
@@ -22,7 +22,7 @@ function render_gpus(gpus) {
         const gpu_name = document.createElement("td");
         const gpu_mem = document.createElement("td");
         const gpu_temp = document.createElement("td");
-        
+
         const used_gb = format_memory(element.mem_used_mb);
         const total_gb = format_memory(element.mem_total_mb);
         const used_mem = Math.round(element.mem_used_mb / (element.mem_total_mb / 100));
@@ -78,6 +78,9 @@ function format_memory(memory_in_mb, decimalPlaces = 2) {
 }
 
 export function init() {
+}
+
+export function tab_switched_here() {
     get_gpus();
     get_models();
 }

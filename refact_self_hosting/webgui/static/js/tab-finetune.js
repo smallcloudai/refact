@@ -182,9 +182,6 @@ function render_log_stream(id) {
 }
 
 export function init() {
-    finetune_data();
-    render_time_dropdown();
-
     const process_button = document.querySelector('.tab-finetune-run-now');
     process_button.addEventListener('click', function () {
         fetch("/tab-finetune-run-now")
@@ -193,3 +190,7 @@ export function init() {
     });
 }
 
+export function tab_switched_here() {
+    finetune_data();
+    render_time_dropdown();
+}
