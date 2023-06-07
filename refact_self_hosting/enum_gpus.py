@@ -1,3 +1,4 @@
+import traceback
 import logging
 
 from refact_self_hosting import env
@@ -10,6 +11,7 @@ def run_nvidia_smi():
     j = {
         "gpus": []
     }
+    txt = "- no output -"
     try:
         txt = subprocess.check_output(['nvidia-smi', '-q', '-x'])
         root = ET.fromstring(txt)
@@ -41,8 +43,10 @@ def run_nvidia_smi():
                     "mem_total_mb": int(gpu_mem_total.split()[0]),
                     "temp_celsius": int(gpu_temp.split()[0])
                 })
-    except Exception as _:
-        logging.warning("nvidia-smi is not exist; model will run on cpu")
+    except Exception:
+        logging.warning("nvidia-smi does not work, that's especially bad for initial setup.")
+        logging.warning(traceback.format_exc())
+        logging.warning("output was:\n%s" % txt)
 
     return j
 
