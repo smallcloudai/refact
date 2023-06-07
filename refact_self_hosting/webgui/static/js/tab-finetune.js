@@ -218,12 +218,10 @@ function start_log_stream(run_id) {
 
     const streamTextFile = async () => {
         const decoder = new TextDecoder();
-        // let partialLine = '';
         const response = await fetch(`/tab-finetune-log/${run_id}`);
         const reader = response.body.getReader();
         logstream_reader = reader;
         logstream_runid = run_id;
-        let refresh_timeout = null;
 
         const processResult = ({ done, value }) => {
             if (done) {
@@ -232,24 +230,14 @@ function start_log_stream(run_id) {
             }
 
             const chunk = decoder.decode(value);
-            // const lines = (partialLine + chunk).split('\n');
+
+            const isAtBottom = log_div.scrollTop + log_div.clientHeight === log_div.scrollHeight;
 
             log_div.textContent += chunk;
 
-            // for (let i = 0; i < lines.length - 1; i++) {
-            //     const line = lines[i];
-            //     log_div.textContent += line + "\n";
-            //     handle_auto_scroll();
-            // }
-
-            // partialLine = lines[lines.length - 1];
-
-            // if (!refresh_timeout) {
-            //     refresh_timeout = setTimeout(() => {
-            //         render_runs();
-            //         refresh_timeout = null;
-            //     }, 1000);
-            // }
+            if (isAtBottom) {
+                log_div.scrollTop = log_div.scrollHeight;
+            }
 
             return reader.read().then(processResult);
         };
@@ -259,7 +247,6 @@ function start_log_stream(run_id) {
 
     streamTextFile()
         .catch(error => {
-            // Handle any errors that occur during the fetch
             console.log('Error:', error);
         });
 }
