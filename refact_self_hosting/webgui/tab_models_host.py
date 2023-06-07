@@ -93,7 +93,11 @@ def _update_watchdog_d():
     # This must work or installation is bad
     model_cfg_template = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model.cfg")))
     cursor = 0
+    dont_freeze = 0
     while cursor < len(gpus):
+        dont_freeze += 1
+        if dont_freeze > 100:
+            break
         for k, set_gpus in model_assignment.items():
             if k not in known_models.models_mini_db.keys():
                 log("unknown model '%s', skipping" % k)
