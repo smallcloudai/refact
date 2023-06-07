@@ -44,6 +44,11 @@ function render_finetune_settings(data = {}) {
 function render_runs() {
     let data = downloaded_data;
     document.querySelector('.run-table').innerHTML = '';
+    if(data.finetune_runs.length === 0) {
+        document.querySelector('.table-types').style.display = 'none';
+        return;
+    }
+    document.querySelector('.table-types').style.display = 'table';
     data.finetune_runs.forEach(element => {
         const row = document.createElement('tr');
         const run_name = document.createElement("td");
