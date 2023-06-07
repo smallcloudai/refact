@@ -7,6 +7,8 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
     htop \
     tmux \
     vim \
+    mpich \
+    libmpich-dev \
     python3 python3-pip \
     && rm -rf /var/lib/{apt,dpkg,cache,log}
 
