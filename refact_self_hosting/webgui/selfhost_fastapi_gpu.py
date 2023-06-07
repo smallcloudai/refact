@@ -106,7 +106,7 @@ class GPURouter(APIRouter):
                 else:
                     user_req = model_queue.get_nowait()
                 if user_req.cancelled:
-                    log(red_time(user_req.call.get("created", 0)) + " cancelled %s, drop" % user_req.call["id"])
+                    log(red_time(user_req.call.get("created", 0)) + " cancelled %s, drop" % user_req.call.get("id", "NO-ID"))
                     continue
                 user_reqs.append(user_req)
             except (asyncio.TimeoutError, asyncio.queues.QueueEmpty):

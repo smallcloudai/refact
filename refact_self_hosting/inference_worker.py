@@ -8,18 +8,19 @@ import signal
 import socket
 import datetime
 import importlib
+import json
 
 from collections import defaultdict
 
 from code_contrast import ScratchpadBase
 from code_contrast import ScratchpadCompletion
 
-from refact_self_hosting import known_models
+from refact_self_hosting import known_models, best_lora
 
 from code_contrast.modeling import CodifyModel
 from code_contrast.modeling import HFModel
 from code_contrast.modeling import GPTQBigCodeModel
-from code_contrast.modeling.checkpoint_loader import load_finetune_checkpoint
+from code_contrast.modeling.checkpoint_loader import load_finetune_checkpoint, load_finetune_checkpoint_only
 from typing import Optional, Dict, Any, List
 
 from refact_self_hosting import env
@@ -59,10 +60,13 @@ class Inference:
         try:
             self._model, self._encoding = self._model_setup(
                 self._model_dict, self._device)
-            if load_lora is not None:
-                self._model = load_finetune_checkpoint(self._model, load_lora)
         except Exception as e:
             raise RuntimeError(f"model {model_name} loading failed: {e}")
+
+        self._lora_on = False
+        self._lora_checkpoint_dir = ""
+        if load_lora is not None:
+            self.lora_switch(on=True, lora_checkpoint_dir=load_lora)
 
     @staticmethod
     def _model_setup(model_dict: Dict, device: str):
@@ -287,6 +291,42 @@ class Inference:
             logging.error(e)
             logging.error(traceback.format_exc())
 
+    def lora_switch(self, *, lora_checkpoint_dir: str):
+        on = not not lora_checkpoint_dir
+        if self._lora_on and not on:
+            log("deactivating lora")
+            self._model = self._model.exclude_lora(self._model)
+            self._lora_on = False
+        elif not self._lora_on and on:
+            log("activating lora %s" % lora_checkpoint_dir)
+            self._model = load_finetune_checkpoint(self._model, lora_checkpoint_dir)
+            self._lora_on = True
+        elif self._lora_on and self._lora_checkpoint_dir != lora_checkpoint_dir:
+            self._lora_checkpoint_dir = lora_checkpoint_dir
+            self._model = load_finetune_checkpoint_only(self._model, lora_checkpoint_dir)
+
+    def lora_switch_according_to_config(self):
+        if not os.path.exists(env.CONFIG_ACTIVE_LORA):
+            self.lora_switch(lora_checkpoint_dir="")
+            return
+        j = json.load(open(env.CONFIG_ACTIVE_LORA))
+        # {"model": "", "lora_run_id": "latest", "checkpoint": "best"}
+        if j["lora_run_id"] == "off":
+            self.lora_switch(lora_checkpoint_dir="")
+            return
+        lora_checkpoint_dir = ""
+        some_problem_with_explicit = False
+        if j["lora_run_id"] != "latest":
+            t = os.path.join(env.DIR_LORAS, j["lora_run_id"], j["checkpoint"])
+            if os.path.isdir(t):
+                lora_checkpoint_dir = t
+            else:
+                log("cannot find %s, switching to latest/best" % lora_checkpoint_dir)
+                some_problem_with_explicit = True
+        if j["lora_run_id"] == "latest" or some_problem_with_explicit:
+            lora_checkpoint_dir = best_lora.find_best_lora(self._model_name)
+        self.lora_switch(lora_checkpoint_dir=lora_checkpoint_dir)
+
 
 def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
     log("loading model '%s'" % model_name)
@@ -328,6 +368,7 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
             req_session, description_dict, verbose=False)
         ts_arrived = time.time()
         if retcode == "OK":
+            inference_model.lora_switch_according_to_config()
             for request in request_batch:
                 upload_proxy_args = {
                     "description_dict": description_dict,

@@ -94,10 +94,8 @@ class TabFinetuneRouter(APIRouter):
                     d["status"] = "failed"
             d["checkpoints"] = []
             checkpoints_dir = os.path.join(dir_path, "checkpoints")
-            print(checkpoints_dir)
             if os.path.isdir(checkpoints_dir):
                 for checkpoint_dir in sorted(os.listdir(checkpoints_dir)):
-                    print(checkpoint_dir)
                     checkpoint_path = os.path.join(checkpoints_dir, checkpoint_dir)
                     if not os.path.isdir(checkpoint_path):
                         continue
