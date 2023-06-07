@@ -60,13 +60,20 @@ function delete_events() {
 
 function upload_url() {
     const fileInput = document.querySelector('#tab-upload-url-input');
-    if(!fileInput || fileInput.value == '') {
+    if (!fileInput || fileInput.value === '') {
         return;
     }
-    console.log('fileInput.value',fileInput.value);
-    const formData = {
-        'url' : fileInput.value
+
+    const url_regex = /^(ftp|http|https):\/\/[^ "]+$/;
+    const is_url = url_regex.test(fileInput.value);
+    if (!is_url) {
+        handle_invalid_url();
+        return;
     }
+
+    const formData = {
+        'url': fileInput.value
+    };
 
     fetch('/tab-files-upload-url', {
         method: 'POST',
@@ -75,33 +82,43 @@ function upload_url() {
         },
         body: JSON.stringify(formData)
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.text();
-    })
-    .then(data => {
-        get_tab_files();
-        fileInput.value = '';
-        let url_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-url-modal'));
-        url_modal.hide();
-    })
-    .catch(error => {
-        document.querySelector('#status-url').innerHTML = error.message;
-    });
+        .then(response => {
+            if (!response.ok) {
+                return response.json()
+                    .then(error => {
+                        throw new Error(error.message);
+                    });
+            }
+            return response.json();
+        })
+        .then(data => {
+            get_tab_files();
+            fileInput.value = '';
+            document.querySelector('#status-url').innerHTML = '';
+            let url_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-url-modal'));
+            url_modal.hide();
+        })
+        .catch(error => {
+            document.querySelector('#status-url').innerHTML = error.message;
+        });
 }
+
+function handle_invalid_url() {
+    const error = new Error('Invalid URL');
+    document.querySelector('#status-url').innerHTML = error.message;
+}
+
 
 function upload_repo() {
     const gitUrl = document.querySelector('#tab-upload-git-input');
     const gitBranch = document.querySelector('#tab-upload-git-brach-input');
-    if(!gitUrl || gitUrl.value == '') {
+    if (!gitUrl || gitUrl.value == '') {
         return;
     }
     const formData = {
-        'url' : gitUrl.value
-    }
-    if(gitBranch.value && gitBranch.value !== '') {
+        'url': gitUrl.value
+    };
+    if (gitBranch.value && gitBranch.value !== '') {
         formData['branch'] = gitBranch.value;
     }
 
@@ -114,8 +131,10 @@ function upload_repo() {
     })
     .then(response => {
         if (!response.ok) {
-            // document.querySelector('#status-git').innerHTML = response.message;
-            throw new Error('Network response was not ok');
+            return response.json()
+                .then(error => {
+                    throw new Error(error.message);
+                });
         }
         return response.text();
     })
@@ -167,11 +186,13 @@ function progressHandler(event) {
             file_modal.hide();
         }, 500);
     } else {
-        // document.querySelector('.progress-bar').setAttribute('aria-valuenow', 0);
-        // document.querySelector('.progress').classList.toggle('d-none');
-        // document.querySelector('.tab-upload-file-submit').classList.toggle('d-none');
-        console.log(event.target.responseText);
-        // document.querySelector('#status').innerHTML = event.target.responseText.message;
+        let error_msg = JSON.parse(event.target.responseText);
+        const file_modal = document.getElementById('upload-tab-files-modal');
+        file_modal.querySelector('.progress-bar').setAttribute('aria-valuenow', 0);
+        file_modal.querySelector('.progress').classList.add('d-none');
+        file_modal.querySelector('.tab-upload-file-submit').classList.remove('d-none');
+        file_modal.querySelector('#loaded_n_total').innerHTML = "";
+        file_modal.querySelector('#status').innerHTML = error_msg.message;
     }
   }
 
@@ -347,6 +368,28 @@ export function init() {
             .then(function(response) {
                 process_now_update_until_finished();
             });
+    });
+    const file_modal = document.getElementById('upload-tab-files-modal');
+    file_modal.addEventListener('show.bs.modal', function () {
+        file_modal.querySelector('#tab-upload-file-input').value = '';
+        file_modal.querySelector('.progress-bar').setAttribute('aria-valuenow', 0);
+        file_modal.querySelector('.progress').classList.add('d-none');
+        file_modal.querySelector('.tab-upload-file-submit').classList.remove('d-none');
+        file_modal.querySelector('#status').innerHTML = '';
+        file_modal.querySelector('#loaded_n_total').innerHTML = '';
+    });
+
+    const url_modal = document.getElementById('upload-tab-url-modal');
+    url_modal.addEventListener('show.bs.modal', function () {
+        url_modal.querySelector('#tab-upload-url-input').value = '';
+        url_modal.querySelector('#status-url').innerHTML = '';
+    });
+
+    const git_modal = document.getElementById('upload-tab-git-modal');
+    git_modal.addEventListener('show.bs.modal', function () {
+        git_modal.querySelector('#tab-upload-git-input').value = '';
+        git_modal.querySelector('#tab-upload-git-brach-input').value = '';
+        git_modal.querySelector('#status-git').innerHTML = '';
     });
 }
 
