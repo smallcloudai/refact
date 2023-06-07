@@ -12,6 +12,7 @@ setup(
                       "jsonlines",
                       "huggingface_hub", "tiktoken", "cdifflib", "cloudpickle",
                       "sentencepiece", "dataclasses_json", "torch", "transformers",
+                      "blobfile",
                       "smallcloud", "code_contrast", "uvloop", "aiohttp", "python-multipart"
                       ],
 )

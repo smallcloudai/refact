@@ -132,10 +132,13 @@ class TrackedJob:
             log("%s %s finished %s, retcode %i" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, self.cmdline_str, retcode))
             # retcode -10 is SIGUSR1
             if self.cmdline_str == compiling_now:
-                log("/finished compiling as recognized by watchdog")
                 compiling_now = None
                 if retcode == 0:
+                    log("/finished compiling as recognized by watchdog")
                     compile_successful.add(self.cmdline_str)
+                else:
+                    log("/finished compiling -- failed, probably unrecoverable, but will try again in 5 minutes...")
+                    time.sleep(300)
             self.p.communicate()
             self.p = None
             self.sent_sigusr1_ts = 0
