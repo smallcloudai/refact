@@ -43,6 +43,7 @@ function render_finetune_settings(data = {}) {
 
 function render_runs() {
     let data = downloaded_data;
+    let is_working = false;
     document.querySelector('.run-table').innerHTML = '';
     if(data.finetune_runs.length === 0) {
         document.querySelector('.table-types').style.display = 'none';
@@ -78,6 +79,7 @@ function render_runs() {
 
         row.dataset.run = element.run_id;
         if (element.status === 'working') {
+            is_working = true;
             if (!selected_lora) {
                 selected_lora = element.run_id;
             }
@@ -109,6 +111,12 @@ function render_runs() {
             render_checkpoints(find_checkpoints_by_run(run_id));
         });
     });
+    const process_button = document.querySelector('.tab-finetune-run-now');
+    if(is_working) {
+        process_button.textContent = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop Finetune Now';
+    } else {
+        process_button.textContent = 'Start Finetune Now';
+    }
 }
 
 const find_checkpoints_by_run = (run_id) => {
@@ -264,6 +272,7 @@ export function init() {
     process_button.addEventListener('click', function () {
         fetch("/tab-finetune-run-now")
             .then(function (response) {
+                finetune_data();
             })
     });
 }
