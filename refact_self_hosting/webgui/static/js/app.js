@@ -69,6 +69,7 @@ tabs.forEach(tab => {
 function active_tab_function() {
     const activeTab = document.querySelector('.nav-link.active');
     const tabId = activeTab.getAttribute('href');
+    console.log('tabId',tabId);
 
     switch (tabId) {
         case '#model-tab':
@@ -86,10 +87,12 @@ function active_tab_function() {
 }
 let refresh_interval;
 function start_tab_timer() {
+    console.log('timer started');
     refresh_interval = setInterval(active_tab_function, 10000);
 }
 
 function stop_tab_timer() {
+    console.log('timer stopped');
     clearInterval(refresh_interval);
 }
 start_tab_timer();
