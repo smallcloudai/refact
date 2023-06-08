@@ -68,6 +68,7 @@ tabs.forEach(tab => {
 
 function active_tab_function() {
     const activeTab = document.querySelector('.nav-link.active');
+    console.log('activeTab',activeTab);
     const tabId = activeTab.getAttribute('href');
     console.log('tabId',tabId);
 
