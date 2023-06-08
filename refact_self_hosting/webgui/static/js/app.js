@@ -50,50 +50,28 @@ tabs.forEach(tab => {
     });
 });
 
-// document.addEventListener('shown.bs.tab', function (e) {
-//     switch (e.target.id) {
-//         case "model-tab":
-//             model_hosting_tab.tab_switched_here();
-//             break;
-//         case "upload-tab":
-//             upload_tab.tab_switched_here();
-//             break;
-//         case "finetune-tab":
-//             finetune_tab.tab_switched_here();
-//             break;
-//         case "access-control-tab":
-//             break;
-//     }
-// });
-
 function active_tab_function() {
-    const activeTab = document.querySelector('.nav-link.active');
-    console.log('activeTab',activeTab);
-    const tabId = activeTab.getAttribute('href');
-    console.log('tabId',tabId);
-
-    switch (tabId) {
-        case '#model-tab':
+    const active_tab = document.querySelector('.nav-link.active');
+    switch (active_tab.id) {
+        case 'model-tab':
             model_hosting_tab.tab_switched_here();
             break;
-        case '#upload-tab':
+        case 'upload-tab':
             upload_tab.tab_switched_here();
             break;
-        case '#finetune-tab':
+        case 'finetune-tab':
             finetune_tab.tab_switched_here();
             break;
-        case "#access-control-tab":
+        case "access-control-tab":
             break;
     }
 }
 let refresh_interval;
 function start_tab_timer() {
-    console.log('timer started');
     refresh_interval = setInterval(active_tab_function, 10000);
 }
 
 function stop_tab_timer() {
-    console.log('timer stopped');
     clearInterval(refresh_interval);
 }
 start_tab_timer();

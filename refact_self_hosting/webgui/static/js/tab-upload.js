@@ -333,16 +333,6 @@ function file_status_color(status) {
     return status_color;
 }
 
-function updateTest() {
-    setTimeout(function() {
-        test.finished = true;
-        test.finished_ts = new Date().toISOString();
-        test.uploaded_files = test.uploaded_files;
-        test.files_after_dedup = test.files_after_dedup + 33;
-        test.files_before_dedup = test.files_before_dedup + 55;
-    }, 10000);
-}
-
 export function init() {
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());
