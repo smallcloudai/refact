@@ -1,4 +1,8 @@
 import json
+import os
+import time
+import signal
+import sys
 import traceback
 import logging
 import subprocess
@@ -12,8 +16,8 @@ def query_nvidia_smi():
     try:
         nvidia_smi_output = subprocess.check_output([
             "nvidia-smi",
-            "--query-gpu", "pci.bus_id,name,memory.used,memory.total,temperature.gpu",
-            "--format", "csv"])
+            "--query-gpu=pci.bus_id,name,memory.used,memory.total,temperature.gpu",
+            "--format=csv"])
         for description in nvidia_smi_output.decode().splitlines()[1:]:
             gpu_bus_id, gpu_name, gpu_mem_used, gpu_mem_total, gpu_temp = description.split(", ")
             descriptions.append({
@@ -33,9 +37,27 @@ def query_nvidia_smi():
 
 def enum_gpus():
     result = query_nvidia_smi()
-    with open(env.CONFIG_ENUM_GPUS, 'w') as f:
+    with open(env.CONFIG_ENUM_GPUS + ".tmp", 'w') as f:
         json.dump(result, f, indent=4)
+    os.rename(env.CONFIG_ENUM_GPUS + ".tmp", env.CONFIG_ENUM_GPUS)
 
 
 if __name__ == '__main__':
-    enum_gpus()
+    quit_flag = False
+
+    def catch_sigkill(signum, frame):
+        sys.stderr.write("enum_gpus caught SIGUSR1\n")
+        sys.stderr.flush()
+        global quit_flag
+        quit_flag = True
+
+    signal.signal(signal.SIGUSR1, catch_sigkill)
+    next_wakeup = time.time() + 2
+    for _ in range(3600):
+        next_wakeup += 2
+        if quit_flag:
+            break
+        enum_gpus()
+        time.sleep(max(0, next_wakeup - time.time()))
+        # from datetime import datetime
+        # print(datetime.utcnow().strftime("%H:%M:%S.%f"))
