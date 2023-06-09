@@ -45,8 +45,61 @@ function render_tab_files(data) {
         files.appendChild(row);
         i++;
     }
+
     change_events();
     delete_events();
+
+    let any_working = false;
+    for (const [item,item_object] of Object.entries(data.uploaded_files)) {
+        const rows = files.querySelectorAll('tr');
+        for (const row of rows) {
+            const row_file_name = row.getAttribute('data-file');
+            if (row_file_name === item) {
+                const target_cell = row.querySelector('td:nth-child(2)');
+                const current_status = item_object.status;
+                const status_color = file_status_color(current_status);
+                let popup_data = `Status: ${item_object.status}`;
+                if(item_object.generated) {
+                    popup_data += ` \nGenerated: ${item_object.generated}`;
+                }
+                if(item_object.good) {
+                    popup_data += ` \nGood: ${item_object.good}`;
+                }
+                if(item_object.too_large) {
+                    popup_data += ` \nToo Large: ${item_object.too_large}`;
+                }
+                if(item_object.vendored) {
+                    popup_data += ` \nVendored: ${item_object.vendored}`;
+                }
+                if (current_status == "completed") {
+                    target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}">${item_object.good} files</span>`;
+                } else {
+                    target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}" class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
+                }
+                if (current_status == "working" || current_status == "starting") {
+                    any_working = true;
+                }
+                break;
+            }
+        }
+    }
+
+    const process_button = document.querySelector('.tab-files-process-now');
+    if (any_working) {
+        if (process_button.dataset.loading) {
+            process_button.dataset.loading = false;
+            process_button.disabled = false;
+        }
+        process_button_text = "Stop";
+        process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
+    } else {
+        process_button.disabled = false;
+        process_button.innerHTML = "Process Now";
+    }
+
+    // XXX: what is this?
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 }
 
 function delete_events() {
@@ -258,60 +311,9 @@ function save_tab_files() {
 }
 
 const process_now_update_until_finished = async () => {
-    const table = document.querySelector('#upload-tab-table-body-files');
     const process_button = document.querySelector('.tab-files-process-now');
     process_button.disabled = true;
-    const process_button_text = process_button.innerHTML;
-    process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
-    while (true) {
-      try {
-        const response = await fetch('/tab-files-get');
-        let data = await response.json();
-
-        for (const [item,item_object] of Object.entries(data.uploaded_files)) {
-            const rows = table.querySelectorAll('tr');
-            for (const row of rows) {
-                const row_file_name = row.getAttribute('data-file');
-                if (row_file_name === item) {
-                    const target_cell = row.querySelector('td:nth-child(2)');
-                    const current_status = item_object.status;
-                    const status_color = file_status_color(current_status);
-                    let popup_data = `Status: ${item_object.status}`;
-                    if(item_object.generated) {
-                        popup_data += ` \nGenerated: ${item_object.generated}`;
-                    }
-                    if(item_object.good) {
-                        popup_data += ` \nGood: ${item_object.good}`;
-                    }
-                    if(item_object.too_large) {
-                        popup_data += ` \nToo Large: ${item_object.too_large}`;
-                    }
-                    if(item_object.vendored) {
-                        popup_data += ` \nVendored: ${item_object.vendored}`;
-                    }
-                    if (current_status == "completed") {
-                        target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}">${item_object.good} files</span>`;
-                    } else {
-                        target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}" class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
-                    }
-                    break;
-                }
-            }
-        }
-
-        if (data.finished === true) {
-            process_button.disabled = false;
-            process_button.innerHTML = process_button_text;
-            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-            const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-            break;
-          }
-      } catch (error) {
-        console.error(error);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 300));
-    }
+    process_button.dataset.loading = true;
 };
 
 function file_status_color(status) {
