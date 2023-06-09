@@ -16,6 +16,8 @@ from typing import Dict, Optional
 
 __all__ = ["TabUploadRouter"]
 
+from refact_self_hosting.webgui.tab_settings import get_all_ssh_keys
+
 
 async def download_file_from_url(url: str):
     async with aiohttp.ClientSession() as session:
@@ -134,6 +136,8 @@ class TabUploadRouter(APIRouter):
 
     def _make_git_command(self):
         command = ['ssh', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'StrictHostKeyChecking=no']
+        for ssh_key in get_all_ssh_keys():
+            command += ['-i', ssh_key]
         return ' '.join(command)
 
     async def _tab_repo_upload(self, repo: CloneRepo):

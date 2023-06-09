@@ -13,6 +13,7 @@ from refact_self_hosting.webgui.selfhost_req_queue import Ticket
 from refact_self_hosting.webgui.selfhost_static import StaticRouter
 from refact_self_hosting.webgui.selfhost_fastapi_completions import CompletionsRouter
 from refact_self_hosting.webgui.selfhost_fastapi_gpu import GPURouter
+from refact_self_hosting.webgui.tab_settings import TabSettingsRouter
 from refact_self_hosting.webgui.tab_upload import TabUploadRouter
 from refact_self_hosting.webgui.tab_finetune import TabFinetuneRouter
 from refact_self_hosting.webgui.tab_models_host import TabHostRouter
@@ -51,6 +52,7 @@ if __name__ == "__main__":
     app.include_router(TabUploadRouter())
     app.include_router(TabFinetuneRouter())
     app.include_router(TabHostRouter())
+    app.include_router(TabSettingsRouter())
     app.include_router(StaticRouter())
 
     app.add_middleware(

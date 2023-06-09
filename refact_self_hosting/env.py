@@ -9,6 +9,7 @@ DIR_WEIGHTS    = os.path.join(PERMDIR, "weights")
 DIR_LORAS      = os.path.join(PERMDIR, "loras")
 DIR_LOGS       = os.path.join(PERMDIR, "logs")
 DIR_UPLOADS    = os.path.join(PERMDIR, "uploaded-files")
+DIR_SSH_KEYS   = os.path.join(PERMDIR, "ssh-keys")
 
 DIR_UNPACKED = os.path.join(TMPDIR, "unpacked-files")
 
@@ -27,6 +28,7 @@ os.makedirs(DIR_WEIGHTS, exist_ok=True)
 os.makedirs(DIR_LORAS, exist_ok=True)
 os.makedirs(DIR_LOGS, exist_ok=True)
 os.makedirs(DIR_UPLOADS, exist_ok=True)
+os.makedirs(DIR_SSH_KEYS, exist_ok=True)
 
 os.makedirs(DIR_UNPACKED, exist_ok=True)
 
