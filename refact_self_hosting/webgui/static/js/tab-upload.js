@@ -58,7 +58,7 @@ function render_tab_files(data) {
                 const target_cell = row.querySelector('td:nth-child(2)');
                 let current_status = item_object.status;
                 if (!current_status) {
-                    current_status = "starting";
+                    current_status = "";
                 }
                 const status_color = file_status_color(current_status);
                 let popup_data = `Status: ${item_object.status}`;
