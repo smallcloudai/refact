@@ -41,12 +41,7 @@ access_control_tab.init();
 const tabs = document.querySelectorAll('.nav-link[data-bs-toggle="tab"]');
 tabs.forEach(tab => {
     tab.addEventListener('shown.bs.tab', () => {
-        stop_tab_timer();
         start_tab_timer();
-    });
-
-    tab.addEventListener('hidden.bs.tab', () => {
-        stop_tab_timer();
     });
 });
 
@@ -66,12 +61,15 @@ function active_tab_function() {
             break;
     }
 }
-let refresh_interval;
+
+let refresh_interval = null;
+
 function start_tab_timer() {
-    refresh_interval = setInterval(active_tab_function, 10000);
+    active_tab_function();
+    if (refresh_interval) {
+        clearInterval(refresh_interval);
+    }
+    refresh_interval = setInterval(active_tab_function, 2000);
 }
 
-function stop_tab_timer() {
-    clearInterval(refresh_interval);
-}
 start_tab_timer();
