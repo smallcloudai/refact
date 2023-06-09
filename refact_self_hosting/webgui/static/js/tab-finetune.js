@@ -246,7 +246,7 @@ function start_log_stream(run_id) {
             if (isAtBottom) {
                 log_div.scrollTop = log_div.scrollHeight;
             }
-
+            document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${run_id}`;
             return reader.read().then(processResult);
         };
 
