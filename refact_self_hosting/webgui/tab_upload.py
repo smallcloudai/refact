@@ -132,12 +132,19 @@ class TabUploadRouter(APIRouter):
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
         return JSONResponse("OK")
 
+    def _make_git_command(self):
+        command = ['ssh', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'StrictHostKeyChecking=no']
+        return ' '.join(command)
+
     async def _tab_repo_upload(self, repo: CloneRepo):
         try:
             branch_args = ["-b", repo.branch] if repo.branch else []
             proc = await asyncio.create_subprocess_exec(
                 "git", "-C", env.DIR_UPLOADS, "clone", "--no-recursive",
                 "--depth", "1", *branch_args, repo.url,
+                env={
+                    "GIT_SSH_COMMAND": self._make_git_command()
+                },
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.PIPE)
             _, stderr = await proc.communicate()
@@ -165,3 +172,4 @@ class TabUploadRouter(APIRouter):
         except OSError as e:
             pass
         return JSONResponse("OK")
+    
