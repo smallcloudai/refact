@@ -56,7 +56,10 @@ function render_tab_files(data) {
             const row_file_name = row.getAttribute('data-file');
             if (row_file_name === item) {
                 const target_cell = row.querySelector('td:nth-child(2)');
-                const current_status = item_object.status;
+                let current_status = item_object.status;
+                if (!current_status) {
+                    current_status = "starting";
+                }
                 const status_color = file_status_color(current_status);
                 let popup_data = `Status: ${item_object.status}`;
                 if(item_object.generated) {
@@ -90,10 +93,9 @@ function render_tab_files(data) {
             process_button.dataset.loading = false;
             process_button.disabled = false;
         }
-        process_button_text = "Stop";
+        let process_button_text = "Stop";
         process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
     } else {
-        process_button.disabled = false;
         process_button.innerHTML = "Process Now";
     }
 

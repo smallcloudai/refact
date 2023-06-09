@@ -2,6 +2,7 @@ import json
 import os
 import asyncio
 import aiohttp
+import time
 
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse
@@ -69,7 +70,12 @@ class TabUploadRouter(APIRouter):
             how_to_process = {'uploaded_files': {}}
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
             stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
+            mtime = os.path.getmtime(env.CONFIG_PROCESSING_STATS)
             stats_uploaded_files = stats.get("uploaded_files", {})
+            for fstat in stats_uploaded_files.values():
+                if fstat["status"] in ["working", "starting"]:
+                    if mtime + 600 < time.time():
+                        fstat["status"] = "failed"
         else:
             stats = {"uploaded_files": {}}
             stats_uploaded_files = {}
