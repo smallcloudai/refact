@@ -1,9 +1,9 @@
 let logstream_reader = null;
 let logstream_runid = null;
 let downloaded_data = null;
+let blue_lora = "";
 let checkpoint_name = "best";
-let selected_lora = "latest";
-let selected_model = "";
+let selected_model = ""; // we don't have model choice, empty for now
 
 function finetune_data() {
     fetch("/tab-finetune-config-and-runs")
@@ -14,7 +14,7 @@ function finetune_data() {
             console.log('config-and-runs',data);
             render_finetune_settings(data);
             downloaded_data = data;
-            render_loras();
+            render_activate_switch();
             render_runs();
         });
 }
@@ -80,8 +80,8 @@ function render_runs() {
         row.dataset.run = element.run_id;
         if (element.status === 'working') {
             is_working = true;
-            if (!selected_lora) {
-                selected_lora = element.run_id;
+            if (!blue_lora) {
+                blue_lora = element.run_id;
             }
             run_status.innerHTML = `<span class="badge rounded-pill ${status_color}"><div class="finetune-spinner spinner-border spinner-border-sm" role="status"></div>${element.status}</span>`;
         } else {
@@ -94,7 +94,7 @@ function render_runs() {
         row.appendChild(run_minutes);
         row.appendChild(run_steps);
         document.querySelector('.run-table').appendChild(row);
-        if (selected_lora == element.run_id) {
+        if (blue_lora == element.run_id) {
             row.classList.add('table-primary');
             document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${element.run_id}`;
             console.log(`/tab-finetune-progress-svg/${element.run_id}`);
@@ -106,7 +106,7 @@ function render_runs() {
         row.addEventListener('click', function (event) {
             event.stopPropagation();
             const run_id = this.dataset.run;
-            selected_lora = run_id;
+            blue_lora = run_id;
             render_runs();
             render_checkpoints(find_checkpoints_by_run(run_id));
         });
@@ -128,14 +128,15 @@ const find_checkpoints_by_run = (run_id) => {
     }
 };
 
-function render_loras() {
+function render_activate_switch() {
     const loras = document.querySelectorAll('.lora-input');
     loras.forEach(element => {
         element.addEventListener('change', function () {
             if(element.checked === true) {
-                selected_lora = element.value;
+                // wrong:
+                // blue_lora = element.value;
             }
-            finetune_activate();
+            finetune_switch_activate();
         });
     });
 }
@@ -152,13 +153,13 @@ function render_checkpoints(data = {}) {
             checkpoints.appendChild(row);
             row.addEventListener('click', () => {
                 checkpoint_name = this.dataset.checkpoint;
-                finetune_activate();
+                finetune_switch_activate();
             });
         });
     }
 }
 
-function finetune_activate() {
+function finetune_switch_activate() {
     fetch("/tab-finetune-activate", {
         method: "POST",
         headers: {
@@ -166,7 +167,7 @@ function finetune_activate() {
         },
         body: JSON.stringify({
             "model": selected_model,
-            "lora_run_id": selected_lora,
+            "lora_run_id": blue_lora,
             "checkpoint": checkpoint_name
         })
     })
