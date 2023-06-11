@@ -97,9 +97,10 @@
         </div>
       </div>
       <div class="tab-pane fade" id="upload">
-        <div class="pane">
+
           <div class="row">
-            <div class="col-12">
+            <div class="col-8">
+              <div class="pane">
               <h3>Sources</h3>
               <table class="table table-sm align-middle upload-tab-table-files">
                 <thead>
@@ -122,45 +123,24 @@
                 type="button" class="btn btn-primary">Add git repo...</button>
               <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Process
                 now</button>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="pane">
+                <h3>Filetypes</h3>
+                <table class="table table-striped upload-tab-table-types">
+                  <thead>
+                    <tr>
+                      <th>MIME</th>
+                      <th>Count</th>
+                    </tr>
+                  </thead>
+                  <tbody class="upload-tab-table-type-body">
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="pane">
-          <div class="col-4">
-            <h3>Filetypes</h3>
-            <table class="table table-striped upload-tab-table-types temp-disabled">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Finetune</th>
-                  <th>Context Lookup</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>.xls</td>
-                  <td><input class="form-check-input" type="checkbox"></td>
-                  <td><input class="form-check-input" type="checkbox"></td>
-                </tr>
-                <tr>
-                  <td>.js</td>
-                  <td><input class="form-check-input" type="checkbox"></td>
-                  <td><input class="form-check-input" type="checkbox"></td>
-                </tr>
-                <tr>
-                  <td>.txt</td>
-                  <td><input class="form-check-input" type="checkbox"></td>
-                  <td><input class="form-check-input" type="checkbox"></td>
-                </tr>
-                <tr>
-                  <td>.php</td>
-                  <td><input class="form-check-input" type="checkbox"></td>
-                  <td><input class="form-check-input" type="checkbox"></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
       <div class="tab-pane fade" id="finetune">
         <div class="row">

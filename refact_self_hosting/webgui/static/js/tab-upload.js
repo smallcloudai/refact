@@ -6,6 +6,7 @@ function get_tab_files() {
         .then(function(data) {
             console.log('tab-files-get',data);
             render_tab_files(data);
+            render_filetypes(data);
         });
 }
 
@@ -145,6 +146,16 @@ function delete_events() {
             delete_file(this.getAttribute('data-file'));
         });
     });
+}
+
+function render_filetypes(data) {
+    const table_body = document.querySelector('.upload-tab-table-type-body');
+    table_body.innerHTML = '';
+    for(const [key, value] of Object.entries(data.all_mime_types)) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${key}</td><td>${value}</td>`;
+        table_body.appendChild(row);
+    }
 }
 
 function upload_url() {
