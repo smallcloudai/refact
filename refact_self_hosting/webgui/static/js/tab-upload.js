@@ -18,28 +18,24 @@ function render_tab_files(data) {
         row.setAttribute('data-file', item);
         const name = document.createElement("td");
         const status = document.createElement("td");
-        const train = document.createElement("td");
-        const test = document.createElement("td");
+        const set = document.createElement("td");
         const context = document.createElement("td");
         const delete_file = document.createElement("td");
         name.innerHTML = item;
         const context_input = data.uploaded_files[item].to_db ? `<input class="form-check-input" name="file-context" type="checkbox" checked="checked">` : `<input class="form-check-input" name="file-context" type="checkbox">`
+
         const which_set = data.uploaded_files[item].which_set;
         if(which_set === "train") {
-            train.innerHTML = `<input class="form-check-input" class="file-radio" value="train" name="file-which[${i}]" type="radio" checked="checked">`;
-            test.innerHTML = `<input class="form-check-input" class="file-radio" value="test" name="file-which[${i}]" type="radio">`;
+            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-train${i}" value="train" autocomplete="off" checked><label for="file-radio-train${i}" class="btn btn-outline-primary">Train</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off"><label for="file-radio-test${i}" class="btn btn-outline-primary">Test</label></div>`
         }
         if(which_set === "test") {
-            train.innerHTML = `<input class="form-check-input" class="file-radio" value="train" name="file-which[${i}]" type="radio">`;
-            test.innerHTML = `<input class="form-check-input" class="file-radio" value="test" name="file-which[${i}]" type="radio" checked="checked">`;
+            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-train${i}" value="train" autocomplete="off"><label for="file-radio-train${i}" class="btn btn-outline-primary">Train</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off" checked><label for="file-radio-test${i}" class="btn btn-outline-primary">Test</label></div>`
         }
         context.innerHTML = context_input;
-        // delete_file.innerHTML = `<button data-file="${item}" type="button" class="btn file-remove btn-danger btn-sm"><i class="bi bi-trash3-fill"></i></button>`;
         delete_file.innerHTML = `<div class="btn-group dropend"><button type="button" class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-trash3-fill"></i></button><ul class="dropdown-menu"><li><span class="file-remove dropdown-item btn btn-sm" data-file="${item}">Delete file</a></span></ul></div>`;
         row.appendChild(name);
         row.appendChild(status);
-        row.appendChild(train);
-        row.appendChild(test);
+        row.appendChild(set);
         row.appendChild(context);
         row.appendChild(delete_file);
         files.appendChild(row);
@@ -74,7 +70,7 @@ function render_tab_files(data) {
                 if(item_object.vendored) {
                     popup_data += ` \nVendored: ${item_object.vendored}`;
                 }
-                if (current_status == "completed") {
+                if (current_status == "completed" && item_object.good) {
                     target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}">${item_object.good} files</span>`;
                 } else {
                     target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}" class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
@@ -102,6 +98,44 @@ function render_tab_files(data) {
     // XXX: what is this?
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+}
+
+function get_ssh_keys() {
+    fetch("/tab-settings-get-all-ssh-keys")
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            console.log('get-all-ssh-keys',data);
+            render_keys(data);
+        });
+}
+
+function render_keys(data) {
+    if(data.length > 0) {
+        const ssh_selector = document.querySelector('.ssh-selector');
+        ssh_selector.classList.remove('d-none');
+        const ssh_info = document.querySelector('.ssh-info');
+        ssh_info.classList.add('d-none');
+    }
+    else {
+        const ssh_selector = document.querySelector('.ssh-selector');
+        ssh_selector.classList.add('d-none');
+        const ssh_info = document.querySelector('.ssh-info');
+        ssh_info.classList.remove('d-none');
+    }
+    const key_list = document.querySelector('.ssh-key-select');
+    key_list.innerHTML = '';
+    const blank_option = document.createElement('option');
+    blank_option.text = '- Select SSH Key -';
+    blank_option.value = '';
+    key_list.appendChild(blank_option);
+    data.forEach(function (key) {
+        const new_option = document.createElement('option');
+        new_option.text = key.name;
+        new_option.value = key.name + ' ' + key.fingerprint;
+        key_list.appendChild(new_option);
+    });
 }
 
 function delete_events() {
@@ -381,6 +415,7 @@ export function init() {
 
     const git_modal = document.getElementById('upload-tab-git-modal');
     git_modal.addEventListener('show.bs.modal', function () {
+        get_ssh_keys();
         git_modal.querySelector('#tab-upload-git-input').value = '';
         git_modal.querySelector('#tab-upload-git-brach-input').value = '';
         git_modal.querySelector('#status-git').innerHTML = '';

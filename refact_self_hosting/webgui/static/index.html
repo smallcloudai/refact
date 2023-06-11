@@ -58,6 +58,14 @@
               role="tab" aria-controls="finetune-pane" aria-selected="false">Finetune</button>
           </li>
           <li class="nav-item" role="presentation">
+            <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button"
+              role="tab" aria-controls="settings-pane" aria-selected="false">SSH Settings</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#server-logs" type="button"
+              role="tab" aria-controls="logs-pane" aria-selected="false">Server Logs</button>
+          </li>
+          <li class="nav-item" role="presentation">
             <button class="nav-link" id="access-tab" data-bs-toggle="tab" data-bs-target="#access-control" type="button"
               role="tab" aria-controls="access-pane" aria-selected="false" disabled>Access Control</button>
           </li>
@@ -87,17 +95,6 @@
             </tbody>
           </table>
         </div>
-        <div class="pane">
-          <h3>Server Logs</h3>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="debug-checkbox">
-            <label class="form-check-label" for="debug-checkbox">
-              Debug messages
-            </label>
-          </div>
-          <pre class="log-container temp-disabled">
-          </pre>
-        </div>
       </div>
       <div class="tab-pane fade" id="upload">
         <div class="pane">
@@ -110,7 +107,6 @@
                     <th>Filename</th>
                     <th></th>
                     <th>Train Set</th>
-                    <th>Test Set</th>
                     <th>Use for Context</th>
                     <th></th>
                   </tr>
@@ -228,6 +224,9 @@
           </div>
           <div class="col-7">
             <div class="pane">
+              <img src="/tab-finetune-progress-svg/none" class="fine-gfx" alt="">
+            </div>
+            <div class="pane">
               <h3>Use in inference: <span></span></h3>
               <div class="lora-group">
                 <div class="btn-group" role="group" aria-label="basic radio toggle button group">
@@ -240,9 +239,6 @@
                   <label class="btn btn-outline-primary" for="loraradio4">Use Latest / Best</label>
                 </div>
               </div>
-            </div>
-            <div class="pane">
-              <img src="/tab-finetune-progress-svg/none" class="fine-gfx" alt="">
             </div>
             <div class="pane"> 
               <ul class="nav nav-tabs" id="myTabs" role="tablist">
@@ -262,12 +258,35 @@
                   </pre>
                 </div>
                 <div class="tab-pane fade" id="checkpoints" role="tabpanel" aria-labelledby="checkpoints-tab">
-                  <div class="checkpoints"></div>
+                  <table class="table table-sm table-hover">
+                    <tbody class="table-checkpoints"></tbody>
+                  </table>
                 </div>
               </div>
             </div>
 
           </div>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="settings">
+        <div class="pane">
+          <h2>SSH Settings</h2>
+          <div class="settings-row">
+            <button data-bs-toggle="modal" data-bs-target="#settings-tab-ssh-modal" type="button" id="settings-new" class="btn btn-primary">Generate new SSH Key</button>
+            <div class="mt-2 settings-all-keys"></div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="server-logs">
+        <div class="pane">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="debug-checkbox">
+            <label class="form-check-label" for="debug-checkbox">
+              Debug messages
+            </label>
+          </div>
+          <pre class="log-container temp-disabled">
+          </pre>
         </div>
       </div>
       <div class="tab-pane fade" id="access-control">
@@ -337,9 +356,14 @@
             <label class="form-label">Repository URL</label>
             <input placeholder="https://github.com/my_repo/my.git" type="url" id="tab-upload-git-input"
               class="form-control">
-            <div class="form-text">
-              Any public Git repo URL is accepted.
-            </div>
+          </div>
+          <div class="mb-3 form-text ssh-info">
+            Please add SSH Key if you use private repository.
+          </div>
+          <div class="mb-3 ssh-selector d-none">
+            <label class="form-label">SSH Key</label>
+            <select class="form-select ssh-key-select">
+            </select>
           </div>
           <div class="mb-3">
             <label class="form-label">Branch</label>
@@ -354,6 +378,35 @@
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="settings-tab-ssh-modal" tabindex="-1" aria-labelledby="settings-tab-ssh-modal"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add SSH Key</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Key Name</label>
+          <input type="text" id="tab-settings-key-title-input" class="form-control">
+        </div>
+        <div class="mb-3 d-none tab-settings-ssh-keywrap">
+          <label class="form-label">Your SSH Key</label>
+          <div class="tab-settings-ssh">
+            <code></code>
+          </div>
+          <div class="form-text">
+            Please copy and paste this Key into your Git repository settings.<br><b>This key will be showed only once!</b>
+          </div>
+        </div>
+        <div id="status-ssh" class="uploaded-status"></div>
+        <button class="settings-tab-ssh-submit btn btn-primary">Add SSH Key</button>
+      </div>
+    </div>
+  </div>
+</div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe"

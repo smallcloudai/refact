@@ -61,19 +61,19 @@ function render_runs() {
         let status_color;
         switch (element.status) {
             case 'unknown':
-                status_color = `bg-warning text-dark`;
+                status_color = `text-bg-warning`;
                 break;
             case 'starting':
-                status_color = `bg-success`;
+                status_color = `text-bg-success`;
                 break;
             case 'working':
-                status_color = `bg-secondary`;
+                status_color = `text-bg-secondary`;
                 break;
             case 'completed':
-                status_color = `bg-primary`;
+                status_color = `text-bg-primary`;
                 break;
             case 'failed':
-                status_color = `bg-danger`;
+                status_color = `text-bg-danger`;
                 break;
         }
 
@@ -95,7 +95,7 @@ function render_runs() {
         row.appendChild(run_steps);
         document.querySelector('.run-table').appendChild(row);
         if (blue_lora == element.run_id) {
-            row.classList.add('table-primary');
+            row.classList.add('table-success');
             document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${element.run_id}`;
             console.log(`/tab-finetune-progress-svg/${element.run_id}`);
             start_log_stream(element.run_id);
@@ -141,17 +141,19 @@ function render_activate_switch() {
     });
 }
 
-function render_checkpoints(data = {}) {
-    const checkpoints = document.querySelector('.checkpoints');
+function render_checkpoints(data = []) {
+    const checkpoints = document.querySelector('.table-checkpoints');
     checkpoints.innerHTML = '';
     if (data.length > 0) {
         data.forEach(element => {
-            const row = document.createElement('div');
-            row.classList.add('checkpoints-row');
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
             row.dataset.checkpoint = element.checkpoint_name;
-            row.innerHTML = `${element.checkpoint_name}`;
+            cell.textContent = `${element.checkpoint_name}`;
+            row.appendChild(cell);
             checkpoints.appendChild(row);
             row.addEventListener('click', () => {
+                row.classList.add('table-success');
                 checkpoint_name = this.dataset.checkpoint;
                 finetune_switch_activate();
             });

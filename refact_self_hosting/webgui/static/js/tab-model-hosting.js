@@ -20,6 +20,8 @@ function render_gpus(gpus) {
         const row = document.createElement('div');
         row.classList.add('gpus-item');
         row.setAttribute('gpu',element.id);
+        const gpu_wrapper = document.createElement('div');
+        gpu_wrapper.classList.add('gpus-content');
         const gpu_name = document.createElement("h3");
         gpu_name.classList.add('gpus-title');
         const gpu_image = document.createElement("div");
@@ -33,12 +35,13 @@ function render_gpus(gpus) {
         const total_gb = format_memory(element.mem_total_mb);
         const used_mem = Math.round(element.mem_used_mb / (element.mem_total_mb / 100));
         gpu_name.innerHTML = element.name;
-        gpu_mem.innerHTML = `<div class="table-gpu-mem"><span style="width: ${used_mem}%"></span></div>${used_gb}/${total_gb} GB`;
-        gpu_temp.textContent = element.temp_celsius + '°C';
+        gpu_mem.innerHTML = `<b>Mem</b><div class="gpus-mem-wrap"><div class="gpus-mem-bar"><span style="width: ${used_mem}%"></span></div>${used_gb}/${total_gb} GB</div>`;
+        gpu_temp.innerHTML = `<b>Temp</b>` + element.temp_celsius + '°C';
         row.appendChild(gpu_image);
-        row.appendChild(gpu_name);
-        row.appendChild(gpu_mem);
-        row.appendChild(gpu_temp);
+        gpu_wrapper.appendChild(gpu_name);
+        gpu_wrapper.appendChild(gpu_mem);
+        gpu_wrapper.appendChild(gpu_temp);
+        row.appendChild(gpu_wrapper);
         gpus_list.appendChild(row);
     });
 }
@@ -63,7 +66,12 @@ function render_models(models) {
         const has_chat = document.createElement("td");
         const has_toolbox = document.createElement("td");
         model_name.textContent = models.models[index].name;
-        gpu_qty.innerHTML = `<input type="number" step="1" min="0" value="1" class="table-models-gpu form-control">`;
+        let gpus = 1;
+        if(models.model_assign[models.models[index].name] != undefined) {
+            row.classList.add('table-success');
+            gpus = models.model_assign[models.models[index].name].gpus_max;
+        }
+        gpu_qty.innerHTML = `<input type="number" step="1" min="0" value="${gpus}" class="table-models-gpu form-control">`;
         has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
         has_toolbox.innerHTML = models.models[index].has_toolbox ? '<i class="bi bi-check"></i>' : '';
         row.appendChild(model_name);
@@ -73,9 +81,9 @@ function render_models(models) {
         models_table.appendChild(row);
         row.addEventListener('click',function(e) {
             document.querySelectorAll('.table-models tbody tr').forEach(function (row) {
-                row.classList.remove('table-primary');
+                row.classList.remove('table-success');
             });
-            this.classList.add('table-primary');
+            this.classList.add('table-success');
             const model_name = e.target.getAttribute('datamodel');
             console.log('model',model_name);
         });
