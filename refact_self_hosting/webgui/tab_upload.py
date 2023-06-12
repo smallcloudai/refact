@@ -66,8 +66,8 @@ class TabUploadRouter(APIRouter):
             "uploaded_files": {}
         }
         uploaded_path = env.DIR_UPLOADS
-        if os.path.isfile(env.CONFIG_HOW_TO_PROCESS):
-            how_to_process = json.load(open(env.CONFIG_HOW_TO_PROCESS, "r"))
+        if os.path.isfile(env.CONFIG_HOW_TO_UNZIP):
+            how_to_process = json.load(open(env.CONFIG_HOW_TO_UNZIP, "r"))
         else:
             how_to_process = {'uploaded_files': {}}
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
@@ -96,8 +96,10 @@ class TabUploadRouter(APIRouter):
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_files_save_config(self, config: TabFilesConfig):
-        with open(env.CONFIG_HOW_TO_PROCESS, "w") as f:
+        with open(env.CONFIG_HOW_TO_UNZIP + ".tmp", "w") as f:
             json.dump(config.dict(), f, indent=4)
+        os.rename(env.CONFIG_HOW_TO_UNZIP + ".tmp", env.CONFIG_HOW_TO_UNZIP)
+        return JSONResponse("OK")
 
     async def _tab_files_upload(self, file: UploadFile):
         tmp_path = os.path.join(env.DIR_UPLOADS, file.filename + ".tmp")
@@ -176,4 +178,4 @@ class TabUploadRouter(APIRouter):
         except OSError as e:
             pass
         return JSONResponse("OK")
-    
+

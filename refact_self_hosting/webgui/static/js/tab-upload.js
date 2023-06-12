@@ -96,7 +96,7 @@ function render_tab_files(data) {
         let process_button_text = "Stop";
         process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
     } else {
-        process_button.innerHTML = "Process Now";
+        process_button.innerHTML = "Unpack Now";
     }
 
     // XXX: what is this?
