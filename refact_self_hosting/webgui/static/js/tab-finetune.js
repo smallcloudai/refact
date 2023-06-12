@@ -113,7 +113,7 @@ function render_runs() {
     });
     const process_button = document.querySelector('.tab-finetune-run-now');
     if(is_working) {
-        process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop Finetune Now';
+        process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop Finetune';
     } else {
         process_button.textContent = 'Start Finetune Now';
     }

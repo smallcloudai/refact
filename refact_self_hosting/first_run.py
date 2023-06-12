@@ -16,9 +16,10 @@ def copy_intact():
         dest = os.path.join(env.DIR_WATCHDOG_D, x)
         if os.path.exists(dest):
             continue
-        j = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, x)))
-        with open(dest, "w") as f:
-            f.write(json.dumps(j, indent=4))
+        os.symlink(
+            os.path.join(env.DIR_WATCHDOG_TEMPLATES, x),
+            dest,
+        )
 
 
 def copy_watchdog_configs_if_first_run_detected():
