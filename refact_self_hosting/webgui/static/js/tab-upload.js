@@ -20,24 +20,20 @@ function render_tab_files(data) {
         const name = document.createElement("td");
         const status = document.createElement("td");
         const set = document.createElement("td");
-        const context = document.createElement("td");
         const delete_file = document.createElement("td");
         name.innerHTML = item;
-        const context_input = data.uploaded_files[item].to_db ? `<input class="form-check-input" name="file-context" type="checkbox" checked="checked">` : `<input class="form-check-input" name="file-context" type="checkbox">`
 
         const which_set = data.uploaded_files[item].which_set;
         if(which_set === "train") {
-            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-train${i}" value="train" autocomplete="off" checked><label for="file-radio-train${i}" class="btn btn-outline-primary">Train</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off"><label for="file-radio-test${i}" class="btn btn-outline-primary">Test</label></div>`
+            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off" checked><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off"><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>`
         }
         if(which_set === "test") {
-            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-train${i}" value="train" autocomplete="off"><label for="file-radio-train${i}" class="btn btn-outline-primary">Train</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off" checked><label for="file-radio-test${i}" class="btn btn-outline-primary">Test</label></div>`
+            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off"><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off" checked><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>`
         }
-        context.innerHTML = context_input;
         delete_file.innerHTML = `<div class="btn-group dropend"><button type="button" class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-trash3-fill"></i></button><ul class="dropdown-menu"><li><span class="file-remove dropdown-item btn btn-sm" data-file="${item}">Delete file</a></span></ul></div>`;
         row.appendChild(name);
         row.appendChild(status);
         row.appendChild(set);
-        row.appendChild(context);
         row.appendChild(delete_file);
         files.appendChild(row);
         i++;
@@ -108,35 +104,7 @@ function get_ssh_keys() {
         })
         .then(function(data) {
             console.log('get-all-ssh-keys',data);
-            render_keys(data);
         });
-}
-
-function render_keys(data) {
-    if(data.length > 0) {
-        const ssh_selector = document.querySelector('.ssh-selector');
-        ssh_selector.classList.remove('d-none');
-        const ssh_info = document.querySelector('.ssh-info');
-        ssh_info.classList.add('d-none');
-    }
-    else {
-        const ssh_selector = document.querySelector('.ssh-selector');
-        ssh_selector.classList.add('d-none');
-        const ssh_info = document.querySelector('.ssh-info');
-        ssh_info.classList.remove('d-none');
-    }
-    const key_list = document.querySelector('.ssh-key-select');
-    key_list.innerHTML = '';
-    const blank_option = document.createElement('option');
-    blank_option.text = '- Select SSH Key -';
-    blank_option.value = '';
-    key_list.appendChild(blank_option);
-    data.forEach(function (key) {
-        const new_option = document.createElement('option');
-        new_option.text = key.name;
-        new_option.value = key.name + ' ' + key.fingerprint;
-        key_list.appendChild(new_option);
-    });
 }
 
 function delete_events() {
@@ -152,10 +120,14 @@ function render_filetypes(data) {
     if(data.all_mime_types) {
         const table_body = document.querySelector('.upload-tab-table-type-body');
         table_body.innerHTML = '';
+        let i = 0;
         for(const [key, value] of Object.entries(data.all_mime_types)) {
             const row = document.createElement('tr');
-            row.innerHTML = `<td>${key}</td><td>${value}</td>`;
+            const file_checkbox = `<input id="file-list${i}" class="form-check-input" type="checkbox" value="${i}">`;
+            const file_name = `<label for="file-list${i}">${key}</label>`;
+            row.innerHTML = `<td>${file_checkbox}</td><td>${file_name}</td><td>${value}</td>`;
             table_body.appendChild(row);
+            i++;
         }
     }
 }
@@ -336,11 +308,9 @@ function save_tab_files() {
     let i = 0;
     files.forEach(function(element) {
         const name = element.querySelector('td').innerHTML;
-        const context = element.querySelector('input[name="file-context"]').checked;
         const which_set = element.querySelector(`input[name="file-which[${i}]"]:checked`).value;
         uploaded_files[name] = {
             which_set: which_set,
-            to_db: context
         }
         i++;
     });

@@ -99,9 +99,9 @@
       <div class="tab-pane fade" id="upload">
           <div class="row">
             <div class="col-3">
-              <ol>
-                <li>Scan Sources<span></span></li>
-                <li>Filetype Filtering<span></span></li>
+              <ol class="sources-list">
+                <li class="sources-list-active">Scan Sources<span class="d-none"><i class="bi bi-check-lg"></i></span></li>
+                <li>Filetype Filtering<span class="d-none"><i class="bi bi-check-lg"></i></span></li>
               </ol>
               <div class="progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
                 <div class="progress-bar" style="width: 0%"></div>
@@ -123,18 +123,20 @@
                 <tbody id="upload-tab-table-body-files">
                 </tbody>
               </table>
-              <button id="upload-tab-file-button" data-bs-toggle="modal" data-bs-target="#upload-tab-files-modal"
-                type="button" class="btn btn-primary">Upload files…</button>
-              <button id="upload-tab-url-button" data-bs-toggle="modal" data-bs-target="#upload-tab-url-modal"
-                type="button" class="btn btn-primary">Add file from URL</button>
-              <button id="upload-tab-git-button" data-bs-toggle="modal" data-bs-target="#upload-tab-git-modal"
-                type="button" class="btn btn-primary">Add git repo...</button>
-              <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Scan sources</button>
+              <div class="sources-buttons">
+                <button id="upload-tab-file-button" data-bs-toggle="modal" data-bs-target="#upload-tab-files-modal"
+                  type="button" class="btn btn-primary">Upload files…</button>
+                <button id="upload-tab-url-button" data-bs-toggle="modal" data-bs-target="#upload-tab-url-modal"
+                  type="button" class="btn btn-primary">Add file from URL</button>
+                <button id="upload-tab-git-button" data-bs-toggle="modal" data-bs-target="#upload-tab-git-modal"
+                  type="button" class="btn btn-primary">Add git repo...</button>
+                <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Scan sources</button>
+              </div>
               </div>
               <div class="pane">
                 <h3>Filetypes</h3>
-                <div class="row">
-                  <div class="col-6">
+                <div class="row source-files-table">
+                  <div class="col-7">
                     <table class="table table-striped upload-tab-table-types">
                       <thead>
                         <tr>
@@ -147,15 +149,36 @@
                       </tbody>
                     </table>
                   </div>
-                  <div class="col-6">
+                  <div class="col-5 source-force">
                     <div class="mb-3">
                       <label for="force_exclude" class="form-label">Force Exclude Files</label>
-                      <input type="text" class="form-control" id="force_exclude" placeholder="*.*">
+                      <input type="text" class="form-control" id="force_exclude" placeholder="generated/*,dist/*">
                     </div>
                     <div class="mb-3">
                       <label for="force_include" class="form-label">Force Include Files</label>
-                      <input type="text" class="form-control" id="force_include" placeholder="*.*">
+                      <input type="text" class="form-control" id="force_include" placeholder="src/strange_file.py">
                     </div>
+                    <div class="sources-stats">1123</div>
+                  </div>
+                </div>
+              </div>
+              <div class="sources-run">
+                <div class="sources-progress d-none progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                  <div class="progress-bar" style="width: 0%"></div>
+                </div>
+                <button type="button" class="sources-run-button btn btn-primary btn-lg"><i class="bi bi-gpu-card"></i>Run filter</button>
+                <button type="button" class="btn btn-link sources-settings">Settings</button>
+              </div>
+              <div class="sources-summary d-none">
+                <h3>Data Filtration Summary</h3>
+                <div class="row">
+                  <div class="col-6">
+                    <h5>Included files</h5>
+                    <a href="#">Included Details</a>
+                  </div>
+                  <div class="col-6">
+                    <h5>Excluded Files</h5>
+                    <a href="#">Excluded Details</a>
                   </div>
                 </div>
               </div>
