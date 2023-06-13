@@ -93,6 +93,14 @@ class TabUploadRouter(APIRouter):
             }
         del stats["uploaded_files"]
         result.update(stats)
+        import random
+        result["filtering_stage"] = random.randint(0, 2)
+        possible_status = ["working", "starting", "failed", "completed"]
+        result["filtering_status"] = random.choice(possible_status)
+        result["filtering_progress"] = random.randint(0, 100)
+        # 0 new zip
+        # 1 files done, pick file types
+        # 2 gpu filtering done
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_files_save_config(self, config: TabFilesConfig):
@@ -170,7 +178,7 @@ class TabUploadRouter(APIRouter):
         except OSError as e:
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
 
-    async def _upload_files_process_now(self):
+    async def _upload_files_process_now(self, upto_filtering_stage: int = Query(0)):
         with open(env.FLAG_LAUNCH_PROCESS_UPLOADS, "w") as f:
             f.write("1")
         try:
