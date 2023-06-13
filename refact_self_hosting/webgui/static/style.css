@@ -310,7 +310,7 @@ h3 {
 .tab-files-process-now {
     margin-left: auto;
 }
-.sources-run {
+.run-pane{
     margin-left: auto;
     margin-right: auto;
     width: 220px;
@@ -320,7 +320,8 @@ h3 {
     width: 220px;
     font-weight: bold;
 }
-.sources-run-button i {
+.sources-run-button i,
+.sources-run-button span {
     margin-right: 10px;
 }
 .sources-buttons {
@@ -365,4 +366,13 @@ h3 {
 }
 .upload-tab-table-type-body tr td:first-child {
     width: 20px;
+}
+
+.pane-disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+.source-info {
+    margin-left: 5px;
+    cursor: pointer;
 }

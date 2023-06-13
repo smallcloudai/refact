@@ -5,9 +5,83 @@ function get_tab_files() {
         })
         .then(function(data) {
             console.log('tab-files-get',data);
+            switch(data.filtering_stage) {
+                case 0:
+                    filter_state_zero();
+                    break;
+                case 1:
+                    filter_state_one();
+                    break;
+                case 2:
+                    filter_state_two();
+                    render_filter_progress(data.filtering_progress);
+                    break;
+
+            }
             render_tab_files(data);
             render_filetypes(data);
         });
+}
+
+const progress_bar = document.querySelector('.sources-run-progress .progress-bar');
+const sidebar_progress = document.querySelector('.sources-sidebar-progress .progress-bar');
+const sidebar_step1 = document.querySelector('.sources-list li:first-of-type');
+const sidebar_step2 = document.querySelector('.sources-list li:last-of-type');
+const sources_pane = document.querySelector('.sources-pane');
+const filetypes_pane = document.querySelector('.filetypes-pane');
+const sources_run_pane = document.querySelector('.run-pane');
+const sources_run_button = document.querySelector('.sources-run-button');
+const sources_run_progress = document.querySelector('.sources-run-progress');
+const summary_pane = document.querySelector('.summary-pane');
+const sources_settings = document.querySelector('.sources-settings');
+
+function render_filter_progress(progress_value) {
+    progress_bar.style.width = progress_value + "%";
+}
+// function render_filter_button(value) {
+//     if(value === "completed") {
+//         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>${value}`;
+//     } else {
+//         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
+//     }
+// }
+function filter_state_zero() {
+    progress_bar.style.width = "0%";
+    sidebar_progress.style.width = "0%";
+    sources_run_progress.classList.add('d-none');
+    sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
+    sidebar_step1.classList.add('sources-list-active');
+    sidebar_step2.classList.remove('sources-list-active');
+    sources_pane.classList.remove('pane-disabled');
+    filetypes_pane.classList.add('pane-disabled');
+    sources_run_pane.classList.add('pane-disabled');
+    sources_settings.classList.remove('pane-disabled');
+}
+
+function filter_state_one() {
+    progress_bar.style.width = "0%";
+    sidebar_progress.style.width = "50%";
+    sources_run_progress.classList.add('d-none');
+    sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
+    sidebar_step1.classList.add('sources-list-active');
+    sidebar_step2.classList.add('sources-list-active');
+    sources_pane.classList.remove('pane-disabled');
+    filetypes_pane.classList.remove('pane-disabled');
+    sources_run_pane.classList.remove('pane-disabled');
+    sources_settings.classList.remove('pane-disabled');
+}
+
+function filter_state_two() {
+    progress_bar.style.width = "0%";
+    sidebar_progress.style.width = "100%";
+    sources_run_progress.classList.add('d-none');
+    sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>Stop`;
+    sidebar_step1.classList.add('sources-list-active');
+    sidebar_step2.classList.add('sources-list-active');
+    sources_pane.classList.add('pane-disabled');
+    filetypes_pane.classList.add('pane-disabled');
+    sources_run_pane.classList.remove('pane-disabled');
+    sources_settings.classList.add('pane-disabled');
 }
 
 function render_tab_files(data) {
@@ -21,7 +95,7 @@ function render_tab_files(data) {
         const status = document.createElement("td");
         const set = document.createElement("td");
         const delete_file = document.createElement("td");
-        name.innerHTML = item;
+        name.innerHTML = item + `<div class="source-data d-none"></div>`;
 
         const which_set = data.uploaded_files[item].which_set;
         if(which_set === "train") {
@@ -49,29 +123,34 @@ function render_tab_files(data) {
             const row_file_name = row.getAttribute('data-file');
             if (row_file_name === item) {
                 const target_cell = row.querySelector('td:nth-child(2)');
+                const info_cell = row.querySelector('td:nth-child(1) div');
                 let current_status = item_object.status;
                 if (!current_status) {
                     current_status = "";
                 }
                 const status_color = file_status_color(current_status);
-                let popup_data = `Status: ${item_object.status}`;
+                let info_data = `<div><b>Status:</b> ${item_object.status}</div>`;
                 if(item_object.generated) {
-                    popup_data += ` \nGenerated: ${item_object.generated}`;
+                    info_data += `<div><b>Generated:</b> ${item_object.generated}</div>`;
                 }
                 if(item_object.good) {
-                    popup_data += ` \nGood: ${item_object.good}`;
+                    info_data += `<div><b>Good:</b> ${item_object.good}</div>`;
                 }
                 if(item_object.too_large) {
-                    popup_data += ` \nToo Large: ${item_object.too_large}`;
+                    info_data += `<div><b>Too Large:</b> ${item_object.too_large}</div>`;
                 }
                 if(item_object.vendored) {
-                    popup_data += ` \nVendored: ${item_object.vendored}`;
+                    info_data += `<div><b>Vendored:</b> ${item_object.vendored}</div>`;
                 }
                 if (current_status == "completed" && item_object.good) {
-                    target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}">${item_object.good} files</span>`;
+                    target_cell.innerHTML = `<span>${item_object.good} files</span><i class="source-info bi bi-info-square-fill text-success"></i>`;
                 } else {
-                    target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}" class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
+                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span><i class="source-info bi bi-info-square-fill text-success"></i>`;
                 }
+                info_cell.innerHTML = info_data;
+                row.querySelector('.source-info').addEventListener('click', function() {
+                    row.querySelector('.source-data').classList.toggle('d-none');
+                });
                 if (current_status == "working" || current_status == "starting") {
                     any_working = true;
                 }
@@ -89,12 +168,8 @@ function render_tab_files(data) {
         let process_button_text = "Stop";
         process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
     } else {
-        process_button.innerHTML = "Unpack Now";
+        process_button.innerHTML = "Scan sources";
     }
-
-    // XXX: what is this?
-    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 }
 
 function get_ssh_keys() {
@@ -123,7 +198,7 @@ function render_filetypes(data) {
         let i = 0;
         for(const [key, value] of Object.entries(data.all_mime_types)) {
             const row = document.createElement('tr');
-            const file_checkbox = `<input id="file-list${i}" class="form-check-input" type="checkbox" value="${i}">`;
+            const file_checkbox = `<input id="file-list${i}" class="form-check-input" type="checkbox" value="${i}" checked>`;
             const file_name = `<label for="file-list${i}">${key}</label>`;
             row.innerHTML = `<td>${file_checkbox}</td><td>${file_name}</td><td>${value}</td>`;
             table_body.appendChild(row);
@@ -402,6 +477,15 @@ export function init() {
         git_modal.querySelector('#tab-upload-git-input').value = '';
         git_modal.querySelector('#tab-upload-git-brach-input').value = '';
         git_modal.querySelector('#status-git').innerHTML = '';
+    });
+
+    const ssh_link = document.querySelector('.ssh-link');
+    ssh_link.addEventListener('click', function(event) {
+        const settings_tab = new bootstrap.Tab(document.querySelector('#settings-tab'));
+        const ssh_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-git-modal'));
+        ssh_modal.hide();
+        event.preventDefault()
+        settings_tab.show()
     });
 }
 
