@@ -51,7 +51,7 @@
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button"
-              role="tab" aria-controls="upload-pane" aria-selected="false">Upload</button>
+              role="tab" aria-controls="upload-pane" aria-selected="false">Sources</button>
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="finetune-tab" data-bs-toggle="tab" data-bs-target="#finetune" type="button"
@@ -97,9 +97,18 @@
         </div>
       </div>
       <div class="tab-pane fade" id="upload">
-
           <div class="row">
-            <div class="col-8">
+            <div class="col-3">
+              <ol>
+                <li>Scan Sources<span></span></li>
+                <li>Filetype Filtering<span></span></li>
+              </ol>
+              <div class="progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 0%"></div>
+              </div>
+              <div class="sources-ready"></div>
+            </div>
+            <div class="col-9">
               <div class="pane">
               <h3>Sources</h3>
               <table class="table table-sm align-middle upload-tab-table-files">
@@ -107,8 +116,7 @@
                   <tr>
                     <th>Filename</th>
                     <th></th>
-                    <th>Train Set</th>
-                    <th>Use for Context</th>
+                    <th></th>
                     <th></th>
                   </tr>
                 </thead>
@@ -121,23 +129,35 @@
                 type="button" class="btn btn-primary">Add file from URL</button>
               <button id="upload-tab-git-button" data-bs-toggle="modal" data-bs-target="#upload-tab-git-modal"
                 type="button" class="btn btn-primary">Add git repo...</button>
-              <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Process
-                now</button>
+              <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Scan sources</button>
               </div>
-            </div>
-            <div class="col-4">
               <div class="pane">
                 <h3>Filetypes</h3>
-                <table class="table table-striped upload-tab-table-types">
-                  <thead>
-                    <tr>
-                      <th>MIME</th>
-                      <th>Count</th>
-                    </tr>
-                  </thead>
-                  <tbody class="upload-tab-table-type-body">
-                  </tbody>
-                </table>
+                <div class="row">
+                  <div class="col-6">
+                    <table class="table table-striped upload-tab-table-types">
+                      <thead>
+                        <tr>
+                          <th></th>
+                          <th>MIME</th>
+                          <th>Count</th>
+                        </tr>
+                      </thead>
+                      <tbody class="upload-tab-table-type-body">
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="col-6">
+                    <div class="mb-3">
+                      <label for="force_exclude" class="form-label">Force Exclude Files</label>
+                      <input type="text" class="form-control" id="force_exclude" placeholder="*.*">
+                    </div>
+                    <div class="mb-3">
+                      <label for="force_include" class="form-label">Force Include Files</label>
+                      <input type="text" class="form-control" id="force_include" placeholder="*.*">
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
