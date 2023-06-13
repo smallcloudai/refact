@@ -7,6 +7,8 @@ import termcolor
 from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
+from code_contrast.model_caps import modelcap_records
+from refact_self_hosting.known_models import models_mini_db
 from refact_self_hosting.webgui import selfhost_model_resolve
 from refact_self_hosting.webgui.selfhost_req_queue import Ticket
 from refact_self_hosting.webgui.selfhost_webutils import log
@@ -165,12 +167,41 @@ class CompletionsRouter(APIRouter):
                  timeout: int = 30,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.add_api_route("/login", self._longthink_functions, methods=["GET"])
         self.add_api_route("/secret-key-activate", self._secret_key_activate, methods=["GET"])
         self.add_api_route("/completions", self._completions, methods=["POST"])
         self.add_api_route("/contrast", self._contrast, methods=["POST"])
         self._user2gpu_queue = user2gpu_queue
         self._id2ticket = id2ticket
         self._timeout = timeout
+
+    async def _longthink_functions(self):
+        longthink_functions = dict()
+        filter_caps = set([
+            capability
+            for model in self._user2gpu_queue
+            for capability in models_mini_db[model]["filter_caps"]])
+        for rec in modelcap_records.db:
+            rec_models = rec.model
+            if not isinstance(rec_models, list):
+                rec_models = [rec_models]
+            if not filter_caps.intersection(rec_models):
+                continue
+            longthink_functions[rec.function_name] = {
+                "is_liked": False,
+                "likes": 0,
+                "third_party": False,
+                # TODO: resolve "model"
+                **rec.to_dict(),
+            }
+        return {
+            "account": "self-hosted",
+            "retcode": "OK",
+            "longthink-functions-today": 1,
+            "longthink-functions-today-v2": longthink_functions,
+            "longthink-filters": [],
+            "chat-v1-style": True,
+        }
 
     async def _secret_key_activate(self):
         return {
