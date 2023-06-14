@@ -1,3 +1,4 @@
+let popup_visible = false;
 function get_tab_files() {
     fetch("/tab-files-get")
         .then(function(response) {
@@ -20,6 +21,7 @@ function get_tab_files() {
             }
             render_tab_files(data);
             render_filetypes(data);
+            render_filter_setup_defaults(data.filter_setup_defaults);
         });
 }
 
@@ -96,7 +98,7 @@ function render_tab_files(data) {
         const status = document.createElement("td");
         const set = document.createElement("td");
         const delete_file = document.createElement("td");
-        name.innerHTML = item + `<div class="source-data d-none"></div>`;
+        name.innerHTML = item;
 
         const which_set = data.uploaded_files[item].which_set;
         if(which_set === "train") {
@@ -133,7 +135,6 @@ function render_tab_files(data) {
                 }
 
                 const target_cell = row.querySelector('td:nth-child(3)');
-                const info_cell = row.querySelector('td:nth-child(1) div');
                 let current_status = item_object.status;
                 if (!current_status) {
                     current_status = "";
@@ -153,13 +154,17 @@ function render_tab_files(data) {
                     info_data += `<div><b>Vendored:</b> ${item_object.vendored}</div>`;
                 }
                 if (current_status == "completed" && item_object.good) {
-                    target_cell.innerHTML = `<span>${item_object.good} files</span><i class="source-info bi bi-info-square-fill text-success"></i>`;
+                    target_cell.innerHTML = `<span>${item_object.good} files</span><i class="source-info bi bi-info-square-fill text-success"></i><div class="source-popup">${info_data}</div>`;
                 } else {
                     target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span><i class="source-info bi bi-info-square-fill text-success"></i>`;
                 }
-                info_cell.innerHTML = info_data;
-                row.querySelector('.source-info').addEventListener('click', function() {
-                    row.querySelector('.source-data').classList.toggle('d-none');
+                row.querySelector('.source-info').addEventListener('mouseover', function(event) {
+                    popup_visible = true;
+                    event.target.nextElementSibling.style.display = 'block';
+                });
+                row.querySelector('.source-info').addEventListener('mouseout', function(event) {
+                    popup_visible = false;
+                    event.target.nextElementSibling.style.display = 'none';
                 });
                 if (current_status == "working" || current_status == "starting") {
                     any_working = true;
@@ -392,7 +397,7 @@ function save_tab_files() {
     const uploaded_files = {};
     let i = 0;
     files.forEach(function(element) {
-        const name = element.querySelector('td').innerHTML;
+        const name = element.dataset.file;
         const which_set = element.querySelector(`input[name="file-which[${i}]"]:checked`).value;
         uploaded_files[name] = {
             which_set: which_set,
@@ -437,6 +442,44 @@ function file_status_color(status) {
             break;
     }
     return status_color;
+}
+
+function render_filter_setup_defaults(data) {
+    document.querySelector('#filter_gradcosine_threshold').value = data.filter_gradcosine_threshold;
+    document.querySelector('#filter_loss_threshold').value = data.filter_loss_threshold;
+    document.querySelector('#limit_test_files').value = data.limit_test_files;
+    document.querySelector('#limit_time_seconds').value = data.limit_time_seconds;
+    document.querySelector('#limit_train_files').value = data.limit_train_files;
+}
+
+function save_filter_setup() {
+    const filter_gradcosine_threshold = document.querySelector('#filter_gradcosine_threshold').value;
+    const filter_loss_threshold = document.querySelector('#filter_loss_threshold').value;
+    // const limit_test_files = document.querySelector('#limit_test_files').value;
+    const limit_time_seconds = document.querySelector('#limit_time_seconds').value;
+    const limit_train_files = document.querySelector('#limit_train_files').value;
+    const include_file_types = null;
+    const force_include = null;
+    const force_exclude = null;
+    fetch("/tab-files-setup-filtering", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            filter_gradcosine_threshold: filter_gradcosine_threshold,
+            filter_loss_threshold: filter_loss_threshold,
+            limit_time_seconds: limit_time_seconds,
+            limit_train_files: limit_train_files,
+            include_file_types: include_file_types,
+            force_include: force_include,
+            force_exclude: force_exclude,
+        })
+    })
+    .then(function(response) {
+        console.log(response);
+        get_tab_files();
+    });
 }
 
 export function init() {

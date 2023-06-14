@@ -380,3 +380,19 @@ h3 {
     margin-left: 5px;
     cursor: pointer;
 }
+.nav-link.active {
+    font-weight: bold;
+    color: #0d6efd !important;
+}
+.source-popup {
+    display: none;
+    position: absolute;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    background-color: #fff;
+    box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.2);
+    text-align: left;
+    z-index: 999;
+    margin-top: -25px;
+    margin-left: 100px;   
+}

@@ -43,7 +43,8 @@
             fill="black"></path>
         </svg>
       </a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
@@ -65,14 +66,15 @@
               role="tab" aria-controls="logs-pane" aria-selected="false">Server Logs</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link disabled" id="access-tab" data-bs-toggle="tab" data-bs-target="#access-control" type="button"
-              role="tab" aria-controls="access-pane" aria-selected="false">Access Control</button>
+            <button class="nav-link disabled" id="access-tab" data-bs-toggle="tab" data-bs-target="#access-control"
+              type="button" role="tab" aria-controls="access-pane" aria-selected="false">Access Control</button>
           </li>
           <li class="nav-item dropdown ms-auto">
-            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false"><i class="bi bi-person-circle"></i></a>
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
+              aria-expanded="false"><i class="bi bi-person-circle"></i></a>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li><button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button"
-                role="tab" aria-controls="settings-pane" aria-selected="false">SSH Keys</button>
+              <li><button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings"
+                  type="button" role="tab" aria-controls="settings-pane" aria-selected="false">SSH Keys</button>
               </li>
             </ul>
           </li>
@@ -114,19 +116,20 @@
         </div>
       </div>
       <div class="tab-pane fade" id="upload">
-          <div class="row">
-            <div class="col-3">
-              <ol class="sources-list">
-                <li>Scan Sources<span class="d-none"><i class="bi bi-check-lg"></i></span></li>
-                <li>Filetype Filtering<span class="d-none"><i class="bi bi-check-lg"></i></span></li>
-              </ol>
-              <div class="progress sources-sidebar-progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar" style="width: 0%"></div>
-              </div>
-              <div class="sources-ready"></div>
+        <div class="row">
+          <div class="col-3">
+            <ol class="sources-list">
+              <li>Scan Sources<span class="d-none"><i class="bi bi-check-lg"></i></span></li>
+              <li>Filetype Filtering<span class="d-none"><i class="bi bi-check-lg"></i></span></li>
+            </ol>
+            <div class="progress sources-sidebar-progress" role="progressbar" aria-valuenow="0" aria-valuemin="0"
+              aria-valuemax="100">
+              <div class="progress-bar" style="width: 0%"></div>
             </div>
-            <div class="col-9">
-              <div class="pane sources-pane">
+            <div class="sources-ready"></div>
+          </div>
+          <div class="col-9">
+            <div class="pane sources-pane">
               <h3>Sources</h3>
               <table class="table table-sm align-middle upload-tab-table-files">
                 <thead>
@@ -147,78 +150,82 @@
                   type="button" class="btn btn-primary">Add file from URL</button>
                 <button id="upload-tab-git-button" data-bs-toggle="modal" data-bs-target="#upload-tab-git-modal"
                   type="button" class="btn btn-primary">Add git repo...</button>
-                <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Scan sources</button>
+                <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Scan
+                  sources</button>
               </div>
-              </div>
-              <div class="pane filetypes-pane">
-                <h3>Filetypes</h3>
-                <div class="row source-files-table">
-                  <div class="col-7">
-                    <table class="table table-striped upload-tab-table-types">
-                      <thead>
-                        <tr>
-                          <th></th>
-                          <th>MIME</th>
-                          <th>Count</th>
-                        </tr>
-                      </thead>
-                      <tbody class="upload-tab-table-type-body">
-                      </tbody>
-                    </table>
+            </div>
+            <div class="pane filetypes-pane">
+              <h3>Filetypes</h3>
+              <div class="row source-files-table">
+                <div class="col-7">
+                  <table class="table table-striped upload-tab-table-types">
+                    <thead>
+                      <tr>
+                        <th></th>
+                        <th>MIME</th>
+                        <th>Count</th>
+                      </tr>
+                    </thead>
+                    <tbody class="upload-tab-table-type-body">
+                    </tbody>
+                  </table>
+                </div>
+                <div class="col-5 source-force">
+                  <div class="mb-3">
+                    <label for="force_exclude" class="form-label">Force exclude from finetune</label>
+                    <input type="text" class="form-control" id="force_exclude" placeholder="generated/*,dist/*">
                   </div>
-                  <div class="col-5 source-force">
-                    <div class="mb-3">
-                      <label for="force_exclude" class="form-label">Force exclude from finetune</label>
-                      <input type="text" class="form-control" id="force_exclude" placeholder="generated/*,dist/*">
-                    </div>
-                    <div class="mb-3">
-                      <label for="force_include" class="form-label">Force include in finetune</label>
-                      <input type="text" class="form-control" id="force_include" placeholder="src/strange_file.py">
-                    </div>
-                    <div class="sources-stats">1123</div>
+                  <div class="mb-3">
+                    <label for="force_include" class="form-label">Force include in finetune</label>
+                    <input type="text" class="form-control" id="force_include" placeholder="src/strange_file.py">
                   </div>
+                  <div class="sources-stats">1123</div>
                 </div>
               </div>
-              <div class="run-pane">
-                <div class="sources-run-progress d-none progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                  <div class="progress-bar" style="width: 0%"></div>
-                </div>
-                <button type="button" class="sources-run-button btn btn-primary btn-lg"><i class="bi bi-gpu-card"></i>Run filter</button>
-                <button type="button" data-bs-toggle="modal" data-bs-target="#upload-tab-source-settings-modal" class="btn btn-link sources-settings">Settings</button>
+            </div>
+            <div class="run-pane">
+              <div class="sources-run-progress d-none progress" role="progressbar" aria-valuenow="0" aria-valuemin="0"
+                aria-valuemax="100">
+                <div class="progress-bar" style="width: 0%"></div>
               </div>
-              <div class="sources-summary summary-pane d-none">
-                <h3>Data Filtration Summary</h3>
-                <div class="row">
-                  <div class="col-6">
-                    <h5>Included files</h5>
-                    <a href="#">Included Details</a>
-                  </div>
-                  <div class="col-6">
-                    <h5>Excluded Files</h5>
-                    <a href="#">Excluded Details</a>
-                  </div>
+              <button type="button" class="sources-run-button btn btn-primary btn-lg"><i class="bi bi-gpu-card"></i>Run
+                filter</button>
+              <button type="button" data-bs-toggle="modal" data-bs-target="#upload-tab-source-settings-modal"
+                class="btn btn-link sources-settings">Settings</button>
+            </div>
+            <div class="sources-summary summary-pane d-none">
+              <h3>Data Filtration Summary</h3>
+              <div class="row">
+                <div class="col-6">
+                  <h5>Included files</h5>
+                  <a href="#">Included Details</a>
+                </div>
+                <div class="col-6">
+                  <h5>Excluded Files</h5>
+                  <a href="#">Excluded Details</a>
                 </div>
               </div>
             </div>
           </div>
+        </div>
       </div>
       <div class="tab-pane fade" id="finetune">
         <div class="row">
           <div class="col-5">
             <div class="pane">
-            <h3>Finetune runs</h3>
-            <table class="table mt-3 table-sm table-hover table-types">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th></th>
-                  <th>Minutes</th>
-                  <th>Steps</th>
-                </tr>
-              </thead>
-              <tbody class="run-table">
-              </tbody>
-            </table>
+              <h3>Finetune runs</h3>
+              <table class="table mt-3 table-sm table-hover table-types">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th></th>
+                    <th>Minutes</th>
+                    <th>Steps</th>
+                  </tr>
+                </thead>
+                <tbody class="run-table">
+                </tbody>
+              </table>
             </div>
             <div class="pane">
               <h3>Selected Model:<span></span></h3>
@@ -270,25 +277,25 @@
               <h3>Use in inference: <span></span></h3>
               <div class="lora-group">
                 <div class="btn-group" role="group" aria-label="basic radio toggle button group">
-                  <input type="radio" class="lora-input btn-check" name="finetune_lora" value="off"
-                    id="loraradio1" autocomplete="off" checked>
+                  <input type="radio" class="lora-input btn-check" name="finetune_lora" value="off" id="loraradio1"
+                    autocomplete="off" checked>
                   <label class="btn btn-outline-primary" for="loraradio1">Turn Off</label>
-  
-                  <input type="radio" class="lora-input btn-check" name="finetune_lora" value="latest"
-                    id="loraradio4" autocomplete="off">
+
+                  <input type="radio" class="lora-input btn-check" name="finetune_lora" value="latest" id="loraradio4"
+                    autocomplete="off">
                   <label class="btn btn-outline-primary" for="loraradio4">Use Latest / Best</label>
                 </div>
               </div>
             </div>
-            <div class="pane"> 
+            <div class="pane">
               <ul class="nav nav-tabs" id="myTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link active" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button"
-                    role="tab" aria-controls="logs" aria-selected="true">Logs</button>
+                  <button class="nav-link active" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs"
+                    type="button" role="tab" aria-controls="logs" aria-selected="true">Logs</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="checkpoints-tab" data-bs-toggle="tab" data-bs-target="#checkpoints" type="button"
-                    role="tab" aria-controls="checkpoints" aria-selected="false">Checkpoints</button>
+                  <button class="nav-link" id="checkpoints-tab" data-bs-toggle="tab" data-bs-target="#checkpoints"
+                    type="button" role="tab" aria-controls="checkpoints" aria-selected="false">Checkpoints</button>
                 </li>
               </ul>
 
@@ -312,7 +319,8 @@
         <div class="pane">
           <h2>SSH Settings</h2>
           <div class="settings-row">
-            <button data-bs-toggle="modal" data-bs-target="#settings-tab-ssh-modal" type="button" id="settings-new" class="btn btn-primary">Generate new SSH Key</button>
+            <button data-bs-toggle="modal" data-bs-target="#settings-tab-ssh-modal" type="button" id="settings-new"
+              class="btn btn-primary">Generate new SSH Key</button>
             <div class="mt-2 settings-all-keys"></div>
           </div>
         </div>
@@ -420,48 +428,85 @@
   </div>
 
   <div class="modal fade" id="settings-tab-ssh-modal" tabindex="-1" aria-labelledby="settings-tab-ssh-modal"
-  aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add SSH Key</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label">Key Name</label>
-          <input type="text" id="tab-settings-key-title-input" class="form-control">
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add SSH Key</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="mb-3 d-none tab-settings-ssh-keywrap">
-          <label class="form-label">Your SSH Key</label>
-          <div class="tab-settings-ssh">
-            <code></code>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Key Name</label>
+            <input type="text" id="tab-settings-key-title-input" class="form-control">
           </div>
-          <div class="form-text">
-            Please copy and paste this Key into your Git repository settings.<br><b>This key will be showed only once!</b>
+          <div class="mb-3 d-none tab-settings-ssh-keywrap">
+            <label class="form-label">Your SSH Key</label>
+            <div class="tab-settings-ssh">
+              <code></code>
+            </div>
+            <div class="form-text">
+              Please copy and paste this Key into your Git repository settings.<br><b>This key will be showed only
+                once!</b>
+            </div>
           </div>
+          <div id="status-ssh" class="uploaded-status"></div>
+          <button class="settings-tab-ssh-submit btn btn-primary">Add SSH Key</button>
         </div>
-        <div id="status-ssh" class="uploaded-status"></div>
-        <button class="settings-tab-ssh-submit btn btn-primary">Add SSH Key</button>
       </div>
     </div>
   </div>
-</div>
 
-<div class="modal fade" id="upload-tab-source-settings-modal" tabindex="-1" aria-labelledby="upload-tab-source-settings-modal"
-aria-hidden="true">
-<div class="modal-dialog modal-dialog-centered">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h5 class="modal-title" id="urlModalLabel">Source Settings</h5>
-      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-    </div>
-    <div class="modal-body">
-      <button class="tab-upload-source-settings-submit btn btn-primary">Submit</button>
+  <div class="modal fade" id="upload-tab-source-settings-modal" tabindex="-1"
+    aria-labelledby="upload-tab-source-settings-modal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="urlModalLabel">Source Settings</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="filter_gradcosine_threshold" class="form-label">Filter gradcosine threshold</label>
+                <input type="number" class="form-control" id="filter_gradcosine_threshold">
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="filter_loss_threshold" class="form-label">Filter loss threshold</label>
+                <input type="number" class="form-control" id="filter_loss_threshold">
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_test_files" class="form-label">Limit test files</label>
+                <input type="number" class="form-control" id="limit_test_files">
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_time_seconds" class="form-label">Limit time seconds</label>
+                <input type="number" class="form-control" id="limit_time_seconds">
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_train_files" class="form-label">Limit train files</label>
+                <input type="number" class="form-control" id="limit_train_files">
+              </div>
+            </div>
+          </div>
+          <button class="tab-upload-source-settings-submit btn btn-primary">Apply</button>
+        </div>
+      </div>
     </div>
   </div>
-</div>
-</div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe"
