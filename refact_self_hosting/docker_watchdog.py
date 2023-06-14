@@ -230,8 +230,8 @@ def main_loop():
 
 if __name__ == '__main__':
     # Generate a random SMALLCLOUD_API_KEY, it will be inherited by subprocesses,
-    # this allows inference_worker to authorize on the local web server (both read
-    # this variable), even if we expose http port to the world.
+    # this allows inference_worker to authorize on the local web server (both use
+    # this variable), and work safely even if we expose http port to the world.
     os.environ["SMALLCLOUD_API_KEY"] = str(uuid.uuid4())
     subprocess.check_call([sys.executable, "-m", "refact_self_hosting.first_run"])
     main_loop()
