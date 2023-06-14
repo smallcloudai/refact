@@ -304,6 +304,7 @@ class Inference:
         elif self._lora_on and self._lora_checkpoint_dir != lora_checkpoint_dir:
             self._lora_checkpoint_dir = lora_checkpoint_dir
             self._model = load_finetune_checkpoint_only(self._model, lora_checkpoint_dir)
+        log("using lora %s" % lora_checkpoint_dir)
 
     def lora_switch_according_to_config(self):
         if not os.path.exists(env.CONFIG_ACTIVE_LORA):
