@@ -9,6 +9,7 @@ from fastapi.responses import Response, JSONResponse, StreamingResponse
 from refact_data_pipeline import finetune_filtering_defaults
 
 from refact_self_hosting import env
+from refact_self_hosting.env import GIT_CONFIG_FILENAME, get_all_ssh_keys
 from refact_self_hosting.webgui.selfhost_webutils import log
 
 from pydantic import BaseModel, Required
@@ -17,7 +18,6 @@ from typing import Dict, Optional
 
 __all__ = ["TabUploadRouter"]
 
-from refact_self_hosting.webgui.tab_settings import get_all_ssh_keys
 
 
 async def download_file_from_url(url: str):
@@ -108,8 +108,17 @@ class TabUploadRouter(APIRouter):
             result["uploaded_files"][fn] = {
                 "which_set": how_to_process["uploaded_files"].get(fn, default)["which_set"],
                 "to_db": how_to_process["uploaded_files"].get(fn, default)["to_db"],
+                "is_git": False,
                 **stats_uploaded_files.get(fn, {})
             }
+            if os.path.exists(os.path.join(uploaded_path, fn, GIT_CONFIG_FILENAME)):
+                with open(os.path.join(uploaded_path, fn, GIT_CONFIG_FILENAME), 'r') as f:
+                    config = json.load(f)
+                result["uploaded_files"][fn].update({
+                    "is_git": True,
+                    **config
+                })
+
         del stats["uploaded_files"]
         result.update(stats)
         result["filtering_stage"] = 0
@@ -166,19 +175,27 @@ class TabUploadRouter(APIRouter):
         return ' '.join(command)
 
     async def _tab_files_repo_upload(self, repo: CloneRepo):
+        def get_repo_name_from_url(url: str) -> str:
+            last_slash_index = url.rfind("/")
+            last_suffix_index = url.rfind(".git")
+            if last_suffix_index < 0:
+                last_suffix_index = len(url)
+
+            if last_slash_index < 0 or last_suffix_index <= last_slash_index:
+                raise Exception("Badly formatted url {}".format(url))
+
+            return url[last_slash_index + 1:last_suffix_index]
         try:
-            branch_args = ["-b", repo.branch] if repo.branch else []
-            proc = await asyncio.create_subprocess_exec(
-                "git", "-C", env.DIR_UPLOADS, "clone", "--no-recursive",
-                "--depth", "1", *branch_args, repo.url,
-                env={
-                    "GIT_SSH_COMMAND": self._make_git_command()
-                },
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.PIPE)
-            _, stderr = await proc.communicate()
-            if proc.returncode != 0:
-                raise RuntimeError(stderr.decode())
+            repo_name = get_repo_name_from_url(repo.url)
+            repo_base_dir = os.path.join(env.DIR_UPLOADS, repo_name)
+            os.makedirs(repo_base_dir, exist_ok=False)
+            with open(os.path.join(repo_base_dir, GIT_CONFIG_FILENAME), 'w') as f:
+                json.dump({
+                    "url": repo.url,
+                    "branch": repo.branch,
+                }, f)
+        except FileExistsError as _:
+            return JSONResponse({"message": f"Error: {repo_name} is exist"}, status_code=500)
         except Exception as e:
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
         return JSONResponse("OK")

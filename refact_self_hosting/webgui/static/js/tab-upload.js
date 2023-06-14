@@ -92,6 +92,7 @@ function render_tab_files(data) {
         const row = document.createElement('tr');
         row.setAttribute('data-file', item);
         const name = document.createElement("td");
+        const is_git = document.createElement("td");
         const status = document.createElement("td");
         const set = document.createElement("td");
         const delete_file = document.createElement("td");
@@ -106,6 +107,7 @@ function render_tab_files(data) {
         }
         delete_file.innerHTML = `<div class="btn-group dropend"><button type="button" class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-trash3-fill"></i></button><ul class="dropdown-menu"><li><span class="file-remove dropdown-item btn btn-sm" data-file="${item}">Delete file</a></span></ul></div>`;
         row.appendChild(name);
+        row.appendChild(is_git);
         row.appendChild(status);
         row.appendChild(set);
         row.appendChild(delete_file);
@@ -122,7 +124,15 @@ function render_tab_files(data) {
         for (const row of rows) {
             const row_file_name = row.getAttribute('data-file');
             if (row_file_name === item) {
-                const target_cell = row.querySelector('td:nth-child(2)');
+                const is_git_cell = row.querySelector('td:nth-child(2)');
+
+                if (item_object.is_git) {
+                    is_git_cell.innerHTML = `<span class="badge rounded-pill text-bg-warning">git</span>`;
+                } else {
+                    is_git_cell.innerHTML = `<span class="badge rounded-pill text-bg-info">file</span>`;
+                }
+
+                const target_cell = row.querySelector('td:nth-child(3)');
                 const info_cell = row.querySelector('td:nth-child(1) div');
                 let current_status = item_object.status;
                 if (!current_status) {
