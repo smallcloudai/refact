@@ -271,7 +271,7 @@ function upload_repo() {
         formData['branch'] = gitBranch.value;
     }
 
-    fetch('/tab-repo-upload', {
+    fetch('/tab-files-repo-upload', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

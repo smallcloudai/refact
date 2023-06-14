@@ -5,7 +5,8 @@ import aiohttp
 import time
 
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
-from fastapi.responses import Response, JSONResponse
+from fastapi.responses import Response, JSONResponse, StreamingResponse
+from refact_data_pipeline import finetune_filtering_defaults
 
 from refact_self_hosting import env
 from refact_self_hosting.webgui.selfhost_webutils import log
@@ -41,12 +42,23 @@ class CloneRepo(BaseModel):
 
 
 class TabSingleFileConfig(BaseModel):
-    which_set: str = Query(default=Required, regex="train|test")
+    which_set: str = Query(default=Required, regex="auto|train|test")
     to_db: bool
 
 
 class TabFilesConfig(BaseModel):
     uploaded_files: Dict[str, TabSingleFileConfig]
+
+
+class FilteringSetup(BaseModel):
+    filter_loss_threshold: Optional[float] = Query(default=None, gt=2, le=10)
+    filter_gradcosine_threshold: Optional[float] = Query(default=None, gt=-1.0, le=0.5)
+    limit_train_files: Optional[int] = Query(default=None, gt=20, le=10000)
+    limit_time_seconds: Optional[int] = Query(default=None, gt=300, le=3600*6)
+    include_file_types: Dict[str, bool] = Query(default={})
+    force_include: str = Query(default="")
+    force_exclude: str = Query(default="")
+    use_gpus_n: Optional[int] = Query(default=False, gt=1, le=8)
 
 
 class TabUploadRouter(APIRouter):
@@ -57,9 +69,11 @@ class TabUploadRouter(APIRouter):
         self.add_api_route("/tab-files-save-config", self._tab_files_save_config, methods=["POST"])
         self.add_api_route("/tab-files-upload", self._tab_files_upload, methods=["POST"])
         self.add_api_route("/tab-files-upload-url", self._upload_file_from_url, methods=["POST"])
-        self.add_api_route("/tab-repo-upload", self._tab_repo_upload, methods=["POST"])
+        self.add_api_route("/tab-files-rejected", self._tab_files_rejected, methods=["GET"])
+        self.add_api_route("/tab-files-repo-upload", self._tab_files_repo_upload, methods=["POST"])
         self.add_api_route("/tab-files-delete", self._tab_files_delete, methods=["POST"])
         self.add_api_route("/tab-files-process-now", self._upload_files_process_now, methods=["GET"])
+        self.add_api_route("/tab-files-setup-filtering", self._tab_files_setup_filtering, methods=["POST"])
 
     async def _tab_files_get(self):
         result = {
@@ -93,11 +107,7 @@ class TabUploadRouter(APIRouter):
             }
         del stats["uploaded_files"]
         result.update(stats)
-        import random
-        result["filtering_stage"] = random.randint(0, 2)
-        possible_status = ["working", "starting", "failed", "completed"]
-        result["filtering_status"] = random.choice(possible_status)
-        result["filtering_progress"] = random.randint(0, 100)
+        result["filtering_stage"] = 0
         # 0 new zip
         # 1 files done, pick file types
         # 2 gpu filtering done
@@ -150,7 +160,7 @@ class TabUploadRouter(APIRouter):
             command += ['-i', ssh_key]
         return ' '.join(command)
 
-    async def _tab_repo_upload(self, repo: CloneRepo):
+    async def _tab_files_repo_upload(self, repo: CloneRepo):
         try:
             branch_args = ["-b", repo.branch] if repo.branch else []
             proc = await asyncio.create_subprocess_exec(
@@ -178,6 +188,26 @@ class TabUploadRouter(APIRouter):
         except OSError as e:
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
 
+    async def _tab_files_rejected(self, request: Request):
+        file_path = os.path.join(env.DIR_UNPACKED, "files_rejected.log")
+        if os.path.isfile(file_path):
+            return StreamingResponse(
+                stream_text_file(file_path),
+                media_type="text/plain"
+            )
+        else:
+            return Response("No files rejecetd", media_type="text/plain")
+
+    async def _tab_files_setup_filtering(self, post: FilteringSetup):
+        validated = post.dict()
+        for dkey, dval in finetune_filtering_defaults.finetune_filtering_defaults.keys():
+            if dkey in validated and (validated[dkey] == dval or validated[dkey] is None):
+                del validated[dkey]
+        with open(env.CONFIG_HOW_TO_FILTER + ".tmp", "w") as f:
+            json.dump(post.dict(), f, indent=4)
+        os.rename(env.CONFIG_HOW_TO_FILTER + ".tmp", env.CONFIG_HOW_TO_FILTER)
+        return JSONResponse("OK")
+
     async def _upload_files_process_now(self, upto_filtering_stage: int = Query(0)):
         with open(env.FLAG_LAUNCH_PROCESS_UPLOADS, "w") as f:
             f.write("1")
@@ -187,3 +217,11 @@ class TabUploadRouter(APIRouter):
             pass
         return JSONResponse("OK")
 
+
+async def stream_text_file(fn):
+    f = open(fn, "r")
+    while True:
+        line = f.readline()
+        if not line:
+            break
+        yield line
