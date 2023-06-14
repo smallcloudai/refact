@@ -84,6 +84,11 @@ class TabUploadRouter(APIRouter):
             how_to_process = json.load(open(env.CONFIG_HOW_TO_UNZIP, "r"))
         else:
             how_to_process = {'uploaded_files': {}}
+        if os.path.isfile(env.CONFIG_HOW_TO_FILTER):
+            result["filter_setup"] = json.load(open(env.CONFIG_HOW_TO_FILTER, "r"))
+        else:
+            result["filter_setup"] = {}
+        result["filter_setup_defaults"] = finetune_filtering_defaults.finetune_filtering_defaults
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
             stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
             mtime = os.path.getmtime(env.CONFIG_PROCESSING_STATS)
