@@ -1,4 +1,3 @@
-let popup_visible = false;
 function get_tab_files() {
     fetch("/tab-files-get")
         .then(function(response) {
@@ -140,30 +139,28 @@ function render_tab_files(data) {
                     current_status = "";
                 }
                 const status_color = file_status_color(current_status);
-                let info_data = `<div><b>Status:</b> ${item_object.status}</div>`;
-                if(item_object.generated) {
-                    info_data += `<div><b>Generated:</b> ${item_object.generated}</div>`;
-                }
-                if(item_object.good) {
-                    info_data += `<div><b>Good:</b> ${item_object.good}</div>`;
-                }
-                if(item_object.too_large) {
-                    info_data += `<div><b>Too Large:</b> ${item_object.too_large}</div>`;
-                }
-                if(item_object.vendored) {
-                    info_data += `<div><b>Vendored:</b> ${item_object.vendored}</div>`;
-                }
                 if (current_status == "completed" && item_object.good) {
+                    let info_data = `<div><b>Status:</b> ${item_object.status}</div>`;
+                    if(item_object.generated) {
+                        info_data += `<div><b>Generated:</b> ${item_object.generated}</div>`;
+                    }
+                    if(item_object.good) {
+                        info_data += `<div><b>Good:</b> ${item_object.good}</div>`;
+                    }
+                    if(item_object.too_large) {
+                        info_data += `<div><b>Too Large:</b> ${item_object.too_large}</div>`;
+                    }
+                    if(item_object.vendored) {
+                        info_data += `<div><b>Vendored:</b> ${item_object.vendored}</div>`;
+                    }
                     target_cell.innerHTML = `<span>${item_object.good} files</span><i class="source-info bi bi-info-square-fill text-success"></i><div class="source-popup">${info_data}</div>`;
                 } else {
                     target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span><i class="source-info bi bi-info-square-fill text-success"></i>`;
                 }
                 row.querySelector('.source-info').addEventListener('mouseover', function(event) {
-                    popup_visible = true;
                     event.target.nextElementSibling.style.display = 'block';
                 });
                 row.querySelector('.source-info').addEventListener('mouseout', function(event) {
-                    popup_visible = false;
                     event.target.nextElementSibling.style.display = 'none';
                 });
                 if (current_status == "working" || current_status == "starting") {

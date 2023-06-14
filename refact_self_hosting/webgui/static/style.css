@@ -163,7 +163,7 @@ h3 {
 .file-status {
     font-weight: normal;
     width: 100px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
 }
@@ -377,6 +377,9 @@ h3 {
     z-index: none;
 }
 .source-info {
+    position: absolute;
+    margin-top: 1px;
+    display: inline-block;
     margin-left: 5px;
     cursor: pointer;
 }
