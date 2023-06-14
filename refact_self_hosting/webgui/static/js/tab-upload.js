@@ -19,7 +19,7 @@ function get_tab_files() {
 
             }
             render_tab_files(data);
-            render_filetypes(data);
+            render_filetypes(data.mime_types);
             render_filter_setup_defaults(data.filter_setup_defaults);
         });
 }
@@ -204,18 +204,22 @@ function delete_events() {
 }
 
 function render_filetypes(data) {
-    if(data.all_mime_types) {
+    if(data.length > 0) {
         const table_body = document.querySelector('.upload-tab-table-type-body');
         table_body.innerHTML = '';
         let i = 0;
-        for(const [key, value] of Object.entries(data.all_mime_types)) {
+        data.forEach((item) => {
             const row = document.createElement('tr');
             const file_checkbox = `<input id="file-list${i}" class="form-check-input" type="checkbox" value="${i}" checked>`;
-            const file_name = `<label for="file-list${i}">${key}</label>`;
-            row.innerHTML = `<td>${file_checkbox}</td><td>${file_name}</td><td>${value}</td>`;
+            const file_name = `<label for="file-list${i}">${item.file_type}</label>`;
+            row.innerHTML = `<td>${file_checkbox}</td><td>${file_name}</td><td>${item.count}</td>`;
+            if(!item.suitable_to_train) {
+                row.classList.add('opacity-25');
+                row.classList.add('disbled');
+            }
             table_body.appendChild(row);
             i++;
-        }
+        });
     }
 }
 
