@@ -491,11 +491,12 @@ export function init() {
 
     const ssh_link = document.querySelector('.ssh-link');
     ssh_link.addEventListener('click', function(event) {
+        event.preventDefault()
         const settings_tab = new bootstrap.Tab(document.querySelector('#settings-tab'));
         const ssh_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-git-modal'));
         ssh_modal.hide();
-        event.preventDefault()
-        settings_tab.show()
+        settings_tab.show();
+        document.querySelector('.dropdown-menu').classList.remove('show');
     });
 }
 

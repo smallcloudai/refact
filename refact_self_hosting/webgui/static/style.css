@@ -31,10 +31,13 @@ body {
     border-radius: 5px;
     transform: rotate(-15deg);
 }
-.header {
+.navbar {
     border-bottom: 1px solid rgba(0,0,0,0.15);
     background-color: #fff;
     padding: 15px 0;
+}
+.navbar-nav {
+    width: 100%;
 }
 .header-tabs {
     display: flex;
@@ -371,6 +374,7 @@ h3 {
 .pane-disabled {
     pointer-events: none;
     opacity: 0.5;
+    z-index: none;
 }
 .source-info {
     margin-left: 5px;
