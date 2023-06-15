@@ -11,6 +11,7 @@ def copy_intact():
         "filetune.cfg",
         "process_uploaded.cfg",
         "webgui.cfg",
+        "longthink.cfg",
     ]
     for x in lst:
         dest = os.path.join(env.DIR_WATCHDOG_D, x)

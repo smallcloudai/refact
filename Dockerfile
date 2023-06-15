@@ -33,6 +33,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
       exit 1; \
     fi
 
+RUN pip install git+https://github.com/smallcloudai/no-gpu-scratchpads.git@self_hosting
 RUN pip install git+https://github.com/smallcloudai/smallcloud.git
 
 COPY . /tmp/app
