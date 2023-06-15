@@ -5,11 +5,12 @@ function get_tab_files() {
         })
         .then(function(data) {
             console.log('tab-files-get',data);
-            switch(data.filtering_stage) {
-                case 0:
+            // data.filtering_stage
+            switch(data.filtering_status) {
+                case 'working':
                     filter_state_zero();
                     break;
-                case 1:
+                case 'completed':
                     filter_state_one();
                     break;
                 case 2:
@@ -139,30 +140,35 @@ function render_tab_files(data) {
                     current_status = "";
                 }
                 const status_color = file_status_color(current_status);
-                if (current_status == "completed" && item_object.good) {
-                    let info_data = `<div><b>Status:</b> ${item_object.status}</div>`;
-                    if(item_object.generated) {
-                        info_data += `<div><b>Generated:</b> ${item_object.generated}</div>`;
-                    }
-                    if(item_object.good) {
-                        info_data += `<div><b>Good:</b> ${item_object.good}</div>`;
-                    }
-                    if(item_object.too_large) {
-                        info_data += `<div><b>Too Large:</b> ${item_object.too_large}</div>`;
-                    }
-                    if(item_object.vendored) {
-                        info_data += `<div><b>Vendored:</b> ${item_object.vendored}</div>`;
-                    }
-                    target_cell.innerHTML = `<span>${item_object.good} files</span><i class="source-info bi bi-info-square-fill text-success"></i><div class="source-popup">${info_data}</div>`;
-                } else {
-                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span><i class="source-info bi bi-info-square-fill text-success"></i>`;
+                let info_data = `<div><b>Status:</b> ${item_object.status}</div>`;
+                if(item_object.files) {
+                    info_data += `<div><b>Files:</b> ${item_object.files}</div>`;
                 }
-                row.querySelector('.source-info').addEventListener('mouseover', function(event) {
-                    event.target.nextElementSibling.style.display = 'block';
-                });
-                row.querySelector('.source-info').addEventListener('mouseout', function(event) {
-                    event.target.nextElementSibling.style.display = 'none';
-                });
+                if(item_object.generated) {
+                    info_data += `<div><b>Generated:</b> ${item_object.generated}</div>`;
+                }
+                if(item_object.good) {
+                    info_data += `<div><b>Good:</b> ${item_object.good}</div>`;
+                }
+                if(item_object.large) {
+                    info_data += `<div><b>Too Large:</b> ${item_object.large}</div>`;
+                }
+                if(item_object.vendored) {
+                    info_data += `<div><b>Vendored:</b> ${item_object.vendored}</div>`;
+                }
+                if(current_status === 'completed') {
+                    target_cell.innerHTML = `<span>Files: ${item_object.files} / Good: ${item_object.good}</span><i class="source-info bi bi-info-square-fill text-success"></i><div class="source-popup">${info_data}</div>`;
+                    row.querySelector('.source-info').addEventListener('mouseover', function(event) {
+                        event.target.nextElementSibling.style.display = 'block';
+                        // null on reading style
+                    });
+                    row.querySelector('.source-info').addEventListener('mouseout', function(event) {
+                        // null on reading s
+                        event.target.nextElementSibling.style.display = 'none';
+                    });
+                } else {
+                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
+                }
                 if (current_status == "working" || current_status == "starting") {
                     any_working = true;
                 }
@@ -204,7 +210,8 @@ function delete_events() {
 }
 
 function render_filetypes(data) {
-    if(data.length > 0) {
+    // undefnied
+    if(data && data.length > 0) {
         const table_body = document.querySelector('.upload-tab-table-type-body');
         table_body.innerHTML = '';
         let i = 0;

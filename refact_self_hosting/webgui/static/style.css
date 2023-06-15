@@ -397,5 +397,9 @@ h3 {
     text-align: left;
     z-index: 999;
     margin-top: -25px;
-    margin-left: 100px;   
+    margin-left: 236px;   
+}
+#upload-tab-table-body-files td:nth-child(3) {
+    text-align: right;
+    padding-right: 15px;
 }
