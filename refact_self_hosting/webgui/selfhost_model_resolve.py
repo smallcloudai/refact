@@ -29,7 +29,8 @@ def resolve_model(model_name: str, cursor_file: str, function: str) -> Tuple[str
         if not m_size:
             m_size = "15b"
 
-    elif m_company in ["gpt3.5", "gpt4"]:
+    # TODO: mixed models and capabilities
+    elif m_company in ["longthink", "gpt3.5", "gpt4"]:
         m_company = "longthink"
         m_size = "stable"
 
