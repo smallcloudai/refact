@@ -29,6 +29,10 @@ def resolve_model(model_name: str, cursor_file: str, function: str) -> Tuple[str
         if not m_size:
             m_size = "15b"
 
+    elif m_company in ["gpt3.5", "gpt4"]:
+        m_company = "longthink"
+        m_size = "stable"
+
     else:
         m_company = "CONTRASTcode"
         m_size = "3b"

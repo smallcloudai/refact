@@ -28,6 +28,16 @@ def red_time(base_ts):
     return termcolor.colored("%0.1fms" % (1000*(time.time() - base_ts)), "red")
 
 
+def chat_limit_messages(messages: List[Dict[str, str]]):
+    if len(messages) == 0:
+        raise HTTPException(status_code=400, detail="No messages")
+    while len(messages) > 10:
+        del messages[0:2]  # user, assistant
+    while sum([len(m["content"] + m["role"]) for m in messages]) > 4000:
+        del messages[0:2]  # user, assistant
+    return messages
+
+
 class NlpSamplingParams(BaseModel):
     max_tokens: int = 500
     temperature: float = 0.2
@@ -78,6 +88,18 @@ class DiffCompletion(NlpSamplingParams):
     max_edits: int = 4
     stream: bool = False
     poi: List[POI] = []
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatContext(NlpSamplingParams):
+    messages: List[ChatMessage]
+    n: int = 1
+    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
+    function: str = Query(default="chat", regex="^([a-z0-9\.\-]+)$")
 
 
 async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts):
@@ -159,6 +181,46 @@ async def diff_streamer(ticket: Ticket, post: DiffCompletion, timeout, created_t
         ticket.done()
 
 
+async def chat_streamer(ticket: Ticket, timeout, created_ts):
+    seen: Dict[int, str] = dict()
+    try:
+        while 1:
+            try:
+                msg: Dict = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
+            except asyncio.TimeoutError:
+                log("TIMEOUT %s" % ticket.id())
+                msg = {"status": "error", "human_readable_message": "timeout"}
+            if "choices" in msg:
+                for ch in msg["choices"]:
+                    idx = ch["index"]
+                    seen_here = seen.get(idx, "")
+                    content = ch.get("content", "")
+                    ch["delta"] = content[len(seen_here):]
+                    seen[idx] = content
+                    if "content" in ch:
+                        del ch["content"]
+            tmp = json.dumps(msg)
+            yield "data: " + tmp + "\n\n"
+            log("  " + red_time(created_ts) + "stream %s <- %i bytes" % (ticket.id(), len(tmp)))
+            if msg.get("status", "") != "in_progress":
+                break
+        yield "data: [DONE]" + "\n\n"
+        log(red_time(created_ts) + "/finished call %s" % ticket.id())
+        ticket.done()
+    finally:
+        if ticket.id() is not None:
+            log("   ***  CANCEL  ***  cancelling %s" % ticket.id() + red_time(created_ts))
+        ticket.cancelled = True
+        ticket.done()
+
+
+async def error_string_streamer(ticket_id, static_message, account, created_ts):
+    yield "data: " + json.dumps(
+        {"object": "smc.chat.chunk", "role": "assistant", "delta": static_message, "finish_reason": "END"}) + "\n\n"
+    yield "data: [ERROR]" + "\n\n"
+    log("  " + red_time(created_ts) + "%s chat static message to %s: %s" % (ticket_id, account, static_message))
+
+
 class CompletionsRouter(APIRouter):
 
     def __init__(self,
@@ -171,29 +233,47 @@ class CompletionsRouter(APIRouter):
         self.add_api_route("/secret-key-activate", self._secret_key_activate, methods=["GET"])
         self.add_api_route("/completions", self._completions, methods=["POST"])
         self.add_api_route("/contrast", self._contrast, methods=["POST"])
+        self.add_api_route("/chat", self._chat, methods=["POST"])
         self._user2gpu_queue = user2gpu_queue
         self._id2ticket = id2ticket
         self._timeout = timeout
 
     async def _longthink_functions(self):
         longthink_functions = dict()
+        models_mini_db_extended = {
+            "longthink/stable": {
+                "filter_caps": ["gpt3.5", "gpt4"],
+            },
+            **models_mini_db,
+        }
         filter_caps = set([
             capability
             for model in self._user2gpu_queue
-            for capability in models_mini_db[model]["filter_caps"]])
+            for capability in models_mini_db_extended[model]["filter_caps"]])
         for rec in modelcap_records.db:
-            rec_models = rec.model
-            if not isinstance(rec_models, list):
-                rec_models = [rec_models]
-            if not filter_caps.intersection(rec_models):
-                continue
-            longthink_functions[rec.function_name] = {
-                "is_liked": False,
-                "likes": 0,
-                "third_party": False,
-                # TODO: resolve "model"
-                **rec.to_dict(),
-            }
+            rec_capabilities = rec.model if isinstance(rec.model, list) else [rec.model]
+            rec_third_parties = rec.third_party if isinstance(rec.third_party, list) else [rec.third_party]
+            for rec_capability, rec_third_party in zip(rec_capabilities, rec_third_parties):
+                if rec_capability not in filter_caps:
+                    continue
+                rec_capability = rec_capability.replace("/", "-")
+                if rec_third_party:
+                    rec_model = rec_capability
+                    rec_function_name = f"{rec.function_name}-{rec_capability}"
+                else:
+                    # NOTE: we should to resolve only local models and it must be fixed ASAP
+                    rec_model, err_msg = selfhost_model_resolve.resolve_model(rec_capability, "", "")
+                    if err_msg:
+                        log(f'login capability resolve "{rec_model}" -> error "{err_msg}"')
+                        continue
+                    rec_function_name = rec.function_name
+                longthink_functions[rec_function_name] = {
+                    **rec.to_dict(),
+                    "is_liked": False,
+                    "likes": 0,
+                    "third_party": rec_third_party,
+                    "model": rec_model,
+                }
         return {
             "account": "self-hosted",
             "retcode": "OK",
@@ -283,3 +363,36 @@ class CompletionsRouter(APIRouter):
         q = self._user2gpu_queue[model_name]
         await q.put(ticket)
         return StreamingResponse(diff_streamer(ticket, post, self._timeout, req["created"]))
+
+    async def _chat(self, post: ChatContext, request: Request):
+        account = "XXX"
+        ticket = Ticket("comp-")
+
+        model_name, err_msg = selfhost_model_resolve.resolve_model(post.model, "", post.function)
+        if err_msg:
+            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
+            raise HTTPException(status_code=400, detail=err_msg)
+        log("%s chat model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
+
+        req = post.clamp()
+        post_raw = await request.json()
+        messages = chat_limit_messages(post_raw["messages"])
+        if len(messages) == 0:
+            return StreamingResponse(
+                error_string_streamer(
+                    ticket.id(), "Your messsage is too large, the limit is 4k characters", account, req["created"]))
+        req.update({
+            "id": ticket.id(),
+            "object": "chat_completion_req",
+            "account": account,
+            "model": model_name,
+            "function": post.function,
+            "messages": messages,
+            "stream": True,
+        })
+
+        ticket.call.update(req)
+        self._id2ticket[ticket.id()] = ticket
+        q = self._user2gpu_queue[model_name]
+        await q.put(ticket)
+        return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))

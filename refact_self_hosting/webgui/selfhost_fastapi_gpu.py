@@ -25,13 +25,6 @@ def red_time(base_ts):
 local_key = os.environ.get("SMALLCLOUD_API_KEY")
 
 
-def check_local_auth(request):
-    if "Authorization" not in request.headers:
-        raise HTTPException(status_code=401, detail="No auth header")
-    if request.headers.get("Authorization") != "Bearer " + local_key:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-
 class EngineDescription(BaseModel):
     infmod_guid: str
     B: int = Query(default=0, ge=1, le=64)
@@ -93,7 +86,6 @@ class GPURouter(APIRouter):
         self._engine_wait_timeout = engine_wait_timeout
 
     async def _nlp_wait_batch(self, description: EngineDescription, request: Request):
-        check_local_auth(request)
         model_queue = self._user2gpu_queue[description.model]
         user_reqs = []
         t0 = time.time()
