@@ -71,11 +71,14 @@
           </li>
           <li class="nav-item dropdown ms-auto">
             <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
-              aria-expanded="false"><i class="bi bi-person-circle"></i></a>
+              aria-expanded="false"><i class="bi bi-gear-fill"></i></a>
             <ul class="dropdown-menu dropdown-menu-end">
               <li><button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings"
-                  type="button" role="tab" aria-controls="settings-pane" aria-selected="false">SSH Keys</button>
+                  type="button" role="tab" aria-controls="settings-pane">SSH Keys</button>
               </li>
+              <li><button class="nav-link" id="api-keys-tab" data-bs-toggle="tab" data-bs-target="#api-keys"
+                type="button" role="tab" aria-controls="api-keys-pane">API Keys</button>
+            </li>
             </ul>
           </li>
         </ul>
@@ -103,16 +106,6 @@
             <tbody>
             </tbody>
           </table>
-        </div>
-        <div class="pane">
-          <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" id="enable_chat_gpt">
-            <label class="form-check-label" for="enable_chat_gpt">Enable Chat GPT</label>
-          </div>
-          <div class="mt-3 mb-3 chat-gpt-key d-none">
-            <label for="chat_gpt_key" class="form-label">OpenAI API Key</label>
-            <input type="text" name="chat_gpt_key" value="" class="form-control" id="chat_gpt_key">
-          </div>
         </div>
       </div>
       <div class="tab-pane fade" id="upload">
@@ -180,7 +173,7 @@
                     <label for="force_include" class="form-label">Force include in finetune</label>
                     <input type="text" class="form-control" id="force_include" placeholder="src/strange_file.py">
                   </div>
-                  <div class="sources-stats">1123</div>
+                  <div class="sources-stats"><div>Included files: <span class="sources-stats-inc">0</span></div><div>Excluded files: <span class="sources-stats-exc">0</span></div></div>
                 </div>
               </div>
             </div>
@@ -326,6 +319,19 @@
           </div>
         </div>
       </div>
+      <div class="tab-pane fade" id="api-keys">
+        <div class="pane">
+          <h2>API Keys</h2>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="enable_chat_gpt">
+            <label class="form-check-label" for="enable_chat_gpt">Enable Chat GPT</label>
+          </div>
+          <div class="mt-3 mb-3 chat-gpt-key d-none">
+            <label for="chat_gpt_key" class="form-label">OpenAI API Key</label>
+            <input type="text" name="chat_gpt_key" value="" class="form-control" id="chat_gpt_key">
+          </div>
+        </div>
+      </div>
       <div class="tab-pane fade" id="server-logs">
         <div class="pane">
           <div class="form-check">
@@ -367,6 +373,24 @@
           <div id="loaded_n_total" class="uploaded-total"></div>
           <div id="status" class="uploaded-status"></div>
           <button class="tab-upload-file-submit btn btn-primary">Submit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="delete-modal" tabindex="-1" aria-labelledby="delete-modal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="urlModalLabel">Delete source</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          You are about to delete the source. This cannot be undone, and your sources will be scanned again.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="delete-modal-submit submit btn btn-primary">Delete</button>
         </div>
       </div>
     </div>

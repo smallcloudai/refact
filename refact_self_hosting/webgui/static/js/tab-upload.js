@@ -25,6 +25,8 @@ function get_tab_files() {
         });
 }
 
+let sources_settings_modal = false;
+let sources_filtypes_changed = false;
 const progress_bar = document.querySelector('.sources-run-progress .progress-bar');
 const sidebar_progress = document.querySelector('.sources-sidebar-progress .progress-bar');
 const sidebar_step1 = document.querySelector('.sources-list li:first-of-type');
@@ -107,7 +109,7 @@ function render_tab_files(data) {
         if(which_set === "test") {
             set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off"><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off" checked><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>`
         }
-        delete_file.innerHTML = `<div class="btn-group dropend"><button type="button" class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-trash3-fill"></i></button><ul class="dropdown-menu"><li><span class="file-remove dropdown-item btn btn-sm" data-file="${item}">Delete file</a></span></ul></div>`;
+        delete_file.innerHTML = `<button type="button" data-file="${item}" class="btn btn-danger file-remove"><i class="bi bi-trash3-fill"></i></button>`;
         row.appendChild(name);
         row.appendChild(is_git);
         row.appendChild(status);
@@ -179,14 +181,14 @@ function render_tab_files(data) {
 
     const process_button = document.querySelector('.tab-files-process-now');
     if (any_working) {
+        let process_button_text = "Stop";
+        process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
+    } else {
         if (process_button.dataset.loading) {
             process_button.dataset.loading = false;
             process_button.disabled = false;
         }
-        let process_button_text = "Stop";
-        process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
-    } else {
-        process_button.innerHTML = "Scan sources";
+        process_button.innerHTML = "Scan sources"; 
     }
 }
 
@@ -204,30 +206,101 @@ function delete_events() {
     document.querySelectorAll('#upload-tab-table-body-files .file-remove').forEach(function(element) {
         removeEventListener('click',element);
         element.addEventListener('click', function() {
-            delete_file(this.getAttribute('data-file'));
+            const file_name = this.getAttribute('data-file');
+            let delete_modal = document.getElementById('delete-modal');
+            let delete_modal_button = delete_modal.querySelector('.delete-modal-submit');
+            delete_modal_button.dataset.file = file_name;
+            let delete_modal_instance = bootstrap.Modal.getOrCreateInstance(delete_modal);
+            delete_modal_instance.show();
+            delete_modal_button.addEventListener('click', function() {
+                delete_file(this.dataset.file);
+                this.dataset.file = "";
+                delete_modal_instance.hide();
+            });
         });
     });
 }
 
 function render_filetypes(data) {
-    // undefnied
+    if(sources_filtypes_changed) { 
+        const file_types = document.querySelectorAll('.upload-tab-table-type-body tr input');
+        let updated_data = [];
+        if(file_types.length > 0) {
+            const unchecked_inputs = Array.from(file_types).filter(input => !input.checked);
+            unchecked_inputs.forEach(input => {
+                updated_data.push({
+                    'file_type': input.dataset.name,
+                    'count': Number(input.value),
+                    'suitable_to_train': false
+                });
+            });
+            const checked_inputs = Array.from(file_types).filter(input => input.checked);
+            checked_inputs.forEach(input => {
+                updated_data.push({
+                    'file_type': input.dataset.name,
+                    'count': Number(input.value),
+                    'suitable_to_train': true
+                });
+            });
+        }
+        render_stats(updated_data);
+        return;
+    }
     if(data && data.length > 0) {
         const table_body = document.querySelector('.upload-tab-table-type-body');
         table_body.innerHTML = '';
         let i = 0;
         data.forEach((item) => {
             const row = document.createElement('tr');
-            const file_checkbox = `<input id="file-list${i}" class="form-check-input" type="checkbox" value="${i}" checked>`;
+            let checkbox_checked = `checked`;
             const file_name = `<label for="file-list${i}">${item.file_type}</label>`;
-            row.innerHTML = `<td>${file_checkbox}</td><td>${file_name}</td><td>${item.count}</td>`;
-            if(!item.suitable_to_train) {
-                row.classList.add('opacity-25');
-                row.classList.add('disbled');
+            if(item.suitable_to_train) {
+                row.classList.add('enabled-file');
             }
+            if(!item.suitable_to_train) {
+                row.classList.add('opacity-50');
+                row.classList.add('disbled');
+                checkbox_checked = `disabled`;
+            }
+            let file_checkbox = `<input id="file-list${i}" data-name="${item.file_type}" class="form-check-input" type="checkbox" value="${item.count}" ${checkbox_checked}>`;
+            row.innerHTML = `<td>${file_checkbox}</td><td>${file_name}</td><td>${item.count}</td>`;
             table_body.appendChild(row);
             i++;
         });
+        render_stats(data);
+        watch_filetypes();
     }
+}
+
+function watch_filetypes() {
+    const file_types = document.querySelectorAll('.upload-tab-table-type-body tr.enabled-file input:checked');
+    if(file_types.length > 0) {
+        file_types.forEach(function(element) {
+            element.removeEventListener('change', function() {
+                sources_filtypes_changed = true;
+            });
+            element.addEventListener('change', function() {
+                sources_filtypes_changed = true;
+            });
+        });
+    }
+}
+
+function render_stats(data) {
+    let included_count = 0;
+    let excluded_count = 0;
+    data.forEach((item) => {
+        if(item.suitable_to_train) {
+            included_count += item.count;
+        }
+        if(!item.suitable_to_train) {
+            excluded_count += item.count;
+        }
+    });
+    const stat_included = document.querySelector('.sources-stats-inc');
+    const stat_excluded = document.querySelector('.sources-stats-exc');
+    stat_included.innerHTML = included_count;
+    stat_excluded.innerHTML = excluded_count;
 }
 
 function upload_url() {
@@ -423,7 +496,7 @@ function save_tab_files() {
     })
     .then(function(response) {
         console.log(response);
-        get_tab_files();
+        // get_tab_files();
     });
 }
 
@@ -453,6 +526,7 @@ function file_status_color(status) {
 }
 
 function render_filter_setup_defaults(data) {
+    if(sources_settings_modal) { return; }
     document.querySelector('#filter_gradcosine_threshold').value = data.filter_gradcosine_threshold;
     document.querySelector('#filter_loss_threshold').value = data.filter_loss_threshold;
     document.querySelector('#limit_test_files').value = data.limit_test_files;
@@ -466,9 +540,16 @@ function save_filter_setup() {
     // const limit_test_files = document.querySelector('#limit_test_files').value;
     const limit_time_seconds = document.querySelector('#limit_time_seconds').value;
     const limit_train_files = document.querySelector('#limit_train_files').value;
-    const include_file_types = null;
-    const force_include = null;
-    const force_exclude = null;
+    let include_file_types = null;
+    const file_types = document.querySelectorAll('.upload-tab-table-type-body tr.enabled-file input:checked');
+    if(file_types.length > 0) {
+        include_file_types = {};
+        file_types.forEach(function(element) {
+            include_file_types[element.dataset.name] = true;
+        });
+    }
+    const force_include = document.querySelector('#force_include').value;
+    const force_exclude = document.querySelector('#force_exclude').value;
     fetch("/tab-files-setup-filtering", {
         method: "POST",
         headers: {
@@ -486,11 +567,14 @@ function save_filter_setup() {
     })
     .then(function(response) {
         console.log(response);
-        get_tab_files();
     });
 }
 
 export function init() {
+    const run_filter_button = document.querySelector('.sources-run-button');
+    run_filter_button.addEventListener('click', function() {
+        save_filter_setup();
+    });
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());
     tab_upload_file_submit.addEventListener('click', function() {
@@ -530,6 +614,17 @@ export function init() {
     url_modal.addEventListener('show.bs.modal', function () {
         url_modal.querySelector('#tab-upload-url-input').value = '';
         url_modal.querySelector('#status-url').innerHTML = '';
+    });
+
+    const settings_modal = document.getElementById('upload-tab-source-settings-modal');
+    settings_modal.addEventListener('show.bs.modal', function () {
+        sources_settings_modal = true;
+    });
+
+    const settings_modal_submit = document.querySelector('.tab-upload-source-settings-submit');
+    settings_modal_submit.addEventListener('click', function() {
+        const settings_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-source-settings-modal'));
+        settings_modal.hide();
     });
 
     const git_modal = document.getElementById('upload-tab-git-modal');
