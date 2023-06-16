@@ -212,11 +212,6 @@ function delete_events() {
             delete_modal_button.dataset.file = file_name;
             let delete_modal_instance = bootstrap.Modal.getOrCreateInstance(delete_modal);
             delete_modal_instance.show();
-            delete_modal_button.addEventListener('click', function() {
-                delete_file(this.dataset.file);
-                this.dataset.file = "";
-                delete_modal_instance.hide();
-            });
         });
     });
 }
@@ -643,6 +638,14 @@ export function init() {
         ssh_modal.hide();
         settings_tab.show();
         document.querySelector('.dropdown-menu').classList.remove('show');
+    });
+    let delete_modal_button = delete_modal.querySelector('.delete-modal-submit');
+    delete_modal_button.addEventListener('click', function() {
+        if(this.dataset.file && this.dataset.file !== '') {
+            delete_file(this.dataset.file);
+            this.dataset.file = "";
+        }
+        delete_modal_instance.hide();
     });
 }
 
