@@ -455,7 +455,7 @@ function delete_file(file) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(file)
+        body: JSON.stringify({'delete_this':file})
     })
     .then(function(response) {
         console.log(response);
