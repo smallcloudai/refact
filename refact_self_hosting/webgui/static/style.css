@@ -31,10 +31,13 @@ body {
     border-radius: 5px;
     transform: rotate(-15deg);
 }
-.header {
+.navbar {
     border-bottom: 1px solid rgba(0,0,0,0.15);
     background-color: #fff;
     padding: 15px 0;
+}
+.navbar-nav {
+    width: 100%;
 }
 .header-tabs {
     display: flex;
@@ -160,7 +163,7 @@ h3 {
 .file-status {
     font-weight: normal;
     width: 100px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
 }
@@ -306,4 +309,97 @@ h3 {
 }
 .table-checkpoints tr {
     cursor: pointer;
+}
+.tab-files-process-now {
+    margin-left: auto;
+}
+.run-pane{
+    margin-left: auto;
+    margin-right: auto;
+    width: 220px;
+    margin-top: 2rem;
+}
+.sources-run-button {
+    width: 220px;
+    font-weight: bold;
+}
+.sources-run-button i,
+.sources-run-button span {
+    margin-right: 10px;
+}
+.sources-buttons {
+    display: flex;
+}
+.sources-buttons .btn:not(:last-child) {
+    margin-right: 5px;
+}
+.sources-list {
+    font-size: 1.2rem;
+    padding-left: 20px;
+    line-height: 2;
+}
+.sources-list li i {
+    margin-left: 10px;
+}
+.sources-list-active {
+    font-weight: bold;
+}
+.sources-settings {
+    text-decoration: none;
+    color: #333;
+    text-transform: uppercase;
+    text-align: center;
+    display: block;
+    font-weight: bold;
+    font-size: 0.8rem;
+    width: 100%;
+}
+.source-files-table {
+    align-items: stretch;
+}
+.sources-stats {
+    margin-top: auto;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-align: right;
+}
+.source-force {
+    display: flex;
+    flex-direction: column;
+}
+.upload-tab-table-type-body tr td:first-child {
+    width: 20px;
+}
+
+.pane-disabled {
+    pointer-events: none;
+    opacity: 0.5;
+    z-index: none;
+}
+.source-info {
+    position: absolute;
+    margin-top: 1px;
+    display: inline-block;
+    margin-left: 5px;
+    cursor: pointer;
+}
+.nav-link.active {
+    font-weight: bold;
+    color: #0d6efd !important;
+}
+.source-popup {
+    display: none;
+    position: absolute;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    background-color: #fff;
+    box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.2);
+    text-align: left;
+    z-index: 999;
+    margin-top: -25px;
+    margin-left: 236px;   
+}
+#upload-tab-table-body-files td:nth-child(3) {
+    text-align: right;
+    padding-right: 15px;
 }

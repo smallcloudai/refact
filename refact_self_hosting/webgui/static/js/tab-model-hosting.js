@@ -98,6 +98,16 @@ function format_memory(memory_in_mb, decimalPlaces = 2) {
 export function init() {
     get_gpus();
     get_models();
+    const chat_gpt_switch = document.querySelector('#enable_chat_gpt');
+    const chat_gpt_api_input = document.querySelector('.chat-gpt-key');
+
+    chat_gpt_switch.addEventListener('change', function() {
+      if (this.checked) {
+        chat_gpt_api_input.classList.remove('d-none');
+      } else {
+        chat_gpt_api_input.classList.add('d-none');
+      }
+    });
 }
 
 export function tab_switched_here() {

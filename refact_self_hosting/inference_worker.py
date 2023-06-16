@@ -304,6 +304,7 @@ class Inference:
         elif self._lora_on and self._lora_checkpoint_dir != lora_checkpoint_dir:
             self._lora_checkpoint_dir = lora_checkpoint_dir
             self._model = load_finetune_checkpoint_only(self._model, lora_checkpoint_dir)
+        log("using lora %s" % lora_checkpoint_dir)
 
     def lora_switch_according_to_config(self):
         if not os.path.exists(env.CONFIG_ACTIVE_LORA):
@@ -317,11 +318,11 @@ class Inference:
         lora_checkpoint_dir = ""
         some_problem_with_explicit = False
         if j["lora_run_id"] != "latest":
-            t = os.path.join(env.DIR_LORAS, j["lora_run_id"], j["checkpoint"])
+            t = os.path.join(env.DIR_LORAS, j["lora_run_id"], "checkpoints", j["checkpoint"])
             if os.path.isdir(t):
                 lora_checkpoint_dir = t
             else:
-                log("lora cannot find \"%s\", switching to latest/best" % lora_checkpoint_dir)
+                log("lora cannot find \"%s\", switching to latest/best" % t)
                 some_problem_with_explicit = True
         if j["lora_run_id"] == "latest" or some_problem_with_explicit:
             lora_checkpoint_dir = best_lora.find_best_lora(self._model_name)

@@ -35,3 +35,13 @@ os.makedirs(DIR_SSH_KEYS, exist_ok=True)
 os.makedirs(DIR_UNPACKED, exist_ok=True)
 
 DIR_WATCHDOG_TEMPLATES = os.path.join(os.path.dirname(__file__), "watchdog.d")
+
+GIT_CONFIG_FILENAME = 'git_config.json'
+
+private_key_ext = 'private_key'
+fingerprint_ext = 'fingerprint'
+
+
+def get_all_ssh_keys():
+    import glob
+    return glob.glob(f'{DIR_SSH_KEYS}/*.{private_key_ext}')

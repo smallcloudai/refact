@@ -5,9 +5,87 @@ function get_tab_files() {
         })
         .then(function(data) {
             console.log('tab-files-get',data);
+            // data.filtering_stage
+            switch(data.filtering_status) {
+                case 'working':
+                    filter_state_zero();
+                    break;
+                case 'completed':
+                    filter_state_one();
+                    break;
+                case 2:
+                    filter_state_two();
+                    render_filter_progress(data.filtering_progress);
+                    break;
+
+            }
             render_tab_files(data);
-            render_filetypes(data);
+            render_filetypes(data.mime_types);
+            render_filter_setup_defaults(data.filter_setup_defaults);
         });
+}
+
+let sources_settings_modal = false;
+let sources_filtypes_changed = false;
+const progress_bar = document.querySelector('.sources-run-progress .progress-bar');
+const sidebar_progress = document.querySelector('.sources-sidebar-progress .progress-bar');
+const sidebar_step1 = document.querySelector('.sources-list li:first-of-type');
+const sidebar_step2 = document.querySelector('.sources-list li:last-of-type');
+const sources_pane = document.querySelector('.sources-pane');
+const filetypes_pane = document.querySelector('.filetypes-pane');
+const sources_run_pane = document.querySelector('.run-pane');
+const sources_run_button = document.querySelector('.sources-run-button');
+const sources_run_progress = document.querySelector('.sources-run-progress');
+const summary_pane = document.querySelector('.summary-pane');
+const sources_settings = document.querySelector('.sources-settings');
+
+function render_filter_progress(progress_value) {
+    progress_bar.style.width = progress_value + "%";
+}
+// function render_filter_button(value) {
+//     if(value === "completed") {
+//         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>${value}`;
+//     } else {
+//         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
+//     }
+// }
+function filter_state_zero() {
+    progress_bar.style.width = "0%";
+    sidebar_progress.style.width = "0%";
+    sources_run_progress.classList.add('d-none');
+    sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
+    sidebar_step1.classList.add('sources-list-active');
+    sidebar_step2.classList.remove('sources-list-active');
+    sources_pane.classList.remove('pane-disabled');
+    filetypes_pane.classList.add('pane-disabled');
+    sources_run_pane.classList.add('pane-disabled');
+    sources_settings.classList.remove('pane-disabled');
+}
+
+function filter_state_one() {
+    progress_bar.style.width = "0%";
+    sidebar_progress.style.width = "50%";
+    sources_run_progress.classList.add('d-none');
+    sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
+    sidebar_step1.classList.add('sources-list-active');
+    sidebar_step2.classList.add('sources-list-active');
+    sources_pane.classList.remove('pane-disabled');
+    filetypes_pane.classList.remove('pane-disabled');
+    sources_run_pane.classList.remove('pane-disabled');
+    sources_settings.classList.remove('pane-disabled');
+}
+
+function filter_state_two() {
+    progress_bar.style.width = "0%";
+    sidebar_progress.style.width = "100%";
+    sources_run_progress.classList.add('d-none');
+    sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>Stop`;
+    sidebar_step1.classList.add('sources-list-active');
+    sidebar_step2.classList.add('sources-list-active');
+    sources_pane.classList.add('pane-disabled');
+    filetypes_pane.classList.add('pane-disabled');
+    sources_run_pane.classList.remove('pane-disabled');
+    sources_settings.classList.add('pane-disabled');
 }
 
 function render_tab_files(data) {
@@ -18,26 +96,24 @@ function render_tab_files(data) {
         const row = document.createElement('tr');
         row.setAttribute('data-file', item);
         const name = document.createElement("td");
+        const is_git = document.createElement("td");
         const status = document.createElement("td");
         const set = document.createElement("td");
-        const context = document.createElement("td");
         const delete_file = document.createElement("td");
         name.innerHTML = item;
-        const context_input = data.uploaded_files[item].to_db ? `<input class="form-check-input" name="file-context" type="checkbox" checked="checked">` : `<input class="form-check-input" name="file-context" type="checkbox">`
 
         const which_set = data.uploaded_files[item].which_set;
         if(which_set === "train") {
-            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-train${i}" value="train" autocomplete="off" checked><label for="file-radio-train${i}" class="btn btn-outline-primary">Train</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off"><label for="file-radio-test${i}" class="btn btn-outline-primary">Test</label></div>`
+            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off" checked><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off"><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>`
         }
         if(which_set === "test") {
-            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-train${i}" value="train" autocomplete="off"><label for="file-radio-train${i}" class="btn btn-outline-primary">Train</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off" checked><label for="file-radio-test${i}" class="btn btn-outline-primary">Test</label></div>`
+            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off"><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off" checked><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>`
         }
-        context.innerHTML = context_input;
-        delete_file.innerHTML = `<div class="btn-group dropend"><button type="button" class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-trash3-fill"></i></button><ul class="dropdown-menu"><li><span class="file-remove dropdown-item btn btn-sm" data-file="${item}">Delete file</a></span></ul></div>`;
+        delete_file.innerHTML = `<button type="button" data-file="${item}" class="btn btn-danger file-remove"><i class="bi bi-trash3-fill"></i></button>`;
         row.appendChild(name);
+        row.appendChild(is_git);
         row.appendChild(status);
         row.appendChild(set);
-        row.appendChild(context);
         row.appendChild(delete_file);
         files.appendChild(row);
         i++;
@@ -52,29 +128,48 @@ function render_tab_files(data) {
         for (const row of rows) {
             const row_file_name = row.getAttribute('data-file');
             if (row_file_name === item) {
-                const target_cell = row.querySelector('td:nth-child(2)');
+                const is_git_cell = row.querySelector('td:nth-child(2)');
+
+                if (item_object.is_git) {
+                    is_git_cell.innerHTML = `<span class="badge rounded-pill text-bg-warning">git</span>`;
+                } else {
+                    is_git_cell.innerHTML = `<span class="badge rounded-pill text-bg-info">file</span>`;
+                }
+
+                const target_cell = row.querySelector('td:nth-child(3)');
                 let current_status = item_object.status;
                 if (!current_status) {
                     current_status = "";
                 }
                 const status_color = file_status_color(current_status);
-                let popup_data = `Status: ${item_object.status}`;
+                let info_data = `<div><b>Status:</b> ${item_object.status}</div>`;
+                if(item_object.files) {
+                    info_data += `<div><b>Files:</b> ${item_object.files}</div>`;
+                }
                 if(item_object.generated) {
-                    popup_data += ` \nGenerated: ${item_object.generated}`;
+                    info_data += `<div><b>Generated:</b> ${item_object.generated}</div>`;
                 }
                 if(item_object.good) {
-                    popup_data += ` \nGood: ${item_object.good}`;
+                    info_data += `<div><b>Good:</b> ${item_object.good}</div>`;
                 }
-                if(item_object.too_large) {
-                    popup_data += ` \nToo Large: ${item_object.too_large}`;
+                if(item_object.large) {
+                    info_data += `<div><b>Too Large:</b> ${item_object.large}</div>`;
                 }
                 if(item_object.vendored) {
-                    popup_data += ` \nVendored: ${item_object.vendored}`;
+                    info_data += `<div><b>Vendored:</b> ${item_object.vendored}</div>`;
                 }
-                if (current_status == "completed" && item_object.good) {
-                    target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}">${item_object.good} files</span>`;
+                if(current_status === 'completed') {
+                    target_cell.innerHTML = `<span>Files: ${item_object.files} / Good: ${item_object.good}</span><i class="source-info bi bi-info-square-fill text-success"></i><div class="source-popup">${info_data}</div>`;
+                    row.querySelector('.source-info').addEventListener('mouseover', function(event) {
+                        event.target.nextElementSibling.style.display = 'block';
+                        // null on reading style
+                    });
+                    row.querySelector('.source-info').addEventListener('mouseout', function(event) {
+                        // null on reading s
+                        event.target.nextElementSibling.style.display = 'none';
+                    });
                 } else {
-                    target_cell.innerHTML = `<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="${popup_data}" class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
+                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
                 }
                 if (current_status == "working" || current_status == "starting") {
                     any_working = true;
@@ -86,19 +181,15 @@ function render_tab_files(data) {
 
     const process_button = document.querySelector('.tab-files-process-now');
     if (any_working) {
+        let process_button_text = "Stop";
+        process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
+    } else {
         if (process_button.dataset.loading) {
             process_button.dataset.loading = false;
             process_button.disabled = false;
         }
-        let process_button_text = "Stop";
-        process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
-    } else {
-        process_button.innerHTML = "Unpack Now";
+        process_button.innerHTML = "Scan sources"; 
     }
-
-    // XXX: what is this?
-    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 }
 
 function get_ssh_keys() {
@@ -108,56 +199,108 @@ function get_ssh_keys() {
         })
         .then(function(data) {
             console.log('get-all-ssh-keys',data);
-            render_keys(data);
         });
-}
-
-function render_keys(data) {
-    if(data.length > 0) {
-        const ssh_selector = document.querySelector('.ssh-selector');
-        ssh_selector.classList.remove('d-none');
-        const ssh_info = document.querySelector('.ssh-info');
-        ssh_info.classList.add('d-none');
-    }
-    else {
-        const ssh_selector = document.querySelector('.ssh-selector');
-        ssh_selector.classList.add('d-none');
-        const ssh_info = document.querySelector('.ssh-info');
-        ssh_info.classList.remove('d-none');
-    }
-    const key_list = document.querySelector('.ssh-key-select');
-    key_list.innerHTML = '';
-    const blank_option = document.createElement('option');
-    blank_option.text = '- Select SSH Key -';
-    blank_option.value = '';
-    key_list.appendChild(blank_option);
-    data.forEach(function (key) {
-        const new_option = document.createElement('option');
-        new_option.text = key.name;
-        new_option.value = key.name + ' ' + key.fingerprint;
-        key_list.appendChild(new_option);
-    });
 }
 
 function delete_events() {
     document.querySelectorAll('#upload-tab-table-body-files .file-remove').forEach(function(element) {
         removeEventListener('click',element);
         element.addEventListener('click', function() {
-            delete_file(this.getAttribute('data-file'));
+            const file_name = this.getAttribute('data-file');
+            let delete_modal = document.getElementById('delete-modal');
+            let delete_modal_button = delete_modal.querySelector('.delete-modal-submit');
+            delete_modal_button.dataset.file = file_name;
+            let delete_modal_instance = bootstrap.Modal.getOrCreateInstance(delete_modal);
+            delete_modal_instance.show();
+            delete_modal_button.addEventListener('click', function() {
+                delete_file(this.dataset.file);
+                this.dataset.file = "";
+                delete_modal_instance.hide();
+            });
         });
     });
 }
 
 function render_filetypes(data) {
-    if(data.all_mime_types) {
+    if(sources_filtypes_changed) { 
+        const file_types = document.querySelectorAll('.upload-tab-table-type-body tr input');
+        let updated_data = [];
+        if(file_types.length > 0) {
+            const unchecked_inputs = Array.from(file_types).filter(input => !input.checked);
+            unchecked_inputs.forEach(input => {
+                updated_data.push({
+                    'file_type': input.dataset.name,
+                    'count': Number(input.value),
+                    'suitable_to_train': false
+                });
+            });
+            const checked_inputs = Array.from(file_types).filter(input => input.checked);
+            checked_inputs.forEach(input => {
+                updated_data.push({
+                    'file_type': input.dataset.name,
+                    'count': Number(input.value),
+                    'suitable_to_train': true
+                });
+            });
+        }
+        render_stats(updated_data);
+        return;
+    }
+    if(data && data.length > 0) {
         const table_body = document.querySelector('.upload-tab-table-type-body');
         table_body.innerHTML = '';
-        for(const [key, value] of Object.entries(data.all_mime_types)) {
+        let i = 0;
+        data.forEach((item) => {
             const row = document.createElement('tr');
-            row.innerHTML = `<td>${key}</td><td>${value}</td>`;
+            let checkbox_checked = `checked`;
+            const file_name = `<label for="file-list${i}">${item.file_type}</label>`;
+            if(item.suitable_to_train) {
+                row.classList.add('enabled-file');
+            }
+            if(!item.suitable_to_train) {
+                row.classList.add('opacity-50');
+                row.classList.add('disbled');
+                checkbox_checked = `disabled`;
+            }
+            let file_checkbox = `<input id="file-list${i}" data-name="${item.file_type}" class="form-check-input" type="checkbox" value="${item.count}" ${checkbox_checked}>`;
+            row.innerHTML = `<td>${file_checkbox}</td><td>${file_name}</td><td>${item.count}</td>`;
             table_body.appendChild(row);
-        }
+            i++;
+        });
+        render_stats(data);
+        watch_filetypes();
     }
+}
+
+function watch_filetypes() {
+    const file_types = document.querySelectorAll('.upload-tab-table-type-body tr.enabled-file input:checked');
+    if(file_types.length > 0) {
+        file_types.forEach(function(element) {
+            element.removeEventListener('change', function() {
+                sources_filtypes_changed = true;
+            });
+            element.addEventListener('change', function() {
+                sources_filtypes_changed = true;
+            });
+        });
+    }
+}
+
+function render_stats(data) {
+    let included_count = 0;
+    let excluded_count = 0;
+    data.forEach((item) => {
+        if(item.suitable_to_train) {
+            included_count += item.count;
+        }
+        if(!item.suitable_to_train) {
+            excluded_count += item.count;
+        }
+    });
+    const stat_included = document.querySelector('.sources-stats-inc');
+    const stat_excluded = document.querySelector('.sources-stats-exc');
+    stat_included.innerHTML = included_count;
+    stat_excluded.innerHTML = excluded_count;
 }
 
 function upload_url() {
@@ -224,7 +367,7 @@ function upload_repo() {
         formData['branch'] = gitBranch.value;
     }
 
-    fetch('/tab-repo-upload', {
+    fetch('/tab-files-repo-upload', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -335,12 +478,10 @@ function save_tab_files() {
     const uploaded_files = {};
     let i = 0;
     files.forEach(function(element) {
-        const name = element.querySelector('td').innerHTML;
-        const context = element.querySelector('input[name="file-context"]').checked;
+        const name = element.dataset.file;
         const which_set = element.querySelector(`input[name="file-which[${i}]"]:checked`).value;
         uploaded_files[name] = {
             which_set: which_set,
-            to_db: context
         }
         i++;
     });
@@ -355,7 +496,7 @@ function save_tab_files() {
     })
     .then(function(response) {
         console.log(response);
-        get_tab_files();
+        // get_tab_files();
     });
 }
 
@@ -384,7 +525,56 @@ function file_status_color(status) {
     return status_color;
 }
 
+function render_filter_setup_defaults(data) {
+    if(sources_settings_modal) { return; }
+    document.querySelector('#filter_gradcosine_threshold').value = data.filter_gradcosine_threshold;
+    document.querySelector('#filter_loss_threshold').value = data.filter_loss_threshold;
+    document.querySelector('#limit_test_files').value = data.limit_test_files;
+    document.querySelector('#limit_time_seconds').value = data.limit_time_seconds;
+    document.querySelector('#limit_train_files').value = data.limit_train_files;
+}
+
+function save_filter_setup() {
+    const filter_gradcosine_threshold = document.querySelector('#filter_gradcosine_threshold').value;
+    const filter_loss_threshold = document.querySelector('#filter_loss_threshold').value;
+    // const limit_test_files = document.querySelector('#limit_test_files').value;
+    const limit_time_seconds = document.querySelector('#limit_time_seconds').value;
+    const limit_train_files = document.querySelector('#limit_train_files').value;
+    let include_file_types = null;
+    const file_types = document.querySelectorAll('.upload-tab-table-type-body tr.enabled-file input:checked');
+    if(file_types.length > 0) {
+        include_file_types = {};
+        file_types.forEach(function(element) {
+            include_file_types[element.dataset.name] = true;
+        });
+    }
+    const force_include = document.querySelector('#force_include').value;
+    const force_exclude = document.querySelector('#force_exclude').value;
+    fetch("/tab-files-setup-filtering", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            filter_gradcosine_threshold: filter_gradcosine_threshold,
+            filter_loss_threshold: filter_loss_threshold,
+            limit_time_seconds: limit_time_seconds,
+            limit_train_files: limit_train_files,
+            include_file_types: include_file_types,
+            force_include: force_include,
+            force_exclude: force_exclude,
+        })
+    })
+    .then(function(response) {
+        console.log(response);
+    });
+}
+
 export function init() {
+    const run_filter_button = document.querySelector('.sources-run-button');
+    run_filter_button.addEventListener('click', function() {
+        save_filter_setup();
+    });
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());
     tab_upload_file_submit.addEventListener('click', function() {
@@ -426,12 +616,33 @@ export function init() {
         url_modal.querySelector('#status-url').innerHTML = '';
     });
 
+    const settings_modal = document.getElementById('upload-tab-source-settings-modal');
+    settings_modal.addEventListener('show.bs.modal', function () {
+        sources_settings_modal = true;
+    });
+
+    const settings_modal_submit = document.querySelector('.tab-upload-source-settings-submit');
+    settings_modal_submit.addEventListener('click', function() {
+        const settings_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-source-settings-modal'));
+        settings_modal.hide();
+    });
+
     const git_modal = document.getElementById('upload-tab-git-modal');
     git_modal.addEventListener('show.bs.modal', function () {
         get_ssh_keys();
         git_modal.querySelector('#tab-upload-git-input').value = '';
         git_modal.querySelector('#tab-upload-git-brach-input').value = '';
         git_modal.querySelector('#status-git').innerHTML = '';
+    });
+
+    const ssh_link = document.querySelector('.ssh-link');
+    ssh_link.addEventListener('click', function(event) {
+        event.preventDefault()
+        const settings_tab = new bootstrap.Tab(document.querySelector('#settings-tab'));
+        const ssh_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-git-modal'));
+        ssh_modal.hide();
+        settings_tab.show();
+        document.querySelector('.dropdown-menu').classList.remove('show');
     });
 }
 
