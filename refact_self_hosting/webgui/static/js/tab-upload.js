@@ -639,12 +639,13 @@ export function init() {
         settings_tab.show();
         document.querySelector('.dropdown-menu').classList.remove('show');
     });
-    let delete_modal_button = delete_modal.querySelector('.delete-modal-submit');
+    let delete_modal_button = document.querySelector('.delete-modal-submit');
     delete_modal_button.addEventListener('click', function() {
         if(this.dataset.file && this.dataset.file !== '') {
             delete_file(this.dataset.file);
             this.dataset.file = "";
         }
+        let delete_modal_instance = bootstrap.Modal.getOrCreateInstance(document.getElementById('delete-modal'));
         delete_modal_instance.hide();
     });
 }
