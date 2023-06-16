@@ -1,3 +1,4 @@
+import importlib
 import uuid
 import json
 import os
@@ -8,6 +9,7 @@ import time
 from typing import Dict, List, Optional
 
 from refact_self_hosting import env
+from refact_self_hosting.env import DIR_WATCHDOG_D
 
 
 def replace_variable_names_from_env(s):
@@ -42,6 +44,17 @@ class TrackedJob:
         self.remove_this = False
         self.sent_sigusr1_ts = 0
 
+        def load_module(filename):
+            if filename is None: return None
+            import importlib.util
+
+            spec = importlib.util.spec_from_file_location(__name__, str(DIR_WATCHDOG_D + "/" + filename))
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+
+        self.extra_module = load_module(self.cfg.get("module", None))
+
     def start(self):
         if self.p is not None:
             return
@@ -67,18 +80,30 @@ class TrackedJob:
         log("%s CVD=%s starting %s\n -> pid %s" % (
             time.strftime("%Y%m%d %H:%M:%S"),
             CUDA_VISIBLE_DEVICES,
-            " ".join(cmdline),   # not self.cmdline_str so we can see "--compile"
+            " ".join(cmdline),  # not self.cmdline_str so we can see "--compile"
             self.p.pid,
-            ))
+        ))
         os.set_blocking(self.p.stderr.fileno(), False)
+
+    def maybe_needs_shutdown(self):
+        if self.extra_module is not None:
+            condition = self.extra_module.__dict__.get('need_shutdown')
+            self.please_shutdown = condition is not None and condition()
 
     def maybe_can_start(self):
         if self.p is not None:
             return
         if self.please_shutdown:
             return
+
+        if self.extra_module is not None:
+            condition = self.extra_module.__dict__.get('can_start')
+            if condition is not None and not condition():
+                return
+
         policy = self.cfg.get("policy", [])
-        assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority", "periodic"}, policy
+        assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority",
+                               "periodic"}, policy
         if "when_file_appears" in policy:
             the_file = replace_variable_names_from_env(self.cfg["when_file_appears"])
             if os.path.exists(the_file):
@@ -129,7 +154,8 @@ class TrackedJob:
                 log("-- %s -- %s" % (self.p.pid, line))
         if self.p.poll() is not None:
             retcode = self.p.returncode
-            log("%s %s finished %s, retcode %i" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, self.cmdline_str, retcode))
+            log("%s %s finished %s, retcode %i" % (
+            time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, self.cmdline_str, retcode))
             # retcode -10 is SIGUSR1
             if self.cmdline_str == compiling_now:
                 compiling_now = None
@@ -157,7 +183,7 @@ class TrackedJob:
 
     def maybe_send_usr1(self):
         if not self.p:
-            self.please_shutdown = False    # this overrides True from "preempt" that sometimes happens (because of the task order)
+            self.please_shutdown = False  # this overrides True from "preempt" that sometimes happens (because of the task order)
             return
         if self.please_shutdown and self.sent_sigusr1_ts == 0:
             self.p.send_signal(signal.SIGUSR1)
@@ -217,6 +243,7 @@ def main_loop():
     while 1:
         create_tracked_jobs_from_configs()
         for fn, job in tracked.items():
+            job.maybe_needs_shutdown()
             job.maybe_can_start()
             job.maybe_needs_restart()
             job.maybe_send_usr1()

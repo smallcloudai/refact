@@ -1,5 +1,6 @@
 import logging
 import asyncio
+
 import uvloop
 import sys
 import signal
@@ -9,6 +10,8 @@ import weakref
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from refact_self_hosting.webgui.collector import collector
 from refact_self_hosting.webgui.selfhost_req_queue import Ticket
 from refact_self_hosting.webgui.selfhost_static import StaticRouter
 from refact_self_hosting.webgui.selfhost_fastapi_completions import CompletionsRouter
@@ -74,6 +77,10 @@ if __name__ == "__main__":
     async def startup_event():
         signal.signal(signal.SIGINT, handle_sigint)
         signal.signal(signal.SIGUSR1, handle_sigint)
+
+    @app.on_event("startup")
+    async def startup_collector():
+        collector(user2gpu_queue)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     uvicorn.run(app, host=args.host, port=args.port, log_config=None)
