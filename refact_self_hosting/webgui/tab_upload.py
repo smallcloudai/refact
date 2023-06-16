@@ -3,6 +3,7 @@ import os
 import asyncio
 import aiohttp
 import time
+import shutil
 
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
@@ -59,6 +60,10 @@ class FilteringSetup(BaseModel):
     force_include: str = Query(default="")
     force_exclude: str = Query(default="")
     use_gpus_n: Optional[int] = Query(default=False, gt=1, le=8)
+
+
+class TabFilesDeleteEntry(BaseModel):
+    delete_this: str = Query(default=None, regex=r'^(?!.*\/)(?!.*\.\.)[\s\S]*$')
 
 
 class TabUploadRouter(APIRouter):
@@ -200,14 +205,14 @@ class TabUploadRouter(APIRouter):
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
         return JSONResponse("OK")
 
-    async def _tab_files_delete(self, request: Request):
-        file_name = await request.json()
-        file_path = os.path.join(env.DIR_UPLOADS, file_name)
+    async def _tab_files_delete(self, request: Request, delete_entry: TabFilesDeleteEntry):
+        file_path = os.path.join(env.DIR_UPLOADS, delete_entry.delete_this)
         try:
-            os.remove(file_path)
+            shutil.rmtree(file_path)
             return JSONResponse("OK")
 
         except OSError as e:
+            log("Error deleting file: %s" % e)
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
 
     async def _tab_files_rejected(self, request: Request):
