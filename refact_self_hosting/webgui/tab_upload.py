@@ -63,7 +63,7 @@ class FilteringSetup(BaseModel):
 
 
 class TabFilesDeleteEntry(BaseModel):
-    delete_this: str = Query(default=None, regex=r'^(?!.*\/)(?!.*\.\.)[\s\S]*$')
+    delete_this: str = Query(default=Required, regex=r'^(?!.*\/)(?!.*\.\.)[\s\S]+$')
 
 
 class TabUploadRouter(APIRouter):
