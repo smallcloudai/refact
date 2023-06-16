@@ -222,7 +222,7 @@ class TabUploadRouter(APIRouter):
 
     async def _tab_files_setup_filtering(self, post: FilteringSetup):
         validated = post.dict()
-        for dkey, dval in finetune_filtering_defaults.finetune_filtering_defaults.keys():
+        for dkey, dval in finetune_filtering_defaults.finetune_filtering_defaults.items():
             if dkey in validated and (validated[dkey] == dval or validated[dkey] is None):
                 del validated[dkey]
         with open(env.CONFIG_HOW_TO_FILTER + ".tmp", "w") as f:
