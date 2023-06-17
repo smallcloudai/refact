@@ -44,35 +44,52 @@ server_log_tab.init();
 ssh_settings_tab.init();
 apikey_settings_tab.init();
 
-const tabs = document.querySelectorAll('.nav-link[data-bs-toggle="tab"]');
-tabs.forEach(tab => {
-    tab.addEventListener('shown.bs.tab', () => {
-        start_tab_timer();
+const tab_buttons = document.querySelectorAll('.main-tab-button');
+const tab_panes = document.querySelectorAll('.main-tab-pane');
+
+tab_buttons.forEach(tab_button => {
+  tab_button.addEventListener('click', () => {
+    if(tab_button.hasAttribute('disabled')) { return };
+    const target_tab = tab_button.dataset.tab;
+
+    tab_buttons.forEach(btn => {
+      btn.classList.remove('main-active');
     });
+
+    tab_panes.forEach(pane => {
+      if (pane.id === target_tab) {
+        pane.classList.add('main-active');
+      } else {
+        pane.classList.remove('main-active');
+      }
+    });
+
+    tab_button.classList.add('main-active');
+  });
 });
 
 function active_tab_function() {
-    const active_tab = document.querySelector('.nav-link.active');
+    const active_tab = document.querySelector('.main-tab-pane.main-active');
     switch (active_tab.id) {
-        case 'model-tab':
+        case 'model-hosting':
             model_hosting_tab.tab_switched_here();
             break;
-        case 'upload-tab':
+        case 'upload':
             upload_tab.tab_switched_here();
             break;
-        case 'finetune-tab':
+        case 'finetune':
             finetune_tab.tab_switched_here();
             break;
-        case 'logs-tab':
+        case 'logs':
             server_log_tab.tab_switched_here();
             break;
-        case 'settings-tab':
+        case 'settings':
             ssh_settings_tab.tab_switched_here();
             break;
-        case 'api-keys-tab':
+        case 'api-keys':
             apikey_settings_tab.tab_switched_here();
             break;
-        case "access-control-tab":
+        case "access-control":
             break;
     }
 }

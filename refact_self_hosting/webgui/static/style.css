@@ -383,10 +383,10 @@ h3 {
     margin-left: 5px;
     cursor: pointer;
 }
-.nav-link.active {
+/* .nav-link.active {
     font-weight: bold;
     color: #0d6efd !important;
-}
+} */
 .source-popup {
     display: none;
     position: absolute;
@@ -402,4 +402,17 @@ h3 {
 #upload-tab-table-body-files td:nth-child(3) {
     text-align: right;
     padding-right: 15px;
+}
+
+.main-tab-content .main-tab-pane {
+    display: none;
+  }
+  
+.main-tab-content .main-tab-pane.main-active {
+    display: block;
+}
+
+.main-tab-button.main-active {
+    font-weight: bold;
+    color: #0d6efd !important;
 }

@@ -45,6 +45,7 @@ function get_info() {
             return response.json();
         })
         .then(function(data) {
+            console.log('get-chat-gpt-info',data);
             const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
             enable_chat_gpt_switch.checked = data['is_enabled']
             const chat_gpt_apikey_textedit = document.getElementById('chat_gpt_key');
@@ -53,6 +54,6 @@ function get_info() {
 }
 
 export function tab_switched_here() {
-    get_info()
+    get_info();
 }
 
