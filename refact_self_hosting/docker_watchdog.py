@@ -53,7 +53,7 @@ class TrackedJob:
             spec.loader.exec_module(module)
             return module
 
-        self.extra_module = load_module(self.cfg.get("module", None))
+        # self.extra_module = load_module(self.cfg.get("module", None))
 
     def start(self):
         if self.p is not None:
@@ -85,10 +85,10 @@ class TrackedJob:
         ))
         os.set_blocking(self.p.stderr.fileno(), False)
 
-    def maybe_needs_shutdown(self):
-        if self.extra_module is not None:
-            condition = self.extra_module.__dict__.get('need_shutdown')
-            self.please_shutdown = condition is not None and condition()
+    # def maybe_needs_shutdown(self):
+    #     if self.extra_module is not None:
+    #         condition = self.extra_module.__dict__.get('need_shutdown')
+    #         self.please_shutdown = condition is not None and condition()
 
     def maybe_can_start(self):
         if self.p is not None:
@@ -96,10 +96,10 @@ class TrackedJob:
         if self.please_shutdown:
             return
 
-        if self.extra_module is not None:
-            condition = self.extra_module.__dict__.get('can_start')
-            if condition is not None and not condition():
-                return
+        # if self.extra_module is not None:
+        #     condition = self.extra_module.__dict__.get('can_start')
+        #     if condition is not None and not condition():
+        #         return
 
         policy = self.cfg.get("policy", [])
         assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority",
@@ -198,10 +198,15 @@ tracked: Dict[str, TrackedJob] = {}
 
 def create_tracked_jobs_from_configs():
     now_missing = set(tracked.keys())
-    for fn in os.listdir(env.DIR_WATCHDOG_D):
+    dir1 = os.listdir(env.DIR_WATCHDOG_D)
+    dir2 = os.listdir(env.DIR_WATCHDOG_TEMPLATES)
+    for fn in sorted(dir1 + dir2):
         if not fn.endswith(".cfg"):
             continue
-        cfg = json.load(open(os.path.join(env.DIR_WATCHDOG_D, fn)))
+        dir = env.DIR_WATCHDOG_D if (fn in dir1) else env.DIR_WATCHDOG_TEMPLATES
+        cfg = json.load(open(os.path.join(dir, fn)))
+        if cfg.get("unfinished", False):
+            continue
         for i in range(len(cfg["command_line"])):
             cfg["command_line"][i] = replace_variable_names_from_env(cfg["command_line"][i])
         if fn in tracked:
@@ -243,7 +248,7 @@ def main_loop():
     while 1:
         create_tracked_jobs_from_configs()
         for fn, job in tracked.items():
-            job.maybe_needs_shutdown()
+            # job.maybe_needs_shutdown()
             job.maybe_can_start()
             job.maybe_needs_restart()
             job.maybe_send_usr1()

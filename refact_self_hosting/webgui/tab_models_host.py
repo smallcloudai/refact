@@ -119,6 +119,7 @@ def _update_watchdog_d():
                 model_cfg_j["command_line"].append("--model")
                 model_cfg_j["command_line"].append(gpu["run-me"])
                 model_cfg_j["gpus"].append(gpu_i)
+                del model_cfg_j["unfinished"]
                 json.dump(model_cfg_j, f, indent=4)
         else:
             try:
