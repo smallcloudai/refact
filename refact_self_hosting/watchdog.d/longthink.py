@@ -11,7 +11,7 @@ def can_start():
     with open(config_file, 'rb') as f:
         config = json.load(f)
 
-    if config.get('enabled', False) and len(config.get('api_key', "")) != 0:
+    if config.get('is_enabled', False) and len(config.get('api_key', "")) != 0:
         os.environ["OPENAI_API_KEY"] = config.get('api_key')
         return True
 
@@ -24,4 +24,4 @@ def need_shutdown():
     with open(config_file, 'rb') as f:
         config = json.load(f)
 
-    return not config.get('enabled', False)
+    return not config.get('is_enabled', False)
