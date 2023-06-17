@@ -5,12 +5,11 @@ function get_tab_files() {
         })
         .then(function(data) {
             console.log('tab-files-get',data);
-            // data.filtering_stage
-            switch(data.filtering_status) {
-                case 'working':
+            switch(data.filtering_stage) {
+                case 0:
                     filter_state_zero();
                     break;
-                case 'completed':
+                case 1:
                     filter_state_one();
                     break;
                 case 2:
@@ -188,7 +187,7 @@ function render_tab_files(data) {
             process_button.dataset.loading = false;
             process_button.disabled = false;
         }
-        process_button.innerHTML = "Scan sources"; 
+        process_button.innerHTML = "Scan sources";
     }
 }
 
@@ -217,7 +216,7 @@ function delete_events() {
 }
 
 function render_filetypes(data) {
-    if(sources_filtypes_changed) { 
+    if(sources_filtypes_changed) {
         const file_types = document.querySelectorAll('.upload-tab-table-type-body tr input');
         let updated_data = [];
         if(file_types.length > 0) {
@@ -521,6 +520,8 @@ function file_status_color(status) {
 }
 
 function render_filter_setup_defaults(data) {
+    // TODO XXX this should come from /tab-finetune-smart-filter-get
+    return;
     if(sources_settings_modal) { return; }
     document.querySelector('#filter_gradcosine_threshold').value = data.filter_gradcosine_threshold;
     document.querySelector('#filter_loss_threshold').value = data.filter_loss_threshold;

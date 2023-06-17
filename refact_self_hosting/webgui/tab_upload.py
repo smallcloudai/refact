@@ -92,12 +92,15 @@ class TabUploadRouter(APIRouter):
             stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
             mtime = os.path.getmtime(env.CONFIG_PROCESSING_STATS)
             stats_uploaded_files = stats.get("uploaded_files", {})
+            any_working = False
             for fstat in stats_uploaded_files.values():
                 if fstat["status"] in ["working", "starting"]:
+                    any_working = True
                     if mtime + 600 < time.time():
                         fstat["status"] = "failed"
+            stats["filtering_stage"] = (0 if any_working else 1)
         else:
-            stats = {"uploaded_files": {}}
+            stats = {"uploaded_files": {}, "filtering_stage": 0}
             stats_uploaded_files = {}
         default = {
             "which_set": "train",
@@ -120,7 +123,6 @@ class TabUploadRouter(APIRouter):
 
         del stats["uploaded_files"]
         result.update(stats)
-        result["filtering_stage"] = 0
         # 0 new zip
         # 1 files done, pick file types
         # 2 gpu filtering done
@@ -130,6 +132,7 @@ class TabUploadRouter(APIRouter):
         with open(env.CONFIG_HOW_TO_UNZIP + ".tmp", "w") as f:
             json.dump(config.dict(), f, indent=4)
         os.rename(env.CONFIG_HOW_TO_UNZIP + ".tmp", env.CONFIG_HOW_TO_UNZIP)
+        _reset_process_stats()
         return JSONResponse("OK")
 
     async def _tab_files_upload(self, file: UploadFile):
@@ -147,11 +150,12 @@ class TabUploadRouter(APIRouter):
                     f.write(contents)
             os.rename(tmp_path, file_path)
         except OSError as e:
-            response_data = {"message": f"Error: {e}"}
-            return JSONResponse(response_data, status_code=500)
+            log("Error while uploading file: %s" % (e or str(type(e))))
+            return JSONResponse({"message": "Cannot upload file, see logs for details"}, status_code=500)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+        _reset_process_stats()
         return JSONResponse("OK")
 
     async def _upload_file_from_url(self, post: UploadViaURL):
@@ -165,6 +169,7 @@ class TabUploadRouter(APIRouter):
                 f.write(bin)
         except OSError as e:
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
+        _reset_process_stats()
         return JSONResponse("OK")
 
     def _make_git_command(self):
@@ -197,6 +202,7 @@ class TabUploadRouter(APIRouter):
             return JSONResponse({"message": f"Error: {repo_name} is exist"}, status_code=500)
         except Exception as e:
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
+        _reset_process_stats()
         return JSONResponse("OK")
 
     async def _tab_files_delete(self, request: Request, delete_entry: TabFilesDeleteEntry):
@@ -209,6 +215,7 @@ class TabUploadRouter(APIRouter):
             shutil.rmtree(file_path)
         except OSError as e:
             pass
+        _reset_process_stats()
         return JSONResponse("OK")
 
     async def _tab_files_rejected(self, request: Request):
@@ -236,6 +243,10 @@ class TabUploadRouter(APIRouter):
 def _start_process_now():
     with open(env.FLAG_LAUNCH_PROCESS_UPLOADS, "w") as f:
         f.write("")
+    _reset_process_stats()
+
+
+def _reset_process_stats():
     try:
         os.remove(env.CONFIG_PROCESSING_STATS)
     except OSError as e:
