@@ -300,10 +300,11 @@ class Inference:
         elif not self._lora_on and on:
             log("activating lora %s" % lora_checkpoint_dir)
             self._model = load_finetune_checkpoint(self._model, lora_checkpoint_dir)
+            self._lora_checkpoint_dir = lora_checkpoint_dir
             self._lora_on = True
         elif self._lora_on and self._lora_checkpoint_dir != lora_checkpoint_dir:
-            self._lora_checkpoint_dir = lora_checkpoint_dir
             self._model = load_finetune_checkpoint_only(self._model, lora_checkpoint_dir)
+            self._lora_checkpoint_dir = lora_checkpoint_dir
         log("using lora %s" % lora_checkpoint_dir)
 
     def lora_switch_according_to_config(self):
