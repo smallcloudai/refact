@@ -60,6 +60,7 @@ class FilteringSetup(BaseModel):
     filter_loss_threshold: Optional[float] = Query(default=None, gt=2, le=10)
     filter_gradcosine_threshold: Optional[float] = Query(default=None, gt=-1.0, le=0.5)
     limit_train_files: Optional[int] = Query(default=None, gt=20, le=10000)
+    limit_test_files: Optional[int] = Query(default=None, gt=1, le=5)
     limit_time_seconds: Optional[int] = Query(default=None, gt=300, le=3600*6)
     use_gpus_n: Optional[int] = Query(default=False, gt=1, le=8)
 
