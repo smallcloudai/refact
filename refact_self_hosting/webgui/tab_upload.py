@@ -208,12 +208,14 @@ class TabUploadRouter(APIRouter):
     async def _tab_files_delete(self, request: Request, delete_entry: TabFilesDeleteEntry):
         file_path = os.path.join(env.DIR_UPLOADS, delete_entry.delete_this)
         try:
-            shutil.rmtree(file_path)
-            return JSONResponse("OK")
-
+            os.unlink(file_path)
         except OSError as e:
-            log("Error deleting file: %s" % e)
-            return JSONResponse({"message": f"Error: {e}"}, status_code=500)
+            pass
+        try:
+            shutil.rmtree(file_path)
+        except OSError as e:
+            pass
+        return JSONResponse("OK")
 
     async def _tab_files_rejected(self, request: Request):
         file_path = os.path.join(env.DIR_UNPACKED, "files_rejected.log")
