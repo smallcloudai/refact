@@ -52,9 +52,9 @@ class TabFinetuneConfig(BaseModel):
 
 class TabFinetuneActivate(BaseModel):
     model: str
-    lora_run_id: str   # specific or "latest"
-    checkpoint: str    # specific or "best"
-
+    lora_mode: str = Query(default="default", regex="off|latest-best|specific")
+    specific_lora_run_id: str = Query(default="")
+    specific_checkpoint: str = Query(default="")
 
 class FilteringSetup(BaseModel):
     filter_loss_threshold: Optional[float] = Query(default=None, gt=2, le=10)
@@ -160,7 +160,7 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_finetune_run_now(self):
         with open(env.FLAG_LAUNCH_FINETUNE, "w") as f:
-            f.write("1")
+            f.write("")
         return JSONResponse("OK")
 
     async def _tab_finetune_activate(self, activate: TabFinetuneActivate):

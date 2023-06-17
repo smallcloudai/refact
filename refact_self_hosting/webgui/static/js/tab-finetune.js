@@ -2,8 +2,12 @@ let logstream_reader = null;
 let logstream_runid = null;
 let downloaded_data = null;
 let blue_lora = "";
-let checkpoint_name = "best";
-let selected_model = ""; // we don't have model choice, empty for now
+let loras_switch_off = null;
+let loras_switch_latest = null;
+let loras_switch_specific = null;
+let loras_switch_no_reaction = false;
+// let checkpoint_name = "best";
+// let selected_model = ""; // we don't have model choice, empty for now
 
 function finetune_data() {
     fetch("/tab-finetune-config-and-runs")
@@ -11,10 +15,9 @@ function finetune_data() {
             return response.json();
         })
         .then(function (data) {
-            console.log('config-and-runs',data);
             render_finetune_settings(data);
             downloaded_data = data;
-            render_activate_switch();
+            render_lora_switch();
             render_runs();
         });
 }
@@ -52,25 +55,27 @@ function render_runs() {
     document.querySelector('.table-types').style.display = 'table';
     data.finetune_runs.forEach(element => {
         const row = document.createElement('tr');
+        row.style.whiteSpace = 'nowrap';
         const run_name = document.createElement("td");
         const run_status = document.createElement("td");
         const run_minutes = document.createElement("td");
         const run_steps = document.createElement("td");
 
-        run_name.innerHTML = element.run_id;
+        run_name.innerText = element.run_id;
         let status_color;
         switch (element.status) {
             case 'unknown':
                 status_color = `text-bg-warning`;
                 break;
             case 'starting':
-                status_color = `text-bg-success`;
+                status_color = `text-bg-secondary`;
                 break;
             case 'working':
                 status_color = `text-bg-secondary`;
                 break;
             case 'completed':
-                status_color = `text-bg-primary`;
+            case 'finished':
+                status_color = `text-bg-success`;
                 break;
             case 'failed':
                 status_color = `text-bg-danger`;
@@ -111,11 +116,11 @@ function render_runs() {
             render_checkpoints(find_checkpoints_by_run(run_id));
         });
     });
-    const process_button = document.querySelector('.tab-finetune-run-now');
+    const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     if(is_working) {
-        process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop Finetune';
+        start_finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
     } else {
-        process_button.textContent = 'Start Finetune Now';
+        start_finetune_button.textContent = 'Start Now';
     }
 }
 
@@ -128,17 +133,28 @@ const find_checkpoints_by_run = (run_id) => {
     }
 };
 
-function render_activate_switch() {
-    const loras = document.querySelectorAll('.lora-input');
-    loras.forEach(element => {
-        element.addEventListener('change', function () {
-            if(element.checked === true) {
-                // wrong:
-                // blue_lora = element.value;
-            }
-            finetune_switch_activate();
-        });
-    });
+function render_lora_switch() {
+    let mode = downloaded_data.active.lora_mode;
+    loras_switch_no_reaction = true; // avoid infinite loop when setting .checked
+    if (mode === 'off') {
+        loras_switch_off.checked = true;
+    } else if (mode === 'latest-best') {
+        loras_switch_latest.checked = true;
+    } else if (mode === 'specific') {
+        loras_switch_specific.checked = true
+    }
+    loras_switch_no_reaction = false;
+    let lora_switch_run_id = document.querySelector('#lora-switch-run-id');
+    let lora_switch_checkpoint = document.querySelector('#lora-switch-checkpoint');
+    lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active.specific_lora_run_id}`;
+    lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active.specific_checkpoint}`;
+    if (mode === 'specific') {
+        lora_switch_run_id.style.opacity = 1;
+        lora_switch_checkpoint.style.opacity = 1;
+    } else {
+        lora_switch_run_id.style.opacity = 0.2;
+        lora_switch_checkpoint.style.opacity = 0.2;
+    }
 }
 
 function render_checkpoints(data = []) {
@@ -152,29 +168,43 @@ function render_checkpoints(data = []) {
             cell.textContent = `${element.checkpoint_name}`;
             row.appendChild(cell);
             checkpoints.appendChild(row);
-            row.addEventListener('click', () => {
+            row.addEventListener('click', (event) => {
                 row.classList.add('table-success');
-                checkpoint_name = this.dataset.checkpoint;
-                finetune_switch_activate();
+                // finetune_switch_activate(blue_lora, event.target.dataset.checkpoint);
             });
         });
     }
 }
 
-function finetune_switch_activate() {
+function loras_switch_clicked() {
+    if (loras_switch_no_reaction)
+        return;
+    if (loras_switch_off.checked === true) {
+        finetune_switch_activate("off")
+    } else if (loras_switch_latest.checked === true) {
+        finetune_switch_activate("latest-best")
+    } else if (loras_switch_specific.checked === true) {
+        finetune_switch_activate("specific")
+    }
+}
+
+function finetune_switch_activate(lora_mode) {
+    let send_this = {
+        "model": "",
+        "lora_mode": lora_mode,
+        "specific_lora_run_id": "lora-20230614-164840",
+        "specific_checkpoint": "iter0150-testloss0.449",
+    }
+    console.log(send_this);
     fetch("/tab-finetune-activate", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            "model": selected_model,
-            "lora_run_id": blue_lora,
-            "checkpoint": checkpoint_name
-        })
+        body: JSON.stringify(send_this)
     })
     .then(function (response) {
-        console.log(response);
+        finetune_data();
     });
 }
 
@@ -210,10 +240,10 @@ function save_finetune_settings() {
         },
         body: JSON.stringify(data)
     })
-        .then(function (response) {
-            console.log(response);
-            finetune_data();
-        });
+    .then(function (response) {
+        console.log(response);
+        finetune_data();
+    });
 }
 
 function start_log_stream(run_id) {
@@ -271,13 +301,25 @@ function handle_auto_scroll() {
 log_container.addEventListener('scroll', handle_auto_scroll);
 
 export function init() {
-    const process_button = document.querySelector('.tab-finetune-run-now');
-    process_button.addEventListener('click', function () {
+    const start_finetune_button = document.querySelector('.tab-finetune-run-now');
+    start_finetune_button.addEventListener('click', function () {
         fetch("/tab-finetune-run-now")
             .then(function (response) {
                 finetune_data();
             })
     });
+    const loras = document.querySelectorAll('.lora-switch');
+    loras.forEach(element => {
+        if (element.value === 'off')
+            loras_switch_off = element;
+        if (element.value === 'latest')
+            loras_switch_latest = element;
+        if (element.value === 'specific')
+            loras_switch_specific = element;
+    });
+    loras_switch_off.addEventListener('change', loras_switch_clicked);
+    loras_switch_latest.addEventListener('change', loras_switch_clicked);
+    loras_switch_specific.addEventListener('change', loras_switch_clicked);
 }
 
 export function tab_switched_here() {
