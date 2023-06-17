@@ -3,12 +3,14 @@ import json
 import os
 import re
 import asyncio
+from typing import Optional
 
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response, StreamingResponse, JSONResponse
 
 from refact_self_hosting import env
 from refact_self_hosting.webgui.selfhost_webutils import log
+from refact_data_pipeline import finetune_filtering_defaults
 
 from pydantic import BaseModel
 
@@ -54,6 +56,14 @@ class TabFinetuneActivate(BaseModel):
     checkpoint: str    # specific or "best"
 
 
+class FilteringSetup(BaseModel):
+    filter_loss_threshold: Optional[float] = Query(default=None, gt=2, le=10)
+    filter_gradcosine_threshold: Optional[float] = Query(default=None, gt=-1.0, le=0.5)
+    limit_train_files: Optional[int] = Query(default=None, gt=20, le=10000)
+    limit_time_seconds: Optional[int] = Query(default=None, gt=300, le=3600*6)
+    use_gpus_n: Optional[int] = Query(default=False, gt=1, le=8)
+
+
 class TabFinetuneRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
@@ -64,6 +74,8 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-config-save", self._tab_finetune_config_save, methods=["POST"])
         self.add_api_route("/tab-finetune-activate", self._tab_finetune_activate, methods=["POST"])
         self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
+        self.add_api_route("/tab-finetune-smart-filter-setup", self._tab_finetune_smart_filter_setup, methods=["POST"])
+        self.add_api_route("/tab-finetune-smart-filter-get", self._tab_finetune_smart_filter_get, methods=["GET"])
 
     async def _tab_finetune_config_and_runs(self):
         result = {
@@ -108,6 +120,19 @@ class TabFinetuneRouter(APIRouter):
         if os.path.exists(env.CONFIG_ACTIVE_LORA):
             result["active"] = json.load(open(env.CONFIG_ACTIVE_LORA, "r"))
         return Response(json.dumps(result, indent=4) + "\n")
+
+    async def _tab_finetune_smart_filter_setup(self, post: FilteringSetup):
+        validated = post.dict()
+        for dkey, dval in finetune_filtering_defaults.finetune_filtering_defaults.items():
+            if dkey in validated and (validated[dkey] == dval or validated[dkey] is None):
+                del validated[dkey]
+        with open(env.CONFIG_HOW_TO_FILTER + ".tmp", "w") as f:
+            json.dump(post.dict(), f, indent=4)
+        os.rename(env.CONFIG_HOW_TO_FILTER + ".tmp", env.CONFIG_HOW_TO_FILTER)
+        return JSONResponse("OK")
+
+    async def _tab_finetune_smart_filter_get(self):
+        return JSONResponse(json.load(open(env.CONFIG_HOW_TO_FILTER)))
 
     async def _tab_funetune_log(self, run_id: str):
         sanitize_run_id(run_id)

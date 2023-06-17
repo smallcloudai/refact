@@ -8,7 +8,7 @@ from refact_self_hosting import enum_gpus
 def copy_intact():
     lst = [
         "enum_gpus.cfg",
-        "filetune.cfg",
+        "finetune.cfg",
         "process_uploaded.cfg",
         "webgui.cfg",
         "longthink.cfg",
@@ -28,7 +28,7 @@ def copy_watchdog_configs_if_first_run_detected():
     if not os.path.exists(env.CONFIG_ENUM_GPUS):
         enum_gpus.enum_gpus()
         tab_models_host.first_run()
-        copy_intact()
+    copy_intact()
 
 
 if __name__ == '__main__':
