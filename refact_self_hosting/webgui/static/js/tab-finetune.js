@@ -164,13 +164,13 @@ function render_checkpoints(data = []) {
         data.forEach(element => {
             const row = document.createElement('tr');
             const cell = document.createElement('td');
-            row.dataset.checkpoint = element.checkpoint_name;
             cell.textContent = `${element.checkpoint_name}`;
+            cell.dataset.checkpoint = element.checkpoint_name;
             row.appendChild(cell);
             checkpoints.appendChild(row);
             row.addEventListener('click', (event) => {
                 row.classList.add('table-success');
-                // finetune_switch_activate(blue_lora, event.target.dataset.checkpoint);
+                finetune_switch_activate("specific", blue_lora, cell.dataset.checkpoint);
             });
         });
     }
@@ -180,20 +180,20 @@ function loras_switch_clicked() {
     if (loras_switch_no_reaction)
         return;
     if (loras_switch_off.checked === true) {
-        finetune_switch_activate("off")
+        finetune_switch_activate("off");
     } else if (loras_switch_latest.checked === true) {
-        finetune_switch_activate("latest-best")
+        finetune_switch_activate("latest-best");
     } else if (loras_switch_specific.checked === true) {
-        finetune_switch_activate("specific")
+        finetune_switch_activate("specific");
     }
 }
 
-function finetune_switch_activate(lora_mode) {
+function finetune_switch_activate(lora_mode, run_id, checkpoint) {
     let send_this = {
         "model": "",
         "lora_mode": lora_mode,
-        "specific_lora_run_id": "lora-20230614-164840",
-        "specific_checkpoint": "iter0150-testloss0.449",
+        "specific_lora_run_id": run_id ? run_id : downloaded_data.active.specific_lora_run_id,
+        "specific_checkpoint": checkpoint ? checkpoint : downloaded_data.active.specific_checkpoint,
     }
     console.log(send_this);
     fetch("/tab-finetune-activate", {

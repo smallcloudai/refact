@@ -165,5 +165,5 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_finetune_activate(self, activate: TabFinetuneActivate):
         with open(env.CONFIG_ACTIVE_LORA, "w") as f:
-            f.write(activate.json())
+            f.write(activate.json(indent=4))
         return JSONResponse("OK")
