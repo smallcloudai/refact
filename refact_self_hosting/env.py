@@ -37,6 +37,7 @@ os.makedirs(DIR_UNPACKED, exist_ok=True)
 DIR_WATCHDOG_TEMPLATES = os.path.join(os.path.dirname(__file__), "watchdog.d")
 
 GIT_CONFIG_FILENAME = 'git_config.json'
+CHATGPT_CONFIG_FILENAME = os.path.join(DIR_CONFIG, "openai.cfg")
 
 private_key_ext = 'private_key'
 fingerprint_ext = 'fingerprint'

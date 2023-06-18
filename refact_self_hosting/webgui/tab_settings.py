@@ -1,25 +1,21 @@
 import json
+import os
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pathlib import Path
 
-from refact_self_hosting.env import DIR_SSH_KEYS, DIR_CONFIG
+from refact_self_hosting.env import DIR_SSH_KEYS, private_key_ext, fingerprint_ext, get_all_ssh_keys, \
+    DIR_WATCHDOG_TEMPLATES, CHATGPT_CONFIG_FILENAME, DIR_WATCHDOG_D
 
-__all__ = ["TabSettingsRouter", "get_all_ssh_keys"]
-
-private_key_ext = 'private_key'
-fingerprint_ext = 'fingerprint'
-
-
-def get_all_ssh_keys():
-    import glob
-    return glob.glob(f'{DIR_SSH_KEYS}/*.{private_key_ext}')
+__all__ = ["TabSettingsRouter"]
 
 
 class TabSettingsRouter(APIRouter):
-    __chatgpt_config_file = Path(DIR_CONFIG) / "openai.json"
+    __template_longthink_cfg = os.path.join(DIR_WATCHDOG_TEMPLATES, "longthink.cfg")
+    __longthink_cfg = os.path.join(DIR_WATCHDOG_D, "longthink.cfg")
+
     __default_chatgpt_config = dict(is_enabled=False, api_key="")
     class SSHKey(BaseModel):
         name: str
@@ -39,6 +35,16 @@ class TabSettingsRouter(APIRouter):
                            self._tab_api_key_settings_set_chat_gpt_api_key, methods=["POST"])
         self.add_api_route("/tab-api-key-settings-get-chat-gpt-info",
                            self._tab_api_key_settings_get_chat_gpt_info, methods=["GET"])
+        self.__init_longthink_process()
+
+    def __init_longthink_process(self):
+        if os.path.exists(CHATGPT_CONFIG_FILENAME):
+            with open(CHATGPT_CONFIG_FILENAME, 'r') as f:
+                openai_config = json.load(f)
+        else:
+            openai_config = self.__default_chatgpt_config
+
+        self.__enable_longthink_process(openai_config)
 
     async def _tab_settings_create_ssh_key(self, data: SSHKey):
         try:
@@ -108,31 +114,47 @@ class TabSettingsRouter(APIRouter):
             fingerprint_filepath.unlink(missing_ok=False)
         return JSONResponse("OK")
 
-
     def __inject_in_openai_config(self, upd: dict):
-        if self.__chatgpt_config_file.exists():
-            try:
-                with open(str(self.__chatgpt_config_file), "r") as f:
-                    config = json.load(f)
-            except Exception as _:
-                config = self.__default_chatgpt_config
+        if os.path.exists(CHATGPT_CONFIG_FILENAME):
+            with open(str(CHATGPT_CONFIG_FILENAME), "r") as f:
+                config = json.load(f)
         else:
             config = self.__default_chatgpt_config
         config.update(upd)
-        with open(str(self.__chatgpt_config_file), "w") as f:
+        tmp = f'{CHATGPT_CONFIG_FILENAME}.tmp'
+        with open(str(tmp), "w") as f:
             json.dump(config, f)
+        os.rename(tmp, CHATGPT_CONFIG_FILENAME)
+        return config
+
+    def __enable_longthink_process(self, openai_config: dict):
+        if not openai_config.get('is_enabled', False):
+            if os.path.exists(self.__longthink_cfg):
+                os.remove(self.__longthink_cfg)
+            return
+        with open(self.__template_longthink_cfg, 'r') as f:
+            config = json.load(f)
+        config.pop('unfinished')
+        config['command_line'].append('--key')
+        config['command_line'].append(openai_config.get('api_key', "dummy"))
+        tmp = f'{self.__longthink_cfg}.tmp'
+        with open(tmp, 'w') as f:
+            json.dump(config, f)
+        os.rename(tmp, self.__longthink_cfg)
 
     async def _tab_api_key_settings_set_enabled_chat_gpt(self, data: ChatGPTIsEnabled):
-        self.__inject_in_openai_config(dict(is_enabled=data.is_enabled))
+        config = self.__inject_in_openai_config(dict(is_enabled=data.is_enabled))
+        self.__enable_longthink_process(config)
         return JSONResponse("OK")
 
     async def _tab_api_key_settings_set_chat_gpt_api_key(self, data: ChatGPTApiKey):
-        self.__inject_in_openai_config(dict(api_key=data.api_key))
+        config = self.__inject_in_openai_config(dict(api_key=data.api_key))
+        self.__enable_longthink_process(config)
         return JSONResponse("OK")
 
     async def _tab_api_key_settings_get_chat_gpt_info(self):
-        if self.__chatgpt_config_file.exists():
-            with open(str(self.__chatgpt_config_file), "rb") as f:
+        if os.path.exists(CHATGPT_CONFIG_FILENAME):
+            with open(str(CHATGPT_CONFIG_FILENAME), "r") as f:
                 config = json.load(f)
         else:
             config = self.__default_chatgpt_config
