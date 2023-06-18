@@ -303,8 +303,17 @@ class Inference:
             self._lora_checkpoint_dir = lora_checkpoint_dir
             self._lora_on = True
         elif self._lora_on and self._lora_checkpoint_dir != lora_checkpoint_dir:
-            self._model = load_finetune_checkpoint_only(self._model, lora_checkpoint_dir)
-            self._lora_checkpoint_dir = lora_checkpoint_dir
+            try:
+                self._model = load_finetune_checkpoint_only(self._model, lora_checkpoint_dir)
+            except RuntimeError as e:
+                log("failed to quick load lora checkpoint: %s" % e)
+                log("will try to remove lora and add again")
+                self._model = self._model.exclude_lora(self._model)
+                self._lora_checkpoint_dir = ""
+                self._lora_on = False
+                self._model = load_finetune_checkpoint(self._model, lora_checkpoint_dir)
+                self._lora_checkpoint_dir = lora_checkpoint_dir
+                self._lora_on = True
         log("using lora %s" % lora_checkpoint_dir)
 
     def lora_switch_according_to_config(self):
@@ -312,20 +321,25 @@ class Inference:
             self.lora_switch(lora_checkpoint_dir="")
             return
         j = json.load(open(env.CONFIG_ACTIVE_LORA))
-        # {"model": "", "lora_run_id": "latest", "checkpoint": "best"}
-        if j["lora_run_id"] == "off":
+        # {
+        #     "model": "",
+        #     "lora_mode": "specific",
+        #     "specific_lora_run_id": "lora-20230614-164840",
+        #     "specific_checkpoint": "iter0666"
+        # }
+        if j["lora_mode"] not in ["specific", "latest-best"]:
             self.lora_switch(lora_checkpoint_dir="")
             return
         lora_checkpoint_dir = ""
         some_problem_with_explicit = False
-        if j["lora_run_id"] != "latest":
-            t = os.path.join(env.DIR_LORAS, j["lora_run_id"], "checkpoints", j["checkpoint"])
+        if j["lora_mode"] == "specific":
+            t = os.path.join(env.DIR_LORAS, j["specific_lora_run_id"], "checkpoints", j["specific_checkpoint"])
             if os.path.isdir(t):
                 lora_checkpoint_dir = t
             else:
-                log("lora cannot find \"%s\", switching to latest/best" % t)
+                log("lora cannot find \"%s\", switching to latest-best" % t)
                 some_problem_with_explicit = True
-        if j["lora_run_id"] == "latest" or some_problem_with_explicit:
+        if j["lora_mode"] == "latest-best" or some_problem_with_explicit:
             lora_checkpoint_dir = best_lora.find_best_lora(self._model_name)
         self.lora_switch(lora_checkpoint_dir=lora_checkpoint_dir)
 
