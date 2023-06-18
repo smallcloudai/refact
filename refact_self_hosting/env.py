@@ -13,12 +13,13 @@ DIR_SSH_KEYS   = os.path.join(PERMDIR, "ssh-keys")
 
 DIR_UNPACKED = os.path.join(TMPDIR, "unpacked-files")
 
-CONFIG_ENUM_GPUS = os.path.join(DIR_CONFIG, "enum_gpus_result.cfg")
+CONFIG_ENUM_GPUS = os.path.join(DIR_CONFIG, "gpus_enum_result.out")
+CONFIG_BUSY_GPUS = os.path.join(DIR_CONFIG, "gpus_busy_result.out")
 CONFIG_INFERENCE = os.path.join(DIR_CONFIG, "inference.cfg")
 CONFIG_ACTIVE_LORA = os.path.join(DIR_CONFIG, "inference_active_lora.cfg")
 CONFIG_HOW_TO_UNZIP = os.path.join(DIR_CONFIG, "sources_unzip.cfg")
 CONFIG_HOW_TO_FILETYPES = os.path.join(DIR_CONFIG, "sources_filetypes.cfg")
-CONFIG_PROCESSING_STATS = os.path.join(DIR_CONFIG, "sources_stats.cfg")
+CONFIG_PROCESSING_STATS = os.path.join(DIR_CONFIG, "sources_stats.out")
 CONFIG_FINETUNE = os.path.join(DIR_CONFIG, "finetune.cfg")
 CONFIG_HOW_TO_FILTER = os.path.join(DIR_CONFIG, "finetune_smart_filter.cfg")
 

@@ -42,6 +42,7 @@ class TrackedJob:
         self.please_shutdown = False
         self.remove_this = False
         self.sent_sigusr1_ts = 0
+        self.status_from_stderr = ""
 
 
     def start(self):
@@ -86,16 +87,16 @@ class TrackedJob:
         if "when_file_appears" in policy:
             the_file = replace_variable_names_from_env(self.cfg["when_file_appears"])
             if os.path.exists(the_file):
-                can_start = preempt_low_priority(self.cfg["gpus"])
+                can_start = preempt_low_priority(self.cfg.get("gpus", []))
                 if can_start:
                     os.remove(the_file)
                     self.start()
         elif "always_on" in policy:
-            can_start = preempt_low_priority(self.cfg["gpus"])
+            can_start = preempt_low_priority(self.cfg.get("gpus", []))
             if can_start:
                 self.start()
         elif "always_on_low_priority" in policy:
-            can_start = low_priority_can_start(self.cfg["gpus"])
+            can_start = low_priority_can_start(self.cfg.get("gpus", []))
             if can_start:
                 self.start()
         elif "at_night" in policy:
@@ -131,10 +132,13 @@ class TrackedJob:
                     break
             if not garbage:
                 log("-- %s -- %s" % (self.p.pid, line))
+            if line.startswith("STATUS"):
+                self.p.status_from_stderr = line[len("STATUS"):].strip()
         if self.p.poll() is not None:
             retcode = self.p.returncode
             log("%s %s finished %s, retcode %i" % (
             time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, self.cmdline_str, retcode))
+            self.status_from_stderr = "finished" if retcode == 0 else "crashed"
             # retcode -10 is SIGUSR1
             if self.cmdline_str == compiling_now:
                 compiling_now = None
@@ -222,6 +226,36 @@ def low_priority_can_start(gpus):
     return can_start
 
 
+_inform_about_gpu_status = ""
+
+
+def inform_about_gpu_status():
+    global _inform_about_gpu_status
+    MAX = 16
+    gpu_command = [""] * MAX
+    gpu_status = [""] * MAX
+    for job in tracked.values():
+        for gpu in job.cfg["gpus"]:
+            if gpu >= 0 and gpu < len(gpu_status):
+                t = job.cmdline_str
+                if t.startswith("python -m"):
+                    t = t[len("python -m"):]
+                gpu_command[gpu] = job.cmdline_str
+                gpu_status[gpu] = job.status_from_stderr
+    j = {"gpus": []}
+    for i in range(MAX):
+        j["gpus"][i] = {
+            "command": gpu_command[i],
+            "status": gpu_status[i],
+        }
+    s = json.dumps(j) + "\n"
+    if s != _inform_about_gpu_status:
+        with open(env.CONFIG_BUSY_GPUS + ".tmp", "w") as f:
+            f.write(s)
+        os.rename(env.CONFIG_BUSY_GPUS + ".tmp", env.CONFIG_BUSY_GPUS)
+        _inform_about_gpu_status = s
+
+
 def main_loop():
     global quit_flag
     while 1:
@@ -235,6 +269,7 @@ def main_loop():
                 log("%s cleanup %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
                 del tracked[fn]
                 break
+        inform_about_gpu_status()
         time.sleep(1)
 
 

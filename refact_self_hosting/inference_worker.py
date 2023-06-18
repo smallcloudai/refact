@@ -345,7 +345,7 @@ class Inference:
 
 
 def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
-    log("loading model '%s'" % model_name)
+    log("STATUS loading model")
     inference_model = Inference(model_name=model_name, force_cpu=cpu, load_lora=load_lora)
     class DummyUploadProxy:
         def upload_result(*args, **kwargs):
@@ -362,11 +362,12 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
             'created': time.time(),
         }
     ]
-    log("running a test batch")
+    log("STATUS test batch")
     inference_model.infer(dummy_calls[0], DummyUploadProxy, {})
     if compile:
         return
 
+    log("STATUS serving %s" % model_name)
     req_session = inference_server.infserver_session()
     description_dict = inference_server.validate_description_dict(
         model_name + "_" + socket.getfqdn(),
