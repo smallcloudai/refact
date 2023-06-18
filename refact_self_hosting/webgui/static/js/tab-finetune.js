@@ -60,6 +60,7 @@ function render_runs() {
         const run_status = document.createElement("td");
         const run_minutes = document.createElement("td");
         const run_steps = document.createElement("td");
+        const run_delete = document.createElement("td");
 
         run_name.innerText = element.run_id;
         let status_color;
@@ -94,10 +95,12 @@ function render_runs() {
         }
         run_minutes.innerHTML = element.worked_minutes;
         run_steps.innerHTML = element.worked_steps;
+        run_delete.innerHTML = `<button class="btn btn-danger btn-sm" onclick="delete_run('${element.run_id}')">Delete</button>`;
         row.appendChild(run_name);
         row.appendChild(run_status);
         row.appendChild(run_minutes);
         row.appendChild(run_steps);
+        row.appendChild(run_delete);
         document.querySelector('.run-table').appendChild(row);
         if (blue_lora == element.run_id) {
             row.classList.add('table-success');

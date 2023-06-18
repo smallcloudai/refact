@@ -121,6 +121,15 @@ h2 {
 .run-table tr {
     cursor: pointer;
 }
+.table-types thead th {
+    position: sticky;
+    top: 0;
+    background-color: #fff;
+}
+.run-table-wrapper {
+    max-height: 600px;
+    overflow: auto;
+}
 .uploaded-total {
     margin-top: 15px;
     font-size: 0.8rem;
@@ -415,4 +424,15 @@ h3 {
 .main-tab-button.main-active {
     font-weight: bold;
     color: #0d6efd !important;
+}
+.chat-enabler {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+.fake-link {
+    border-bottom: 1px solid #0d6efd;
+    color: #0d6efd;
+    cursor: pointer;
 }

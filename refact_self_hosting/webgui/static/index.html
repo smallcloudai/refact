@@ -88,7 +88,16 @@
           </div>
         </div>
         <div class="pane">
-          <table class="table align-middle table-hover table-models temp-disabled">
+          <div class="chat-enabler">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="enable_chat_gpt">
+              <label class="form-check-label" for="enable_chat_gpt">Enable Chat GPT</label>
+            </div>
+            <div class="chat-enabler-status">
+              To enable Chat GPT add your API key in the <span class="main-tab-button fake-link" data-tab="settings">Settings tab</span>.
+            </div>
+          </div>
+          <table class="table align-middle table-hover table-models">
             <thead>
               <tr>
                 <th>Model</th>
@@ -220,58 +229,26 @@
             </div>
             <div class="pane">
               <h3>Completed Runs</h3>
-              <table class="table mt-3 table-sm table-hover table-types">
-                <thead>
-                  <tr>
-                    <th></th>
-                    <th></th>
-                    <th>Minutes</th>
-                    <th>Steps</th>
-                  </tr>
-                </thead>
-                <tbody class="run-table">
-                </tbody>
-              </table>
+              <div class="run-table-wrapper">
+                <table class="table table-responsive mt-3 table-sm table-hover table-types">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th></th>
+                      <th>Minutes</th>
+                      <th>Steps</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody class="run-table">
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div class="pane">
               <h3>Start New Finetune<span></span></h3>
               <button id="run_now" type="button" class="btn mt-2 btn-success tab-finetune-run-now">Run Now</button>
-              <div class="text-bg-light mt-3 p-3">
-                <h5>Limit training time</h5>
-                <div class="btn-group" role="group" aria-label="Basic radio toggle button group">
-                  <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="30"
-                    id="btnradio1" autocomplete="off" checked>
-                  <label class="btn btn-outline-primary" for="btnradio1">30 min</label>
-
-                  <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="60"
-                    id="btnradio2" autocomplete="off">
-                  <label class="btn btn-outline-primary" for="btnradio2">60 min</label>
-
-                  <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="120"
-                    id="btnradio3" autocomplete="off">
-                  <label class="btn btn-outline-primary" for="btnradio3">120 min</label>
-
-                  <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="240"
-                    id="btnradio4" autocomplete="off">
-                  <label class="btn btn-outline-primary" for="btnradio4">240 min</label>
-                </div>
-                <div class="row mt-4 align-items-center">
-                  <div class="col">
-                    <input class="form-check-input fine-tune-input" type="checkbox" id="night_run">
-                    <label class="form-check-label" for="night_run">
-                      Run at night
-                    </label>
-                  </div>
-                  <div class="col">
-                    <select class="form-select fine-tune-input night-time" aria-label="Default select example">
-                    </select>
-                  </div>
-                </div>
-
-                <div class="store-block mt-3">
-                  Store<input type="number" value="3" class="fine-tune-input form-control store-input"> finished runs
-                </div>
-              </div>
+              <span class="fake-link link-primary" data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button">Settings</span>
             </div>
           </div>
           <div class="col-7">
@@ -385,6 +362,7 @@
         <div class="modal-body">
           You are about to delete the source. This cannot be undone, and your sources will be scanned again.
         </div>
+        <div id="status-delete" class="deleted-status"></div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="delete-modal-submit submit btn btn-primary">Delete</button>
@@ -428,7 +406,7 @@
               class="form-control">
           </div>
           <div class="mb-3 form-text ssh-info">
-            Please <a href="#" class="ssh-link">add SSH Key</a> if you use private repository.
+            Please <span class="ssh-link main-tab-button fake-link" data-tab="settings">add SSH Key</span> if you use private repository.
           </div>
           <div class="mb-3 ssh-selector d-none">
             <label class="form-label">SSH Key</label>
@@ -525,6 +503,75 @@
             </div>
           </div>
           <button class="tab-upload-source-settings-submit btn btn-primary">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="finetune-tab-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-settings-modal"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Finetune Settings</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <h5>Limit training time</h5>
+          <div class="btn-group" role="group" aria-label="Basic radio toggle button group">
+            <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="30"
+              id="btnradio1" autocomplete="off" checked>
+            <label class="btn btn-outline-primary" for="btnradio1">30 min</label>
+
+            <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="60"
+              id="btnradio2" autocomplete="off">
+            <label class="btn btn-outline-primary" for="btnradio2">60 min</label>
+
+            <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="120"
+              id="btnradio3" autocomplete="off">
+            <label class="btn btn-outline-primary" for="btnradio3">120 min</label>
+
+            <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="240"
+              id="btnradio4" autocomplete="off">
+            <label class="btn btn-outline-primary" for="btnradio4">240 min</label>
+          </div>
+          <div class="row mt-4">
+            <div class="btn-group" role="group">
+              <input type="checkbox" class="btn-check" name="training_monday" value="M" id="btn1" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn1">M</label>
+              <input type="checkbox" class="btn-check" name="training_tuesday" value="T" id="btn2" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn2">T</label>
+              <input type="checkbox" class="btn-check" name="training_wednesday" value="W" id="btn3" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn3">W</label>
+              <input type="checkbox" class="btn-check" name="training_thursday" value="Th" id="btn4" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn4">Th</label>
+              <input type="checkbox" class="btn-check" name="training_friday" value="F" id="btn5" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn5">F</label>
+              <input type="checkbox" class="btn-check" name="training_saturday" value="Sa" id="btn6" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn6">Sa</label>
+              <input type="checkbox" class="btn-check" name="training_sunday" value="Su" id="btn7" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn7">Su</label>
+            </div>
+          </div>
+          <div class="row mt-4 align-items-center">
+            <div class="col">
+              <input class="form-check-input fine-tune-input" type="checkbox" id="night_run">
+              <label class="form-check-label" for="night_run">
+                Run at night
+              </label>
+            </div>
+            <div class="col">
+              <select class="form-select fine-tune-input night-time" aria-label="Default select example">
+              </select>
+            </div>
+          </div>
+
+          <div class="store-block mt-3">
+            Store<input type="number" value="3" class="fine-tune-input form-control store-input"> finished runs
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="settings-tab-ssh-submit btn btn-primary">Save settings</button>
         </div>
       </div>
     </div>
