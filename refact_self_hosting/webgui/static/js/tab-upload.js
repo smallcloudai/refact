@@ -20,11 +20,10 @@ function get_tab_files() {
             }
             render_tab_files(data);
             render_filetypes(data.mime_types);
-            render_filter_setup_defaults(data.filter_setup_defaults);
+            // render_filter_setup_defaults(data.filter_setup_defaults);
         });
 }
 
-let sources_settings_modal = false;
 let sources_filtypes_changed = false;
 const progress_bar = document.querySelector('.sources-run-progress .progress-bar');
 const sidebar_progress = document.querySelector('.sources-sidebar-progress .progress-bar');
@@ -270,14 +269,16 @@ function render_filetypes(data) {
 }
 
 function watch_filetypes() {
-    const file_types = document.querySelectorAll('.upload-tab-table-type-body tr.enabled-file input:checked');
+    const file_types = document.querySelectorAll('.upload-tab-table-type-body input');
     if(file_types.length > 0) {
         file_types.forEach(function(element) {
             element.removeEventListener('change', function() {
                 sources_filtypes_changed = true;
+                save_filter_setup();
             });
             element.addEventListener('change', function() {
                 sources_filtypes_changed = true;
+                save_filter_setup();
             });
         });
     }
@@ -492,8 +493,10 @@ function save_tab_files() {
         body: JSON.stringify(data)
     })
     .then(function(response) {
-        console.log(response);
-        // get_tab_files();
+        console.log('tab-files-save-config',tab-files-save-config);
+        if(response.ok) {
+            get_tab_files();
+        }
     });
 }
 
@@ -522,50 +525,76 @@ function file_status_color(status) {
     return status_color;
 }
 
-function render_filter_setup_defaults(data) {
-    // TODO XXX this should come from /tab-finetune-smart-filter-get
-    return;
-    if(sources_settings_modal) { return; }
-    document.querySelector('#filter_gradcosine_threshold').value = data.filter_gradcosine_threshold;
-    document.querySelector('#filter_loss_threshold').value = data.filter_loss_threshold;
-    document.querySelector('#limit_test_files').value = data.limit_test_files;
-    document.querySelector('#limit_time_seconds').value = data.limit_time_seconds;
-    document.querySelector('#limit_train_files').value = data.limit_train_files;
+function get_filters_settings() {
+    fetch("/tab-finetune-smart-filter-get")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('tab-finetune-smart-filter-get',data);
+        let settings_data = null;
+        if(Object.keys(data.user_config).length > 0) {
+            settings_data = data.user_config;
+        } else {
+            settings_data = data.defaults;
+        }
+        document.querySelector('#filter_gradcosine_threshold').value = settings_data.filter_gradcosine_threshold;
+        document.querySelector('#filter_loss_threshold').value = settings_data.filter_loss_threshold;
+        document.querySelector('#limit_train_files').value = settings_data.limit_train_files;
+        document.querySelector('#limit_test_files').value = settings_data.limit_test_files;
+        document.querySelector('#limit_time_seconds').value = settings_data.limit_time_seconds;
+        // document.querySelector('#limit_train_files').value = data.low_gpu_mem_mode;
+    });
 }
 
-function save_filter_setup() {
-    const filter_gradcosine_threshold = document.querySelector('#filter_gradcosine_threshold').value;
-    const filter_loss_threshold = document.querySelector('#filter_loss_threshold').value;
-    // const limit_test_files = document.querySelector('#limit_test_files').value;
-    const limit_time_seconds = document.querySelector('#limit_time_seconds').value;
-    const limit_train_files = document.querySelector('#limit_train_files').value;
-    let include_file_types = null;
-    const file_types = document.querySelectorAll('.upload-tab-table-type-body tr.enabled-file input:checked');
-    if(file_types.length > 0) {
-        include_file_types = {};
-        file_types.forEach(function(element) {
-            include_file_types[element.dataset.name] = true;
-        });
-    }
-    const force_include = document.querySelector('#force_include').value;
-    const force_exclude = document.querySelector('#force_exclude').value;
-    fetch("/tab-files-setup-filtering", {
+function save_filters_settings() {
+    fetch("/tab-finetune-smart-filter-setup", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            filter_gradcosine_threshold: filter_gradcosine_threshold,
-            filter_loss_threshold: filter_loss_threshold,
-            limit_time_seconds: limit_time_seconds,
-            limit_train_files: limit_train_files,
-            include_file_types: include_file_types,
+            filter_gradcosine_threshold: document.querySelector('#filter_gradcosine_threshold').value,
+            filter_loss_threshold: document.querySelector('#filter_loss_threshold').value,
+            limit_train_files: document.querySelector('#limit_train_files').value,
+            limit_test_files: document.querySelector('#limit_test_files').value,
+            limit_time_seconds: document.querySelector('#limit_time_seconds').value
+        })
+    })
+    .then(function(response) {
+        if(response.ok) {
+            get_filters_settings();
+        }
+    });
+}
+
+function save_filter_setup() {
+    let include_file_types = null;
+    const unchecked_types = document.querySelectorAll('.upload-tab-table-type-body tr input[type="checkbox"]:not(:checked)')
+    if(unchecked_types.length > 0) {
+        include_file_types = {};
+        unchecked_types.forEach(function(element) {
+            include_file_types[element.dataset.name] = false;
+        });
+    }
+    const force_include = document.querySelector('#force_include').value;
+    const force_exclude = document.querySelector('#force_exclude').value;
+    fetch("/tab-files-filetypes-setup", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            filetypes_finetune: include_file_types,
             force_include: force_include,
             force_exclude: force_exclude,
         })
     })
     .then(function(response) {
-        console.log(response);
+        console.log('tab-files-filetypes-setup',response);
+        if(response.ok) {
+            get_tab_files();
+        }
     });
 }
 
@@ -624,11 +653,12 @@ export function init() {
 
     const settings_modal = document.getElementById('upload-tab-source-settings-modal');
     settings_modal.addEventListener('show.bs.modal', function () {
-        sources_settings_modal = true;
+        get_filters_settings();
     });
 
     const settings_modal_submit = document.querySelector('.tab-upload-source-settings-submit');
     settings_modal_submit.addEventListener('click', function() {
+        save_filters_settings();
         const settings_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-source-settings-modal'));
         settings_modal.hide();
     });

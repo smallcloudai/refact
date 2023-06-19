@@ -219,11 +219,16 @@ h3 {
     border-radius: 8px;
     padding: 15px 10px;
     background-color: #fff;
+    width: 100%;
+    overflow: hidden;
+    flex-direction: column;
 }
 .gpus-title {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     text-align: left;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding-bottom: 5px;
 }
 .gpus-content {
     
@@ -236,7 +241,7 @@ h3 {
 }
 .gpus-mem b {
     margin-right: 5px;
-    width: 35px;
+    width: 60px;
     text-align: left;
     display: inline-flex;
 }
@@ -259,18 +264,46 @@ h3 {
     flex-direction: column;
     align-items: flex-start;
 }
+.gpus-command {
+    text-align: left;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.gpus-status {
+    display: none;
+    position: absolute;
+    padding: 10px;
+    border: 1px solid #efefef;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    width: auto;
+    white-space: wrap;
+    margin-top: 10px;
+    z-index: 999;
+}
+.gpus-status-visible {
+    display: block;
+}
+.gpus-command b {
+    margin-right: 5px;
+    width: 60px;
+    text-align: left;
+    display: inline-flex;
+}
 .gpus-temp {
     text-align: left;
     font-size: 12px;
 }
 .gpus-temp b {
     margin-right: 5px;
-    width: 35px;
+    width: 60px;
     text-align: left;
     display: inline-flex;
 }
 .gpus-card {
-    margin-right: 10px;
+    margin-bottom: 15px;
     height: 30px;
     width: 60px;  
     background-position: center;
@@ -429,10 +462,10 @@ h3 {
     color: #0d6efd !important;
 }
 .chat-enabler {
-    display: flex;
-    align-items: flex-end;
-    flex-direction: column;
     margin-bottom: 20px;
+}
+.chat-enabler-status {
+    margin-top: 15px;
 }
 .fake-link {
     color: #0d6efd;

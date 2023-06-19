@@ -67,7 +67,7 @@
           </li>
           <li class="nav-item dropdown ms-auto">
             <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
-              aria-expanded="false"><i class="bi bi-gear-fill"></i></a>
+              aria-expanded="false">Settings</a>
             <ul class="dropdown-menu dropdown-menu-end">
               <li><button class="nav-link main-tab-button" id="settings-tab" data-tab="settings" type="button">SSH Keys</button>
               </li>
@@ -88,16 +88,8 @@
           </div>
         </div>
         <div class="pane">
-          <div class="chat-enabler">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" role="switch" id="enable_chat_gpt">
-              <label class="form-check-label" for="enable_chat_gpt">Enable Chat GPT</label>
-            </div>
-            <div class="chat-enabler-status">
-              To enable Chat GPT add your API key in the <span class="main-tab-button fake-link" data-tab="settings">Settings tab</span>.
-            </div>
-          </div>
-          <table class="table align-middle table-hover table-models">
+          <h3>Hosted models</h3>
+          <table class="table align-middle table-hover table-assigned-models">
             <thead>
               <tr>
                 <th>Model</th>
@@ -109,6 +101,41 @@
             <tbody>
             </tbody>
           </table>
+          <button data-bs-toggle="modal" data-bs-target="#add-model-modal" class="btn btn-primary model-hosting-add"><i class="bi bi-plus-lg"></i> Add Model</button>
+        </div>
+        <div class="pane">
+          <h3>3rd party API</h3>
+          <div class="chat-enabler">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="enable_chat_gpt">
+              <label class="form-check-label" for="enable_chat_gpt">Enable Chat GPT</label>
+            </div>
+            <div class="chat-enabler-status">
+              To enable Chat GPT add your API key in the <span class="main-tab-button fake-link" data-tab="api-keys">API Keys tab</span>.
+            </div>
+          </div>
+        </div>
+        <div class="pane temp-disabled">
+          <div class="row">
+            <div class="col">
+              <label class="form-label">Completions</label>
+              <select class="form-select">
+                <option selected>- Select -</option>
+                <option value="1">One</option>
+                <option value="2">Two</option>
+                <option value="3">Three</option>
+              </select>
+            </div>
+            <div class="col">
+              <label class="form-label">Manual Completions</label>
+              <select class="form-select">
+                <option selected>- Select -</option>
+                <option value="1">One</option>
+                <option value="2">Two</option>
+                <option value="3">Three</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
       <div class="main-tab-pane" id="upload">
@@ -296,11 +323,7 @@
       <div class="main-tab-pane" id="api-keys">
         <div class="pane">
           <h2>API Keys</h2>
-          <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" id="enable_chat_gpt">
-            <label class="form-check-label" for="enable_chat_gpt">Enable Chat GPT</label>
-          </div>
-          <div class="mt-3 mb-3 chat-gpt-key d-none">
+          <div class="mt-3 mb-3 chat-gpt-key">
             <label for="chat_gpt_key" class="form-label">OpenAI API Key</label>
             <input type="text" name="chat_gpt_key" value="" class="form-control" id="chat_gpt_key">
           </div>
@@ -347,6 +370,34 @@
           <div id="loaded_n_total" class="uploaded-total"></div>
           <div id="status" class="uploaded-status"></div>
           <button class="tab-upload-file-submit btn btn-primary">Submit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="add-model-modal" tabindex="-1" aria-labelledby="add-model-modal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="urlModalLabel">Add Model</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table align-middle table-hover table-models">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Chat</th>
+                <th>Toolbox</th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="delete-modal-submit submit btn btn-primary">Add</button>
         </div>
       </div>
     </div>
@@ -466,42 +517,41 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <label for="filter_gradcosine_threshold" class="form-label">Filter gradcosine threshold</label>
-                <input type="number" class="form-control" id="filter_gradcosine_threshold">
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="filter_loss_threshold" class="form-label">Filter loss threshold</label>
-                <input type="number" class="form-control" id="filter_loss_threshold">
-              </div>
+         
+          <div class="mb-3">
+            <label for="filter_loss_threshold" class="form-label">Filter loss threshold</label>
+            <input type="number" min="2" max="10" step="1" class="form-control" id="filter_loss_threshold">
+          </div>
+
+          <div class="mb-3">
+            <label for="filter_gradcosine_threshold" class="form-label">Filter gradcosine threshold</label>
+            <input type="number" min="-1.0" max="0.5" step="0.1" class="form-control" id="filter_gradcosine_threshold">
+          </div>
+
+          <div class="mb-3">
+            <label for="limit_train_files" class="form-label">Limit train files</label>
+            <input type="number" min="20" max="10000" step="1" class="form-control" id="limit_train_files">
+          </div>
+
+          <div class="mb-3">
+            <label for="limit_test_files" class="form-label">Limit test files</label>
+            <input type="number" min="1" max="5" step="1" class="form-control" id="limit_test_files">
+          </div>
+    
+          <div class="mb-3">
+            <label for="limit_time_seconds" class="form-label">Limit time seconds</label>
+            <input type="number" min="300" max="21600" step="1" class="form-control" id="limit_time_seconds">
+          </div>
+
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="low_gpu_mem_mode" value="" id="low_gpu_mem_mode">
+              <label class="form-check-label" for="low_gpu_mem_mode">
+                Default checkbox
+              </label>
             </div>
           </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <label for="limit_test_files" class="form-label">Limit test files</label>
-                <input type="number" class="form-control" id="limit_test_files">
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="limit_time_seconds" class="form-label">Limit time seconds</label>
-                <input type="number" class="form-control" id="limit_time_seconds">
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <label for="limit_train_files" class="form-label">Limit train files</label>
-                <input type="number" class="form-control" id="limit_train_files">
-              </div>
-            </div>
-          </div>
+        
           <button class="tab-upload-source-settings-submit btn btn-primary">Apply</button>
         </div>
       </div>

@@ -15,6 +15,7 @@ function finetune_data() {
             return response.json();
         })
         .then(function (data) {
+            console.log('tab-finetune-config-and-runs',data);
             render_finetune_settings(data);
             downloaded_data = data;
             render_lora_switch();
