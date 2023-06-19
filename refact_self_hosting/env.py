@@ -24,6 +24,7 @@ CONFIG_FINETUNE = os.path.join(DIR_CONFIG, "finetune.cfg")
 CONFIG_HOW_TO_FILTER = os.path.join(DIR_CONFIG, "finetune_smart_filter.cfg")
 
 FLAG_LAUNCH_PROCESS_UPLOADS = os.path.join(DIR_WATCHDOG_D, "_launch_process_uploaded.flag")
+FLAG_LAUNCH_FINETUNE_FILTER_ONLY = os.path.join(DIR_WATCHDOG_D, "_launch_finetune_filter_only.flag")
 FLAG_LAUNCH_FINETUNE = os.path.join(DIR_WATCHDOG_D, "_launch_finetune.flag")
 
 os.makedirs(DIR_WATCHDOG_D, exist_ok=True)

@@ -572,7 +572,13 @@ function save_filter_setup() {
 export function init() {
     const run_filter_button = document.querySelector('.sources-run-button');
     run_filter_button.addEventListener('click', function() {
-        save_filter_setup();
+        fetch("/tab-finetune-run-now?filter_only=1")
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function() {
+            get_tab_files();
+        });
     });
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());
@@ -599,6 +605,7 @@ export function init() {
                 process_now_update_until_finished();
             });
     });
+
     const file_modal = document.getElementById('upload-tab-files-modal');
     file_modal.addEventListener('show.bs.modal', function () {
         file_modal.querySelector('#tab-upload-file-input').value = '';

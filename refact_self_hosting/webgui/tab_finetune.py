@@ -158,8 +158,9 @@ class TabFinetuneRouter(APIRouter):
         with open(env.CONFIG_FINETUNE, "w") as f:
             json.dump(config.dict(), f, indent=4)
 
-    async def _tab_finetune_run_now(self):
-        with open(env.FLAG_LAUNCH_FINETUNE, "w") as f:
+    async def _tab_finetune_run_now(self, filter_only: bool = False):
+        flag = env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY if filter_only else env.FLAG_LAUNCH_FINETUNE
+        with open(flag, "w") as f:
             f.write("")
         return JSONResponse("OK")
 
