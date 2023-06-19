@@ -26,7 +26,6 @@ class TabHostModelRec(BaseModel):
 class TabHostModelsAssign(BaseModel):
     model_assign: Dict[str, TabHostModelRec] = {}
     openai_enable: bool = False
-    openai_api_key: Optional[str] = None
 
 
 class TabHostRouter(APIRouter):

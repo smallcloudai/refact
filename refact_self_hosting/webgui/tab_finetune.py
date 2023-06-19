@@ -56,13 +56,15 @@ class TabFinetuneActivate(BaseModel):
     specific_lora_run_id: str = Query(default="")
     specific_checkpoint: str = Query(default="")
 
+
 class FilteringSetup(BaseModel):
-    filter_loss_threshold: Optional[float] = Query(default=None, gt=2, le=10)
-    filter_gradcosine_threshold: Optional[float] = Query(default=None, gt=-1.0, le=0.5)
     limit_train_files: Optional[int] = Query(default=None, gt=20, le=10000)
     limit_test_files: Optional[int] = Query(default=None, gt=1, le=5)
+    filter_loss_threshold: Optional[float] = Query(default=None, gt=2, le=10)
+    filter_gradcosine_threshold: Optional[float] = Query(default=None, gt=-1.0, le=0.5)
     limit_time_seconds: Optional[int] = Query(default=None, gt=300, le=3600*6)
     use_gpus_n: Optional[int] = Query(default=False, gt=1, le=8)
+    low_gpu_mem_mode: Optional[bool] = Query(default=True)
 
 
 class TabFinetuneRouter(APIRouter):
@@ -133,7 +135,13 @@ class TabFinetuneRouter(APIRouter):
         return JSONResponse("OK")
 
     async def _tab_finetune_smart_filter_get(self):
-        return JSONResponse(json.load(open(env.CONFIG_HOW_TO_FILTER)))
+        result = {
+            "defaults": finetune_filtering_defaults.finetune_filtering_defaults,
+            "user_config": {}
+        }
+        if os.path.exists(env.CONFIG_HOW_TO_FILTER):
+            result["user_config"] = json.load(open(env.CONFIG_HOW_TO_FILTER))
+        return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_funetune_log(self, run_id: str):
         sanitize_run_id(run_id)

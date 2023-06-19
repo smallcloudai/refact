@@ -120,9 +120,12 @@ class TabUploadRouter(APIRouter):
                     "is_git": True,
                     **config
                 })
-
         del stats["uploaded_files"]
+
         result.update(stats)
+        result["filestats_scan_finetune"] = {}
+        result["filestats_scan_db"] = {}
+        result["filestats_ftf"] = {}
         # 0 new zip
         # 1 files done, pick file types
         # 2 gpu filtering done
