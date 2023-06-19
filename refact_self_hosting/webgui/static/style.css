@@ -471,3 +471,9 @@ h3 {
     color: #0d6efd;
     cursor: pointer;
 }
+.sources-stats-db {
+    display: none;
+}
+.sources-stats-finetune {
+    display: none;
+}

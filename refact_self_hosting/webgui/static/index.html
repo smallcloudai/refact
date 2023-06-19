@@ -203,7 +203,18 @@
                     <label for="force_include" class="form-label">Force include in finetune</label>
                     <input type="text" class="form-control" id="force_include" placeholder="src/strange_file.py">
                   </div>
-                  <div class="sources-stats"><div>Included files: <span class="sources-stats-inc">0</span></div><div>Excluded files: <span class="sources-stats-exc">0</span></div></div>
+                  <div class="sources-stats">
+                    <div class="sources-stats-finetune">
+                      <h6>Finetune Stats</h6>
+                      <a target="_blank" class="sources-stats-fine-accepted" href=""></a>
+                      <a target="_blank" class="sources-stats-fine-rejected" href=""></a>
+                    </div>
+                    <div class="sources-stats-db">
+                      <h6>DB Stats</h6>
+                      <a target="_blank" class="sources-stats-db-accepted" href=""></a>
+                      <a target="_blank" class="sources-stats-db-rejected" href=""></a>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

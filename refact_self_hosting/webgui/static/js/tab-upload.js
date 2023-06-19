@@ -1,3 +1,4 @@
+let tab_files_data = null;
 function get_tab_files() {
     fetch("/tab-files-get")
         .then(function(response) {
@@ -5,6 +6,7 @@ function get_tab_files() {
         })
         .then(function(data) {
             console.log('tab-files-get',data);
+            tab_files_data = data;
             switch(data.filtering_stage) {
                 case 0:
                     filter_state_zero();
@@ -239,7 +241,7 @@ function render_filetypes(data) {
                 });
             });
         }
-        render_stats(updated_data);
+        render_stats();
         return;
     }
     if(data && data.length > 0) {
@@ -263,7 +265,7 @@ function render_filetypes(data) {
             table_body.appendChild(row);
             i++;
         });
-        render_stats(data);
+        render_stats();
         watch_filetypes();
     }
 }
@@ -284,21 +286,27 @@ function watch_filetypes() {
     }
 }
 
-function render_stats(data) {
-    let included_count = 0;
-    let excluded_count = 0;
-    data.forEach((item) => {
-        if(item.suitable_to_train) {
-            included_count += item.count;
-        }
-        if(!item.suitable_to_train) {
-            excluded_count += item.count;
-        }
-    });
-    const stat_included = document.querySelector('.sources-stats-inc');
-    const stat_excluded = document.querySelector('.sources-stats-exc');
-    stat_included.innerHTML = included_count;
-    stat_excluded.innerHTML = excluded_count;
+function render_stats() {
+    const stats_finetune = document.querySelector('.sources-stats-finetune');
+    const stats_db = document.querySelector('.sources-stats-db');
+    if(Object.keys(tab_files_data.filestats_scan_finetune).length > 0) {
+        stats_finetune.style.display = 'block';
+        const fine_accepted = document.querySelector('.sources-stats-fine-accepted');
+        fine_accepted.innerHTML = tab_files_data.filestats_scan_finetune.accepted;
+        fine_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
+        const fine_rejected = document.querySelector('.sources-stats-fine-rejected');
+        fine_rejected.innerHTML = tab_files_data.filestats_scan_finetune.rejected;
+        fine_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
+    }
+    if(Object.keys(tab_files_data.filestats_scan_db).length > 0) {
+        stats_db.style.display = 'block';
+        const db_accepted = document.querySelector('.sources-stats-db-accepted');
+        db_accepted.innerHTML = tab_files_data.filestats_scan_db.accepted;
+        db_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
+        const db_rejected = document.querySelector('.sources-stats-db-rejected');
+        db_rejected.innerHTML = tab_files_data.filestats_scan_db.rejected;
+        db_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
+    }
 }
 
 function upload_url() {
