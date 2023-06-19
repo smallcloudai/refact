@@ -34,7 +34,7 @@ models_mini_db = {
     "chat_scratchpad_class": "code_contrast:ScratchpadBigChat",
     "model_class": "code_contrast.modeling:HFModel",
     "T": 2048,
-    "filter_caps": ["starcoderbase"],
+    "filter_caps": ["starcoder"],
 },
 "starcoder/15b/base4bit": {
     "model_path_type": "huggingface",
@@ -46,7 +46,7 @@ models_mini_db = {
         "bits": 4,
     },
     "T": 2048,
-    "filter_caps": ["starcoderbase"],
+    "filter_caps": ["starcoder"],
 },
 "starcoder/15b/base8bit": {
     "model_path_type": "huggingface",
@@ -58,6 +58,6 @@ models_mini_db = {
         "bits": 8,
     },
     "T": 2048,
-    "filter_caps": ["starcoderbase"],
+    "filter_caps": ["starcoder"],
 },
 }

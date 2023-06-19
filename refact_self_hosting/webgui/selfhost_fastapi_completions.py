@@ -277,6 +277,7 @@ class CompletionsRouter(APIRouter):
         return {
             "account": "self-hosted",
             "retcode": "OK",
+            "longthink-functions-today": 1,
             "longthink-functions-today-v2": longthink_functions,
             "longthink-filters": [],
             "chat-v1-style": True,
