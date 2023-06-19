@@ -230,9 +230,9 @@ class TabUploadRouter(APIRouter):
                 fn = env.LOG_FILES_REJECTED_FTF
         else:
             if accepted_or_rejected == "accepted":
-                fn = env.LOG_FILES_ACCEPTED_SCRIPT
+                fn = env.LOG_FILES_ACCEPTED_SCAN
             else:
-                fn = env.LOG_FILES_REJECTED_SCRIPT
+                fn = env.LOG_FILES_REJECTED_SCAN
         if os.path.isfile(fn):
             return StreamingResponse(
                 stream_text_file(fn),

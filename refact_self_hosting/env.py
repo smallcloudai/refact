@@ -23,8 +23,8 @@ CONFIG_PROCESSING_STATS = os.path.join(DIR_CONFIG, "sources_stats.out")
 CONFIG_FINETUNE = os.path.join(DIR_CONFIG, "finetune.cfg")
 CONFIG_HOW_TO_FILTER = os.path.join(DIR_CONFIG, "finetune_smart_filter.cfg")
 
-LOG_FILES_ACCEPTED_SCRIPT = os.path.join(DIR_CONFIG, "files_accepted_script.log")
-LOG_FILES_REJECTED_SCRIPT = os.path.join(DIR_CONFIG, "files_rejected_script.log")
+LOG_FILES_ACCEPTED_SCAN = os.path.join(DIR_CONFIG, "files_accepted_scan.log")
+LOG_FILES_REJECTED_SCAN = os.path.join(DIR_CONFIG, "files_rejected_scan.log")
 LOG_FILES_ACCEPTED_FTF = os.path.join(DIR_CONFIG, "files_accepted_ftf.log")
 LOG_FILES_REJECTED_FTF = os.path.join(DIR_CONFIG, "files_rejected_ftf.log")
 
