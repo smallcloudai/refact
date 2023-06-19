@@ -132,8 +132,9 @@ class TrackedJob:
                     break
             if not garbage:
                 log("-- %s -- %s" % (self.p.pid, line))
-            if line.startswith("STATUS"):
-                self.p.status_from_stderr = line[len("STATUS"):].strip()
+            if " STATUS " in line:
+                cut_here = line.index(" STATUS ") + len(" STATUS ")
+                self.status_from_stderr = line[cut_here:].strip()
         if self.p.poll() is not None:
             retcode = self.p.returncode
             log("%s %s finished %s, retcode %i" % (
@@ -240,15 +241,15 @@ def inform_about_gpu_status():
                 t = job.cmdline_str
                 if t.startswith("python -m"):
                     t = t[len("python -m"):]
-                gpu_command[gpu] = job.cmdline_str
+                gpu_command[gpu] = t.strip()
                 gpu_status[gpu] = job.status_from_stderr
-    j = {"gpus": []}
+    j = {"gpus": [{}]*16}
     for i in range(MAX):
         j["gpus"][i] = {
             "command": gpu_command[i],
             "status": gpu_status[i],
         }
-    s = json.dumps(j) + "\n"
+    s = json.dumps(j, indent=4) + "\n"
     if s != _inform_about_gpu_status:
         with open(env.CONFIG_BUSY_GPUS + ".tmp", "w") as f:
             f.write(s)

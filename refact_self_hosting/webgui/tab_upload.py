@@ -132,7 +132,7 @@ class TabUploadRouter(APIRouter):
         with open(env.CONFIG_HOW_TO_UNZIP + ".tmp", "w") as f:
             json.dump(config.dict(), f, indent=4)
         os.rename(env.CONFIG_HOW_TO_UNZIP + ".tmp", env.CONFIG_HOW_TO_UNZIP)
-        _reset_process_stats()
+        # _reset_process_stats()  -- this requires process script restart, but it flashes too much in GUI
         return JSONResponse("OK")
 
     async def _tab_files_upload(self, file: UploadFile):

@@ -37,7 +37,7 @@ class TabHostRouter(APIRouter):
         self.add_api_route("/tab-host-models-assign", self._tab_host_models_assign, methods=["POST"])
 
     async def _tab_host_have_gpus(self, request: Request):
-        return Response(json.dumps(_gpus(), indent=4) + "\n")
+        return Response(json.dumps(_gpus(include_busy=True), indent=4) + "\n")
 
     async def _tab_host_models_get(self, request: Request):
         return Response(json.dumps({**_models(), **_model_assignment()}, indent=4) + "\n")
@@ -49,12 +49,18 @@ class TabHostRouter(APIRouter):
         return JSONResponse("OK")
 
 
-def _gpus():
+def _gpus(include_busy: bool = False):
     if os.path.exists(env.CONFIG_ENUM_GPUS):
-        j = json.load(open(env.CONFIG_ENUM_GPUS, "r"))
+        j1 = json.load(open(env.CONFIG_ENUM_GPUS, "r"))
     else:
-        j = {"gpus": []}
-    return j
+        j2 = {"gpus": []}
+    if include_busy:
+        j2 = json.load(open(env.CONFIG_BUSY_GPUS, "r"))
+        j1len = len(j1["gpus"])
+        j2len = len(j2["gpus"])
+        for i in range(min(j1len, j2len)):
+            j1["gpus"][i].update(j2["gpus"][i])
+    return j1
 
 
 def _model_assignment():
