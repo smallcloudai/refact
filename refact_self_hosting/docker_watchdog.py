@@ -44,7 +44,6 @@ class TrackedJob:
         self.sent_sigusr1_ts = 0
         self.status_from_stderr = ""
 
-
     def start(self):
         if self.p is not None:
             return
@@ -236,6 +235,8 @@ def inform_about_gpu_status():
     gpu_command = [""] * MAX
     gpu_status = [""] * MAX
     for job in tracked.values():
+        if job.p is None:
+            continue
         for gpu in job.cfg["gpus"]:
             if gpu >= 0 and gpu < len(gpu_status):
                 t = job.cmdline_str
