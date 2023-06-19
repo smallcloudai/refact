@@ -69,11 +69,11 @@ class TabUploadRouter(APIRouter):
         self.add_api_route("/tab-files-save-config", self._tab_files_save_config, methods=["POST"])
         self.add_api_route("/tab-files-upload", self._tab_files_upload, methods=["POST"])
         self.add_api_route("/tab-files-upload-url", self._upload_file_from_url, methods=["POST"])
-        self.add_api_route("/tab-files-rejected", self._tab_files_rejected, methods=["GET"])
         self.add_api_route("/tab-files-repo-upload", self._tab_files_repo_upload, methods=["POST"])
         self.add_api_route("/tab-files-delete", self._tab_files_delete, methods=["POST"])
         self.add_api_route("/tab-files-process-now", self._upload_files_process_now, methods=["GET"])
         self.add_api_route("/tab-files-filetypes-setup", self._tab_files_filetypes_setup, methods=["POST"])
+        self.add_api_route("/tab-files-log", self._tab_files_log, methods=["GET"])
 
     async def _tab_files_get(self):
         result = {
@@ -218,15 +218,25 @@ class TabUploadRouter(APIRouter):
         _reset_process_stats()
         return JSONResponse("OK")
 
-    async def _tab_files_rejected(self, request: Request):
-        file_path = os.path.join(env.DIR_UNPACKED, "files_rejected.log")
-        if os.path.isfile(file_path):
+    async def _tab_files_log(self, phase: str, accepted_or_rejected: str):
+        fn = ""
+        if phase == "finetune_filter":
+            if accepted_or_rejected == "accepted":
+                fn = env.LOG_FILES_ACCEPTED_FTF
+            else:
+                fn = env.LOG_FILES_REJECTED_FTF
+        else:
+            if accepted_or_rejected == "accepted":
+                fn = env.LOG_FILES_ACCEPTED_SCRIPT
+            else:
+                fn = env.LOG_FILES_REJECTED_SCRIPT
+        if os.path.isfile(fn):
             return StreamingResponse(
-                stream_text_file(file_path),
+                stream_text_file(fn),
                 media_type="text/plain"
             )
         else:
-            return Response("No files rejected", media_type="text/plain")
+            return Response("File list empty\n", media_type="text/plain")
 
     async def _tab_files_filetypes_setup(self, post: FileTypesSetup):
         with open(env.CONFIG_HOW_TO_FILETYPES + ".tmp", "w") as f:
