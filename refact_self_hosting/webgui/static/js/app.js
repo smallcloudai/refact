@@ -14,10 +14,6 @@ function display_comming_soon() {
     window.addEventListener("resize", function () {
         comming_soon_resize();
     });
-
-    document.addEventListener('shown.bs.tab', function (e) {
-        comming_soon_resize();
-    });
 }
 function comming_soon_render() {
     comming_soon.forEach(function (element) {
@@ -59,6 +55,7 @@ tab_buttons.forEach(tab_button => {
     tab_panes.forEach(pane => {
       if (pane.id === target_tab) {
         pane.classList.add('main-active');
+        comming_soon_resize();
       } else {
         pane.classList.remove('main-active');
       }

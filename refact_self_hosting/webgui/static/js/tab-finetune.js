@@ -323,6 +323,8 @@ export function init() {
     loras_switch_off.addEventListener('change', loras_switch_clicked);
     loras_switch_latest.addEventListener('change', loras_switch_clicked);
     loras_switch_specific.addEventListener('change', loras_switch_clicked);
+    const loras_table = document.querySelector('.run-table-wrapper');
+    loras_table.scrollTop = loras_table.scrollHeight;
 }
 
 export function tab_switched_here() {
