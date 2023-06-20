@@ -524,24 +524,24 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="urlModalLabel">Source Settings</h5>
+          <h5 class="modal-title" id="urlModalLabel">GPU-Based Filter Settings</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="filter_loss_threshold" class="form-label">Filter loss threshold</label>
+            <label for="filter_loss_threshold" class="form-label">File loss threshold</label>
             <input type="number" min="2" max="10" step="1" class="form-control" id="filter_loss_threshold">
           </div>
 
           <div class="mb-3">
-            <label for="filter_gradcosine_threshold" class="form-label">Filter gradcosine threshold</label>
+            <label for="filter_gradcosine_threshold" class="form-label">File gradient cosine similarity threshold</label>
             <input type="number" min="-1.0" max="0.5" step="0.1" class="form-control" id="filter_gradcosine_threshold">
           </div>
 
           <div class="mb-3">
             <label for="limit_train_files" class="form-label">Limit train files</label>
-            <input type="number" min="20" max="10000" step="1" class="form-control" id="limit_train_files">
+            <input type="number" min="20" max="100000" step="1" class="form-control" id="limit_train_files">
           </div>
 
           <div class="mb-3">
@@ -550,15 +550,15 @@
           </div>
 
           <div class="mb-3">
-            <label for="limit_time_seconds" class="form-label">Limit time seconds</label>
-            <input type="number" min="300" max="21600" step="1" class="form-control" id="limit_time_seconds">
+            <label for="limit_time_seconds" class="form-label">Limit time, seconds</label>
+            <input type="number" min="300" max="43200" step="1" class="form-control" id="limit_time_seconds">
           </div>
 
           <div class="mb-3">
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="low_gpu_mem_mode" value="" id="low_gpu_mem_mode">
               <label class="form-check-label" for="low_gpu_mem_mode">
-                Low gpu memory mode
+                Low GPU memory mode
               </label>
             </div>
           </div>
