@@ -171,8 +171,18 @@ function render_tab_files(data) {
                         // null on reading s
                         event.target.nextElementSibling.style.display = 'none';
                     });
+                } else if (current_status === 'failed') {
+                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span><div class="source-popup"><pre>${item_object.message}</pre></div>`;
+                    row.querySelector('.file-status').addEventListener('mouseover', function(event) {
+                        event.target.nextElementSibling.style.display = 'block';
+                        // null on reading style
+                    });
+                    row.querySelector('.file-status').addEventListener('mouseout', function(event) {
+                        // null on reading s
+                        event.target.nextElementSibling.style.display = 'none';
+                    });
                 } else {
-                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
+                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}`;
                 }
                 if (current_status == "working" || current_status == "starting") {
                     any_working = true;

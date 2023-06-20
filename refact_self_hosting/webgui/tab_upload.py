@@ -182,7 +182,25 @@ class TabUploadRouter(APIRouter):
         return ' '.join(command)
 
     async def _tab_files_repo_upload(self, repo: CloneRepo):
+        class IncorrectUrl(Exception):
+            def __init__(self):
+                super().__init__()
+        def cleanup_url(url: str):
+            for sym in ["\t", " "]:
+                splited = list(filter(lambda x: len(x) > 0, url.split(sym)))
+                if len(splited) > 1:
+                    raise IncorrectUrl()
+                url = splited[0]
+            return url
+        def check_url(url: str):
+            from giturlparse import parse
+            if not parse(url).valid:
+                raise IncorrectUrl()
+            return url
+
         def get_repo_name_from_url(url: str) -> str:
+            if url.endswith('/'):
+                url = url[:-1]
             last_slash_index = url.rfind("/")
             last_suffix_index = url.rfind(".git")
             if last_suffix_index < 0:
@@ -193,16 +211,20 @@ class TabUploadRouter(APIRouter):
 
             return url[last_slash_index + 1:last_suffix_index]
         try:
-            repo_name = get_repo_name_from_url(repo.url)
+            url = cleanup_url(repo.url)
+            url = check_url(url)
+            repo_name = get_repo_name_from_url(url)
             repo_base_dir = os.path.join(env.DIR_UPLOADS, repo_name)
             os.makedirs(repo_base_dir, exist_ok=False)
             with open(os.path.join(repo_base_dir, GIT_CONFIG_FILENAME), 'w') as f:
                 json.dump({
-                    "url": repo.url,
+                    "url": url,
                     "branch": repo.branch,
                 }, f)
         except FileExistsError as _:
-            return JSONResponse({"message": f"Error: {repo_name} is exist"}, status_code=500)
+            return JSONResponse({"message": f"Error: {repo_name} exists"}, status_code=500)
+        except IncorrectUrl:
+            return JSONResponse({"message": f"Error: incorrect url"}, status_code=500)
         except Exception as e:
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
         _reset_process_stats()
