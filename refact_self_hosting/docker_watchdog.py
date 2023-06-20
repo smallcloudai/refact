@@ -44,7 +44,7 @@ class TrackedJob:
         self.sent_sigusr1_ts = 0
         self.status_from_stderr = ""
 
-    def start(self):
+    def _start(self):
         if self.p is not None:
             return
         global compile_required, compiling_now
@@ -73,8 +73,13 @@ class TrackedJob:
             self.p.pid,
         ))
         os.set_blocking(self.p.stderr.fileno(), False)
+        interrupt_when_file_appears = self.cfg.get("interrupt_when_file_appears", "")
+        if interrupt_when_file_appears:
+            p = replace_variable_names_from_env(interrupt_when_file_appears)
+            if os.path.exists(p):
+                os.unlink(p)
 
-    def poll_logs(self) -> bool:
+    def _poll_logs(self) -> bool:
         if self.p is None:
             return True
         global compiling_now
@@ -124,15 +129,26 @@ class TrackedJob:
             self.please_shutdown = False
         return not self.p
 
-    def maybe_needs_restart(self):
+    def maybe_needs_stop(self):
         if not self.p:
             return
         restart_every = self.cfg.get("restart_every", 0)
-        if not restart_every:
-            return
-        now = time.time()
-        if now - self.start_ts > restart_every:
-            self.please_shutdown = True
+        if restart_every:
+            now = time.time()
+            if now - self.start_ts > restart_every:
+                self.please_shutdown = True
+        policy = self.cfg.get("policy", [])
+        if "when_file_appears" in policy:
+            # If the process is already running, prevent it from restarting again when it's over
+            p = replace_variable_names_from_env(self.cfg["when_file_appears"])
+            if os.path.exists(p):
+                os.unlink(p)
+        interrupt_when_file_appears = self.cfg.get("interrupt_when_file_appears", "")
+        if interrupt_when_file_appears:
+            p = replace_variable_names_from_env(interrupt_when_file_appears)
+            if os.path.exists(p):
+                self.please_shutdown = True
+                os.unlink(p)
 
     def maybe_send_usr1(self):
         if not self.p:
@@ -160,20 +176,20 @@ class TrackedJob:
                 can_start = preempt_low_priority(self.cfg.get("gpus", []))
                 if can_start:
                     os.remove(the_file)
-                    self.start()
+                    self._start()
         elif "always_on" in policy:
             can_start = preempt_low_priority(self.cfg.get("gpus", []))
             if can_start:
-                self.start()
+                self._start()
         elif "always_on_low_priority" in policy:
             can_start = low_priority_can_start(self.cfg.get("gpus", []))
             if can_start:
-                self.start()
+                self._start()
         elif "at_night" in policy:
             pass
         elif "periodic" in policy:
             if self.start_ts + self.cfg["restart_every"] < time.time():
-                self.start()
+                self._start()
 
 
 
@@ -265,9 +281,9 @@ def main_loop():
         create_tracked_jobs_from_configs()
         for fn, job in tracked.items():
             job.maybe_can_start()
-            job.maybe_needs_restart()
+            job.maybe_needs_stop()
             job.maybe_send_usr1()
-            dead = job.poll_logs()
+            dead = job._poll_logs()
             if dead and job.remove_this:
                 log("%s cleanup %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
                 del tracked[fn]

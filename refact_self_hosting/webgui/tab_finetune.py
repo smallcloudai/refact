@@ -91,6 +91,7 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-schedule-save", self._tab_finetune_schedule_save, methods=["POST"])
         self.add_api_route("/tab-finetune-activate", self._tab_finetune_activate, methods=["POST"])
         self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
+        self.add_api_route("/tab-finetune-stop-now", self._tab_finetune_stop_now, methods=["GET"])
         self.add_api_route("/tab-finetune-smart-filter-setup", self._tab_finetune_smart_filter_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-smart-filter-get", self._tab_finetune_smart_filter_get, methods=["GET"])
         self.add_api_route("/tab-finetune-training-setup", self._tab_finetune_training_setup, methods=["POST"])
@@ -205,6 +206,11 @@ class TabFinetuneRouter(APIRouter):
     async def _tab_finetune_run_now(self, filter_only: bool = False):
         flag = env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY if filter_only else env.FLAG_LAUNCH_FINETUNE
         with open(flag, "w") as f:
+            f.write("")
+        return JSONResponse("OK")
+
+    async def _tab_finetune_stop_now(self):
+        with open(env.FLAG_STOP_FINETUNE, "w") as f:
             f.write("")
         return JSONResponse("OK")
 
