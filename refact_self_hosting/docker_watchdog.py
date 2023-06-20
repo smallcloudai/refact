@@ -74,36 +74,6 @@ class TrackedJob:
         ))
         os.set_blocking(self.p.stderr.fileno(), False)
 
-    def maybe_can_start(self):
-        if self.p is not None:
-            return
-        if self.please_shutdown:
-            return
-
-        policy = self.cfg.get("policy", [])
-        assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority",
-                               "periodic"}, policy
-        if "when_file_appears" in policy:
-            the_file = replace_variable_names_from_env(self.cfg["when_file_appears"])
-            if os.path.exists(the_file):
-                can_start = preempt_low_priority(self.cfg.get("gpus", []))
-                if can_start:
-                    os.remove(the_file)
-                    self.start()
-        elif "always_on" in policy:
-            can_start = preempt_low_priority(self.cfg.get("gpus", []))
-            if can_start:
-                self.start()
-        elif "always_on_low_priority" in policy:
-            can_start = low_priority_can_start(self.cfg.get("gpus", []))
-            if can_start:
-                self.start()
-        elif "at_night" in policy:
-            pass
-        elif "periodic" in policy:
-            if self.start_ts + self.cfg["restart_every"] < time.time():
-                self.start()
-
     def poll_logs(self) -> bool:
         if self.p is None:
             return True
@@ -174,6 +144,37 @@ class TrackedJob:
         if self.please_shutdown and self.sent_sigusr1_ts > time.time() + 30:
             log("%s SIGUSR1 timed out, sending kill %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid))
             self.p.kill()
+
+    def maybe_can_start(self):
+        if self.p is not None:
+            return
+        if self.please_shutdown:
+            return
+
+        policy = self.cfg.get("policy", [])
+        assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority",
+                               "periodic"}, policy
+        if "when_file_appears" in policy:
+            the_file = replace_variable_names_from_env(self.cfg["when_file_appears"])
+            if os.path.exists(the_file):
+                can_start = preempt_low_priority(self.cfg.get("gpus", []))
+                if can_start:
+                    os.remove(the_file)
+                    self.start()
+        elif "always_on" in policy:
+            can_start = preempt_low_priority(self.cfg.get("gpus", []))
+            if can_start:
+                self.start()
+        elif "always_on_low_priority" in policy:
+            can_start = low_priority_can_start(self.cfg.get("gpus", []))
+            if can_start:
+                self.start()
+        elif "at_night" in policy:
+            pass
+        elif "periodic" in policy:
+            if self.start_ts + self.cfg["restart_every"] < time.time():
+                self.start()
+
 
 
 tracked: Dict[str, TrackedJob] = {}
