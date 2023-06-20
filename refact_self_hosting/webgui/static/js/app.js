@@ -77,7 +77,7 @@ function active_tab_function() {
         case 'finetune':
             finetune_tab.tab_switched_here();
             break;
-        case 'logs':
+        case 'server-logs':
             server_log_tab.tab_switched_here();
             break;
         case 'settings':

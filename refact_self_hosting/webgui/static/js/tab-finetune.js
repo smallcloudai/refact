@@ -278,7 +278,7 @@ function start_log_stream(run_id) {
 
             const chunk = decoder.decode(value);
 
-            const isAtBottom = log_div.scrollTop + log_div.clientHeight === log_div.scrollHeight;
+            const isAtBottom = log_div.scrollTop >= (log_div.scrollHeight - log_div.offsetHeight);
 
             log_div.textContent += chunk;
 
