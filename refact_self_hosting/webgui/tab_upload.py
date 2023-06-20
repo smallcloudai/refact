@@ -89,18 +89,18 @@ class TabUploadRouter(APIRouter):
         else:
             result["filetypes"] = {}
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
-            stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
+            scan_stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
             mtime = os.path.getmtime(env.CONFIG_PROCESSING_STATS)
-            stats_uploaded_files = stats.get("uploaded_files", {})
+            stats_uploaded_files = scan_stats.get("uploaded_files", {})
             any_working = False
             for fstat in stats_uploaded_files.values():
                 if fstat["status"] in ["working", "starting"]:
                     any_working = True
                     if mtime + 600 < time.time():
                         fstat["status"] = "failed"
-            stats["filtering_stage"] = (0 if any_working else 1)
+            scan_stats["filtering_stage"] = (0 if any_working else 1)
         else:
-            stats = {"uploaded_files": {}, "filtering_stage": 0}
+            scan_stats = {"uploaded_files": {}, "filtering_stage": 0}
             stats_uploaded_files = {}
         default = {
             "which_set": "train",
@@ -114,18 +114,18 @@ class TabUploadRouter(APIRouter):
                 **stats_uploaded_files.get(fn, {})
             }
             if os.path.exists(os.path.join(uploaded_path, fn, GIT_CONFIG_FILENAME)):
-                with open(os.path.join(uploaded_path, fn, GIT_CONFIG_FILENAME), 'r') as f:
+                with open(os.path.join(uploaded_path, fn, GIT_CONFIG_FILENAME)) as f:
                     config = json.load(f)
                 result["uploaded_files"][fn].update({
                     "is_git": True,
                     **config
                 })
-        del stats["uploaded_files"]
+        del scan_stats["uploaded_files"]
 
-        result.update(stats)
-        result["filestats_scan_finetune"] = {}
-        result["filestats_scan_db"] = {}
+        result.update(scan_stats)
         result["filestats_ftf"] = {}
+        if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS):
+            result["filestats_ftf"] = json.load(open(env.CONFIG_FINETUNE_FILTER_STATS))
         # 0 new zip
         # 1 files done, pick file types
         # 2 gpu filtering done
