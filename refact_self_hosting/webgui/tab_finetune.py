@@ -181,6 +181,8 @@ class TabFinetuneRouter(APIRouter):
     async def _tab_funetune_log(self, run_id: str):
         sanitize_run_id(run_id)
         log_path = os.path.join(env.DIR_LORAS, run_id, "log.txt")
+        if not os.path.isfile(log_path):
+            return Response("File '%s' not found" % log_path, status_code=404)
         return StreamingResponse(
             stream_text_file(log_path),
             media_type="text/event-stream"
