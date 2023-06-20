@@ -477,3 +477,10 @@ h3 {
 .sources-stats-finetune {
     display: none;
 }
+.sources-stats-finetune h6,
+.sources-stats-db h6 {
+    margin-bottom: 4px;
+}
+.sources-stats-db {
+    margin-top: 10px;
+}

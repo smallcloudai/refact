@@ -292,19 +292,19 @@ function render_stats() {
     if(Object.keys(tab_files_data.filestats_scan_finetune).length > 0) {
         stats_finetune.style.display = 'block';
         const fine_accepted = document.querySelector('.sources-stats-fine-accepted');
-        fine_accepted.innerHTML = tab_files_data.filestats_scan_finetune.accepted;
+        fine_accepted.innerHTML = `Accepted: tab_files_data.filestats_scan_finetune.accepted`;
         fine_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
         const fine_rejected = document.querySelector('.sources-stats-fine-rejected');
-        fine_rejected.innerHTML = tab_files_data.filestats_scan_finetune.rejected;
+        fine_rejected.innerHTML = `Rejected: tab_files_data.filestats_scan_finetune.rejected`;
         fine_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
     }
     if(Object.keys(tab_files_data.filestats_scan_db).length > 0) {
         stats_db.style.display = 'block';
         const db_accepted = document.querySelector('.sources-stats-db-accepted');
-        db_accepted.innerHTML = tab_files_data.filestats_scan_db.accepted;
+        db_accepted.innerHTML = `Accepted: tab_files_data.filestats_scan_db.accepted`;
         db_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
         const db_rejected = document.querySelector('.sources-stats-db-rejected');
-        db_rejected.innerHTML = tab_files_data.filestats_scan_db.rejected;
+        db_rejected.innerHTML = `Rejected: tab_files_data.filestats_scan_db.rejected`;
         db_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
     }
 }
