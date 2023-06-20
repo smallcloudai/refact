@@ -138,7 +138,7 @@ const find_checkpoints_by_run = (run_id) => {
 };
 
 function render_lora_switch() {
-    let mode = downloaded_data.active.lora_mode;
+    let mode = downloaded_data.active ? downloaded_data.active.lora_mode : "latest-best";
     loras_switch_no_reaction = true; // avoid infinite loop when setting .checked
     if (mode === 'off') {
         loras_switch_off.checked = true;
@@ -150,8 +150,10 @@ function render_lora_switch() {
     loras_switch_no_reaction = false;
     let lora_switch_run_id = document.querySelector('#lora-switch-run-id');
     let lora_switch_checkpoint = document.querySelector('#lora-switch-checkpoint');
-    lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active.specific_lora_run_id}`;
-    lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active.specific_checkpoint}`;
+    if (downloaded_data.active) {
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active.specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active.specific_checkpoint}`;
+    }
     if (mode === 'specific') {
         lora_switch_run_id.style.opacity = 1;
         lora_switch_checkpoint.style.opacity = 1;
