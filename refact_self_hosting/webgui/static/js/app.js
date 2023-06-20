@@ -3,8 +3,7 @@ import * as upload_tab from './tab-upload.js';
 import * as finetune_tab from './tab-finetune.js';
 import * as access_control_tab from './tab-access-contol.js';
 import * as server_log_tab from './tab-server-logs.js';
-import * as ssh_settings_tab from './tab-ssh-settings.js';
-import * as apikey_settings_tab from './tab-api-key-settings.js';
+import * as ssh_settings_tab from './tab-credentials-settings.js';
 
 let comming_soon;
 
@@ -38,7 +37,6 @@ finetune_tab.init();
 access_control_tab.init();
 server_log_tab.init();
 ssh_settings_tab.init();
-apikey_settings_tab.init();
 
 const tab_buttons = document.querySelectorAll('.main-tab-button');
 const tab_panes = document.querySelectorAll('.main-tab-pane');
@@ -82,9 +80,6 @@ function active_tab_function() {
             break;
         case 'settings':
             ssh_settings_tab.tab_switched_here();
-            break;
-        case 'api-keys':
-            apikey_settings_tab.tab_switched_here();
             break;
         case "access-control":
             break;

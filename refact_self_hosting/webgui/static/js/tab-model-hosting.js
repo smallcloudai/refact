@@ -1,3 +1,5 @@
+import {update_integrations} from "./tab-credentials-settings.js";
+
 let gpus_popup = false;
 let models_data = null;
 function get_gpus() {
@@ -150,4 +152,5 @@ export function init() {
 export function tab_switched_here() {
     get_gpus();
     get_models();
+    update_integrations();
 }

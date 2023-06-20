@@ -69,10 +69,8 @@
             <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
               aria-expanded="false">Settings</a>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li><button class="nav-link main-tab-button" id="settings-tab" data-tab="settings" type="button">SSH Keys</button>
+              <li><button class="nav-link main-tab-button" id="settings-tab" data-tab="settings" type="button">Credentials</button>
               </li>
-              <li><button class="nav-link main-tab-button" id="api-keys-tab" data-tab="api-keys" type="button">API Keys</button>
-            </li>
             </ul>
           </li>
         </ul>
@@ -323,20 +321,19 @@
       </div>
       <div class="main-tab-pane" id="settings">
         <div class="pane">
+          <h2>Integrations</h2>
+          <div class="mt-3 mb-3 chat-gpt-key">
+            <label for="chat_gpt_key" class="form-label">OpenAI API Key</label>
+            <input type="text" name="chat_gpt_key" value="" class="form-control" id="chat_gpt_key">
+            <button type="button" class="btn btn-primary" id="integrations-save">Save</button>
+          </div>
+        </div>
+        <div class="pane">
           <h2>Credentials</h2>
           <div class="settings-row">
             <button data-bs-toggle="modal" data-bs-target="#settings-tab-ssh-modal" type="button" id="settings-new"
               class="btn btn-primary">Generate new SSH Key</button>
             <div class="mt-2 settings-all-keys"></div>
-          </div>
-        </div>
-      </div>
-      <div class="main-tab-pane" id="api-keys">
-        <div class="pane">
-          <h2>API Keys</h2>
-          <div class="mt-3 mb-3 chat-gpt-key">
-            <label for="chat_gpt_key" class="form-label">OpenAI API Key</label>
-            <input type="text" name="chat_gpt_key" value="" class="form-control" id="chat_gpt_key">
           </div>
         </div>
       </div>
