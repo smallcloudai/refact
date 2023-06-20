@@ -230,6 +230,18 @@ h3 {
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     padding-bottom: 5px;
 }
+.gpus-current-status {
+    padding: 5px;
+    background-color: #efefef;
+    color: #000;
+    display: flex;
+    width: 100%;
+    justify-content: flex-start; 
+    font-size: 10px;
+    font-weight: bold;
+    border-radius: 4px;
+    margin-top: 10px;
+}
 .gpus-content {
     
 }

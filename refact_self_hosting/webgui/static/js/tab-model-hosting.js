@@ -2,6 +2,7 @@ import {update_integrations} from "./tab-credentials-settings.js";
 
 let gpus_popup = false;
 let models_data = null;
+let models_gpus_change = false;
 function get_gpus() {
     fetch("/tab-host-have-gpus")
     .then(function(response) {
@@ -46,10 +47,20 @@ function render_gpus(gpus) {
         gpu_name.innerHTML = element.name;
         gpu_mem.innerHTML = `<b>Mem</b><div class="gpus-mem-wrap"><div class="gpus-mem-bar"><span style="width: ${used_mem}%"></span></div>${used_gb}/${total_gb} GB</div>`;
         gpu_temp.innerHTML = `<b>Temp</b>` + element.temp_celsius + '°C';
-        gpu_command.innerHTML = `<b>Command</b>` + element.command;
-        gpu_status.innerHTML += `<div><b>Command</b>${element.command}</div>`;
-        gpu_status.innerHTML += `<div><b>Status</b>${element.status}</div>`;
-        gpu_command.appendChild(gpu_status);
+        if(element.status && element.status !== '') {
+            gpu_command.innerHTML = `<span class="gpus-current-status">${element.status}</span>`;
+            gpu_status.innerHTML += `<div><b>Command</b>${element.command}</div>`;
+            gpu_status.innerHTML += `<div><b>Status</b>${element.status}</div>`;
+            gpu_command.appendChild(gpu_status);
+            gpu_command.addEventListener('mouseover',function(e) {
+                gpus_popup = true;
+                this.querySelector('.gpus-status').classList.add('gpus-status-visible');
+            });
+            gpu_command.addEventListener('mouseout',function(e) {
+                gpus_popup = false;
+                this.querySelector('.gpus-status').classList.remove('gpus-status-visible');
+            });
+        }
         row.appendChild(gpu_image);
         gpu_wrapper.appendChild(gpu_name);
         gpu_wrapper.appendChild(gpu_mem);
@@ -57,14 +68,7 @@ function render_gpus(gpus) {
         gpu_wrapper.appendChild(gpu_command);
         row.appendChild(gpu_wrapper);
         gpus_list.appendChild(row);
-        gpu_command.addEventListener('mouseover',function(e) {
-            gpus_popup = true;
-            this.querySelector('.gpus-status').classList.add('gpus-status-visible');
-        });
-        gpu_command.addEventListener('mouseout',function(e) {
-            gpus_popup = false;
-            this.querySelector('.gpus-status').classList.remove('gpus-status-visible');
-        });
+        
     });
 }
 function get_models() {
@@ -75,26 +79,68 @@ function get_models() {
     .then(function(data) {
         console.log('models',data);
         models_data = data;
+        render_models_assigned(data.model_assign);
     });
 }
 function render_models_assigned(models) {
+    if(models_gpus_change) {
+        return;
+    }
     const models_table = document.querySelector('.table-assigned-models tbody');
     models_table.innerHTML = '';
-    for(let index in models.models) {
+    for(let index in models) {
         const row = document.createElement('tr');
-        row.setAttribute('datamodel',models.models[index].name);
+        row.setAttribute('datamodel',index);
         const model_name = document.createElement("td");
         const gpus = document.createElement("td");
-        const has_chat = document.createElement("td");
-        const has_toolbox = document.createElement("td");
-        model_name.textContent = models.models[index].name;
-        gpus.innerHTML = models.models[index].gpus.length;
-        has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
-        has_toolbox.innerHTML = models.models[index].has_toolbox ? '<i class="bi bi-check"></i>' : '';
+        const gpus_input = document.createElement("input");
+        const del = document.createElement("td");
+        const del_button = document.createElement("button");
+        model_name.textContent = index;
+        gpus_input.classList.add('model-gpus','form-control');
+        gpus_input.setAttribute('model',index);
+        gpus_input.setAttribute('min',1);
+        gpus_input.setAttribute('max',8);
+        gpus_input.setAttribute('step',1);
+        gpus_input.setAttribute('type','number');
+        gpus_input.value = models[index].gpus_min;
+        gpus_input.addEventListener('change', function() {
+            models[index].gpus_min = this.value;
+            let openai_enable = document.querySelector('#enable_chat_gpt');
+            const data = {
+                model_assign: {
+                    ...models,
+                },
+                openai_enable: openai_enable.checked
+            };
+            fetch("/tab-host-models-assign", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(function (response) {
+                models_gpus_change = false;
+                console.log('response',response);
+            });
+        });
+        gpus_input.addEventListener('blur', function() {
+            models_gpus_change = true;
+        });
+        
+        gpus.appendChild(gpus_input);
+        del_button.innerHTML = `<i class="bi bi-trash3-fill"></i>`;
+        del_button.dataset.model = index;
+        del_button.addEventListener('click', function() {
+            delete_model(index);
+        });
+        del_button.classList.add('model-remove','btn','btn-danger');
+        del.appendChild(del_button);
+        // del.innerHTML = `<button type="button" data-model="${index}" class="btn btn-danger model-remove"><i class="bi bi-trash3-fill"></i></button>`;
         row.appendChild(model_name);
         row.appendChild(gpus);
-        row.appendChild(has_chat);
-        row.appendChild(has_toolbox);
+        row.appendChild(del);
         models_table.appendChild(row);
     }
 }
@@ -115,14 +161,52 @@ function render_models(models) {
         row.appendChild(has_toolbox);
         models_table.appendChild(row);
         row.addEventListener('click',function(e) {
-            // document.querySelectorAll('.table-models tbody tr').forEach(function (row) {
-            //     row.classList.remove('table-success');
-            // });
-            // this.classList.add('table-success');
-            // const model_name = e.target.getAttribute('datamodel');
-            // console.log('model',model_name);
+            let openai_enable = document.querySelector('#enable_chat_gpt');
+            const data = {
+                model_assign: {
+                    ...models_data.model_assign,
+                },
+                openai_enable: openai_enable.checked
+            };
+            data.model_assign[models.models[index].name] = {
+                gpus_min: 1
+            };
+            fetch("/tab-host-models-assign", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(function (response) {
+                const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
+                add_model_modal.hide();
+                console.log('response',response);
+            });
         });
     }
+}
+
+function delete_model(model_name) {
+    let data = models_data.model_assign;
+    let openai_enable = document.querySelector('#enable_chat_gpt');
+    delete data[model_name];
+    const updated_data = {
+        model_assign: {
+           ...data,
+        },
+        openai_enable: openai_enable.checked
+    };
+    fetch("/tab-host-models-assign", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updated_data)
+    })
+    .then(function (response) {
+        console.log('response',response);
+    });
 }
 
 function format_memory(memory_in_mb, decimalPlaces = 2) {

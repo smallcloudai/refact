@@ -96,7 +96,7 @@ function render_runs() {
         }
         run_minutes.innerHTML = element.worked_minutes;
         run_steps.innerHTML = element.worked_steps;
-        run_delete.innerHTML = `<button class="btn btn-danger btn-sm" onclick="delete_run('${element.run_id}')">Delete</button>`;
+        run_delete.innerHTML = `<button class="btn btn-danger btn-sm" onclick="delete_run('${element.run_id}')"><i class="bi bi-trash3-fill"></i></button>`;
         row.appendChild(run_name);
         row.appendChild(run_status);
         row.appendChild(run_minutes);
