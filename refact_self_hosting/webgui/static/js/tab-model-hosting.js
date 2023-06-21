@@ -47,19 +47,20 @@ function render_gpus(gpus) {
         gpu_name.innerHTML = element.name;
         gpu_mem.innerHTML = `<b>Mem</b><div class="gpus-mem-wrap"><div class="gpus-mem-bar"><span style="width: ${used_mem}%"></span></div>${used_gb}/${total_gb} GB</div>`;
         gpu_temp.innerHTML = `<b>Temp</b>` + element.temp_celsius + '°C';
-        if(element.status && element.status !== '') {
-            gpu_command.innerHTML = `<span class="gpus-current-status">${element.status}</span>`;
-            gpu_status.innerHTML += `<div><b>Command</b>${element.command}</div>`;
-            gpu_status.innerHTML += `<div><b>Status</b>${element.status}</div>`;
-            gpu_command.appendChild(gpu_status);
-            gpu_command.addEventListener('mouseover',function(e) {
-                gpus_popup = true;
-                this.querySelector('.gpus-status').classList.add('gpus-status-visible');
-            });
-            gpu_command.addEventListener('mouseout',function(e) {
-                gpus_popup = false;
-                this.querySelector('.gpus-status').classList.remove('gpus-status-visible');
-            });
+        gpu_command.innerHTML = `<span class="gpus-current-status">${element.status}</span>`;
+        gpu_status.innerHTML += `<div><b>Command</b>${element.command}</div>`;
+        gpu_status.innerHTML += `<div><b>Status</b>${element.status}</div>`;
+        gpu_command.appendChild(gpu_status);
+        gpu_command.addEventListener('mouseover',function(e) {
+            gpus_popup = true;
+            this.querySelector('.gpus-status').classList.add('gpus-status-visible');
+        });
+        gpu_command.addEventListener('mouseout',function(e) {
+            gpus_popup = false;
+            this.querySelector('.gpus-status').classList.remove('gpus-status-visible');
+        });
+        if(!element.status || element.status === '') {
+            gpu_command.classList.add('gpus-status-invisible');
         }
         row.appendChild(gpu_image);
         gpu_wrapper.appendChild(gpu_name);

@@ -248,14 +248,17 @@ h3 {
 .gpus-mem {
     display: flex;
     justify-content: flex-start;
-    align-items: flex-start;
+    align-items: center;
     font-size: 12px;
+    margin-bottom: 5px;
+    margin-top: 5px;
 }
 .gpus-mem b {
     margin-right: 5px;
     width: 60px;
     text-align: left;
     display: inline-flex;
+    margin-top: 2px;
 }
 .gpus-mem-bar {
     height: 10px;
@@ -298,6 +301,9 @@ h3 {
 .gpus-status-visible {
     display: block;
 }
+.gpus-status-invisible {
+    opacity: 0;
+}
 .gpus-command b {
     margin-right: 5px;
     width: 60px;
@@ -307,6 +313,8 @@ h3 {
 .gpus-temp {
     text-align: left;
     font-size: 12px;
+    align-items: center;
+    display: flex;
 }
 .gpus-temp b {
     margin-right: 5px;

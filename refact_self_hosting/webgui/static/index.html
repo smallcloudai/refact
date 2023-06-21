@@ -179,7 +179,7 @@
               <h3>File Type Filter</h3>
               <div class="row source-files-table">
                 <div class="col-7">
-                  <table class="table table-striped upload-tab-table-types">
+                  <table class="table table-striped align-middle upload-tab-table-types">
                     <thead>
                       <tr>
                         <th></th>
@@ -282,8 +282,9 @@
             </div>
             <div class="pane">
               <h3>Start New Finetune<span></span></h3>
-              <button id="run_now" type="button" class="btn mt-2 btn-success tab-finetune-run-now">Run Now</button>
-              <span class="fake-link link-primary" data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button">Settings</span>
+              <button id="run_now" type="button" class="btn mt-2 btn-primary tab-finetune-run-now">Run Now</button>
+              <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn mt-2 btn-secondary">Finetune Settings</button>
+              <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn mt-2 btn-secondary">Autorun Settings</button>
             </div>
           </div>
           <div class="col-7">
@@ -526,26 +527,42 @@
           <div class="mb-3">
             <label for="filter_loss_threshold" class="form-label">File loss threshold</label>
             <input type="number" min="2" max="10" step="1" class="form-control" id="filter_loss_threshold">
+            <div class="form-text">
+              Optional. If not specified, the default branch will be used.
+            </div>
           </div>
+          
 
           <div class="mb-3">
             <label for="filter_gradcosine_threshold" class="form-label">File gradient cosine similarity threshold</label>
             <input type="number" min="-1.0" max="0.5" step="0.1" class="form-control" id="filter_gradcosine_threshold">
+            <div class="form-text">
+              Optional. If not specified, the default branch will be used.
+            </div>
           </div>
 
           <div class="mb-3">
             <label for="limit_train_files" class="form-label">Limit train files</label>
             <input type="number" min="20" max="100000" step="1" class="form-control" id="limit_train_files">
+            <div class="form-text">
+              Optional. If not specified, the default branch will be used.
+            </div>
           </div>
 
           <div class="mb-3">
             <label for="limit_test_files" class="form-label">Limit test files</label>
             <input type="number" min="1" max="5" step="1" class="form-control" id="limit_test_files">
+            <div class="form-text">
+              Optional. If not specified, the default branch will be used.
+            </div>
           </div>
 
           <div class="mb-3">
             <label for="limit_time_seconds" class="form-label">Limit time, seconds</label>
             <input type="number" min="300" max="43200" step="1" class="form-control" id="limit_time_seconds">
+            <div class="form-text">
+              Optional. If not specified, the default branch will be used.
+            </div>
           </div>
 
           <div class="mb-3">
@@ -554,6 +571,9 @@
               <label class="form-check-label" for="low_gpu_mem_mode">
                 Low GPU memory mode
               </label>
+              <div class="form-text">
+                Optional. If not specified, the default branch will be used.
+              </div>
             </div>
           </div>
 
@@ -563,12 +583,148 @@
     </div>
   </div>
 
-  <div class="modal fade" id="finetune-tab-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-settings-modal"
+  <div class="modal fade" id="finetune-tab-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-settings-modal" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="urlModalLabel">Finetune Settings</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="filter_loss_threshold" class="form-label">Limit time seconds</label>
+                <input type="number" step="1" class="form-control" id="limit_time_seconds">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="filter_gradcosine_threshold" class="form-label">Max iterations</label>
+                <input type="number" step="1" class="form-control" id="max_iterations">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_train_files" class="form-label">Max epoch</label>
+                <input type="number" step="1" class="form-control" id="max_epoch">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_test_files" class="form-label">Warmup num steps</label>
+                <input type="number" step="1" class="form-control" id="warmup_num_steps">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_time_seconds" class="form-label">Batch size</label>
+                <input type="number" step="1" class="form-control" id="batch_size">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_time_seconds" class="form-label">Lr</label>
+                <input type="text" class="form-control" id="lr">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_time_seconds" class="form-label">Lr decay steps</label>
+                <input type="number" step="1" class="form-control" id="lr_decay_steps">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_time_seconds" class="form-label">Lora R</label>
+                <input type="number" step="0.1" class="form-control" id="lora_r">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_time_seconds" class="form-label">Lora Init Scale</label>
+                <input type="number" step="0.01" class="form-control" id="lora_init_scale">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_time_seconds" class="form-label">Lora Dropout</label>
+                <input type="number" step="0.01" class="form-control" id="lora_dropout">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_time_seconds" class="form-label">Weight Decay</label>
+                <input type="number" step="0.1" class="form-control" id="weight_decay">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="low_gpu_mem_mode" value="" id="low_gpu_mem_mode">
+              <label class="form-check-label" for="low_gpu_mem_mode">
+                Low GPU memory mode
+              </label>
+              <div class="form-text">
+                Optional. If not specified, the default branch will be used.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="finetune-tab-settings-submit btn btn-primary">Save settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="finetune-tab-autorun-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-autorun-settings-modal"
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Finetune Settings</h5>
+          <h5 class="modal-title">Autorun Settings</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -626,7 +782,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="settings-tab-ssh-submit btn btn-primary">Save settings</button>
+          <button class="finetune-tab-autorun-settings btn btn-primary">Save settings</button>
         </div>
       </div>
     </div>
