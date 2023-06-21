@@ -22,6 +22,36 @@ function get_tab_files() {
             }
             render_tab_files(data);
             render_filetypes(data.mime_types);
+            render_ftf_stats(data.filestats_ftf);
+            if(data.filestats_ftf) {
+                switch(data.filestats_ftf.status) {
+                    case 'finished':
+                        sources_run_button.disabled = false;
+                        sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
+                        sources_run_button.removeEventListener('click',stop_filtering());
+                        sources_run_button.addEventListener('click', function() {
+                            run_now();
+                        });
+                        break;
+                    case 'starting':
+                        sources_run_button.disabled = true;
+                        if(!document.querySelector('.sources-run-button .spinner-border')) {
+                            sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
+                        }
+                        break;
+                    case 'error':
+                        sources_run_button.disabled = true;
+                        break;
+                    default:
+                        console.log('default ->>>>>>>');
+                        sources_run_button.innerHTML = `Stop filter`;
+                        sources_run_button.removeEventListener('click',run_now());
+                        sources_run_button.addEventListener('click', function() {
+                            stop_filtering();
+                        });
+                        break;
+                }
+            }
             // render_filter_setup_defaults(data.filter_setup_defaults);
         });
 }
@@ -35,8 +65,6 @@ const sources_pane = document.querySelector('.sources-pane');
 const filetypes_pane = document.querySelector('.filetypes-pane');
 const sources_run_pane = document.querySelector('.run-pane');
 const sources_run_button = document.querySelector('.sources-run-button');
-const sources_run_progress = document.querySelector('.sources-run-progress');
-const summary_pane = document.querySelector('.summary-pane');
 const sources_settings = document.querySelector('.sources-settings');
 
 function render_filter_progress(progress_value) {
@@ -50,9 +78,7 @@ function render_filter_progress(progress_value) {
 //     }
 // }
 function filter_state_zero() {
-    progress_bar.style.width = "0%";
     sidebar_progress.style.width = "0%";
-    sources_run_progress.classList.add('d-none');
     sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
     sidebar_step1.classList.add('sources-list-active');
     sidebar_step2.classList.remove('sources-list-active');
@@ -63,9 +89,7 @@ function filter_state_zero() {
 }
 
 function filter_state_one() {
-    progress_bar.style.width = "0%";
     sidebar_progress.style.width = "50%";
-    sources_run_progress.classList.add('d-none');
     sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
     sidebar_step1.classList.add('sources-list-active');
     sidebar_step2.classList.add('sources-list-active');
@@ -204,6 +228,24 @@ function render_tab_files(data) {
         process_button.innerHTML = "Scan sources";
     }
 }
+function stop_filtering() {
+    fetch("/tab-finetune-stop-now")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        // console.log(data);
+    });
+}
+
+function render_ftf_stats(data) {
+    const ftf_wrapper = document.querySelector('.ftf-stats');
+    if(Object.keys(data).length > 0) {
+        ftf_wrapper.innerHTML = '';
+        const content = `<h6>GPU Filtering stats</h6><div><a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=accepted"><b>Accepted:</b> ${data.accepted}</a></div><div><a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=rejected"><b>Rejected:</b> ${data.rejected}</a></div>`;
+        ftf_wrapper.innerHTML = content;
+    }
+}
 
 function get_ssh_keys() {
     fetch("/tab-settings-get-all-ssh-keys")
@@ -299,23 +341,27 @@ function watch_filetypes() {
 function render_stats() {
     const stats_finetune = document.querySelector('.sources-stats-finetune');
     const stats_db = document.querySelector('.sources-stats-db');
-    if(Object.keys(tab_files_data.filestats_scan_finetune).length > 0) {
-        stats_finetune.style.display = 'block';
-        const fine_accepted = document.querySelector('.sources-stats-fine-accepted');
-        fine_accepted.innerHTML = `Accepted: ${tab_files_data.filestats_scan_finetune.accepted}`;
-        fine_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
-        const fine_rejected = document.querySelector('.sources-stats-fine-rejected');
-        fine_rejected.innerHTML = `Rejected: ${tab_files_data.filestats_scan_finetune.rejected}`;
-        fine_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
+    if (tab_files_data.filestats_scan_finetune && typeof tab_files_data.filestats_scan_finetune === 'object') {
+        if(Object.keys(tab_files_data.filestats_scan_finetune).length > 0) {
+            stats_finetune.style.display = 'block';
+            const fine_accepted = document.querySelector('.sources-stats-fine-accepted');
+            fine_accepted.innerHTML = `Accepted: ${tab_files_data.filestats_scan_finetune.accepted}`;
+            fine_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
+            const fine_rejected = document.querySelector('.sources-stats-fine-rejected');
+            fine_rejected.innerHTML = `Rejected: ${tab_files_data.filestats_scan_finetune.rejected}`;
+            fine_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
+        }
     }
-    if(Object.keys(tab_files_data.filestats_scan_db).length > 0) {
-        stats_db.style.display = 'block';
-        const db_accepted = document.querySelector('.sources-stats-db-accepted');
-        db_accepted.innerHTML = `Accepted: ${tab_files_data.filestats_scan_db.accepted}`;
-        db_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
-        const db_rejected = document.querySelector('.sources-stats-db-rejected');
-        db_rejected.innerHTML = `Rejected: ${tab_files_data.filestats_scan_db.rejected}`;
-        db_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
+    if (tab_files_data.filestats_scan_db && typeof tab_files_data.filestats_scan_finetune === 'object') {
+        if(Object.keys(tab_files_data.filestats_scan_db).length > 0) {
+            stats_db.style.display = 'block';
+            const db_accepted = document.querySelector('.sources-stats-db-accepted');
+            db_accepted.innerHTML = `Accepted: ${tab_files_data.filestats_scan_db.accepted}`;
+            db_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
+            const db_rejected = document.querySelector('.sources-stats-db-rejected');
+            db_rejected.innerHTML = `Rejected: ${tab_files_data.filestats_scan_db.rejected}`;
+            db_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
+        }
     }
 }
 
@@ -626,16 +672,22 @@ function save_filter_setup() {
     });
 }
 
+function run_now() {
+    fetch("/tab-finetune-run-now?filter_only=1")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function() {
+        console.log('run_now');
+    });
+}
+
 export function init() {
     const run_filter_button = document.querySelector('.sources-run-button');
     run_filter_button.addEventListener('click', function() {
-        fetch("/tab-finetune-run-now?filter_only=1")
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function() {
-            get_tab_files();
-        });
+        sources_run_button.disabled = false;
+        console.log('run_filter_button click');
+        run_now();
     });
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());

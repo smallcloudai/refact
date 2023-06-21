@@ -216,25 +216,17 @@
               </div>
             </div>
             <div class="run-pane">
-              <div class="sources-run-progress d-none progress" role="progressbar" aria-valuenow="0" aria-valuemin="0"
-                aria-valuemax="100">
-                <div class="progress-bar" style="width: 0%"></div>
-              </div>
-              <button type="button" class="sources-run-button btn btn-primary btn-lg"><i class="bi bi-gpu-card"></i>Run
-                filter</button>
-              <button type="button" data-bs-toggle="modal" data-bs-target="#upload-tab-source-settings-modal"
-                class="btn btn-link sources-settings">Settings</button>
-            </div>
-            <div class="sources-summary summary-pane d-none">
-              <h3>Data Filtration Summary</h3>
-              <div class="row">
-                <div class="col-6">
-                  <h5>Included files</h5>
-                  <a href="#">Included Details</a>
+              <div class="run-pane-grid">
+                <div class="run-pane-col"></div>
+                <div class="run-pane-col">
+                  <button type="button" class="sources-run-button btn btn-primary btn-lg"><i class="bi bi-gpu-card"></i>Run
+                    filter</button>
+                  <button type="button" data-bs-toggle="modal" data-bs-target="#upload-tab-source-settings-modal"
+                    class="btn btn-link sources-settings">Settings</button>
                 </div>
-                <div class="col-6">
-                  <h5>Excluded Files</h5>
-                  <a href="#">Excluded Details</a>
+                <div class="run-pane-col">
+                  <div class="ftf-stats">
+                  </div> 
                 </div>
               </div>
             </div>

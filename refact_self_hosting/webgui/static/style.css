@@ -377,9 +377,6 @@ h3 {
     margin-left: auto;
 }
 .run-pane{
-    margin-left: auto;
-    margin-right: auto;
-    width: 220px;
     margin-top: 2rem;
 }
 .sources-run-button {
@@ -503,4 +500,20 @@ h3 {
 }
 .sources-stats-db {
     margin-top: 10px;
+}
+.run-pane-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-gap: 10px;
+    width: 100%;
+}
+.run-pane-col {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.ftf-stats {
+    width: 100%;
+    text-align: right;
 }

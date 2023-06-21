@@ -105,7 +105,10 @@ function render_runs() {
         document.querySelector('.run-table').appendChild(row);
         if (blue_lora == element.run_id) {
             row.classList.add('table-success');
-            document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${element.run_id}`;
+            const timestamp = new Date().getTime();
+            const gfx = document.querySelector('.fine-gfx');
+            gfx.src = '';
+            gfx.src = `/tab-finetune-progress-svg/${element.run_id}?t=${timestamp}`;
             console.log(`/tab-finetune-progress-svg/${element.run_id}`);
             start_log_stream(element.run_id);
         }
@@ -277,6 +280,7 @@ function start_log_stream(run_id) {
             }
 
             const chunk = decoder.decode(value);
+            
 
             const isAtBottom = log_div.scrollTop >= (log_div.scrollHeight - log_div.offsetHeight);
 
@@ -285,7 +289,10 @@ function start_log_stream(run_id) {
             if (isAtBottom) {
                 log_div.scrollTop = log_div.scrollHeight;
             }
-            document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/${run_id}`;
+            const timestamp = new Date().getTime();
+            const gfx = document.querySelector('.fine-gfx');
+            gfx.src = '';
+            gfx.src = `/tab-finetune-progress-svg/${run_id}?t=${timestamp}`;
             return reader.read().then(processResult);
         };
 
