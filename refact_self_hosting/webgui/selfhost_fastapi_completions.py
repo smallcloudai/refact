@@ -240,6 +240,7 @@ class CompletionsRouter(APIRouter):
 
     async def _longthink_functions(self):
         longthink_functions = dict()
+        longthink_filters = set()
         models_mini_db_extended = {
             "longthink/stable": {
                 "filter_caps": ["gpt3.5", "gpt4"],
@@ -274,12 +275,13 @@ class CompletionsRouter(APIRouter):
                     "third_party": rec_third_party,
                     "model": rec_model,
                 }
+                longthink_filters.add(rec_model)
         return {
             "account": "self-hosted",
             "retcode": "OK",
             "longthink-functions-today": 1,
             "longthink-functions-today-v2": longthink_functions,
-            "longthink-filters": [],
+            "longthink-filters": list(longthink_filters),
             "chat-v1-style": 1,
         }
 
