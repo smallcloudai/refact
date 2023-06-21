@@ -82,6 +82,9 @@ function render_runs() {
             case 'failed':
                 status_color = `text-bg-danger`;
                 break;
+            default:
+                status_color = `text-bg-info`;
+                break;
         }
 
         row.dataset.run = element.run_id;
@@ -107,9 +110,7 @@ function render_runs() {
             row.classList.add('table-success');
             const timestamp = new Date().getTime();
             const gfx = document.querySelector('.fine-gfx');
-            gfx.src = '';
             gfx.src = `/tab-finetune-progress-svg/${element.run_id}?t=${timestamp}`;
-            console.log(`/tab-finetune-progress-svg/${element.run_id}`);
             start_log_stream(element.run_id);
         }
     });
@@ -291,7 +292,6 @@ function start_log_stream(run_id) {
             }
             const timestamp = new Date().getTime();
             const gfx = document.querySelector('.fine-gfx');
-            gfx.src = '';
             gfx.src = `/tab-finetune-progress-svg/${run_id}?t=${timestamp}`;
             return reader.read().then(processResult);
         };
