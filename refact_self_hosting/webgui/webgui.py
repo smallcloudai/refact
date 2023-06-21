@@ -86,4 +86,6 @@ if __name__ == "__main__":
         collector(user2gpu_queue)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    uvicorn.run(app, host=args.host, port=args.port, log_config=None)
+    uvicorn.run(
+        app, host=args.host, port=args.port,
+        timeout_keep_alive=600, log_config=None)
