@@ -1,3 +1,4 @@
+let chat_gpt_api_key_focused = false;
 function get_ssh_keys() {
     fetch("/tab-settings-get-all-ssh-keys")
         .then(function(response) {
@@ -116,6 +117,10 @@ export function init() {
         const chat_gpt_apikey_textedit = document.getElementById('chat_gpt_key');
         set_chat_gpt_api_key(chat_gpt_apikey_textedit.value)
     })
+    const chat_gpt_api_input = document.getElementById('chat_gpt_key');
+    chat_gpt_api_input.addEventListener('focus', function () {
+        chat_gpt_api_key_focused = true;
+    })
 }
 
 function set_enable_chat_gpt(is_enabled) {
@@ -145,6 +150,7 @@ function set_chat_gpt_api_key(api_key) {
     })
     .then(function(response) {
         console.log(response);
+        chat_gpt_api_key_focused = false;
     });
 }
 
@@ -156,9 +162,20 @@ export function update_integrations() {
         .then(function(data) {
             console.log('get-chat-gpt-info',data);
             const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
+            if(data.api_key === '') {
+                enable_chat_gpt_switch.checked = false;
+                enable_chat_gpt_switch.disabled = true;
+                if(data.is_enabled) {
+                    set_enable_chat_gpt(false);
+                }
+                return;
+            }
+            enable_chat_gpt_switch.disabled = false;
             enable_chat_gpt_switch.checked = data['is_enabled']
             const chat_gpt_apikey_textedit = document.getElementById('chat_gpt_key');
-            chat_gpt_apikey_textedit.value = data['api_key']
+            if(!chat_gpt_api_key_focused) {
+                chat_gpt_apikey_textedit.value = data['api_key']
+            }
         });
 }
 
