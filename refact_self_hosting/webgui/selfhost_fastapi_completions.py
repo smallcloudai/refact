@@ -280,7 +280,7 @@ class CompletionsRouter(APIRouter):
             "longthink-functions-today": 1,
             "longthink-functions-today-v2": longthink_functions,
             "longthink-filters": [],
-            "chat-v1-style": True,
+            "chat-v1-style": 1,
         }
 
     async def _secret_key_activate(self):

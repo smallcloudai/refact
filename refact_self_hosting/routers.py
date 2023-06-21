@@ -111,7 +111,7 @@ class LongthinkFunctionGetterRouter(APIRouter):
             "longthink-functions-today": 1,
             "longthink-functions-today-v2": accum,
             "longthink-filters": [],
-            "chat-v1-style": True,
+            "chat-v1-style": 1,
         }
         return Response(content=json.dumps(response))
 
