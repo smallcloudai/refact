@@ -8,9 +8,9 @@ function get_tab_files() {
             console.log('tab-files-get',data);
             tab_files_data = data;
             switch(data.filtering_stage) {
+                    // filter_state_zero();
+                    // break;
                 case 0:
-                    filter_state_zero();
-                    break;
                 case 1:
                     filter_state_one();
                     break;
