@@ -93,7 +93,7 @@ function start_tab_timer() {
     if (refresh_interval) {
         clearInterval(refresh_interval);
     }
-    refresh_interval = setInterval(active_tab_function, 1000);
+    refresh_interval = setInterval(active_tab_function, 2000);
 }
 
 start_tab_timer();

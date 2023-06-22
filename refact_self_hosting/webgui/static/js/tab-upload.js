@@ -21,7 +21,7 @@ function get_tab_files() {
 
             }
             render_tab_files(data);
-            render_filetypes(data.mime_types);
+            render_filetypes(data.mime_types, data.filetypes);
             render_force_filetypes(data.filetypes);
             render_ftf_stats(data.filestats_ftf);
             if(data.filestats_ftf) {
@@ -58,7 +58,6 @@ function get_tab_files() {
         });
 }
 
-let sources_filtypes_changed = false;
 const progress_bar = document.querySelector('.sources-run-progress .progress-bar');
 const sidebar_progress = document.querySelector('.sources-sidebar-progress .progress-bar');
 const sidebar_step1 = document.querySelector('.sources-list li:first-of-type');
@@ -284,36 +283,12 @@ function render_force_filetypes(data) {
 }
 
 
-function render_filetypes(data) {
-    if(sources_filtypes_changed) {
-        const file_types = document.querySelectorAll('.upload-tab-table-type-body tr input');
-        let updated_data = [];
-        if(file_types.length > 0) {
-            const unchecked_inputs = Array.from(file_types).filter(input => !input.checked);
-            unchecked_inputs.forEach(input => {
-                updated_data.push({
-                    'file_type': input.dataset.name,
-                    'count': Number(input.value),
-                    'suitable_to_train': false
-                });
-            });
-            const checked_inputs = Array.from(file_types).filter(input => input.checked);
-            checked_inputs.forEach(input => {
-                updated_data.push({
-                    'file_type': input.dataset.name,
-                    'count': Number(input.value),
-                    'suitable_to_train': true
-                });
-            });
-        }
-        render_stats();
-        return;
-    }
-    if(data && data.length > 0) {
+function render_filetypes(mimetypes, filetypes) {
+    if(mimetypes && mimetypes.length > 0) {
         const table_body = document.querySelector('.upload-tab-table-type-body');
         table_body.innerHTML = '';
         let i = 0;
-        data.forEach((item) => {
+        mimetypes.forEach((item) => {
             const row = document.createElement('tr');
             let checkbox_checked = `checked`;
             const file_name = `<label for="file-list${i}">${item.file_type}</label>`;
@@ -324,6 +299,9 @@ function render_filetypes(data) {
                 row.classList.add('opacity-50');
                 row.classList.add('disbled');
                 checkbox_checked = `disabled`;
+            }
+            if (filetypes["filetypes_finetune"][item.file_type] === false) {
+                checkbox_checked = `unchecked`;
             }
             let file_checkbox = `<input id="file-list${i}" data-name="${item.file_type}" class="form-check-input" type="checkbox" value="${item.count}" ${checkbox_checked}>`;
             row.innerHTML = `<td>${file_checkbox}</td><td>${file_name}</td><td>${item.count}</td>`;
@@ -339,12 +317,7 @@ function watch_filetypes() {
     const file_types = document.querySelectorAll('.upload-tab-table-type-body input');
     if(file_types.length > 0) {
         file_types.forEach(function(element) {
-            element.removeEventListener('change', function() {
-                sources_filtypes_changed = true;
-                save_filter_setup();
-            });
             element.addEventListener('change', function() {
-                sources_filtypes_changed = true;
                 save_filter_setup();
             });
         });
@@ -677,13 +650,6 @@ function save_filter_setup() {
             force_exclude: force_exclude,
         })
     })
-    .then(function(response) {
-        console.log('tab-files-filetypes-setup',response);
-        if(response.ok) {
-            get_tab_files();
-            force_include_exclude_is_changed = false
-        }
-    });
 }
 
 function run_now() {
