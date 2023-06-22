@@ -25,13 +25,12 @@ function get_tab_files() {
             render_ftf_stats(data.filestats_ftf);
             if(data.filestats_ftf) {
                 switch(data.filestats_ftf.status) {
+                    case 'interrupted':
                     case 'finished':
                         sources_run_button.disabled = false;
-                        sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
-                        sources_run_button.removeEventListener('click',stop_filtering());
-                        sources_run_button.addEventListener('click', function() {
-                            run_now();
-                        });
+                        sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter<br><p style="font-size:12px;">${data.filestats_ftf.status}</p>`;
+                        sources_run_button.removeEventListener('click', stop_filtering);
+                        sources_run_button.addEventListener('click', run_now);
                         break;
                     case 'starting':
                         sources_run_button.disabled = true;
@@ -44,11 +43,13 @@ function get_tab_files() {
                         break;
                     default:
                         console.log('default ->>>>>>>');
+                        sources_run_button.disabled = false;
                         sources_run_button.innerHTML = `Stop filter`;
-                        sources_run_button.removeEventListener('click',run_now());
-                        sources_run_button.addEventListener('click', function() {
-                            stop_filtering();
-                        });
+                        sources_run_button.removeEventListener('click', run_now);
+                        sources_run_button.addEventListener('click', stop_filtering);
+                        if(!document.querySelector('.sources-run-button .spinner-border')) {
+                            sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter<br/><p style="font-size:12px;">${data.filestats_ftf.status}</p>`;
+                        }
                         break;
                 }
             }
@@ -677,7 +678,7 @@ function run_now() {
     .then(function(response) {
         return response.json();
     })
-    .then(function() {
+    .then(function(data) {
         console.log('run_now');
     });
 }
