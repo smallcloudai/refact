@@ -588,12 +588,12 @@ function get_filters_settings(defaults = false) {
         } else {
             settings_data = data.defaults;
         }
-        document.querySelector('#filter_gradcosine_threshold').value = settings_data.filter_gradcosine_threshold;
-        document.querySelector('#filter_loss_threshold').value = settings_data.filter_loss_threshold;
-        document.querySelector('#limit_train_files').value = settings_data.limit_train_files;
-        document.querySelector('#limit_test_files').value = settings_data.limit_test_files;
-        document.querySelector('#limit_time_seconds').value = settings_data.limit_time_seconds;
-        document.querySelector('#use_gpus_n').value = settings_data.use_gpus_n;
+        document.querySelector('#upload-tab-source-settings-modal #filter_gradcosine_threshold').value = settings_data.filter_gradcosine_threshold;
+        document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value = settings_data.filter_loss_threshold;
+        document.querySelector('#upload-tab-source-settings-modal #limit_train_files').value = settings_data.limit_train_files;
+        document.querySelector('#upload-tab-source-settings-modal #limit_test_files').value = settings_data.limit_test_files;
+        document.querySelector('#upload-tab-source-settings-modal #limit_time_seconds').value = settings_data.limit_time_seconds;
+        // document.querySelector('#upload-tab-source-settings-modal #use_gpus_n').value = settings_data.use_gpus_n;
         const low_gpu_mem_mode = settings_data.low_gpu_mem_mode;
         if(low_gpu_mem_mode ) {
             document.querySelector('#low_gpu_mem_mode').checked = true;
@@ -614,12 +614,12 @@ function save_filters_settings() {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            filter_gradcosine_threshold: document.querySelector('#filter_gradcosine_threshold').value,
-            filter_loss_threshold: document.querySelector('#filter_loss_threshold').value,
-            limit_train_files: document.querySelector('#limit_train_files').value,
-            limit_test_files: document.querySelector('#limit_test_files').value,
-            limit_time_seconds: document.querySelector('#limit_time_seconds').value,
-            use_gpus_n: document.querySelector('#use_gpus_n').value,
+            filter_gradcosine_threshold: document.querySelector('#upload-tab-source-settings-modal #filter_gradcosine_threshold').value,
+            filter_loss_threshold: document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value,
+            limit_train_files: document.querySelector('#upload-tab-source-settings-modal #limit_train_files').value,
+            limit_test_files: document.querySelector('#upload-tab-source-settings-modal #limit_test_files').value,
+            limit_time_seconds: document.querySelector('#upload-tab-source-settings-modal #limit_time_seconds').value,
+            // use_gpus_n: document.querySelector('#upload-tab-source-settings-modal #use_gpus_n').value,
             low_gpu_mem_mode: low_gpu
         })
     })

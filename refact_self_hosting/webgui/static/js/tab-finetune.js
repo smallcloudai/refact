@@ -232,10 +232,10 @@ function render_time_dropdown() {
 const finetune_inputs = document.querySelectorAll('.fine-tune-input');
 for (let i = 0; i < finetune_inputs.length; i++) {
     finetune_inputs[i].addEventListener('change', function () {
-        save_finetune_settings();
+        save_finetune_schedule();
     });
 }
-function save_finetune_settings() {
+function save_finetune_schedule() {
     const data = {
         "limit_training_time_minutes": document.querySelector('input[name="limit_training_time_minutes"]:checked').value,
         "run_at_night": document.querySelector('#night_run').checked,
@@ -313,6 +313,72 @@ function handle_auto_scroll() {
 }
 log_container.addEventListener('scroll', handle_auto_scroll);
 
+function get_finetune_settings(defaults = false) {
+    fetch("/tab-finetune-training-get")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('tab-finetune-training-get',data);
+        let settings_data = null;
+        if(Object.keys(data.user_config).length > 0 && !defaults) {
+            settings_data = data.user_config;
+        } else {
+            settings_data = data.defaults;
+        }
+        document.querySelector('#finetune-tab-settings-modal #limit_time_seconds').value = settings_data.limit_time_seconds;
+        document.querySelector('#finetune-tab-settings-modal #max_iterations').value = settings_data.max_iterations;
+        document.querySelector('#finetune-tab-settings-modal #max_epoch').value = settings_data.max_epoch;
+        document.querySelector('#finetune-tab-settings-modal #warmup_num_steps').value = settings_data.warmup_num_steps;
+        document.querySelector('#finetune-tab-settings-modal #batch_size').value = settings_data.batch_size;
+        document.querySelector('#finetune-tab-settings-modal #lr').value = settings_data.lr;
+        document.querySelector('#finetune-tab-settings-modal #lr_decay_steps').value = settings_data.lr_decay_steps;
+        document.querySelector('#finetune-tab-settings-modal #lora_r').value = settings_data.lora_r;
+        document.querySelector('#finetune-tab-settings-modal #lora_init_scale').value = settings_data.lora_init_scale;
+        document.querySelector('#finetune-tab-settings-modal #lora_dropout').value = settings_data.lora_dropout;
+        document.querySelector('#finetune-tab-settings-modal #weight_decay').value = settings_data.weight_decay;
+        const low_gpu_mem_mode = settings_data.low_gpu_mem_mode;
+        if(low_gpu_mem_mode ) {
+            document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked = true;
+        } else {
+            document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked = false;
+        }
+    });
+}
+
+function save_finetune_settings() {
+    console.log('save_finetune_settings');
+    let low_gpu = false;
+    if (document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked) {
+        low_gpu = true;
+    }
+    fetch("/tab-finetune-smart-filter-setup", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            limit_time_seconds: document.querySelector('#finetune-tab-settings-modal #limit_time_seconds').value,
+            max_iterations: document.querySelector('#finetune-tab-settings-modal #max_iterations').value,
+            max_epoch: document.querySelector('#finetune-tab-settings-modal #max_epoch').value,
+            warmup_num_steps: document.querySelector('#finetune-tab-settings-modal #warmup_num_steps').value,
+            batch_size: document.querySelector('#finetune-tab-settings-modal #batch_size').value,
+            lr: document.querySelector('#finetune-tab-settings-modal #lr').value,
+            lr_decay_steps: document.querySelector('#finetune-tab-settings-modal #lr_decay_steps').value,
+            lora_r: document.querySelector('#finetune-tab-settings-modal #lora_r').value,
+            lora_init_scale: document.querySelector('#finetune-tab-settings-modal #lora_init_scale').value,
+            lora_dropout: document.querySelector('#finetune-tab-settings-modal #lora_dropout').value,
+            weight_decay: document.querySelector('#finetune-tab-settings-modal #weight_decay').value,
+            low_gpu_mem_mode: low_gpu
+        })
+    })
+    .then(function(response) {
+        if(response.ok) {
+            get_finetune_settings();
+        }
+    });
+}
+
 export function init() {
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.addEventListener('click', function () {
@@ -335,6 +401,21 @@ export function init() {
     loras_switch_specific.addEventListener('change', loras_switch_clicked);
     const loras_table = document.querySelector('.run-table-wrapper');
     loras_table.scrollTop = loras_table.scrollHeight;
+
+    const finetune_modal = document.getElementById('finetune-tab-settings-modal');
+    finetune_modal.addEventListener('show.bs.modal', function () {
+        get_finetune_settings();
+    });
+
+    const finetune_submit = document.querySelector('.finetune-tab-settings-submit');
+    finetune_submit.addEventListener('click', function() {
+        save_finetune_settings();
+    });
+
+    const finetune_modal_defaults = document.querySelector('.finetune-tab-settings-default');
+    finetune_modal_defaults.addEventListener('click', function() {
+        get_finetune_settings(true);
+    });
 }
 
 export function tab_switched_here() {

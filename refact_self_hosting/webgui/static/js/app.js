@@ -66,7 +66,14 @@ tab_buttons.forEach(tab_button => {
 // remove when schedule will be implemented
 const schedule_modal = document.getElementById('finetune-tab-autorun-settings-modal');
 schedule_modal.addEventListener('show.bs.modal', function () {
-    const info = schedule_modal.querySelector('.temp-info');
+    const elm = document.querySelector('#finetune-tab-autorun-settings-modal .modal-body');
+    const info = elm.parentNode.insertBefore(document.createElement("div"), elm);
+    elm.style.opacity = 0.2;
+    elm.style.pointerEvents = "none";
+    elm.style.position = "relative";
+    elm.style.zIndex = "0";
+    info.classList.add("temp-info-modal");
+    info.innerHTML = "Coming soon";
     info.style.marginLeft = '170px';
     info.style.marginTop = '180px';
 });

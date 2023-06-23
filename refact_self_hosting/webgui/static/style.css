@@ -32,6 +32,17 @@ body {
     border-radius: 5px;
     transform: rotate(-15deg);
 }
+.temp-info-modal {
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 1px;
+    position: absolute;
+    border: 3px solid #999;
+    color: #999;
+    padding: 10px;
+    border-radius: 5px;
+    transform: rotate(-15deg);
+}
 .navbar {
     border-bottom: 1px solid rgba(0,0,0,0.15);
     background-color: #fff;
