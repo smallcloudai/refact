@@ -383,6 +383,7 @@ h3 {
 .sources-run-button {
     width: 220px;
     font-weight: bold;
+    position: relative;
 }
 .sources-run-button i,
 .sources-run-button span {

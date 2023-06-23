@@ -25,11 +25,12 @@ function get_tab_files() {
             render_force_filetypes(data.filetypes);
             render_ftf_stats(data.filestats_ftf);
             if(data.filestats_ftf) {
+                sources_run_button.disabled = false;
                 switch(data.filestats_ftf.status) {
                     case 'interrupted':
                     case 'finished':
                         sources_run_button.disabled = false;
-                        sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter<br><p style="font-size:12px;">${data.filestats_ftf.status}</p>`;
+                        sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">${data.filestats_ftf.status}</span>`;
                         sources_run_button.removeEventListener('click', stop_filtering);
                         sources_run_button.addEventListener('click', run_now);
                         break;
@@ -43,13 +44,12 @@ function get_tab_files() {
                         sources_run_button.disabled = true;
                         break;
                     default:
-                        console.log('default ->>>>>>>');
                         sources_run_button.disabled = false;
                         sources_run_button.innerHTML = `Stop filter`;
                         sources_run_button.removeEventListener('click', run_now);
                         sources_run_button.addEventListener('click', stop_filtering);
-                        if(!document.querySelector('.sources-run-button .spinner-border')) {
-                            sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter<br/><p style="font-size:12px;">${data.filestats_ftf.status}</p>`;
+                        if(document.querySelector('.sources-run-button .spinner-border')) {
+                            sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter<br/><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">${data.filestats_ftf.status}</span>`;
                         }
                         break;
                 }
@@ -575,7 +575,7 @@ function file_status_color(status) {
     return status_color;
 }
 
-function get_filters_settings() {
+function get_filters_settings(defaults = false) {
     fetch("/tab-finetune-smart-filter-get")
     .then(function(response) {
         return response.json();
@@ -583,7 +583,7 @@ function get_filters_settings() {
     .then(function(data) {
         console.log('tab-finetune-smart-filter-get',data);
         let settings_data = null;
-        if(Object.keys(data.user_config).length > 0) {
+        if(Object.keys(data.user_config).length > 0 && !defaults) {
             settings_data = data.user_config;
         } else {
             settings_data = data.defaults;
@@ -593,6 +593,7 @@ function get_filters_settings() {
         document.querySelector('#limit_train_files').value = settings_data.limit_train_files;
         document.querySelector('#limit_test_files').value = settings_data.limit_test_files;
         document.querySelector('#limit_time_seconds').value = settings_data.limit_time_seconds;
+        document.querySelector('#use_gpus_n').value = settings_data.use_gpus_n;
         const low_gpu_mem_mode = settings_data.low_gpu_mem_mode;
         if(low_gpu_mem_mode ) {
             document.querySelector('#low_gpu_mem_mode').checked = true;
@@ -618,6 +619,7 @@ function save_filters_settings() {
             limit_train_files: document.querySelector('#limit_train_files').value,
             limit_test_files: document.querySelector('#limit_test_files').value,
             limit_time_seconds: document.querySelector('#limit_time_seconds').value,
+            use_gpus_n: document.querySelector('#use_gpus_n').value,
             low_gpu_mem_mode: low_gpu
         })
     })
@@ -721,6 +723,11 @@ export function init() {
         save_filters_settings();
         const settings_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-source-settings-modal'));
         settings_modal.hide();
+    });
+
+    const settings_modal_defaults = document.querySelector('.tab-upload-source-settings-default');
+    settings_modal_defaults.addEventListener('click', function() {
+        get_filters_settings(true);
     });
 
     const git_modal = document.getElementById('upload-tab-git-modal');

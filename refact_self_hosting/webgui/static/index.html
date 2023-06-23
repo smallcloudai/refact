@@ -219,6 +219,7 @@
               <div class="run-pane-grid">
                 <div class="run-pane-col"></div>
                 <div class="run-pane-col">
+                  <div class="sources-run-progress"></div>
                   <button type="button" class="sources-run-button btn btn-primary btn-lg"><i class="bi bi-gpu-card"></i>Run
                     filter</button>
                   <button type="button" data-bs-toggle="modal" data-bs-target="#upload-tab-source-settings-modal"
@@ -517,23 +518,6 @@
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="filter_loss_threshold" class="form-label">File loss threshold</label>
-            <input type="number" min="2" max="10" step="1" class="form-control" id="filter_loss_threshold">
-            <div class="form-text">
-              Optional. If not specified, the default branch will be used.
-            </div>
-          </div>
-          
-
-          <div class="mb-3">
-            <label for="filter_gradcosine_threshold" class="form-label">File gradient cosine similarity threshold</label>
-            <input type="number" min="-1.0" max="0.5" step="0.1" class="form-control" id="filter_gradcosine_threshold">
-            <div class="form-text">
-              Optional. If not specified, the default branch will be used.
-            </div>
-          </div>
-
-          <div class="mb-3">
             <label for="limit_train_files" class="form-label">Limit train files</label>
             <input type="number" min="20" max="100000" step="1" class="form-control" id="limit_train_files">
             <div class="form-text">
@@ -550,8 +534,34 @@
           </div>
 
           <div class="mb-3">
+            <label for="filter_loss_threshold" class="form-label">File loss threshold</label>
+            <input type="number" min="2" max="10" step="1" class="form-control" id="filter_loss_threshold">
+            <div class="form-text">
+              Optional. If not specified, the default branch will be used.
+            </div>
+          </div>
+          
+
+          <div class="mb-3">
+            <label for="filter_gradcosine_threshold" class="form-label">File gradient cosine similarity threshold</label>
+            <input type="number" min="-1.0" max="0.5" step="0.1" class="form-control" id="filter_gradcosine_threshold">
+            <div class="form-text">
+              Optional. If not specified, the default branch will be used.
+            </div>
+          </div>
+
+
+          <div class="mb-3">
             <label for="limit_time_seconds" class="form-label">Limit time, seconds</label>
             <input type="number" min="300" max="43200" step="1" class="form-control" id="limit_time_seconds">
+            <div class="form-text">
+              Optional. If not specified, the default branch will be used.
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="use_gpus_n" class="form-label">Use GPUs</label>
+            <input type="number" min="1" max="8" step="1" class="form-control" id="use_gpus_n">
             <div class="form-text">
               Optional. If not specified, the default branch will be used.
             </div>
@@ -568,7 +578,9 @@
               </div>
             </div>
           </div>
-
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="tab-upload-source-settings-default btn btn-secondary">Reset to defaults</button>
           <button class="tab-upload-source-settings-submit btn btn-primary">Apply</button>
         </div>
       </div>
@@ -719,7 +731,7 @@
           <h5 class="modal-title">Autorun Settings</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body temp-disabled">
           <h5>Limit training time</h5>
           <div class="btn-group" role="group" aria-label="Basic radio toggle button group">
             <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="30"

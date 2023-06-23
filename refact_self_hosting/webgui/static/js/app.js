@@ -63,6 +63,14 @@ tab_buttons.forEach(tab_button => {
   });
 });
 
+// remove when schedule will be implemented
+const schedule_modal = document.getElementById('finetune-tab-autorun-settings-modal');
+schedule_modal.addEventListener('show.bs.modal', function () {
+    const info = schedule_modal.querySelector('.temp-info');
+    info.style.marginLeft = '170px';
+    info.style.marginTop = '180px';
+});
+
 function active_tab_function() {
     const active_tab = document.querySelector('.main-tab-pane.main-active');
     switch (active_tab.id) {
