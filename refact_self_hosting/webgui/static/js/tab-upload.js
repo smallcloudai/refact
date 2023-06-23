@@ -22,6 +22,7 @@ function get_tab_files() {
             }
             render_tab_files(data);
             render_filetypes(data.mime_types);
+            render_force_filetypes(data.filetypes);
             render_ftf_stats(data.filestats_ftf);
             if(data.filestats_ftf) {
                 switch(data.filestats_ftf.status) {
@@ -271,6 +272,17 @@ function delete_events() {
         });
     });
 }
+
+let force_include_exclude_is_changed = false;
+function render_force_filetypes(data) {
+    const force_include = document.querySelector('#force_include');
+    const force_exclude = document.querySelector('#force_exclude');
+    if (!force_include_exclude_is_changed) {
+        force_include.value = data.force_include
+        force_exclude.value = data.force_exclude
+    }
+}
+
 
 function render_filetypes(data) {
     if(sources_filtypes_changed) {
@@ -669,6 +681,7 @@ function save_filter_setup() {
         console.log('tab-files-filetypes-setup',response);
         if(response.ok) {
             get_tab_files();
+            force_include_exclude_is_changed = false
         }
     });
 }
@@ -767,6 +780,16 @@ export function init() {
         let delete_modal_instance = bootstrap.Modal.getOrCreateInstance(document.getElementById('delete-modal'));
         delete_modal_instance.hide();
     });
+
+    const force_include = document.getElementById('force_include');
+    force_include.addEventListener("input", function () {
+        force_include_exclude_is_changed = true
+    })
+    const force_exclude = document.getElementById('force_exclude');
+    force_exclude.addEventListener("input", function () {
+        force_include_exclude_is_changed = true
+    })
+
 }
 
 export function tab_switched_here() {
