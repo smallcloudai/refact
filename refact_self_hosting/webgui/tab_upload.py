@@ -90,6 +90,8 @@ class TabUploadRouter(APIRouter):
             result["filetypes"] = {
                 "filetypes_finetune": {},
                 "filetypes_db": {},
+                "force_include": "",
+                "force_exclude": "",
             }
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
             scan_stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
