@@ -300,7 +300,7 @@ function render_filetypes(mimetypes, filetypes) {
                 row.classList.add('disbled');
                 checkbox_checked = `disabled`;
             }
-            if (filetypes["filetypes_finetune"][item.file_type] === false) {
+            if (filetypes && filetypes["filetypes_finetune"][item.file_type] === false) {
                 checkbox_checked = `unchecked`;
             }
             let file_checkbox = `<input id="file-list${i}" data-name="${item.file_type}" class="form-check-input" type="checkbox" value="${item.count}" ${checkbox_checked}>`;
