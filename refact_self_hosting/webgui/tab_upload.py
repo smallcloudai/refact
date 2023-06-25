@@ -87,7 +87,10 @@ class TabUploadRouter(APIRouter):
         if os.path.isfile(env.CONFIG_HOW_TO_FILETYPES):
             result["filetypes"] = json.load(open(env.CONFIG_HOW_TO_FILETYPES, "r"))
         else:
-            result["filetypes"] = {}
+            result["filetypes"] = {
+                "filetypes_finetune": {},
+                "filetypes_db": {},
+            }
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
             scan_stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
             mtime = os.path.getmtime(env.CONFIG_PROCESSING_STATS)
