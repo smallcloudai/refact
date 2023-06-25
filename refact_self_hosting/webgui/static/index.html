@@ -227,7 +227,7 @@
                 </div>
                 <div class="run-pane-col">
                   <div class="ftf-stats">
-                  </div> 
+                  </div>
                 </div>
               </div>
             </div>
@@ -518,44 +518,43 @@
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="limit_train_files" class="form-label">Limit train files</label>
+            <label for="limit_train_files" class="form-label">Limit number of train files</label>
             <input type="number" min="20" max="100000" step="1" class="form-control" id="limit_train_files">
             <div class="form-text">
-              Optional. If not specified, the default branch will be used.
-            </div>
+              To filter in a reasonable time, you can use a random selection of input files. This does nothing if the number of files is less than the specified limit.            </div>
           </div>
 
           <div class="mb-3">
-            <label for="limit_test_files" class="form-label">Limit test files</label>
+            <label for="limit_test_files" class="form-label">Limit number of test files</label>
             <input type="number" min="1" max="5" step="1" class="form-control" id="limit_test_files">
             <div class="form-text">
-              Optional. If not specified, the default branch will be used.
+              For fine tuning to be fast, the test set shouldn't be big. This limit safeguards against that, filtering will fail early.
             </div>
           </div>
 
           <div class="mb-3">
-            <label for="filter_loss_threshold" class="form-label">File loss threshold</label>
+            <label for="filter_loss_threshold" class="form-label">Filter 1: File loss threshold</label>
             <input type="number" min="2" max="10" step="1" class="form-control" id="filter_loss_threshold">
             <div class="form-text">
-              Optional. If not specified, the default branch will be used.
+              If initial loss is too big calculated on a single file, remove it. This likely means the file doesn't contain code, or the code is unusual.
             </div>
           </div>
-          
 
           <div class="mb-3">
-            <label for="filter_gradcosine_threshold" class="form-label">File gradient cosine similarity threshold</label>
+            <label for="filter_gradcosine_threshold" class="form-label">Filter 2: Gradient cosine similarity threshold</label>
             <input type="number" min="-1.0" max="0.5" step="0.1" class="form-control" id="filter_gradcosine_threshold">
             <div class="form-text">
-              Optional. If not specified, the default branch will be used.
+              If the gradient cosine similarity calculated on a file is bad, remove it.
+              This means the file does not pull the model in the same direction as the rest of the files.
+              Most good files should have a value between 0.2 and 0.8. If the initial test set is empty, a single file with the maximum value is used as a test set.
             </div>
           </div>
-
 
           <div class="mb-3">
             <label for="limit_time_seconds" class="form-label">Limit time, seconds</label>
             <input type="number" min="300" max="43200" step="1" class="form-control" id="limit_time_seconds">
             <div class="form-text">
-              Optional. If not specified, the default branch will be used.
+              When the time limit is reached, filtering will stop and a random subset of input files will be rejected.
             </div>
           </div>
 
@@ -574,7 +573,7 @@
                 Low GPU memory mode
               </label>
               <div class="form-text">
-                Optional. If not specified, the default branch will be used.
+                Uses gradient checkpointing and other tricks to save GPU memory.
               </div>
             </div>
           </div>
