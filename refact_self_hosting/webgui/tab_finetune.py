@@ -10,7 +10,7 @@ from fastapi.responses import Response, StreamingResponse, JSONResponse
 
 from refact_self_hosting import env
 from refact_self_hosting.webgui.selfhost_webutils import log
-from refact_data_pipeline import finetune_filtering_defaults, finetune_train_defaults
+from refact_data_pipeline.finetune import finetune_filtering_defaults, finetune_train_defaults
 
 from pydantic import BaseModel
 
