@@ -1,4 +1,5 @@
 let tab_files_data = null;
+let show_scan_error = false;
 function get_tab_files() {
     fetch("/tab-files-get")
         .then(function(response) {
@@ -7,6 +8,15 @@ function get_tab_files() {
         .then(function(data) {
             console.log('tab-files-get',data);
             tab_files_data = data;
+            if(data.scan_error && data.scan_error.length > 0) {
+                let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
+                const scan_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
+                if(!show_scan_error) {
+                    document.querySelector('.upload-tab-scan-error-toast .toast-body').innerHTML = data.scan_error;
+                    scan_error_toast.show()
+                    show_scan_error = true;
+                }
+            }
             switch(data.filtering_stage) {
                     // filter_state_zero();
                     // break;
@@ -795,6 +805,11 @@ export function init() {
     force_exclude.addEventListener("change", function () {
         save_filter_setup();
         force_include_exclude_is_changed = false
+    })
+
+    const scan_error_toast = document.querySelector('.upload-tab-scan-error-toast');
+    scan_error_toast.addEventListener('hidden.bs.toast', () => {
+        show_scan_error = false;
     })
 
 }

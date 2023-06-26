@@ -429,8 +429,21 @@
               class="form-control">
           </div>
           <div id="status-url" class="uploaded-status"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button class="tab-upload-url-submit btn btn-primary">Submit</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container position-fixed top-0 end-0 p-3">
+    <div class="upload-tab-scan-error-toast toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
     </div>
   </div>
@@ -503,72 +516,89 @@
 
   <div class="modal fade" id="upload-tab-source-settings-modal" tabindex="-1"
     aria-labelledby="upload-tab-source-settings-modal" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="urlModalLabel">GPU-Based Filter Settings</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-
-          <div class="mb-3">
-            <label for="limit_train_files" class="form-label">Limit number of train files</label>
-            <input type="number" min="20" max="100000" step="1" class="form-control" id="limit_train_files">
-            <div class="form-text">
-              To filter in a reasonable time, you can use a random selection of input files. This does nothing if the number of files is less than the specified limit.            </div>
-          </div>
-
-          <div class="mb-3">
-            <label for="limit_test_files" class="form-label">Limit number of test files</label>
-            <input type="number" min="1" max="5" step="1" class="form-control" id="limit_test_files">
-            <div class="form-text">
-              For fine tuning to be fast, the test set shouldn't be big. This limit safeguards against that, filtering will fail early.
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label for="filter_loss_threshold" class="form-label">Filter 1: File loss threshold</label>
-            <input type="number" min="2" max="10" step="1" class="form-control" id="filter_loss_threshold">
-            <div class="form-text">
-              If initial loss is too big calculated on a single file, remove it. This likely means the file doesn't contain code, or the code is unusual.
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label for="filter_gradcosine_threshold" class="form-label">Filter 2: Gradient cosine similarity threshold</label>
-            <input type="number" min="-1.0" max="0.5" step="0.1" class="form-control" id="filter_gradcosine_threshold">
-            <div class="form-text">
-              If the gradient cosine similarity calculated on a file is bad, remove it.
-              This means the file does not pull the model in the same direction as the rest of the files.
-              Most good files should have a value between 0.2 and 0.8. If the initial test set is empty, a single file with the maximum value is used as a test set.
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label for="limit_time_seconds" class="form-label">Limit time, seconds</label>
-            <input type="number" min="300" max="43200" step="1" class="form-control" id="limit_time_seconds">
-            <div class="form-text">
-              When the time limit is reached, filtering will stop and a random subset of input files will be rejected.
-            </div>
-          </div>
-
-          <!-- <div class="mb-3">
-            <label for="use_gpus_n" class="form-label">Use GPUs</label>
-            <input type="number" min="1" max="8" step="1" class="form-control" id="use_gpus_n">
-            <div class="form-text">
-              Optional. If not specified, the default branch will be used.
-            </div>
-          </div> -->
-
-          <div class="mb-3">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="low_gpu_mem_mode" value="" id="low_gpu_mem_mode">
-              <label class="form-check-label" for="low_gpu_mem_mode">
-                Low GPU memory mode
-              </label>
-              <div class="form-text">
-                Uses gradient checkpointing and other tricks to save GPU memory.
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_train_files" class="form-label">Limit number of train files</label>
+                <input type="number" min="20" max="100000" step="1" class="form-control" id="limit_train_files">
+                <div class="form-text">
+                  To filter in a reasonable time, you can use a random selection of input files. This does nothing if the number of files is less than the specified limit.            </div>
               </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_test_files" class="form-label">Limit number of test files</label>
+                <input type="number" min="1" max="5" step="1" class="form-control" id="limit_test_files">
+                <div class="form-text">
+                  For fine tuning to be fast, the test set shouldn't be big. This limit safeguards against that, filtering will fail early.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="filter_loss_threshold" class="form-label">Filter 1: File loss threshold</label>
+                <input type="number" min="2" max="10" step="1" class="form-control" id="filter_loss_threshold">
+                <div class="form-text">
+                  If initial loss is too big calculated on a single file, remove it. This likely means the file doesn't contain code, or the code is unusual.
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="filter_gradcosine_threshold" class="form-label">Filter 2: Gradient cosine similarity threshold</label>
+                <input type="number" min="-1.0" max="0.5" step="0.1" class="form-control" id="filter_gradcosine_threshold">
+                <div class="form-text">
+                  If the gradient cosine similarity calculated on a file is bad, remove it.
+                  This means the file does not pull the model in the same direction as the rest of the files.
+                  Most good files should have a value between 0.2 and 0.8. If the initial test set is empty, a single file with the maximum value is used as a test set.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+            <div class="mb-3">
+              <label for="limit_time_seconds" class="form-label">Limit time, seconds</label>
+              <input type="number" min="300" max="43200" step="1" class="form-control" id="limit_time_seconds">
+              <div class="form-text">
+                When the time limit is reached, filtering will stop and a random subset of input files will be rejected.
+              </div>
+            </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="low_gpu_mem_mode" value="" id="low_gpu_mem_mode">
+                  <label class="form-check-label" for="low_gpu_mem_mode">
+                    Low GPU memory mode
+                  </label>
+                  <div class="form-text">
+                    Uses gradient checkpointing and other tricks to save GPU memory.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <!-- <div class="mb-3">
+                <label for="use_gpus_n" class="form-label">Use GPUs</label>
+                <input type="number" min="1" max="8" step="1" class="form-control" id="use_gpus_n">
+                <div class="form-text">
+                  Optional. If not specified, the default branch will be used.
+                </div>
+              </div> -->
+            </div>
+            <div class="col">
             </div>
           </div>
         </div>
