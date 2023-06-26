@@ -205,8 +205,11 @@ class TabFinetuneRouter(APIRouter):
         pass
 
     def __setup_filter_status(self):
-        if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS) and os.path.isfile(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY):
-            config = json.load(open(env.CONFIG_FINETUNE_FILTER_STATS))
+        if os.path.isfile(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY):
+            if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS):
+                config = json.load(open(env.CONFIG_FINETUNE_FILTER_STATS))
+            else:
+                config = {}
             config['status'] = 'starting'
             json.dump(config, open(env.CONFIG_FINETUNE_FILTER_STATS, 'w'), indent=4)
 

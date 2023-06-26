@@ -26,13 +26,18 @@ function get_tab_files() {
             render_ftf_stats(data.filestats_ftf);
             if(data.filestats_ftf) {
                 sources_run_button.disabled = false;
-                switch(data.filestats_ftf.status) {
+                const status = data.filestats_ftf.status;
+                sources_run_button.setAttribute("ftf_status", status)
+                switch(status) {
+                    case undefined:
                     case 'interrupted':
                     case 'finished':
                         sources_run_button.disabled = false;
-                        sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">${data.filestats_ftf.status}</span>`;
-                        sources_run_button.removeEventListener('click', stop_filtering);
-                        sources_run_button.addEventListener('click', run_now);
+                        let status_line = "";
+                        if (status !== undefined) {
+                            status_line = `<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">${status}</span>`
+                        }
+                        sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter${status_line}`;
                         break;
                     case 'starting':
                         sources_run_button.disabled = true;
@@ -46,9 +51,7 @@ function get_tab_files() {
                     default:
                         sources_run_button.disabled = false;
                         sources_run_button.innerHTML = `Stop filter`;
-                        sources_run_button.removeEventListener('click', run_now);
-                        sources_run_button.addEventListener('click', stop_filtering);
-                        if(document.querySelector('.sources-run-button .spinner-border')) {
+                        if(!document.querySelector('.sources-run-button .spinner-border')) {
                             sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter<br/><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">${data.filestats_ftf.status}</span>`;
                         }
                         break;
@@ -229,6 +232,22 @@ function render_tab_files(data) {
         process_button.innerHTML = "Scan sources";
     }
 }
+
+function run_stop_filtering() {
+    const status = sources_run_button.getAttribute("ftf_status")
+    switch (status) {
+        case 'undefined':
+        case 'interrupted':
+        case 'error':
+        case 'finished':
+            run_now();
+            break;
+        case 'starting':
+        default:
+            stop_filtering();
+    }
+}
+
 function stop_filtering() {
     fetch("/tab-finetune-stop-now")
     .then(function(response) {
@@ -241,7 +260,7 @@ function stop_filtering() {
 
 function render_ftf_stats(data) {
     const ftf_wrapper = document.querySelector('.ftf-stats');
-    if(Object.keys(data).length > 0) {
+    if(Object.keys(data).length > 0 && data.accepted !== undefined && data.rejected !== undefined) {
         ftf_wrapper.innerHTML = '';
         const content = `<h6>GPU Filtering stats</h6><div><a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=accepted"><b>Accepted:</b> ${data.accepted}</a></div><div><a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=rejected"><b>Rejected:</b> ${data.rejected}</a></div>`;
         ftf_wrapper.innerHTML = content;
@@ -277,8 +296,16 @@ function render_force_filetypes(data) {
     const force_include = document.querySelector('#force_include');
     const force_exclude = document.querySelector('#force_exclude');
     if (!force_include_exclude_is_changed) {
-        force_include.value = data.force_include
-        force_exclude.value = data.force_exclude
+        let force_include_val = data.force_include;
+        if (force_include_val === undefined) {
+            force_include_val = ""
+        }
+        force_include.value = force_include_val;
+        let force_exclude_val = data.force_exclude;
+        if (force_exclude_val === undefined) {
+            force_exclude_val = ""
+        }
+        force_exclude.value = force_exclude_val
     }
 }
 
@@ -665,12 +692,7 @@ function run_now() {
 }
 
 export function init() {
-    const run_filter_button = document.querySelector('.sources-run-button');
-    run_filter_button.addEventListener('click', function() {
-        sources_run_button.disabled = false;
-        console.log('run_filter_button click');
-        run_now();
-    });
+    sources_run_button.addEventListener('click', run_stop_filtering)
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());
     tab_upload_file_submit.addEventListener('click', function() {
