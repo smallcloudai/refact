@@ -106,7 +106,6 @@ function filter_state_one() {
 function filter_state_two() {
     progress_bar.style.width = "0%";
     sidebar_progress.style.width = "100%";
-    sources_run_progress.classList.add('d-none');
     sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>Stop`;
     sidebar_step1.classList.add('sources-list-active');
     sidebar_step2.classList.add('sources-list-active');
@@ -222,7 +221,7 @@ function render_tab_files(data) {
 
     const process_button = document.querySelector('.tab-files-process-now');
     if (any_working) {
-        let process_button_text = "Stop";
+        let process_button_text = "Scanning...";
         process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
     } else {
         if (process_button.dataset.loading) {
@@ -262,7 +261,7 @@ function render_ftf_stats(data) {
     const ftf_wrapper = document.querySelector('.ftf-stats');
     if(Object.keys(data).length > 0 && data.accepted !== undefined && data.rejected !== undefined) {
         ftf_wrapper.innerHTML = '';
-        const content = `<h6>GPU Filtering stats</h6><div><a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=accepted"><b>Accepted:</b> ${data.accepted}</a></div><div><a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=rejected"><b>Rejected:</b> ${data.rejected}</a></div>`;
+        const content = `<h6>GPU Filtering stats</h6><div><a class="text-decoration-none link-success" target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=accepted"><i class="bi bi-file-earmark-plus"></i>Accepted: ${data.accepted}</a></div><div><a target="_blank" class="text-decoration-none link-danger" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=rejected"><i class="bi bi-file-earmark-minus"></i>Rejected: ${data.rejected}</a></div>`;
         ftf_wrapper.innerHTML = content;
     }
 }
@@ -293,20 +292,20 @@ function delete_events() {
 
 let force_include_exclude_is_changed = false;
 function render_force_filetypes(data) {
+    if(force_include_exclude_is_changed) { return; }
     const force_include = document.querySelector('#force_include');
     const force_exclude = document.querySelector('#force_exclude');
-    if (!force_include_exclude_is_changed) {
-        let force_include_val = data.force_include;
-        if (force_include_val === undefined) {
-            force_include_val = ""
-        }
-        force_include.value = force_include_val;
-        let force_exclude_val = data.force_exclude;
-        if (force_exclude_val === undefined) {
-            force_exclude_val = ""
-        }
-        force_exclude.value = force_exclude_val
+    
+    let force_include_val = data.force_include;
+    if (force_include_val === undefined) {
+        force_include_val = ""
     }
+    force_include.value = force_include_val;
+    let force_exclude_val = data.force_exclude;
+    if (force_exclude_val === undefined) {
+        force_exclude_val = ""
+    }
+    force_exclude.value = force_exclude_val;
 }
 
 
@@ -353,29 +352,33 @@ function watch_filetypes() {
 
 function render_stats() {
     const stats_finetune = document.querySelector('.sources-stats-finetune');
-    const stats_db = document.querySelector('.sources-stats-db');
+    // const stats_db = document.querySelector('.sources-stats-db');
     if (tab_files_data.filestats_scan_finetune && typeof tab_files_data.filestats_scan_finetune === 'object') {
         if(Object.keys(tab_files_data.filestats_scan_finetune).length > 0) {
-            stats_finetune.style.display = 'block';
+            stats_finetune.style.display = 'flex';
             const fine_accepted = document.querySelector('.sources-stats-fine-accepted');
-            fine_accepted.innerHTML = `Accepted: ${tab_files_data.filestats_scan_finetune.accepted}`;
+            fine_accepted.classList.add('text-decoration-none');
+            fine_accepted.classList.add('link-success');
+            fine_accepted.innerHTML = `<i class="bi bi-file-earmark-plus"></i>Accepted: ${tab_files_data.filestats_scan_finetune.accepted}</a>`;
             fine_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
             const fine_rejected = document.querySelector('.sources-stats-fine-rejected');
-            fine_rejected.innerHTML = `Rejected: ${tab_files_data.filestats_scan_finetune.rejected}`;
+            fine_rejected.classList.add('text-decoration-none');
+            fine_rejected.classList.add('link-danger');
+            fine_rejected.innerHTML = `<i class="bi bi-file-earmark-minus"></i>Rejected: ${tab_files_data.filestats_scan_finetune.rejected}</a>`;
             fine_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
         }
     }
-    if (tab_files_data.filestats_scan_db && typeof tab_files_data.filestats_scan_finetune === 'object') {
-        if(Object.keys(tab_files_data.filestats_scan_db).length > 0) {
-            stats_db.style.display = 'block';
-            const db_accepted = document.querySelector('.sources-stats-db-accepted');
-            db_accepted.innerHTML = `Accepted: ${tab_files_data.filestats_scan_db.accepted}`;
-            db_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
-            const db_rejected = document.querySelector('.sources-stats-db-rejected');
-            db_rejected.innerHTML = `Rejected: ${tab_files_data.filestats_scan_db.rejected}`;
-            db_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
-        }
-    }
+    // if (tab_files_data.filestats_scan_db && typeof tab_files_data.filestats_scan_finetune === 'object') {
+    //     if(Object.keys(tab_files_data.filestats_scan_db).length > 0) {
+    //         stats_db.style.display = 'block';
+    //         const db_accepted = document.querySelector('.sources-stats-db-accepted');
+    //         db_accepted.innerHTML = `Accepted: ${tab_files_data.filestats_scan_db.accepted}`;
+    //         db_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
+    //         const db_rejected = document.querySelector('.sources-stats-db-rejected');
+    //         db_rejected.innerHTML = `Rejected: ${tab_files_data.filestats_scan_db.rejected}`;
+    //         db_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
+    //     }
+    // }
 }
 
 function upload_url() {
@@ -412,7 +415,7 @@ function upload_url() {
             return response.json();
         })
         .then(data => {
-            get_tab_files();
+            process_now_update_until_finished()
             fileInput.value = '';
             document.querySelector('#status-url').innerHTML = '';
             let url_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-url-modal'));
@@ -459,7 +462,7 @@ function upload_repo() {
         return response.text();
     })
     .then(data => {
-        get_tab_files();
+        process_now_update_until_finished();
         gitUrl.value = '';
         gitBranch.value = '';
         let git_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-git-modal'));
@@ -500,7 +503,7 @@ function progressHandler(event) {
     document.querySelector('#status').innerHTML = event.target.responseText;
     if(event.target.status === 200) {
         setTimeout(() => {
-            get_tab_files();
+            process_now_update_until_finished();
             document.querySelector('#tab-upload-file-input').value = '';
             let file_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-files-modal'));
             file_modal.hide();
@@ -533,8 +536,8 @@ function delete_file(file) {
         body: JSON.stringify({'delete_this':file})
     })
     .then(function(response) {
+        process_now_update_until_finished();
         console.log(response);
-        get_tab_files();
     });
 }
 
@@ -774,15 +777,24 @@ export function init() {
         }
         let delete_modal_instance = bootstrap.Modal.getOrCreateInstance(document.getElementById('delete-modal'));
         delete_modal_instance.hide();
+        process_now_update_until_finished();
     });
 
     const force_include = document.getElementById('force_include');
     force_include.addEventListener("input", function () {
         force_include_exclude_is_changed = true
     })
+    force_include.addEventListener("change", function () {
+        save_filter_setup();
+        force_include_exclude_is_changed = false
+    })
     const force_exclude = document.getElementById('force_exclude');
     force_exclude.addEventListener("input", function () {
         force_include_exclude_is_changed = true
+    })
+    force_exclude.addEventListener("change", function () {
+        save_filter_setup();
+        force_include_exclude_is_changed = false
     })
 
 }

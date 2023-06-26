@@ -76,6 +76,22 @@ schedule_modal.addEventListener('show.bs.modal', function () {
     info.innerHTML = "Coming soon";
     info.style.marginLeft = '170px';
     info.style.marginTop = '180px';
+    document.querySelector('#finetune-tab-autorun-settings-modal .modal-footer').style.display = 'none';
+});
+
+const finetune_settings_modal = document.getElementById('finetune-tab-settings-modal');
+finetune_settings_modal.addEventListener('show.bs.modal', function () {
+    const elm = document.querySelector('#finetune-tab-settings-modal .modal-body');
+    const info = elm.parentNode.insertBefore(document.createElement("div"), elm);
+    elm.style.opacity = 0.2;
+    elm.style.pointerEvents = "none";
+    elm.style.position = "relative";
+    elm.style.zIndex = "0";
+    info.classList.add("temp-info-modal");
+    info.innerHTML = "Coming soon";
+    info.style.marginLeft = '330px';
+    info.style.marginTop = '240px';
+    document.querySelector('#finetune-tab-settings-modal .modal-footer').style.display = 'none';
 });
 
 function active_tab_function() {
