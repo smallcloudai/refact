@@ -1,3 +1,5 @@
+import shutil
+
 import time
 import json
 import os
@@ -92,6 +94,7 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-activate", self._tab_finetune_activate, methods=["POST"])
         self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
         self.add_api_route("/tab-finetune-stop-now", self._tab_finetune_stop_now, methods=["GET"])
+        self.add_api_route("/tab-finetune-remove/{run_id}", self._tab_finetune_remove, methods=["GET"])
         self.add_api_route("/tab-finetune-smart-filter-setup", self._tab_finetune_smart_filter_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-smart-filter-get", self._tab_finetune_smart_filter_get, methods=["GET"])
         self.add_api_route("/tab-finetune-training-setup", self._tab_finetune_training_setup, methods=["POST"])
@@ -230,6 +233,14 @@ class TabFinetuneRouter(APIRouter):
     async def _tab_finetune_stop_now(self):
         with open(env.FLAG_STOP_FINETUNE, "w") as f:
             f.write("")
+        return JSONResponse("OK")
+
+    async def _tab_finetune_remove(self, run_id: str):
+        sanitize_run_id(run_id)
+        home_path = os.path.join(env.DIR_LORAS, run_id)
+        if not os.path.exists(home_path):
+            return Response("Run id '%s' not found" % home_path, status_code=404)
+        shutil.rmtree(home_path)
         return JSONResponse("OK")
 
     async def _tab_finetune_activate(self, activate: TabFinetuneActivate):
