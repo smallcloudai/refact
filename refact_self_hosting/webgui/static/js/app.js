@@ -117,6 +117,11 @@ function active_tab_function() {
     }
 }
 
+// this loads all data, doesn't switch anything
+model_hosting_tab.tab_switched_here();
+upload_tab.tab_switched_here();
+finetune_tab.tab_switched_here();
+
 let refresh_interval = null;
 
 function start_tab_timer() {
