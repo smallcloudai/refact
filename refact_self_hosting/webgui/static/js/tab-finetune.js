@@ -148,6 +148,7 @@ function render_runs() {
     } else {
         start_finetune_button.textContent = 'Start Now';
     }
+    start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
 }
 
 const find_checkpoints_by_run = (run_id) => {

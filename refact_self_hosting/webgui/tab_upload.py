@@ -18,6 +18,7 @@ from typing import Dict, Optional
 
 __all__ = ["TabUploadRouter"]
 
+from refact_self_hosting.webgui.tab_finetune import get_finetune_runs
 
 
 async def download_file_from_url(url: str):
@@ -131,6 +132,12 @@ class TabUploadRouter(APIRouter):
         result["filestats_ftf"] = {}
         if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS):
             result["filestats_ftf"] = json.load(open(env.CONFIG_FINETUNE_FILTER_STATS))
+        result["finetune_status"] = "unknown"
+        if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS):
+            for run in get_finetune_runs():
+                if run.get("status", "unknown") == "working":
+                    result["finetune_status"] = "working"
+
         # 0 new zip
         # 1 files done, pick file types
         # 2 gpu filtering done

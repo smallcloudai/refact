@@ -17,7 +17,7 @@ from refact_data_pipeline.finetune import finetune_filtering_defaults, finetune_
 from pydantic import BaseModel
 
 
-__all__ = ["TabFinetuneRouter"]
+__all__ = ["TabFinetuneRouter", "get_finetune_runs"]
 
 
 def sanitize_run_id(run_id: str):
@@ -83,6 +83,38 @@ class TabFinetuneTrainingSetup(BaseModel):
     weight_decay: Optional[float] = Query(default=0.1, ge=0.0, le=1.0)
 
 
+def get_finetune_runs():
+    res = []
+    for dirname in sorted(os.listdir(env.DIR_LORAS)):
+        dir_path = os.path.join(env.DIR_LORAS, dirname)
+        if not os.path.isdir(dir_path):
+            continue
+        d = {
+            "run_id": dirname,
+            "worked_minutes": "0",
+            "worked_steps": "0",
+            "status": "unknown",  # working, starting, completed, failed
+        }
+        status_fn = os.path.join(dir_path, "status.json")
+        if os.path.exists(status_fn):
+            d.update(json.load(open(status_fn, "r")))
+        if d["status"] in ["working", "starting"]:
+            mtime = os.path.getmtime(status_fn)
+            if mtime + 600 < time.time():
+                d["status"] = "failed"
+        d["checkpoints"] = []
+        checkpoints_dir = os.path.join(dir_path, "checkpoints")
+        if os.path.isdir(checkpoints_dir):
+            for checkpoint_dir in sorted(os.listdir(checkpoints_dir)):
+                checkpoint_path = os.path.join(checkpoints_dir, checkpoint_dir)
+                if not os.path.isdir(checkpoint_path):
+                    continue
+                d["checkpoints"].append({
+                    "checkpoint_name": checkpoint_dir,
+                })
+        res.append(d)
+    return res
+
 class TabFinetuneRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
@@ -103,42 +135,15 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_finetune_config_and_runs(self):
         result = {
-            "finetune_runs": [],
+            "finetune_runs": get_finetune_runs(),
             "config": {
                 "limit_training_time_minutes": "60",
                 "run_at_night": "True",
                 "run_at_night_time": "04:00",
                 "auto_delete_n_runs": "5",
             },
+            "filtering_status": "interrupted"
         }
-        for dirname in sorted(os.listdir(env.DIR_LORAS)):
-            dir_path = os.path.join(env.DIR_LORAS, dirname)
-            if not os.path.isdir(dir_path):
-                continue
-            d = {
-                "run_id": dirname,
-                "worked_minutes": "0",
-                "worked_steps": "0",
-                "status": "unknown",  # working, starting, completed, failed
-            }
-            status_fn = os.path.join(dir_path, "status.json")
-            if os.path.exists(status_fn):
-                d.update(json.load(open(status_fn, "r")))
-            if d["status"] in ["working", "starting"]:
-                mtime = os.path.getmtime(status_fn)
-                if mtime + 600 < time.time():
-                    d["status"] = "failed"
-            d["checkpoints"] = []
-            checkpoints_dir = os.path.join(dir_path, "checkpoints")
-            if os.path.isdir(checkpoints_dir):
-                for checkpoint_dir in sorted(os.listdir(checkpoints_dir)):
-                    checkpoint_path = os.path.join(checkpoints_dir, checkpoint_dir)
-                    if not os.path.isdir(checkpoint_path):
-                        continue
-                    d["checkpoints"].append({
-                        "checkpoint_name": checkpoint_dir,
-                        })
-            result["finetune_runs"].append(d)
         if os.path.exists(env.CONFIG_FINETUNE):
             result["config"] = json.load(open(env.CONFIG_FINETUNE, "r"))
         if os.path.exists(env.CONFIG_ACTIVE_LORA):
@@ -148,6 +153,9 @@ class TabFinetuneRouter(APIRouter):
                 "model": "",
                 "lora_mode": "latest-best",
             }
+        if os.path.exists(env.CONFIG_FINETUNE_FILTER_STATS):
+            c = json.load(open(env.CONFIG_FINETUNE_FILTER_STATS, "r"))
+            result["filtering_status"] = c['status']
         result["finetune_latest_best"] = best_lora.find_best_lora("CONTRASTcode/3b/multi")
         return Response(json.dumps(result, indent=4) + "\n")
 

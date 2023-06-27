@@ -66,6 +66,7 @@ function get_tab_files() {
                         }
                         break;
                 }
+                sources_run_button.disabled = sources_run_button.disabled || data.finetune_status === "working";
             }
             // render_filter_setup_defaults(data.filter_setup_defaults);
         });
