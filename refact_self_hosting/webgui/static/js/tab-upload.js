@@ -9,13 +9,7 @@ function get_tab_files() {
             console.log('tab-files-get',data);
             tab_files_data = data;
             if(data.scan_error && data.scan_error.length > 0) {
-                let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
-                const scan_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
-                if(!show_scan_error) {
-                    document.querySelector('.upload-tab-scan-error-toast .toast-body').innerHTML = data.scan_error;
-                    scan_error_toast.show()
-                    show_scan_error = true;
-                }
+                show_error(data.scan_error);
             }
             switch(data.filtering_stage) {
                     // filter_state_zero();
@@ -30,6 +24,13 @@ function get_tab_files() {
                     break;
 
             }
+            if(data.scan_status === 'completed') {
+                document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
+                document.querySelector('.run-pane').classList.remove('pane-disabled');
+            } else {
+                document.querySelector('.filetypes-pane').classList.add('pane-disabled');
+                document.querySelector('.run-pane').classList.add('pane-disabled');
+            }
             render_tab_files(data);
             render_filetypes(data.mime_types, data.filetypes);
             render_force_filetypes(data.filetypes);
@@ -42,7 +43,9 @@ function get_tab_files() {
                     case undefined:
                     case 'interrupted':
                     case 'finished':
+                        show_scan_error = false;
                         sources_run_button.disabled = false;
+                        source_filetypes_state();
                         let status_line = "";
                         if (status !== undefined) {
                             status_line = `<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">${status}</span>`
@@ -50,15 +53,27 @@ function get_tab_files() {
                         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter${status_line}`;
                         break;
                     case 'starting':
+                        show_scan_error = false;
                         sources_run_button.disabled = true;
+                        source_filetypes_state(true);
+                        // sources_run_pane.classList.add('pane-disabled');
                         if(!document.querySelector('.sources-run-button .spinner-border')) {
                             sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
                         }
                         break;
                     case 'error':
-                        sources_run_button.disabled = true;
+                        // sources_run_button.disabled = true;
+                        if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
+                            show_error(data.filestats_ftf.error);
+                        }
                         break;
+                    case 'failed':
+                        if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
+                            show_error(data.filestats_ftf.error);
+                        }
                     default:
+                        show_scan_error = false;
+                        source_filetypes_state();
                         sources_run_button.disabled = false;
                         sources_run_button.innerHTML = `Stop filter`;
                         if(!document.querySelector('.sources-run-button .spinner-border')) {
@@ -92,6 +107,30 @@ function render_filter_progress(progress_value) {
 //         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
 //     }
 // }
+
+function show_error(error_text) {
+    let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
+    const scan_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
+    if(!show_scan_error) {
+        document.querySelector('.upload-tab-scan-error-toast .toast-body').innerHTML = error_text;
+        scan_error_toast.show()
+        show_scan_error = true;
+    }
+}
+
+function source_filetypes_state(disabled = false) {
+    if(disabled) {
+        document.querySelector('.filetypes-pane').classList.add('pane-disabled');
+        document.querySelector('.run-pane').classList.add('pane-disabled');
+        document.querySelector('.sources-settings').disabled = true;
+    }
+    else {
+        document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
+        document.querySelector('.run-pane').classList.remove('pane-disabled');
+        document.querySelector('.sources-settings').disabled = false;
+    }
+}
+
 function filter_state_zero() {
     sidebar_progress.style.width = "0%";
     sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
@@ -787,10 +826,10 @@ export function init() {
         force_include_exclude_is_changed = false
     })
 
-    const scan_error_toast = document.querySelector('.upload-tab-scan-error-toast');
-    scan_error_toast.addEventListener('hidden.bs.toast', () => {
-        show_scan_error = false;
-    })
+    // const scan_error_toast = document.querySelector('.upload-tab-scan-error-toast');
+    // scan_error_toast.addEventListener('hidden.bs.toast', () => {
+    //     show_scan_error = false;
+    // })
 
 }
 
