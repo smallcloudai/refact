@@ -53,9 +53,9 @@ function get_tab_files() {
                         source_filetypes_state();
                         let status_line = "";
                         if (status !== undefined) {
-                            status_line = `<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">${status}</span>`
+                            status_line = status;
                         }
-                        sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter${status_line}`;
+                        sources_status.innerHTML = status_line;
                         break;
                     case 'starting':
                         sources_run_button.disabled = true;
@@ -63,19 +63,23 @@ function get_tab_files() {
                         sources_run_pane.classList.add('pane-disabled');
                         if(!document.querySelector('.sources-run-button .spinner-border')) {
                             sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
+                            sources_status.innerHTML = 'starting';
                         }
                         break;
                     case 'error':
                         sources_run_button.disabled = true;
+                        sources_status.innerHTML = status;
                         break;
                     case 'failed':
+                        sources_status.innerHTML = status;
                         break;
                     default:
                         source_filetypes_state();
                         sources_run_button.disabled = false;
                         sources_run_button.innerHTML = `Stop filter`;
                         if(!document.querySelector('.sources-run-button .spinner-border')) {
-                            sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter<br/><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">${data.filestats_ftf.status}</span>`;
+                            sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter`;
+                            sources_status.innerHTML = data.filestats_ftf.status;
                         }
                         break;
                 }
@@ -93,6 +97,7 @@ const filetypes_pane = document.querySelector('.filetypes-pane');
 const sources_run_pane = document.querySelector('.run-pane');
 const sources_run_button = document.querySelector('.sources-run-button');
 const sources_settings = document.querySelector('.sources-settings');
+const sources_status = document.querySelector('.ftf-status span');
 
 function render_filter_progress(progress_value) {
     progress_bar.style.width = progress_value + "%";
@@ -298,7 +303,7 @@ function render_ftf_stats(data) {
     const ftf_wrapper = document.querySelector('.ftf-stats');
     if(Object.keys(data).length > 0 && data.accepted !== undefined && data.rejected !== undefined) {
         ftf_wrapper.innerHTML = '';
-        const content = `<h6>GPU Filtering stats</h6><div><a class="text-decoration-none link-success" target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=accepted"><i class="bi bi-file-earmark-plus"></i>Accepted: ${data.accepted}</a></div><div><a target="_blank" class="text-decoration-none link-danger" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=rejected"><i class="bi bi-file-earmark-minus"></i>Rejected: ${data.rejected}</a></div>`;
+        const content = `<h6>GPU Filtering stats</h6><div>Accepted: ${data.accepted} <a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=rejected">Full list</a></div>`;
         ftf_wrapper.innerHTML = content;
     }
 }
@@ -393,16 +398,10 @@ function render_stats() {
     if (tab_files_data.filestats_scan_finetune && typeof tab_files_data.filestats_scan_finetune === 'object') {
         if(Object.keys(tab_files_data.filestats_scan_finetune).length > 0) {
             stats_finetune.style.display = 'flex';
-            const fine_accepted = document.querySelector('.sources-stats-fine-accepted');
-            fine_accepted.classList.add('text-decoration-none');
-            fine_accepted.classList.add('link-success');
-            fine_accepted.innerHTML = `<i class="bi bi-file-earmark-plus"></i>Accepted: ${tab_files_data.filestats_scan_finetune.accepted}</a>`;
-            fine_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
-            const fine_rejected = document.querySelector('.sources-stats-fine-rejected');
-            fine_rejected.classList.add('text-decoration-none');
-            fine_rejected.classList.add('link-danger');
-            fine_rejected.innerHTML = `<i class="bi bi-file-earmark-minus"></i>Rejected: ${tab_files_data.filestats_scan_finetune.rejected}</a>`;
-            fine_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
+            const fine_accepted = document.querySelector('.sources-stats-fine-accepted span');
+            fine_accepted.innerHTML = `${tab_files_data.filestats_scan_finetune.accepted} <a target="_blank" class="sources-stats-fine-accepted" href="/tab-files-log?phase=scan&accepted_or_rejected=accepted">Full list</a>`;
+            const fine_rejected = document.querySelector('.sources-stats-fine-rejected span');
+            fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log?phase=scan&accepted_or_rejected=rejected">Full list</a>`;
         }
     }
     // if (tab_files_data.filestats_scan_db && typeof tab_files_data.filestats_scan_finetune === 'object') {

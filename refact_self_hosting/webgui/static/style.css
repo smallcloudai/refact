@@ -538,16 +538,26 @@ h3 {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    line-height: 1.2;
+    padding: 0;
+    margin: 0; 
     margin-bottom: 20px;
+    font-size: 13px;
 }
-.ftf-stats i {
-    margin-right: 5px;
+.ftf-stats h6 {
+    margin: 0;
+    margin-right: 10px;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 0;
+}
+.ftf-status {
+    font-weight: normal;
+}
+.ftf-status span {
+    font-weight: bold;
+    margin-left: 5px;
 }
 .ftf-stats div:first-of-type {
     margin-right: 10px;
-}
-.ftf-stats h6 {
-    margin-bottom: 0;
-    margin-right: 10px;
-    font-weight: bold;
 }

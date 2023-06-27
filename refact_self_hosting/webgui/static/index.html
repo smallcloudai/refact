@@ -203,13 +203,13 @@
                   <div class="sources-stats">
                     <div class="sources-stats-finetune">
                       <h6>Finetune Stats</h6>
-                      <a target="_blank" class="sources-stats-fine-accepted" href=""></a>
-                      <a target="_blank" class="sources-stats-fine-rejected" href=""></a>
+                      <div class="sources-stats-fine-accepted">Accepted: <span></span></div>
+                      <div class="sources-stats-fine-rejected">Rejected: <span></span></div>
                     </div>
                     <div class="sources-stats-db">
                       <h6>DB Stats</h6>
-                      <a target="_blank" class="sources-stats-db-accepted" href=""></a>
-                      <a target="_blank" class="sources-stats-db-rejected" href=""></a>
+                      <div class="sources-stats-db-accepted">Accepted: <span></span></div>
+                      <div class="sources-stats-db-rejected">Rejected: <span></span></div>
                     </div>
                   </div>
                 </div>
@@ -218,6 +218,7 @@
             <div class="pane run-pane">
               <div class="run-pane-grid">
                 <div class="sources-run-progress"></div>
+                <div class="ftf-status">Status:<span></span></div>
                 <div class="ftf-stats"></div>
                 <button type="button" class="sources-run-button btn btn-primary btn-lg"><i class="bi bi-gpu-card"></i>Run
                   filter</button>
