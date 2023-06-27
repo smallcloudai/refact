@@ -60,6 +60,9 @@ function delete_run(run_id) {
 function render_runs() {
     let data = downloaded_data;
     let is_working = false;
+    const start_finetune_button = document.querySelector('.tab-finetune-run-now');
+    start_finetune_button.setAttribute("need_to_stop", is_working)
+
     document.querySelector('.run-table').innerHTML = '';
     if(data.finetune_runs.length === 0) {
         document.querySelector('.table-types').style.display = 'none';
@@ -149,7 +152,6 @@ function render_runs() {
             render_checkpoints(find_checkpoints_by_run(run_id));
         });
     });
-    const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     if(is_working) {
         start_finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
     } else {
@@ -425,7 +427,7 @@ export function init() {
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.addEventListener('click', function () {
         let url = "/tab-finetune-run-now";
-        if (start_finetune_button.getAttribute("need_to_stop")) {
+        if (start_finetune_button.getAttribute("need_to_stop") === true) {
             url = "/tab-finetune-stop-now";
         }
         fetch(url)
