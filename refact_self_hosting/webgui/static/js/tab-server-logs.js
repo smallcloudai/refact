@@ -7,10 +7,8 @@ function start_log_stream() {
     log_container.textContent = '';
     const streamTextFile = async () => {
         const decoder = new TextDecoder();
-        const response = await fetch("/tab-server-log-get-log");
+        const response = await fetch("/tab-server-log-plain/latest?stream=1");
         const reader = response.body.getReader();
-        // logstream_reader = reader;
-        // logstream_runid = run_id;
 
         const processResult = ({ done, value }) => {
             if (done) {
@@ -19,9 +17,7 @@ function start_log_stream() {
             }
 
             const chunk = decoder.decode(value);
-
             const isAtBottom = log_container.scrollTop >= (log_container.scrollHeight - log_container.offsetHeight);
-
             log_container.textContent += chunk;
 
             if (isAtBottom) {

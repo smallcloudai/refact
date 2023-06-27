@@ -15,8 +15,6 @@ class TabServerLogRouter(APIRouter):
         super().__init__(*args, **kwargs)
         self.add_api_route("/tab-server-log-get", self._tab_server_log_get, methods=["GET"])
         self.add_api_route("/tab-server-log-plain/{log_name}", self._tab_server_log_plain, methods=["GET"])
-        # deprecated
-        self.add_api_route("/tab-server-log-get-log", self._tab_server_log_plain, methods=["GET"])
 
     async def _tab_server_log_get(self):
         list_of_files = glob.glob(f'{DIR_LOGS}/watchdog_*.log')
