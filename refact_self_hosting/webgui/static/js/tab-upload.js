@@ -45,6 +45,12 @@ function get_tab_files() {
                 sources_run_button.disabled = false;
                 const status = data.filestats_ftf.status;
                 sources_run_button.setAttribute("ftf_status", status)
+                if(!data.filestats_ftf.error || data.filestats_ftf.error === '') {
+                    if(sources_error && !sources_error.classList.contains('d-none')) {
+                        sources_error.classList.add('d-none');
+                    }
+                    sources_error.querySelector('span').innerHTML = '';
+                }
                 switch(status) {
                     case undefined:
                     case 'interrupted':
@@ -69,9 +75,21 @@ function get_tab_files() {
                     case 'error':
                         sources_run_button.disabled = true;
                         sources_status.innerHTML = status;
+                        if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
+                            if(sources_error && sources_error.classList.contains('d-none')) {
+                                sources_error.classList.remove('d-none');
+                            }
+                            sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
+                        }
                         break;
                     case 'failed':
                         sources_status.innerHTML = status;
+                        if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
+                            if(sources_error && sources_error.classList.contains('d-none')) {
+                                sources_error.classList.remove('d-none');
+                            }
+                            sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
+                        }
                         break;
                     default:
                         source_filetypes_state();
@@ -98,6 +116,7 @@ const sources_run_pane = document.querySelector('.run-pane');
 const sources_run_button = document.querySelector('.sources-run-button');
 const sources_settings = document.querySelector('.sources-settings');
 const sources_status = document.querySelector('.ftf-status span');
+const sources_error = document.querySelector('.ftf-error');
 
 function render_filter_progress(progress_value) {
     progress_bar.style.width = progress_value + "%";
