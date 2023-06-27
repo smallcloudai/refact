@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response, StreamingResponse, JSONResponse
 
-from refact_self_hosting import env
+from refact_self_hosting import env, best_lora
 from refact_self_hosting.webgui.selfhost_webutils import log
 from refact_data_pipeline.finetune import finetune_filtering_defaults, finetune_train_defaults
 
@@ -140,6 +140,12 @@ class TabFinetuneRouter(APIRouter):
             result["config"] = json.load(open(env.CONFIG_FINETUNE, "r"))
         if os.path.exists(env.CONFIG_ACTIVE_LORA):
             result["active"] = json.load(open(env.CONFIG_ACTIVE_LORA, "r"))
+        else:
+            result["active"] = {
+                "model": "",
+                "lora_mode": "latest-best",
+            }
+        result["finetune_latest_best"] = best_lora.find_best_lora("CONTRASTcode/3b/multi")
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_finetune_smart_filter_setup(self, post: FilteringSetup):

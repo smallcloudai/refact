@@ -154,16 +154,25 @@ function render_lora_switch() {
     loras_switch_no_reaction = false;
     let lora_switch_run_id = document.querySelector('#lora-switch-run-id');
     let lora_switch_checkpoint = document.querySelector('#lora-switch-checkpoint');
-    if (downloaded_data.active) {
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active.specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active.specific_checkpoint}`;
-    }
     if (mode === 'specific') {
+        lora_switch_run_id.style.display = 'block';
+        lora_switch_checkpoint.style.display = 'block';
         lora_switch_run_id.style.opacity = 1;
         lora_switch_checkpoint.style.opacity = 1;
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active.specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active.specific_checkpoint}`;
+    } else if (mode == 'latest-best') {
+        lora_switch_run_id.style.display = 'block';
+        lora_switch_checkpoint.style.display = 'block';
+        lora_switch_run_id.style.opacity = 0.5;
+        lora_switch_checkpoint.style.opacity = 0.5;
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.finetune_latest_best.latest_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.finetune_latest_best.best_checkpoint_id}`;
     } else {
-        lora_switch_run_id.style.opacity = 0.2;
-        lora_switch_checkpoint.style.opacity = 0.2;
+        lora_switch_run_id.style.display = 'none';
+        lora_switch_checkpoint.style.display = 'none';
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active.specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active.specific_checkpoint}`;
     }
 }
 
@@ -281,7 +290,7 @@ function start_log_stream(run_id) {
             }
 
             const chunk = decoder.decode(value);
-            
+
 
             const isAtBottom = log_div.scrollTop >= (log_div.scrollHeight - log_div.offsetHeight);
 

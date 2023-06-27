@@ -340,7 +340,8 @@ class Inference:
                 log("lora cannot find \"%s\", switching to latest-best" % t)
                 some_problem_with_explicit = True
         if j["lora_mode"] == "latest-best" or some_problem_with_explicit:
-            lora_checkpoint_dir = best_lora.find_best_lora(self._model_name)
+            tmp = best_lora.find_best_lora(self._model_name)
+            lora_checkpoint_dir = tmp["path"]
         self.lora_switch(lora_checkpoint_dir=lora_checkpoint_dir)
 
 
