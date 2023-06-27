@@ -59,13 +59,13 @@ class TabFinetuneActivate(BaseModel):
 
 
 class FilteringSetup(BaseModel):
-    limit_train_files: Optional[int] = Query(default=None, gt=20, le=100000)
-    limit_test_files: Optional[int] = Query(default=None, gt=1, le=5)
     filter_loss_threshold: Optional[float] = Query(default=None, gt=2, le=10)
-    filter_gradcosine_threshold: Optional[float] = Query(default=None, gt=-1.0, le=0.5)
-    limit_time_seconds: Optional[int] = Query(default=None, gt=300, le=3600*12)
-    use_gpus_n: Optional[int] = Query(default=False, gt=1, le=8)
-    low_gpu_mem_mode: Optional[bool] = Query(default=True)
+    # limit_train_files: Optional[int] = Query(default=None, gt=20, le=100000)
+    # limit_test_files: Optional[int] = Query(default=None, gt=1, le=5)
+    # filter_gradcosine_threshold: Optional[float] = Query(default=None, gt=-1.0, le=0.5)
+    # limit_time_seconds: Optional[int] = Query(default=None, gt=300, le=3600*12)
+    # use_gpus_n: Optional[int] = Query(default=False, gt=1, le=8)
+    # low_gpu_mem_mode: Optional[bool] = Query(default=True)
 
 
 class TabFinetuneTrainingSetup(BaseModel):
