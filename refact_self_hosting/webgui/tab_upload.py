@@ -135,7 +135,7 @@ class TabUploadRouter(APIRouter):
         result["finetune_status"] = "unknown"
         if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS):
             for run in get_finetune_runs():
-                if run.get("status", "unknown") == "working":
+                if run.get("status", "unknown") in ["starting", "working", "filtering"]:
                     result["finetune_status"] = "working"
 
         # 0 new zip
