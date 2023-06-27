@@ -155,6 +155,7 @@ function render_runs() {
     } else {
         start_finetune_button.textContent = 'Start Now';
     }
+    start_finetune_button.setAttribute("need_to_stop", is_working)
     start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
 }
 
@@ -423,7 +424,11 @@ function save_finetune_settings() {
 export function init() {
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.addEventListener('click', function () {
-        fetch("/tab-finetune-run-now")
+        let url = "/tab-finetune-run-now";
+        if (start_finetune_button.getAttribute("need_to_stop")) {
+            url = "/tab-finetune-stop-now";
+        }
+        fetch(url)
             .then(function (response) {
                 finetune_data();
             })
