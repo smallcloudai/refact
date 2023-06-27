@@ -131,7 +131,9 @@ function render_runs() {
             gfx.src = `/tab-finetune-progress-svg/${element.run_id}?t=${timestamp}`;
             start_log_stream(element.run_id);
             const log_link = document.querySelector('.log-link');
-            log_link.classList.remove('d-none');
+            if(log_link.classList.contains('d-none')) {
+                log_link.classList.remove('d-none');
+            }
             log_link.href = `/tab-finetune-log/${element.run_id}`;
         }
     });
