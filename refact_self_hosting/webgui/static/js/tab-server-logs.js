@@ -19,6 +19,8 @@ function start_log_stream() {
             const chunk = decoder.decode(value);
             const isAtBottom = log_container.scrollTop >= (log_container.scrollHeight - log_container.offsetHeight);
             log_container.textContent += chunk;
+            let log = log_container.textContent.split('\n')
+            log_container.textContent = log.slice(-1000).join("\n")
 
             if (isAtBottom) {
                 log_container.scrollTop = log_container.scrollHeight;
