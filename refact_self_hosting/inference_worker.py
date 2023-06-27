@@ -20,7 +20,9 @@ from refact_self_hosting import known_models, best_lora
 from code_contrast.modeling import CodifyModel
 from code_contrast.modeling import HFModel
 from code_contrast.modeling import GPTQBigCodeModel
-from code_contrast.modeling.checkpoint_loader import load_finetune_checkpoint, load_finetune_checkpoint_only
+from code_contrast.modeling.checkpoint_loader import (
+    load_finetune_checkpoint, load_finetune_checkpoint_only, load_checkpoint_embeddings
+)
 from typing import Optional, Dict, Any, List
 
 from refact_self_hosting import env
@@ -296,6 +298,7 @@ class Inference:
         if self._lora_on and not on:
             log("deactivating lora")
             self._model = self._model.exclude_lora(self._model)
+            self._model = load_checkpoint_embeddings(self._model, self._model.cache_dir, self._model.model_name)
             self._lora_on = False
         elif not self._lora_on and on:
             log("activating lora %s" % lora_checkpoint_dir)
@@ -351,7 +354,7 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
     class DummyUploadProxy:
         def upload_result(*args, **kwargs):
             pass
-        def check_cancelled():
+        def check_cancelled(*args, **kwargs):
             return set()
     dummy_calls = [
         {
