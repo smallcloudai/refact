@@ -294,6 +294,7 @@
                 <div class="tab-pane fade show active" id="logs" role="tabpanel" aria-labelledby="logs-tab">
                   <pre class="log-container tab-upload-finetune-logs">
                   </pre>
+                  <a target="_blank" class="btn mt-2 btn-secondary log-link d-none" href="">View Log</a>
                 </div>
                 <div class="tab-pane fade" id="checkpoints" role="tabpanel" aria-labelledby="checkpoints-tab">
                   <table class="table table-sm table-hover">
@@ -326,13 +327,8 @@
       </div>
       <div class="main-tab-pane" id="server-logs">
         <div class="pane">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="debug-checkbox">
-            <label class="form-check-label" for="debug-checkbox">
-              Debug messages
-            </label>
-          </div>
-          <pre class="log-container" id="server-log-log-container"></pre>
+          <a target="_blank" class="d-none btn btn-secondary latest-log" href="">Latest log</a>
+          <div class="daily-logs mt-5"></div>
         </div>
       </div>
       <div class="main-tab-pane" id="access-control">
@@ -447,6 +443,17 @@
       </div>
     </div>
   </div>
+
+  <div class="toast-container position-fixed top-0 end-0 p-3">
+    <div class="upload-tab-filter-error-toast toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+        </div>
+        <!-- <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button> -->
+      </div>
+    </div>
+  </div>
+
 
   <div class="modal fade" id="upload-tab-git-modal" tabindex="-1" aria-labelledby="upload-tab-git-modal"
     aria-hidden="true">

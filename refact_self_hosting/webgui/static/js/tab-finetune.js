@@ -130,6 +130,9 @@ function render_runs() {
             const gfx = document.querySelector('.fine-gfx');
             gfx.src = `/tab-finetune-progress-svg/${element.run_id}?t=${timestamp}`;
             start_log_stream(element.run_id);
+            const log_link = document.querySelector('.log-link');
+            log_link.classList.remove('d-none');
+            log_link.href = `/tab-finetune-log/${element.run_id}`;
         }
     });
     const rows = document.querySelectorAll('.run-table tr');
@@ -204,10 +207,16 @@ function render_checkpoints(data = []) {
             const cell = document.createElement('td');
             cell.textContent = `${element.checkpoint_name}`;
             cell.dataset.checkpoint = element.checkpoint_name;
+            if(cell.dataset.checkpoint === downloaded_data.active.specific_checkpoint) {
+                row.classList.add('table-success');
+            }
             row.appendChild(cell);
             checkpoints.appendChild(row);
             row.addEventListener('click', (event) => {
-                row.classList.add('table-success');
+                if(!row.classList.contains('table-success')) {
+                    document.querySelector('.table-checkpoints .table-success').classList.remove('table-success');
+                    row.classList.add('table-success');
+                }
                 finetune_switch_activate("specific", blue_lora, cell.dataset.checkpoint);
             });
         });

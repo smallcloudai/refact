@@ -9,7 +9,13 @@ function get_tab_files() {
             console.log('tab-files-get',data);
             tab_files_data = data;
             if(data.scan_error && data.scan_error.length > 0) {
-                show_error(data.scan_error);
+                let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
+                const scan_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
+                if(!show_scan_error) {
+                    document.querySelector('.upload-tab-scan-error-toast .toast-body').innerHTML = data.scan_error;
+                    scan_error_toast.show()
+                    show_scan_error = true;
+                }
             }
             switch(data.filtering_stage) {
                     // filter_state_zero();
@@ -43,7 +49,6 @@ function get_tab_files() {
                     case undefined:
                     case 'interrupted':
                     case 'finished':
-                        show_scan_error = false;
                         sources_run_button.disabled = false;
                         source_filetypes_state();
                         let status_line = "";
@@ -53,26 +58,19 @@ function get_tab_files() {
                         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter${status_line}`;
                         break;
                     case 'starting':
-                        show_scan_error = false;
                         sources_run_button.disabled = true;
                         source_filetypes_state(true);
-                        // sources_run_pane.classList.add('pane-disabled');
+                        sources_run_pane.classList.add('pane-disabled');
                         if(!document.querySelector('.sources-run-button .spinner-border')) {
                             sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
                         }
                         break;
                     case 'error':
-                        // sources_run_button.disabled = true;
-                        if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
-                            show_error(data.filestats_ftf.error);
-                        }
+                        sources_run_button.disabled = true;
                         break;
                     case 'failed':
-                        if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
-                            show_error(data.filestats_ftf.error);
-                        }
+                        break;
                     default:
-                        show_scan_error = false;
                         source_filetypes_state();
                         sources_run_button.disabled = false;
                         sources_run_button.innerHTML = `Stop filter`;
@@ -81,7 +79,6 @@ function get_tab_files() {
                         }
                         break;
                 }
-                sources_run_button.disabled = sources_run_button.disabled || data.finetune_status === "working";
             }
             // render_filter_setup_defaults(data.filter_setup_defaults);
         });
@@ -107,16 +104,6 @@ function render_filter_progress(progress_value) {
 //         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
 //     }
 // }
-
-function show_error(error_text) {
-    let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
-    const scan_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
-    if(!show_scan_error) {
-        document.querySelector('.upload-tab-scan-error-toast .toast-body').innerHTML = error_text;
-        scan_error_toast.show()
-        show_scan_error = true;
-    }
-}
 
 function source_filetypes_state(disabled = false) {
     if(disabled) {
@@ -826,10 +813,10 @@ export function init() {
         force_include_exclude_is_changed = false
     })
 
-    // const scan_error_toast = document.querySelector('.upload-tab-scan-error-toast');
-    // scan_error_toast.addEventListener('hidden.bs.toast', () => {
-    //     show_scan_error = false;
-    // })
+    const scan_error_toast = document.querySelector('.upload-tab-scan-error-toast');
+    scan_error_toast.addEventListener('hidden.bs.toast', () => {
+        show_scan_error = false;
+    })
 
 }
 
