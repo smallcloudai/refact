@@ -45,14 +45,12 @@ function get_tab_files() {
                     sources_error.querySelector('span').innerHTML = '';
                 }
                 if(data.filestats_ftf.eta_minutes && data.filestats_ftf.eta_minutes !== 0) {
-                    const progress = document.querySelector('.ftf-progress');
-                    if(!document.querySelector('.ftf-progress-eta')) {
-                        const eta = document.createElement('span');
-                        eta.classList.add('ftf-progress-eta');
-                        progress.appendChild(eta);
-                    }
-                    const eta_state = document.querySelector('.ftf-progress-eta');
+                    const eta_state = document.querySelector('.ftf-eta');
                     eta_state.innerHTML = 'ETA: ' + data.filestats_ftf.eta_minutes + ' minute(s)';
+
+                    const progress_container = document.querySelector('.ftf-progress');
+                    progress_container.classList.remove('d-none');
+                    render_ftf_progress(data.filtering_progress);
                 }
                 switch(status) {
                     case undefined:
@@ -117,6 +115,10 @@ const sources_error = document.querySelector('.ftf-error');
 
 function render_filter_progress(progress_value) {
     progress_bar.style.width = progress_value + "%";
+}
+function render_ftf_progress(filtering_progress) {
+    const ftf_bar = document.querySelector('.ftf-bar');
+    ftf_bar.style.width = filtering_progress + "%";
 }
 // function render_filter_button(value) {
 //     if(value === "completed") {

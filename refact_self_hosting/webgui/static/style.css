@@ -566,3 +566,11 @@ h3 {
     margin-right: auto;
     max-width: 60%;
 }
+.ftf-progress {
+    width: 200px;
+}
+.ftf-eta {
+    opacity: 0.5;
+    font-size: 12px;
+    font-weight: bold;
+}

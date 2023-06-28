@@ -206,7 +206,10 @@
             </div>
             <div class="pane run-pane">
               <div class="run-pane-grid">
-                <div class="ftf-progress"></div>
+                <div class="ftf-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                  <div class="ftf-bar bg-success" style="width: 0%"></div>
+                </div>
+                <div class="ftf-eta"></div>
                 <div class="ftf-status d-none">Status:<span></span></div>
                 <div class="ftf-error d-none">Error:<span class="text-danger"></span></div>
                 <div class="ftf-stats"></div>
