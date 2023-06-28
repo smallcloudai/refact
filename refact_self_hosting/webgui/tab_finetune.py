@@ -86,6 +86,8 @@ class TabFinetuneTrainingSetup(BaseModel):
 def get_finetune_runs():
     res = []
     anyone_works = False
+    if not os.path.isdir(env.DIR_LORAS):
+        return [], anyone_works
     for dirname in sorted(os.listdir(env.DIR_LORAS)):
         dir_path = os.path.join(env.DIR_LORAS, dirname)
         if not os.path.isdir(dir_path):
@@ -101,7 +103,7 @@ def get_finetune_runs():
             d.update(json.load(open(status_fn, "r")))
         if d["status"] in ["working", "starting"]:
             mtime = os.path.getmtime(status_fn)
-            if mtime + 600 < time.time():
+            if mtime + 300 < time.time():
                 d["status"] = "failed"
             else:
                 anyone_works = True
@@ -117,6 +119,7 @@ def get_finetune_runs():
                 })
         res.append(d)
     return res, anyone_works
+
 
 class TabFinetuneRouter(APIRouter):
 
@@ -146,7 +149,8 @@ class TabFinetuneRouter(APIRouter):
                 "run_at_night_time": "04:00",
                 "auto_delete_n_runs": "5",
             },
-            "filtering_status": "unknown"
+            "filtering_status": "unknown",
+            "finetune_working_now": anyone_works,
         }
         if os.path.exists(env.CONFIG_FINETUNE):
             result["config"] = json.load(open(env.CONFIG_FINETUNE, "r"))

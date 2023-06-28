@@ -132,10 +132,8 @@ class TabUploadRouter(APIRouter):
         result["filestats_ftf"] = {}
         if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS):
             result["filestats_ftf"] = json.load(open(env.CONFIG_FINETUNE_FILTER_STATS))
-        result["finetune_working_now"] = False
-        if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS):
-            _, anyone_works = get_finetune_runs()
-            result["finetune_working_now"] = anyone_works
+        _, anyone_works = get_finetune_runs()
+        result["finetune_working_now"] = anyone_works
 
         # 0 new zip
         # 1 files done, pick file types
