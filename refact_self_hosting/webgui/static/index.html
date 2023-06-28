@@ -137,18 +137,7 @@
       </div>
       <div class="main-tab-pane" id="upload">
         <div class="row">
-          <div class="col-3">
-            <ol class="sources-list">
-              <li>Scan Sources<span class="d-none"><i class="bi bi-check-lg"></i></span></li>
-              <li>Filetype Filtering<span class="d-none"><i class="bi bi-check-lg"></i></span></li>
-            </ol>
-            <div class="progress sources-sidebar-progress" role="progressbar" aria-valuenow="0" aria-valuemin="0"
-              aria-valuemax="100">
-              <div class="progress-bar" style="width: 0%"></div>
-            </div>
-            <div class="sources-ready"></div>
-          </div>
-          <div class="col-9">
+          <div class="col-12">
             <div class="pane sources-pane">
               <h3>Code and Text Sources</h3>
               <table class="table table-sm align-middle upload-tab-table-files">
@@ -217,7 +206,7 @@
             </div>
             <div class="pane run-pane">
               <div class="run-pane-grid">
-                <div class="sources-run-progress"></div>
+                <div class="ftf-progress"></div>
                 <div class="ftf-status d-none">Status:<span></span></div>
                 <div class="ftf-error d-none">Error:<span class="text-danger"></span></div>
                 <div class="ftf-stats"></div>
@@ -329,6 +318,7 @@
       </div>
       <div class="main-tab-pane" id="server-logs">
         <div class="pane">
+          <pre class="log-container" id="server-log-log-container"></pre>
           <a target="_blank" class="d-none btn btn-secondary latest-log" href="">Latest log</a>
           <div class="daily-logs mt-5"></div>
         </div>

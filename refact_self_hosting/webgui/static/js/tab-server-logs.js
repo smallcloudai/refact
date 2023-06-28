@@ -49,10 +49,11 @@ function get_daily_logs() {
 function render_daily_logs(data) {
     const log_container = document.querySelector('.daily-logs');
     log_container.innerHTML = '';
+    log_container.innerHTML = '<h5>Logs by date</h5>';
     const log = data.all_logs.map((log) => {
         return `<div><a target="_blank" class="link-secondary link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover" href="/tab-server-log-plain/${log}" class="log-item">${log}</a></div>`;
     }).join("\n");
-    log_container.innerHTML = log;
+    log_container.innerHTML += log;
     const last_logs_button = document.querySelector('.latest-log');
     if(data.latest_log && data.latest_log != '') {
         last_logs_button.classList.remove('d-none');
@@ -64,13 +65,10 @@ function render_daily_logs(data) {
 
 let is_started = false;
 export function tab_switched_here() {
-    if (is_started) {
+    if(is_started) {
         return;
     }
     get_daily_logs();
+    start_log_stream();
     is_started = true;
-    // if (!is_started) {
-    //     start_log_stream();
-    //     is_started = true;
-    // }
 }

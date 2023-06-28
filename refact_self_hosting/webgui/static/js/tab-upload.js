@@ -17,19 +17,7 @@ function get_tab_files() {
                     show_scan_error = true;
                 }
             }
-            switch(data.filtering_stage) {
-                    // filter_state_zero();
-                    // break;
-                case 0:
-                case 1:
-                    filter_state_one();
-                    break;
-                case 2:
-                    filter_state_two();
-                    render_filter_progress(data.filtering_progress);
-                    break;
-
-            }
+            // render_filter_progress(data.filtering_progress);
             if(data.scan_status === 'completed') {
                 document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
                 document.querySelector('.run-pane').classList.remove('pane-disabled');
@@ -112,9 +100,6 @@ function get_tab_files() {
 }
 
 const progress_bar = document.querySelector('.sources-run-progress .progress-bar');
-const sidebar_progress = document.querySelector('.sources-sidebar-progress .progress-bar');
-const sidebar_step1 = document.querySelector('.sources-list li:first-of-type');
-const sidebar_step2 = document.querySelector('.sources-list li:last-of-type');
 const sources_pane = document.querySelector('.sources-pane');
 const filetypes_pane = document.querySelector('.filetypes-pane');
 const sources_run_pane = document.querySelector('.run-pane');
@@ -145,40 +130,6 @@ function source_filetypes_state(disabled = false) {
         document.querySelector('.run-pane').classList.remove('pane-disabled');
         document.querySelector('.sources-settings').disabled = false;
     }
-}
-
-function filter_state_zero() {
-    sidebar_progress.style.width = "0%";
-    sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
-    sidebar_step1.classList.add('sources-list-active');
-    sidebar_step2.classList.remove('sources-list-active');
-    sources_pane.classList.remove('pane-disabled');
-    filetypes_pane.classList.add('pane-disabled');
-    sources_run_pane.classList.add('pane-disabled');
-    sources_settings.classList.remove('pane-disabled');
-}
-
-function filter_state_one() {
-    sidebar_progress.style.width = "50%";
-    sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
-    sidebar_step1.classList.add('sources-list-active');
-    sidebar_step2.classList.add('sources-list-active');
-    sources_pane.classList.remove('pane-disabled');
-    filetypes_pane.classList.remove('pane-disabled');
-    sources_run_pane.classList.remove('pane-disabled');
-    sources_settings.classList.remove('pane-disabled');
-}
-
-function filter_state_two() {
-    progress_bar.style.width = "0%";
-    sidebar_progress.style.width = "100%";
-    sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>Stop`;
-    sidebar_step1.classList.add('sources-list-active');
-    sidebar_step2.classList.add('sources-list-active');
-    sources_pane.classList.add('pane-disabled');
-    filetypes_pane.classList.add('pane-disabled');
-    sources_run_pane.classList.remove('pane-disabled');
-    sources_settings.classList.add('pane-disabled');
 }
 
 function render_tab_files(data) {
