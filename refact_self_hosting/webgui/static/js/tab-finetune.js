@@ -127,8 +127,13 @@ function render_runs() {
         row.appendChild(run_delete);
         if (!local_is_working) {
             run_delete.addEventListener('click', () => {
-                delete_run(element.run_id);
-            })
+                const lora_for_delete = row.dataset.run;
+                let delete_lora_modal = document.getElementById('delete-lora-modal');
+                let delete_lora_modal_button = delete_lora_modal.querySelector('.delete-lora-modal-submit');
+                delete_lora_modal_button.dataset.lora = lora_for_delete;
+                let delete_lora_modal_instance = bootstrap.Modal.getOrCreateInstance(delete_lora_modal);
+                delete_lora_modal_instance.show();
+            });
         }
 
         document.querySelector('.run-table').appendChild(row);
@@ -472,6 +477,14 @@ export function init() {
     const finetune_modal_defaults = document.querySelector('.finetune-tab-settings-default');
     finetune_modal_defaults.addEventListener('click', function() {
         get_finetune_settings(true);
+    });
+    let delete_lora_modal_button = document.querySelector('.delete-lora-modal-submit');
+    delete_lora_modal_button.addEventListener('click', () => {
+        const lora_for_delete = delete_lora_modal_button.dataset.lora;
+        delete_run(lora_for_delete);
+        let delete_lora_modal = document.getElementById('delete-lora-modal');
+        let delete_lora_modal_instance = bootstrap.Modal.getOrCreateInstance(delete_lora_modal);
+        delete_lora_modal_instance.hide();
     });
 }
 

@@ -406,6 +406,25 @@
     </div>
   </div>
 
+  <div class="modal fade" id="delete-lora-modal" tabindex="-1" aria-labelledby="delete-lora-modal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="urlModalLabel">Delete Run</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          You are about to delete the run. This cannot be undone!
+        </div>
+        <div id="status-delete" class="deleted-status"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="delete-lora-modal-submit submit btn btn-primary">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal fade" id="upload-tab-url-modal" tabindex="-1" aria-labelledby="upload-tab-url-modal"
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
