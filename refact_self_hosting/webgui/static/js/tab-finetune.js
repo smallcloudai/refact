@@ -221,7 +221,10 @@ function render_checkpoints(data = []) {
             checkpoints.appendChild(row);
             row.addEventListener('click', (event) => {
                 if(!row.classList.contains('table-success')) {
-                    document.querySelector('.table-checkpoints .table-success').classList.remove('table-success');
+                    let prev = document.querySelector('.table-checkpoints .table-success');
+                    if (prev) {
+                        prev.classList.remove('table-success');
+                    }
                     row.classList.add('table-success');
                 }
                 finetune_switch_activate("specific", blue_lora, cell.dataset.checkpoint);
