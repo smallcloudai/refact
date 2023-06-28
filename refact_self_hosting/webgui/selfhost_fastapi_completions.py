@@ -229,7 +229,7 @@ class CompletionsRouter(APIRouter):
                  timeout: int = 30,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.add_api_route("/login", self._longthink_functions, methods=["GET"])
+        self.add_api_route("/login", self._login, methods=["GET"])
         self.add_api_route("/secret-key-activate", self._secret_key_activate, methods=["GET"])
         self.add_api_route("/completions", self._completions, methods=["POST"])
         self.add_api_route("/contrast", self._contrast, methods=["POST"])
@@ -238,7 +238,7 @@ class CompletionsRouter(APIRouter):
         self._id2ticket = id2ticket
         self._timeout = timeout
 
-    async def _longthink_functions(self):
+    async def _login(self):
         longthink_functions = dict()
         longthink_filters = set()
         models_mini_db_extended = {
@@ -252,30 +252,31 @@ class CompletionsRouter(APIRouter):
             for model in self._user2gpu_queue
             for capability in models_mini_db_extended[model]["filter_caps"]])
         for rec in modelcap_records.db:
-            rec_capabilities = rec.model if isinstance(rec.model, list) else [rec.model]
+            rec_modelcaps = rec.model if isinstance(rec.model, list) else [rec.model]
             rec_third_parties = rec.third_party if isinstance(rec.third_party, list) else [rec.third_party]
-            for rec_capability, rec_third_party in zip(rec_capabilities, rec_third_parties):
-                if rec_capability not in filter_caps:
+            for rec_modelcap, rec_third_party in zip(rec_modelcaps, rec_third_parties):
+                if rec_modelcap not in filter_caps:
                     continue
-                rec_capability = rec_capability.replace("/", "-")
+                rec_modelcap = rec_modelcap.replace("/", "-")
                 if rec_third_party:
-                    rec_model = rec_capability
-                    rec_function_name = f"{rec.function_name}-{rec_capability}"
+                    rec_model = rec_modelcap
+                    rec_function_name = f"{rec.function_name}-{rec_modelcap}"
                 else:
-                    # NOTE: we should to resolve only local models and it must be fixed ASAP
-                    rec_model, err_msg = selfhost_model_resolve.resolve_model(rec_capability, "", "")
-                    if err_msg:
-                        log(f'login capability resolve "{rec_model}" -> error "{err_msg}"')
+                    rec_model, err_msg = selfhost_model_resolve.resolve_model(rec_modelcap, "", "")
+                    assert err_msg=="", err_msg
+                    if rec_model == "CONTRASTcode":
                         continue
                     rec_function_name = rec.function_name
                 longthink_functions[rec_function_name] = {
                     **rec.to_dict(),
+                    "function_name": rec_function_name,
                     "is_liked": False,
                     "likes": 0,
                     "third_party": rec_third_party,
                     "model": rec_model,
                 }
-                longthink_filters.add(rec_model)
+                if "/" not in rec_model:
+                    longthink_filters.add(rec_model)
         return {
             "account": "self-hosted",
             "retcode": "OK",
