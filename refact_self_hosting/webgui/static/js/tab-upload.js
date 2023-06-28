@@ -64,6 +64,7 @@ function get_tab_files() {
                     progress_container.classList.remove('d-none');
                     render_ftf_progress(data.filtering_progress);
                 }
+                sources_settings.disabled = false
                 switch(status) {
                     case undefined:
                     case 'interrupted':
@@ -115,12 +116,11 @@ function get_tab_files() {
                         sources_pane.classList.add('pane-disabled');
                         filetypes_pane.classList.add('pane-disabled');
                         sources_run_pane.classList.remove('pane-disabled');
-                        sources_settings.disabled = false;
-                        reset_ftf_progress();
+                        sources_settings.disabled = true
                         break;
                 }
             }
-            if ((['working', 'starting'].includes(data.finetune_status))) {
+            if (data.finetune_working_now) {
                 sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
                 sources_run_pane.classList.add('pane-disabled');
