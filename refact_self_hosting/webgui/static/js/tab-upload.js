@@ -264,6 +264,7 @@ function run_stop_filtering() {
     switch (status) {
         case 'undefined':
         case 'interrupted':
+        case 'failed':
         case 'error':
         case 'finished':
             run_now();
