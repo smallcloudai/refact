@@ -62,6 +62,7 @@ function get_tab_files() {
                     progress_container.classList.remove('d-none');
                     render_ftf_progress(data.filtering_progress);
                 }
+                sources_run_pane.classList.remove('pane-disabled');
                 switch(status) {
                     case undefined:
                     case 'interrupted':
