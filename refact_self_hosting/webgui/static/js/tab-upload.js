@@ -42,6 +42,11 @@ function get_tab_files() {
             render_force_filetypes(data.filetypes);
             render_ftf_stats(data.filestats_ftf);
             if(data.filestats_ftf) {
+                if(data.filestats_ftf.length > 0) {
+                    document.querySelector('.ftf-status').classList.remove('d-none');
+                } else {
+                    document.querySelector('.ftf-status').classList.add('d-none');
+                }
                 sources_run_button.disabled = false;
                 const status = data.filestats_ftf.status;
                 sources_run_button.setAttribute("ftf_status", status)
