@@ -114,7 +114,9 @@ function render_runs() {
         } else {
             run_status.innerHTML = `<span class="badge rounded-pill ${status_color}">${element.status}</span>`;
         }
-        run_minutes.innerHTML = `${element.worked_minutes}<${element.eta_minutes}`;
+        if (element.eta_minutes) {
+            run_minutes.innerHTML = element.eta_minutes;
+        }
         run_steps.innerHTML = element.worked_steps;
         const disabled = local_is_working ? "disabled" : ""
         run_delete.innerHTML = `<button class="btn btn-danger btn-sm" ${disabled}><i class="bi bi-trash3-fill"></i></button>`;
