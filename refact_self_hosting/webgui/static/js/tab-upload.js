@@ -112,7 +112,7 @@ function get_tab_files() {
                         break;
                 }
             }
-            if ((['working', 'starting'].includes(data.finetune_status))) {
+            if (data.finetune_working_now) {
                 sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
                 sources_run_pane.classList.add('pane-disabled');
