@@ -23,9 +23,13 @@ At the moment, you can choose between following models:
 Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
 products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
 
+NEW: you can fine-tune the model on your own hardware!
+
+
 ## Known limitations
-- for best results on smaller GPUs we recommend using CONTRASTcode models as the StarCoder models can be quite slow
-- StarCoder AI Toolbox and Chat in JetBrains will be available later (May 12-14)
+
+- For best results on smaller GPUs we recommend using CONTRASTcode models as the StarCoder models can be quite slow
+
 
 ## Demo
 
@@ -35,13 +39,16 @@ products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=s
 </tr>
 </table>
 
+
 ## Getting started
+
 Install plugin for your IDE:
 [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai) or
 [VSCode](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
 
 
 ### Running Server in Docker
+
 The recommended way to run server is a pre-build Docker image.
 
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
@@ -91,6 +98,7 @@ docker run --rm -p 8008:8008 -v refact_workdir:/workdir --env SERVER_MODEL=<mode
 After start container will automatically download the chosen model.
 
 
+
 ### Running Manually
 
 To run server manually, install this repo first (this might install a lot of packages on your computer):
@@ -119,18 +127,8 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 
 
 Now it should work, just try to write some code! If it doesn't, please report your experience to
-[GitHub issues](https://github.com/smallcloudai/code-contrast/issues).
+[GitHub issues](https://github.com/smallcloudai/refact-self-hosting/issues).
 
-
-<details><summary>Remote server</summary>
-
-If you run server on remote host, you should add it to /etc/hosts
-(or C:\Windows\System32\drivers\etc\hosts on Windows) on client.
-Do not forget to replace {server ip address} to real server ip address.
-
-```commandline
-{server ip address}  inference.smallcloud.local
-```
 
 and set up this inference url in plugin:
 
@@ -140,8 +138,37 @@ https://inference.smallcloud.local:8008
 </details>
 
 
+## Fine Tuning
+
+*Why?*  Code models are trained on a vast amount of code from the internet, which may not perfectly
+align with your specific codebase, APIs, objects, or coding style.
+By fine-tuning the model, you can make it more familiar with your codebase and coding patterns.
+This allows the model to better understand your specific needs and provide more relevant and
+accurate code suggestions. Fine-tuning essentially helps the model memorize the patterns and
+structures commonly found in your code, resulting in improved suggestions tailored to your
+coding style and requirements.
+
+*Which Files to Feed?*  It's a good idea to give the model the current code of your projects,
+because it's likely any new code in the same project will be similar -- that's what makes
+suggestions relevant and useful. However, it's NOT a good idea feed 3rd party libraries that
+you use, as the model may learn to generate code similar to the internals of those libraries.
+
+*GUI*  Use `Sources` and `Finetune` tabs in the web UI to upload files (.zip, .gz, .bz2 archive, or
+a link to your git repository) and run the fine-tune process. After the fine-tuning process
+finishes (which should take several hours), you can dynamically turn it on and off and observe
+the difference it makes for code suggestions.
+
+There's a catch: both VS Code and JB plugins cache the responses. To force the model to produce
+a new suggestion (rather than immediately responding with a cached one), you can change the text
+a few lines above, for example, a comment. This will make the code look different. Alternatively,
+you can use the Manual Suggestion Trigger (a key combination), which always produces a new suggestion.
+
+
+
 ## Community & Support
-Join our [Discord server](https://www.smallcloud.ai/discord) and follow our
+
+Join our
+[Discord server](https://www.smallcloud.ai/discord) and follow our
 [Twitter](https://twitter.com/refact_ai) to get the latest updates.
 
 
@@ -149,6 +176,6 @@ Join our [Discord server](https://www.smallcloud.ai/discord) and follow our
 ## Contributing
 
 We are open for contributions. If you have any ideas and ready to implement this, just:
-- make a [fork](https://github.com/smallcloudai/code-contrast/fork)
+- make a [fork](https://github.com/smallcloudai/refact-self-hosting/fork)
 - make your changes, commit to your fork
-- and open a [PR](https://github.com/smallcloudai/code-contrast/fork)
+- and open a PR
