@@ -20,6 +20,7 @@ from refact_self_hosting import known_models, best_lora
 from code_contrast.modeling import CodifyModel
 from code_contrast.modeling import HFModel
 from code_contrast.modeling import GPTQBigCodeModel
+from code_contrast.modeling import StarChatModel
 from code_contrast.modeling.checkpoint_loader import (
     load_finetune_checkpoint, load_finetune_checkpoint_only, load_checkpoint_embeddings
 )
@@ -90,6 +91,12 @@ class Inference:
                 cache_dir=env.DIR_WEIGHTS,
                 device=device,
                 **model_dict["model_class_kwargs"])
+            model.T = model_dict["T"]
+        elif model_dict["model_class"].endswith("StarChatModel"):
+            model = StarChatModel.from_pretrained(
+                path=model_dict["model_path"],
+                cache_dir=env.DIR_WEIGHTS,
+                device=device)
             model.T = model_dict["T"]
         else:
             raise RuntimeError(f"unknown model class {model_dict['model_class']}")

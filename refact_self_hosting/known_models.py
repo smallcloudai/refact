@@ -60,4 +60,13 @@ models_mini_db = {
     "T": 2048,
     "filter_caps": ["starcoder"],
 },
+"starchat/15b/beta8bit": {
+    "model_path_type": "huggingface",
+    "model_path": "rahuldshetty/starchat-beta-8bit",
+    "diff_scratchpad_class": None,
+    "chat_scratchpad_class": "code_contrast:ScratchpadStarChat",
+    "model_class": "code_contrast.modeling:StarChatModel",
+    "T": 2048,
+    "filter_caps": ["starchat"],
+},
 }
