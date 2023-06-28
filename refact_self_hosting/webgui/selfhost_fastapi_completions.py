@@ -201,7 +201,7 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
                         del ch["content"]
             tmp = json.dumps(msg)
             yield "data: " + tmp + "\n\n"
-            log("  " + red_time(created_ts) + "stream %s <- %i bytes" % (ticket.id(), len(tmp)))
+            log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
             if msg.get("status", "") != "in_progress":
                 break
         yield "data: [DONE]" + "\n\n"
@@ -262,10 +262,10 @@ class CompletionsRouter(APIRouter):
                     rec_model = rec_modelcap
                     rec_function_name = f"{rec.function_name}-{rec_modelcap}"
                 else:
+                    if rec_modelcap == "CONTRASTcode":
+                        continue
                     rec_model, err_msg = selfhost_model_resolve.resolve_model(rec_modelcap, "", "")
                     assert err_msg=="", err_msg
-                    if rec_model == "CONTRASTcode":
-                        continue
                     rec_function_name = rec.function_name
                 longthink_functions[rec_function_name] = {
                     **rec.to_dict(),
