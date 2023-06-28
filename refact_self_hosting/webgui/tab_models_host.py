@@ -117,6 +117,8 @@ def _update_watchdog_d():
                 cursor += 1
                 if cursor >= len(gpus):
                     break
+            if cursor >= len(gpus):
+                break
     for gpu_i, gpu in enumerate(gpus):
         if "run-me" in gpu:
             with open(os.path.join(env.DIR_WATCHDOG_D, "model-gpu%i.cfg" % gpu_i), "w") as f:
