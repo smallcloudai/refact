@@ -18,19 +18,19 @@ function get_tab_files() {
                 }
             }
             // render_filter_progress(data.filtering_progress);
-            if(data.scan_status === 'completed') {
-                document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
-                document.querySelector('.run-pane').classList.remove('pane-disabled');
-            } else {
-                document.querySelector('.filetypes-pane').classList.add('pane-disabled');
-                document.querySelector('.run-pane').classList.add('pane-disabled');
-            }
+            // if(data.scan_status && data.scan_status === 'completed') {
+            //     document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
+            //     document.querySelector('.run-pane').classList.remove('pane-disabled');
+            // } else {
+            //     document.querySelector('.filetypes-pane').classList.add('pane-disabled');
+            //     document.querySelector('.run-pane').classList.add('pane-disabled');
+            // }
             render_tab_files(data);
             render_filetypes(data.mime_types, data.filetypes);
             render_force_filetypes(data.filetypes);
             render_ftf_stats(data.filestats_ftf);
             if(data.filestats_ftf) {
-                if(data.filestats_ftf.length > 0) {
+                if(data.filestats_ftf.status) {
                     document.querySelector('.ftf-status').classList.remove('d-none');
                 } else {
                     document.querySelector('.ftf-status').classList.add('d-none');
@@ -44,12 +44,21 @@ function get_tab_files() {
                     }
                     sources_error.querySelector('span').innerHTML = '';
                 }
+                if(data.filestats_ftf.eta_minutes && data.filestats_ftf.eta_minutes !== 0) {
+                    const progress = document.querySelector('.ftf-progress');
+                    if(!document.querySelector('.ftf-progress-eta')) {
+                        const eta = document.createElement('span');
+                        eta.classList.add('ftf-progress-eta');
+                        progress.appendChild(eta);
+                    }
+                    const eta_state = document.querySelector('.ftf-progress-eta');
+                    eta_state.innerHTML = 'ETA: ' + data.filestats_ftf.eta_minutes + ' minute(s)';
+                }
                 switch(status) {
                     case undefined:
                     case 'interrupted':
                     case 'finished':
                         sources_run_button.disabled = false;
-                        source_filetypes_state();
                         let status_line = "";
                         if (status !== undefined) {
                             status_line = status;
@@ -58,7 +67,6 @@ function get_tab_files() {
                         break;
                     case 'starting':
                         sources_run_button.disabled = true;
-                        source_filetypes_state(true);
                         sources_run_pane.classList.add('pane-disabled');
                         if(!document.querySelector('.sources-run-button .spinner-border')) {
                             sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
@@ -85,7 +93,6 @@ function get_tab_files() {
                         }
                         break;
                     default:
-                        source_filetypes_state();
                         sources_run_button.disabled = false;
                         sources_run_button.innerHTML = `Stop filter`;
                         if(!document.querySelector('.sources-run-button .spinner-border')) {
