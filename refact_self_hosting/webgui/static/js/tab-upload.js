@@ -63,6 +63,9 @@ function get_tab_files() {
                         }
                         sources_status.innerHTML = status_line;
                         break;
+                    case 'filtering':
+                        sources_run_pane.classList.remove('pane-disabled');
+                        break;
                     case 'starting':
                         sources_run_button.disabled = true;
                         sources_run_pane.classList.add('pane-disabled');
@@ -131,12 +134,10 @@ function render_ftf_progress(filtering_progress) {
 function source_filetypes_state(disabled = false) {
     if(disabled) {
         document.querySelector('.filetypes-pane').classList.add('pane-disabled');
-        document.querySelector('.run-pane').classList.add('pane-disabled');
         document.querySelector('.sources-settings').disabled = true;
     }
     else {
         document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
-        document.querySelector('.run-pane').classList.remove('pane-disabled');
         document.querySelector('.sources-settings').disabled = false;
     }
 }
