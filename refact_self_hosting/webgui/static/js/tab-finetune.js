@@ -104,7 +104,7 @@ function render_runs() {
         }
 
         row.dataset.run = element.run_id;
-        const local_is_working = element.status === 'working';
+        const local_is_working = !(['interrupted', 'failed', 'finished'].includes(element.status));
         if (local_is_working) {
             is_working = true;
             if (!blue_lora) {
@@ -117,15 +117,17 @@ function render_runs() {
         run_minutes.innerHTML = element.worked_minutes;
         run_steps.innerHTML = element.worked_steps;
         const disabled = local_is_working ? "disabled" : ""
-        run_delete.innerHTML = `<button class="btn btn-danger btn-sm" ${disabled}"><i class="bi bi-trash3-fill"></i></button>`;
+        run_delete.innerHTML = `<button class="btn btn-danger btn-sm" ${disabled}><i class="bi bi-trash3-fill"></i></button>`;
         row.appendChild(run_name);
         row.appendChild(run_status);
         row.appendChild(run_minutes);
         row.appendChild(run_steps);
         row.appendChild(run_delete);
-        run_delete.addEventListener('click', () => {
-            delete_run(element.run_id);
-        })
+        if (!local_is_working) {
+            run_delete.addEventListener('click', () => {
+                delete_run(element.run_id);
+            })
+        }
 
         document.querySelector('.run-table').appendChild(row);
         if (blue_lora == element.run_id) {
