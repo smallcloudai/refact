@@ -75,9 +75,6 @@ function get_tab_files() {
                         sources_status.innerHTML = status_line;
                         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
                         break;
-                    case 'filtering':
-                        sources_run_pane.classList.remove('pane-disabled');
-                        break;
                     case 'starting':
                         do_starting_state()
                         break;
