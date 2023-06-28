@@ -1,5 +1,15 @@
 let tab_files_data = null;
 let show_scan_error = false;
+
+function do_starting_state() {
+    sources_run_button.disabled = true;
+    sources_run_pane.classList.add('pane-disabled');
+    if(!document.querySelector('.sources-run-button .spinner-border')) {
+        sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
+        sources_status.innerHTML = 'starting';
+    }
+}
+
 function get_tab_files() {
     fetch("/tab-files-get")
         .then(function(response) {
@@ -67,12 +77,7 @@ function get_tab_files() {
                         sources_run_pane.classList.remove('pane-disabled');
                         break;
                     case 'starting':
-                        sources_run_button.disabled = true;
-                        sources_run_pane.classList.add('pane-disabled');
-                        if(!document.querySelector('.sources-run-button .spinner-border')) {
-                            sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
-                            sources_status.innerHTML = 'starting';
-                        }
+                        do_starting_state()
                         break;
                     case 'error':
                         sources_run_button.disabled = true;
@@ -261,12 +266,14 @@ function render_tab_files(data) {
 
 function run_stop_filtering() {
     const status = sources_run_button.getAttribute("ftf_status")
+    sources_run_button.disabled = true;
     switch (status) {
         case 'undefined':
         case 'interrupted':
         case 'failed':
         case 'error':
         case 'finished':
+            do_starting_state()
             run_now();
             break;
         case 'starting':
