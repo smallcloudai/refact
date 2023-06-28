@@ -62,6 +62,7 @@ function render_runs() {
     let is_working = false;
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.setAttribute("need_to_stop", is_working)
+    start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
 
     document.querySelector('.run-table').innerHTML = '';
     if(data.finetune_runs.length === 0) {
@@ -430,7 +431,7 @@ export function init() {
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.addEventListener('click', function () {
         let url = "/tab-finetune-run-now";
-        if (start_finetune_button.getAttribute("need_to_stop") === true) {
+        if (start_finetune_button.getAttribute("need_to_stop") === 'true') {
             url = "/tab-finetune-stop-now";
         }
         fetch(url)
