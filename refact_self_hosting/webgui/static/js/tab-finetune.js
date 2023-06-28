@@ -433,6 +433,7 @@ export function init() {
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.addEventListener('click', function () {
         let url = "/tab-finetune-run-now";
+        start_finetune_button.disabled = true;
         if (start_finetune_button.getAttribute("need_to_stop") === 'true') {
             url = "/tab-finetune-stop-now";
         }
