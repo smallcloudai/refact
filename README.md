@@ -160,7 +160,7 @@ the difference it makes for code suggestions.
 
 There's a catch: both VS Code and JB plugins cache the responses. To force the model to produce
 a new suggestion (rather than immediately responding with a cached one), you can change the text
-a few lines above, for example, a comment. This will make the code look different. Alternatively,
+a few lines above, for example, a comment. Alternatively,
 you can use the Manual Suggestion Trigger (a key combination), which always produces a new suggestion.
 
 
