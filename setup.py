@@ -13,7 +13,8 @@ setup(
                       "huggingface_hub", "tiktoken", "cdifflib", "cloudpickle",
                       "sentencepiece", "dataclasses_json", "torch", "transformers",
                       "blobfile", "cryptography",
-                      "smallcloud", "code_contrast", "uvloop", "aiohttp", "python-multipart"
+                      "smallcloud", "code_contrast", "uvloop", "aiohttp", "python-multipart",
+                      "bitsandbytes",
                       ],
 )
 
