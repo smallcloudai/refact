@@ -76,6 +76,8 @@ function get_tab_files() {
                         sources_status.innerHTML = status_line;
                         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
                         sources_pane.classList.remove('pane-disabled');
+                        sources_settings.disabled = false;
+                        reset_ftf_progress();
                         break;
                     case 'starting':
                         do_starting_state()
@@ -83,6 +85,8 @@ function get_tab_files() {
                     case 'error':
                         sources_run_button.disabled = true;
                         sources_status.innerHTML = status;
+                        sources_settings.disabled = false;
+                        reset_ftf_progress();
                         if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
                             if(sources_error && sources_error.classList.contains('d-none')) {
                                 sources_error.classList.remove('d-none');
@@ -92,6 +96,8 @@ function get_tab_files() {
                         break;
                     case 'failed':
                         sources_status.innerHTML = status;
+                        sources_settings.disabled = false;
+                        reset_ftf_progress();
                         if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
                             if(sources_error && sources_error.classList.contains('d-none')) {
                                 sources_error.classList.remove('d-none');
@@ -109,6 +115,8 @@ function get_tab_files() {
                         sources_pane.classList.add('pane-disabled');
                         filetypes_pane.classList.add('pane-disabled');
                         sources_run_pane.classList.remove('pane-disabled');
+                        sources_settings.disabled = false;
+                        reset_ftf_progress();
                         break;
                 }
             }
@@ -116,6 +124,7 @@ function get_tab_files() {
                 sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
                 sources_run_pane.classList.add('pane-disabled');
+                sources_settings.disabled = true;
             }
         });
 }
@@ -135,6 +144,15 @@ function render_filter_progress(progress_value) {
 function render_ftf_progress(filtering_progress) {
     const ftf_bar = document.querySelector('.ftf-bar');
     ftf_bar.style.width = filtering_progress + "%";
+}
+
+function reset_ftf_progress() {
+    const eta_state = document.querySelector('.ftf-eta');
+    eta_state.innerHTML = '';
+    const progress_container = document.querySelector('.ftf-progress');
+    progress_container.classList.add('d-none');
+    const ftf_bar = document.querySelector('.ftf-bar');
+    ftf_bar.style.width = "0%";
 }
 // function render_filter_button(value) {
 //     if(value === "completed") {
