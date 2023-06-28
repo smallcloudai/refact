@@ -4,6 +4,8 @@ let show_scan_error = false;
 function do_starting_state() {
     sources_run_button.disabled = true;
     sources_run_pane.classList.add('pane-disabled');
+    filetypes_pane.classList.add('pane-disabled');
+    sources_pane.classList.add('pane-disabled');
     if(!document.querySelector('.sources-run-button .spinner-border')) {
         sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
         sources_status.innerHTML = 'starting';
@@ -28,13 +30,13 @@ function get_tab_files() {
                 }
             }
             // render_filter_progress(data.filtering_progress);
-            // if(data.scan_status && data.scan_status === 'completed') {
-            //     document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
-            //     document.querySelector('.run-pane').classList.remove('pane-disabled');
-            // } else {
-            //     document.querySelector('.filetypes-pane').classList.add('pane-disabled');
-            //     document.querySelector('.run-pane').classList.add('pane-disabled');
-            // }
+            if(data.scan_status && data.scan_status === 'completed') {
+                document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
+                document.querySelector('.run-pane').classList.remove('pane-disabled');
+            } else {
+                document.querySelector('.filetypes-pane').classList.add('pane-disabled');
+                document.querySelector('.run-pane').classList.add('pane-disabled');
+            }
             render_tab_files(data);
             render_filetypes(data.mime_types, data.filetypes);
             render_force_filetypes(data.filetypes);
@@ -62,7 +64,6 @@ function get_tab_files() {
                     progress_container.classList.remove('d-none');
                     render_ftf_progress(data.filtering_progress);
                 }
-                sources_run_pane.classList.remove('pane-disabled');
                 switch(status) {
                     case undefined:
                     case 'interrupted':
@@ -74,6 +75,7 @@ function get_tab_files() {
                         }
                         sources_status.innerHTML = status_line;
                         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
+                        sources_pane.classList.remove('pane-disabled');
                         break;
                     case 'starting':
                         do_starting_state()
@@ -104,6 +106,9 @@ function get_tab_files() {
                             sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter`;
                             sources_status.innerHTML = data.filestats_ftf.status;
                         }
+                        sources_pane.classList.add('pane-disabled');
+                        filetypes_pane.classList.add('pane-disabled');
+                        sources_run_pane.classList.remove('pane-disabled');
                         break;
                 }
             }
