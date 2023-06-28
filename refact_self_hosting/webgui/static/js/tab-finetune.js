@@ -50,11 +50,17 @@ function delete_run(run_id) {
     .then(response => {
         if (!response.ok) {
             return response.json()
-            .then(error => {
-                throw new Error(error.message);
-            });
+        }
+        const gfx = document.querySelector('.fine-gfx');
+        gfx.src = `/tab-finetune-progress-svg/none`;
+        const log_container = document.querySelector('.tab-upload-finetune-logs');
+        if (log_container) {
+            log_container.innerHTML = '';
         }
     })
+    .then(error => {
+        throw new Error(error.message);
+    });
 }
 
 function render_runs() {
