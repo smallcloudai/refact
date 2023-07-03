@@ -1,0 +1,38 @@
+DO:
+"""
+Explain the code
+"""
+CODE:
+"""
+// language: python
+    def completion(self, final: bool, tokens_batch: Optional[int] = 25) -> Iterator[Dict[str, str]]:
+        tokens_batch: int = self.max_tokens if final else tokens_batch
+
+        return self.completion_stream(
+            engine=self._engine,
+            tokens_batch=tokens_batch,
+            prompt=self.prompt,
+            replace_modified=self._replace_modified
+        )
+"""
+ANSWER:
+"""
+// This code defines a function called "completion"
+// which takes two arguments: final which is boolean and tokens_batch, which is optional int
+// if final = true, streaming is disabled, and vice versa
+// tokens batch will be set to self.max_tokens if streaming is disabled
+// it returns a function self._completion_stream, which receives engine, tokens_batch, prompt and replace_modified
+// this function returns an iterator of Dicts, where keys and values are both strings
+"""
+
+
+DO:
+"""
+Explain the code
+"""
+CODE:
+"""
+{___place_code_here___}
+"""
+ANSWER:
+"""

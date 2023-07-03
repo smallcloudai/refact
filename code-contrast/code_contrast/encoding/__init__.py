@@ -1,1 +1,0 @@
-from code_contrast.encoding.smc_encoding import SMCEncoding

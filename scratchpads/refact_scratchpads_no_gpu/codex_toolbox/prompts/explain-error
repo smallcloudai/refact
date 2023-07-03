@@ -1,0 +1,29 @@
+DO:
+"""
+summarize error text, explain what does this error means
+"""
+CODE:
+"""
+File "/usr/local/lib/python3.8/dist-packages/code_contrast/contrast/contrast.py", line 567, in untokenize_new_token
+    self.untokenize_finish_state(us, c)
+  File "/usr/local/lib/python3.8/dist-packages/code_contrast/contrast/contrast.py", line 495, in untokenize_finish_state
+    assert without_tpos[i] == self.full_orig_tokens[us.fn_txt][i], "\n" + str(without_tpos) + "\n" + str(self.orig_tokens[us.fn_txt])
+KeyError: 'c:\\Users\\user\\Games\\new.py:0'
+"""
+ANSWER:
+"""
+# This error is due to an assertion error that is raised when the tokens in self.full_orig_tokens have a different value from the tokens in without_tpos.
+# The specific KeyError indicates that the file path c:\\Users\\user\\Games\\new.py could not be found in the dictionary.
+# This likely indicates that the text used for tokenization is not being found.
+"""
+
+DO:
+"""
+summarize error text, explain what does this error means
+"""
+CODE:
+"""
+{___place_code_here___}
+"""
+ANSWER:
+"""

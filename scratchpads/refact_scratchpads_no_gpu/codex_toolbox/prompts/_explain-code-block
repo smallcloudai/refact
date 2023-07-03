@@ -1,0 +1,83 @@
+DO:
+"""
+Explain the code
+"""
+CODE:
+"""
+    def completion(self, final: bool, tokens_batch: Optional[int] = 25) -> Iterator[Dict[str, str]]:
+        tokens_batch: int = self.max_tokens if final else tokens_batch
+
+        return self.completion_stream(
+            engine=self._engine,
+            tokens_batch=tokens_batch,
+            prompt=self.prompt,
+            replace_modified=self._replace_modified
+        )
+"""
+ANSWER:
+"""
+    def completion(self, final: bool, tokens_batch: Optional[int] = 25) -> Iterator[Dict[str, str]]:
+        tokens_batch: int = self.max_tokens if final else tokens_batch
+
+        return self.completion_stream(
+            engine=self._engine,
+            tokens_batch=tokens_batch,
+            prompt=self.prompt,
+            replace_modified=self._replace_modified
+        )
+
+# This code defines a function called 'completion' that takes two parameters as arguments, 'final' and 'tokens_batch'.
+#The function returns an iterator object of type 'Dict[str, str]'.
+
+# The function sets the 'tokens_batch' parameter to the maximum number of tokens if the 'final' parameter is set to True.
+# Otherwise, it sets the 'tokens_batch' parameter to the value passed in as an argument.
+
+# The function then returns a completion stream object that is generated using the '_engine', 'tokens_batch', 'prompt', and '_replace_modified' parameters.
+
+DO:
+"""
+Explain the code
+"""
+CODE:
+"""
+cli = click.CommandCollection(sources=[ext_nodes_cli])
+"""
+ANSWER:
+"""
+cli = click.CommandCollection(sources=[ext_nodes_cli])
+# This code creates a CommandCollection object, cli, which is populated with the commands from the ext_nodes_cli source.
+# The CommandCollection is used to group together multiple related commands in a single command line interface.
+
+DO:
+"""
+Explain the code
+"""
+CODE:
+"""
+ext_nodes_cli.add_command(filter_repos, name='filter')
+ext_nodes_cli.add_command(daemon, name='daemon')
+ext_nodes_cli.add_command(tasks_setup, name='setup')
+ext_nodes_cli.add_command(stats, name='stats')
+"""
+ANSWER:
+"""
+ext_nodes_cli.add_command(filter_repos, name='filter')
+ext_nodes_cli.add_command(daemon, name='daemon')
+ext_nodes_cli.add_command(tasks_setup, name='setup')
+ext_nodes_cli.add_command(stats, name='stats')
+
+# This code adds four commands to the ext_nodes_cli command line interface.
+# the 'filter' command runs the filter_repos function,
+# the 'daemon' command runs the daemon function,
+# the 'setup' command runs the tasks_setup function, and the 'stats' command runs the stats function.
+
+DO:
+"""
+Explain the code
+"""
+CODE:
+"""
+{___place_code_here___}
+"""
+ANSWER:
+"""

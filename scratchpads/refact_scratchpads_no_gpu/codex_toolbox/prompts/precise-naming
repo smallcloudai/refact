@@ -1,0 +1,36 @@
+DO:
+"""
+Rename variables with unclear or uninformative naming to be more descriptive
+"""
+CODE:
+"""
+# language: python
+def f(x: float, c: List[float]):
+    r = 0
+    xx = 1
+    for cc in c:
+        r += xx * cc
+        xx *= x
+    return r
+"""
+ANSWER:
+"""def polynom(x: float, coefficients: List[float]):
+    value = 0
+    x_power = 1
+    for c in coefficients:
+        value += x_power * c
+        x_power *= x
+    return value
+"""
+
+
+DO:
+"""
+Rename variables with unclear or uninformative naming to be more descriptive
+"""
+CODE:
+"""
+{___place_code_here___}
+"""
+ANSWER:
+"""
