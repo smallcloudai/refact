@@ -12,7 +12,7 @@ from tiktoken.load import load_tiktoken_bpe
 __all__ = ["SMCEncoding"]
 
 
-class SMCEncoding:
+class RefactEncoding:
     def __init__(self, name: str):
         self.DIAMOND = 0
         self.INFILL = 0
@@ -132,30 +132,9 @@ class SMCEncoding:
                     self._slash_n_banlist.add(i)
                     # print("%05i \"%s\"" % (i, self._tik.decode([i]).replace("\n", "\\n").replace("\r", "\\r")))
 
-        elif name in ['fb1', 'fb3']:
-            import tokenizers
-            filename = Path(__file__).resolve().parent / f"{name}.json"
-            self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
-            self.ESCAPE = 0
-            self.DIAMOND = 1
-            self.EOT = 2
-            self.MSG = self._encode_token("MSG")
-            self.FILE = self._encode_token("FILE")
-            self.CHUNK = self._encode_token("CH")
-            self.n_vocab = self._tokenizer.get_vocab_size()
-            if name == "fb1":
-                # Removed MASK tokens. Use for plain text.
-                assert self.n_vocab == 50261
-            else:
-                # Removed MASK tokens, added position XXXXX tokens.
-                assert self.n_vocab == 51285
-                self._pos_tokens = list(range(50261, 50261 + 1024))
-                assert self.decode([self._pos_tokens[0]]) == "⪦XXXXX⪧"
-                assert self.decode([self._pos_tokens[-1]]) == "⪦VVVVV⪧"
-
         elif name in ['llama']:
             from sentencepiece import SentencePieceProcessor
-            filename = Path(__file__).resolve().parent / f"{name}.tokenizer.model"
+            filename = Path(__file__).resolve().parent.parent / f"{name}.tokenizer.model"
             self._sentencepiece_tokenizer = SentencePieceProcessor(str(filename))
             self.n_vocab = self._sentencepiece_tokenizer.vocab_size()
             self.bos_id: int = self._sentencepiece_tokenizer.bos_id()
@@ -163,20 +142,9 @@ class SMCEncoding:
             self.EOT = self._sentencepiece_tokenizer.eos_id()
             self.LF = 13
 
-        elif name in ['pythia']:
-            import tokenizers
-            filename = Path(__file__).resolve().parent / f"{name}.json"
-            self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
-            self.ESCAPE = 0
-            self.DIAMOND = self.DUMMY = 1
-            self.EOT = 0
-            self.LF = self._encode_token("\n")
-            self.LFLF = self._encode_token("\n\n")
-            self.n_vocab = self._tokenizer.get_vocab_size()
-
         elif name in ['bigcode_santacoder']:
             import tokenizers
-            filename = Path(__file__).resolve().parent / f"{name}.json"
+            filename = Path(__file__).resolve().parent.parent / f"{name}.json"
             self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
             self.ESCAPE = 49152  # <|endoftext|>
             self.DIAMOND = self.DUMMY = 49156  # <fim-pad>
@@ -190,7 +158,7 @@ class SMCEncoding:
 
         elif name in ['bigcode_largemodel']:
             import tokenizers
-            filename = Path(__file__).resolve().parent / f"{name}.json"
+            filename = Path(__file__).resolve().parent.parent / f"{name}.json"
             self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
             self.DIAMOND = self.DUMMY = 4  # <fim-pad>
             self.FILE = 5  # <filename>
@@ -220,7 +188,7 @@ class SMCEncoding:
 
         elif name in ['bigcode_starchat']:
             import tokenizers
-            filename = Path(__file__).resolve().parent / f"{name}.json"
+            filename = Path(__file__).resolve().parent.parent / f"{name}.json"
             self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
             self.EOT = 0  # <|endoftext|>
             self.PREFIX = 1  # <fim-prefix>
@@ -251,17 +219,8 @@ class SMCEncoding:
             self.END = 49155  # <|end|>
             self.n_vocab = self._tokenizer.get_vocab_size()
 
-        elif name in ['stablelm-alpha']:
-            import tokenizers
-            filename = Path(__file__).resolve().parent / f"{name}.json"
-            self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
-            self.ESCAPE = 0  # <|endoftext|>
-            self.DIAMOND = self.DUMMY = 1  # <|padding|>
-            self.LF = self._encode_token("\n")
-            self.LFLF = self._encode_token("\n\n")
-            self.n_vocab = self._tokenizer.get_vocab_size()
         else:
-            assert 0
+            assert 0, "unknown encoding %s" % name
 
         if self._tokenizer is not None:
             # NOTE: this is workaround for huggingface tokenizer
