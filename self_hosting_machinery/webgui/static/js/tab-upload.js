@@ -1,5 +1,8 @@
 let tab_files_data = null;
 let show_scan_error = false;
+let sort_type = 'filetype';
+let sort_order = 'asc';
+let sort_started = false;
 let dont_disable_file_types = false;
 
 
@@ -155,24 +158,6 @@ function reset_ftf_progress() {
     progress_container.classList.add('d-none');
     const ftf_bar = document.querySelector('.ftf-bar');
     ftf_bar.style.width = "0%";
-}
-// function render_filter_button(value) {
-//     if(value === "completed") {
-//         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>${value}`;
-//     } else {
-//         sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
-//     }
-// }
-
-function source_filetypes_state(disabled = false) {
-    if(disabled) {
-        document.querySelector('.filetypes-pane').classList.add('pane-disabled');
-        document.querySelector('.sources-settings').disabled = true;
-    }
-    else {
-        document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
-        document.querySelector('.sources-settings').disabled = false;
-    }
 }
 
 function render_tab_files(data) {
@@ -377,7 +362,8 @@ function render_filetypes(mimetypes, filetypes) {
         const table_body = document.querySelector('.upload-tab-table-type-body');
         table_body.innerHTML = '';
         let i = 0;
-        mimetypes.forEach((item) => {
+        const sorted_mime_types = sort_filetypes(mimetypes);
+        sorted_mime_types.forEach((item) => {
             const row = document.createElement('tr');
             let checkbox_checked = `checked`;
             const file_name = `<label for="file-list${i}">${item.file_type}</label>`;
@@ -401,6 +387,30 @@ function render_filetypes(mimetypes, filetypes) {
         watch_filetypes();
     }
 }
+
+function sort_filetypes(sorted_data) {
+    if(!sort_started) { return sorted_data; }
+    if(sort_type === 'filetype') {
+        if (sort_order === 'asc') {
+            sorted_data.sort((a, b) => a.file_type.localeCompare(b.file_type));
+        } else {
+            sorted_data.sort((a, b) => b.file_type.localeCompare(a.file_type));
+        }
+    }
+    if(sort_type === 'count') {
+        if (sort_order === 'asc') {
+            sorted_data.sort(function (a, b) {
+                return a.count - b.count;
+            });
+        } else {
+            sorted_data.sort(function (a, b) {
+                return b.count - a.count;
+            });
+        }
+    }
+    return sorted_data;
+  }
+  
 
 function watch_filetypes() {
     const file_types = document.querySelectorAll('.upload-tab-table-type-body input');
@@ -842,6 +852,53 @@ export function init() {
         show_scan_error = false;
     })
 
+    const mime_sort = document.querySelector('.upload-tab-table-mime-sort');
+    mime_sort.addEventListener('click', (event) => {
+        sort_type = 'filetype'; 
+        sort_started = true;
+        if(event.target.classList.contains('bi-caret-up-fill')) {
+            sort_order = 'desc';
+            event.target.classList.remove('bi-caret-up-fill');
+            event.target.classList.add('bi-caret-down-fill');
+        } else {
+            sort_order = 'asc';
+            event.target.classList.remove('bi-caret-down-fill');
+            event.target.classList.add('bi-caret-up-fill');
+        }
+    });
+
+    const count_sort = document.querySelector('.upload-tab-table-count-sort');
+    count_sort.addEventListener('click', (event) => {
+        sort_type = 'count'; 
+        sort_started = true;
+        if(event.target.classList.contains('bi-caret-up-fill')) {
+            sort_order = 'desc';
+            event.target.classList.remove('bi-caret-up-fill');
+            event.target.classList.add('bi-caret-down-fill');
+        } else {
+            sort_order = 'asc';
+            event.target.classList.remove('bi-caret-down-fill');
+            event.target.classList.add('bi-caret-up-fill');
+        }
+    });
+
+    const checkall_button = document.querySelector('.filetypes-checkall');
+    checkall_button.addEventListener('click', function() {
+        const file_inputs = document.querySelectorAll('.upload-tab-table-type-body .enabled-file input[type="checkbox"]');
+        for (let i = 0; i < file_inputs.length; i++) {
+            file_inputs[i].checked = true;
+        }
+        save_filter_setup();
+    });
+
+    const uncheckall_button = document.querySelector('.filetypes-uncheckall');
+    uncheckall_button.addEventListener('click', function() {
+        const file_inputs = document.querySelectorAll('.upload-tab-table-type-body .enabled-file input[type="checkbox"]');
+        for (let i = 0; i < file_inputs.length; i++) {
+            file_inputs[i].checked = false;
+        }
+        save_filter_setup();
+    });
 }
 
 export function tab_switched_here() {
