@@ -5,9 +5,9 @@ import copy
 from fastapi import APIRouter, Request, Query
 from fastapi.responses import Response, JSONResponse
 
-from self_hosting_machinery.refact_webgui.selfhost_webutils import log
-from self_hosting_machinery.refact_scripts import env
+from self_hosting_machinery.webgui.selfhost_webutils import log
 from known_models_db.refact_known_models import models_mini_db
+from self_hosting_machinery import env
 
 
 from known_models_db.refact_toolbox_db import modelcap_records

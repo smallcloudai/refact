@@ -15,7 +15,7 @@ from collections import defaultdict
 from refact_scratchpads import ScratchpadBase
 from refact_scratchpads import ScratchpadCompletion
 
-from self_hosting_machinery.refact_scripts import best_lora
+from self_hosting_machinery.scripts import best_lora
 from known_models_db.refact_known_models import models_mini_db
 
 from refact_models import CodifyModel
@@ -27,7 +27,7 @@ from refact_models.checkpoint_loader import (
 )
 from typing import Optional, Dict, Any, List
 
-from self_hosting_machinery.refact_scripts import env
+from self_hosting_machinery import env
 
 from smallcloud import inference_server
 inference_server.override_urls("http://127.0.0.1:8008/infengine-v1/")

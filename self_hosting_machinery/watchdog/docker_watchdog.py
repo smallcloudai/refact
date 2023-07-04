@@ -8,7 +8,7 @@ import time
 import uuid
 from typing import Dict, Optional
 
-from self_hosting_machinery.refact_scripts import env
+from self_hosting_machinery import env
 
 
 def replace_variable_names_from_env(s):

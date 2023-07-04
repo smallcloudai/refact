@@ -11,16 +11,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from self_hosting_machinery.refact_webgui.collector import collector
-from self_hosting_machinery.refact_webgui.selfhost_req_queue import Ticket
-from self_hosting_machinery.refact_webgui.selfhost_static import StaticRouter
-from self_hosting_machinery.refact_webgui.selfhost_fastapi_completions import CompletionsRouter
-from self_hosting_machinery.refact_webgui.selfhost_fastapi_gpu import GPURouter
-from self_hosting_machinery.refact_webgui.tab_server_logs import TabServerLogRouter
-from self_hosting_machinery.refact_webgui.tab_settings import TabSettingsRouter
-from self_hosting_machinery.refact_webgui.tab_upload import TabUploadRouter
-from self_hosting_machinery.refact_webgui.tab_finetune import TabFinetuneRouter
-from self_hosting_machinery.refact_webgui.tab_models_host import TabHostRouter
+from self_hosting_machinery.webgui.collector import collector
+from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
+from self_hosting_machinery.webgui.selfhost_static import StaticRouter
+from self_hosting_machinery.webgui.selfhost_fastapi_completions import CompletionsRouter
+from self_hosting_machinery.webgui.selfhost_fastapi_gpu import GPURouter
+from self_hosting_machinery.webgui.tab_server_logs import TabServerLogRouter
+from self_hosting_machinery.webgui.tab_settings import TabSettingsRouter
+from self_hosting_machinery.webgui.tab_upload import TabUploadRouter
+from self_hosting_machinery.webgui.tab_finetune import TabFinetuneRouter
+from self_hosting_machinery.webgui.tab_models_host import TabHostRouter
 
 
 from collections import defaultdict

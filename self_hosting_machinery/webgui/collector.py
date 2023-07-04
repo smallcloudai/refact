@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 
-from self_hosting_machinery.refact_scripts import env
+from self_hosting_machinery import env
 
 
 async def collect_longthinks(user2gpu_queue):

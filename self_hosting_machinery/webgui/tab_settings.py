@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pathlib import Path
-from self_hosting_machinery.refact_scripts import env
+from self_hosting_machinery import env
 
 
 __all__ = ["TabSettingsRouter"]
