@@ -1,6 +1,6 @@
-from encoding_wrapper.refact_encoding import RefactEncoding
+from refact_encoding import RefactEncoding
 
-from code_contrast.refact_code_contrast_2023q2.element import Format2023q2, Element, ElementPackingContext
+from code_contrast.refact_code_contrast_2023q2.element import Format2023q2
 from code_contrast.refact_code_contrast_2023q2.el_msg import MsgElement
 from code_contrast.refact_code_contrast_2023q2.el_chunk import ChunkElement
 

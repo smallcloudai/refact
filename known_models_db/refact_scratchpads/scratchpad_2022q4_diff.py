@@ -3,7 +3,7 @@ import time
 import termcolor
 import collections
 
-from encoding_wrapper.refact_encoding import RefactEncoding, hlprint
+from refact_encoding import RefactEncoding, hlprint
 import code_contrast.refact_code_contrast_2022q3
 import code_contrast.refact_code_contrast_2022q3.contrast
 

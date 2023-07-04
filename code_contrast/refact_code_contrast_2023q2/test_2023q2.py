@@ -1,6 +1,6 @@
 import termcolor
 
-from encoding_wrapper.refact_encoding import RefactEncoding, hlprint
+from refact_encoding import RefactEncoding, hlprint
 
 from collections import defaultdict
 

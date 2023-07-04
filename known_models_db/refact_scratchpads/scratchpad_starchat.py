@@ -3,7 +3,7 @@ import torch as th
 from typing import List, Any, Dict
 
 from known_models_db.refact_scratchpads import ScratchpadBase
-from encoding_wrapper.refact_encoding import RefactEncoding
+from refact_encoding import RefactEncoding
 
 
 class ScratchpadStarChat(ScratchpadBase):

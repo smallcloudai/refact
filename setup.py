@@ -6,7 +6,7 @@ setup(
     version="0.9.0",
     py_modules=[
         "code_contrast",
-        "encoding_wrapper",
+        "refact_encoding",
         "known_models_db",
         "refact_models",
         "self_hosting_machinery",

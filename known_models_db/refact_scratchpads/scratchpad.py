@@ -4,7 +4,7 @@ import termcolor
 import time
 import torch.distributed as dist
 
-from encoding_wrapper.refact_encoding import RefactEncoding, hlprint
+from refact_encoding import RefactEncoding, hlprint
 
 from typing import Callable, Union, List, Set, Dict, Any, Optional
 

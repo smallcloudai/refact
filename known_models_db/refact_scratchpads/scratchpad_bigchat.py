@@ -9,7 +9,7 @@ import torch as th
 from typing import List, Any, Dict, Set, Optional, Union, Tuple
 
 from known_models_db.refact_scratchpads import ScratchpadBase
-from encoding_wrapper.refact_encoding import RefactEncoding
+from refact_encoding import RefactEncoding
 from known_models_db.refact_scratchpads.bigcode_chat_prompt import base_msg
 
 

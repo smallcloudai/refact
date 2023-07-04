@@ -1,4 +1,4 @@
-from encoding_wrapper.refact_encoding import RefactEncoding, hlprint
+from refact_encoding import RefactEncoding, hlprint
 
 from code_contrast.refact_code_contrast_2023q2.element import Element, ElementPackingContext, Format2023q2
 from typing import List, Optional

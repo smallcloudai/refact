@@ -3,7 +3,7 @@ from typing import Optional
 from torch import nn
 from transformers import AutoModelForCausalLM
 
-from encoding_wrapper.refact_encoding import RefactEncoding
+from refact_encoding import RefactEncoding
 
 
 class StarChatModel(nn.Module):

@@ -1,5 +1,5 @@
 import termcolor, re
-from encoding_wrapper.refact_encoding import RefactEncoding
+from refact_encoding import RefactEncoding
 from typing import List, Dict, Tuple, Callable, Type
 
 

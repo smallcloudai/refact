@@ -1,7 +1,7 @@
 import termcolor
 import torch as th
 
-from encoding_wrapper.refact_encoding import RefactEncoding
+from refact_encoding import RefactEncoding
 from known_models_db.refact_scratchpads.scratchpad import ScratchpadBase
 from known_models_db.refact_scratchpads import bigcode_prompts, utils
 

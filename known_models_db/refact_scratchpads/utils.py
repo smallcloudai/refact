@@ -4,7 +4,7 @@ from itertools import zip_longest
 import torch as th
 from typing import Tuple
 
-from encoding_wrapper.refact_encoding import RefactEncoding
+from refact_encoding import RefactEncoding
 
 
 def trim_context_infill(
