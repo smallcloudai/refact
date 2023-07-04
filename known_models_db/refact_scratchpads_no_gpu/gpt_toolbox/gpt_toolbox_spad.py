@@ -9,8 +9,8 @@ from typing import List, Union, Callable, Dict, Iterator, Tuple
 import openai
 import tiktoken
 
-from refact_scratchpads import utils as scratchpad_utils
-from refact_scratchpads_no_gpu.async_scratchpad import ascratch
+from known_models_db.refact_scratchpads import utils as scratchpad_utils
+from known_models_db.refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
 from .gpt_chat_spad import gpt_prices, calculate_chat_tokens
 from .utils import trim_context_tok, code_block_postprocess

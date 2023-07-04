@@ -4,11 +4,11 @@ import termcolor
 import time
 import torch.distributed as dist
 
-from refact_encoding import RefactEncoding, hlprint
+from encoding_wrapper.refact_encoding import RefactEncoding, hlprint
 
 from typing import Callable, Union, List, Set, Dict, Any, Optional
 
-from refact_scratchpads.utils import temperature_top_k_top_p_filtering
+from known_models_db.refact_scratchpads.utils import temperature_top_k_top_p_filtering
 
 
 DEBUGLOG_TOP3 = int(os.environ.get("DEBUG", "0"))

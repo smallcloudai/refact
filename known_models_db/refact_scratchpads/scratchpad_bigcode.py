@@ -1,9 +1,9 @@
 import termcolor
 import torch as th
 
-from refact_encoding import RefactEncoding
-from refact_scratchpads.scratchpad import ScratchpadBase
-from refact_scratchpads import bigcode_prompts, utils
+from encoding_wrapper.refact_encoding import RefactEncoding
+from known_models_db.refact_scratchpads.scratchpad import ScratchpadBase
+from known_models_db.refact_scratchpads import bigcode_prompts, utils
 
 from typing import List, Any, Dict, Set, Optional, Union, Tuple
 
