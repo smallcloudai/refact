@@ -18,39 +18,39 @@ ROUTINES = int(os.environ.get("ROUTINES", "0"))
 
 
 gpt4_functions = {
-    "make-code-shorter-gpt4":    "gpt_toolbox.gpt4_toolbox:ScratchpadMakeCodeShorterGPT4",
-    "fix-bug-gpt4":              "gpt_toolbox.gpt4_toolbox:ScratchpadFixBugGPT4",
-    "explain-code-block-gpt4":   "gpt_toolbox.gpt4_toolbox:ScratchpadExplainCodeBlockGPT4",
+    "make-code-shorter-gpt4":    "refact_scratchpads_no_gpu:ScratchpadMakeCodeShorterGPT4",
+    "fix-bug-gpt4":              "refact_scratchpads_no_gpu:ScratchpadFixBugGPT4",
+    "explain-code-block-gpt4":   "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlockGPT4",
 
-    "completion-gpt4":           "gpt_toolbox.gpt4_toolbox:ScratchpadCompletionGPT4",
-    "free-chat-gpt4":            "gpt_toolbox.gpt_chat_spad:GptChat",
+    "completion-gpt4":           "refact_scratchpads_no_gpu:ScratchpadCompletionGPT4",
+    "free-chat-gpt4":            "refact_scratchpads_no_gpu:GptChat",
 
     # UNFINISHED:
-    # "detect-bugs":               "gpt_toolbox.gpt4_toolbox:ScratchpadDetectBugsHighlight",
-    # "detect-vulnerabilities":    "gpt_toolbox.gpt4_toolbox:ScratchpadDetectVulnerabilitiesHighlight",
-    # "code-review":               "gpt_toolbox.gpt4_toolbox:ScratchpadCodeReviewHighlight",
-    # "detect-bugs-highlight-gpt4": "gpt_toolbox.gpt4_toolbox:ScratchpadFixBugsHighlightGPT4",
+    # "detect-bugs":               "refact_scratchpads_no_gpu:ScratchpadDetectBugsHighlight",
+    # "detect-vulnerabilities":    "refact_scratchpads_no_gpu:ScratchpadDetectVulnerabilitiesHighlight",
+    # "code-review":               "refact_scratchpads_no_gpu:ScratchpadCodeReviewHighlight",
+    # "detect-bugs-highlight-gpt4": "refact_scratchpads_no_gpu:ScratchpadFixBugsHighlightGPT4",
 }
 
 gpt35_functions = {
-    "make-code-shorter":         "gpt_toolbox.gpt35_toolbox:ScratchpadMakeCodeShorter",
-    "make-code-shorter-gpt3.5":  "gpt_toolbox.gpt35_toolbox:ScratchpadMakeCodeShorter",
-    "fix-bug":                   "gpt_toolbox.gpt35_toolbox:ScratchpadFixBug",
-    "fix-bug-gpt3.5":            "gpt_toolbox.gpt35_toolbox:ScratchpadFixBug",
-    "explain-code-block":        "gpt_toolbox.gpt35_toolbox:ScratchpadExplainCodeBlock",
-    "explain-code-block-gpt3.5": "gpt_toolbox.gpt35_toolbox:ScratchpadExplainCodeBlock",
+    "make-code-shorter":         "refact_scratchpads_no_gpu:ScratchpadMakeCodeShorter",
+    "make-code-shorter-gpt3.5":  "refact_scratchpads_no_gpu:ScratchpadMakeCodeShorter",
+    "fix-bug":                   "refact_scratchpads_no_gpu:ScratchpadFixBug",
+    "fix-bug-gpt3.5":            "refact_scratchpads_no_gpu:ScratchpadFixBug",
+    "explain-code-block":        "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlock",
+    "explain-code-block-gpt3.5": "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlock",
 
     # 3.5 only
-    "add-console-logs":          "gpt_toolbox.gpt35_toolbox:ScratchpadAddConsoleLogs",
-    "add-console-logs-gpt3.5":   "gpt_toolbox.gpt35_toolbox:ScratchpadAddConsoleLogs",
-    "precise-naming":            "gpt_toolbox.gpt35_toolbox:ScratchpadPreciseNaming",
-    "precise-naming-gpt3.5":     "gpt_toolbox.gpt35_toolbox:ScratchpadPreciseNaming",
-    "comment-each-line":         "gpt_toolbox.gpt35_toolbox:ScratchpadCommentEachLine",
-    "comment-each-line-gpt3.5":  "gpt_toolbox.gpt35_toolbox:ScratchpadCommentEachLine",
+    "add-console-logs":          "refact_scratchpads_no_gpu:ScratchpadAddConsoleLogs",
+    "add-console-logs-gpt3.5":   "refact_scratchpads_no_gpu:ScratchpadAddConsoleLogs",
+    "precise-naming":            "refact_scratchpads_no_gpu:ScratchpadPreciseNaming",
+    "precise-naming-gpt3.5":     "refact_scratchpads_no_gpu:ScratchpadPreciseNaming",
+    "comment-each-line":         "refact_scratchpads_no_gpu:ScratchpadCommentEachLine",
+    "comment-each-line-gpt3.5":  "refact_scratchpads_no_gpu:ScratchpadCommentEachLine",
 
-    "completion-gpt3.5":         "gpt_toolbox.gpt35_toolbox:ScratchpadCompletion",
-    "free-chat":                 "gpt_toolbox.gpt_chat_spad:GptChat",
-    "free-chat-gpt3.5":          "gpt_toolbox.gpt_chat_spad:GptChat",
+    "completion-gpt3.5":         "refact_scratchpads_no_gpu:ScratchpadCompletion",
+    "free-chat":                 "refact_scratchpads_no_gpu:GptChat",
+    "free-chat-gpt3.5":          "refact_scratchpads_no_gpu:GptChat",
     # "db-chat-gpt3.5func":          "gpt_toolbox.gpt_chat_functions_spad:GptChat",
 
     # UNFINISHED

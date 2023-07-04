@@ -62,7 +62,7 @@ class ScratchpadDetectBugsHighlightGPT4(ScratchpadDetectBugsHighlight):
         )
 
 
-class ScratchpadDetectVulnerabilitiesHighlight(ScratchpadChatGPT):
+class ScratchpadDetectVulnerabilitiesHighlightGPT4(ScratchpadChatGPT):
     def __init__(self, **kwargs):
         super().__init__(
             model_n='gpt-4-0314',
@@ -98,7 +98,7 @@ class ScratchpadDetectVulnerabilitiesHighlight(ScratchpadChatGPT):
         return self._txt
 
 
-class ScratchpadCodeReviewHighlight(ScratchpadChatGPT):
+class ScratchpadCodeReviewHighlightGPT4(ScratchpadChatGPT):
     def __init__(self, **kwargs):
         super().__init__(
             model_n='gpt-4',
