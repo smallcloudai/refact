@@ -13,7 +13,23 @@ setup(
         "refact_models",
         "self_hosting_machinery",
     ],
+    package_data={
+        "self_hosting_machinery": ["refact_webgui/static/*",
+                                   "refact_webgui/static/js/*",
+                                   "refact_watchdog/watchdog.d/*"],
+        "known_models_db": ["refact_toolbox_db/htmls/*"],
+    },
     packages=find_packages(),
     install_requires=[
+        # self_hosting_machinery
+        "fastapi", "uvloop", "uvicorn", "aiohttp", "python-multipart", "smallcloud", "blobfile",
+        # known models
+        "dataclasses_json", "termcolor",
+        # encoding
+        "tiktoken",
+        # code contrast
+        "cdifflib",
+        # models
+        "transformers", "torch",
     ],
 )
