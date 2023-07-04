@@ -4,7 +4,7 @@ import functools
 import json
 from typing import List, Tuple, Dict, Union, Iterator
 
-from async_scratchpad import ascratch
+from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
 import openai
 import tiktoken

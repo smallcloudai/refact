@@ -1,6 +1,0 @@
-requests
-smallcloud
-setuptools
-termcolor
-openai
-tiktoken >= 0.3.0
