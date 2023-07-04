@@ -10,7 +10,7 @@ from huggingface_hub import hf_hub_download
 from transformers.models.gpt_bigcode.modeling_gpt_bigcode import GPTBigCodeConfig
 from transformers.models.gpt_bigcode.modeling_gpt_bigcode import GPTBigCodeForCausalLM
 
-from refact_encoding import RefactEncoding
+from encoding_wrapper.refact_encoding import RefactEncoding
 from refact_models.quant import QuantLinear
 
 from typing import Optional, Tuple, Any, List

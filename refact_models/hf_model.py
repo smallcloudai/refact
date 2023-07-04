@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from transformers import AutoModelForCausalLM
 
-from refact_encoding import RefactEncoding
+from encoding_wrapper.refact_encoding import RefactEncoding
 from refact_models.lora import LoraMixin
 
 

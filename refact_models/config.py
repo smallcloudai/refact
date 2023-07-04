@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
 
 from dataclasses_json import dataclass_json
-from refact_encoding import RefactEncoding
+from encoding_wrapper.refact_encoding import RefactEncoding
 
 
 @dataclass_json
