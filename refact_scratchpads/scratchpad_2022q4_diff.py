@@ -4,8 +4,7 @@ import termcolor
 import collections
 
 from refact_encoding import RefactEncoding, hlprint
-import code_contrast.refact_code_contrast_2022q3
-import code_contrast.refact_code_contrast_2022q3.contrast
+import code_contrast.format_2022q3 as format_2022q3
 
 from refact_scratchpads import ScratchpadBase
 
@@ -51,9 +50,9 @@ class ScratchpadDiff(ScratchpadBase):
                 self.file_poi[fn].add(int(rec["cursor0"]))
                 self.file_poi[fn].add(int(rec["cursor1"]))
         self.state_before_first_tpos = True
-        self.diff: code_contrast.refact_code_contrast_2022q3.ContrastDiff = None
-        self.diff_out: Optional[code_contrast.refact_code_contrast_2022q3.ContrastDiff] = None
-        self.diff_out_us: Optional[code_contrast.refact_code_contrast_2022q3.UntokenizeState] = None
+        self.diff: format_2022q3.ContrastDiff = None
+        self.diff_out: Optional[format_2022q3.ContrastDiff] = None
+        self.diff_out_us: Optional[format_2022q3.UntokenizeState] = None
         self.highlight = []
         self.highlight16 = []
         self.t_cursor0 = -1
@@ -103,7 +102,7 @@ class ScratchpadDiff(ScratchpadBase):
                 logits_intrusion[tpos] = +4.5
         if (
                 self.diff_out_us is not None and
-                self.diff_out_us.state == code_contrast.refact_code_contrast_2022q3.contrast.DEL and
+                self.diff_out_us.state == format_2022q3.contrast.DEL and
                 self.diff_out_us.brewing_edit.real_delstart != -1 and
                 self.diff_out_us.brewing_edit.fn == self.cursor_file
         ):
@@ -203,7 +202,7 @@ class ScratchpadDiff(ScratchpadBase):
                 if len(self.diff_out.edits) == 1:
                     self.debuglog("REATTACH '%s'\n" % (self.ugly_hack_reattach_next_line.replace("\n", "\\n")))
                     self.diff_out.edits[0].toins.extend(self.enc.encode(self.ugly_hack_reattach_next_line) + [self.enc.LF])
-            self.diff_out_us.state = code_contrast.refact_code_contrast_2022q3.contrast.WAIT
+            self.diff_out_us.state = format_2022q3.contrast.WAIT
         try:
             while self.diff_out_cursor < len(self.diff.r):
                 c = self.diff_out_cursor
@@ -213,10 +212,10 @@ class ScratchpadDiff(ScratchpadBase):
                     break
                 self.diff_out.untokenize_new_token(self.diff_out_us, t, c)
                 self.diff_out_cursor += 1
-                if self.diff_out_us.state == code_contrast.refact_code_contrast_2022q3.contrast.CHUNK and self.max_edits >= 0 and len(self.diff_out.edits) - self.prompt_edits >= self.max_edits:
+                if self.diff_out_us.state == format_2022q3.contrast.CHUNK and self.max_edits >= 0 and len(self.diff_out.edits) - self.prompt_edits >= self.max_edits:
                     finish("max-edits")
                     break
-                if c >= self.no_stop_tokens_until and self.diff_out_us.state == code_contrast.refact_code_contrast_2022q3.contrast.INS:
+                if c >= self.no_stop_tokens_until and self.diff_out_us.state == format_2022q3.contrast.INS:
                     if t in self.stop_tokens:
                         finish("ins-stoptoken")
                         break
@@ -229,12 +228,12 @@ class ScratchpadDiff(ScratchpadBase):
                     if t == self.enc.LF:
                         if self.stream:
                             self.needs_upload = True
-                if self.diff_out_us.state in [code_contrast.refact_code_contrast_2022q3.contrast.DEL, code_contrast.refact_code_contrast_2022q3.contrast.SHIFT]:
+                if self.diff_out_us.state in [format_2022q3.contrast.DEL, format_2022q3.contrast.SHIFT]:
                     # print("TEST epos=%i in %s\n\n" % (self.diff_out_us.e_tpos, self.increase_logits))
                     if len(self.increase_logits) > 0 and (self.diff_out_us.brewing_edit.tpos not in self.increase_logits):
                         finish("out-of-selection")
                         break
-        except code_contrast.refact_code_contrast_2022q3.DecodeError as e:
+        except format_2022q3.DecodeError as e:
             self.debuglog("Exception in diff_out.untokenize_new_token: %s" % e)
             self.finish_reason = "diff-application-error"
 
@@ -284,7 +283,7 @@ class ScratchpadDiff(ScratchpadBase):
     def prompt_edit_chain(self, T):
         minrev = 10000
         for fn, text in self.sources.items():
-            fn, revision = code_contrast.refact_code_contrast_2022q3.contrast.parse_fn(fn)
+            fn, revision = format_2022q3.contrast.parse_fn(fn)
             if revision is None:
                 continue
             if self.function != "edit-chain":
@@ -299,7 +298,7 @@ class ScratchpadDiff(ScratchpadBase):
             # self.debuglog("revision", revision)
             # self.debuglog("EDIT CHAIN BASE", text)
         for fn, text in self.sources.items():
-            fn, suffix = code_contrast.refact_code_contrast_2022q3.contrast.parse_fn(fn)
+            fn, suffix = format_2022q3.contrast.parse_fn(fn)
             if suffix is not None:
                 continue
             self.odm["dest"][fn] = text
@@ -332,7 +331,7 @@ class ScratchpadDiff(ScratchpadBase):
             exact_cx_lines0=2,
             exact_cx_lines1=0,
             )
-        self.diff_out = code_contrast.refact_code_contrast_2022q3.contrast.ContrastDiff(self.enc)
+        self.diff_out = format_2022q3.contrast.ContrastDiff(self.enc)
         self.diff_out_us = self.diff_out.untokenize_init(self.orig_tokens)
         self.diff_out_cursor = 0
         if self.cursor0 != -1:
@@ -378,7 +377,7 @@ class ScratchpadDiff(ScratchpadBase):
 
     def prompt(self, T):
         t0 = time.time()
-        self.diff = code_contrast.refact_code_contrast_2022q3.contrast.ContrastDiff(self.enc)
+        self.diff = format_2022q3.contrast.ContrastDiff(self.enc)
         self.odm = {
             "orig": dict(),
             "commitmsg": self.intent,
@@ -396,7 +395,7 @@ class ScratchpadDiff(ScratchpadBase):
             return []
         self.no_stop_tokens_until = len(self.diff.r)
         if self.diff_out is None:
-            self.diff_out = code_contrast.refact_code_contrast_2022q3.contrast.ContrastDiff(self.enc)
+            self.diff_out = format_2022q3.contrast.ContrastDiff(self.enc)
             self.diff_out_us = self.diff_out.untokenize_init(self.orig_tokens)
             self.diff_out_cursor = 0
             self.diff_out_catch_up()

@@ -1,17 +1,17 @@
 import random
 import numpy as np
-from code_contrast.refact_code_contrast_2023q2.element import Format2023q2
+from code_contrast.format_2023q2.element import Format2023q2
 
 from cdifflib import CSequenceMatcher
 
-from code_contrast.refact_code_contrast_2022q3 import ops_remove_short_equals, ops_stochastic_expand
+from code_contrast.format_2022q3 import ops_remove_short_equals, ops_stochastic_expand
 
 from typing import List, Dict, Tuple, DefaultDict, Any, Optional
 
-from code_contrast.refact_code_contrast_2023q2.packing import Packer
-from code_contrast.refact_code_contrast_2023q2.el_file import FileElement
-from code_contrast.refact_code_contrast_2023q2.el_chunk import ChunkElement
-from code_contrast.refact_code_contrast_2023q2.el_msg import MsgElement
+from code_contrast.format_2023q2.packing import Packer
+from code_contrast.format_2023q2.el_file import FileElement
+from code_contrast.format_2023q2.el_chunk import ChunkElement
+from code_contrast.format_2023q2.el_msg import MsgElement
 
 
 def from_odm_dict(
