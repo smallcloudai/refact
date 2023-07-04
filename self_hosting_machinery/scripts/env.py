@@ -43,7 +43,7 @@ os.makedirs(DIR_SSH_KEYS, exist_ok=True)
 
 os.makedirs(DIR_UNPACKED, exist_ok=True)
 
-DIR_WATCHDOG_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "refact_watchdog", "watchdog.d")
+DIR_WATCHDOG_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "watchdog", "watchdog.d")
 
 GIT_CONFIG_FILENAME = 'git_config.json'
 CHATGPT_CONFIG_FILENAME = os.path.join(DIR_CONFIG, "openai.cfg")

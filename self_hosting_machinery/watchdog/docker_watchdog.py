@@ -8,6 +8,7 @@ import time
 import uuid
 from typing import Dict, Optional
 
+from self_hosting_machinery.scripts.first_run import copy_watchdog_configs_if_first_run_detected
 from self_hosting_machinery import env
 
 
@@ -301,5 +302,5 @@ if __name__ == '__main__':
     # this allows inference_worker to authorize on the local web server (both use
     # this variable), and work safely even if we expose http port to the world.
     os.environ["SMALLCLOUD_API_KEY"] = str(uuid.uuid4())
-    subprocess.check_call([sys.executable, "-m", "refact_scripts.first_run"])
+    copy_watchdog_configs_if_first_run_detected()
     main_loop()

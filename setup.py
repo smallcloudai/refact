@@ -14,9 +14,7 @@ setup(
         "self_hosting_machinery",
     ],
     package_data={
-        "self_hosting_machinery": ["refact_webgui/static/*",
-                                   "refact_webgui/static/js/*",
-                                   "refact_watchdog/watchdog.d/*"],
+        "self_hosting_machinery": ["webgui/static/*", "webgui/static/js/*", "watchdog/watchdog.d/*"],
         "known_models_db": ["refact_toolbox_db/htmls/*"],
     },
     packages=find_packages(),
