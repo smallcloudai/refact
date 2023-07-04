@@ -1,5 +1,4 @@
 import asyncio
-import termcolor
 import functools
 import json
 from typing import List, Tuple, Dict, Union, Iterator
