@@ -1,7 +1,7 @@
 import asyncio
 import random
 
-from refact_webgui import selfhost_webutils
+from self_hosting_machinery.refact_webgui import selfhost_webutils
 
 from typing import Dict, Any
 

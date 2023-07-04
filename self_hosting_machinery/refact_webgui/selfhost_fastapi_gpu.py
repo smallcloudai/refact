@@ -3,11 +3,10 @@ import time
 import termcolor
 import asyncio
 
-from fastapi import APIRouter, Query, Request, Header
-from fastapi.exceptions import HTTPException
+from fastapi import APIRouter, Query, Request
 
-from refact_webgui.selfhost_req_queue import Ticket
-from refact_webgui.selfhost_webutils import log
+from self_hosting_machinery.refact_webgui.selfhost_req_queue import Ticket
+from self_hosting_machinery.refact_webgui.selfhost_webutils import log
 
 from pydantic import BaseModel, Required
 from typing import Dict, List, Optional, Any

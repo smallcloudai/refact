@@ -7,11 +7,11 @@ import termcolor
 from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-from refact_toolbox_db import modelcap_records
-from refact_known_models import models_mini_db
-from refact_webgui import selfhost_model_resolve
-from refact_webgui.selfhost_req_queue import Ticket
-from refact_webgui.selfhost_webutils import log
+from known_models_db.refact_toolbox_db import modelcap_records
+from known_models_db.refact_known_models import models_mini_db
+from self_hosting_machinery.refact_webgui import selfhost_model_resolve
+from self_hosting_machinery.refact_webgui.selfhost_req_queue import Ticket
+from self_hosting_machinery.refact_webgui.selfhost_webutils import log
 
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union

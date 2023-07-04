@@ -10,8 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response, StreamingResponse, JSONResponse
 
-from refact_scripts import env, best_lora
-from refact_webgui.selfhost_webutils import log
+from self_hosting_machinery.refact_scripts import env, best_lora
 from refact_data_pipeline.finetune import finetune_filtering_defaults, finetune_train_defaults
 
 from pydantic import BaseModel

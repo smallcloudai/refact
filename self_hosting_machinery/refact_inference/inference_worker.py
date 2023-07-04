@@ -12,11 +12,11 @@ import json
 
 from collections import defaultdict
 
-from refact_scratchpads import ScratchpadBase
-from refact_scratchpads import ScratchpadCompletion
+from known_models_db.refact_scratchpads import ScratchpadBase
+from known_models_db.refact_scratchpads import ScratchpadCompletion
 
-from refact_scripts import best_lora
-import refact_known_models
+from self_hosting_machinery.refact_scripts import best_lora
+from known_models_db.refact_known_models import models_mini_db
 
 from refact_models import CodifyModel
 from refact_models import HFModel
@@ -27,7 +27,7 @@ from refact_models.checkpoint_loader import (
 )
 from typing import Optional, Dict, Any, List
 
-from refact_scripts import env
+from self_hosting_machinery.refact_scripts import env
 
 from smallcloud import inference_server
 inference_server.override_urls("http://127.0.0.1:8008/infengine-v1/")
@@ -55,10 +55,10 @@ class Inference:
                  model_name: str,
                  force_cpu: bool = False,
                  load_lora: Optional[str] = None):
-        if model_name not in refact_known_models.models_mini_db:
+        if model_name not in models_mini_db:
             raise RuntimeError(f"unknown model \"{model_name}\", try upgrading this repo")
         self._model_name = model_name
-        self._model_dict = refact_known_models.models_mini_db[model_name]
+        self._model_dict = models_mini_db[model_name]
         self._device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
 
         try:

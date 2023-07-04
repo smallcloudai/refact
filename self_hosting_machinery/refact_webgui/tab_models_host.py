@@ -1,21 +1,19 @@
 import json
 import os
-import asyncio
-import aiohttp
 import copy
 
-from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
+from fastapi import APIRouter, Request, Query
 from fastapi.responses import Response, JSONResponse
 
-from refact_webgui.selfhost_webutils import log
-from refact_scripts import env
-import refact_known_models
+from self_hosting_machinery.refact_webgui.selfhost_webutils import log
+from self_hosting_machinery.refact_scripts import env
+from known_models_db.refact_known_models import models_mini_db
 
 
-from refact_toolbox_db import modelcap_records
+from known_models_db.refact_toolbox_db import modelcap_records
 
-from pydantic import BaseModel, Required
-from typing import Dict, Optional
+from pydantic import BaseModel
+from typing import Dict
 
 
 __all__ = ["TabHostRouter"]
@@ -74,7 +72,7 @@ def _model_assignment():
 
 def _models():
     j = {"models": []}
-    for k, rec in refact_known_models.models_mini_db.items():
+    for k, rec in models_mini_db.items():
         if rec.get("hidden", False):
             continue
         j["models"].append({
@@ -108,7 +106,7 @@ def _update_watchdog_d():
         if dont_freeze > 100:
             break
         for k, set_gpus in model_assignment.items():
-            if k not in refact_known_models.models_mini_db.keys():
+            if k not in models_mini_db.keys():
                 log("unknown model '%s', skipping" % k)
                 continue
             if set_gpus["gpus_min"] > 8:

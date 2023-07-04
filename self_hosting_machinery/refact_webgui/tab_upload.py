@@ -8,9 +8,9 @@ import shutil
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 
-from refact_scripts import env
-from refact_webgui.selfhost_webutils import log
-from refact_webgui.tab_finetune import get_finetune_runs
+from self_hosting_machinery.refact_scripts import env
+from self_hosting_machinery.refact_webgui.selfhost_webutils import log
+from self_hosting_machinery.refact_webgui.tab_finetune import get_finetune_runs
 
 from pydantic import BaseModel, Required
 from typing import Dict, Optional
