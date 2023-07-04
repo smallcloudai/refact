@@ -2,7 +2,7 @@ import torch as th
 
 from typing import List, Any, Dict
 
-from known_models_db.refact_scratchpads import ScratchpadBase
+from refact_scratchpads import ScratchpadBase
 from refact_encoding import RefactEncoding
 
 

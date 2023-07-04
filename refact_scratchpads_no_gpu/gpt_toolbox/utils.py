@@ -3,7 +3,7 @@ from itertools import zip_longest
 from typing import *
 import tiktoken
 
-from known_models_db.refact_scratchpads import utils as scratchpad_utils
+from refact_scratchpads import utils as scratchpad_utils
 
 
 def code_block_postprocess(txt: str) -> str:

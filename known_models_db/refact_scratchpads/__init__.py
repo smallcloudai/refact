@@ -1,6 +1,0 @@
-from known_models_db.refact_scratchpads.scratchpad import ScratchpadBase
-from known_models_db.refact_scratchpads.scratchpad_completion import ScratchpadCompletion
-from known_models_db.refact_scratchpads.scratchpad_2022q4_diff import ScratchpadDiff
-from known_models_db.refact_scratchpads.scratchpad_bigcode import ScratchpadBigCode
-from known_models_db.refact_scratchpads.scratchpad_bigchat import ScratchpadBigChat
-from known_models_db.refact_scratchpads.scratchpad_starchat import ScratchpadStarChat

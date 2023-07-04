@@ -7,7 +7,7 @@ from refact_encoding import RefactEncoding, hlprint
 import code_contrast.refact_code_contrast_2022q3
 import code_contrast.refact_code_contrast_2022q3.contrast
 
-from known_models_db.refact_scratchpads import ScratchpadBase
+from refact_scratchpads import ScratchpadBase
 
 
 from typing import Dict, Optional, Any, List, Tuple

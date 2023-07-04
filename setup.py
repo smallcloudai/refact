@@ -8,6 +8,8 @@ setup(
         "code_contrast",
         "refact_encoding",
         "known_models_db",
+        "refact_scratchpads",
+        "refact_scratchpads_no_gpu",
         "refact_models",
         "self_hosting_machinery",
     ],

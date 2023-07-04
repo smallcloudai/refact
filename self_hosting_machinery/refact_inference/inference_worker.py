@@ -12,8 +12,8 @@ import json
 
 from collections import defaultdict
 
-from known_models_db.refact_scratchpads import ScratchpadBase
-from known_models_db.refact_scratchpads import ScratchpadCompletion
+from refact_scratchpads import ScratchpadBase
+from refact_scratchpads import ScratchpadCompletion
 
 from self_hosting_machinery.refact_scripts import best_lora
 from known_models_db.refact_known_models import models_mini_db
