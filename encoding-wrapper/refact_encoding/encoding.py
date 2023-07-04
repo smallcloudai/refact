@@ -134,7 +134,7 @@ class RefactEncoding:
 
         elif name in ['llama']:
             from sentencepiece import SentencePieceProcessor
-            filename = Path(__file__).resolve().parent.parent / f"{name}.tokenizer.model"
+            filename = Path(__file__).resolve().parent / f"{name}.tokenizer.model"
             self._sentencepiece_tokenizer = SentencePieceProcessor(str(filename))
             self.n_vocab = self._sentencepiece_tokenizer.vocab_size()
             self.bos_id: int = self._sentencepiece_tokenizer.bos_id()
@@ -144,7 +144,7 @@ class RefactEncoding:
 
         elif name in ['bigcode_santacoder']:
             import tokenizers
-            filename = Path(__file__).resolve().parent.parent / f"{name}.json"
+            filename = Path(__file__).resolve().parent / f"{name}.json"
             self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
             self.ESCAPE = 49152  # <|endoftext|>
             self.DIAMOND = self.DUMMY = 49156  # <fim-pad>
@@ -158,7 +158,7 @@ class RefactEncoding:
 
         elif name in ['bigcode_largemodel']:
             import tokenizers
-            filename = Path(__file__).resolve().parent.parent / f"{name}.json"
+            filename = Path(__file__).resolve().parent / f"{name}.json"
             self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
             self.DIAMOND = self.DUMMY = 4  # <fim-pad>
             self.FILE = 5  # <filename>
@@ -188,7 +188,7 @@ class RefactEncoding:
 
         elif name in ['bigcode_starchat']:
             import tokenizers
-            filename = Path(__file__).resolve().parent.parent / f"{name}.json"
+            filename = Path(__file__).resolve().parent / f"{name}.json"
             self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
             self.EOT = 0  # <|endoftext|>
             self.PREFIX = 1  # <fim-prefix>

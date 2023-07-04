@@ -8,7 +8,7 @@ import shutil
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 
-from refact_scripts import env, get_all_ssh_keys
+from refact_scripts import env
 from refact_webgui.selfhost_webutils import log
 from refact_webgui.tab_finetune import get_finetune_runs
 
@@ -185,7 +185,7 @@ class TabUploadRouter(APIRouter):
 
     def _make_git_command(self):
         command = ['ssh', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'StrictHostKeyChecking=no']
-        for ssh_key in get_all_ssh_keys():
+        for ssh_key in env.get_all_ssh_keys():
             command += ['-i', ssh_key]
         return ' '.join(command)
 
