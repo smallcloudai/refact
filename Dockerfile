@@ -44,4 +44,4 @@ ENV REFACT_TMP_DIR "/tmp"
 
 EXPOSE 8008
 
-CMD ["python", "-m", "refact_self_hosting.docker_watchdog"]
+CMD ["python", "-m", "refact_watchdog.docker_watchdog"]

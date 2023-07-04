@@ -8,7 +8,7 @@ import shutil
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 
-from refact_scripts import env, get_all_ssh_keys, GIT_CONFIG_FILENAME
+from refact_scripts import env, get_all_ssh_keys
 from refact_webgui.selfhost_webutils import log
 from refact_webgui.tab_finetune import get_finetune_runs
 
@@ -118,8 +118,8 @@ class TabUploadRouter(APIRouter):
                 "is_git": False,
                 **stats_uploaded_files.get(fn, {})
             }
-            if os.path.exists(os.path.join(uploaded_path, fn, GIT_CONFIG_FILENAME)):
-                with open(os.path.join(uploaded_path, fn, GIT_CONFIG_FILENAME)) as f:
+            if os.path.exists(os.path.join(uploaded_path, fn, env.GIT_CONFIG_FILENAME)):
+                with open(os.path.join(uploaded_path, fn, env.GIT_CONFIG_FILENAME)) as f:
                     config = json.load(f)
                 result["uploaded_files"][fn].update({
                     "is_git": True,
@@ -224,7 +224,7 @@ class TabUploadRouter(APIRouter):
             repo_name = get_repo_name_from_url(url)
             repo_base_dir = os.path.join(env.DIR_UPLOADS, repo_name)
             os.makedirs(repo_base_dir, exist_ok=False)
-            with open(os.path.join(repo_base_dir, GIT_CONFIG_FILENAME), 'w') as f:
+            with open(os.path.join(repo_base_dir, env.GIT_CONFIG_FILENAME), 'w') as f:
                 json.dump({
                     "url": url,
                     "branch": repo.branch,

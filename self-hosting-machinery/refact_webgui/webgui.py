@@ -11,16 +11,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from refact_self_hosting.webgui.collector import collector
-from refact_self_hosting.webgui.selfhost_req_queue import Ticket
-from refact_self_hosting.webgui.selfhost_static import StaticRouter
-from refact_self_hosting.webgui.selfhost_fastapi_completions import CompletionsRouter
-from refact_self_hosting.webgui.selfhost_fastapi_gpu import GPURouter
-from refact_self_hosting.webgui.tab_server_logs import TabServerLogRouter
-from refact_self_hosting.webgui.tab_settings import TabSettingsRouter
-from refact_self_hosting.webgui.tab_upload import TabUploadRouter
-from refact_self_hosting.webgui.tab_finetune import TabFinetuneRouter
-from refact_self_hosting.webgui.tab_models_host import TabHostRouter
+from refact_webgui.collector import collector
+from refact_webgui.selfhost_req_queue import Ticket
+from refact_webgui.selfhost_static import StaticRouter
+from refact_webgui.selfhost_fastapi_completions import CompletionsRouter
+from refact_webgui.selfhost_fastapi_gpu import GPURouter
+from refact_webgui.tab_server_logs import TabServerLogRouter
+from refact_webgui.tab_settings import TabSettingsRouter
+from refact_webgui.tab_upload import TabUploadRouter
+from refact_webgui.tab_finetune import TabFinetuneRouter
+from refact_webgui.tab_models_host import TabHostRouter
 
 
 from collections import defaultdict
