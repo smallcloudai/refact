@@ -2,7 +2,7 @@ import re
 import os
 import json
 from typing import Dict
-from refact_self_hosting import env
+from refact_scripts import env
 
 
 def find_best_lora(model_name: str) -> Dict[str, str]:

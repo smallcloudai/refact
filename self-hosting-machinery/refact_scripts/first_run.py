@@ -1,8 +1,7 @@
 import os
 import json
-from refact_self_hosting.webgui import tab_models_host
-from refact_self_hosting import env
-from refact_self_hosting import enum_gpus
+from refact_webgui import tab_models_host
+from refact_scripts import env, enum_gpus
 
 
 def copy_watchdog_configs_if_first_run_detected():

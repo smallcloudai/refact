@@ -8,9 +8,9 @@ import shutil
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 
-from refact_self_hosting import env
-from refact_self_hosting.env import GIT_CONFIG_FILENAME, get_all_ssh_keys
-from refact_self_hosting.webgui.selfhost_webutils import log
+from refact_scripts import env, get_all_ssh_keys, GIT_CONFIG_FILENAME
+from refact_webgui.selfhost_webutils import log
+from refact_webgui.tab_finetune import get_finetune_runs
 
 from pydantic import BaseModel, Required
 from typing import Dict, Optional
@@ -18,7 +18,6 @@ from typing import Dict, Optional
 
 __all__ = ["TabUploadRouter"]
 
-from refact_self_hosting.webgui.tab_finetune import get_finetune_runs
 
 
 async def download_file_from_url(url: str):

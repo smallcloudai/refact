@@ -5,16 +5,15 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pathlib import Path
+from refact_scripts import env
 
-from refact_self_hosting.env import DIR_SSH_KEYS, private_key_ext, fingerprint_ext, get_all_ssh_keys, \
-    DIR_WATCHDOG_TEMPLATES, CHATGPT_CONFIG_FILENAME, DIR_WATCHDOG_D
 
 __all__ = ["TabSettingsRouter"]
 
 
 class TabSettingsRouter(APIRouter):
-    __template_longthink_cfg = os.path.join(DIR_WATCHDOG_TEMPLATES, "longthink.cfg")
-    __longthink_cfg = os.path.join(DIR_WATCHDOG_D, "longthink.cfg")
+    __template_longthink_cfg = os.path.join(env.DIR_WATCHDOG_TEMPLATES, "longthink.cfg")
+    __longthink_cfg = os.path.join(env.DIR_WATCHDOG_D, "longthink.cfg")
 
     __default_chatgpt_config = dict(is_enabled=False, api_key="")
     class SSHKey(BaseModel):
@@ -38,8 +37,8 @@ class TabSettingsRouter(APIRouter):
         self.__init_longthink_process()
 
     def __init_longthink_process(self):
-        if os.path.exists(CHATGPT_CONFIG_FILENAME):
-            with open(CHATGPT_CONFIG_FILENAME, 'r') as f:
+        if os.path.exists(env.CHATGPT_CONFIG_FILENAME):
+            with open(env.CHATGPT_CONFIG_FILENAME, 'r') as f:
                 openai_config = json.load(f)
         else:
             openai_config = self.__default_chatgpt_config
@@ -67,7 +66,7 @@ class TabSettingsRouter(APIRouter):
                 encryption_algorithm=crypto_serialization.NoEncryption(),
             )
 
-            with open(f'{DIR_SSH_KEYS}/{data.name}.{private_key_ext}', 'wb') as f:
+            with open(f'{env.DIR_SSH_KEYS}/{data.name}.{env.private_key_ext}', 'wb') as f:
                 f.write(private_key)
 
             public_key = key.public_key().public_bytes(
@@ -77,7 +76,7 @@ class TabSettingsRouter(APIRouter):
 
             digest = hashlib.sha256(binascii.a2b_base64(public_key[8:])).digest()
             fingerprint = "SHA256:" + base64.b64encode(digest).rstrip(b'=').decode('utf-8')
-            with open(f'{DIR_SSH_KEYS}/{data.name}.{fingerprint_ext}', 'w') as f:
+            with open(f'{env.DIR_SSH_KEYS}/{data.name}.{env.fingerprint_ext}', 'w') as f:
                 f.write(fingerprint)
 
             return JSONResponse({
@@ -92,7 +91,7 @@ class TabSettingsRouter(APIRouter):
     async def _tab_settings_get_all_ssh_keys(self):
         def get_info_from_key(key_path: str):
             key_file = Path(key_path)
-            fingerprint_file = key_file.with_suffix(f'.{fingerprint_ext}')
+            fingerprint_file = key_file.with_suffix(f'.{env.fingerprint_ext}')
             with open(str(fingerprint_file), 'r') as f:
                 fingerprint = f.read()
             return dict(
@@ -102,12 +101,12 @@ class TabSettingsRouter(APIRouter):
             )
 
         return JSONResponse([
-            get_info_from_key(ssh_key) for ssh_key in get_all_ssh_keys()
+            get_info_from_key(ssh_key) for ssh_key in env.get_all_ssh_keys()
         ])
 
     async def _tab_settings_delete_ssh_key(self, data: SSHKey):
-        key_filepath = Path(DIR_SSH_KEYS) / f'{data.name}.{private_key_ext}'
-        fingerprint_filepath = Path(DIR_SSH_KEYS) / f'{data.name}.{fingerprint_ext}'
+        key_filepath = Path(env.DIR_SSH_KEYS) / f'{data.name}.{env.private_key_ext}'
+        fingerprint_filepath = Path(env.DIR_SSH_KEYS) / f'{data.name}.{env.fingerprint_ext}'
         if key_filepath.exists():
             key_filepath.unlink(missing_ok=False)
         if fingerprint_filepath.exists():
@@ -115,16 +114,16 @@ class TabSettingsRouter(APIRouter):
         return JSONResponse("OK")
 
     def __inject_in_openai_config(self, upd: dict):
-        if os.path.exists(CHATGPT_CONFIG_FILENAME):
-            with open(str(CHATGPT_CONFIG_FILENAME), "r") as f:
+        if os.path.exists(env.CHATGPT_CONFIG_FILENAME):
+            with open(str(env.CHATGPT_CONFIG_FILENAME), "r") as f:
                 config = json.load(f)
         else:
             config = self.__default_chatgpt_config
         config.update(upd)
-        tmp = f'{CHATGPT_CONFIG_FILENAME}.tmp'
+        tmp = f'{env.CHATGPT_CONFIG_FILENAME}.tmp'
         with open(str(tmp), "w") as f:
             json.dump(config, f)
-        os.rename(tmp, CHATGPT_CONFIG_FILENAME)
+        os.rename(tmp, env.CHATGPT_CONFIG_FILENAME)
         return config
 
     def __enable_longthink_process(self, openai_config: dict):
@@ -153,8 +152,8 @@ class TabSettingsRouter(APIRouter):
         return JSONResponse("OK")
 
     async def _tab_api_key_settings_get_chat_gpt_info(self):
-        if os.path.exists(CHATGPT_CONFIG_FILENAME):
-            with open(str(CHATGPT_CONFIG_FILENAME), "r") as f:
+        if os.path.exists(env.CHATGPT_CONFIG_FILENAME):
+            with open(str(env.CHATGPT_CONFIG_FILENAME), "r") as f:
                 config = json.load(f)
         else:
             config = self.__default_chatgpt_config

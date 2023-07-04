@@ -7,7 +7,7 @@ import traceback
 import logging
 import subprocess
 
-from refact_self_hosting import env
+from refact_scripts import env
 
 
 def query_nvidia_smi():

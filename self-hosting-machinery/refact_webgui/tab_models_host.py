@@ -7,8 +7,8 @@ import copy
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse
 
-from refact_self_hosting.webgui.selfhost_webutils import log
-from refact_self_hosting import env
+from refact_webgui.selfhost_webutils import log
+from refact_scripts import env
 import refact_known_models
 
 

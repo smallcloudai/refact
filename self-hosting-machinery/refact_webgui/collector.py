@@ -2,11 +2,11 @@ import asyncio
 import json
 import os
 
-from refact_self_hosting.env import CHATGPT_CONFIG_FILENAME
+from refact_scripts import env
 
 
 async def collect_longthinks(user2gpu_queue):
-    config_file = CHATGPT_CONFIG_FILENAME
+    config_file = env.CHATGPT_CONFIG_FILENAME
     model_name = 'longthink/stable'
     while True:
         if os.path.exists(config_file):

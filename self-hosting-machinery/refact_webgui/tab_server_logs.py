@@ -6,8 +6,7 @@ import asyncio
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse, Response
-
-from refact_self_hosting.env import DIR_LOGS
+from refact_scripts import env
 
 
 class TabServerLogRouter(APIRouter):
@@ -17,7 +16,7 @@ class TabServerLogRouter(APIRouter):
         self.add_api_route("/tab-server-log-plain/{log_name}", self._tab_server_log_plain, methods=["GET"])
 
     async def _tab_server_log_get(self):
-        list_of_files = glob.glob(f'{DIR_LOGS}/watchdog_*.log')
+        list_of_files = glob.glob(f'{env.DIR_LOGS}/watchdog_*.log')
         list_of_files.sort()
         results = []
         latest_log = ""
@@ -40,7 +39,7 @@ class TabServerLogRouter(APIRouter):
                     yield tmp
                     await asyncio.sleep(0.5)
 
-        list_of_files = glob.glob(f'{DIR_LOGS}/watchdog_*.log')
+        list_of_files = glob.glob(f'{env.DIR_LOGS}/watchdog_*.log')
         if log_name in ["", "latest"]:
             list_of_files.sort()
             list_of_files = list_of_files[-1:]

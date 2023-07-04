@@ -6,8 +6,8 @@ import asyncio
 from fastapi import APIRouter, Query, Request, Header
 from fastapi.exceptions import HTTPException
 
-from refact_self_hosting.webgui.selfhost_req_queue import Ticket
-from refact_self_hosting.webgui.selfhost_webutils import log
+from refact_webgui.selfhost_req_queue import Ticket
+from refact_webgui.selfhost_webutils import log
 
 from pydantic import BaseModel, Required
 from typing import Dict, List, Optional, Any
