@@ -1,11 +1,8 @@
-import termcolor
-from refact_encoding import RefactEncoding
-from typing import List, Dict, Tuple, Callable, Type
+from encoding_wrapper.refact_encoding import RefactEncoding
 
-from refact_code_contrast_2023q2.element import Format2023q2, Element, ElementPackingContext
-from refact_code_contrast_2023q2.el_msg import MsgElement
-from refact_code_contrast_2023q2.el_chunk import ChunkElement
-
+from code_contrast.refact_code_contrast_2023q2.element import Format2023q2, Element, ElementPackingContext
+from code_contrast.refact_code_contrast_2023q2.el_msg import MsgElement
+from code_contrast.refact_code_contrast_2023q2.el_chunk import ChunkElement
 
 
 def format_2023q2_escape(enc: RefactEncoding) -> Format2023q2:

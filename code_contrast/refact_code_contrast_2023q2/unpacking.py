@@ -1,6 +1,6 @@
-from refact_code_contrast_2023q2.el_file import FileElement
-from refact_code_contrast_2023q2.element import Format2023q2, Element, ElementUnpackContext
-from typing import List, Dict, Tuple, Any, Set, Optional, Type
+from code_contrast.refact_code_contrast_2023q2.el_file import FileElement
+from code_contrast.refact_code_contrast_2023q2.element import Format2023q2, Element, ElementUnpackContext
+from typing import List, Tuple, Optional, Type
 
 
 class Unpacker:

@@ -5,7 +5,7 @@ import termcolor
 import numpy as np
 from typing import Optional
 
-from refact_encoding import RefactEncoding
+from encoding_wrapper.refact_encoding import RefactEncoding
 
 
 text_a = """#hmm

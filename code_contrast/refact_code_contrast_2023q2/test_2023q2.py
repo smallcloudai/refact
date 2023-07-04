@@ -1,23 +1,23 @@
 import termcolor
 
-from refact_encoding import RefactEncoding, hlprint
+from encoding_wrapper.refact_encoding import RefactEncoding, hlprint
 
 from collections import defaultdict
 
-from typing import List, Dict, Tuple, DefaultDict, Any, Set, Optional
+from typing import List, Dict, Tuple, DefaultDict, Any, Optional
 
-from refact_code_contrast_2023q2.element import Element, Format2023q2
-from refact_code_contrast_2023q2 import format
-from refact_code_contrast_2023q2 import el_chunk
+from code_contrast.refact_code_contrast_2023q2.element import Format2023q2
+from code_contrast.refact_code_contrast_2023q2 import format
+from code_contrast.refact_code_contrast_2023q2 import el_chunk
 
 
 ADDITIONAL_CHECKS = True
 
 
-from refact_code_contrast_2023q2.packing import Packer
-from refact_code_contrast_2023q2.unpacking import Unpacker
-from refact_code_contrast_2023q2.el_msg import MsgElement
-from refact_code_contrast_2023q2.from_orig_dest_message import from_odm_dict
+from code_contrast.refact_code_contrast_2023q2.packing import Packer
+from code_contrast.refact_code_contrast_2023q2.unpacking import Unpacker
+from code_contrast.refact_code_contrast_2023q2.el_msg import MsgElement
+from code_contrast.refact_code_contrast_2023q2.from_orig_dest_message import from_odm_dict
 
 
 def test_messages(fmt: Format2023q2):

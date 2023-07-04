@@ -1,11 +1,7 @@
-import random
-import time
-import termcolor
+from encoding_wrapper.refact_encoding import RefactEncoding, hlprint
 
-from refact_encoding import RefactEncoding, hlprint
-
-from refact_code_contrast_2023q2.element import Element, ElementPackingContext, Format2023q2
-from typing import List, Dict, Tuple, DefaultDict, Any, Set, Optional
+from code_contrast.refact_code_contrast_2023q2.element import Element, ElementPackingContext, Format2023q2
+from typing import List, Optional
 
 
 class Packer:

@@ -8,8 +8,8 @@ import termcolor
 import difflib
 from cdifflib import CSequenceMatcher
 
-from refact_encoding import RefactEncoding, editclass_print
-from refact_code_contrast_2022q3.contrast_stochastic import ops_remove_short_equals, ops_stochastic_expand
+from encoding_wrapper.refact_encoding import RefactEncoding, editclass_print
+from code_contrast.refact_code_contrast_2022q3.contrast_stochastic import ops_remove_short_equals, ops_stochastic_expand
 
 from collections import defaultdict
 from dataclasses import dataclass
