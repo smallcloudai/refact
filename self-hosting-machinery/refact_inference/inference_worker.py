@@ -12,16 +12,17 @@ import json
 
 from collections import defaultdict
 
-from code_contrast import ScratchpadBase
-from code_contrast import ScratchpadCompletion
+from refact_scratchpads import ScratchpadBase
+from refact_scratchpads import ScratchpadCompletion
 
-from refact_self_hosting import known_models, best_lora
+from refact_self_hosting import best_lora
+import refact_known_models
 
-from code_contrast.modeling import CodifyModel
-from code_contrast.modeling import HFModel
-from code_contrast.modeling import GPTQBigCodeModel
-from code_contrast.modeling import StarChatModel
-from code_contrast.modeling.checkpoint_loader import (
+from refact_models import CodifyModel
+from refact_models import HFModel
+from refact_models import GPTQBigCodeModel
+from refact_models import StarChatModel
+from refact_models.checkpoint_loader import (
     load_finetune_checkpoint, load_finetune_checkpoint_only, load_checkpoint_embeddings
 )
 from typing import Optional, Dict, Any, List
@@ -54,10 +55,10 @@ class Inference:
                  model_name: str,
                  force_cpu: bool = False,
                  load_lora: Optional[str] = None):
-        if model_name not in known_models.models_mini_db:
+        if model_name not in refact_known_models.models_mini_db:
             raise RuntimeError(f"unknown model \"{model_name}\", try upgrading this repo")
         self._model_name = model_name
-        self._model_dict = known_models.models_mini_db[model_name]
+        self._model_dict = refact_known_models.models_mini_db[model_name]
         self._device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
 
         try:

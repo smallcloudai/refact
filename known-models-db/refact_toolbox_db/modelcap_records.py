@@ -1,4 +1,4 @@
-from code_contrast.model_caps.modelcap_struct import ModelFunction, load_mini_html
+from refact_toolbox_db.modelcap_struct import ModelFunction, load_mini_html
 
 
 db = [

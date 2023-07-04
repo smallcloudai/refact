@@ -7,8 +7,8 @@ import termcolor
 from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-from code_contrast.model_caps import modelcap_records
-from refact_self_hosting.known_models import models_mini_db
+from refact_toolbox_db import modelcap_records
+from refact_known_models import models_mini_db
 from refact_self_hosting.webgui import selfhost_model_resolve
 from refact_self_hosting.webgui.selfhost_req_queue import Ticket
 from refact_self_hosting.webgui.selfhost_webutils import log

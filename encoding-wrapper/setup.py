@@ -2,7 +2,7 @@ from setuptools import setup
 from setuptools import find_packages
 
 setup(
-    name="refact_encoding",
+    name="encoding-wrapper",
     py_modules=["refact_encoding"],
     packages=find_packages(),
     package_data={"refact_encoding": ["*.json", "*.tokenizer.model"]},

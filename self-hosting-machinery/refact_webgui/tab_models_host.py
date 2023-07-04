@@ -9,8 +9,10 @@ from fastapi.responses import Response, JSONResponse
 
 from refact_self_hosting.webgui.selfhost_webutils import log
 from refact_self_hosting import env
-from refact_self_hosting import known_models
-from code_contrast.model_caps import modelcap_records
+import refact_known_models
+
+
+from refact_toolbox_db import modelcap_records
 
 from pydantic import BaseModel, Required
 from typing import Dict, Optional
@@ -72,7 +74,7 @@ def _model_assignment():
 
 def _models():
     j = {"models": []}
-    for k, rec in known_models.models_mini_db.items():
+    for k, rec in refact_known_models.models_mini_db.items():
         if rec.get("hidden", False):
             continue
         j["models"].append({
@@ -106,7 +108,7 @@ def _update_watchdog_d():
         if dont_freeze > 100:
             break
         for k, set_gpus in model_assignment.items():
-            if k not in known_models.models_mini_db.keys():
+            if k not in refact_known_models.models_mini_db.keys():
                 log("unknown model '%s', skipping" % k)
                 continue
             if set_gpus["gpus_min"] > 8:

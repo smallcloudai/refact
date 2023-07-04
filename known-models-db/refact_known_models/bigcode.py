@@ -1,10 +1,10 @@
-models_mini_db = {
+big_code_mini_db = {
 "starcoder/santacoder": {
     "model_path_type": "huggingface",
     "model_path": "bigcode/santacoder",
     "diff_scratchpad_class": "code_contrast:ScratchpadBigCode",
     "chat_scratchpad_class": None,
-    "model_class": "code_contrast.modeling:HFModel",
+    "model_class": "refact_models:HFModel",
     "T": 2048,
     "filter_caps": ["santacoder"],
     "hidden": True,   # only for debugging because it doesn't work well
@@ -15,7 +15,7 @@ models_mini_db = {
     "model_path": "bigcode/starcoder",
     "diff_scratchpad_class": "code_contrast:ScratchpadBigCode",
     "chat_scratchpad_class": "code_contrast:ScratchpadBigChat",
-    "model_class": "code_contrast.modeling:HFModel",
+    "model_class": "refact_models:HFModel",
     "T": 2048,
     "filter_caps": ["starcoder"],
 },
@@ -25,7 +25,7 @@ models_mini_db = {
     "model_path": "smallcloudai/starcoder_15b_4bit",
     "diff_scratchpad_class": "code_contrast:ScratchpadBigCode",
     "chat_scratchpad_class": "code_contrast:ScratchpadBigChat",
-    "model_class": "code_contrast.modeling:GPTQBigCodeModel",
+    "model_class": "refact_models:GPTQBigCodeModel",
     "model_class_kwargs": {
         "bits": 4,
     },
@@ -38,7 +38,7 @@ models_mini_db = {
     "model_path": "smallcloudai/starcoder_15b_8bit",
     "diff_scratchpad_class": "code_contrast:ScratchpadBigCode",
     "chat_scratchpad_class": "code_contrast:ScratchpadBigChat",
-    "model_class": "code_contrast.modeling:GPTQBigCodeModel",
+    "model_class": "refact_models:GPTQBigCodeModel",
     "model_class_kwargs": {
         "bits": 8,
     },
@@ -51,7 +51,7 @@ models_mini_db = {
     "model_path": "rahuldshetty/starchat-beta-8bit",
     "diff_scratchpad_class": None,
     "chat_scratchpad_class": "code_contrast:ScratchpadStarChat",
-    "model_class": "code_contrast.modeling:StarChatModel",
+    "model_class": "refact_models:StarChatModel",
     "T": 2048,
     "filter_caps": ["starchat"],
 },
