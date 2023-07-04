@@ -9,14 +9,14 @@ import torch as th
 from typing import List, Any, Dict, Set, Optional, Union, Tuple
 
 from code_contrast.scratchpad.scratchpad import ScratchpadBase
-from code_contrast.encoding.smc_encoding import SMCEncoding
+from refact_encoding import RefactEncoding
 from code_contrast.scratchpad.bigcode_chat_prompt import base_msg
 
 
 class ScratchpadBigChat(ScratchpadBase):
     def __init__(
             self,
-            enc: SMCEncoding,
+            enc: RefactEncoding,
             messages: List[Dict[str, str]],
             **kwargs
     ):

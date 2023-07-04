@@ -1,25 +1,23 @@
 import random
 import numpy as np
 import time
-from code_contrast.contrast_2023q2.element import Format2023q2
+from refact_code_contrast_2023q2.element import Format2023q2
 import termcolor
 
 from cdifflib import CSequenceMatcher
 
-from code_contrast.encoding.smc_encoding import SMCEncoding
-from code_contrast.contrast.contrast_stochastic import ops_remove_short_equals
-from code_contrast.contrast.contrast_stochastic import ops_stochastic_expand
-from code_contrast.print_utils import editclass_print, hlprint
+from refact_encoding import RefactEncoding, editclass_print, hlprint
+from refact_code_contrast_2022q3 import ops_remove_short_equals, ops_stochastic_expand
 
 from collections import defaultdict
 from dataclasses import dataclass, field
 
 from typing import List, Dict, Tuple, DefaultDict, Any, Set, Optional
 
-from code_contrast.contrast_2023q2.packing import Packer
-from code_contrast.contrast_2023q2.el_file import FileElement
-from code_contrast.contrast_2023q2.el_chunk import ChunkElement
-from code_contrast.contrast_2023q2.el_msg import MsgElement
+from refact_code_contrast_2023q2.packing import Packer
+from refact_code_contrast_2023q2.el_file import FileElement
+from refact_code_contrast_2023q2.el_chunk import ChunkElement
+from refact_code_contrast_2023q2.el_msg import MsgElement
 
 
 def from_odm_dict(

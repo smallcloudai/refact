@@ -8,10 +8,8 @@ import termcolor
 import difflib
 from cdifflib import CSequenceMatcher
 
-from code_contrast.encoding.smc_encoding import SMCEncoding
-from code_contrast.contrast.contrast_stochastic import ops_remove_short_equals
-from code_contrast.contrast.contrast_stochastic import ops_stochastic_expand
-from code_contrast.print_utils import editclass_print
+from refact_encoding import RefactEncoding, editclass_print
+from refact_code_contrast_2022q3.contrast_stochastic import ops_remove_short_equals, ops_stochastic_expand
 
 from collections import defaultdict
 from dataclasses import dataclass
@@ -81,8 +79,8 @@ class UntokenizeState:
 
 
 class ContrastDiff:
-    def __init__(self, enc: SMCEncoding):
-        self.enc: SMCEncoding = enc
+    def __init__(self, enc: RefactEncoding):
+        self.enc: RefactEncoding = enc
         self.orig_tokens: Dict[str, List[int]] = dict()
         self.orig_withpos: Dict[str, List[int]] = dict()
         self.dest_tokens: Dict[str, List[int]] = dict()
@@ -929,7 +927,7 @@ example_odm = {
 
 
 
-def self_test(enc: SMCEncoding, odm: Dict[str, Any], verbose: bool, n_ctx: int, tight_shrink: bool=False):
+def self_test(enc: RefactEncoding, odm: Dict[str, Any], verbose: bool, n_ctx: int, tight_shrink: bool=False):
     import time
     t0 = time.time()
     test1 = ContrastDiff(enc)
@@ -989,6 +987,6 @@ def self_test(enc: SMCEncoding, odm: Dict[str, Any], verbose: bool, n_ctx: int, 
 
 
 if __name__ == "__main__":
-    enc = SMCEncoding("openai_programming_v2")
+    enc = RefactEncoding("openai_programming_v2")
     self_test(enc, example_odm, verbose=True, n_ctx=512)
 

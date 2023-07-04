@@ -4,8 +4,7 @@ import termcolor
 import time
 import torch.distributed as dist
 
-from code_contrast.encoding.smc_encoding import SMCEncoding
-from code_contrast.print_utils import hlprint
+from refact_encoding import RefactEncoding, hlprint
 
 from typing import Callable, Union, List, Set, Dict, Any, Optional
 
@@ -18,7 +17,7 @@ DEBUGLOG_TOP3 = int(os.environ.get("DEBUG", "0"))
 class ScratchpadBase:
     def __init__(
         self,
-        enc: SMCEncoding,
+        enc: RefactEncoding,
         id: str,
         created: float,
         temperature: float,

@@ -1,10 +1,10 @@
 import termcolor, re
-from code_contrast.encoding.smc_encoding import SMCEncoding
+from refact_encoding import RefactEncoding
 from typing import List, Dict, Tuple, Callable, Type
 
 
 class Format2023q2:
-    def __init__(self, enc: SMCEncoding):
+    def __init__(self, enc: RefactEncoding):
         self.enc = enc
         self.element_start_seq: Dict[str, List[int]] = {}
         self.element_classes: Dict[str, Type[Element]] = {}

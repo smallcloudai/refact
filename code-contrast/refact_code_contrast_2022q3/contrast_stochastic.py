@@ -5,7 +5,7 @@ import termcolor
 import numpy as np
 from typing import Optional
 
-from code_contrast.encoding.smc_encoding import SMCEncoding
+from refact_encoding import RefactEncoding
 
 
 text_a = """#hmm
@@ -122,7 +122,7 @@ def ops_stochastic_expand(
 
 
 def test_stochastic(remove_short_equals=False, stochastic_replace_more=True):
-    enc = SMCEncoding("openai_programming_v2")
+    enc = RefactEncoding("openai_programming_v2")
     def dec(x):
         return enc.decode(x).replace("\n", "\\n")
     a_tokens = enc.encode(text_a)

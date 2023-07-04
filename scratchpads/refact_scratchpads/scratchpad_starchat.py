@@ -3,13 +3,13 @@ import torch as th
 from typing import List, Any, Dict
 
 from code_contrast.scratchpad.scratchpad import ScratchpadBase
-from code_contrast.encoding.smc_encoding import SMCEncoding
+from refact_encoding import RefactEncoding
 
 
 class ScratchpadStarChat(ScratchpadBase):
 
     def __init__(self,
-                 enc: SMCEncoding,
+                 enc: RefactEncoding,
                  messages: List[Dict[str, str]],
                  **kwargs):
         super().__init__(enc, **kwargs)

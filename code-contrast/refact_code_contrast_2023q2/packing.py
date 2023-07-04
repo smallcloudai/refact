@@ -2,17 +2,16 @@ import random
 import time
 import termcolor
 
-from code_contrast.encoding.smc_encoding import SMCEncoding
-from code_contrast.print_utils import hlprint
+from refact_encoding import RefactEncoding, hlprint
 
-from code_contrast.contrast_2023q2.element import Element, ElementPackingContext, Format2023q2
+from refact_code_contrast_2023q2.element import Element, ElementPackingContext, Format2023q2
 from typing import List, Dict, Tuple, DefaultDict, Any, Set, Optional
 
 
 class Packer:
     def __init__(self, fmt: Format2023q2):
         self.fmt = fmt
-        self.enc: SMCEncoding = fmt.enc
+        self.enc: RefactEncoding = fmt.enc
         self.r: List[int] = list()
         self.m: List[int] = list()
         self.plan: List[Element] = list()

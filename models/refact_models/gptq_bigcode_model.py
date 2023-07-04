@@ -10,7 +10,7 @@ from huggingface_hub import hf_hub_download
 from transformers.models.gpt_bigcode.modeling_gpt_bigcode import GPTBigCodeConfig
 from transformers.models.gpt_bigcode.modeling_gpt_bigcode import GPTBigCodeForCausalLM
 
-from code_contrast.encoding import SMCEncoding
+from refact_encoding import RefactEncoding
 from code_contrast.modeling.quant import QuantLinear
 
 from typing import Optional, Tuple, Any, List
@@ -72,7 +72,7 @@ class GPTQBigCodeModel(nn.Module):
         if device == "cpu":
             raise ValueError("model is not implemented on cpu")
 
-        self.encoding = SMCEncoding("bigcode_largemodel")
+        self.encoding = RefactEncoding("bigcode_largemodel")
         self.device = device
         disable_torch_init()
 

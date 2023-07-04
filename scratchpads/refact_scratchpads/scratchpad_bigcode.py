@@ -1,7 +1,7 @@
 import termcolor
 import torch as th
 
-from code_contrast.encoding.smc_encoding import SMCEncoding
+from refact_encoding import RefactEncoding
 from code_contrast.scratchpad.scratchpad import ScratchpadBase
 from code_contrast.scratchpad import bigcode_prompts, utils
 
@@ -11,7 +11,7 @@ from typing import List, Any, Dict, Set, Optional, Union, Tuple
 class ScratchpadBigCode(ScratchpadBase):
     def __init__(
         self,
-        enc: SMCEncoding,
+        enc: RefactEncoding,
         intent: str,
         cursor_file: str,
         cursor0: int,

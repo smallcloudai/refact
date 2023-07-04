@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
 
 from dataclasses_json import dataclass_json
-from code_contrast.encoding.smc_encoding import SMCEncoding
+from refact_encoding import RefactEncoding
 
 
 @dataclass_json
@@ -43,7 +43,7 @@ class Config:
 
     @property
     def encoding(self):
-        return SMCEncoding(self.enc_name)
+        return RefactEncoding(self.enc_name)
 
     @property
     def mup(self) -> bool:

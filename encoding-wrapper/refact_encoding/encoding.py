@@ -9,7 +9,7 @@ import tiktoken
 from tiktoken.load import load_tiktoken_bpe
 
 
-__all__ = ["SMCEncoding"]
+__all__ = ["RefactEncoding"]
 
 
 class RefactEncoding:

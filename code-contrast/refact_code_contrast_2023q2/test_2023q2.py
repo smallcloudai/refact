@@ -1,24 +1,23 @@
 import termcolor
 
-from code_contrast.encoding.smc_encoding import SMCEncoding
-from code_contrast.print_utils import hlprint
+from refact_encoding import RefactEncoding, hlprint
 
 from collections import defaultdict
 
 from typing import List, Dict, Tuple, DefaultDict, Any, Set, Optional
 
-from code_contrast.contrast_2023q2.element import Element, Format2023q2
-from code_contrast.contrast_2023q2 import format
-from code_contrast.contrast_2023q2 import el_chunk
+from refact_code_contrast_2023q2.element import Element, Format2023q2
+from refact_code_contrast_2023q2 import format
+from refact_code_contrast_2023q2 import el_chunk
 
 
 ADDITIONAL_CHECKS = True
 
 
-from code_contrast.contrast_2023q2.packing import Packer
-from code_contrast.contrast_2023q2.unpacking import Unpacker
-from code_contrast.contrast_2023q2.el_msg import MsgElement
-from code_contrast.contrast_2023q2.from_orig_dest_message import from_odm_dict
+from refact_code_contrast_2023q2.packing import Packer
+from refact_code_contrast_2023q2.unpacking import Unpacker
+from refact_code_contrast_2023q2.el_msg import MsgElement
+from refact_code_contrast_2023q2.from_orig_dest_message import from_odm_dict
 
 
 def test_messages(fmt: Format2023q2):
@@ -232,7 +231,7 @@ def self_test(
 
 
 if __name__ == "__main__":
-    enc = SMCEncoding("bigcode_largemodel")
+    enc = RefactEncoding("bigcode_largemodel")
     fmt = format.format_2023q2_escape(enc)
     # test_messages(fmt)
     # test_expansion(fmt)

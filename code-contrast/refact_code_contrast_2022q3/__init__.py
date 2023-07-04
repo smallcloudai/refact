@@ -1,2 +1,2 @@
-from code_contrast.contrast.contrast import *
-from code_contrast.contrast.contrast_stochastic import *
+from refact_code_contrast_2022q3.contrast_stochastic import ops_remove_short_equals, ops_stochastic_expand
+from refact_code_contrast_2022q3.contrast import ContrastDiff, self_test, DecodeError

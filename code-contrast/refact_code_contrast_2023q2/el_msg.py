@@ -1,4 +1,4 @@
-from code_contrast.contrast_2023q2.element import Element, ElementPackingContext, ElementUnpackContext
+from refact_code_contrast_2023q2.element import Element, ElementPackingContext, ElementUnpackContext
 from typing import List, Tuple
 
 

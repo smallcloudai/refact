@@ -3,7 +3,7 @@ from typing import Optional
 from torch import nn
 from transformers import AutoModelForCausalLM
 
-from code_contrast import SMCEncoding
+from refact_encoding import RefactEncoding
 
 
 class StarChatModel(nn.Module):
@@ -15,7 +15,7 @@ class StarChatModel(nn.Module):
         if device == "cpu":
             raise ValueError("model is not implemented on cpu")
 
-        self.encoding = SMCEncoding("bigcode_starchat")
+        self.encoding = RefactEncoding("bigcode_starchat")
         self.device = device
         self.model = AutoModelForCausalLM.from_pretrained(
             checkpoint,

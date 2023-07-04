@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from transformers import AutoModelForCausalLM
 
-from code_contrast import SMCEncoding
+from refact_encoding import RefactEncoding
 from code_contrast.modeling.lora import LoraMixin
 
 
@@ -25,7 +25,7 @@ class HFModel(nn.Module, LoraMixin):
             trust_remote_code=True,
             use_auth_token=use_auth_token,
         ).to(device)
-        self.encoding = SMCEncoding(model_name.replace('/', '_'))
+        self.encoding = RefactEncoding(model_name.replace('/', '_'))
         self.cache_dir: Optional[str] = cache_dir
         self.model_name: str = model_name
 

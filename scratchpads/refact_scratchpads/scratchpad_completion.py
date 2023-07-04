@@ -1,13 +1,13 @@
 import torch as th
 
-from code_contrast.encoding.smc_encoding import SMCEncoding
+from refact_encoding import RefactEncoding
 from code_contrast.scratchpad.scratchpad import ScratchpadBase
 
 from typing import List, Any, Dict
 
 
 class ScratchpadCompletion(ScratchpadBase):
-    def __init__(self, enc: SMCEncoding, prompt, echo, **kwargs):
+    def __init__(self, enc: RefactEncoding, prompt, echo, **kwargs):
         super().__init__(enc, **kwargs)
         self._tokens: List[int] = []
         self._prompt = prompt

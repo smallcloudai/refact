@@ -4,13 +4,13 @@ from itertools import zip_longest
 import torch as th
 from typing import Tuple
 
-from code_contrast.encoding.smc_encoding import SMCEncoding
+from refact_encoding import RefactEncoding
 
 
 def trim_context_infill(
         prefix: str,
         suffix: str,
-        enc: SMCEncoding,
+        enc: RefactEncoding,
         tokens_limit: int
 ) -> Tuple[str, str]:
     lines_prefix = [(l, 'prefix') for l in reversed(prefix.splitlines(keepends=True))]

@@ -1,14 +1,14 @@
 import termcolor
-from code_contrast.encoding.smc_encoding import SMCEncoding
+from refact_encoding import RefactEncoding
 from typing import List, Dict, Tuple, Callable, Type
 
-from code_contrast.contrast_2023q2.element import Format2023q2, Element, ElementPackingContext
-from code_contrast.contrast_2023q2.el_msg import MsgElement
-from code_contrast.contrast_2023q2.el_chunk import ChunkElement
+from refact_code_contrast_2023q2.element import Format2023q2, Element, ElementPackingContext
+from refact_code_contrast_2023q2.el_msg import MsgElement
+from refact_code_contrast_2023q2.el_chunk import ChunkElement
 
 
 
-def format_2023q2_escape(enc: SMCEncoding) -> Format2023q2:
+def format_2023q2_escape(enc: RefactEncoding) -> Format2023q2:
     fmt = Format2023q2(enc)
     fmt.element_start_seq = {
     "SYSTEM": [enc.ESCAPE, *enc.encode("SYSTEM")],

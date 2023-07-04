@@ -3,10 +3,10 @@ import time
 import termcolor
 import collections
 
-from code_contrast.encoding.smc_encoding import SMCEncoding
-from code_contrast.print_utils import hlprint
+from refact_encoding import RefactEncoding, hlprint
+import refact_code_contrast_2022q3
+import refact_code_contrast_2022q3.contrast
 
-from code_contrast.contrast import contrast
 from code_contrast.scratchpad.scratchpad import ScratchpadBase
 
 
@@ -16,7 +16,7 @@ from typing import Dict, Optional, Any, List, Tuple
 class ScratchpadDiff(ScratchpadBase):
     def __init__(
         self,
-        enc: SMCEncoding,
+        enc: RefactEncoding,
         intent: str,
         cursor_file: str,
         cursor0: int,
@@ -51,9 +51,9 @@ class ScratchpadDiff(ScratchpadBase):
                 self.file_poi[fn].add(int(rec["cursor0"]))
                 self.file_poi[fn].add(int(rec["cursor1"]))
         self.state_before_first_tpos = True
-        self.diff: contrast.ContrastDiff = None
-        self.diff_out: Optional[contrast.ContrastDiff] = None
-        self.diff_out_us: Optional[contrast.UntokenizeState] = None
+        self.diff: refact_code_contrast_2022q3.ContrastDiff = None
+        self.diff_out: Optional[refact_code_contrast_2022q3.ContrastDiff] = None
+        self.diff_out_us: Optional[refact_code_contrast_2022q3.UntokenizeState] = None
         self.highlight = []
         self.highlight16 = []
         self.t_cursor0 = -1
@@ -103,7 +103,7 @@ class ScratchpadDiff(ScratchpadBase):
                 logits_intrusion[tpos] = +4.5
         if (
                 self.diff_out_us is not None and
-                self.diff_out_us.state == contrast.DEL and
+                self.diff_out_us.state == refact_code_contrast_2022q3.contrast.DEL and
                 self.diff_out_us.brewing_edit.real_delstart != -1 and
                 self.diff_out_us.brewing_edit.fn == self.cursor_file
         ):
@@ -203,7 +203,7 @@ class ScratchpadDiff(ScratchpadBase):
                 if len(self.diff_out.edits) == 1:
                     self.debuglog("REATTACH '%s'\n" % (self.ugly_hack_reattach_next_line.replace("\n", "\\n")))
                     self.diff_out.edits[0].toins.extend(self.enc.encode(self.ugly_hack_reattach_next_line) + [self.enc.LF])
-            self.diff_out_us.state = contrast.WAIT
+            self.diff_out_us.state = refact_code_contrast_2022q3.contrast.WAIT
         try:
             while self.diff_out_cursor < len(self.diff.r):
                 c = self.diff_out_cursor
@@ -213,10 +213,10 @@ class ScratchpadDiff(ScratchpadBase):
                     break
                 self.diff_out.untokenize_new_token(self.diff_out_us, t, c)
                 self.diff_out_cursor += 1
-                if self.diff_out_us.state == contrast.CHUNK and self.max_edits >= 0 and len(self.diff_out.edits) - self.prompt_edits >= self.max_edits:
+                if self.diff_out_us.state == refact_code_contrast_2022q3.contrast.CHUNK and self.max_edits >= 0 and len(self.diff_out.edits) - self.prompt_edits >= self.max_edits:
                     finish("max-edits")
                     break
-                if c >= self.no_stop_tokens_until and self.diff_out_us.state == contrast.INS:
+                if c >= self.no_stop_tokens_until and self.diff_out_us.state == refact_code_contrast_2022q3.contrast.INS:
                     if t in self.stop_tokens:
                         finish("ins-stoptoken")
                         break
@@ -229,12 +229,12 @@ class ScratchpadDiff(ScratchpadBase):
                     if t == self.enc.LF:
                         if self.stream:
                             self.needs_upload = True
-                if self.diff_out_us.state in [contrast.DEL, contrast.SHIFT]:
+                if self.diff_out_us.state in [refact_code_contrast_2022q3.contrast.DEL, refact_code_contrast_2022q3.contrast.SHIFT]:
                     # print("TEST epos=%i in %s\n\n" % (self.diff_out_us.e_tpos, self.increase_logits))
                     if len(self.increase_logits) > 0 and (self.diff_out_us.brewing_edit.tpos not in self.increase_logits):
                         finish("out-of-selection")
                         break
-        except contrast.DecodeError as e:
+        except refact_code_contrast_2022q3.DecodeError as e:
             self.debuglog("Exception in diff_out.untokenize_new_token: %s" % e)
             self.finish_reason = "diff-application-error"
 
@@ -284,7 +284,7 @@ class ScratchpadDiff(ScratchpadBase):
     def prompt_edit_chain(self, T):
         minrev = 10000
         for fn, text in self.sources.items():
-            fn, revision = contrast.parse_fn(fn)
+            fn, revision = refact_code_contrast_2022q3.contrast.parse_fn(fn)
             if revision is None:
                 continue
             if self.function != "edit-chain":
@@ -299,7 +299,7 @@ class ScratchpadDiff(ScratchpadBase):
             # self.debuglog("revision", revision)
             # self.debuglog("EDIT CHAIN BASE", text)
         for fn, text in self.sources.items():
-            fn, suffix = contrast.parse_fn(fn)
+            fn, suffix = refact_code_contrast_2022q3.contrast.parse_fn(fn)
             if suffix is not None:
                 continue
             self.odm["dest"][fn] = text
@@ -332,7 +332,7 @@ class ScratchpadDiff(ScratchpadBase):
             exact_cx_lines0=2,
             exact_cx_lines1=0,
             )
-        self.diff_out = contrast.ContrastDiff(self.enc)
+        self.diff_out = refact_code_contrast_2022q3.contrast.ContrastDiff(self.enc)
         self.diff_out_us = self.diff_out.untokenize_init(self.orig_tokens)
         self.diff_out_cursor = 0
         if self.cursor0 != -1:
@@ -378,7 +378,7 @@ class ScratchpadDiff(ScratchpadBase):
 
     def prompt(self, T):
         t0 = time.time()
-        self.diff = contrast.ContrastDiff(self.enc)
+        self.diff = refact_code_contrast_2022q3.contrast.ContrastDiff(self.enc)
         self.odm = {
             "orig": dict(),
             "commitmsg": self.intent,
@@ -396,7 +396,7 @@ class ScratchpadDiff(ScratchpadBase):
             return []
         self.no_stop_tokens_until = len(self.diff.r)
         if self.diff_out is None:
-            self.diff_out = contrast.ContrastDiff(self.enc)
+            self.diff_out = refact_code_contrast_2022q3.contrast.ContrastDiff(self.enc)
             self.diff_out_us = self.diff_out.untokenize_init(self.orig_tokens)
             self.diff_out_cursor = 0
             self.diff_out_catch_up()
@@ -608,7 +608,7 @@ class ScratchpadDiff(ScratchpadBase):
             self.diff_out.enc = enc
         return d
 
-    def set_enc(self, enc: SMCEncoding):
+    def set_enc(self, enc: RefactEncoding):
         self.enc = enc
         if self.diff is not None:
             self.diff.enc = enc
