@@ -5,6 +5,7 @@ setup(
     name="refact_encoding",
     py_modules=["refact_encoding"],
     packages=find_packages(),
+    package_data={"refact_encoding": ["*.json", "*.tokenizer.model"]},
     version="0.9.0",
     install_requires=[
         "numpy",
