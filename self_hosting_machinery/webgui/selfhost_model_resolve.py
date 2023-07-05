@@ -1,52 +1,56 @@
-import re
-from typing import Tuple
+from dataclasses import dataclass
+
+from typing import Tuple, Iterable
 
 
-def resolve_model(model_name: str, cursor_file: str, function: str) -> Tuple[str, str]:
+@dataclass
+class Model:
+    family: str
+    size: str = ""
+    specialization: str = ""
+    version: str = ""
+
+    def __init__(self, name: str):
+        self.family, self.size, self.specialization, self.version = \
+            f"{name}///".split("/")[:4]
+
+    def __str__(self) -> str:
+        return "/".join([
+            self.family,
+            self.size,
+            self.specialization,
+            self.version
+        ]).rstrip("/")
+
+    def __bool__(self) -> bool:
+        return bool(self.family)
+
+
+# TODO: remove this function ASAP, we need dynamic resolve mechanism
+def resolve_model(model_name: str, hosted_models: Iterable[str]) -> Tuple[str, str]:
     """
     Allow client to specify less in the model string, including an empty string.
     """
-    m_everything = model_name.split("/")
-    m_company, m_size, m_specialization, m_version = tuple(m_everything + ["", "", "", ""])[:4]
+    if model_name in hosted_models:
+        return model_name, ""
 
-    if m_company == "CONTRASTcode":
-        if function == "":  # true for plain completion (not diff)
-            pass
-        else:
-            regex = r"^(highlight|infill|diff-anywhere|diff-atcursor|diff-selection|edit-chain)$"
-            m_match = re.fullmatch(regex, function)
-            if not m_match:
-                return "", "function must match %s" % regex
-        if not m_specialization and cursor_file:
-            # file extension -> specialization here
-            pass
-        if not m_size:
-            m_size = "3b"
-        if not m_specialization:
-            m_specialization = "multi"
+    if model_name in ["CONTRASTcode"]:
+        model_name = ""
+    if model_name in ["longthink", "gpt3.5", "gpt4"]:
+        model_name = "longthink/stable"
 
-    elif m_company == "starcoder":
-        if not m_size:
-            m_size = "15b"
-        if not m_specialization:
-            m_specialization = "base4bit"
-
-    elif m_company == "starchat":
-        if not m_size:
-            m_size = "15b"
-        if not m_specialization:
-            m_specialization = "beta8bit"
-
-    # TODO: mixed models and capabilities
-    elif m_company in ["longthink", "gpt3.5", "gpt4"]:
-        m_company = "longthink"
-        m_size = "stable"
-
+    to_resolve = Model(model_name)
+    if not to_resolve:
+        filtered_hosted_models = [
+            m for m in map(Model, hosted_models)
+            if m.family not in ["longthink"]
+        ]
     else:
-        m_company = "CONTRASTcode"
-        m_size = "3b"
-        m_specialization = "multi"
+        filtered_hosted_models = [
+            m for m in map(Model, hosted_models)
+            if m.family == to_resolve.family
+        ]
 
-    result = "/".join([m_company, m_size, m_specialization, m_version])
-    result = result.rstrip("/")
-    return result, ""
+    if not filtered_hosted_models:
+        return "", f"no loaded model of family '{to_resolve.family}'"
+    return str(filtered_hosted_models[0]), ""
