@@ -81,14 +81,14 @@ def _models():
             if func.type == func_type
         }
 
-    chat_caps = _capabilities("toolbox")
+    chat_caps = _capabilities("chat")
     toolbox_caps = _capabilities("toolbox")
     for k, rec in models_mini_db.items():
         if rec.get("hidden", False):
             continue
         models_info.append({
             "name": k,
-            "has_chat": rec["chat_scratchpad_class"] and chat_caps.intersection(rec["filter_caps"]),
+            "has_chat": bool(rec["chat_scratchpad_class"]) and bool(chat_caps.intersection(rec["filter_caps"])),
             "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),
         })
     return {"models": models_info}
