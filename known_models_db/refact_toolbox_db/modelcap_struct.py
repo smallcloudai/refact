@@ -10,6 +10,7 @@ class ModelFunction:
     function_name: str
     metering: int
     label: str
+    type: str
     supports_highlight: bool
     supports_selection: bool
     selected_lines_min: int
@@ -17,7 +18,7 @@ class ModelFunction:
     third_party: Union[bool, List[bool]]
     supports_languages: str
     mini_html: str
-    model: Union[str, List[str]]
+    model: List[str]
     model_fixed_intent: str = ""
     function_selection: str = ""
     function_hl_click: str = ""

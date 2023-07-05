@@ -13,7 +13,7 @@ from self_hosting_machinery import env
 from known_models_db.refact_toolbox_db import modelcap_records
 
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Set
 
 
 __all__ = ["TabHostRouter"]
@@ -71,26 +71,27 @@ def _model_assignment():
 
 
 def _models():
-    j = {"models": []}
+    models_info = []
+
+    def _capabilities(func_type: str) -> Set:
+        return {
+            capability
+            for func in modelcap_records.db
+            for capability in func.model
+            if func.type == func_type
+        }
+
+    chat_caps = _capabilities("toolbox")
+    toolbox_caps = _capabilities("toolbox")
     for k, rec in models_mini_db.items():
         if rec.get("hidden", False):
             continue
-        j["models"].append({
+        models_info.append({
             "name": k,
-            "has_chat": not not rec["chat_scratchpad_class"],
-            "has_toolbox": False,
+            "has_chat": rec["chat_scratchpad_class"] and chat_caps.intersection(rec["filter_caps"]),
+            "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),
         })
-        k_filter_caps = rec["filter_caps"]
-        for rec in modelcap_records.db:
-            rec_models = rec.model
-            if not isinstance(rec_models, list):
-                rec_models = [rec_models]
-            for test in rec_models:
-                if test in k_filter_caps:
-                    # print("model %s has toolbox because %s" % (k, rec.function_name))
-                    j["models"][-1]["has_toolbox"] = True
-                    break
-    return j
+    return {"models": models_info}
 
 
 def _update_watchdog_d():

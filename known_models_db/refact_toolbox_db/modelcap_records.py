@@ -4,6 +4,7 @@ from known_models_db.refact_toolbox_db.modelcap_struct import ModelFunction, loa
 db = [
     # ModelFunction(
     #     "select-and-refactor", 0, "Select & Refactor",
+    #     type="toolbox",
     #     supports_highlight=False,
     #     supports_selection=True,
     #     selected_lines_min=1,
@@ -11,13 +12,14 @@ db = [
     #     third_party=False,
     #     supports_languages="*.*",
     #     mini_html=load_mini_html("select-and-refactor"),
-    #     model="CONTRASTcode",
+    #     model=["CONTRASTcode"],
     #     function_selection="diff-selection",
     #     catch_all_selection=True,
     # ),
 
     # ModelFunction(
     #     "hl-and-fix", 0, "Highlight & Fix",
+    #     type="toolbox",
     #     supports_highlight=True,
     #     supports_selection=False,
     #     selected_lines_min=0,
@@ -25,7 +27,7 @@ db = [
     #     third_party=False,
     #     supports_languages="*.*",
     #     mini_html=load_mini_html("hl-and-fix"),
-    #     model="CONTRASTcode",
+    #     model=["CONTRASTcode"],
     #     function_highlight="highlight",
     #     function_hl_click="diff-atcursor",
     #     catch_all_hl=True,
@@ -33,6 +35,7 @@ db = [
 
     # ModelFunction(
     #     "add-type-hints", 0, "Add Type Hints",
+    #     type="toolbox",
     #     supports_highlight=True,
     #     supports_selection=True,
     #     selected_lines_min=1,
@@ -40,7 +43,7 @@ db = [
     #     third_party=False,
     #     supports_languages="*.py;*.php;*.js",
     #     mini_html=load_mini_html("add-type-hints"),
-    #     model="CONTRASTcode",
+    #     model=["CONTRASTcode"],
     #     model_fixed_intent="Add type hints",
     #     function_highlight="highlight",
     #     function_hl_click="diff-atcursor",
@@ -49,6 +52,7 @@ db = [
 
     ModelFunction(
         "free-chat", 1, "Chat",
+        type="chat",
         supports_highlight=True,
         supports_selection=True,
         selected_lines_min=1,
@@ -62,6 +66,7 @@ db = [
 
     ModelFunction(
         "db-chat", 1, "Chat",
+        type="chat",
         supports_highlight=True,
         supports_selection=True,
         selected_lines_min=1,
@@ -74,6 +79,7 @@ db = [
 
     ModelFunction(
         "add-console-logs", 1, "Add Console Logs",
+        type="toolbox",
         supports_highlight=False,
         supports_selection=True,
         selected_lines_min=1,
@@ -87,6 +93,7 @@ db = [
 
     ModelFunction(
         "comment-each-line", 1, "Comment Each Line",
+        type="toolbox",
         supports_highlight=False,
         supports_selection=True,
         selected_lines_min=1,
@@ -100,6 +107,7 @@ db = [
 
     ModelFunction(
         "explain-code-block", 1, "Explain Code",
+        type="toolbox",
         supports_highlight=False,
         supports_selection=True,
         selected_lines_min=1,
@@ -113,6 +121,7 @@ db = [
 
     ModelFunction(
         "fix-bug", 1, "Fix Bug",
+        type="toolbox",
         supports_highlight=False,
         supports_selection=True,
         selected_lines_min=1,
@@ -126,6 +135,7 @@ db = [
 
     ModelFunction(
         "make-code-shorter", 1, "Make Code Shorter",
+        type="toolbox",
         supports_highlight=False,
         supports_selection=True,
         selected_lines_min=1,
@@ -139,6 +149,7 @@ db = [
 
     ModelFunction(
         "precise-naming", 1, "Precise Naming",
+        type="toolbox",
         supports_highlight=False,
         supports_selection=True,
         selected_lines_min=1,
@@ -152,6 +163,7 @@ db = [
 
     ModelFunction(
         "completion", 1, "Completion",
+        type="completion",
         supports_highlight=False,
         supports_selection=False,
         selected_lines_min=1,
