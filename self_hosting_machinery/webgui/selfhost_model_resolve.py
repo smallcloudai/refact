@@ -52,5 +52,5 @@ def resolve_model(model_name: str, hosted_models: Iterable[str]) -> Tuple[str, s
         ]
 
     if not filtered_hosted_models:
-        return "", f"no loaded model of family '{to_resolve.family}'"
+        return "", f"model is not loaded"
     return str(filtered_hosted_models[0]), ""
