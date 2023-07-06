@@ -1,4 +1,15 @@
 big_code_mini_db = {
+
+"starchat/15b/beta8bit": {
+    "model_path_type": "huggingface",
+    "model_path": "rahuldshetty/starchat-beta-8bit",
+    "diff_scratchpad_class": None,
+    "chat_scratchpad_class": "refact_scratchpads:ScratchpadStarChat",
+    "model_class": "refact_models:StarChatModel",
+    "T": 2048,
+    "filter_caps": ["starchat"],
+},
+
 "starcoder/santacoder": {
     "model_path_type": "huggingface",
     "model_path": "bigcode/santacoder",
@@ -46,13 +57,4 @@ big_code_mini_db = {
     "filter_caps": ["starcoder"],
 },
 
-"starchat/15b/beta8bit": {
-    "model_path_type": "huggingface",
-    "model_path": "rahuldshetty/starchat-beta-8bit",
-    "diff_scratchpad_class": None,
-    "chat_scratchpad_class": "refact_scratchpads:ScratchpadStarChat",
-    "model_class": "refact_models:StarChatModel",
-    "T": 2048,
-    "filter_caps": ["starchat"],
-},
 }
