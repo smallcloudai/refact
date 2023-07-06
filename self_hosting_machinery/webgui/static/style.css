@@ -574,3 +574,7 @@ h3 {
     font-size: 12px;
     font-weight: bold;
 }
+.finetune-settings-optional-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}

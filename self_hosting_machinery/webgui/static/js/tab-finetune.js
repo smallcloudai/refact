@@ -390,22 +390,29 @@ function get_finetune_settings(defaults = false) {
             settings_data = data.defaults;
         }
         document.querySelector('#finetune-tab-settings-modal #limit_time_seconds').value = settings_data.limit_time_seconds;
-        document.querySelector('#finetune-tab-settings-modal #max_iterations').value = settings_data.max_iterations;
-        document.querySelector('#finetune-tab-settings-modal #max_epoch').value = settings_data.max_epoch;
-        document.querySelector('#finetune-tab-settings-modal #warmup_num_steps').value = settings_data.warmup_num_steps;
-        document.querySelector('#finetune-tab-settings-modal #batch_size').value = settings_data.batch_size;
         document.querySelector('#finetune-tab-settings-modal #lr').value = settings_data.lr;
+        document.querySelector('#finetune-tab-settings-modal #batch_size').value = settings_data.batch_size;
+        document.querySelector('#finetune-tab-settings-modal #warmup_num_steps').value = settings_data.warmup_num_steps;
+        document.querySelector('#finetune-tab-settings-modal #weight_decay').value = settings_data.weight_decay;
+        document.querySelector('#finetune-tab-settings-modal #train_steps').value = settings_data.train_steps;
         document.querySelector('#finetune-tab-settings-modal #lr_decay_steps').value = settings_data.lr_decay_steps;
         document.querySelector('#finetune-tab-settings-modal #lora_r').value = settings_data.lora_r;
+        document.querySelector('#finetune-tab-settings-modal #lora_alpha').value = settings_data.lora_alpha;
         document.querySelector('#finetune-tab-settings-modal #lora_init_scale').value = settings_data.lora_init_scale;
         document.querySelector('#finetune-tab-settings-modal #lora_dropout').value = settings_data.lora_dropout;
-        document.querySelector('#finetune-tab-settings-modal #weight_decay').value = settings_data.weight_decay;
         const low_gpu_mem_mode = settings_data.low_gpu_mem_mode;
-        if(low_gpu_mem_mode ) {
+        if(low_gpu_mem_mode) {
             document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked = true;
         } else {
             document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked = false;
         }
+        const use_heuristics = settings_data.use_heuristics;
+        if(use_heuristics) {
+            document.querySelector('#finetune-tab-settings-modal #use_heuristics').checked = true;
+        } else {
+            document.querySelector('#finetune-tab-settings-modal #use_heuristics').checked = false;
+        }
+        check_heuristics();
     });
 }
 
@@ -415,6 +422,10 @@ function save_finetune_settings() {
     if (document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked) {
         low_gpu = true;
     }
+    let use_heuristics = false;
+    if (document.querySelector('#finetune-tab-settings-modal #use_heuristics').checked) {
+        use_heuristics = true;
+    }
     fetch("/tab-finetune-smart-filter-setup", {
         method: "POST",
         headers: {
@@ -422,16 +433,17 @@ function save_finetune_settings() {
         },
         body: JSON.stringify({
             limit_time_seconds: document.querySelector('#finetune-tab-settings-modal #limit_time_seconds').value,
-            max_iterations: document.querySelector('#finetune-tab-settings-modal #max_iterations').value,
-            max_epoch: document.querySelector('#finetune-tab-settings-modal #max_epoch').value,
-            warmup_num_steps: document.querySelector('#finetune-tab-settings-modal #warmup_num_steps').value,
-            batch_size: document.querySelector('#finetune-tab-settings-modal #batch_size').value,
             lr: document.querySelector('#finetune-tab-settings-modal #lr').value,
+            batch_size: document.querySelector('#finetune-tab-settings-modal #batch_size').value,
+            warmup_num_steps: document.querySelector('#finetune-tab-settings-modal #warmup_num_steps').value,
+            weight_decay: document.querySelector('#finetune-tab-settings-modal #weight_decay').value,
+            use_heuristics: use_heuristics,
+            train_steps: document.querySelector('#finetune-tab-settings-modal #train_steps').value,
             lr_decay_steps: document.querySelector('#finetune-tab-settings-modal #lr_decay_steps').value,
             lora_r: document.querySelector('#finetune-tab-settings-modal #lora_r').value,
+            lora_alpha: document.querySelector('#finetune-tab-settings-modal #lora_alpha').value,
             lora_init_scale: document.querySelector('#finetune-tab-settings-modal #lora_init_scale').value,
             lora_dropout: document.querySelector('#finetune-tab-settings-modal #lora_dropout').value,
-            weight_decay: document.querySelector('#finetune-tab-settings-modal #weight_decay').value,
             low_gpu_mem_mode: low_gpu
         })
     })
@@ -440,6 +452,21 @@ function save_finetune_settings() {
             get_finetune_settings();
         }
     });
+}
+
+function check_heuristics() {
+    const finetune_use_heuristics = document.querySelector('#use_heuristics');
+    if(finetune_use_heuristics.checked) {
+        document.querySelector('.finetune-settings-optional').classList.remove('finetune-settings-optional-disabled');
+        document.querySelectorAll('.finetune-settings-optional input').forEach(element => {
+            element.removeAttribute('tabindex');
+        });
+    } else {
+        document.querySelector('.finetune-settings-optional').classList.add('finetune-settings-optional-disabled');
+        document.querySelectorAll('.finetune-settings-optional input').forEach(element => {
+            element.setAttribute('tabindex', '-1');
+        });
+    }
 }
 
 export function init() {
@@ -491,6 +518,12 @@ export function init() {
         let delete_lora_modal = document.getElementById('delete-lora-modal');
         let delete_lora_modal_instance = bootstrap.Modal.getOrCreateInstance(delete_lora_modal);
         delete_lora_modal_instance.hide();
+    });
+
+    check_heuristics();
+    const finetune_use_heuristics = document.querySelector('#use_heuristics');
+    finetune_use_heuristics.addEventListener('change', function(event) {
+        check_heuristics();
     });
 }
 

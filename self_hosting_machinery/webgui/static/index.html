@@ -572,7 +572,7 @@
           <div class="row">
             <div class="col">
               <div class="mb-3">
-                <label for="filter_loss_threshold" class="form-label">Limit time seconds</label>
+                <label for="limit_time_seconds" class="form-label">Limit time seconds</label>
                 <input type="number" step="1" min="600" max="172800" class="form-control" id="limit_time_seconds">
                 <div class="form-text">
                   Min 600, Max 3600 * 48
@@ -581,19 +581,10 @@
             </div>
             <div class="col">
               <div class="mb-3">
-                <label for="filter_gradcosine_threshold" class="form-label">Max iterations</label>
-                <input type="number" step="1" min="10" max="5000" class="form-control" id="max_iterations">
+                <label for="lr" class="form-label">Lr</label>
+                <input type="text" class="form-control" id="lr">
                 <div class="form-text">
-                  Min 10, Max 5000
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="limit_train_files" class="form-label">Max epoch</label>
-                <input type="number" step="1" min="1" max="500" class="form-control" id="max_epoch">
-                <div class="form-text">
-                  Min 1, Max 500
+                  Min 1e-5, Max 300e-5
                 </div>
               </div>
             </div>
@@ -602,16 +593,7 @@
           <div class="row">
             <div class="col">
               <div class="mb-3">
-                <label for="limit_test_files" class="form-label">Warmup num steps</label>
-                <input type="number" step="1" min="1" max="100" class="form-control" id="warmup_num_steps">
-                <div class="form-text">
-                  Max 1, Max 100
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="limit_time_seconds" class="form-label">Batch size</label>
+                <label for="batch_size" class="form-label">Batch size</label>
                 <input type="number" step="1" min="4" max="1024" class="form-control" id="batch_size">
                 <div class="form-text">
                   Min 4, Max 1024
@@ -620,56 +602,17 @@
             </div>
             <div class="col">
               <div class="mb-3">
-                <label for="limit_time_seconds" class="form-label">Lr</label>
-                <input type="text" class="form-control" id="lr">
+                <label for="warmup_num_steps" class="form-label">Warmup num steps</label>
+                <input type="number" step="1" min="1" max="100" class="form-control" id="warmup_num_steps">
                 <div class="form-text">
-                  Min 1e-5, Max 300e-5
+                  Max 1, Max 100
                 </div>
               </div>
             </div>
-          </div>
-          <div class="row">
+            
             <div class="col">
               <div class="mb-3">
-                <label for="limit_time_seconds" class="form-label">Lr decay steps</label>
-                <input type="number" step="1" min="10" max="5000" class="form-control" id="lr_decay_steps">
-                <div class="form-text">
-                  Min 10, Max 5000
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="limit_time_seconds" class="form-label">Lora R</label>
-                <input type="number" step="1" min="4" max="256" class="form-control" id="lora_r">
-                <div class="form-text">
-                  Min 4, Max 256
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="limit_time_seconds" class="form-label">Lora Init Scale</label>
-                <input type="number" step="0.001" min="0.001" max="1.0" class="form-control" id="lora_init_scale">
-                <div class="form-text">
-                  Min 0.001, Max 1.0
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <label for="limit_time_seconds" class="form-label">Lora Dropout</label>
-                <input type="number" step="0.01" min="0.0" max="0.2" class="form-control" id="lora_dropout">
-                <div class="form-text">
-                  Min 0.0, Max 0.2
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="limit_time_seconds" class="form-label">Weight Decay</label>
+                <label for="weight_decay" class="form-label">Weight Decay</label>
                 <input type="number" step="0.1" min="0.0" max="1.0" class="form-control" id="weight_decay">
                 <div class="form-text">
                   Min 0.0, Max 1.0
@@ -677,17 +620,95 @@
               </div>
             </div>
           </div>
-          <div class="mb-3">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
-              <label class="form-check-label" for="low_gpu_mem_mode_finetune">
-                Low GPU memory mode
-              </label>
-              <div class="form-text">
-                Optional. If not specified, the default branch will be used.
+
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <input class="form-check-input" type="checkbox" name="use_heuristics" id="use_heuristics">
+                <label class="form-check-label" for="use_heuristics">
+                  Use heuristics
+                </label>
               </div>
             </div>
           </div>
+
+          <div class="finetune-settings-optional finetune-settings-optional-disabled">
+            <div class="row">
+              <div class="col">
+                <div class="mb-3">
+                  <label for="train_steps" class="form-label">Train steps</label>
+                  <input tabindex="-1" type="number" step="1" min="1" max="500" class="form-control" id="train_steps">
+                  <div class="form-text">
+                    Min 10, Max 5000
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="mb-3">
+                  <label for="lr_decay_steps" class="form-label">Lr decay steps</label>
+                  <input tabindex="-1" type="number" step="1" min="10" max="5000" class="form-control" id="lr_decay_steps">
+                  <div class="form-text">
+                    Min 10, Max 5000
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="mb-3">
+                  <label for="lora_r" class="form-label">Lora R</label>
+                  <input tabindex="-1" type="number" step="1" min="4" max="256" class="form-control" id="lora_r">
+                  <div class="form-text">
+                    Min 4, Max 256
+                  </div>
+                </div>
+              </div>
+            </div>  
+            <div class="row">
+              <div class="col">
+                <div class="mb-3">
+                  <label for="lora_alpha" class="form-label">Lora Alpha</label>
+                  <input tabindex="-1" type="number" step="1" min="1" max="100" class="form-control" id="lora_alpha">
+                  <div class="form-text">
+                    Min 0.0, Max 1.0
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="mb-3">
+                  <label for="lora_init_scale" class="form-label">Lora Init Scale</label>
+                  <input tabindex="-1" type="number" step="0.001" min="0.001" max="1.0" class="form-control" id="lora_init_scale">
+                  <div class="form-text">
+                    Min 0.001, Max 1.0
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="mb-3">
+                  <label for="lora_dropout" class="form-label">Lora Dropout</label>
+                  <input tabindex="-1" type="number" step="0.01" min="0.0" max="0.2" class="form-control" id="lora_dropout">
+                  <div class="form-text">
+                    Min 0.0, Max 0.2
+                  </div>
+                </div>
+              </div>
+
+            </div>
+            <div class="row">
+              <div class="col">
+                <div class="mb-3">
+                  <div class="form-check">
+                    <input tabindex="-1" class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
+                    <label class="form-check-label" for="low_gpu_mem_mode_finetune">
+                      Low GPU memory mode
+                    </label>
+                    <div class="form-text">
+                      Optional. If not specified, the default branch will be used.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
         <div class="modal-footer">
           <button type="button" class="finetune-tab-settings-default btn btn-secondary">Reset to defaults</button>
