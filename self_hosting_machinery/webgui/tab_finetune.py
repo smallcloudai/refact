@@ -70,17 +70,18 @@ class FilteringSetup(BaseModel):
 
 class TabFinetuneTrainingSetup(BaseModel):
     limit_time_seconds: Optional[int] = Query(default=600, ge=600, le=3600*48)
-    low_gpu_mem_mode: Optional[bool] = Query(default=True)
-    max_iterations: Optional[int] = Query(default=250, ge=10, le=5000)
-    max_epoch: Optional[int] = Query(default=100, ge=1, le=500)
-    warmup_num_steps: Optional[int] = Query(default=10, ge=1, le=100)
-    batch_size: Optional[int] = Query(default=128, ge=4, le=1024)
     lr: Optional[float] = Query(default=30e-5, ge=1e-5, le=300e-5)
-    lr_decay_steps: Optional[int] = Query(default=250, ge=10, le=5000)
-    lora_r: Optional[float] = Query(default=64, ge=4, le=256)
-    lora_init_scale: Optional[float] = Query(default=0.01, ge=0.001, le=1.0)
-    lora_dropout: Optional[float] = Query(default=0.01, ge=0.0, le=0.5)
+    batch_size: Optional[int] = Query(default=128, ge=4, le=1024)
+    warmup_num_steps: Optional[int] = Query(default=10, ge=1, le=100)
     weight_decay: Optional[float] = Query(default=0.1, ge=0.0, le=1.0)
+    use_heuristics: Optional[bool] = Query(default=True)
+    train_steps: Optional[int] = Query(default=250, ge=10, le=5000)
+    lr_decay_steps: Optional[int] = Query(default=250, ge=10, le=5000)
+    lora_r: Optional[float] = Query(default=16, ge=4, le=128)
+    lora_alpha: Optional[float] = Query(default=32, ge=1, le=256)
+    lora_init_scale: Optional[float] = Query(default=0.01, ge=0.0, le=1.0)
+    lora_dropout: Optional[float] = Query(default=0.01, ge=0.0, le=0.5)
+    low_gpu_mem_mode: Optional[bool] = Query(default=True)
 
 
 def get_finetune_runs():
