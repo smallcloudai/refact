@@ -39,16 +39,18 @@ setup(
     },
     packages=find_packages(),
     install_requires=[
+        "numpy", "torch", "termcolor", "smallcloud", "dataclasses_json", "dataclasses", "tiktoken",
+        # code_contrast
+        "difflib", "cdifflib",
+        # refact_encoding
+        "tokenizers", "sentencepiece",
+        # refact_scratchpads_no_gpu
+        "openai", "ujson",
+        # refact_models
+        "blobfile", "cloudpickle", "huggingface_hub", "transformers",
         # self_hosting_machinery
-        "fastapi", "uvloop", "uvicorn", "aiohttp", "python-multipart", "smallcloud", "blobfile",
-        # known models
-        "dataclasses_json", "termcolor",
-        # encoding
-        "tiktoken",
-        # code contrast
-        "cdifflib",
-        # models
-        "transformers", "torch",
+        "aiohttp", "cryptography", "fastapi", "giturlparse", "pydantic",
+        "starlette", "uvicorn", "uvloop",
     ],
     **additional_setup_kwargs,
 )
