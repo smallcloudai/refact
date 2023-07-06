@@ -6,6 +6,7 @@ import json
 import datetime
 import traceback
 import signal
+import logging
 
 import importlib
 import asyncio
@@ -68,7 +69,7 @@ supported_models = {
 }
 
 
-for mod in ["debug", "oleg", "mitya", "valeryi", "experimental"]:
+for mod in ["debug", "experimental"]:
     supported_models["longthink/" + mod] = supported_models["longthink/stable"]
 
 
@@ -77,11 +78,10 @@ quit_flag = False
 
 
 def dump_problematic_call(stacktrace: str, stacktrace_short: str, suspicious_call):
-    failed_function = "?"
-    failed_user = "?"
     if suspicious_call and not DEBUG:
+        # not DEBUG means in production, save it to disk to check out later
         ymd = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        dump_path = f'./{ymd}_infserver_stacktrace.dump'
+        dump_path = f'./{ymd}_infserver_no_gpu_stacktrace.dump'
         with open(dump_path, 'w') as f:
             f.write(f"{host} caught exception:\n{stacktrace}")
             f.flush()
@@ -89,25 +89,9 @@ def dump_problematic_call(stacktrace: str, stacktrace_short: str, suspicious_cal
         sys.stdout.write("'%s' DUMP SAVED TO %s\n" % (stacktrace_short, dump_path))
         sys.stdout.flush()
     elif suspicious_call:
+        # if DEBUG, just print the call that caused the problem
         sys.stdout.write(json.dumps(suspicious_call))
         sys.stdout.flush()
-    if suspicious_call and "function" in suspicious_call:
-        failed_function = suspicious_call["function"]
-    if suspicious_call and "account" in suspicious_call:
-        failed_user = suspicious_call["account"]
-
-    if os.environ.get('SMALLCLOUD_API_KEY') == 'SELFHOSTED':
-        return
-    import requests
-    requests.post(
-        url="https://www.smallcloud.ai/v1/report-to-slackbot",
-        headers={"Authorization": f"Bearer {os.environ['SMALLCLOUD_API_KEY']}"},
-        json={
-            "message": f"Function {failed_function} for user {failed_user} failed on {host}:\n" +
-                        stacktrace_short + "\n"
-        },
-        timeout=10
-    )
 
 
 def except_hook(exctype, value, tb, suspicious_call=None):
@@ -129,10 +113,9 @@ async def handle_single_batch(routine_n, my_desc, model_dict, calls_unfiltered):
     upload_task = asyncio.create_task(uproxy.upload_results_coroutine())
     calls = []
     def logger(*args):
-        dt = datetime.datetime.now().strftime("%H:%M:%S.%f")
         msg = " ".join(map(str, args))
-        sys.stderr.write(f"%s %04i %s\n" % (dt, routine_n, msg))
-        sys.stderr.flush()
+        msg = "R%04d" % routine_n + " " + msg
+        inference_server_async.logger.info(msg)
     try:
         scratchpads = []
         for ci, call in enumerate(calls_unfiltered):
@@ -202,14 +185,10 @@ async def do_the_serving(
     longthink_variant: str,
     routine_n: int,
 ):
-    def log(*args):
-        msg = " ".join(map(str, args))
-        sys.stderr.write(f"%04i %s\n" % (routine_n, msg))
-        sys.stderr.flush()
     aio_session = inference_server_async.infserver_async_session()
     infmod_guid = longthink_variant + "_" + host + "_%04i" % routine_n
     infmod_guid = infmod_guid.replace("-", "_")
-    log(f'infmod_guid: {infmod_guid}')
+    inference_server_async.logger.info(f'infmod_guid: {infmod_guid}')
     while not quit_flag:
         model_dict = supported_models[longthink_variant]
         my_desc = inference_server_async.validate_description_dict(
@@ -218,20 +197,26 @@ async def do_the_serving(
             model=longthink_variant,
             B=1,
             max_thinking_time=10,
-            # T=0, encoding_name=""
         )
         retcode, calls_unfiltered = await inference_server_async.completions_wait_batch(aio_session, my_desc)
         if retcode == "WAIT":
             continue
         if retcode != "OK":
-            inference_server_async.log("server retcode %s" % retcode)
+            inference_server_async.logger.warning("server retcode %s" % retcode)
+            await asyncio.sleep(5)
             continue
         await handle_single_batch(routine_n, my_desc, model_dict, calls_unfiltered)
     await aio_session.close()
-    log("clean shutdown")
+    inference_server_async.logger.info("clean shutdown")
 
 
-if __name__ == "__main__":
+def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s NOGPU %(message)s',
+        datefmt='%Y%m%d %H:%M:%S',
+        handlers=[logging.StreamHandler(stream=sys.stderr)])
+
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
@@ -243,14 +228,14 @@ if __name__ == "__main__":
 
     if args.selfhosted:
         from smallcloud import inference_server
-        os.environ['SMALLCLOUD_API_KEY'] = 'SELFHOSTED'
         inference_server.override_urls("http://127.0.0.1:8008/infengine-v1/")
 
     if not (args.openai_key or os.environ.get('OPENAI_API_KEY')):
         raise RuntimeError("set OPENAI_API_KEY or use --openai_key")
 
     if args.openai_key:
-        os.environ['OPENAI_API_KEY'] = args.openai_key
+        import openai
+        openai.api_key = args.openai_key
 
     sys.excepthook = except_hook
     signal.signal(signal.SIGUSR1, catch_sigkill)
@@ -261,3 +246,6 @@ if __name__ == "__main__":
         for routine_n in range(workers)
     ]))
 
+
+if __name__ == "__main__":
+    main()

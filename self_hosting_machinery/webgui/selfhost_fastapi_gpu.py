@@ -3,7 +3,7 @@ import time
 import termcolor
 import asyncio
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query, Request, Header, HTTPException
 
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
@@ -21,7 +21,21 @@ def red_time(base_ts):
     return termcolor.colored("%0.1fms" % (1000*(time.time() - base_ts)), "red")
 
 
-local_key = os.environ.get("SMALLCLOUD_API_KEY")
+
+verify_api_key = os.environ.get("SMALLCLOUD_API_KEY")
+
+
+def verify_bearer(authorization: str):
+    if verify_api_key is None:
+        return
+    if authorization is None:
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+    bearer_hdr = authorization.split(" ")
+    if len(bearer_hdr) != 2 or bearer_hdr[0] != "Bearer":
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+    api_key = bearer_hdr[1]
+    if api_key != verify_api_key:
+        raise HTTPException(status_code=401, detail="API key mismatch")
 
 
 class EngineDescription(BaseModel):
@@ -84,7 +98,8 @@ class GPURouter(APIRouter):
         self._id2ticket = id2ticket
         self._engine_wait_timeout = engine_wait_timeout
 
-    async def _nlp_wait_batch(self, description: EngineDescription, request: Request):
+    async def _nlp_wait_batch(self, description: EngineDescription, authorization: str = Header(None)):
+        verify_bearer(authorization)
         model_queue = self._user2gpu_queue[description.model]
         user_reqs = []
         t0 = time.time()
@@ -110,7 +125,8 @@ class GPURouter(APIRouter):
             "batch": [x.call for x in user_reqs],
         }
 
-    async def _nlp_upload_response(self, nlp_response: NlpResponse):
+    async def _nlp_upload_response(self, nlp_response: NlpResponse, authorization: str = Header(None)):
+        verify_bearer(authorization)
         model_name = nlp_response.model_name
         resp: SingleNlpResponse
         cancelled_tickets = []

@@ -436,6 +436,12 @@ def catch_sigkill(signum, frame):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s MODEL %(message)s',
+        datefmt='%Y%m%d %H:%M:%S',
+        handlers=[logging.StreamHandler(stream=sys.stderr)])
+
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
@@ -444,18 +450,6 @@ if __name__ == "__main__":
     parser.add_argument("--load-lora")
     parser.add_argument("--compile", action="store_true", help="download and compile triton kernels, quit")
     args = parser.parse_args()
-
-    class MyLogHandler(logging.Handler):
-        def emit(self, record):
-            timestamp = datetime.datetime.now().strftime("%Y%m%d %H:%M:%S")
-            sys.stderr.write(timestamp + " " + self.format(record) + "\n")
-            sys.stderr.flush()
-    handler = MyLogHandler()
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(logging.Formatter('MODEL %(message)s'))
-    root = logging.getLogger()
-    root.addHandler(handler)
-    root.setLevel(logging.INFO)
 
     signal.signal(signal.SIGUSR1, catch_sigkill)
 

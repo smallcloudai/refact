@@ -113,7 +113,8 @@ class TrackedJob:
         if self.p.poll() is not None:
             retcode = self.p.returncode
             log("%s %s finished %s, retcode %i" % (
-            time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, self.cmdline_str, retcode))
+                time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, self.cmdline_str, retcode
+            ))
             self.status_from_stderr = "finished" if retcode == 0 else "crashed"
             # retcode -10 is SIGUSR1
             if self.cmdline_str == compiling_now:
