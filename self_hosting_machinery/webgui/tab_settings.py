@@ -69,6 +69,8 @@ class TabSettingsRouter(APIRouter):
             with open(f'{env.DIR_SSH_KEYS}/{data.name}.{env.private_key_ext}', 'wb') as f:
                 f.write(private_key)
 
+            os.chmod(f'{env.DIR_SSH_KEYS}/{data.name}.{env.private_key_ext}', 0o400, follow_symlinks=True)
+
             public_key = key.public_key().public_bytes(
                 crypto_serialization.Encoding.OpenSSH,
                 crypto_serialization.PublicFormat.OpenSSH
