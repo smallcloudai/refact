@@ -205,6 +205,7 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
             log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
             if msg.get("status", "") != "in_progress":
                 break
+        await asyncio.sleep(0.5)   # a workaround for VS Code plugin bug, remove July 20, 2023 when plugin should be fixed
         yield "data: [DONE]" + "\n\n"
         log(red_time(created_ts) + " /finished call %s" % ticket.id())
         ticket.done()
