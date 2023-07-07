@@ -12,6 +12,7 @@ from known_models_db.refact_known_models import models_mini_db
 from self_hosting_machinery.webgui.selfhost_model_resolve import resolve_model
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
+from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union
@@ -224,7 +225,7 @@ async def error_string_streamer(ticket_id, static_message, account, created_ts):
 class CompletionsRouter(APIRouter):
 
     def __init__(self,
-                 user2gpu_queue: Dict[str, asyncio.Queue],
+                 inference_queue: InferenceQueue,
                  id2ticket: Dict[str, Ticket],
                  timeout: int = 30,
                  *args, **kwargs):
@@ -234,7 +235,7 @@ class CompletionsRouter(APIRouter):
         self.add_api_route("/completions", self._completions, methods=["POST"])
         self.add_api_route("/contrast", self._contrast, methods=["POST"])
         self.add_api_route("/chat", self._chat, methods=["POST"])
-        self._user2gpu_queue = user2gpu_queue
+        self._inference_queue = inference_queue
         self._id2ticket = id2ticket
         self._timeout = timeout
 
@@ -249,8 +250,9 @@ class CompletionsRouter(APIRouter):
         }
         filter_caps = set([
             capability
-            for model in self._user2gpu_queue
-            for capability in models_mini_db_extended[model]["filter_caps"]])
+            for model in self._inference_queue.models_available()
+            for capability in models_mini_db_extended.get(model, {}).get("filter_caps", [])
+        ])
         for rec in modelcap_records.db:
             rec_modelcaps = rec.model if isinstance(rec.model, list) else [rec.model]
             rec_third_parties = rec.third_party if isinstance(rec.third_party, list) else [rec.third_party]
@@ -264,7 +266,7 @@ class CompletionsRouter(APIRouter):
                 else:
                     if rec_modelcap == "CONTRASTcode":
                         continue
-                    rec_model, err_msg = resolve_model(rec_modelcap, self._user2gpu_queue.keys())
+                    rec_model, err_msg = resolve_model(rec_modelcap, self._inference_queue)
                     assert err_msg=="", err_msg
                     rec_function_name = rec.function_name
                 longthink_functions[rec_function_name] = {
@@ -296,7 +298,7 @@ class CompletionsRouter(APIRouter):
         account = "XXX"
         ticket = Ticket("comp-")
         req = post.clamp()
-        model_name, err_msg = resolve_model(post.model, self._user2gpu_queue.keys())
+        model_name, err_msg = resolve_model(post.model, self._inference_queue)
         if err_msg:
             log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)
@@ -310,11 +312,8 @@ class CompletionsRouter(APIRouter):
             "echo": post.echo,
         })
         ticket.call.update(req)
-        if model_name not in self._user2gpu_queue:
-            log("%s model \"%s\" is not working at this moment" % (ticket.id(), model_name))
-            raise HTTPException(status_code=400, detail="no model '%s' found." % model_name)
+        q = self._inference_queue.model_name_to_queue(ticket, model_name)
         self._id2ticket[ticket.id()] = ticket
-        q = self._user2gpu_queue[model_name]
         await q.put(ticket)
         seen = [""] * post.n
         return StreamingResponse(completion_streamer(ticket, post, self._timeout, seen, req["created"]))
@@ -333,7 +332,7 @@ class CompletionsRouter(APIRouter):
             if len(text) > 180*1024:
                 raise HTTPException(status_code=400, detail="file '%s' is too long (%d bytes)" % (fn, len(text)))
         ticket = Ticket("comp-")
-        model_name, err_msg = resolve_model(post.model, self._user2gpu_queue.keys())
+        model_name, err_msg = resolve_model(post.model, self._inference_queue)
         if err_msg:
             log("%s model resolve \"%s\" func \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, post.function, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)
@@ -358,12 +357,9 @@ class CompletionsRouter(APIRouter):
         if "poi" in post_raw:
             req["poi"] = post_raw["poi"]
         ticket.call.update(req)
-        if model_name not in self._user2gpu_queue:
-            log("%s model \"%s\" is not working at this moment" % (ticket.id(), model_name))
-            raise HTTPException(status_code=400, detail="no model '%s' found." % model_name)
+        q = self._inference_queue.model_name_to_queue(ticket, model_name)
         # kt, kcomp = await _model_hit(red, ticket, req, model_name, account)
         self._id2ticket[ticket.id()] = ticket
-        q = self._user2gpu_queue[model_name]
         await q.put(ticket)
         return StreamingResponse(diff_streamer(ticket, post, self._timeout, req["created"]))
 
@@ -371,7 +367,7 @@ class CompletionsRouter(APIRouter):
         account = "XXX"
         ticket = Ticket("comp-")
 
-        model_name, err_msg = resolve_model(post.model, self._user2gpu_queue.keys())
+        model_name, err_msg = resolve_model(post.model, self._inference_queue)
         if err_msg:
             log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)
@@ -395,7 +391,7 @@ class CompletionsRouter(APIRouter):
         })
 
         ticket.call.update(req)
+        q = self._inference_queue.model_name_to_queue(ticket, model_name)
         self._id2ticket[ticket.id()] = ticket
-        q = self._user2gpu_queue[model_name]
         await q.put(ticket)
         return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))

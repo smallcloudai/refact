@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query, Request, Header, HTTPException
 
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
+from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 
 from pydantic import BaseModel, Required
 from typing import Dict, List, Optional, Any
@@ -87,20 +88,20 @@ class NlpResponse(BaseModel):
 class GPURouter(APIRouter):
 
     def __init__(self,
-                 user2gpu_queue: Dict[str, asyncio.Queue],
+                 inference_queue: InferenceQueue,
                  id2ticket: Dict[str, Ticket],
                  engine_wait_timeout: int = 10,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_api_route("/completions-wait-batch", self._nlp_wait_batch, methods=["POST"])
         self.add_api_route("/completion-upload-results", self._nlp_upload_response, methods=["POST"])
-        self._user2gpu_queue = user2gpu_queue
+        self._inference_queue = inference_queue
         self._id2ticket = id2ticket
         self._engine_wait_timeout = engine_wait_timeout
 
     async def _nlp_wait_batch(self, description: EngineDescription, authorization: str = Header(None)):
         verify_bearer(authorization)
-        model_queue = self._user2gpu_queue[description.model]
+        model_queue = self._inference_queue.model_name_to_queue(None, description.model, no_checks=True)
         user_reqs = []
         t0 = time.time()
         for b in range(description.B):

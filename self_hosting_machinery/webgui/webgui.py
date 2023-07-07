@@ -11,7 +11,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from self_hosting_machinery.webgui.collector import collector
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 from self_hosting_machinery.webgui.selfhost_fastapi_completions import CompletionsRouter
@@ -21,6 +20,7 @@ from self_hosting_machinery.webgui.tab_settings import TabSettingsRouter
 from self_hosting_machinery.webgui.tab_upload import TabUploadRouter
 from self_hosting_machinery.webgui.tab_finetune import TabFinetuneRouter
 from self_hosting_machinery.webgui.tab_models_host import TabHostRouter
+from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 
 
 from collections import defaultdict
@@ -40,7 +40,8 @@ if __name__ == "__main__":
     parser.add_argument("--port", default=8008, type=int)
     args = parser.parse_args()
 
-    user2gpu_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)  # for each model there is a queue
+    inference_queue = InferenceQueue()
+    # user2gpu_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)  # for each model there is a queue
     id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
 
     logging.basicConfig(
@@ -51,8 +52,8 @@ if __name__ == "__main__":
 
     app = FastAPI(docs_url=None, redoc_url=None)
 
-    app.include_router(CompletionsRouter(prefix="/v1", id2ticket=id2ticket, user2gpu_queue=user2gpu_queue))
-    app.include_router(GPURouter(prefix="/infengine-v1", id2ticket=id2ticket, user2gpu_queue=user2gpu_queue))
+    app.include_router(CompletionsRouter(prefix="/v1", id2ticket=id2ticket, inference_queue=inference_queue))
+    app.include_router(GPURouter(prefix="/infengine-v1", id2ticket=id2ticket, inference_queue=inference_queue))
     app.include_router(TabServerLogRouter())
     app.include_router(TabUploadRouter())
     app.include_router(TabFinetuneRouter())
@@ -80,10 +81,6 @@ if __name__ == "__main__":
     async def startup_event():
         signal.signal(signal.SIGINT, handle_sigint)
         signal.signal(signal.SIGUSR1, handle_sigint)
-
-    @app.on_event("startup")
-    async def startup_collector():
-        collector(user2gpu_queue)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     uvicorn.run(

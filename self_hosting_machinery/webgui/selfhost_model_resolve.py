@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 
-from typing import Tuple, Iterable
+from typing import Tuple, List
 
 
 @dataclass
@@ -27,11 +28,12 @@ class Model:
 
 
 # TODO: remove this function ASAP, we need dynamic resolve mechanism
-def resolve_model(model_name: str, hosted_models: Iterable[str]) -> Tuple[str, str]:
+def resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tuple[str, str]:
     """
     Allow client to specify less in the model string, including an empty string.
     """
-    if model_name in hosted_models:
+    have_models: List[str] = inference_queue.models_available()
+    if model_name in have_models:
         return model_name, ""
 
     if model_name in ["CONTRASTcode"]:
@@ -42,12 +44,12 @@ def resolve_model(model_name: str, hosted_models: Iterable[str]) -> Tuple[str, s
     to_resolve = Model(model_name)
     if not to_resolve:
         filtered_hosted_models = [
-            m for m in map(Model, hosted_models)
+            m for m in map(Model, have_models)
             if m.family not in ["longthink"]
         ]
     else:
         filtered_hosted_models = [
-            m for m in map(Model, hosted_models)
+            m for m in map(Model, have_models)
             if m.family == to_resolve.family
         ]
 
