@@ -11,7 +11,7 @@ import openai
 import tiktoken
 
 from .smc_functions import SMC_FUNCTIONS
-from refact_data_pipeline.vecdb.vecdb import VecDBAsyncAPI
+from refact_vecdb import VecDBAsyncAPI
 
 
 def gpt_prices(  # Apr 4 2023:

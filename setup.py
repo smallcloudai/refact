@@ -31,6 +31,7 @@ setup(
         "refact_scratchpads_no_gpu",
         "refact_models",
         "self_hosting_machinery",
+        "refact_vecdb"
     ],
     package_data={
         "known_models_db": ["refact_toolbox_db/htmls/*.html"],
@@ -41,7 +42,7 @@ setup(
     install_requires=[
         "numpy", "torch", "termcolor", "smallcloud", "dataclasses_json", "dataclasses", "tiktoken",
         # code_contrast
-        "difflib", "cdifflib",
+        "cdifflib",  # removed difflib: is a standard library
         # refact_encoding
         "tokenizers", "sentencepiece",
         # refact_scratchpads_no_gpu
@@ -51,6 +52,12 @@ setup(
         # self_hosting_machinery
         "aiohttp", "cryptography", "fastapi", "giturlparse", "pydantic",
         "starlette", "uvicorn", "uvloop",
+        # refact_vecdb
+        "openai", "cassandra-driver", "pynndescent",
+        "tqdm", "numpy", "pydantic",
+        "fastapi", "uvicorn", "uvloop",
+        "more-itertools", "tqdm", "requests",
+        "aiohttp", "ujson"
     ],
     **additional_setup_kwargs,
 )
