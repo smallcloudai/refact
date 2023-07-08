@@ -1,18 +1,16 @@
-import {update_integrations} from "./tab-credentials-settings.js";
-
 let gpus_popup = false;
 let models_data = null;
-let models_gpus_change = false;
+
 function get_gpus() {
     fetch("/tab-host-have-gpus")
     .then(function(response) {
         return response.json();
     })
     .then(function(data) {
-        console.log('gpus',data);
         render_gpus(data);
     });
 }
+
 function render_gpus(gpus) {
     if(gpus_popup) { return; }
     if(gpus.gpus.length == 0) {
@@ -69,24 +67,46 @@ function render_gpus(gpus) {
         gpu_wrapper.appendChild(gpu_command);
         row.appendChild(gpu_wrapper);
         gpus_list.appendChild(row);
-        
     });
 }
-function get_models() {
+
+function get_models()
+{
     fetch("/tab-host-models-get")
     .then(function(response) {
         return response.json();
     })
     .then(function(data) {
-        console.log('models',data);
         models_data = data;
         render_models_assigned(data.model_assign);
+        const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
+        enable_chat_gpt_switch.removeEventListener('change', save_model_assigned);
+        enable_chat_gpt_switch.checked = models_data['openai_api_enable'];
+        enable_chat_gpt_switch.addEventListener('change', save_model_assigned);
     });
 }
+
+function save_model_assigned() {
+    let openai_enable = document.querySelector('#enable_chat_gpt');
+    const data = {
+        model_assign: {
+            ...models_data.model_assign,
+        },
+        openai_api_enable: openai_enable.checked
+    };
+    fetch("/tab-host-models-assign", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(function (response) {
+        get_models();
+    });
+}
+
 function render_models_assigned(models) {
-    if(models_gpus_change) {
-        return;
-    }
     const models_table = document.querySelector('.table-assigned-models tbody');
     models_table.innerHTML = '';
     for(let index in models) {
@@ -106,35 +126,18 @@ function render_models_assigned(models) {
         gpus_input.setAttribute('type','number');
         gpus_input.value = models[index].gpus_min;
         gpus_input.addEventListener('change', function() {
-            models[index].gpus_min = this.value;
-            let openai_enable = document.querySelector('#enable_chat_gpt');
-            const data = {
-                model_assign: {
-                    ...models,
-                },
-                openai_enable: openai_enable.checked
-            };
-            fetch("/tab-host-models-assign", {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
-            .then(function (response) {
-                models_gpus_change = false;
-                console.log('response',response);
-            });
+            models_data.model_assign[index].gpus_min = this.value;
+            save_model_assigned();
         });
         gpus_input.addEventListener('blur', function() {
-            models_gpus_change = true;
+            // models_gpus_change = true;
         });
-        
         gpus.appendChild(gpus_input);
         del_button.innerHTML = `<i class="bi bi-trash3-fill"></i>`;
         del_button.dataset.model = index;
         del_button.addEventListener('click', function() {
-            delete_model(index);
+            delete models_data.model_assign[index];
+            save_model_assigned();
         });
         del_button.classList.add('model-remove','btn','btn-danger');
         del.appendChild(del_button);
@@ -145,6 +148,7 @@ function render_models_assigned(models) {
         models_table.appendChild(row);
     }
 }
+
 function render_models(models) {
     const models_table = document.querySelector('.table-models tbody');
     models_table.innerHTML = '';
@@ -161,53 +165,15 @@ function render_models(models) {
         row.appendChild(has_chat);
         row.appendChild(has_toolbox);
         models_table.appendChild(row);
-        row.addEventListener('click',function(e) {
-            let openai_enable = document.querySelector('#enable_chat_gpt');
-            const data = {
-                model_assign: {
-                    ...models_data.model_assign,
-                },
-                openai_enable: openai_enable.checked
-            };
-            data.model_assign[models.models[index].name] = {
+        row.addEventListener('click', function(e) {
+            models_data.model_assign[models.models[index].name] = {
                 gpus_min: 1
             };
-            fetch("/tab-host-models-assign", {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
-            .then(function (response) {
-                const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
-                add_model_modal.hide();
-                console.log('response',response);
-            });
+            save_model_assigned();
+            const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
+            add_model_modal.hide();
         });
     }
-}
-
-function delete_model(model_name) {
-    let data = models_data.model_assign;
-    let openai_enable = document.querySelector('#enable_chat_gpt');
-    delete data[model_name];
-    const updated_data = {
-        model_assign: {
-           ...data,
-        },
-        openai_enable: openai_enable.checked
-    };
-    fetch("/tab-host-models-assign", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updated_data)
-    })
-    .then(function (response) {
-        console.log('response',response);
-    });
 }
 
 function format_memory(memory_in_mb, decimalPlaces = 2) {
@@ -222,10 +188,17 @@ export function init() {
     add_model_modal.addEventListener('show.bs.modal', function () {
         render_models(models_data);
     });
+    // const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
 }
 
 export function tab_switched_here() {
     get_gpus();
     get_models();
-    update_integrations();
+}
+
+export function tab_switched_away() {
+}
+
+export function tab_update_each_couple_of_seconds() {
+    get_gpus();
 }

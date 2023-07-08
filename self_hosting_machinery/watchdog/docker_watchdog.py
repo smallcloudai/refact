@@ -213,7 +213,7 @@ def create_tracked_jobs_from_configs():
             cfg["command_line"][i] = replace_variable_names_from_env(cfg["command_line"][i])
         if fn in tracked:
             tracked[fn].cfg = cfg
-            if tracked[fn].cmdline_str != " ".join(cfg["command_line"]):
+            if tracked[fn].cmdline_str != " ".join(cfg["command_line"]) and not tracked[fn].remove_this:
                 log("%s command line changed, stop job %s" % (time.strftime("%Y%m%d %H:%M:%S"), tracked[fn].cmdline_str))
                 tracked[fn].please_shutdown = True
                 tracked[fn].remove_this = True

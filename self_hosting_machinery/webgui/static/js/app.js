@@ -60,6 +60,7 @@ tab_buttons.forEach(tab_button => {
     });
 
     tab_button.classList.add('main-active');
+    start_tab_timer();
   });
 });
 
@@ -79,42 +80,70 @@ schedule_modal.addEventListener('show.bs.modal', function () {
     document.querySelector('#finetune-tab-autorun-settings-modal .modal-footer').style.display = 'none';
 });
 
-function active_tab_function() {
+function active_tab_switched_here() {
     const active_tab = document.querySelector('.main-tab-pane.main-active');
+    if (active_tab.id != "model-hosting") model_hosting_tab.tab_switched_away();
+    if (active_tab.id != "upload") upload_tab.tab_switched_away();
+    if (active_tab.id != "finetune") finetune_tab.tab_switched_away();
+    if (active_tab.id != "server-logs") server_log_tab.tab_switched_away();
+    if (active_tab.id != "settings") ssh_settings_tab.tab_switched_away();
     switch (active_tab.id) {
-        case 'model-hosting':
-            model_hosting_tab.tab_switched_here();
-            break;
-        case 'upload':
-            upload_tab.tab_switched_here();
-            break;
-        case 'finetune':
-            finetune_tab.tab_switched_here();
-            break;
-        case 'server-logs':
-            server_log_tab.tab_switched_here();
-            break;
-        case 'settings':
-            ssh_settings_tab.tab_switched_here();
-            break;
-        case "access-control":
-            break;
+    case 'model-hosting':
+        model_hosting_tab.tab_switched_here();
+        break;
+    case 'upload':
+        upload_tab.tab_switched_here();
+        break;
+    case 'finetune':
+        finetune_tab.tab_switched_here();
+        break;
+    case 'server-logs':
+        server_log_tab.tab_switched_here();
+        break;
+    case 'settings':
+        ssh_settings_tab.tab_switched_here();
+        break;
+    case "access-control":
+        break;
     }
 }
 
+function active_update_each_couple_of_seconds() {
+    const active_tab = document.querySelector('.main-tab-pane.main-active');
+    switch (active_tab.id) {
+    case 'model-hosting':
+        model_hosting_tab.tab_update_each_couple_of_seconds();
+        break;
+    case 'upload':
+        upload_tab.tab_update_each_couple_of_seconds();
+        break;
+    case 'finetune':
+        finetune_tab.tab_update_each_couple_of_seconds();
+        break;
+    case 'server-logs':
+        server_log_tab.tab_update_each_couple_of_seconds();
+        break;
+    case 'settings':
+        ssh_settings_tab.tab_update_each_couple_of_seconds();
+        break;
+    case "access-control":
+        break;
+    }
+}
+
+
 // this loads all data, doesn't switch anything
-model_hosting_tab.tab_switched_here();
-upload_tab.tab_switched_here();
-finetune_tab.tab_switched_here();
+// upload_tab.tab_switched_here();
+// finetune_tab.tab_switched_here();
 
 let refresh_interval = null;
 
 function start_tab_timer() {
-    active_tab_function();
+    active_tab_switched_here();
     if (refresh_interval) {
         clearInterval(refresh_interval);
     }
-    refresh_interval = setInterval(active_tab_function, 2000);
+    refresh_interval = setInterval(active_update_each_couple_of_seconds, 2000);
 }
 
 start_tab_timer();

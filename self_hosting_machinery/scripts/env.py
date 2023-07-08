@@ -23,6 +23,7 @@ CONFIG_PROCESSING_STATS = os.path.join(DIR_CONFIG, "sources_stats.out")
 CONFIG_FINETUNE = os.path.join(DIR_CONFIG, "finetune.cfg")
 CONFIG_FINETUNE_FILTER_STATS = os.path.join(DIR_CONFIG, "finetune_filter_stats.out")
 CONFIG_HOW_TO_FILTER = os.path.join(DIR_CONFIG, "finetune_filter.cfg")
+CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
 
 LOG_FILES_ACCEPTED_SCAN = os.path.join(DIR_CONFIG, "files_accepted_scan.log")
 LOG_FILES_REJECTED_SCAN = os.path.join(DIR_CONFIG, "files_rejected_scan.log")
@@ -46,7 +47,6 @@ os.makedirs(DIR_UNPACKED, exist_ok=True)
 DIR_WATCHDOG_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "watchdog", "watchdog.d")
 
 GIT_CONFIG_FILENAME = 'git_config.json'
-CHATGPT_CONFIG_FILENAME = os.path.join(DIR_CONFIG, "openai.cfg")
 
 private_key_ext = 'private_key'
 fingerprint_ext = 'fingerprint'

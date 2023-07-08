@@ -2,16 +2,19 @@ export function init() {
 }
 
 const log_container = document.getElementById("server-log-log-container");
+let continue_streaming = false;
+
 
 function start_log_stream() {
     log_container.textContent = '';
+
     const streamTextFile = async () => {
         const decoder = new TextDecoder();
         const response = await fetch("/tab-server-log-plain/latest?stream=1");
         const reader = response.body.getReader();
 
         const processResult = ({ done, value }) => {
-            if (done) {
+            if (done || !continue_streaming) {
                 console.log('Streaming complete');
                 return;
             }
@@ -30,8 +33,8 @@ function start_log_stream() {
 
         return reader.read().then(processResult);
     }
-    streamTextFile()
-    .catch(error => {
+
+    streamTextFile().catch(error => {
         console.log('Error:', error);
     });
 }
@@ -63,12 +66,15 @@ function render_daily_logs(data) {
     }
 }
 
-let is_started = false;
 export function tab_switched_here() {
-    if(is_started) {
-        return;
-    }
     get_daily_logs();
+    continue_streaming = true;
     start_log_stream();
-    is_started = true;
+}
+
+export function tab_switched_away() {
+    continue_streaming = false;
+}
+
+export function tab_update_each_couple_of_seconds() {
 }

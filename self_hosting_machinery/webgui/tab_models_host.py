@@ -25,7 +25,7 @@ class TabHostModelRec(BaseModel):
 
 class TabHostModelsAssign(BaseModel):
     model_assign: Dict[str, TabHostModelRec] = {}
-    openai_enable: bool = False
+    openai_api_enable: bool = False
 
 
 class TabHostRouter(APIRouter):
@@ -97,7 +97,8 @@ def _models():
 def _update_watchdog_d():
     gpus = _gpus()["gpus"]
     # models = _models()["models"]
-    model_assignment = _model_assignment()["model_assign"]
+    inference_config = _model_assignment()
+    model_assignment = inference_config["model_assign"]
     # This must work or installation is bad
     model_cfg_template = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model.cfg")))
     cursor = 0
@@ -134,6 +135,22 @@ def _update_watchdog_d():
                 os.unlink(os.path.join(env.DIR_WATCHDOG_D, "model-gpu%i.cfg" % gpu_i))
             except:
                 pass
+
+    # Integrations
+    integrations = {}
+    if os.path.exists(env.CONFIG_INTEGRATIONS):
+        integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
+
+    openai_api_key = integrations.get("openai_api_key", "")
+    if inference_config.get("openai_api_enable", False) and openai_api_key.startswith("sk-"):
+        cfg = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "openai_api_worker.cfg"), 'r'))
+        cfg.pop('unfinished')
+        cfg['command_line'].append('--openai_key')
+        cfg['command_line'].append(openai_api_key)
+        watchdog_cfg_fn = os.path.join(env.DIR_WATCHDOG_D, "openai_api_worker.cfg")
+        with open(watchdog_cfg_fn + ".tmp", "w") as f:
+            json.dump(cfg, f, indent=4)
+        os.rename(watchdog_cfg_fn + ".tmp", watchdog_cfg_fn)
 
 
 def first_run():

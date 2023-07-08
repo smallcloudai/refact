@@ -12,38 +12,34 @@ __all__ = ["TabSettingsRouter"]
 
 
 class TabSettingsRouter(APIRouter):
-    __template_longthink_cfg = os.path.join(env.DIR_WATCHDOG_TEMPLATES, "longthink.cfg")
-    __longthink_cfg = os.path.join(env.DIR_WATCHDOG_D, "longthink.cfg")
-
-    __default_chatgpt_config = dict(is_enabled=False, api_key="")
     class SSHKey(BaseModel):
         name: str
-    class ChatGPTIsEnabled(BaseModel):
-        is_enabled: bool
-    class ChatGPTApiKey(BaseModel):
-        api_key: str
+
+    class Integrations(BaseModel):
+        openai_api_key: str
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.add_api_route("/tab-settings-integrations-get", self._tab_settings_integrations_get, methods=["GET"])
+        self.add_api_route("/tab-settings-integrations-save", self._tab_settings_integrations_save, methods=["POST"])
         self.add_api_route("/tab-settings-create-ssh-key", self._tab_settings_create_ssh_key, methods=["POST"])
         self.add_api_route("/tab-settings-delete-ssh-key", self._tab_settings_delete_ssh_key, methods=["POST"])
         self.add_api_route("/tab-settings-get-all-ssh-keys", self._tab_settings_get_all_ssh_keys, methods=["GET"])
-        self.add_api_route("/tab-api-key-settings-set-enabled-chat-gpt",
-                           self._tab_api_key_settings_set_enabled_chat_gpt, methods=["POST"])
-        self.add_api_route("/tab-api-key-settings-set-chat-gpt-api-key",
-                           self._tab_api_key_settings_set_chat_gpt_api_key, methods=["POST"])
-        self.add_api_route("/tab-api-key-settings-get-chat-gpt-info",
-                           self._tab_api_key_settings_get_chat_gpt_info, methods=["GET"])
-        self.__init_longthink_process()
 
-    def __init_longthink_process(self):
-        if os.path.exists(env.CHATGPT_CONFIG_FILENAME):
-            with open(env.CHATGPT_CONFIG_FILENAME, 'r') as f:
-                openai_config = json.load(f)
+    async def _tab_settings_integrations_get(self):
+        if os.path.exists(env.CONFIG_INTEGRATIONS):
+            with open(str(env.CONFIG_INTEGRATIONS), "r") as f:
+                config = json.load(f)
         else:
-            openai_config = self.__default_chatgpt_config
+            config = {}
+        return JSONResponse(config)
 
-        self.__enable_longthink_process(openai_config)
+    async def _tab_settings_integrations_save(self, data: Integrations):
+        with open(env.CONFIG_INTEGRATIONS + ".tmp", "w") as f:
+            json.dump(data.dict(), f, indent=4)
+        os.rename(env.CONFIG_INTEGRATIONS + ".tmp", env.CONFIG_INTEGRATIONS)
+        return JSONResponse("OK")
 
     async def _tab_settings_create_ssh_key(self, data: SSHKey):
         try:
@@ -114,50 +110,3 @@ class TabSettingsRouter(APIRouter):
         if fingerprint_filepath.exists():
             fingerprint_filepath.unlink(missing_ok=False)
         return JSONResponse("OK")
-
-    def __inject_in_openai_config(self, upd: dict):
-        if os.path.exists(env.CHATGPT_CONFIG_FILENAME):
-            with open(str(env.CHATGPT_CONFIG_FILENAME), "r") as f:
-                config = json.load(f)
-        else:
-            config = self.__default_chatgpt_config
-        config.update(upd)
-        tmp = f'{env.CHATGPT_CONFIG_FILENAME}.tmp'
-        with open(str(tmp), "w") as f:
-            json.dump(config, f)
-        os.rename(tmp, env.CHATGPT_CONFIG_FILENAME)
-        return config
-
-    def __enable_longthink_process(self, openai_config: dict):
-        if not openai_config.get('is_enabled', False):
-            if os.path.exists(self.__longthink_cfg):
-                os.remove(self.__longthink_cfg)
-            return
-        with open(self.__template_longthink_cfg, 'r') as f:
-            config = json.load(f)
-        config.pop('unfinished')
-        config['command_line'].append('--openai_key')
-        config['command_line'].append(openai_config.get('api_key', "dummy"))
-        tmp = f'{self.__longthink_cfg}.tmp'
-        with open(tmp, 'w') as f:
-            json.dump(config, f)
-        os.rename(tmp, self.__longthink_cfg)
-
-    async def _tab_api_key_settings_set_enabled_chat_gpt(self, data: ChatGPTIsEnabled):
-        config = self.__inject_in_openai_config(dict(is_enabled=data.is_enabled))
-        self.__enable_longthink_process(config)
-        return JSONResponse("OK")
-
-    async def _tab_api_key_settings_set_chat_gpt_api_key(self, data: ChatGPTApiKey):
-        config = self.__inject_in_openai_config(dict(api_key=data.api_key))
-        self.__enable_longthink_process(config)
-        return JSONResponse("OK")
-
-    async def _tab_api_key_settings_get_chat_gpt_info(self):
-        if os.path.exists(env.CHATGPT_CONFIG_FILENAME):
-            with open(str(env.CHATGPT_CONFIG_FILENAME), "r") as f:
-                config = json.load(f)
-        else:
-            config = self.__default_chatgpt_config
-        return JSONResponse(config)
-

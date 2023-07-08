@@ -281,7 +281,7 @@ function finetune_switch_activate(lora_mode, run_id, checkpoint) {
     });
 }
 
-function render_time_dropdown() {
+function render_schedule_dialog() {
     const selectElement = document.querySelector('.night-time');
     for (let hour = 0; hour < 24; hour++) {
         const option = document.createElement("option");
@@ -529,5 +529,12 @@ export function init() {
 
 export function tab_switched_here() {
     finetune_data();
-    render_time_dropdown();
+    render_schedule_dialog();
+}
+
+export function tab_switched_away() {
+}
+
+export function tab_update_each_couple_of_seconds() {
+    finetune_data();
 }

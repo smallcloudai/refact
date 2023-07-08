@@ -356,7 +356,7 @@ function render_force_filetypes(data) {
     if(force_include_exclude_is_changed) { return; }
     const force_include = document.querySelector('#force_include');
     const force_exclude = document.querySelector('#force_exclude');
-    
+
     let force_include_val = data.force_include;
     if (force_include_val === undefined) {
         force_include_val = ""
@@ -839,5 +839,12 @@ export function init() {
 }
 
 export function tab_switched_here() {
+    get_tab_files();
+}
+
+export function tab_switched_away() {
+}
+
+export function tab_update_each_couple_of_seconds() {
     get_tab_files();
 }
