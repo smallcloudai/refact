@@ -11,5 +11,15 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
+
+#  cassandra:
+#    image: bitnami/cassandra:latest
+#    volumes:
+#      - cassandra_storage:/bitnami
+#    ports:
+#      - '9042:9042' # comment on prod, debug only!
+
+
 volumes:
   perm_storage:
+#  cassandra_storage:

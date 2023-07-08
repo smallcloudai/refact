@@ -31,6 +31,7 @@ setup(
         "refact_scratchpads_no_gpu",
         "refact_models",
         "self_hosting_machinery",
+        "refact_vecdb"
     ],
     package_data={
         "known_models_db": ["refact_toolbox_db/htmls/*.html"],
@@ -50,7 +51,13 @@ setup(
         "blobfile", "cloudpickle", "huggingface_hub", "transformers",
         # self_hosting_machinery
         "aiohttp", "cryptography", "fastapi", "giturlparse", "pydantic",
-        "starlette", "uvicorn", "uvloop", "python-multipart",
+        "starlette", "uvicorn", "uvloop", "python-multipart"
+        # refact_vecdb
+        "openai", "cassandra-driver", "pynndescent",
+        "tqdm", "numpy", "pydantic",
+        "fastapi", "uvicorn", "uvloop",
+        "more-itertools", "tqdm", "requests",
+        "aiohttp", "ujson"
     ],
     **additional_setup_kwargs,
 )
