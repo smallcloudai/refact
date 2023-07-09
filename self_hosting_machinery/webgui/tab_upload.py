@@ -96,15 +96,12 @@ class TabUploadRouter(APIRouter):
             scan_stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
             mtime = os.path.getmtime(env.CONFIG_PROCESSING_STATS)
             stats_uploaded_files = scan_stats.get("uploaded_files", {})
-            any_working = False
             for fstat in stats_uploaded_files.values():
                 if fstat["status"] in ["working", "starting"]:
-                    any_working = True
                     if mtime + 600 < time.time():
                         fstat["status"] = "failed"
-            scan_stats["filtering_stage"] = (0 if any_working else 1)
         else:
-            scan_stats = {"uploaded_files": {}, "filtering_stage": 0}
+            scan_stats = {"uploaded_files": {}}
             stats_uploaded_files = {}
         default = {
             "which_set": "train",
@@ -274,7 +271,7 @@ class TabUploadRouter(APIRouter):
         with open(env.CONFIG_HOW_TO_FILETYPES + ".tmp", "w") as f:
             json.dump(post.dict(), f, indent=4)
         os.rename(env.CONFIG_HOW_TO_FILETYPES + ".tmp", env.CONFIG_HOW_TO_FILETYPES)
-        _start_process_now()
+        _start_process_now(dont_delete_stats=True)
         return JSONResponse("OK")
 
     async def _upload_files_process_now(self, upto_filtering_stage: int = Query(0)):
@@ -282,10 +279,11 @@ class TabUploadRouter(APIRouter):
         return JSONResponse("OK")
 
 
-def _start_process_now():
+def _start_process_now(dont_delete_stats=False):
+    if not dont_delete_stats:
+        _reset_process_stats()
     with open(env.FLAG_LAUNCH_PROCESS_UPLOADS, "w") as f:
         f.write("")
-    _reset_process_stats()
 
 
 def _reset_process_stats():
