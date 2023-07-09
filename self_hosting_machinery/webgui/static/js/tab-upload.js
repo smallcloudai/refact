@@ -1,5 +1,7 @@
 let tab_files_data = null;
 let show_scan_error = false;
+let dont_disable_file_types = false;
+
 
 function do_starting_state() {
     sources_run_button.disabled = true;
@@ -18,7 +20,7 @@ function get_tab_files() {
             return response.json();
         })
         .then(function(data) {
-            console.log('tab-files-get',data);
+            // console.log('tab-files-get',data);
             tab_files_data = data;
             if(data.scan_error && data.scan_error.length > 0) {
                 let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
@@ -30,7 +32,7 @@ function get_tab_files() {
                 }
             }
             // render_filter_progress(data.filtering_progress);
-            if(data.scan_status && data.scan_status === 'completed') {
+            if(dont_disable_file_types || data.scan_status && data.scan_status === 'completed') {
                 document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
                 document.querySelector('.run-pane').classList.remove('pane-disabled');
             } else {
@@ -405,6 +407,7 @@ function watch_filetypes() {
     if(file_types.length > 0) {
         file_types.forEach(function(element) {
             element.addEventListener('change', function() {
+                dont_disable_file_types = true;
                 save_filter_setup();
             });
         });
@@ -417,10 +420,11 @@ function render_stats() {
     if (tab_files_data.filestats_scan_finetune && typeof tab_files_data.filestats_scan_finetune === 'object') {
         if(Object.keys(tab_files_data.filestats_scan_finetune).length > 0) {
             stats_finetune.style.display = 'flex';
+            stats_finetune.style.whiteSpace = 'nowrap';
             const fine_accepted = document.querySelector('.sources-stats-fine-accepted span');
-            fine_accepted.innerHTML = `${tab_files_data.filestats_scan_finetune.accepted} <a target="_blank" class="sources-stats-fine-accepted" href="/tab-files-log?phase=scan&accepted_or_rejected=accepted">Full list</a>`;
+            fine_accepted.innerHTML = `${tab_files_data.filestats_scan_finetune.accepted} <a target="_blank" class="sources-stats-fine-accepted" href="/tab-files-log?phase=scan&accepted_or_rejected=accepted">Full List</a>`;
             const fine_rejected = document.querySelector('.sources-stats-fine-rejected span');
-            fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log?phase=scan&accepted_or_rejected=rejected">Full list</a>`;
+            fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log?phase=scan&accepted_or_rejected=rejected">Full List</a>`;
         }
     }
     // if (tab_files_data.filestats_scan_db && typeof tab_files_data.filestats_scan_finetune === 'object') {
@@ -816,19 +820,21 @@ export function init() {
 
     const force_include = document.getElementById('force_include');
     force_include.addEventListener("input", function () {
-        force_include_exclude_is_changed = true
+        force_include_exclude_is_changed = true;
     })
     force_include.addEventListener("change", function () {
+        dont_disable_file_types = true;
         save_filter_setup();
-        force_include_exclude_is_changed = false
+        force_include_exclude_is_changed = false;
     })
     const force_exclude = document.getElementById('force_exclude');
     force_exclude.addEventListener("input", function () {
-        force_include_exclude_is_changed = true
+        force_include_exclude_is_changed = true;
     })
     force_exclude.addEventListener("change", function () {
+        dont_disable_file_types = true;
         save_filter_setup();
-        force_include_exclude_is_changed = false
+        force_include_exclude_is_changed = false;
     })
 
     const scan_error_toast = document.querySelector('.upload-tab-scan-error-toast');
@@ -843,6 +849,7 @@ export function tab_switched_here() {
 }
 
 export function tab_switched_away() {
+    dont_disable_file_types = false;
 }
 
 export function tab_update_each_couple_of_seconds() {

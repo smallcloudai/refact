@@ -87,7 +87,23 @@ class TabUploadRouter(APIRouter):
             result["filetypes"] = json.load(open(env.CONFIG_HOW_TO_FILETYPES, "r"))
         else:
             result["filetypes"] = {
-                "filetypes_finetune": {},
+                "filetypes_finetune": {
+                    "SVG": False,
+                    "text/plain": False,
+                    "Graphviz (DOT)": False,
+                    "INI": False,
+                    "JSON": False,
+                    "Lex": False,
+                    "M4Sugar": False,
+                    "MATLAB": False,
+                    "Org": False,
+                    "Vim Script": False,
+                    "XML": False,
+                    "XSLT": False,
+                    "XS": False,
+                    "desktop": False,
+                    "sed": False,
+                },
                 "filetypes_db": {},
                 "force_include": "",
                 "force_exclude": "",
@@ -274,7 +290,7 @@ class TabUploadRouter(APIRouter):
         _start_process_now(dont_delete_stats=True)
         return JSONResponse("OK")
 
-    async def _upload_files_process_now(self, upto_filtering_stage: int = Query(0)):
+    async def _upload_files_process_now(self):
         _start_process_now()
         return JSONResponse("OK")
 
