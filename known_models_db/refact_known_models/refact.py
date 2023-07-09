@@ -6,7 +6,7 @@ refact_mini_db = {
     "chat_scratchpad_class": None,
     "model_class": "refact_models:CodifyModel",
     "T": 2048,
-    "filter_caps": ["CONTRASTcode"],
+    "filter_caps": ["CONTRASTcode", "completion"],
 },
 
 "CONTRASTcode/3b/multi": {
@@ -16,6 +16,6 @@ refact_mini_db = {
     "chat_scratchpad_class": None,
     "model_class": "refact_models:CodifyModel",
     "T": 2048,
-    "filter_caps": ["CONTRASTcode"],
+    "filter_caps": ["CONTRASTcode", "completion", "finetune"],
 },
 }

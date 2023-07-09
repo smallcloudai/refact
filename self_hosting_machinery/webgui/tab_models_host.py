@@ -88,8 +88,10 @@ def _models():
             continue
         models_info.append({
             "name": k,
-            "has_chat": bool(rec["chat_scratchpad_class"]) and bool(chat_caps.intersection(rec["filter_caps"])),
+            "has_completion": bool("completion" in rec["filter_caps"]),
+            "has_finetune": bool("finetune" in rec["filter_caps"]),
             "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),
+            "has_chat": bool(rec["chat_scratchpad_class"]) and bool(chat_caps.intersection(rec["filter_caps"])),
         })
     return {"models": models_info}
 

@@ -28,7 +28,7 @@ big_code_mini_db = {
     "chat_scratchpad_class": "refact_scratchpads:ScratchpadBigChat",
     "model_class": "refact_models:HFModel",
     "T": 2048,
-    "filter_caps": ["starcoder"],
+    "filter_caps": ["starcoder", "completion"],
 },
 
 "starcoder/15b/base4bit": {
@@ -41,7 +41,7 @@ big_code_mini_db = {
         "bits": 4,
     },
     "T": 2048,
-    "filter_caps": ["starcoder"],
+    "filter_caps": ["starcoder", "completion"],
 },
 
 "starcoder/15b/base8bit": {
@@ -54,7 +54,7 @@ big_code_mini_db = {
         "bits": 8,
     },
     "T": 2048,
-    "filter_caps": ["starcoder"],
+    "filter_caps": ["starcoder", "completion"],
 },
 
 }
