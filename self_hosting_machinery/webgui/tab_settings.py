@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pathlib import Path
 from self_hosting_machinery import env
+from self_hosting_machinery.webgui import tab_models_host
 
 
 __all__ = ["TabSettingsRouter"]
@@ -39,6 +40,7 @@ class TabSettingsRouter(APIRouter):
         with open(env.CONFIG_INTEGRATIONS + ".tmp", "w") as f:
             json.dump(data.dict(), f, indent=4)
         os.rename(env.CONFIG_INTEGRATIONS + ".tmp", env.CONFIG_INTEGRATIONS)
+        tab_models_host.models_to_watchdog_configs()
         return JSONResponse("OK")
 
     async def _tab_settings_create_ssh_key(self, data: SSHKey):

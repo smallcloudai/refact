@@ -44,7 +44,7 @@ class TabHostRouter(APIRouter):
     async def _tab_host_models_assign(self, post: TabHostModelsAssign, request: Request):
         with open(env.CONFIG_INFERENCE, "w") as f:
             json.dump(post.dict(), f, indent=4)
-        _update_watchdog_d()
+        models_to_watchdog_configs()
         return JSONResponse("OK")
 
 
@@ -94,7 +94,7 @@ def _models():
     return {"models": models_info}
 
 
-def _update_watchdog_d():
+def models_to_watchdog_configs():
     gpus = _gpus()["gpus"]
     # models = _models()["models"]
     inference_config = _model_assignment()
@@ -142,15 +142,21 @@ def _update_watchdog_d():
         integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
 
     openai_api_key = integrations.get("openai_api_key", "")
+    openai_watchdog_cfg_fn = os.path.join(env.DIR_WATCHDOG_D, "openai_api_worker.cfg")
+
     if inference_config.get("openai_api_enable", False) and openai_api_key.startswith("sk-"):
         cfg = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "openai_api_worker.cfg"), 'r'))
         cfg.pop('unfinished')
         cfg['command_line'].append('--openai_key')
         cfg['command_line'].append(openai_api_key)
-        watchdog_cfg_fn = os.path.join(env.DIR_WATCHDOG_D, "openai_api_worker.cfg")
-        with open(watchdog_cfg_fn + ".tmp", "w") as f:
+        with open(openai_watchdog_cfg_fn + ".tmp", "w") as f:
             json.dump(cfg, f, indent=4)
-        os.rename(watchdog_cfg_fn + ".tmp", watchdog_cfg_fn)
+        os.rename(openai_watchdog_cfg_fn + ".tmp", openai_watchdog_cfg_fn)
+    else:
+        try:
+            os.unlink(openai_watchdog_cfg_fn)
+        except:
+            pass
 
 
 def first_run():
@@ -163,4 +169,4 @@ def first_run():
     if not os.path.exists(env.CONFIG_INFERENCE):
         with open(env.CONFIG_INFERENCE, "w") as f:
             json.dump(default_config, f, indent=4)
-    _update_watchdog_d()
+    models_to_watchdog_configs()
