@@ -25,6 +25,7 @@ class TabHostModelRec(BaseModel):
 
 class TabHostModelsAssign(BaseModel):
     model_assign: Dict[str, TabHostModelRec] = {}
+    completion: str
     openai_api_enable: bool = False
 
 
@@ -42,6 +43,13 @@ class TabHostRouter(APIRouter):
         return Response(json.dumps({**_models(), **_model_assignment()}, indent=4) + "\n")
 
     async def _tab_host_models_assign(self, post: TabHostModelsAssign, request: Request):
+        if post.completion not in post.model_assign:
+            for info in _models()["models"]:
+                if info["has_completion"] and info["name"] in post.model_assign:
+                    post.completion = info["name"]
+                    break
+            else:
+                post.completion = ""
         with open(env.CONFIG_INFERENCE, "w") as f:
             json.dump(post.dict(), f, indent=4)
         models_to_watchdog_configs()
@@ -165,8 +173,12 @@ def first_run():
     gpus = _gpus()["gpus"]
     default_config = {
         "model_assign": {
-            "CONTRASTcode/3b/multi":  {'gpus_min': 1, 'gpus_max': len(gpus)}
-        }
+            "CONTRASTcode/3b/multi":  {
+                'gpus_min': 1,
+                'gpus_max': len(gpus),
+            }
+        },
+        'completion': "CONTRASTcode/3b/multi",
     }
     if not os.path.exists(env.CONFIG_INFERENCE):
         with open(env.CONFIG_INFERENCE, "w") as f:

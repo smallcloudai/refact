@@ -92,6 +92,7 @@ function save_model_assigned() {
         model_assign: {
             ...models_data.model_assign,
         },
+        completion: models_data.completion,
         openai_api_enable: openai_enable.checked
     };
     fetch("/tab-host-models-assign", {
@@ -107,6 +108,10 @@ function save_model_assigned() {
 }
 
 function render_models_assigned(models) {
+    const models_info = models_data.models.reduce(function(obj, item) {
+      obj[item["name"]] = item;
+      return obj;
+    }, {});
     const models_table = document.querySelector('.table-assigned-models tbody');
     models_table.innerHTML = '';
     for(let index in models) {
@@ -118,6 +123,23 @@ function render_models_assigned(models) {
         const del = document.createElement("td");
         const del_button = document.createElement("button");
         model_name.textContent = index;
+
+        const completion = document.createElement("td");
+        if (models_info[index].has_completion) {
+            const completıon_input = document.createElement("input");
+            completıon_input.setAttribute('type','radio');
+            completıon_input.setAttribute('name','completion-radio-button');
+            completıon_input.setAttribute('value',index);
+            if (models_data.completion === index) {
+                completıon_input.checked = true;
+            }
+            completıon_input.setAttribute('model',index);
+            completıon_input.addEventListener('change', function() {
+                models_data.completion = this.value;
+                save_model_assigned();
+            });
+            completion.appendChild(completıon_input);
+        }
         gpus_input.classList.add('model-gpus','form-control');
         gpus_input.setAttribute('model',index);
         gpus_input.setAttribute('min',1);
@@ -143,6 +165,7 @@ function render_models_assigned(models) {
         del.appendChild(del_button);
         // del.innerHTML = `<button type="button" data-model="${index}" class="btn btn-danger model-remove"><i class="bi bi-trash3-fill"></i></button>`;
         row.appendChild(model_name);
+        row.appendChild(completion);
         row.appendChild(gpus);
         row.appendChild(del);
         models_table.appendChild(row);
