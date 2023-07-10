@@ -382,6 +382,9 @@ h3 {
     border-radius: 0.375rem;
     margin: 10px 0;
 }
+.tab-settings-ssh code:after {
+    content: close-quote;
+}
 .table-checkpoints tr {
     cursor: pointer;
 }
