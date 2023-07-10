@@ -1,1 +1,1 @@
-from vecdb import VecDBAPI, VecDBAsyncAPI
+from refact_vecdb.vecdb import VecDBAPI, VecDBAsyncAPI

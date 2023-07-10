@@ -46,14 +46,14 @@ setup(
         # refact_encoding
         "tokenizers", "sentencepiece",
         # refact_scratchpads_no_gpu
-        "openai", "ujson",
+        "openai>=0.27.8", "ujson", "aiohttp", "requests",
         # refact_models
         "blobfile", "cloudpickle", "huggingface_hub", "transformers",
         # self_hosting_machinery
         "aiohttp", "cryptography", "fastapi", "giturlparse", "pydantic",
         "starlette", "uvicorn", "uvloop", "python-multipart"
         # refact_vecdb
-        "openai", "cassandra-driver", "pynndescent",
+        "cassandra-driver", "pynndescent",
         "tqdm", "numpy", "pydantic",
         "fastapi", "uvicorn", "uvloop",
         "more-itertools", "tqdm", "requests",

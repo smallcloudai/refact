@@ -1,4 +1,4 @@
-from .gpt35_prompts import msg
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_prompts import msg
 
 
 def detect_bugs():

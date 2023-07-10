@@ -2,13 +2,13 @@ from typing import *
 
 import ujson as json
 
-from .gpt_toolbox_spad import ScratchpadChatGPT
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_toolbox_spad import ScratchpadChatGPT
 
-from .gpt35_prompts import msg
-from .gpt4_prompts import detect_vulnerabilities, detect_bugs, code_review
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_prompts import msg
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_prompts import detect_vulnerabilities, code_review
 
-from .utils import find_substring_positions
-from .gpt35_toolbox import \
+from refact_scratchpads_no_gpu.gpt_toolbox.utils import find_substring_positions
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import \
     ScratchpadMakeCodeShorter, \
     ScratchpadFixBug, \
     ScratchpadExplainCodeBlock, \

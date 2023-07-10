@@ -12,9 +12,9 @@ from .gpt35_prompts import msg, \
     comment_each_line, \
     completion_ctxt
 
-from .gpt4_prompts import code_review
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_prompts import code_review
 
-from .utils import code_block_postprocess, find_substring_positions
+from refact_scratchpads_no_gpu.gpt_toolbox.utils import code_block_postprocess, find_substring_positions
 
 
 class ScratchpadCompletion(ScratchpadChatGPT):

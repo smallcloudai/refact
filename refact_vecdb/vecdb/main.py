@@ -9,7 +9,6 @@ import aiohttp
 import ujson as json
 
 from tqdm import tqdm
-# from tqdm.asyncio import tqdm as tqdm_async
 from more_itertools import chunked
 
 
