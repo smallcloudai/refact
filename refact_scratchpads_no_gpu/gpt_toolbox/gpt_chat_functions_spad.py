@@ -10,12 +10,13 @@ from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 import openai
 import tiktoken
 
-from .smc_functions import SMC_FUNCTIONS
+from refact_scratchpads_no_gpu.gpt_toolbox.smc_functions import SMC_FUNCTIONS
 from refact_vecdb import VecDBAsyncAPI
+from refact_scratchpads_no_gpu.gpt_toolbox.websearch import WebSearch
 
 
 def gpt_prices(  # Apr 4 2023:
-    model_name: str,
+        model_name: str,
 ) -> Tuple[int, int]:
     # GPT-4 8K prompt[$0.03 / 1K tokens] generated[$0.06 / 1K tokens]
     if model_name.startswith("gpt-4") or model_name.startswith("gpt4"):
@@ -42,27 +43,41 @@ engine_to_encoding("text-davinci-003")  # this immediately tests if tiktoken wor
 
 def calculate_chat_tokens(model_name, messages, completion):
     enc = engine_to_encoding(model_name)
-    calc_prompt_tokens_n = 2   # warmup
+    calc_prompt_tokens_n = 2  # warmup
     for d in messages:
         calc_prompt_tokens_n += len(enc.encode(d["content"], disallowed_special=()))
         calc_prompt_tokens_n += len(enc.encode(d["role"], disallowed_special=()))
-        calc_prompt_tokens_n += 4    # to switch user/assistant
-    calc_generated_tokens_n = len(enc.encode(completion, disallowed_special=())) + 2   # one to switch, another EOF
+        calc_prompt_tokens_n += 4  # to switch user/assistant
+    calc_generated_tokens_n = len(enc.encode(completion, disallowed_special=())) + 2  # one to switch, another EOF
     return calc_prompt_tokens_n, calc_generated_tokens_n
 
 
 class ChatGenerator:
-    def __init__(self, **kwargs):
+    def __init__(
+            self,
+            use_functions: bool = True,
+            **kwargs
+    ):
+        self._use_functions = use_functions
+        if self._use_functions:
+            kwargs = {
+                **kwargs,
+                'functions': SMC_FUNCTIONS,
+                'function_call': 'auto'
+            }
         self.kwargs = kwargs
         self.__gen = None
 
     async def __aiter__(self):
-        self.__gen = await openai.ChatCompletion.acreate(**self.kwargs)
+        await self._init()
         return self
 
     async def _init(self):
         if not self.__gen:
-            self.__gen = await openai.ChatCompletion.acreate(**self.kwargs)
+            self.__gen = await openai.ChatCompletion.acreate(
+                stream=True,
+                **self.kwargs
+            )
 
     async def __anext__(self):
         await self._init()
@@ -117,7 +132,9 @@ class GptChat(ascratch.AsyncScratchpad):
         self._completion = ""
         self._function_call = {}
         self._on_function = False
+
         self._vecdb = VecDBAsyncAPI()
+        self._websearch = WebSearch()
 
     @property
     def _model_name(self) -> str:
@@ -155,6 +172,31 @@ class GptChat(ascratch.AsyncScratchpad):
                         f'2. Write a short example of usage {param} abstracting from the context'
                 }
             ]
+        if name == 'web_search':
+            param = params.get('query', 'unknown')
+            candidates = await self._websearch.a_search(param)
+            search_result = json.dumps([{'link': c.link, 'snippet': c.snippet} for c in candidates])
+
+            self._messages = [
+                *self._messages,
+                {
+                    'role': 'user',
+                    'content':
+                        f'I wanted to find out about: {param} and performed a google search request. '
+                        f'I have got top-{len(candidates)} results. I want you to summarize them very briefly. '
+                        f'Output summarization with references to each source you found informative. '
+                        f'Here are the results of my search: \n {search_result}'
+                }
+            ]
+
+    def _create_chat_gen(self, use_functions: bool) -> ChatGenerator:
+        return ChatGenerator(
+            use_functions=use_functions,
+            model=self._model_name,
+            messages=self._messages,
+            max_tokens=self.max_tokens,
+            temperature=self.temp,
+        )
 
     async def completion(self) -> AsyncIterator[Dict[str, str]]:
 
@@ -167,24 +209,7 @@ class GptChat(ascratch.AsyncScratchpad):
             role = ""
             tokens = 0
 
-            if use_functions:
-                gen = ChatGenerator(
-                    model=self._model_name,
-                    messages=self._messages,
-                    max_tokens=self.max_tokens,
-                    temperature=self.temp,
-                    stream=True,
-                    functions=SMC_FUNCTIONS,
-                    function_call='auto'
-                )
-            else:
-                gen = ChatGenerator(
-                    model=self._model_name,
-                    messages=self._messages,
-                    max_tokens=self.max_tokens,
-                    temperature=self.temp,
-                    stream=True,
-                )
+            gen = self._create_chat_gen(use_functions=use_functions)
 
             async def forward_streaming(final_it: bool = False):
                 nonlocal tokens, accum, role
@@ -194,6 +219,7 @@ class GptChat(ascratch.AsyncScratchpad):
                         "chat__role": role,
                         "chat__content": content
                     }
+
                 if self._on_function and final_it:
                     try:
                         self._function_call['arguments'] = json.loads(self._function_call['arguments'])
@@ -224,7 +250,9 @@ class GptChat(ascratch.AsyncScratchpad):
                     if content := delta.get('content'):
                         accum += content
                         tokens += 1  # assuming 1 token per chunk
-                    if "finish_reason" in resp.choices[0] and resp.choices[0]["finish_reason"] is not None and not self._on_function:
+                    if "finish_reason" in resp.choices[0] and \
+                            resp.choices[0]["finish_reason"] is not None and \
+                            not self._on_function:
                         self.finish_reason = resp.choices[0]["finish_reason"]
                     if self.finish_reason:
                         break

@@ -51,7 +51,7 @@ gpt35_functions = {
 
     "completion-gpt3.5":         "refact_scratchpads_no_gpu:ScratchpadCompletion",
     "free-chat":                 "refact_scratchpads_no_gpu:GptChat",
-    "free-chat-gpt3.5":          "refact_scratchpads_no_gpu:GptChat",
+    "free-chat-gpt3.5":          "refact_scratchpads_no_gpu:GptChatFunctions",  # replace with GptChat
     # "db-chat-gpt3.5func":          "gpt_toolbox.gpt_chat_functions_spad:GptChat",
 
     # UNFINISHED
@@ -223,12 +223,13 @@ def main():
     parser.add_argument("longthink_variant", type=str, default='longthink/stable')
     parser.add_argument("-k", "--openai_key", type=str)
     parser.add_argument("-w", "--workers", type=int, default=1)
+    parser.add_argument("-p", '--port', type=int, default=8008)
     parser.add_argument("--selfhosted", action="store_true")
     args = parser.parse_args()
 
     if args.selfhosted:
         from smallcloud import inference_server
-        inference_server.override_urls("http://127.0.0.1:8008/infengine-v1/")
+        inference_server.override_urls(f"http://127.0.0.1:{args.port}/infengine-v1/")
 
     if not (args.openai_key or os.environ.get('OPENAI_API_KEY')):
         raise RuntimeError("set OPENAI_API_KEY or use --openai_key")
