@@ -156,14 +156,20 @@ function render_models(models) {
         const row = document.createElement('tr');
         row.setAttribute('datamodel',models.models[index].name);
         const model_name = document.createElement("td");
-        const has_chat = document.createElement("td");
+        const has_completion = document.createElement("td");
+        const has_finetune = document.createElement("td");
         const has_toolbox = document.createElement("td");
+        const has_chat = document.createElement("td");
         model_name.textContent = models.models[index].name;
-        has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
+        has_completion.innerHTML = models.models[index].has_completion ? '<i class="bi bi-check"></i>' : '';
+        has_finetune.innerHTML = models.models[index].has_finetune ? '<i class="bi bi-check"></i>' : '';
         has_toolbox.innerHTML = models.models[index].has_toolbox ? '<i class="bi bi-check"></i>' : '';
+        has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
         row.appendChild(model_name);
-        row.appendChild(has_chat);
+        row.appendChild(has_completion);
+        row.appendChild(has_finetune);
         row.appendChild(has_toolbox);
+        row.appendChild(has_chat);
         models_table.appendChild(row);
         row.addEventListener('click', function(e) {
             models_data.model_assign[models.models[index].name] = {
