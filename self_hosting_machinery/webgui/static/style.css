@@ -77,6 +77,7 @@ h2 {
 .log-container p {
     margin-bottom: 0;
 }
+
 .table-models tr:hover {
     cursor: pointer;
 }
@@ -88,7 +89,14 @@ h2 {
 .table-models thead th:nth-child(2),
 .table-models tbody th:nth-child(2) {
     width: 90px;
+    overflow: hidden;
+    white-space: nowrap;
 }
+
+.add-model-modal-dialog {
+   max-width: 800px;
+}
+
 .upload-tab-table-files tbody td,
 .upload-tab-table-files thead th,
 .upload-tab-table-files tbody td,
@@ -247,14 +255,14 @@ h3 {
     color: #000;
     display: flex;
     width: 100%;
-    justify-content: flex-start; 
+    justify-content: flex-start;
     font-size: 10px;
     font-weight: bold;
     border-radius: 4px;
     margin-top: 10px;
 }
 .gpus-content {
-    
+
 }
 .gpus-mem {
     display: flex;
@@ -336,7 +344,7 @@ h3 {
 .gpus-card {
     margin-bottom: 15px;
     height: 30px;
-    width: 60px;  
+    width: 60px;
     background-position: center;
     background-size: contain;
     background-repeat: no-repeat;
@@ -350,7 +358,7 @@ h3 {
     display: flex;
     width: 100%;
     justify-content: flex-end;
-    margin-bottom: 20px;  
+    margin-bottom: 20px;
 }
 .tab-settings-ssh-key-item {
     margin-bottom: 20px;
@@ -471,7 +479,7 @@ h3 {
     text-align: left;
     z-index: 999;
     margin-top: -25px;
-    margin-left: 236px;   
+    margin-left: 236px;
 }
 #upload-tab-table-body-files td:nth-child(3) {
     text-align: right;
@@ -483,7 +491,7 @@ h3 {
 .main-tab-content .main-tab-pane {
     display: none;
   }
-  
+
 .main-tab-content .main-tab-pane.main-active {
     display: block;
 }
@@ -543,7 +551,7 @@ h3 {
     justify-content: center;
     line-height: 1.2;
     padding: 0;
-    margin: 0; 
+    margin: 0;
     margin-bottom: 20px;
     font-size: 13px;
 }
