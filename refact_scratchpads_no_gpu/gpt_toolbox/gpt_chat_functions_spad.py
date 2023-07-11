@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 
 import functools
 
@@ -13,6 +14,8 @@ import tiktoken
 from refact_scratchpads_no_gpu.gpt_toolbox.smc_functions import SMC_FUNCTIONS
 from refact_vecdb import VecDBAsyncAPI
 from refact_scratchpads_no_gpu.gpt_toolbox.websearch import WebSearch
+
+DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
 def gpt_prices(  # Apr 4 2023:
@@ -154,6 +157,8 @@ class GptChat(ascratch.AsyncScratchpad):
         return gpt_prices(self._model_name)
 
     async def _resolve_function(self, name: str, params: Dict[str, Any]):
+        if DEBUG:
+            self.debuglog(f'CALLING function {name} with params {params}')
         if name == 'get_current_weather':
             return f'{name}({", ".join([v for k, v in params.items()])})'
         if name == 'get_code_examples':
@@ -201,7 +206,8 @@ class GptChat(ascratch.AsyncScratchpad):
     async def completion(self) -> AsyncIterator[Dict[str, str]]:
 
         async def recursive_completion(use_functions: bool = True) -> AsyncIterator[Dict[str, str]]:
-            print(f'MODEL_NAME={self._model_name}')
+            if DEBUG:
+                self.debuglog(f'MODEL_NAME={self._model_name}')
             self._function_call = {}
             self.finish_reason = ''
             self._completion = ''
