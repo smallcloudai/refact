@@ -9,7 +9,8 @@ from fastapi.responses import StreamingResponse
 
 from known_models_db.refact_toolbox_db import modelcap_records
 from known_models_db.refact_known_models import models_mini_db
-from self_hosting_machinery.webgui.selfhost_model_resolve import resolve_model
+from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
+from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
@@ -267,8 +268,8 @@ class CompletionsRouter(APIRouter):
                 else:
                     if rec_modelcap == "CONTRASTcode":
                         continue
-                    rec_model, err_msg = resolve_model(rec_modelcap, self._inference_queue)
-                    assert err_msg=="", err_msg
+                    rec_model, err_msg = static_resolve_model(rec_modelcap, self._inference_queue)
+                    assert err_msg == "", err_msg
                     rec_function_name = rec.function_name
                 longthink_functions[rec_function_name] = {
                     **rec.to_dict(),
@@ -299,7 +300,7 @@ class CompletionsRouter(APIRouter):
         account = "XXX"
         ticket = Ticket("comp-")
         req = post.clamp()
-        model_name, err_msg = resolve_model(post.model, self._inference_queue)
+        model_name, err_msg = completion_resolve_model(self._inference_queue)
         if err_msg:
             log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)
@@ -333,7 +334,10 @@ class CompletionsRouter(APIRouter):
             if len(text) > 180*1024:
                 raise HTTPException(status_code=400, detail="file '%s' is too long (%d bytes)" % (fn, len(text)))
         ticket = Ticket("comp-")
-        model_name, err_msg = resolve_model(post.model, self._inference_queue)
+        if post.function == "infill":
+            model_name, err_msg = completion_resolve_model(self._inference_queue)
+        else:
+            model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
         if err_msg:
             log("%s model resolve \"%s\" func \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, post.function, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)
@@ -368,7 +372,7 @@ class CompletionsRouter(APIRouter):
         account = "XXX"
         ticket = Ticket("comp-")
 
-        model_name, err_msg = resolve_model(post.model, self._inference_queue)
+        model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
         if err_msg:
             log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)

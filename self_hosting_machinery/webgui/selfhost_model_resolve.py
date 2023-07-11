@@ -1,58 +1,56 @@
-from dataclasses import dataclass
+import json
+
+from known_models_db.refact_known_models import models_mini_db
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
+from self_hosting_machinery import env
 
 from typing import Tuple, List
 
 
-@dataclass
-class Model:
-    family: str
-    size: str = ""
-    specialization: str = ""
-    version: str = ""
-
-    def __init__(self, name: str):
-        self.family, self.size, self.specialization, self.version = \
-            f"{name}///".split("/")[:4]
-
-    def __str__(self) -> str:
-        return "/".join([
-            self.family,
-            self.size,
-            self.specialization,
-            self.version
-        ]).rstrip("/")
-
-    def __bool__(self) -> bool:
-        return bool(self.family)
-
-
-# TODO: remove this function ASAP, we need dynamic resolve mechanism
-def resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tuple[str, str]:
-    """
-    Allow client to specify less in the model string, including an empty string.
-    """
+def completion_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]:
     have_models: List[str] = inference_queue.models_available()
+
+    with open(env.CONFIG_INFERENCE, 'r') as f:
+        completion_model = json.load(f).get("completion", None)
+
+    # NOTE: if user nave old config, we resolve first available completion model
+    if completion_model is None:
+        for model in have_models:
+            if model in models_mini_db and "completion" in models_mini_db[model]["filter_caps"]:
+                return model, ""
+
+    if completion_model not in have_models:
+        return "", f"model is not loaded"
+
+    return completion_model, ""
+
+
+def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tuple[str, str]:
+    # special case for longthink
+    if model_name in ["longthink", "gpt3.5", "gpt4"]:
+        model_name = "longthink/stable"
+        if model_name not in inference_queue.models_available():
+            return "", f"model is not loaded"
+        return model_name, ""
+
+    have_models: List[str] = [
+        model for model in inference_queue.models_available()
+        if model not in ["longthink/stable"]
+    ]
+
+    # pass full model name
     if model_name in have_models:
         return model_name, ""
 
+    # CONTRASTcode is default model
     if model_name in ["CONTRASTcode"]:
         model_name = ""
-    if model_name in ["longthink", "gpt3.5", "gpt4"]:
-        model_name = "longthink/stable"
 
-    to_resolve = Model(model_name)
-    if not to_resolve:
-        filtered_hosted_models = [
-            m for m in map(Model, have_models)
-            if m.family not in ["longthink"]
-        ]
+    def _family(model: str) -> str:
+        return model.split("/")[0]
+
+    for have_model in have_models:
+        if not model_name or _family(model_name) == _family(have_model):
+            return have_model, ""
     else:
-        filtered_hosted_models = [
-            m for m in map(Model, have_models)
-            if m.family == to_resolve.family
-        ]
-
-    if not filtered_hosted_models:
         return "", f"model is not loaded"
-    return str(filtered_hosted_models[0]), ""
