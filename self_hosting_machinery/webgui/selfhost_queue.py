@@ -30,10 +30,10 @@ class InferenceQueue:
             return self._models_available
         if os.path.exists(env.CONFIG_INFERENCE):
             j = json.load(open(env.CONFIG_INFERENCE, 'r'))
-            for model in j['model_assign']:
+            for model in j["model_assign"]:
                 self._models_available.append(model)
             self._models_available_ts = time.time()
-            if j['openai_api_enable']:
+            if j.get("openai_api_enable", False):
                 # self._models_available.append('gpt3.5')
                 # self._models_available.append('gpt4')
                 self._models_available.append('longthink/stable')
