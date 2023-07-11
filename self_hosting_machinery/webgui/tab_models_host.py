@@ -66,7 +66,7 @@ def _gpus(include_busy: bool = False):
         j1 = json.load(open(env.CONFIG_ENUM_GPUS, "r"))
     else:
         j1 = {"gpus": []}
-    if include_busy:
+    if include_busy and os.path.exists(env.CONFIG_BUSY_GPUS):
         j2 = json.load(open(env.CONFIG_BUSY_GPUS, "r"))
         j1len = len(j1["gpus"])
         j2len = len(j2["gpus"])
