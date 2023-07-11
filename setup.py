@@ -50,7 +50,7 @@ setup(
         "blobfile", "cloudpickle", "huggingface_hub", "transformers",
         # self_hosting_machinery
         "aiohttp", "cryptography", "fastapi", "giturlparse", "pydantic",
-        "starlette", "uvicorn", "uvloop",
+        "starlette", "uvicorn", "uvloop", "python-multipart",
     ],
     **additional_setup_kwargs,
 )

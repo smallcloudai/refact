@@ -1,6 +1,5 @@
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 
-RUN ls  # clear cache
 RUN apt-get update
 RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
     curl \
