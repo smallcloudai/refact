@@ -50,6 +50,11 @@ class TabHostRouter(APIRouter):
                     break
             else:
                 post.completion = ""
+        if post.completion:
+            post.model_assign = {
+                post.completion: post.model_assign[post.completion],
+                **{k: v for k, v in post.model_assign.items() if k != post.completion},
+            }
         with open(env.CONFIG_INFERENCE, "w") as f:
             json.dump(post.dict(), f, indent=4)
         models_to_watchdog_configs()
