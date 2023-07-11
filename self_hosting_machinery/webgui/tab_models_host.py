@@ -183,7 +183,8 @@ def first_run():
                 'gpus_max': len(gpus),
             }
         },
-        'completion': "CONTRASTcode/3b/multi",
+        "completion": "CONTRASTcode/3b/multi",
+        "openai_api_enable": False,
     }
     if not os.path.exists(env.CONFIG_INFERENCE):
         with open(env.CONFIG_INFERENCE, "w") as f:
