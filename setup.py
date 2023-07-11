@@ -41,7 +41,7 @@ setup(
     install_requires=[
         "numpy", "torch", "termcolor", "smallcloud", "dataclasses_json", "dataclasses", "tiktoken",
         # code_contrast
-        "difflib", "cdifflib",
+        "cdifflib",
         # refact_encoding
         "tokenizers", "sentencepiece",
         # refact_scratchpads_no_gpu
