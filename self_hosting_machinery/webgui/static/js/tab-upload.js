@@ -366,11 +366,13 @@ function render_filetypes(mimetypes, filetypes) {
         sorted_mime_types.forEach((item) => {
             const row = document.createElement('tr');
             let checkbox_checked = `checked`;
-            const file_name = `<label for="file-list${i}">${item.file_type}</label>`;
-            if(item.suitable_to_train) {
-                row.classList.add('enabled-file');
+            let file_name = `<label for="file-list${i}">${item.file_type}</label>`;
+            if (!item.trusted_language) {
+                file_name = `<label for="file-list${i}" title="Harmful to fine-tuning" style="color: orange">${item.file_type}</label>`;
             }
-            if(!item.suitable_to_train) {
+            if (item.suitable_to_train) {
+                row.classList.add('enabled-file');
+            } else {
                 row.classList.add('opacity-50');
                 row.classList.add('disbled');
                 checkbox_checked = `disabled`;
