@@ -51,7 +51,7 @@ setup(
         "blobfile", "cloudpickle", "huggingface_hub", "transformers",
         # self_hosting_machinery
         "aiohttp", "cryptography", "fastapi", "giturlparse", "pydantic",
-        "starlette", "uvicorn", "uvloop", "python-multipart"
+        "starlette", "uvicorn", "uvloop", "python-multipart",
         # refact_vecdb
         "cassandra-driver", "pynndescent",
         "tqdm", "numpy", "pydantic",
