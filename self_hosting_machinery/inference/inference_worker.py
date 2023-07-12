@@ -330,9 +330,12 @@ class Inference:
 
     def lora_switch_according_to_config(self):
         if not os.path.exists(env.CONFIG_ACTIVE_LORA):
-            self.lora_switch(lora_checkpoint_dir="")
-            return
-        j = json.load(open(env.CONFIG_ACTIVE_LORA))
+            j = {
+                "model": "",
+                "lora_mode": "latest-best",
+            }
+        else:
+            j = json.load(open(env.CONFIG_ACTIVE_LORA))
         # {
         #     "model": "",
         #     "lora_mode": "specific",
