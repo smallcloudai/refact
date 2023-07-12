@@ -594,3 +594,22 @@ h3 {
     opacity: 0.4;
     pointer-events: none;
 }
+.form-clear-default {
+    position: absolute;
+    right: 5px;
+    margin-top: -27px;
+    border: 0 !important;
+    background: transparent !important;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+}
+.form-clear-default:hover {
+    opacity: 1;
+}
+.mb-3 {
+    position: relative;
+}
