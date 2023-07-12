@@ -460,7 +460,7 @@ function save_finetune_settings() {
 
 function check_heuristics() {
     const finetune_use_heuristics = document.querySelector('#use_heuristics');
-    if(finetune_use_heuristics.checked) {
+    if(!finetune_use_heuristics.checked) {
         document.querySelector('.finetune-settings-optional').classList.remove('finetune-settings-optional-disabled');
         document.querySelectorAll('.finetune-settings-optional input').forEach(element => {
             element.removeAttribute('tabindex');
