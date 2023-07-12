@@ -323,9 +323,6 @@ function start_log_stream(run_id) {
     if (run_id === logstream_runid) {
         return;
     }
-    if (logstream_reader) {
-        logstream_reader.cancel();
-    }
 
     const log_div = document.querySelector('.tab-upload-finetune-logs');
     log_div.textContent = '';
@@ -334,6 +331,10 @@ function start_log_stream(run_id) {
         const decoder = new TextDecoder();
         const response = await fetch(`/tab-finetune-log/${run_id}`);
         const reader = response.body.getReader();
+
+        if (logstream_reader) {
+            logstream_reader.cancel();
+        }
         logstream_reader = reader;
         logstream_runid = run_id;
 
