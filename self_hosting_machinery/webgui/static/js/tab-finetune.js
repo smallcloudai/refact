@@ -426,7 +426,7 @@ function save_finetune_settings() {
     if (document.querySelector('#finetune-tab-settings-modal #use_heuristics').checked) {
         use_heuristics = true;
     }
-    fetch("/tab-finetune-smart-filter-setup", {
+    fetch("/tab-finetune-training-setup", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
@@ -450,6 +450,10 @@ function save_finetune_settings() {
     .then(function(response) {
         if(response.ok) {
             get_finetune_settings();
+            let url_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('finetune-tab-settings-modal'));
+            url_modal.hide();
+        } else {
+            console.log('save_finetune_settings error', response);
         }
     });
 }
