@@ -83,31 +83,10 @@ class TabUploadRouter(APIRouter):
             how_to_process = json.load(open(env.CONFIG_HOW_TO_UNZIP, "r"))
         else:
             how_to_process = {'uploaded_files': {}}
-        if os.path.isfile(env.CONFIG_HOW_TO_FILETYPES):
-            result["filetypes"] = json.load(open(env.CONFIG_HOW_TO_FILETYPES, "r"))
-        else:
-            result["filetypes"] = {
-                "filetypes_finetune": {
-                    "SVG": False,
-                    "text/plain": False,
-                    "Graphviz (DOT)": False,
-                    "INI": False,
-                    "JSON": False,
-                    "Lex": False,
-                    "M4Sugar": False,
-                    "MATLAB": False,
-                    "Org": False,
-                    "Vim Script": False,
-                    "XML": False,
-                    "XSLT": False,
-                    "XS": False,
-                    "desktop": False,
-                    "sed": False,
-                },
-                "filetypes_db": {},
-                "force_include": "",
-                "force_exclude": "",
-            }
+
+        scan_stats = {"uploaded_files": {}}
+        stats_uploaded_files = {}
+        filetypes_disable_default = {}
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
             scan_stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
             mtime = os.path.getmtime(env.CONFIG_PROCESSING_STATS)
@@ -116,9 +95,28 @@ class TabUploadRouter(APIRouter):
                 if fstat["status"] in ["working", "starting"]:
                     if mtime + 600 < time.time():
                         fstat["status"] = "failed"
+
+            def _desc_sorting_key(d: Dict):
+                return not d.get("trusted_language", False), -d["count"], d["file_type"]
+
+            filetypes_disable_default = {
+                mime_type["file_type"]
+                for mime_type in sorted(scan_stats.get("mime_types", {}), key=_desc_sorting_key)[1:]
+            }
+
+        if os.path.isfile(env.CONFIG_HOW_TO_FILETYPES):
+            result["filetypes"] = json.load(open(env.CONFIG_HOW_TO_FILETYPES, "r"))
         else:
-            scan_stats = {"uploaded_files": {}}
-            stats_uploaded_files = {}
+            result["filetypes"] = {
+                "filetypes_finetune": {
+                    file_type: False
+                    for file_type in filetypes_disable_default
+                },
+                "filetypes_db": {},
+                "force_include": "",
+                "force_exclude": "",
+            }
+
         default = {
             "which_set": "train",
             "to_db": True,
@@ -261,6 +259,11 @@ class TabUploadRouter(APIRouter):
         except OSError as e:
             pass
         _reset_process_stats()
+        try:
+            if not os.listdir(env.DIR_UPLOADS) and os.path.exists(env.CONFIG_HOW_TO_FILETYPES):
+                os.remove(env.CONFIG_HOW_TO_FILETYPES)
+        except Exception as e:
+            pass
         return JSONResponse("OK")
 
     async def _tab_files_log(self, phase: str, accepted_or_rejected: str):
