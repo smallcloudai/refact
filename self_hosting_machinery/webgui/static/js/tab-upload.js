@@ -366,9 +366,9 @@ function render_filetypes(mimetypes, filetypes) {
         sorted_mime_types.forEach((item) => {
             const row = document.createElement('tr');
             let checkbox_checked = `checked`;
-            let file_name = `<label for="file-list${i}">${item.file_type}</label>`;
+            let file_name = `<label for="file-list${i}" style="font-weight: bold">${item.file_type}</label>`;
             if (!item.trusted_language) {
-                file_name = `<label for="file-list${i}" title="Harmful to fine-tuning" style="color: orange">${item.file_type}</label>`;
+                file_name = `<label for="file-list${i}" title="This file type may not yield optimal results for fine-tuning">${item.file_type}</label>`;
             }
             if (item.suitable_to_train) {
                 row.classList.add('enabled-file');
@@ -412,7 +412,7 @@ function sort_filetypes(sorted_data) {
     }
     return sorted_data;
   }
-  
+
 
 function watch_filetypes() {
     const file_types = document.querySelectorAll('.upload-tab-table-type-body input');
@@ -856,7 +856,7 @@ export function init() {
 
     const mime_sort = document.querySelector('.upload-tab-table-mime-sort');
     mime_sort.addEventListener('click', (event) => {
-        sort_type = 'filetype'; 
+        sort_type = 'filetype';
         sort_started = true;
         if(event.target.classList.contains('bi-caret-up-fill')) {
             sort_order = 'desc';
@@ -871,7 +871,7 @@ export function init() {
 
     const count_sort = document.querySelector('.upload-tab-table-count-sort');
     count_sort.addEventListener('click', (event) => {
-        sort_type = 'count'; 
+        sort_type = 'count';
         sort_started = true;
         if(event.target.classList.contains('bi-caret-up-fill')) {
             sort_order = 'desc';
