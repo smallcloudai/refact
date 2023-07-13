@@ -132,7 +132,7 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
                 }, *messages
             ]
         self._messages = messages
-        self._completion = ""
+        self._messages_orig_len = len(messages)
         self._function_call = {}
         self._on_function = False
 
@@ -156,49 +156,88 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
     def prices(self) -> Tuple[int, int]:
         return gpt_prices(self._model_name)
 
-    async def _resolve_function(self, name: str, params: Dict[str, Any]):
+    async def _run_function(self, raw_function_call: Dict[str, str], name: str, params: Dict[str, Any]) -> str:
         if DEBUG:
             self.debuglog(f'CALLING function {name} with params {params}')
-        if name == 'get_current_weather':
-            return f'{name}({", ".join([v for k, v in params.items()])})'
-        if name == 'get_code_examples':
-            param = params.get('look_for', 'unknown')
-            candidates = await self._vecdb.find(param, 1)
-            text = candidates[0]['text']
-            self._messages = [
-                *self._messages,
-                {
-                    'role': 'user',
-                    'content':
-                        f'This an example of using {param}. I want you to understand how it is used:\n'
-                        f'{text}\n'
-                        f'Answer on two questions:\n'
-                        f'1. What is the purpose of {param}\n'
-                        f'2. Write a short example of usage {param} abstracting from the context'
-                }
-            ]
+        # if name == 'get_current_weather':
+        #     return f'{name}({", ".join([v for k, v in params.items()])})'
+        # if name == 'get_code_examples':
+        #     param = params.get('look_for', 'unknown')
+        #     self._messages.append({
+        #         "role": "assistant",
+        #         "content": json.dumps(raw_function_call),
+        #         "gui_role": "tool_use",
+        #         "gui_content": "Searching vecdb for \"%s\"" % param,
+        #         })
+        #     yield {"chat__messages": self._messages}
+        #     candidates: List[Dict[str, str]] = await self._vecdb.find(param, 1)
+        #     # candidates[0] = {
+        #     # "name": "doc1"
+        #     # "text": "text_of_doc1"
+        #     # }
+        #     text = candidates[0]['text']
+        #     self._messages.append({
+        #         "role": "user",
+        #         "content":
+        #             f'This an example of using {param}. I want you to understand how it is used:\n'
+        #             f'{text}\n'
+        #             f'Answer on two questions:\n'
+        #             f'1. What is the purpose of {param}\n'
+        #             f'2. Write a short example of usage {param} abstracting from the context',
+        #         "gui_role": "documents",
+        #         "gui_content": json.dumps(candidates)
+        #     })
+        #     yield {"chat__messages": self._messages}
+        #     # self._messages = [
+        #     #     *self._messages,
+        #     #     {
+        #     #         'role': 'user',
+        #     #         'content':
+        #     #             f'This an example of using {param}. I want you to understand how it is used:\n'
+        #     #             f'{text}\n'
+        #     #             f'Answer on two questions:\n'
+        #     #             f'1. What is the purpose of {param}\n'
+        #     #             f'2. Write a short example of usage {param} abstracting from the context'
+        #     #     }
+        #     # ]
+
         if name == 'web_search':
             param = params.get('query', 'unknown')
+            self._messages.append({
+                "role": "assistant",
+                "content": json.dumps(raw_function_call),
+                "gui_role": "tool_use",
+                "gui_content": "Search web for \"%s\"" % param,
+                })
+            yield {"chat__messages": self._messages[self._messages_orig_len:]}
             candidates = await self._websearch.a_search(param)
             search_result = json.dumps([{'link': c.link, 'snippet': c.snippet} for c in candidates])
-
-            self._messages = [
-                *self._messages,
-                {
-                    'role': 'user',
-                    'content':
-                        f'I wanted to find out about: {param} and performed a google search request. '
-                        f'I have got top-{len(candidates)} results. I want you to summarize them very briefly. '
-                        f'Output summarization with references to each source you found informative. '
-                        f'Here are the results of my search: \n {search_result}'
-                }
-            ]
+            self._messages.append({
+                "role": "user",
+                "content": search_result,
+                "gui_role": "documents",
+                "gui_content": search_result,
+            })
+            yield {"chat__messages": self._messages[self._messages_orig_len:]}
+            # self._messages = [
+            #     *self._messages,
+            #     {
+            #         'role': 'user',
+            #         'content':
+            #             f'I wanted to find out about: {param} and performed a google search request. '
+            #             f'I have got top-{len(candidates)} results. I want you to summarize them very briefly. '
+            #             f'Output summarization with references to each source you found informative. '
+            #             f'Here are the results of my search: \n {search_result}'
+            #     }
 
     def _create_chat_gen(self, use_functions: bool) -> ChatGenerator:
         return ChatGenerator(
             use_functions=use_functions,
             model=self._model_name,
-            messages=self._messages,
+            messages=[{
+                "role": x["role"],
+                "content": x["content"],   # means filter other keys
+            } for x in self._messages],
             max_tokens=self.max_tokens,
             temperature=self.temp,
         )
@@ -208,36 +247,18 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
             self.debuglog(f'MODEL_NAME={self._model_name}')
         self._function_call = {}
         self.finish_reason = ''
-        self._completion = ''
         accum = ""
-        role = ""
         tokens = 0
 
         gen = self._create_chat_gen(use_functions=use_functions)
 
-        async def accumulator_to_a_streaming_packet(final_it: bool = False):
+        def accumulator_to_a_streaming_packet():
             nonlocal accum
-
-            def msg(content: str) -> Dict[str, str]:
-                return {
-                    "chat__role": role,
-                    "chat__content": content
-                }
-
-            if self._on_function and final_it:
-                try:
-                    self._function_call['arguments'] = json.loads(self._function_call['arguments'])
-                except json.JSONDecodeError:
-                    return msg('')
-
-                await self._resolve_function(self._function_call['name'], self._function_call['arguments'])
-                self._function_call.clear()
-                return msg('')
-
-            self._completion += accum
+            msg = self._messages[-1]
+            msg["content"] += accum
             accum = ""
-            return msg(self._completion)
 
+        create_streaming_msg = True
         try:
             while True:
                 resp = await asyncio.wait_for(gen.__anext__(), self._stream_timeout_sec)
@@ -261,15 +282,37 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
                 if self.finish_reason:
                     break
                 if (tokens % ACCUMULATE_N_STREAMING_CHUNKS == 0) and not self._on_function:
-                    yield await accumulator_to_a_streaming_packet()
+                    if create_streaming_msg:
+                        create_streaming_msg = False
+                        self._messages.append({
+                            "role": role,
+                            "content": "",
+                        })
+                    accumulator_to_a_streaming_packet()
+                    yield {"chat__messages": self._messages[self._messages_orig_len:]}
                 if self.finish_reason:  # cancelled from main coroutine
                     break
 
         except asyncio.exceptions.TimeoutError as e:
+            # TODO: convert to error message
             self.debuglog("CHAT TIMEOUT:", str(type(e)), str(e))
         except Exception as e:
             self.debuglog("CHAT EXCEPTION:", str(type(e)), str(e))
-        yield await accumulator_to_a_streaming_packet(final_it=True)
+
+        if self._on_function:
+            try:
+                self._function_call['arguments'] = json.loads(self._function_call['arguments'])
+                # FIXME: delta.get('function_call') is None
+                async for res in self._run_function(delta.get('function_call'), self._function_call['name'], self._function_call['arguments']):
+                    yield res
+            except json.JSONDecodeError:
+                self._messages.append({"role": "error", "content": "OpenAI JSONDecodeError"})
+                yield {"chat__messages": self._messages[self._messages_orig_len:]}
+            self._function_call.clear()
+
+        accumulator_to_a_streaming_packet()
+        # FIXME: create_streaming_msg
+        yield {"chat__messages": self._messages[self._messages_orig_len:]}
 
     async def completion(self) -> AsyncIterator[Dict[str, str]]:
         async for res in self.call_openai_api_based_on_stored_messages():
@@ -287,7 +330,7 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
             return {}
         else:
             calc_prompt_tokens_n, calc_generated_tokens_n = calculate_chat_tokens(
-                self._model_name, self._messages, self._completion
+                self._model_name, self._messages, ""   # FIXME
             )
             self.metering_prompt_tokens_n = calc_prompt_tokens_n
             self.metering_generated_tokens_n = calc_generated_tokens_n
