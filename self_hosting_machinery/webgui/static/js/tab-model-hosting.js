@@ -92,7 +92,7 @@ function save_model_assigned() {
         model_assign: {
             ...models_data.model_assign,
         },
-        completion: models_data.completion,
+        completion: models_data.completion ? models_data.completion : "",
         openai_api_enable: openai_enable.checked
     };
     fetch("/tab-host-models-assign", {
