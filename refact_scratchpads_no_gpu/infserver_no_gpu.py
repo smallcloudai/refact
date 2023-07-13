@@ -51,7 +51,7 @@ gpt35_functions = {
 
     "completion-gpt3.5":         "refact_scratchpads_no_gpu:ScratchpadCompletion",
     "free-chat":                 "refact_scratchpads_no_gpu:GptChat",
-    "free-chat-gpt3.5":          "refact_scratchpads_no_gpu:GptChatFunctions",  # replace with GptChat
+    "free-chat-gpt3.5":          "refact_scratchpads_no_gpu:GptChatWithFunctions",  # replace back with GptChat
     # "db-chat-gpt3.5func":          "gpt_toolbox.gpt_chat_functions_spad:GptChat",
 
     # UNFINISHED

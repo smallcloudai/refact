@@ -15,5 +15,5 @@ from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadPrecis
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadCommentEachLine
 
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_spad import GptChat
-from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_functions_spad import GptChat as GptChatFunctions
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_functions_spad import GptChatWithFunctions
 

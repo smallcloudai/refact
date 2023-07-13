@@ -90,7 +90,7 @@ class ChatGenerator:
             pass
 
 
-class GptChat(ascratch.AsyncScratchpad):
+class GptChatWithFunctions(ascratch.AsyncScratchpad):
     def __init__(
             self,
             id: str,
