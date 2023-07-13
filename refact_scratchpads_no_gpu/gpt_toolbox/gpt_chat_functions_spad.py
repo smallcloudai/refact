@@ -203,81 +203,81 @@ class GptChat(ascratch.AsyncScratchpad):
             temperature=self.temp,
         )
 
-    async def completion(self) -> AsyncIterator[Dict[str, str]]:
+    async def call_openai_api_based_on_stored_messages(self, use_functions: bool = True) -> AsyncIterator[Dict[str, str]]:
+        if DEBUG:
+            self.debuglog(f'MODEL_NAME={self._model_name}')
+        self._function_call = {}
+        self.finish_reason = ''
+        self._completion = ''
+        accum = ""
+        role = ""
+        tokens = 0
 
-        async def recursive_completion(use_functions: bool = True) -> AsyncIterator[Dict[str, str]]:
-            if DEBUG:
-                self.debuglog(f'MODEL_NAME={self._model_name}')
-            self._function_call = {}
-            self.finish_reason = ''
-            self._completion = ''
-            accum = ""
-            role = ""
-            tokens = 0
+        gen = self._create_chat_gen(use_functions=use_functions)
 
-            gen = self._create_chat_gen(use_functions=use_functions)
+        async def accumulator_to_a_streaming_packet(final_it: bool = False):
+            nonlocal accum
 
-            async def forward_streaming(final_it: bool = False):
-                nonlocal tokens, accum, role
+            def msg(content: str) -> Dict[str, str]:
+                return {
+                    "chat__role": role,
+                    "chat__content": content
+                }
 
-                def msg(content: str) -> Dict[str, str]:
-                    return {
-                        "chat__role": role,
-                        "chat__content": content
-                    }
-
-                if self._on_function and final_it:
-                    try:
-                        self._function_call['arguments'] = json.loads(self._function_call['arguments'])
-                    except json.JSONDecodeError:
-                        return msg('')
-
-                    await self._resolve_function(self._function_call['name'], self._function_call['arguments'])
-                    self._function_call.clear()
+            if self._on_function and final_it:
+                try:
+                    self._function_call['arguments'] = json.loads(self._function_call['arguments'])
+                except json.JSONDecodeError:
                     return msg('')
 
-                self._completion += accum
-                accum = ""
-                return msg(self._completion)
+                await self._resolve_function(self._function_call['name'], self._function_call['arguments'])
+                self._function_call.clear()
+                return msg('')
 
-            try:
-                while True:
-                    resp = await asyncio.wait_for(gen.__anext__(), self._stream_timeout_sec)
-                    if not resp:
-                        break
-                    delta = resp.choices[0].delta
-                    if function_call := delta.get('function_call'):
-                        self._on_function = True
-                        self._function_call.setdefault('name', function_call.get('name'))
-                        self._function_call.setdefault('arguments', '')
-                        self._function_call['arguments'] += function_call['arguments']
-                    if "role" in delta:
-                        role = delta["role"]
-                    if content := delta.get('content'):
-                        accum += content
-                        tokens += 1  # assuming 1 token per chunk
-                    if "finish_reason" in resp.choices[0] and \
-                            resp.choices[0]["finish_reason"] is not None and \
-                            not self._on_function:
-                        self.finish_reason = resp.choices[0]["finish_reason"]
-                    if self.finish_reason:
-                        break
-                    if (tokens % ACCUMULATE_N_STREAMING_CHUNKS == 0) and not self._on_function:
-                        yield await forward_streaming()
-                    if self.finish_reason:  # cancelled from main coroutine
-                        break
-            except asyncio.exceptions.TimeoutError as e:
-                self.debuglog("CHAT TIMEOUT:", str(type(e)), str(e))
-            except Exception as e:
-                self.debuglog("CHAT EXCEPTION:", str(type(e)), str(e))
-            yield await forward_streaming(final_it=True)
+            self._completion += accum
+            accum = ""
+            return msg(self._completion)
 
-        async for res in recursive_completion():
+        try:
+            while True:
+                resp = await asyncio.wait_for(gen.__anext__(), self._stream_timeout_sec)
+                if not resp:
+                    break
+                delta = resp.choices[0].delta
+                if function_call := delta.get('function_call'):
+                    self._on_function = True
+                    self._function_call.setdefault('name', function_call.get('name'))
+                    self._function_call.setdefault('arguments', '')
+                    self._function_call['arguments'] += function_call['arguments']
+                if "role" in delta:
+                    role = delta["role"]
+                if content := delta.get('content'):
+                    accum += content
+                    tokens += 1  # assuming 1 token per chunk
+                if "finish_reason" in resp.choices[0] and \
+                        resp.choices[0]["finish_reason"] is not None and \
+                        not self._on_function:
+                    self.finish_reason = resp.choices[0]["finish_reason"]
+                if self.finish_reason:
+                    break
+                if (tokens % ACCUMULATE_N_STREAMING_CHUNKS == 0) and not self._on_function:
+                    yield await accumulator_to_a_streaming_packet()
+                if self.finish_reason:  # cancelled from main coroutine
+                    break
+
+        except asyncio.exceptions.TimeoutError as e:
+            self.debuglog("CHAT TIMEOUT:", str(type(e)), str(e))
+        except Exception as e:
+            self.debuglog("CHAT EXCEPTION:", str(type(e)), str(e))
+        yield await accumulator_to_a_streaming_packet(final_it=True)
+
+    async def completion(self) -> AsyncIterator[Dict[str, str]]:
+        async for res in self.call_openai_api_based_on_stored_messages():
             yield res
 
         if self._on_function:
             self._on_function = False
-            async for res in recursive_completion(use_functions=False):
+            async for res in self.call_openai_api_based_on_stored_messages(use_functions=False):
                 yield res
 
         self.finish_reason = 'END'
