@@ -86,7 +86,6 @@ class TabUploadRouter(APIRouter):
 
         scan_stats = {"uploaded_files": {}}
         stats_uploaded_files = {}
-        filetypes_whitelist = {}
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
             scan_stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
             mtime = os.path.getmtime(env.CONFIG_PROCESSING_STATS)
@@ -96,27 +95,11 @@ class TabUploadRouter(APIRouter):
                     if mtime + 600 < time.time():
                         fstat["status"] = "failed"
 
-            def _is_trusted(d: Dict):
-                return d.get("trusted_language", False)
-
-            def _desc_sorting_key(d: Dict):
-                return -d["count"], d["file_type"]
-
-            filetypes_whitelist = {
-                mime_type["file_type"]
-                for mime_type in sorted(
-                    filter(_is_trusted, scan_stats.get("mime_types", {})),
-                    key=_desc_sorting_key)[:1]
-            }
-
         if os.path.isfile(env.CONFIG_HOW_TO_FILETYPES):
             result["filetypes"] = json.load(open(env.CONFIG_HOW_TO_FILETYPES, "r"))
         else:
             result["filetypes"] = {
-                "filetypes_finetune": {
-                    file_type: True
-                    for file_type in filetypes_whitelist
-                },
+                "filetypes_finetune": {},
                 "filetypes_db": {},
                 "force_include": "",
                 "force_exclude": "",
