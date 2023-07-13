@@ -377,7 +377,7 @@ function render_filetypes(mimetypes, filetypes) {
                 row.classList.add('disbled');
                 checkbox_checked = `disabled`;
             }
-            if (filetypes && filetypes["filetypes_finetune"][item.file_type] === false) {
+            if (filetypes && filetypes["filetypes_finetune"][item.file_type] !== true) {
                 checkbox_checked = `unchecked`;
             }
             let file_checkbox = `<input id="file-list${i}" data-name="${item.file_type}" class="form-check-input" type="checkbox" value="${item.count}" ${checkbox_checked}>`;
@@ -711,14 +711,11 @@ function save_filters_settings() {
 }
 
 function save_filter_setup() {
-    let include_file_types = null;
-    const unchecked_types = document.querySelectorAll('.upload-tab-table-type-body tr input[type="checkbox"]:not(:checked)')
-    if(unchecked_types.length > 0) {
-        include_file_types = {};
-        unchecked_types.forEach(function(element) {
-            include_file_types[element.dataset.name] = false;
-        });
-    }
+    const include_file_types = {};
+    const checked_types = document.querySelectorAll('.upload-tab-table-type-body tr input[type="checkbox"]:checked')
+    checked_types.forEach(function(element) {
+        include_file_types[element.dataset.name] = true;
+    });
     const force_include = document.querySelector('#force_include').value;
     const force_exclude = document.querySelector('#force_exclude').value;
     fetch("/tab-files-filetypes-setup", {
