@@ -19,6 +19,7 @@ from self_hosting_machinery.scripts import best_lora
 from known_models_db.refact_known_models import models_mini_db
 
 from refact_models import CodifyModel
+from refact_models import RefactModel
 from refact_models import HFModel
 from refact_models import GPTQBigCodeModel
 from refact_models import StarChatModel
@@ -78,6 +79,12 @@ class Inference:
             model = CodifyModel.from_pretrained(
                 repo_id=model_dict["model_path"],
                 path=env.DIR_WEIGHTS,
+                device=device)
+            model.T = model.config.T
+        elif model_dict["model_class"].endswith("RefactModel"):
+            model = RefactModel.from_pretrained(
+                repo_id=None,
+                path=model_dict["model_path"],
                 device=device)
             model.T = model.config.T
         elif model_dict["model_class"].endswith("HFModel"):

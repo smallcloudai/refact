@@ -24,9 +24,6 @@ class RefactModel(nn.Module, LoraMixin):
         self.layers = nn.Sequential(*[self.to_device(Block(config)) for _ in range(config.L)])
         self.final = self.to_device(Final(config))
 
-        self.cache_dir: Optional[str] = None
-        self.model_name: Optional[str] = None
-
     def to_device(self, module: nn.Module):
         module = module.to(self.device)
         if self.device.startswith("cuda"):
@@ -39,10 +36,20 @@ class RefactModel(nn.Module, LoraMixin):
 
     @classmethod
     def from_pretrained(cls, path: str, device: str = "cuda", repo_id: Optional[str] = None):
-        config = load_config(path, repo_id)
+        config = load_config(path)
+
+        def _convert_weight_name(n):
+            if n.startswith("layers"):
+                return ".".join(["layers", f'{int(n.split(".")[1]) - 1}', *n.split(".")[2:]])
+            return n
+
         model = cls(config, device)
-        model = load_checkpoint(model, path, repo_id)
-        return model
+        model.load_state_dict({
+            _convert_weight_name(k): v.half()
+            for k, v in torch.load(f"{path}/mp_rank_00_model_states.pt")["module"].items()
+        })
+
+        return model.half()
 
     def generate(self, *args, **kwargs):
         return generate(self, *args, **kwargs)
