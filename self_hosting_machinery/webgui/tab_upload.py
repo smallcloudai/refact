@@ -86,7 +86,7 @@ class TabUploadRouter(APIRouter):
 
         scan_stats = {"uploaded_files": {}}
         stats_uploaded_files = {}
-        filetypes_disable_default = {}
+        filetypes_whitelist = {}
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
             scan_stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
             mtime = os.path.getmtime(env.CONFIG_PROCESSING_STATS)
@@ -96,12 +96,17 @@ class TabUploadRouter(APIRouter):
                     if mtime + 600 < time.time():
                         fstat["status"] = "failed"
 
-            def _desc_sorting_key(d: Dict):
-                return not d.get("trusted_language", False), -d["count"], d["file_type"]
+            def _is_trusted(d: Dict):
+                return d.get("trusted_language", False)
 
-            filetypes_disable_default = {
+            def _desc_sorting_key(d: Dict):
+                return -d["count"], d["file_type"]
+
+            filetypes_whitelist = {
                 mime_type["file_type"]
-                for mime_type in sorted(scan_stats.get("mime_types", {}), key=_desc_sorting_key)[1:]
+                for mime_type in sorted(
+                    filter(_is_trusted, scan_stats.get("mime_types", {})),
+                    key=_desc_sorting_key)[:1]
             }
 
         if os.path.isfile(env.CONFIG_HOW_TO_FILETYPES):
@@ -109,8 +114,8 @@ class TabUploadRouter(APIRouter):
         else:
             result["filetypes"] = {
                 "filetypes_finetune": {
-                    file_type: False
-                    for file_type in filetypes_disable_default
+                    file_type: True
+                    for file_type in filetypes_whitelist
                 },
                 "filetypes_db": {},
                 "force_include": "",
