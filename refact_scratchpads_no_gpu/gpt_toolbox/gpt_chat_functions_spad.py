@@ -106,9 +106,9 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
             param = params.get('query', 'unknown')
             self._messages.append({
                 "role": "assistant",
-                "content": raw_function_call,
+                "content": f"Searching web for {param}",
                 "gui_role": "tool_use",
-                "gui_content": f"Search web for {param}",
+                # "gui_content": f"Searching web for {param}",
             })
             yield self._new_chat_messages()
 
@@ -118,7 +118,7 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
                 "role": "user",
                 "content": search_result,
                 "gui_role": "documents",
-                "gui_content": search_result,
+                # "gui_content": search_result,
             })
             yield self._new_chat_messages()
 
