@@ -42,7 +42,7 @@ function active_tab_switched() {
 function every_couple_of_seconds() {
     const active_tab = document.querySelector('.main-tab-pane.main-active');
     for (const plugin of plugins) {
-        if (active_tab.id === plugin.id) {
+        if (active_tab.id === plugin.tab) {
             plugin.mod.tab_update_each_couple_of_seconds();
             break;
         }
