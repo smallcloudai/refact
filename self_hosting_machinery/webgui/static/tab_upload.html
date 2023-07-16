@@ -1,0 +1,90 @@
+<div class="row">
+  <div class="col-12">
+    <div class="pane sources-pane">
+      <h3>Code and Text Sources</h3>
+      <table class="table table-sm align-middle upload-tab-table-files">
+        <thead>
+          <tr>
+            <th>Filename</th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="upload-tab-table-body-files">
+        </tbody>
+      </table>
+      <div class="sources-buttons">
+        <button id="upload-tab-file-button" data-bs-toggle="modal" data-bs-target="#upload-tab-files-modal"
+          type="button" class="btn btn-primary">Upload files…</button>
+        <button id="upload-tab-url-button" data-bs-toggle="modal" data-bs-target="#upload-tab-url-modal"
+          type="button" class="btn btn-primary">Add file from URL</button>
+        <button id="upload-tab-git-button" data-bs-toggle="modal" data-bs-target="#upload-tab-git-modal"
+          type="button" class="btn btn-primary">Add git repo...</button>
+        <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Scan
+          sources</button>
+      </div>
+    </div>
+    <div class="pane filetypes-pane">
+      <h3>File Type Filter
+        <div class="mt-3 d-grid gap-2 d-md-flex">
+          <button class="btn btn-outline-secondary btn-sm filetypes-checkall">Check all</button>
+          <button class="btn filetypes-uncheckall btn-outline-secondary btn-sm">Uncheck all</button>
+        </div>
+      </h3>
+      <div class="row source-files-table">
+        <div class="col-7">
+          <table class="table table-striped align-middle upload-tab-table-types">
+            <thead>
+              <tr>
+                <th></th>
+                <th>MIME <i class="upload-tab-table-mime-sort bi bi-caret-up-fill"></i></th>
+                <th>Count <i class="upload-tab-table-count-sort bi bi-caret-up-fill"></i></th>
+              </tr>
+            </thead>
+            <tbody class="upload-tab-table-type-body">
+            </tbody>
+          </table>
+        </div>
+        <div class="col-5 source-force">
+          <div class="mb-3">
+            <label for="force_exclude" class="form-label">Force exclude from finetune</label>
+            <input type="text" class="form-control" id="force_exclude" placeholder="generated/*,dist/*">
+          </div>
+          <div class="mb-3">
+            <label for="force_include" class="form-label">Force include in finetune</label>
+            <input type="text" class="form-control" id="force_include" placeholder="src/strange_file.py">
+          </div>
+          <div class="sources-stats">
+            <div class="sources-stats-finetune">
+              <h6>Files for Finetune</h6>
+              <div class="sources-stats-fine-accepted">Accepted: <span></span></div>
+              <div class="sources-stats-fine-rejected">Rejected: <span></span></div>
+            </div>
+            <div class="sources-stats-db">
+              <h6>Files for Vector DB</h6>
+              <div class="sources-stats-db-accepted">Accepted: <span></span></div>
+              <div class="sources-stats-db-rejected">Rejected: <span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pane run-pane">
+      <div class="run-pane-grid">
+        <div class="ftf-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+          <div class="ftf-bar bg-success" style="width: 0%"></div>
+        </div>
+        <div class="ftf-eta"></div>
+        <div class="ftf-status d-none">Status:<span></span></div>
+        <div class="ftf-error d-none">Error:<span class="text-danger"></span></div>
+        <div class="ftf-stats"></div>
+        <button type="button" class="sources-run-button btn btn-primary btn-lg"><i class="bi bi-gpu-card"></i>Run
+          filter</button>
+        <button type="button" data-bs-toggle="modal" data-bs-target="#upload-tab-source-settings-modal"
+          class="btn btn-link sources-settings">Settings</button>
+      </div>
+    </div>
+  </div>
+</div>

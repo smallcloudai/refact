@@ -210,7 +210,7 @@ function format_memory(memory_in_mb, decimalPlaces = 2) {
     return memory_in_gb;
 }
 
-export function init() {
+export async function init() {
     get_gpus();
     get_models();
     const add_model_modal = document.getElementById('add-model-modal');

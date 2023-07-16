@@ -5,6 +5,15 @@ let sort_order = 'asc';
 let sort_started = false;
 let dont_disable_file_types = false;
 
+let progress_bar = null;
+let sources_pane = null;
+let filetypes_pane = null;
+let sources_run_pane = null;
+let sources_run_button = null;
+let sources_settings = null;
+let sources_status = null;
+let sources_error = null;
+
 
 function do_starting_state() {
     sources_run_button.disabled = true;
@@ -134,14 +143,6 @@ function get_tab_files() {
         });
 }
 
-const progress_bar = document.querySelector('.sources-run-progress .progress-bar');
-const sources_pane = document.querySelector('.sources-pane');
-const filetypes_pane = document.querySelector('.filetypes-pane');
-const sources_run_pane = document.querySelector('.run-pane');
-const sources_run_button = document.querySelector('.sources-run-button');
-const sources_settings = document.querySelector('.sources-settings');
-const sources_status = document.querySelector('.ftf-status span');
-const sources_error = document.querySelector('.ftf-error');
 
 function render_filter_progress(progress_value) {
     progress_bar.style.width = progress_value + "%";
@@ -741,7 +742,19 @@ function run_now() {
     });
 }
 
-export function init() {
+export async function init() {
+    let req = await fetch('/tab_upload.html');
+    document.querySelector('#upload').innerHTML = await req.text();
+    progress_bar = document.querySelector('.sources-run-progress .progress-bar');
+    sources_pane = document.querySelector('.sources-pane');
+    filetypes_pane = document.querySelector('.filetypes-pane');
+    sources_run_pane = document.querySelector('.run-pane');
+    sources_run_button = document.querySelector('.sources-run-button');
+    sources_settings = document.querySelector('.sources-settings');
+    sources_status = document.querySelector('.ftf-status span');
+    sources_error = document.querySelector('.ftf-error');
+
+
     sources_run_button.addEventListener('click', run_stop_filtering)
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());
