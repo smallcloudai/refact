@@ -1,9 +1,97 @@
-import * as model_hosting_tab from './tab-model-hosting.js';
-import * as upload_tab from './tab-upload.js';
-import * as finetune_tab from './tab-finetune.js';
-import * as access_control_tab from './tab-access-contol.js';
-import * as server_log_tab from './tab-server-logs.js';
-import * as ssh_settings_tab from './tab-credentials-settings.js';
+const plugins = [
+{ id: 'tab-model-hosting', label: 'Model Hosting', tab: 'model-hosting', active: true },
+{ id: 'tab-upload', label: 'Sources', tab: 'upload' },
+{ id: 'tab-finetune', label: 'Finetune', tab: 'finetune' },
+{ id: 'tab-server-logs', label: 'Server Logs', tab: 'server-logs' },
+{ id: 'tab-access-control', label: 'Access Control', tab: 'access-control', disabled: true },
+{ id: 'tab-settings', label: 'Credentials', tab: 'settings', hamburger: true },
+];
+
+// show immediately, import later
+plugins_to_top_nav_bar();
+
+// this might take some time: load all modules
+const imported_plugins = [];
+for (const p of plugins) {
+    const mod = await import("./" + p.id + ".js");
+    console.log(["loaded " + p.id, mod]);
+    imported_plugins.push(mod);
+    p.mod = mod;
+    await mod.init();
+}
+
+function active_tab_switched() {
+    const active_tab = document.querySelector('.main-tab-pane.main-active');
+    for (const plugin of plugins) {
+        if (active_tab.id !== plugin.tab) {
+            plugin.mod.tab_switched_away();
+        }
+    }
+    for (const plugin of plugins) {
+        if (active_tab.id === plugin.tab) {
+            plugin.mod.tab_switched_here();
+            break;
+        }
+    }
+}
+
+function every_couple_of_seconds() {
+    const active_tab = document.querySelector('.main-tab-pane.main-active');
+    for (const plugin of plugins) {
+        if (active_tab.id === plugin.id) {
+            plugin.mod.tab_update_each_couple_of_seconds();
+            break;
+        }
+    }
+}
+
+let refresh_interval = null;
+
+function start_tab_timer() {
+    active_tab_switched();
+    if (refresh_interval) {
+        clearInterval(refresh_interval);
+    }
+    refresh_interval = setInterval(every_couple_of_seconds, 2000);
+}
+
+start_tab_timer();
+
+
+function plugins_to_top_nav_bar()
+{
+    // show immediately, import later
+    const template_ltr = Handlebars.compile(document.getElementById('nav-template-ltr').innerHTML);
+    const html = template_ltr({ "items": plugins });
+    document.getElementById('nav-container').innerHTML = html;
+
+    const tab_buttons = document.querySelectorAll('.main-tab-button');
+    const tab_panes = document.querySelectorAll('.main-tab-pane');
+
+    tab_buttons.forEach(tab_button => {
+        tab_button.addEventListener('click', () => {
+            if(tab_button.hasAttribute('disabled')) { return };
+            const target_tab = tab_button.dataset.tab;
+
+            tab_buttons.forEach(btn => {
+            btn.classList.remove('main-active');
+            });
+
+            tab_panes.forEach(pane => {
+            if (pane.id === target_tab) {
+                pane.classList.add('main-active');
+                comming_soon_resize();
+            } else {
+                pane.classList.remove('main-active');
+            }
+            });
+
+            tab_button.classList.add('main-active');
+            start_tab_timer();
+        });
+    });
+}
+
 
 let comming_soon;
 
@@ -31,51 +119,7 @@ function comming_soon_resize() {
     });
 }
 display_comming_soon();
-model_hosting_tab.init();
-upload_tab.init();
-finetune_tab.init();
-access_control_tab.init();
-server_log_tab.init();
-ssh_settings_tab.init();
 
-const left_to_right_items = [
-{ id: 'model-tab', label: 'Model Hosting', tab: 'model-hosting', active: true },
-{ id: 'upload-tab', label: 'Sources', tab: 'upload' },
-{ id: 'finetune-tab', label: 'Finetune', tab: 'finetune' },
-{ id: 'logs-tab', label: 'Server Logs', tab: 'server-logs' },
-{ id: 'access-tab', label: 'Access Control', tab: 'access-control', disabled: true },
-{ id: 'settings-tab', label: 'Credentials', tab: 'settings', hamburger: true },
-];
-
-const template_ltr = Handlebars.compile(document.getElementById('nav-template-ltr').innerHTML);
-const html = template_ltr({ "items": left_to_right_items });
-document.getElementById('nav-container').innerHTML = html;
-
-const tab_buttons = document.querySelectorAll('.main-tab-button');
-const tab_panes = document.querySelectorAll('.main-tab-pane');
-
-tab_buttons.forEach(tab_button => {
-  tab_button.addEventListener('click', () => {
-    if(tab_button.hasAttribute('disabled')) { return };
-    const target_tab = tab_button.dataset.tab;
-
-    tab_buttons.forEach(btn => {
-      btn.classList.remove('main-active');
-    });
-
-    tab_panes.forEach(pane => {
-      if (pane.id === target_tab) {
-        pane.classList.add('main-active');
-        comming_soon_resize();
-      } else {
-        pane.classList.remove('main-active');
-      }
-    });
-
-    tab_button.classList.add('main-active');
-    start_tab_timer();
-  });
-});
 
 // remove when schedule will be implemented
 const schedule_modal = document.getElementById('finetune-tab-autorun-settings-modal');
@@ -93,71 +137,3 @@ schedule_modal.addEventListener('show.bs.modal', function () {
     document.querySelector('#finetune-tab-autorun-settings-modal .modal-footer').style.display = 'none';
 });
 
-
-function active_tab_switched_here() {
-    const active_tab = document.querySelector('.main-tab-pane.main-active');
-    if (active_tab.id != "model-hosting") model_hosting_tab.tab_switched_away();
-    if (active_tab.id != "upload") upload_tab.tab_switched_away();
-    if (active_tab.id != "finetune") finetune_tab.tab_switched_away();
-    if (active_tab.id != "server-logs") server_log_tab.tab_switched_away();
-    if (active_tab.id != "settings") ssh_settings_tab.tab_switched_away();
-    switch (active_tab.id) {
-    case 'model-hosting':
-        model_hosting_tab.tab_switched_here();
-        break;
-    case 'upload':
-        upload_tab.tab_switched_here();
-        break;
-    case 'finetune':
-        finetune_tab.tab_switched_here();
-        break;
-    case 'server-logs':
-        server_log_tab.tab_switched_here();
-        break;
-    case 'settings':
-        ssh_settings_tab.tab_switched_here();
-        break;
-    case "access-control":
-        break;
-    }
-}
-
-function active_update_each_couple_of_seconds() {
-    const active_tab = document.querySelector('.main-tab-pane.main-active');
-    switch (active_tab.id) {
-    case 'model-hosting':
-        model_hosting_tab.tab_update_each_couple_of_seconds();
-        break;
-    case 'upload':
-        upload_tab.tab_update_each_couple_of_seconds();
-        break;
-    case 'finetune':
-        finetune_tab.tab_update_each_couple_of_seconds();
-        break;
-    case 'server-logs':
-        server_log_tab.tab_update_each_couple_of_seconds();
-        break;
-    case 'settings':
-        ssh_settings_tab.tab_update_each_couple_of_seconds();
-        break;
-    case "access-control":
-        break;
-    }
-}
-
-
-// this loads all data, doesn't switch anything
-// upload_tab.tab_switched_here();
-// finetune_tab.tab_switched_here();
-
-let refresh_interval = null;
-
-function start_tab_timer() {
-    active_tab_switched_here();
-    if (refresh_interval) {
-        clearInterval(refresh_interval);
-    }
-    refresh_interval = setInterval(active_update_each_couple_of_seconds, 2000);
-}
-
-start_tab_timer();

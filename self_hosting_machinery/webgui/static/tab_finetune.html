@@ -1,0 +1,77 @@
+<div class="row">
+  <div class="col-5">
+    <div class="pane">
+      <h3>Use Finetuned Model</h3>
+      <div class="lora-group">
+        <div class="btn-group" role="group" aria-label="basic radio toggle button group">
+          <input type="radio" class="lora-switch btn-check" name="finetune_lora" value="off" id="loraradio1"
+            autocomplete="off">
+          <label class="btn btn-outline-primary" for="loraradio1">Off</label>
+          <input type="radio" class="lora-switch btn-check" name="finetune_lora" value="latest" id="loraradio4"
+            autocomplete="off">
+          <label class="btn btn-outline-primary" for="loraradio4">Latest / Best</label>
+          <input type="radio" class="lora-switch btn-check" name="finetune_lora" value="specific" id="loraradio2"
+            autocomplete="off">
+          <label class="btn btn-outline-primary" for="loraradio2">Specify</label>
+        </div>
+      </div>
+      <div id="lora-switch-run-id">Run:</div>
+      <div id="lora-switch-checkpoint">Checkpoint:</div>
+    </div>
+    <div class="pane">
+      <h3>Completed Runs</h3>
+      <div class="run-table-wrapper">
+        <table class="table table-responsive mt-3 table-sm table-hover table-types">
+          <thead>
+            <tr>
+              <th></th>
+              <th></th>
+              <th>ETA(minutes)</th>
+              <th>Steps</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody class="run-table">
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="pane">
+      <h3>Start New Finetune<span></span></h3>
+      <button id="run_now" type="button" class="btn mt-2 btn-primary tab-finetune-run-now">Run Now</button>
+      <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn mt-2 btn-secondary">Finetune Settings</button>
+      <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn mt-2 btn-secondary">Autorun Settings</button>
+    </div>
+  </div>
+  <div class="col-7">
+    <div class="pane">
+      <img src="/tab-finetune-progress-svg/none" class="fine-gfx" alt="">
+    </div>
+    <div class="pane">
+      <ul class="nav nav-tabs" id="myTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs"
+            type="button" role="tab" aria-controls="logs" aria-selected="true">Logs</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="checkpoints-tab" data-bs-toggle="tab" data-bs-target="#checkpoints"
+            type="button" role="tab" aria-controls="checkpoints" aria-selected="false">Checkpoints</button>
+        </li>
+      </ul>
+
+      <div class="tab-content mt-2" id="myTabContent">
+        <div class="tab-pane fade show active" id="logs" role="tabpanel" aria-labelledby="logs-tab">
+          <pre class="log-container tab-upload-finetune-logs">
+          </pre>
+          <a target="_blank" class="btn mt-2 btn-secondary log-link d-none" href="">View Log</a>
+        </div>
+        <div class="tab-pane fade" id="checkpoints" role="tabpanel" aria-labelledby="checkpoints-tab">
+          <table class="table table-sm table-hover">
+            <tbody class="table-checkpoints"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

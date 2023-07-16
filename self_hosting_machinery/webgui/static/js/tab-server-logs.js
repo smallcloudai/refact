@@ -1,6 +1,3 @@
-export function init() {
-}
-
 const log_container = document.getElementById("server-log-log-container");
 let continue_streaming = false;
 
@@ -64,6 +61,9 @@ function render_daily_logs(data) {
     } else {
         last_logs_button.classList.add('d-none');
     }
+}
+
+export async function init() {
 }
 
 export function tab_switched_here() {

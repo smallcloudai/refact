@@ -60,7 +60,9 @@ function delete_ssh_key(event) {
     }
 }
 
-export function init() {
+export async function init() {
+    let req = await fetch('/tab_settings.html');
+    document.querySelector('#settings').innerHTML = await req.text();
     let key_list = document.querySelector('.settings-all-keys');
     key_list.addEventListener("click", delete_ssh_key);
     const ssh_modal = document.getElementById('settings-tab-ssh-modal');
@@ -139,7 +141,6 @@ export function tab_settings_integrations_get() {
             }
         });
 }
-
 
 export function tab_switched_here() {
     get_ssh_keys();

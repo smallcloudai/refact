@@ -474,7 +474,9 @@ function check_heuristics() {
     }
 }
 
-export function init() {
+export async function init() {
+    let req = await fetch('/tab_finetune.html');
+    document.querySelector('#finetune').innerHTML = await req.text();
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.addEventListener('click', function () {
         let url = "/tab-finetune-run-now";
