@@ -12,12 +12,16 @@ plugins_to_top_nav_bar();
 
 // this might take some time: load all modules
 const imported_plugins = [];
+const inits_working = [];
 for (const p of plugins) {
     const mod = await import("./" + p.id + ".js");
     console.log(["loaded " + p.id, mod]);
     imported_plugins.push(mod);
     p.mod = mod;
-    await mod.init();
+    inits_working.push(mod.init());
+}
+for (const p of inits_working) {
+    await p;
 }
 
 function active_tab_switched() {
