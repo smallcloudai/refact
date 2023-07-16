@@ -6,8 +6,7 @@ logger = logging.getLogger("INFSERVER")
 
 
 urls_to_try = [
-    "https://inference.smallcloud.ai/infengine-v1/",
-    "https://inference-backup.smallcloud.ai/infengine-v1/",
+    "http://127.0.0.1:8008/infengine-v1/",
 ]
 
 
