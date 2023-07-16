@@ -369,13 +369,6 @@ function start_log_stream(run_id) {
         });
 }
 
-const log_container = document.querySelector('.log-container');
-function handle_auto_scroll() {
-    if (log_container.scrollHeight - log_container.scrollTop === log_container.clientHeight) {
-        log_container.scrollTop = log_container.scrollHeight;
-    }
-}
-log_container.addEventListener('scroll', handle_auto_scroll);
 
 function get_finetune_settings(defaults = false) {
     fetch("/tab-finetune-training-get")
@@ -477,6 +470,13 @@ function check_heuristics() {
 export async function init() {
     let req = await fetch('/tab_finetune.html');
     document.querySelector('#finetune').innerHTML = await req.text();
+    const log_container = document.querySelector('.log-container');
+    function handle_auto_scroll() {
+        if (log_container.scrollHeight - log_container.scrollTop === log_container.clientHeight) {
+            log_container.scrollTop = log_container.scrollHeight;
+        }
+    }
+    log_container.addEventListener('scroll', handle_auto_scroll);
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.addEventListener('click', function () {
         let url = "/tab-finetune-run-now";

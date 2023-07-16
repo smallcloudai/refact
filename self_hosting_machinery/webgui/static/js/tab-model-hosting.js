@@ -211,6 +211,8 @@ function format_memory(memory_in_mb, decimalPlaces = 2) {
 }
 
 export async function init() {
+    let req = await fetch('/tab_model_hosting.html');
+    document.querySelector('#model-hosting').innerHTML = await req.text();
     get_gpus();
     get_models();
     const add_model_modal = document.getElementById('add-model-modal');

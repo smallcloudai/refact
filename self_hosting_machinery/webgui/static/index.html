@@ -103,75 +103,14 @@
   <div class="container mt-5">
     <div class="main-tab-content">
       <div class="main-tab-pane main-active" id="model-hosting">
-        <div class="gpus-pane">
-          <div class="gpus-list">
-          </div>
-        </div>
-        <div class="pane">
-          <h3>Hosted Models</h3>
-          <table class="table align-middle table-hover table-assigned-models">
-            <thead>
-              <tr>
-                <th>Model</th>
-                <th>Completion</th>
-                <th>GPUs</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-            </tbody>
-          </table>
-          <button data-bs-toggle="modal" data-bs-target="#add-model-modal" class="btn btn-primary model-hosting-add"><i class="bi bi-plus-lg"></i> Add Model</button>
-        </div>
-        <div class="pane">
-          <h3>3rd Party APIs</h3>
-          <div class="chat-enabler">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" role="switch" id="enable_chat_gpt">
-              <label class="form-check-label" for="enable_chat_gpt">Enable OpenAI API (chat and toolbox)</label>
-            </div>
-            <div class="chat-enabler-status">
-              To enable Chat GPT add your API key in the <span class="main-tab-button fake-link" data-tab="settings">API Keys tab</span>.
-            </div>
-          </div>
-        </div>
-        <div class="pane temp-disabled">
-          <div class="row">
-            <div class="col">
-              <label class="form-label">Completions</label>
-              <select class="form-select">
-                <option selected>- Select -</option>
-                <option value="1">One</option>
-                <option value="2">Two</option>
-                <option value="3">Three</option>
-              </select>
-            </div>
-            <div class="col">
-              <label class="form-label">Manual Completions</label>
-              <select class="form-select">
-                <option selected>- Select -</option>
-                <option value="1">One</option>
-                <option value="2">Two</option>
-                <option value="3">Three</option>
-              </select>
-            </div>
-          </div>
-        </div>
       </div>
       <div class="main-tab-pane" id="upload">
       </div>
       <div class="main-tab-pane" id="finetune">
       </div>
       <div class="main-tab-pane" id="server-logs">
-        <div class="pane">
-          <pre class="log-container" id="server-log-log-container"></pre>
-          <a target="_blank" class="d-none btn btn-secondary latest-log" href="">Latest log</a>
-          <div class="daily-logs mt-5"></div>
-        </div>
       </div>
       <div class="main-tab-pane" id="access-control">
-        <h2>Access Control</h2>
-        <p>Content for the Access Control tab goes here.</p>
       </div>
       <div class="main-tab-pane" id="settings">
       </div>
