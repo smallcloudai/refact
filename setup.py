@@ -40,7 +40,7 @@ setup(
     },
     packages=find_packages(),
     install_requires=[
-        "numpy", "torch", "termcolor", "smallcloud", "dataclasses_json", "dataclasses", "tiktoken",
+        "numpy", "torch", "termcolor", "dataclasses_json", "dataclasses", "tiktoken",
         # code_contrast
         "cdifflib",
         # refact_encoding
