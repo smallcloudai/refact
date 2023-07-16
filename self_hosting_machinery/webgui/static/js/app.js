@@ -40,6 +40,19 @@ access_control_tab.init();
 server_log_tab.init();
 ssh_settings_tab.init();
 
+const left_to_right_items = [
+{ id: 'model-tab', label: 'Model Hosting', tab: 'model-hosting', active: true },
+{ id: 'upload-tab', label: 'Sources', tab: 'upload' },
+{ id: 'finetune-tab', label: 'Finetune', tab: 'finetune' },
+{ id: 'logs-tab', label: 'Server Logs', tab: 'server-logs' },
+{ id: 'access-tab', label: 'Access Control', tab: 'access-control', disabled: true },
+{ id: 'settings-tab', label: 'Credentials', tab: 'settings', hamburger: true },
+];
+
+const template_ltr = Handlebars.compile(document.getElementById('nav-template-ltr').innerHTML);
+const html = template_ltr({ "items": left_to_right_items });
+document.getElementById('nav-container').innerHTML = html;
+
 const tab_buttons = document.querySelectorAll('.main-tab-button');
 const tab_panes = document.querySelectorAll('.main-tab-pane');
 
@@ -81,6 +94,7 @@ schedule_modal.addEventListener('show.bs.modal', function () {
     info.style.marginTop = '180px';
     document.querySelector('#finetune-tab-autorun-settings-modal .modal-footer').style.display = 'none';
 });
+
 
 function active_tab_switched_here() {
     const active_tab = document.querySelector('.main-tab-pane.main-active');
