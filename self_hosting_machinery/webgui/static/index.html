@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="shortcut icon" href="#">
+  <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
   <title>Self Hosting - Refact</title>
 </head>
 
@@ -43,40 +44,40 @@
             fill="black"></path>
         </svg>
       </a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
-        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav-container"
+        aria-controls="nav-container" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
-      <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <ul class="navbar-nav">
-          <li class="nav-item" role="presentation">
-            <button class="nav-link main-tab-button main-active" id="model-tab" data-tab="model-hosting">Model Hosting</button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link main-tab-button" id="upload-tab" data-tab="upload" type="button">Sources</button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link main-tab-button" id="finetune-tab" data-tab="finetune" type="button">Finetune</button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link main-tab-button" id="logs-tab" data-tab="server-logs" type="button">Server Logs</button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link main-tab-button" id="access-tab" data-tab="access-control"
-              type="button" disabled>Access Control</button>
-          </li>
-          <li class="nav-item dropdown ms-auto">
-            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
-              aria-expanded="false">Settings</a>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><button class="nav-link main-tab-button" id="settings-tab" data-tab="settings" type="button">Credentials</button>
-              </li>
-            </ul>
-          </li>
-        </ul>
+
+      <div class="collapse navbar-collapse" id="nav-container">
       </div>
-    </div>
+     </div>
   </nav>
+
+  <script id="nav-template-ltr" type="text/x-handlebars-template">
+    <ul class="navbar-nav">
+      {{#each items}}
+      {{#unless hamburger}}
+      <li class="nav-item" role="presentation">
+        <button class="nav-link main-tab-button {{#if active}}main-active{{/if}}" id="{{id}}" data-tab="{{tab}}" {{#if disabled}}disabled{{/if}}>{{label}}</button>
+      </li>
+      {{/unless}}
+      {{/each}}
+      <li class="nav-item dropdown ms-auto">
+        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Settings</a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          {{#each items}}
+          {{#if hamburger}}
+          <li>
+            <button class="nav-link main-tab-button" id="settings-tab" data-tab="settings" type="button">{{label}}</button>
+          </li>
+          {{/if}}
+          {{/each}}
+        </ul>
+      </li>
+    </ul>
+  </script>
 
   <div class="container mt-5">
     <div class="main-tab-content">
