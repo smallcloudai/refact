@@ -11,7 +11,7 @@ import logging
 import importlib
 import asyncio
 
-from smallcloud import inference_server_async
+from refact_scratchpads_no_gpu import stream_results_async
 
 
 DEBUG = int(os.environ.get("DEBUG", "0"))
@@ -109,13 +109,13 @@ def except_hook(exctype, value, tb, suspicious_call=None):
 
 async def handle_single_batch(routine_n, my_desc, model_dict, calls_unfiltered):
     ts_arrived = time.time()
-    uproxy = inference_server_async.UploadAsync()
+    uproxy = stream_results_async.UploadAsync()
     upload_task = asyncio.create_task(uproxy.upload_results_coroutine())
     calls = []
     def logger(*args):
         msg = " ".join(map(str, args))
         msg = "R%04d" % routine_n + " " + msg
-        inference_server_async.logger.info(msg)
+        stream_results_async.logger.info(msg)
     try:
         scratchpads = []
         for ci, call in enumerate(calls_unfiltered):
@@ -185,29 +185,29 @@ async def do_the_serving(
     longthink_variant: str,
     routine_n: int,
 ):
-    aio_session = inference_server_async.infserver_async_session()
+    aio_session = stream_results_async.infserver_async_session()
     infmod_guid = longthink_variant + "_" + host + "_%04i" % routine_n
     infmod_guid = infmod_guid.replace("-", "_")
-    inference_server_async.logger.info(f'infmod_guid: {infmod_guid}')
+    stream_results_async.logger.info(f'infmod_guid: {infmod_guid}')
     while not quit_flag:
         model_dict = supported_models[longthink_variant]
-        my_desc = inference_server_async.validate_description_dict(
+        my_desc = stream_results_async.validate_description_dict(
             infeng_instance_guid=infmod_guid,
             account="engineer",
             model=longthink_variant,
             B=1,
             max_thinking_time=10,
         )
-        retcode, calls_unfiltered = await inference_server_async.completions_wait_batch(aio_session, my_desc)
+        retcode, calls_unfiltered = await stream_results_async.completions_wait_batch(aio_session, my_desc)
         if retcode == "WAIT":
             continue
         if retcode != "OK":
-            inference_server_async.logger.warning("server retcode %s" % retcode)
+            stream_results_async.logger.warning("server retcode %s" % retcode)
             await asyncio.sleep(5)
             continue
         await handle_single_batch(routine_n, my_desc, model_dict, calls_unfiltered)
     await aio_session.close()
-    inference_server_async.logger.info("clean shutdown")
+    stream_results_async.logger.info("clean shutdown")
 
 
 def main():
@@ -227,8 +227,8 @@ def main():
     args = parser.parse_args()
 
     if args.selfhosted:
-        from smallcloud import inference_server
-        inference_server.override_urls("http://127.0.0.1:8008/infengine-v1/")
+        from refact_scratchpads_no_gpu import stream_results
+        stream_results.override_urls("http://127.0.0.1:8008/infengine-v1/")
 
     if not (args.openai_key or os.environ.get('OPENAI_API_KEY')):
         raise RuntimeError("set OPENAI_API_KEY or use --openai_key")

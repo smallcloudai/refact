@@ -1,12 +1,12 @@
 import os, sys, json, re, time, datetime, termcolor, multiprocessing, copy, queue
 import aiohttp
 import asyncio
-from smallcloud import inference_server
+from refact_scratchpads_no_gpu import stream_results
 from typing import Dict, Any, List, Optional, Set
 
 
-validate_description_dict = inference_server.validate_description_dict
-logger = inference_server.logger
+validate_description_dict = stream_results.validate_description_dict
+logger = stream_results.logger
 
 
 WAIT_TIMEOUT = 15
@@ -31,7 +31,7 @@ async def completions_wait_batch(
     j = None
     for attempt in range(5):
         t0 = time.time()
-        url = inference_server.url_get_the_best() + "completions-wait-batch"
+        url = stream_results.url_get_the_best() + "completions-wait-batch"
         try:
             async with aio_session.post(url, json=my_desc, timeout=WAIT_TIMEOUT) as resp:
                 txt = await resp.text()
@@ -39,15 +39,15 @@ async def completions_wait_batch(
         except asyncio.TimeoutError:
             t1 = time.time()
             logger.warning("%s %0.1fms %s %s" % (datetime.datetime.now().strftime("%H:%M:%S.%f"), 1000*(t1 - t0), url, termcolor.colored("TIMEOUT", "green")))
-            inference_server.url_complain_doesnt_work()
+            stream_results.url_complain_doesnt_work()
             continue
         except aiohttp.ClientError as e:
             logger.warning("%s fetch batch failed: %s %s\nServer response was: \"%s\"" % (url, str(type(e)), str(e), txt[:150] if txt else "no response"))
-            inference_server.url_complain_doesnt_work()
+            stream_results.url_complain_doesnt_work()
             continue
         if "retcode" not in j:
             logger.warning("%s unrecognized json: %s" % (url, txt[:150]))
-            inference_server.url_complain_doesnt_work()
+            stream_results.url_complain_doesnt_work()
             continue
         break
     if j is None:
@@ -60,7 +60,7 @@ async def completions_wait_batch(
     return j.get("retcode", "ERROR"), j.get("batch", [])
 
 
-head_and_tail = inference_server.head_and_tail
+head_and_tail = stream_results.head_and_tail
 
 
 class UploadAsync:
@@ -200,22 +200,22 @@ class UploadAsync:
             for _attempt in range(5):
                 j = dict()
                 try:
-                    url = inference_server.url_get_the_best() + "completion-upload-results"
+                    url = stream_results.url_get_the_best() + "completion-upload-results"
                     async with self.aio_session.post(url, json=upload_dict, timeout=2) as resp:
                         txt = await resp.text()
                         j = await resp.json()
                 except asyncio.exceptions.TimeoutError as e:
                     t1 = time.time()
                     logger.warning("%s %0.1fms %s %s" % (datetime.datetime.now().strftime("%H:%M:%S.%f"), 1000*(time.time() - t2), url, termcolor.colored("TIMEOUT", "green")))
-                    inference_server.url_complain_doesnt_work()
+                    stream_results.url_complain_doesnt_work()
                     continue
                 except aiohttp.ClientError as e:
                     logger.warning("%s post response failed: %s\nServer response was: \"%s\"" % (url, str(e), txt[:150] if txt else "no response"))
-                    inference_server.url_complain_doesnt_work()
+                    stream_results.url_complain_doesnt_work()
                     continue
                 if "retcode" not in j:
                     logger.warning("%s unrecognied json: %s" % (url, txt[:150]))
-                    inference_server.url_complain_doesnt_work()
+                    stream_results.url_complain_doesnt_work()
                     continue
                 break
             t3 = time.time()
