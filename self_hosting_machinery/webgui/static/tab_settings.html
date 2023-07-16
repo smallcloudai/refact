@@ -6,11 +6,41 @@
     <div class="d-flex flex-row-reverse mt-3"><button type="button" class="btn btn-primary" id="integrations-save">Save</button></div>
   </div>
 </div>
+
 <div class="pane">
   <h2>Credentials</h2>
   <div class="settings-row">
     <button data-bs-toggle="modal" data-bs-target="#settings-tab-ssh-modal" type="button" id="settings-new"
       class="btn btn-primary">Generate new SSH Key</button>
     <div class="mt-2 settings-all-keys"></div>
+  </div>
+</div>
+
+<div class="modal fade" id="settings-tab-ssh-modal" tabindex="-1" aria-labelledby="settings-tab-ssh-modal" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add SSH Key</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Key Name</label>
+          <input type="text" id="tab-settings-key-title-input" class="form-control">
+        </div>
+        <div class="mb-3 d-none tab-settings-ssh-keywrap">
+          <label class="form-label">Your SSH Key</label>
+          <div class="tab-settings-ssh">
+            <code></code>
+          </div>
+          <div class="form-text">
+            Please copy and paste this Key into your Git repository settings.<br><b>This key will be showed only
+              once!</b>
+          </div>
+        </div>
+        <div id="status-ssh" class="uploaded-status"></div>
+        <button class="settings-tab-ssh-submit btn btn-primary">Add SSH Key</button>
+      </div>
+    </div>
   </div>
 </div>

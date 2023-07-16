@@ -1,4 +1,5 @@
 <div class="row">
+
   <div class="col-5">
     <div class="pane">
       <h3>Use Finetuned Model</h3>
@@ -43,6 +44,7 @@
       <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn mt-2 btn-secondary">Autorun Settings</button>
     </div>
   </div>
+
   <div class="col-7">
     <div class="pane">
       <img src="/tab-finetune-progress-svg/none" class="fine-gfx" alt="">
@@ -72,6 +74,263 @@
         </div>
       </div>
     </div>
-
   </div>
+
+  <div class="modal fade" id="delete-lora-modal" tabindex="-1" aria-labelledby="delete-lora-modal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="urlModalLabel">Delete Run</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          You are about to delete the run. This cannot be undone!
+        </div>
+        <div id="status-delete" class="deleted-status"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="delete-lora-modal-submit submit btn btn-primary">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="finetune-tab-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-settings-modal" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="urlModalLabel">Finetune Settings</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="limit_time_seconds" class="form-label">Limit time seconds</label>
+                <input type="text" data-min="600" data-max="172800" class="form-control" id="limit_time_seconds">
+                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                <div class="form-text">
+                  Min 600, Max 3600 * 48
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="lr" class="form-label">Lr</label>
+                <input type="text" data-min="1e-5" data-max="300e-5" class="form-control" id="lr">
+                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                <div class="form-text">
+                  Min 1e-5, Max 300e-5
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="batch_size" class="form-label">Batch size</label>
+                <input type="text" data-min="4" data-max="1024" class="form-control" id="batch_size">
+                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                <div class="form-text">
+                  Min 4, Max 1024
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="warmup_num_steps" class="form-label">Warmup num steps</label>
+                <input type="text" data-min="1" data-max="100" class="form-control" id="warmup_num_steps">
+                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                <div class="form-text">
+                  Max 1, Max 100
+                </div>
+              </div>
+            </div>
+
+            <div class="col">
+              <div class="mb-3">
+                <label for="weight_decay" class="form-label">Weight Decay</label>
+                <input type="text" data-min="0.0" data-max="1.0" class="form-control" id="weight_decay">
+                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                <div class="form-text">
+                  Min 0.0, Max 1.0
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <input class="form-check-input" type="checkbox" name="use_heuristics" id="use_heuristics">
+                <label class="form-check-label" for="use_heuristics">
+                  Auto
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="finetune-settings-optional finetune-settings-optional-disabled">
+            <div class="row">
+              <div class="col">
+                <div class="mb-3">
+                  <label for="train_steps" class="form-label">Train steps</label>
+                  <input tabindex="-1" type="text" data-min="10" data-max="5000" class="form-control" id="train_steps">
+                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                  <div class="form-text">
+                    Min 10, Max 5000
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="mb-3">
+                  <label for="lr_decay_steps" class="form-label">Lr decay steps</label>
+                  <input tabindex="-1" type="text" data-min="10" data-max="5000" class="form-control" id="lr_decay_steps">
+                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                  <div class="form-text">
+                    Min 10, Max 5000
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="mb-3">
+                  <label for="lora_r" class="form-label">Lora R</label>
+                  <input tabindex="-1" type="text" data-min="4" data-max="256" class="form-control" id="lora_r">
+                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                  <div class="form-text">
+                    Min 4, Max 256
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <div class="mb-3">
+                  <label for="lora_alpha" class="form-label">Lora Alpha</label>
+                  <input tabindex="-1" type="text" data-min="1" data-max="100" class="form-control" id="lora_alpha">
+                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                  <div class="form-text">
+                    Min 0.0, Max 1.0
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="mb-3">
+                  <label for="lora_init_scale" class="form-label">Lora Init Scale</label>
+                  <input tabindex="-1" type="text" data-min="0.001" data-max="1.0" class="form-control" id="lora_init_scale">
+                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                  <div class="form-text">
+                    Min 0.001, Max 1.0
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="mb-3">
+                  <label for="lora_dropout" class="form-label">Lora Dropout</label>
+                  <input tabindex="-1" type="text" data-min="0.0" data-max="0.2" class="form-control" id="lora_dropout">
+                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                  <div class="form-text">
+                    Min 0.0, Max 0.2
+                  </div>
+                </div>
+              </div>
+
+            </div>
+            <div class="row">
+              <div class="col">
+                <div class="mb-3">
+                  <div class="form-check">
+                    <input tabindex="-1" class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
+                    <label class="form-check-label" for="low_gpu_mem_mode_finetune">
+                      Low GPU memory mode
+                    </label>
+                    <div class="form-text">
+                      Optional. If not specified, the default branch will be used.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="finetune-tab-settings-default btn btn-secondary">Reset to defaults</button>
+          <button class="finetune-tab-settings-submit btn btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal fade" id="finetune-tab-autorun-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-autorun-settings-modal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Autorun Settings</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <h5>Limit training time</h5>
+          <div class="btn-group" role="group" aria-label="Basic radio toggle button group">
+            <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="30"
+              id="btnradio1" autocomplete="off" checked>
+            <label class="btn btn-outline-primary" for="btnradio1">30 min</label>
+
+            <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="60"
+              id="btnradio2" autocomplete="off">
+            <label class="btn btn-outline-primary" for="btnradio2">60 min</label>
+
+            <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="120"
+              id="btnradio3" autocomplete="off">
+            <label class="btn btn-outline-primary" for="btnradio3">120 min</label>
+
+            <input type="radio" class="fine-tune-input btn-check" name="limit_training_time_minutes" value="240"
+              id="btnradio4" autocomplete="off">
+            <label class="btn btn-outline-primary" for="btnradio4">240 min</label>
+          </div>
+          <div class="row mt-4">
+            <div class="btn-group" role="group">
+              <input type="checkbox" class="btn-check" name="training_monday" value="M" id="btn1" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn1">M</label>
+              <input type="checkbox" class="btn-check" name="training_tuesday" value="T" id="btn2" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn2">T</label>
+              <input type="checkbox" class="btn-check" name="training_wednesday" value="W" id="btn3" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn3">W</label>
+              <input type="checkbox" class="btn-check" name="training_thursday" value="Th" id="btn4" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn4">Th</label>
+              <input type="checkbox" class="btn-check" name="training_friday" value="F" id="btn5" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn5">F</label>
+              <input type="checkbox" class="btn-check" name="training_saturday" value="Sa" id="btn6" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn6">Sa</label>
+              <input type="checkbox" class="btn-check" name="training_sunday" value="Su" id="btn7" autocomplete="off">
+              <label class="btn btn-outline-primary" for="btn7">Su</label>
+            </div>
+          </div>
+          <div class="row mt-4 align-items-center">
+            <div class="col">
+              <input class="form-check-input fine-tune-input" type="checkbox" id="night_run">
+              <label class="form-check-label" for="night_run">
+                Run at night
+              </label>
+            </div>
+            <div class="col">
+              <select class="form-select fine-tune-input night-time" aria-label="Default select example">
+              </select>
+            </div>
+          </div>
+
+          <div class="store-block mt-3">
+            Store<input type="number" value="3" class="fine-tune-input form-control store-input"> finished runs
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="finetune-tab-autorun-settings btn btn-primary">Save settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
