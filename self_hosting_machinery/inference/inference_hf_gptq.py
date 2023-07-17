@@ -159,3 +159,6 @@ class InferenceGPTQ(InferenceBase):
         except Exception as e:
             logging.error(e)
             logging.error(traceback.format_exc())
+
+    def lora_switch_according_to_config(self):
+        pass
