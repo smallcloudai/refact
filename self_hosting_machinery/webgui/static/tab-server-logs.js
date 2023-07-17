@@ -64,7 +64,7 @@ function render_daily_logs(data) {
 }
 
 export async function init() {
-    let req = await fetch('/tab_server_logs.html');
+    let req = await fetch('/tab-server-logs.html');
     document.querySelector('#server-logs').innerHTML = await req.text();
 }
 
