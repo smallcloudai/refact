@@ -3,12 +3,11 @@ from fastapi import APIRouter, Request
 
 
 plugins = [
-{ "label": 'Model Hosting', "tab": 'model-hosting', "active": True },
-{ "label": 'Sources', "tab": 'upload' },
-{ "label": 'Finetune', "tab": 'finetune' },
-{ "label": 'Server Logs', "tab": 'server-logs' },
-{ "label": 'Access Control', "tab": 'access-control' },
-{ "label": 'Credentials', "tab": 'settings', "hamburger": True },
+{ "label": "Model Hosting", "tab": "model-hosting", "active": True },
+{ "label": "Sources", "tab": "upload" },
+{ "label": "Finetune", "tab": "finetune" },
+{ "label": "Server Logs", "tab": "server-logs" },
+{ "label": "Credentials", "tab": "settings", "hamburger": True },
 ]
 
 

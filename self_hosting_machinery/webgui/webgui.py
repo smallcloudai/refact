@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+import self_hosting_machinery
 from self_hosting_machinery.webgui.selfhost_plugins import PluginsRouter
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_fastapi_completions import CompletionsRouter
@@ -25,6 +26,14 @@ from self_hosting_machinery.webgui.tab_models_host import TabHostRouter
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 
+
+
+try:
+    import refact_enterprise.webgui
+    self_hosting_machinery.webgui.selfhost_plugins.plugins.extend(refact_enterprise.webgui.plugins)
+    self_hosting_machinery.webgui.selfhost_static.static_folders.append(refact_enterprise.webgui.static_folder)
+except ImportError:
+    pass
 
 
 from typing import Dict
