@@ -11,8 +11,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from self_hosting_machinery.webgui.selfhost_plugins import PluginsRouter
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
-from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 from self_hosting_machinery.webgui.selfhost_fastapi_completions import CompletionsRouter
 from self_hosting_machinery.webgui.selfhost_fastapi_gpu import GPURouter
 from self_hosting_machinery.webgui.tab_server_logs import TabServerLogRouter
@@ -23,9 +23,10 @@ from self_hosting_machinery.webgui.tab_vecdb import TabVecDBRouter
 
 from self_hosting_machinery.webgui.tab_models_host import TabHostRouter
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
+from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 
 
-from collections import defaultdict
+
 from typing import Dict
 
 
@@ -43,7 +44,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     inference_queue = InferenceQueue()
-    # user2gpu_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)  # for each model there is a queue
     id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
 
     logging.basicConfig(
@@ -54,6 +54,7 @@ if __name__ == "__main__":
 
     app = FastAPI(docs_url=None, redoc_url=None)
 
+    app.include_router(PluginsRouter())
     app.include_router(CompletionsRouter(prefix="/v1", id2ticket=id2ticket, inference_queue=inference_queue))
     app.include_router(GPURouter(prefix="/infengine-v1", id2ticket=id2ticket, inference_queue=inference_queue))
     app.include_router(TabServerLogRouter())
