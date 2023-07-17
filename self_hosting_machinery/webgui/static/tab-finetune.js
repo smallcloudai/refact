@@ -443,12 +443,30 @@ function save_finetune_settings() {
     })
     .then(function(response) {
         if(response.ok) {
+            const finetune_settings_error = document.querySelector('.finetune-settings-error');
+            finetune_settings_error.textContent = '';
+            finetune_settings_error.classList.add('d-none');
             get_finetune_settings();
             let url_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('finetune-tab-settings-modal'));
             url_modal.hide();
         } else {
-            console.log('save_finetune_settings error', response);
+            return response.json();
         }
+    }).then(function(error_data) {
+        console.log(error_data);
+        
+        const finetune_settings_error = document.querySelector('.finetune-settings-error');
+        let error_text = '';
+        
+        error_data.detail.forEach((error) => {
+            const field_name = error.loc[1];
+            const error_message = error.msg;
+            const field_text = `${field_name}: ${error_message}`;
+            error_text += field_text + '<br>';
+        });
+        
+        finetune_settings_error.innerHTML = error_text;
+        finetune_settings_error.classList.remove('d-none');
     });
 }
 

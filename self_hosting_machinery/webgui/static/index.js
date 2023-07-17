@@ -135,3 +135,30 @@ schedule_modal.addEventListener('show.bs.modal', function () {
     document.querySelector('#finetune-tab-autorun-settings-modal .modal-footer').style.display = 'none';
 });
 
+const inputs_for_validate = document.querySelectorAll('.validate');
+let typing_timer;
+
+function validate_input(input) {
+  const value = parseFloat(input.value);
+  const min = parseFloat(input.getAttribute('data-min'));
+  const max = parseFloat(input.getAttribute('data-max'));
+
+  if (isNaN(value)) {
+    return;
+  }
+
+  if (value < min) {
+    input.value = min;
+  } else if (value > max) {
+    input.value = max;
+  }
+}
+
+inputs_for_validate.forEach((input) => {
+    input.addEventListener('input', () => {
+      clearTimeout(typing_timer);
+      typing_timer = setTimeout(() => {
+        validate_input(input);
+      }, 750);
+    });
+  });
