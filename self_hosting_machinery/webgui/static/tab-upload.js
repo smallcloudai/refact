@@ -743,7 +743,7 @@ function run_now() {
 }
 
 export async function init() {
-    let req = await fetch('/tab_upload.html');
+    let req = await fetch('/tab-upload.html');
     document.querySelector('#upload').innerHTML = await req.text();
     progress_bar = document.querySelector('.sources-run-progress .progress-bar');
     sources_pane = document.querySelector('.sources-pane');

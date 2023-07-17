@@ -468,7 +468,7 @@ function check_heuristics() {
 }
 
 export async function init() {
-    let req = await fetch('/tab_finetune.html');
+    let req = await fetch('/tab-finetune.html');
     document.querySelector('#finetune').innerHTML = await req.text();
     const log_container = document.querySelector('.log-container');
     function handle_auto_scroll() {

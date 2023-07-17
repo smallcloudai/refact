@@ -61,7 +61,7 @@ function delete_ssh_key(event) {
 }
 
 export async function init() {
-    let req = await fetch('/tab_settings.html');
+    let req = await fetch('/tab-settings.html');
     document.querySelector('#settings').innerHTML = await req.text();
     let key_list = document.querySelector('.settings-all-keys');
     key_list.addEventListener("click", delete_ssh_key);
