@@ -6,6 +6,7 @@ let loras_switch_off = null;
 let loras_switch_latest = null;
 let loras_switch_specific = null;
 let loras_switch_no_reaction = false;
+let finetune_settings_defaults = [];
 // let checkpoint_name = "best";
 // let selected_model = ""; // we don't have model choice, empty for now
 
@@ -381,8 +382,10 @@ function get_finetune_settings(defaults = false) {
         if(Object.keys(data.user_config).length > 0 && !defaults) {
             settings_data = data.user_config;
         } else {
+            finetune_settings_defaults = data.defaults;
             settings_data = data.defaults;
         }
+        console.log(settings_data);
         document.querySelector('#finetune-tab-settings-modal #limit_time_seconds').value = settings_data.limit_time_seconds;
         document.querySelector('#finetune-tab-settings-modal #lr').value = settings_data.lr;
         document.querySelector('#finetune-tab-settings-modal #batch_size').value = settings_data.batch_size;
@@ -485,6 +488,12 @@ function check_heuristics() {
     }
 }
 
+function revert_to_default(input_id) {
+    console.log('revert_to_default',finetune_settings_defaults);
+    const input = document.getElementById(input_id);
+    input.value = finetune_settings_defaults.input_id;
+}
+
 export async function init() {
     let req = await fetch('/tab-finetune.html');
     document.querySelector('#finetune').innerHTML = await req.text();
@@ -549,6 +558,13 @@ export async function init() {
     const finetune_use_heuristics = document.querySelector('#use_heuristics');
     finetune_use_heuristics.addEventListener('change', function(event) {
         check_heuristics();
+    });
+
+    const finetune_default_buttons = document.querySelectorAll('.form-clear-default');
+    finetune_default_buttons.forEach(element => {
+        element.addEventListener('click', function(event) {
+            revert_to_default(event.target.parentNode.previousElementSibling.id);
+        });
     });
 }
 
