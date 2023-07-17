@@ -98,11 +98,12 @@
         <div class="modal-body">
           <div class="mb-3">
             <label for="filter_loss_threshold" class="form-label">Filter 1: File loss threshold</label>
-            <input type="number" min="2" max="10" step="1" class="form-control" id="filter_loss_threshold">
+            <input type="text" data-min="2" data-max="10" class="validate form-control" id="filter_loss_threshold">
             <div class="form-text">
               If initial loss is too big calculated on a single file, remove it. This likely means the file doesn't contain code, or the code is unusual.
             </div>
           </div>
+          <div class="settings-error d-none"></div>
         </div>
         <div class="modal-footer">
           <button type="button" class="tab-upload-source-settings-default btn btn-secondary">Reset to defaults</button>

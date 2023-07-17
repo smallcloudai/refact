@@ -108,7 +108,7 @@
             <div class="col">
               <div class="mb-3">
                 <label for="limit_time_seconds" class="form-label">Limit time seconds</label>
-                <input type="text" data-min="600" data-max="172800" class="form-control" id="limit_time_seconds">
+                <input type="text" data-min="600" data-max="172800" class="validate form-control" id="limit_time_seconds">
                 <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                 <div class="form-text">
                   Min 600, Max 3600 * 48
@@ -118,7 +118,7 @@
             <div class="col">
               <div class="mb-3">
                 <label for="lr" class="form-label">Lr</label>
-                <input type="text" data-min="1e-5" data-max="300e-5" class="form-control" id="lr">
+                <input type="text" data-min="1e-5" data-max="300e-5" class="validate form-control" id="lr">
                 <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                 <div class="form-text">
                   Min 1e-5, Max 300e-5
@@ -131,7 +131,7 @@
             <div class="col">
               <div class="mb-3">
                 <label for="batch_size" class="form-label">Batch size</label>
-                <input type="text" data-min="4" data-max="1024" class="form-control" id="batch_size">
+                <input type="text" data-min="4" data-max="1024" class="validate form-control" id="batch_size">
                 <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                 <div class="form-text">
                   Min 4, Max 1024
@@ -141,7 +141,7 @@
             <div class="col">
               <div class="mb-3">
                 <label for="warmup_num_steps" class="form-label">Warmup num steps</label>
-                <input type="text" data-min="1" data-max="100" class="form-control" id="warmup_num_steps">
+                <input type="text" data-min="1" data-max="100" class="validate form-control" id="warmup_num_steps">
                 <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                 <div class="form-text">
                   Max 1, Max 100
@@ -152,7 +152,7 @@
             <div class="col">
               <div class="mb-3">
                 <label for="weight_decay" class="form-label">Weight Decay</label>
-                <input type="text" data-min="0.0" data-max="1.0" class="form-control" id="weight_decay">
+                <input type="text" data-min="0.0" data-max="1.0" class="validate form-control" id="weight_decay">
                 <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                 <div class="form-text">
                   Min 0.0, Max 1.0
@@ -177,7 +177,7 @@
               <div class="col">
                 <div class="mb-3">
                   <label for="train_steps" class="form-label">Train steps</label>
-                  <input tabindex="-1" type="text" data-min="10" data-max="5000" class="form-control" id="train_steps">
+                  <input tabindex="-1" type="text" data-min="10" data-max="5000" class="validate form-control" id="train_steps">
                   <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                   <div class="form-text">
                     Min 10, Max 5000
@@ -187,7 +187,7 @@
               <div class="col">
                 <div class="mb-3">
                   <label for="lr_decay_steps" class="form-label">Lr decay steps</label>
-                  <input tabindex="-1" type="text" data-min="10" data-max="5000" class="form-control" id="lr_decay_steps">
+                  <input tabindex="-1" type="text" data-min="10" data-max="5000" class="validate form-control" id="lr_decay_steps">
                   <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                   <div class="form-text">
                     Min 10, Max 5000
@@ -197,7 +197,7 @@
               <div class="col">
                 <div class="mb-3">
                   <label for="lora_r" class="form-label">Lora R</label>
-                  <input tabindex="-1" type="text" data-min="4" data-max="256" class="form-control" id="lora_r">
+                  <input tabindex="-1" type="text" data-min="4" data-max="256" class="validate form-control" id="lora_r">
                   <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                   <div class="form-text">
                     Min 4, Max 256
@@ -209,7 +209,7 @@
               <div class="col">
                 <div class="mb-3">
                   <label for="lora_alpha" class="form-label">Lora Alpha</label>
-                  <input tabindex="-1" type="text" data-min="1" data-max="100" class="form-control" id="lora_alpha">
+                  <input tabindex="-1" type="text" data-min="1" data-max="100" class="validate form-control" id="lora_alpha">
                   <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                   <div class="form-text">
                     Min 0.0, Max 1.0
@@ -219,7 +219,7 @@
               <div class="col">
                 <div class="mb-3">
                   <label for="lora_init_scale" class="form-label">Lora Init Scale</label>
-                  <input tabindex="-1" type="text" data-min="0.001" data-max="1.0" class="form-control" id="lora_init_scale">
+                  <input tabindex="-1" type="text" data-min="0.001" data-max="1.0" class="validate form-control" id="lora_init_scale">
                   <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                   <div class="form-text">
                     Min 0.001, Max 1.0
@@ -229,7 +229,7 @@
               <div class="col">
                 <div class="mb-3">
                   <label for="lora_dropout" class="form-label">Lora Dropout</label>
-                  <input tabindex="-1" type="text" data-min="0.0" data-max="0.2" class="form-control" id="lora_dropout">
+                  <input tabindex="-1" type="text" data-min="0.0" data-max="0.2" class="validate form-control" id="lora_dropout">
                   <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                   <div class="form-text">
                     Min 0.0, Max 0.2
@@ -254,7 +254,7 @@
               </div>
             </div>
           </div>
-
+          <div class="finetune-settings-error d-none"></div>
         </div>
         <div class="modal-footer">
           <button type="button" class="finetune-tab-settings-default btn btn-secondary">Reset to defaults</button>

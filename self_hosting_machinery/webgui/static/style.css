@@ -613,3 +613,8 @@ h3 {
 .mb-3 {
     position: relative;
 }
+.finetune-settings-error {
+    color: darkred;
+    padding: 10px 0;
+    font-weight: bold;
+}
