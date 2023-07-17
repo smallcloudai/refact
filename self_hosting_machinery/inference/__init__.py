@@ -1,0 +1,4 @@
+from self_hosting_machinery.inference.inference_base import modload
+from self_hosting_machinery.inference.inference_base import InferenceBase
+from self_hosting_machinery.inference.inference_legacy import InferenceLegacy
+from self_hosting_machinery.inference.inference_hf_gptq import InferenceGPTQ
