@@ -46,7 +46,7 @@ setup(
         # refact_encoding
         "tokenizers", "sentencepiece",
         # refact_scratchpads_no_gpu
-        "openai>=0.27.8", "ujson", "aiohttp", "requests",
+        "openai>=0.27.8", "ujson", "aiohttp", "requests", "tldextract",
         # refact_models
         "blobfile", "cloudpickle", "huggingface_hub", "transformers",
         # self_hosting_machinery

@@ -4,6 +4,8 @@ import asyncio
 
 from typing import *
 
+from tldextract import tldextract
+
 from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_generator import ChatGenerator
@@ -103,6 +105,14 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
         # f'Here are the results of my search: \n {search_result}'
 
         if name == 'web_search':
+            def get_domain_name(url) -> str:
+                try:
+                    extracted = tldextract.extract(url)
+                    domain = extracted.registered_domain
+                    return domain
+                except Exception:
+                    return url
+
             param = params.get('query', 'unknown')
             self._messages.append({
                 "role": "assistant",
@@ -113,12 +123,15 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
             yield self._new_chat_messages()
 
             candidates = await self._websearch.a_search(param)
-            search_result = json.dumps([{'link': c.link, 'snippet': c.snippet} for c in candidates])
+            search_result = json.dumps([
+                {'link': c.link, 'snippet': c.snippet, 'domain_name': get_domain_name(c.link)}
+                for c in candidates
+            ])
             self._messages.append({
                 "role": "user",
                 "content": search_result,
                 "gui_role": "documents",
-                # "gui_content": search_result,
+                "gui_content": search_result,
             })
             yield self._new_chat_messages()
 
@@ -197,9 +210,20 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
                     break
 
         except asyncio.exceptions.TimeoutError as e:
-            # TODO: convert to error message
+            self._messages.append({
+                "role": role,
+                "content": "Chat Timeout",
+                "gui_role": 'error'
+            })
+            yield self._new_chat_messages()
             self.debuglog("CHAT TIMEOUT:", str(type(e)), str(e))
         except Exception as e:
+            self._messages.append({
+                "role": role,
+                "content": str(e),
+                "gui_role": 'error'
+            })
+            yield self._new_chat_messages()
             self.debuglog("CHAT EXCEPTION:", str(type(e)), str(e))
 
         if self._on_function:
