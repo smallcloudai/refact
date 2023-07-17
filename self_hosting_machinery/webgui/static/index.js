@@ -1,21 +1,15 @@
-const plugins = [
-{ id: 'tab-model-hosting', label: 'Model Hosting', tab: 'model-hosting', active: true },
-{ id: 'tab-upload', label: 'Sources', tab: 'upload' },
-{ id: 'tab-finetune', label: 'Finetune', tab: 'finetune' },
-{ id: 'tab-server-logs', label: 'Server Logs', tab: 'server-logs' },
-{ id: 'tab-access-control', label: 'Access Control', tab: 'access-control', disabled: true },
-{ id: 'tab-settings', label: 'Credentials', tab: 'settings', hamburger: true },
-];
 
-// show immediately, import later
-plugins_to_top_nav_bar();
+const req = await fetch('list-plugins');
+const plugins = await req.json();
+
+// show navigation bar immediately, import later
+plugins_to_top_nav_bar(plugins);
 
 // this might take some time: load all modules
 const imported_plugins = [];
 const inits_working = [];
 for (const p of plugins) {
-    const mod = await import("./" + p.id + ".js");
-    console.log(["loaded " + p.id, mod]);
+    const mod = await import("./tab-" + p.tab + ".js");
     imported_plugins.push(mod);
     p.mod = mod;
     inits_working.push(mod.init());
@@ -62,7 +56,7 @@ function start_tab_timer() {
 start_tab_timer();
 
 
-function plugins_to_top_nav_bar()
+function plugins_to_top_nav_bar(plugins)
 {
     // show immediately, import later
     const template_ltr = Handlebars.compile(document.getElementById('nav-template-ltr').innerHTML);
