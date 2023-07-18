@@ -30,8 +30,7 @@ from typing import Optional, Dict, Any, List
 
 from self_hosting_machinery import env
 
-from smallcloud import inference_server
-inference_server.override_urls("http://127.0.0.1:8008/infengine-v1/")
+from refact_scratchpads_no_gpu import stream_results
 
 
 log = logging.getLogger("MODEL").info
@@ -40,7 +39,7 @@ log = logging.getLogger("MODEL").info
 quit_flag = False
 DEBUG = int(os.environ.get("DEBUG", "0"))
 if DEBUG:
-    inference_server.DEBUG_UPLOAD_NOT_SEPARATE_PROCESS = True
+    stream_results.DEBUG_UPLOAD_NOT_SEPARATE_PROCESS = True
 
 
 def modload(import_str):
@@ -266,7 +265,7 @@ class Inference:
         if not scratchpad.finish_reason:
             scratchpad.finish_reason = "maxlen"
 
-    def infer(self, request: Dict[str, Any], upload_proxy: inference_server.UploadProxy, upload_proxy_args: Dict):
+    def infer(self, request: Dict[str, Any], upload_proxy: stream_results.UploadProxy, upload_proxy_args: Dict):
         request_id = request["id"]
         try:
             scratchpad, tokens_prompt = self._prepare_scratchpad(request)
@@ -396,20 +395,20 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
         return
 
     log("STATUS serving %s" % model_name)
-    req_session = inference_server.infserver_session()
-    description_dict = inference_server.validate_description_dict(
+    req_session = stream_results.infserver_session()
+    description_dict = stream_results.validate_description_dict(
         model_name + "_" + socket.getfqdn(),
         "account_name",
         model=model_name, B=1, max_thinking_time=10,
     )
-    upload_proxy = inference_server.UploadProxy(
+    upload_proxy = stream_results.UploadProxy(
         upload_q=None, cancelled_q=None)
     upload_proxy.start_upload_result_daemon()
 
     while not quit_flag:
         upload_proxy.keepalive()
         upload_proxy.cancelled_reset()
-        retcode, request_batch = inference_server.completions_wait_batch(
+        retcode, request_batch = stream_results.completions_wait_batch(
             req_session, description_dict, verbose=False)
         ts_arrived = time.time()
         if retcode == "OK":

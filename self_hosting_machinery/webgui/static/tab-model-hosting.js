@@ -141,14 +141,14 @@ function render_models_assigned(models) {
             completion.appendChild(completıon_input);
         }
         gpus_input.classList.add('model-gpus','form-control');
-        gpus_input.setAttribute('model',index);
-        gpus_input.setAttribute('min',1);
-        gpus_input.setAttribute('max',8);
-        gpus_input.setAttribute('step',1);
-        gpus_input.setAttribute('type','number');
-        gpus_input.value = models[index].gpus_min;
+        gpus_input.setAttribute('model', index);
+        gpus_input.setAttribute('min', 1);
+        gpus_input.setAttribute('max', 4);
+        gpus_input.setAttribute('step', 1);
+        gpus_input.setAttribute('type', 'number');
+        gpus_input.value = models[index].gpus_shard;
         gpus_input.addEventListener('change', function() {
-            models_data.model_assign[index].gpus_min = this.value;
+            models_data.model_assign[index].gpus_shard = this.value;
             save_model_assigned();
         });
         gpus_input.addEventListener('blur', function() {
@@ -196,7 +196,7 @@ function render_models(models) {
         models_table.appendChild(row);
         row.addEventListener('click', function(e) {
             models_data.model_assign[models.models[index].name] = {
-                gpus_min: 1
+                gpus_shard: 1
             };
             save_model_assigned();
             const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
