@@ -626,3 +626,7 @@ h3 {
 .model-hosting-error {
     color: darkred;
 }
+.disabled-group {
+    opacity: 0.4;
+    pointer-events: none;
+}
