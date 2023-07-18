@@ -1,4 +1,5 @@
 import torch as th
+import time
 
 from refact_scratchpads import scratchpad_utils
 
@@ -19,12 +20,20 @@ class EncodingWrapper:
 
 class ScratchpadHuggingfaceBase:
 
-    def __init__(self, tokenizer, max_tokens: int, logger: Callable,
-                 stop_tokens: Union[str, List[str]], **kwargs):
+    def __init__(
+        self,
+        tokenizer,
+        max_tokens: int,
+        logger: Callable,
+        stop_tokens: Union[str, List[str]],
+        created: float,
+        **unused
+    ):
         self._tokenizer = tokenizer
         self._tokenizer_skip_first = bool(tokenizer.encode(""))
         self._max_tokens = max_tokens
         self._logger = logger
+        self._created = created
 
         self._stop_lf = False
         self._stop_lf_lf = False
@@ -55,8 +64,12 @@ class ScratchpadHuggingfaceBase:
         self.needs_upload = False
         self.finish_reason = ""
 
+        for k, v in unused.items():
+            self.debuglog("ScratchpadHuggingfaceBase: unused parameter '%s' = '%s'" % (k, v))
+
     def after_token_selection(self, m, chosen_token: th.Tensor, **unused) -> Dict[str, Any]:
         t = chosen_token.item()
+        self.debuglog("%05d %s" % (t, self._tokenizer.decode([t])))
 
         if chosen_token in [self._tokenizer.eos_token_id]:
             self.finish_reason = "eot"
@@ -97,6 +110,13 @@ class ScratchpadHuggingfaceBase:
 
     def completion(self, final: bool):
         raise NotImplementedError()
+
+    def toplevel_fields(self):
+        return {}
+
+    def debuglog(self, *args):
+        elapsed = time.time() - self._created
+        self._logger("%4.0fms" % (elapsed * 1000,), *args)
 
 
 class ScratchpadHuggingfaceCompletion(ScratchpadHuggingfaceBase):
@@ -169,7 +189,7 @@ class ScratchpadChatBase(ScratchpadHuggingfaceBase):
         self._completion = []
         text = self._prompt()
         tokens = self._tokenizer.encode(text)
-        self._logger(f"{len(tokens)} tokens")
+        self.debuglog(f"prompt {len(tokens)} tokens")
         return tokens
 
     def completion(self, final: bool):

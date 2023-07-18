@@ -66,7 +66,7 @@ class SMCStream(TextStreamer):
         super().put(value)
 
     def on_finalized_text(self, text: str, stream_end: bool = False):
-        super().on_finalized_text(text, stream_end)
+        # super().on_finalized_text prints the text to stdout, don't want that
         if self.scratchpad.needs_upload or stream_end:
             if not stream_end:
                 self.scratchpad.needs_upload = False
