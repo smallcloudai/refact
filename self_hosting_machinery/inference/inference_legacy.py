@@ -14,7 +14,6 @@ from refact_scratchpads import ScratchpadCompletion
 from refact_models import CodifyModel
 from refact_models import RefactModel
 from refact_models import HFModel
-from refact_models import GPTQBigCodeModel
 from refact_models import StarChatModel
 
 from self_hosting_machinery.scripts import best_lora
@@ -76,13 +75,6 @@ class InferenceLegacy(InferenceBase):
                 path=model_dict["model_path"],
                 cache_dir=env.DIR_WEIGHTS,
                 device=device)
-            model.T = model_dict["T"]
-        elif model_dict["model_class"].endswith("GPTQBigCodeModel"):
-            model = GPTQBigCodeModel(
-                model_name=model_dict["model_path"],
-                cache_dir=env.DIR_WEIGHTS,
-                device=device,
-                **model_dict["model_class_kwargs"])
             model.T = model_dict["T"]
         elif model_dict["model_class"].endswith("StarChatModel"):
             model = StarChatModel.from_pretrained(
