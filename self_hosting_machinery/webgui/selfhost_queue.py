@@ -10,7 +10,7 @@ from typing import Dict, List
 
 
 class InferenceQueue:
-    CACHE_MODELS_AVAILABLE = 20
+    CACHE_MODELS_AVAILABLE = 5
 
     def __init__(self):
         self._user2gpu_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)
@@ -28,6 +28,7 @@ class InferenceQueue:
         t1 = time.time()
         if self._models_available_ts + self.CACHE_MODELS_AVAILABLE > t1:
             return self._models_available
+        self._models_available = []
         if os.path.exists(env.CONFIG_INFERENCE):
             j = json.load(open(env.CONFIG_INFERENCE, 'r'))
             for model in j["model_assign"]:
