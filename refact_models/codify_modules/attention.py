@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from refact_models.codify_modules.alibias import ALiBiBias
+from refact_models.codify_modules import ALiBiBias
 
 
 class MultiheadSelfAttention(nn.Module):

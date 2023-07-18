@@ -3,8 +3,8 @@ from typing import Optional, Tuple
 import torch
 from torch import nn
 
-from refact_models.codify_modules.attention import MultiheadSelfAttention
-from refact_models.codify_modules.mlp import MLP
+from refact_models.codify_modules import MultiheadSelfAttention
+from refact_models.codify_modules import MLP
 
 
 class BlockCheckpointing:
