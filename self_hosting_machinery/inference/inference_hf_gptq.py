@@ -10,8 +10,8 @@ from transformers import StoppingCriteria
 from transformers import StoppingCriteriaList
 from transformers.generation.streamers import TextStreamer
 
-from refact_scratchpads import ScratchpadBase
-from refact_scratchpads import ScratchpadCompletion
+from refact_scratchpads import ScratchpadHuggingfaceBase
+from refact_scratchpads import ScratchpadHuggingfaceCompletion
 from self_hosting_machinery.inference import InferenceBase
 from self_hosting_machinery.inference import modload
 from refact_scratchpads_no_gpu.stream_results import UploadProxy
@@ -28,7 +28,7 @@ DEBUG = int(os.environ.get("DEBUG", "0"))
 
 class CancellationStoppingCriteria(StoppingCriteria):
 
-    def __init__(self, scratchpad: ScratchpadBase, request_id: str, upload_proxy: UploadProxy):
+    def __init__(self, scratchpad: ScratchpadHuggingfaceBase, request_id: str, upload_proxy: UploadProxy):
         StoppingCriteria.__init__(self)
         self.scratchpad = scratchpad
         self.upload_proxy = upload_proxy
@@ -43,7 +43,7 @@ class CancellationStoppingCriteria(StoppingCriteria):
 
 class StopTokenStoppingCriteria(StoppingCriteria):
 
-    def __init__(self, scratchpad: ScratchpadBase):
+    def __init__(self, scratchpad: ScratchpadHuggingfaceBase):
         StoppingCriteria.__init__(self)
         self.scratchpad = scratchpad
 
@@ -118,7 +118,7 @@ class InferenceGPTQ(InferenceBase):
         elif object_type == "chat_completion_req":
             Scratchpad = modload(self._model_dict["chat_scratchpad_class"])
         else:
-            Scratchpad = ScratchpadCompletion
+            Scratchpad = ScratchpadHuggingfaceCompletion
 
         scratchpad = Scratchpad(tokenizer=self._tokenizer, logger=logger, **request)
         p = scratchpad.prompt(self._tokenizer.max_len_single_sentence)
