@@ -15,11 +15,10 @@ from refact_scratchpads_no_gpu import stream_results_async
 
 
 DEBUG = int(os.environ.get("DEBUG", "0"))
-ROUTINES = int(os.environ.get("ROUTINES", "0"))
 
 
 gpt4_functions = {
-    "make-code-shorter-gpt4":    "refact_scratchpads_no_gpu:ScratchpadMakeCodeShorterGPT4",
+    "make-code-shorter-gpt4":    "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorterGPT4",
     "fix-bug-gpt4":              "refact_scratchpads_no_gpu:ScratchpadFixBugGPT4",
     "explain-code-block-gpt4":   "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlockGPT4",
 
@@ -34,8 +33,8 @@ gpt4_functions = {
 }
 
 gpt35_functions = {
-    "make-code-shorter":         "refact_scratchpads_no_gpu:ScratchpadMakeCodeShorter",
-    "make-code-shorter-gpt3.5":  "refact_scratchpads_no_gpu:ScratchpadMakeCodeShorter",
+    "make-code-shorter":         "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorter",
+    "make-code-shorter-gpt3.5":  "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorter",
     "fix-bug":                   "refact_scratchpads_no_gpu:ScratchpadFixBug",
     "fix-bug-gpt3.5":            "refact_scratchpads_no_gpu:ScratchpadFixBug",
     "explain-code-block":        "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlock",
@@ -174,9 +173,8 @@ async def handle_single_batch(routine_n, my_desc, model_dict, calls_unfiltered):
         upload_task = None
 
 
-
-def catch_sigkill(signum, frame):
-    print("catched SIGKILL")
+def catch_sigusr1(signum, frame):
+    stream_results_async.logger.info("infserver_no_gpu catched SIGUSR1")
     global quit_flag
     quit_flag = True
 
@@ -233,7 +231,7 @@ def main():
         openai.api_key = args.openai_key
 
     sys.excepthook = except_hook
-    signal.signal(signal.SIGUSR1, catch_sigkill)
+    signal.signal(signal.SIGUSR1, catch_sigusr1)
 
     workers: int = max(1, args.workers) if not DEBUG else 1
     asyncio.get_event_loop().run_until_complete(asyncio.gather(*[

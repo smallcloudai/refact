@@ -2,25 +2,16 @@ from typing import *
 
 import ujson as json
 
-from .gpt_toolbox_spad import ScratchpadChatGPT
+from .gpt_toolbox_spad import ScratchpadToolboxGPT
 
 from .gpt35_prompts import msg
 from .gpt4_prompts import detect_vulnerabilities, detect_bugs, code_review
 
 from .utils import find_substring_positions
 from .gpt35_toolbox import \
-    ScratchpadMakeCodeShorter, \
     ScratchpadFixBug, \
     ScratchpadExplainCodeBlock, \
     ScratchpadCompletion, ScratchpadDetectBugsHighlight
-
-
-class ScratchpadMakeCodeShorterGPT4(ScratchpadMakeCodeShorter):
-    def __init__(self, **kwargs):
-        super().__init__(
-            model_n='gpt-4',
-            **kwargs
-        )
 
 
 class ScratchpadFixBugGPT4(ScratchpadFixBug):
@@ -62,7 +53,7 @@ class ScratchpadDetectBugsHighlightGPT4(ScratchpadDetectBugsHighlight):
         )
 
 
-class ScratchpadDetectVulnerabilitiesHighlightGPT4(ScratchpadChatGPT):
+class ScratchpadDetectVulnerabilitiesHighlightGPT4(ScratchpadToolboxGPT):
     def __init__(self, **kwargs):
         super().__init__(
             model_n='gpt-4-0314',
@@ -98,7 +89,7 @@ class ScratchpadDetectVulnerabilitiesHighlightGPT4(ScratchpadChatGPT):
         return self._txt
 
 
-class ScratchpadCodeReviewHighlightGPT4(ScratchpadChatGPT):
+class ScratchpadCodeReviewHighlightGPT4(ScratchpadToolboxGPT):
     def __init__(self, **kwargs):
         super().__init__(
             model_n='gpt-4',
