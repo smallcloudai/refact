@@ -124,6 +124,7 @@ function render_models_assigned(models) {
         const row = document.createElement('tr');
         row.setAttribute('data-model',index);
         const model_name = document.createElement("td");
+        const select_gpus = document.createElement("td");
         const gpus = document.createElement("td");
         const gpus_input = document.createElement("input");
         const del = document.createElement("td");
@@ -146,6 +147,14 @@ function render_models_assigned(models) {
             });
             completion.appendChild(completion_input);
         }
+        select_gpus.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group">
+        <input type="radio" class="gpu-switch btn-check" name="gpu-${index}" value="1" id="gpu-${index}-1" autocomplete="off">
+        <label class="btn btn-outline-primary" for="gpu-${index}-1">1</label>
+        <input type="radio" class="gpu-switch btn-check" name="gpu-${index}" value="2" id="gpu-${index}-2" autocomplete="off">
+        <label class="btn btn-outline-primary" for="gpu-${index}-2">2</label>
+        <input type="radio" class="gpu-switch btn-check" name="gpu-${index}" value="4" id="gpu-${index}-3" autocomplete="off">
+        <label class="btn btn-outline-primary" for="gpu-${index}-3">3</label>
+        </div>`;
         gpus_input.classList.add('model-gpus','form-control');
         gpus_input.setAttribute('model', index);
         gpus_input.setAttribute('min', 1);
@@ -173,6 +182,7 @@ function render_models_assigned(models) {
         // del.innerHTML = `<button type="button" data-model="${index}" class="btn btn-danger model-remove"><i class="bi bi-trash3-fill"></i></button>`;
         row.appendChild(model_name);
         row.appendChild(completion);
+        row.appendChild(select_gpus);
         row.appendChild(gpus);
         row.appendChild(del);
         models_table.appendChild(row);
