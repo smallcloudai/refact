@@ -9,17 +9,8 @@ from .gpt4_prompts import detect_vulnerabilities, detect_bugs, code_review
 
 from .utils import find_substring_positions
 from .gpt35_toolbox import \
-    ScratchpadFixBug, \
     ScratchpadExplainCodeBlock, \
     ScratchpadCompletion, ScratchpadDetectBugsHighlight
-
-
-class ScratchpadFixBugGPT4(ScratchpadFixBug):
-    def __init__(self, **kwargs):
-        super().__init__(
-            model_n='gpt-4',
-            **kwargs
-        )
 
 
 class ScratchpadExplainCodeBlockGPT4(ScratchpadExplainCodeBlock):

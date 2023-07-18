@@ -5,7 +5,6 @@ from termcolor import colored
 
 from .gpt_toolbox_spad import ScratchpadToolboxGPT
 from .gpt35_prompts import msg, \
-    make_code_shorter_ctxt, fix_bug_ctxt, \
     explain_code_block_ctxt, \
     add_console_logs, \
     precise_naming_ctxt, \
@@ -81,21 +80,6 @@ class ScratchpadDetectBugsHighlight(ScratchpadToolboxGPT):
                 self._txt[s_end:]
         return self._txt
 
-
-
-class ScratchpadFixBug(ScratchpadToolboxGPT):
-    def _messages(self) -> List[Dict[str, str]]:
-        _, _, ctxt = self.trim_context()
-        return [
-            *fix_bug_ctxt(),
-            msg('user', ctxt),
-            msg('assistant',
-                "Thanks for giving me the context. "
-                "I understand it. "
-                "Please provide me the part of code you need to fix bugs in."
-                ),
-            msg('user', self.selection)
-        ]
 
 
 class ScratchpadExplainCodeBlock(ScratchpadToolboxGPT):
