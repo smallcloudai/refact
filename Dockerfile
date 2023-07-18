@@ -18,7 +18,6 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 RUN pip install --no-cache-dir torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118
 RUN pip install --no-cache-dir git+https://github.com/smallcloudai/smallcloud.git
 
-ENV BUILD_QUANT_CUDA="1"
 ENV TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6+PTX"
 COPY . /tmp/app
 RUN pip install /tmp/app && rm -rf /tmp/app
