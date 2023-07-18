@@ -29,9 +29,3 @@ def convert_old_configs():
 
     if force_models_cfg_update:
         tab_models_host.models_to_watchdog_configs()
-
-
-
-if __name__ == '__main__':
-    convert_old_configs()
-    copy_watchdog_configs_if_first_run_detected()
