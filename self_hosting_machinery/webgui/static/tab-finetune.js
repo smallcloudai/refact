@@ -379,10 +379,11 @@ function get_finetune_settings(defaults = false) {
     .then(function(data) {
         console.log('tab-finetune-training-get',data);
         let settings_data = null;
+        finetune_settings_defaults = data.defaults;
+        console.log('finetune_settings_defaults', finetune_settings_defaults);
         if(Object.keys(data.user_config).length > 0 && !defaults) {
             settings_data = data.user_config;
         } else {
-            finetune_settings_defaults = data.defaults;
             settings_data = data.defaults;
         }
         console.log(settings_data);
@@ -445,19 +446,18 @@ function save_finetune_settings() {
         })
     })
     .then(function(response) {
-        if(response.ok) {
-            const finetune_settings_error = document.querySelector('.finetune-settings-error');
-            finetune_settings_error.textContent = '';
-            finetune_settings_error.classList.add('d-none');
-            get_finetune_settings();
-            let url_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('finetune-tab-settings-modal'));
-            url_modal.hide();
-        } else {
+        if(!response.ok) {
             return response.json();
         }
-    }).then(function(error_data) {
-        console.log(error_data);
+        const finetune_settings_error = document.querySelector('.finetune-settings-error');
+        finetune_settings_error.textContent = '';
+        finetune_settings_error.classList.add('d-none');
+        get_finetune_settings();
+        let url_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('finetune-tab-settings-modal'));
+        url_modal.hide();
         
+    })
+    .catch(error_data => {
         const finetune_settings_error = document.querySelector('.finetune-settings-error');
         let error_text = '';
         
@@ -489,9 +489,8 @@ function check_heuristics() {
 }
 
 function revert_to_default(input_id) {
-    console.log('revert_to_default',finetune_settings_defaults);
     const input = document.getElementById(input_id);
-    input.value = finetune_settings_defaults.input_id;
+    input.value = finetune_settings_defaults[input_id];
 }
 
 export async function init() {
