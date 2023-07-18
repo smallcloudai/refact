@@ -163,11 +163,11 @@ function render_models_assigned(models) {
         }
         select_gpus.innerHTML = `<div class="btn-group btn-group-sm disabled-group" role="group" aria-label="basic radio toggle button group">
         <input type="radio" class="gpu-switch btn-check" tabindex="-1" name="gpu-${index}" value="1" ${checked_1} id="gpu-${index}-1" autocomplete="off">
-        <label class="btn btn-outline-primary" for="gpu-${index}-1">1</label>
+        <label tabindex="-1" class="btn btn-outline-primary" for="gpu-${index}-1">1</label>
         <input type="radio" class="gpu-switch btn-check" tabindex="-1" name="gpu-${index}" value="2" ${checked_2} id="gpu-${index}-2" autocomplete="off">
-        <label class="btn btn-outline-primary" for="gpu-${index}-2">2</label>
+        <label tabindex="-1" class="btn btn-outline-primary" for="gpu-${index}-2">2</label>
         <input type="radio" class="gpu-switch btn-check" tabindex="-1" name="gpu-${index}" value="4" ${checked_4} id="gpu-${index}-3" autocomplete="off">
-        <label class="btn btn-outline-primary" for="gpu-${index}-3">4</label>
+        <label tabindex="-1" class="btn btn-outline-primary" for="gpu-${index}-3">4</label>
         </div>`;
         // gpus_input.classList.add('model-gpus','form-control');
         // gpus_input.setAttribute('model', index);
