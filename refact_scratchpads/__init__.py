@@ -6,8 +6,8 @@ from refact_scratchpads.scratchpad_bigchat import ScratchpadBigChat
 from refact_scratchpads.scratchpad_starchat import ScratchpadStarChat
 from refact_scratchpads.scratchpad_refact import ScratchpadRefact
 
+from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceBase
+from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceCompletion
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingface
-
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceStarChat
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceWizard
-from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceWizardVicuna

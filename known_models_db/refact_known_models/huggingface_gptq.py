@@ -28,18 +28,18 @@ huggingface_gptq_mini_db = {
         "filter_caps": ["starchat"],
     },
     "wizardlm/7b": {
-        "model_path": "TheBloke/wizardLM-7B-GPTQ",
+        "model_path": "TheBloke/WizardLM-7B-V1.0-Uncensored-GPTQ",
         "diff_scratchpad_class": None,
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceWizard",
         "model_class_kwargs": {
-            "model_basename": "wizardLM-7B-GPTQ-4bit-128g.no-act.order",
+            "model_basename": "wizardlm-7b-v1.0-uncensored-GPTQ-4bit-128g.no-act.order",
         },
         "filter_caps": ["wizardlm"],
     },
     "wizardlm/13b": {
         "model_path": "TheBloke/WizardLM-13B-V1.1-GPTQ",
         "diff_scratchpad_class": None,
-        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceWizardVicuna",
+        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceWizard",
         "model_class_kwargs": {
             "model_basename": "wizardlm-13b-v1.1-GPTQ-4bit-128g.no-act.order",
         },
