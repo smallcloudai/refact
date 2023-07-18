@@ -618,3 +618,11 @@ h3 {
     padding: 10px 0;
     font-weight: bold;
 }
+.model-hosting-controls {
+    margin-top: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+.model-hosting-error {
+    color: darkred;
+}
