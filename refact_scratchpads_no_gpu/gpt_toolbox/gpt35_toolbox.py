@@ -3,7 +3,7 @@ from typing import Dict, List
 import ujson as json
 from termcolor import colored
 
-from .gpt_toolbox_spad import ScratchpadChatGPT
+from .gpt_toolbox_spad import ScratchpadToolboxGPT
 from .gpt35_prompts import msg, \
     make_code_shorter_ctxt, fix_bug_ctxt, \
     explain_code_block_ctxt, \
@@ -17,7 +17,7 @@ from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_prompts import code_review
 from refact_scratchpads_no_gpu.gpt_toolbox.utils import code_block_postprocess, find_substring_positions
 
 
-class ScratchpadCompletion(ScratchpadChatGPT):
+class ScratchpadCompletion(ScratchpadToolboxGPT):
     def _messages(self) -> List[Dict[str, str]]:
         cursor0, _, ctxt = self.trim_context()
         ctxt = ctxt[:cursor0] + '<|complete-me|>' + ctxt[cursor0:]
@@ -41,7 +41,7 @@ class ScratchpadCompletion(ScratchpadChatGPT):
         ]
 
 
-class ScratchpadDetectBugsHighlight(ScratchpadChatGPT):
+class ScratchpadDetectBugsHighlight(ScratchpadToolboxGPT):
     def __init__(self, model_n="gpt3.5-turbo-0301", supports_stream=False, **kwargs):
         super().__init__(
             model_n=model_n,
@@ -82,22 +82,8 @@ class ScratchpadDetectBugsHighlight(ScratchpadChatGPT):
         return self._txt
 
 
-class ScratchpadMakeCodeShorter(ScratchpadChatGPT):
-    def _messages(self) -> List[Dict[str, str]]:
-        _, _, ctxt = self.trim_context()
-        return [
-            *make_code_shorter_ctxt(),
-            msg('user', ctxt),
-            msg('assistant',
-                "Thanks for giving me the context. "
-                "I understand it. "
-                "Please provide me the part of code you need to simplify."
-                ),
-            msg('user', self.selection)
-        ]
 
-
-class ScratchpadFixBug(ScratchpadChatGPT):
+class ScratchpadFixBug(ScratchpadToolboxGPT):
     def _messages(self) -> List[Dict[str, str]]:
         _, _, ctxt = self.trim_context()
         return [
@@ -112,7 +98,7 @@ class ScratchpadFixBug(ScratchpadChatGPT):
         ]
 
 
-class ScratchpadExplainCodeBlock(ScratchpadChatGPT):
+class ScratchpadExplainCodeBlock(ScratchpadToolboxGPT):
     def _messages(self) -> List[Dict[str, str]]:
         _, _, ctxt = self.trim_context()
         return [
@@ -131,7 +117,7 @@ class ScratchpadExplainCodeBlock(ScratchpadChatGPT):
         return self._txt[:self.cursor1] + '\n' + completion + self._txt[self.cursor1:]
 
 
-class ScratchpadAddConsoleLogs(ScratchpadChatGPT):
+class ScratchpadAddConsoleLogs(ScratchpadToolboxGPT):
     def _messages(self) -> List[Dict[str, str]]:
         return [
             *add_console_logs(),
@@ -139,7 +125,7 @@ class ScratchpadAddConsoleLogs(ScratchpadChatGPT):
         ]
 
 
-class ScratchpadPreciseNaming(ScratchpadChatGPT):
+class ScratchpadPreciseNaming(ScratchpadToolboxGPT):
     def _messages(self) -> List[Dict[str, str]]:
         _, _, ctxt = self.trim_context()
         return [
@@ -154,7 +140,7 @@ class ScratchpadPreciseNaming(ScratchpadChatGPT):
         ]
 
 
-class ScratchpadCommentEachLine(ScratchpadChatGPT):
+class ScratchpadCommentEachLine(ScratchpadToolboxGPT):
     def _messages(self) -> List[Dict[str, str]]:
         return [
             *comment_each_line(),

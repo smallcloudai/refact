@@ -59,7 +59,7 @@ class People:
             age = p[1]
             person = Person(name, age)
             self.people.append(person)
-            
+
     def __iter__(self):
         yield from self.people
 
@@ -130,7 +130,7 @@ class CodeLanguagesFilter:
             if (filtered):
                 return filt.language
         return null
-        
+
 if __name__ == "__main__":
     pass
             """),
@@ -187,10 +187,10 @@ def explain_code_block_ctxt():
             """
 from typing import *
 
-from .chatgpt_scratchpad import ScratchpadChatGPT
+from .chatgpt_scratchpad import ScratchpadToolboxGPT
 
 
-class ScratchpadMakeCodeShorter(ScratchpadChatGPT):
+class ScratchpadMakeCodeShorter(ScratchpadToolboxGPT):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -209,7 +209,7 @@ class ScratchpadMakeCodeShorter(ScratchpadChatGPT):
 
     def _postprocess(self, completion):
         return self._txt[:self.cursor0] + completion + self._txt[self.cursor1:]
-        
+
     """),
         msg('assistant',
             "Provide me the code you need to explain in a block."
@@ -228,7 +228,7 @@ class ScratchpadMakeCodeShorter(ScratchpadChatGPT):
             """),
         msg('assistant',
             """
-```   
+```
 # This code defines a function called "completion"
 # which takes two arguments: final which is boolean and tokens_batch, which is optional int
 # if final = true, streaming is disabled, and vice versa
@@ -275,7 +275,7 @@ def explain_code_block():
         msg(
             'assistant',
             """
-```   
+```
 # This code defines a function called "completion"
 # which takes two arguments: final which is boolean and tokens_batch, which is optional int
 # if final = true, streaming is disabled, and vice versa
@@ -382,7 +382,7 @@ def main():
             print(year, "is not leap")
 
 if __name__ == "__main__":
-    main()            
+    main()
     """),
         msg('assistant',
             "Please provide me the code you need to fix naming in."

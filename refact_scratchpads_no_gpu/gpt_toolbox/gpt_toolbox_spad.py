@@ -9,7 +9,7 @@ from typing import List, Union, Callable, Dict, Iterator, Tuple
 import openai
 import tiktoken
 
-from refact_scratchpads import utils as scratchpad_utils
+from refact_scratchpads import scratchpad_utils
 from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_spad import gpt_prices, calculate_chat_tokens
@@ -30,7 +30,7 @@ ACCUMULATE_N_STREAMING_CHUNKS = 5
 engine_to_encoding("text-davinci-003")  # this immediately tests if tiktoken works or not
 
 
-class ScratchpadChatGPT(ascratch.AsyncScratchpad):
+class ScratchpadToolboxGPT(ascratch.AsyncScratchpad):
     def __init__(
             self,
             id: str,
@@ -164,7 +164,7 @@ class ScratchpadChatGPT(ascratch.AsyncScratchpad):
                     if self.finish_reason:
                         break
             if self.model_name == "":
-                self.debuglog("ScratchpadChatGPT: model_name is empty")
+                self.debuglog("ScratchpadToolboxGPT: model_name is empty")
             if self.finish_reason == "":
                 self.finish_reason = "END"
         except asyncio.exceptions.TimeoutError as e:
