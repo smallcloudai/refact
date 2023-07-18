@@ -159,7 +159,6 @@ class InferenceGPTQ(InferenceBase):
                 streamer = SMCStream(self._tokenizer, request_id, upload_proxy, upload_proxy_args, scratchpad)
                 generation_kwargs = dict(input_ids=tokens_prompt.view(1, *tokens_prompt.shape),
                                          streamer=streamer,
-                                         max_new_tokens=request["max_tokens"],
                                          stopping_criteria=stopping_criteria,
                                          return_dict_in_generate=True,
                                          output_scores=True)
