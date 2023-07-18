@@ -54,10 +54,8 @@ class StopTokenStoppingCriteria(StoppingCriteria):
 
 
 class SMCStream(TextStreamer):
-    def __init__(self, tokenizer, request_id,
-                 upload_proxy: UploadProxy,
-                 upload_proxy_args: dict,
-                 scratchpad):
+    def __init__(self, tokenizer, request_id: str, upload_proxy: UploadProxy,
+                 upload_proxy_args: dict, scratchpad: ScratchpadHuggingfaceBase):
         super().__init__(tokenizer)
         self.scratchpad = scratchpad
         self.request_id = request_id
@@ -79,8 +77,8 @@ class SMCStream(TextStreamer):
                 **self.upload_proxy_args,
                 files=[self.scratchpad.completion(True)],
                 finish_reason=[self.scratchpad.finish_reason],
-                more_toplevel_fields=[self.scratchpad.toplevel_fields()],
                 generated_tokens_n=[self.scratchpad.generated_tokens_n],
+                more_toplevel_fields=[{}],
                 status="completed" if stream_end else "in_progress"
             )
 
@@ -151,15 +149,13 @@ class InferenceGPTQ(InferenceBase):
                 self._model.generate(**generation_kwargs)
             if not scratchpad.finish_reason:
                 scratchpad.finish_reason = "maxlen"
-            if DEBUG:
-                scratchpad.debuglog("finish_reason", scratchpad.finish_reason)
             upload_proxy_args["ts_batch_finished"] = time.time()
             upload_proxy.upload_result(
                 **upload_proxy_args,
                 files=[scratchpad.completion(True)],
                 finish_reason=[scratchpad.finish_reason],
-                more_toplevel_fields=[scratchpad.toplevel_fields()],
                 generated_tokens_n=[scratchpad.generated_tokens_n],
+                more_toplevel_fields=[{}],
                 status="completed"
             )
         except Exception as e:
