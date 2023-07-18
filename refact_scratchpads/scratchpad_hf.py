@@ -187,18 +187,29 @@ class ScratchpadHuggingfaceStarChat(ScratchpadChatBase):
         return text
 
 
-class ScratchpadHuggingfaceWizard(ScratchpadChatBase):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._bos_token = self._encode_one_token("<s>")
+class ScratchpadHuggingfaceWizardBase(ScratchpadChatBase):
 
     def _encode_one_token(self, text: str) -> int:
         tokens = self.enc.encode(text)[1:]
         if len(tokens) != 1:
             raise ValueError(f"Must be single token, have {tokens} for '{text}'")
         return tokens[0]
+
+
+class ScratchpadHuggingfaceWizard(ScratchpadHuggingfaceWizardBase):
+
+    def _prompt(self) -> str:
+        text = ""
+        for message in self._messages:
+            if message["role"] == "user":
+                text += message["content"] + "\n"
+            else:
+                text += f"### Response: {message['content']}\n"
+        text += "### Response: "
+        return text
+
+
+class ScratchpadHuggingfaceWizardVicuna(ScratchpadChatBase):
 
     def _prompt(self) -> str:
         text = "A chat between a curious user and an artificial intelligence assistant. " \
