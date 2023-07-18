@@ -122,7 +122,7 @@ function render_models_assigned(models) {
     models_table.innerHTML = '';
     for(let index in models) {
         const row = document.createElement('tr');
-        row.setAttribute('datamodel',index);
+        row.setAttribute('data-model',index);
         const model_name = document.createElement("td");
         const gpus = document.createElement("td");
         const gpus_input = document.createElement("input");
@@ -132,19 +132,19 @@ function render_models_assigned(models) {
 
         const completion = document.createElement("td");
         if (models_info[index].has_completion) {
-            const completıon_input = document.createElement("input");
-            completıon_input.setAttribute('type','radio');
-            completıon_input.setAttribute('name','completion-radio-button');
-            completıon_input.setAttribute('value',index);
+            const completion_input = document.createElement("input");
+            completion_input.setAttribute('type','radio');
+            completion_input.setAttribute('name','completion-radio-button');
+            completion_input.setAttribute('value',index);
             if (models_data.completion === index) {
-                completıon_input.checked = true;
+                completion_input.checked = true;
             }
-            completıon_input.setAttribute('model',index);
-            completıon_input.addEventListener('change', function() {
+            completion_input.setAttribute('model',index);
+            completion_input.addEventListener('change', function() {
                 models_data.completion = this.value;
                 save_model_assigned();
             });
-            completion.appendChild(completıon_input);
+            completion.appendChild(completion_input);
         }
         gpus_input.classList.add('model-gpus','form-control');
         gpus_input.setAttribute('model', index);
@@ -184,7 +184,7 @@ function render_models(models) {
     models_table.innerHTML = '';
     for(let index in models.models) {
         const row = document.createElement('tr');
-        row.setAttribute('datamodel',models.models[index].name);
+        row.setAttribute('data-model',models.models[index].name);
         const model_name = document.createElement("td");
         const has_completion = document.createElement("td");
         const has_finetune = document.createElement("td");
