@@ -1,4 +1,3 @@
-import uuid
 import json
 import os
 import signal
@@ -8,6 +7,8 @@ import time
 import uuid
 from typing import Dict, Optional
 
+from self_hosting_machinery.scripts.first_run import convert_old_configs
+from self_hosting_machinery.scripts.first_run import copy_watchdog_configs_if_first_run_detected
 from self_hosting_machinery import env
 
 
@@ -302,7 +303,8 @@ def main_loop():
 
 
 if __name__ == '__main__':
-    subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.scripts.first_run"])
+    convert_old_configs()
+    copy_watchdog_configs_if_first_run_detected()
     # Generate a random SMALLCLOUD_API_KEY, it will be inherited by subprocesses,
     # this allows inference_worker to authorize on the local web server (both use
     # this variable), and work safely even if we expose http port to the world.
