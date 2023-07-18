@@ -164,7 +164,8 @@ db = [
     ModelFunction(
         "completion", 1, "Completion",
         type="completion",
-        supports_highlight=False,
+        supports_highlight=True,   # FIXME what really should work is supports_no_selection, but no support in clients yet
+        supports_no_selection=True,
         supports_selection=False,
         selected_lines_min=1,
         selected_lines_max=30,
