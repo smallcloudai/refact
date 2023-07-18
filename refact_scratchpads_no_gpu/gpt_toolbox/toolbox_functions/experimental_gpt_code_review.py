@@ -1,7 +1,9 @@
-from .gpt_toolbox_spad import ScratchpadToolboxGPT
-from typing import Dict, List
-from .utils import msg, find_substring_positions
 import json
+
+from typing import Dict, List
+
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_toolbox_spad import ScratchpadToolboxGPT
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_utils import msg, find_substring_positions
 
 
 class ScratchpadCodeReviewHighlightGPT4(ScratchpadToolboxGPT):

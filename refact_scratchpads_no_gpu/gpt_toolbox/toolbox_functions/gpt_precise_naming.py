@@ -1,6 +1,7 @@
-from .gpt_toolbox_spad import ScratchpadToolboxGPT
 from typing import Dict, List
-from .utils import msg
+
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_utils import msg
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_toolbox_spad import ScratchpadToolboxGPT
 
 
 class GptPreciseNaming(ScratchpadToolboxGPT):
@@ -26,7 +27,7 @@ class GptPreciseNaming(ScratchpadToolboxGPT):
                 "Provide me a context."
             ),
             msg('user',
-            """
+                """
 from typing import *
 
 
@@ -50,11 +51,11 @@ def main():
 if __name__ == "__main__":
     main()
 """),
-        msg('assistant',
-            "Please provide me the code you need to fix naming in."
-            ),
-        msg('user',
-            """
+            msg('assistant',
+                "Please provide me the code you need to fix naming in."
+                ),
+            msg('user',
+                """
 def f(x, c):
     r = 0
     xx = 1
@@ -63,7 +64,7 @@ def f(x, c):
         xx *= x
     return r
 """),
-        msg('assistant', """```
+            msg('assistant', """```
 def polynom(x, coefficients):
     value = 0
     x_power = 1
@@ -79,4 +80,3 @@ def polynom(x, coefficients):
                 ),
             msg('user', self.selection)
         ]
-

@@ -1,7 +1,9 @@
-from .gpt_toolbox_spad import ScratchpadToolboxGPT
-from typing import Dict, List
 import json
-from .utils import msg, find_substring_positions
+
+from typing import Dict, List
+
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_utils import msg, find_substring_positions
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_toolbox_spad import ScratchpadToolboxGPT
 
 
 class GptBugsHighlight(ScratchpadToolboxGPT):
