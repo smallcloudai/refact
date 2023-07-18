@@ -33,10 +33,10 @@ class ScratchpadHuggingfaceBase:
             stop_tokens = [stop_tokens]
         for s in stop_tokens:
             if s == "\n":
-                self.stop_lf = True
+                self._stop_lf = True
                 continue
             if s == "\n\n":
-                self.stop_lf_lf = True
+                self._stop_lf_lf = True
                 continue
             t = self._tokenizer.encode(s)
             if len(t) == 1:
@@ -48,7 +48,7 @@ class ScratchpadHuggingfaceBase:
         self._completion = []
         self._eos_token = tokenizer.eos_token_id
         self._special_tokens = {
-            *map(self._encode_one_token, tokenizer.special_tokens_map.values()),
+            *map(self._encode_one_token, filter(lambda x: isinstance(x, str), tokenizer.special_tokens_map.values())),
             *tokenizer.additional_special_tokens_ids
         }
 
@@ -69,9 +69,9 @@ class ScratchpadHuggingfaceBase:
             self.finish_reason = "stoptoken"
 
         t_str = self._tokenizer.decode([t])
-        if self.stop_lf and t_str.startswith("\n"):
+        if self._stop_lf and t_str.startswith("\n"):
             self.finish_reason = "stop-lf"
-        if self.stop_lf_lf and t_str.startswith("\n\n"):
+        if self._stop_lf_lf and t_str.startswith("\n\n"):
             self.finish_reason = "stop-lflf"
 
         self._tokens_produced += 1
@@ -87,6 +87,10 @@ class ScratchpadHuggingfaceBase:
         if len(tokens) != 1:
             raise ValueError(f"Must be single token, have {tokens} for '{text}'")
         return tokens[0]
+
+    @property
+    def generated_tokens_n(self):
+        return self._tokens_produced
 
     def prompt(self, T: int):
         raise NotImplementedError()
