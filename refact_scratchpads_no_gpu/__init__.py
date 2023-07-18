@@ -1,15 +1,6 @@
-# This also works as a startup assert everything imports well
-
-# from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_toolbox import ScratchpadMakeCodeShorterGPT4
-# from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_toolbox import ScratchpadFixBugGPT4
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_toolbox import ScratchpadExplainCodeBlockGPT4
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_toolbox import ScratchpadCompletionGPT4
-from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_toolbox import ScratchpadDetectBugsHighlightGPT4
-from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_toolbox import ScratchpadDetectVulnerabilitiesHighlightGPT4
-from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_toolbox import ScratchpadCodeReviewHighlightGPT4
 
-# from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadMakeCodeShorter
-# from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadFixBug
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadExplainCodeBlock
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadCompletion
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadAddConsoleLogs
@@ -17,4 +8,3 @@ from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadPrecis
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadCommentEachLine
 
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_spad import GptChat
-

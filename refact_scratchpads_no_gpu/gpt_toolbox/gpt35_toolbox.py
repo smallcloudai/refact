@@ -40,46 +40,6 @@ class ScratchpadCompletion(ScratchpadToolboxGPT):
         ]
 
 
-class ScratchpadDetectBugsHighlight(ScratchpadToolboxGPT):
-    def __init__(self, model_n="gpt3.5-turbo-0301", supports_stream=False, **kwargs):
-        super().__init__(
-            model_n=model_n,
-            supports_stream=supports_stream,
-            **kwargs
-        )
-
-    def _messages(self) -> List[Dict[str, str]]:
-        return [
-            *code_review(),
-            msg('user', self._txt)
-        ]
-
-    def _postprocess(self, completion: str) -> str:
-        print(colored(f'Completion:\n{completion}', 'yellow'))
-        suggestions = []
-        for line in completion.splitlines():
-            if not line.strip():
-                continue
-            try:
-                suggestions.append(json.loads(line))
-            except Exception as e:
-                print(e)
-        for s in suggestions:
-            code = s['code']
-            indexes = find_substring_positions(code, self._txt)
-            if not indexes:
-                print('Substring not found')
-                continue
-            s_start, s_end = indexes
-            self._txt = \
-                self._txt[:s_start] + \
-                f'\n<BUG>' \
-                f'\nDESC: {s["description"]}\n' \
-                f'{self._txt[s_start:s_end]}' \
-                f'\n</BUG>' + \
-                self._txt[s_end:]
-        return self._txt
-
 
 
 class ScratchpadExplainCodeBlock(ScratchpadToolboxGPT):
