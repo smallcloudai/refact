@@ -147,6 +147,7 @@ function render_models_assigned(models) {
         gpus_input.setAttribute('step', 1);
         gpus_input.setAttribute('type', 'number');
         gpus_input.value = models[index].gpus_shard;
+        gpus_input.disabled = true;
         gpus_input.addEventListener('change', function() {
             models_data.model_assign[index].gpus_shard = this.value;
             save_model_assigned();
