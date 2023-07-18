@@ -18,7 +18,7 @@ from refact_scratchpads_no_gpu.stream_results import UploadProxy
 
 from self_hosting_machinery import env
 
-from typing import Dict, Any
+from typing import Dict, Any, Union, Optional
 
 log = logging.getLogger("MODEL").info
 
@@ -82,6 +82,34 @@ class SMCStream(TextStreamer):
             )
 
 
+class CustomAutoGPTQForCausalLM(AutoGPTQForCausalLM):
+
+    @classmethod
+    def from_quantized(
+            cls,
+            model_name_or_path: str,
+            device: Optional[Union[str, int]] = None,
+            model_basename: Optional[str] = None,
+            use_safetensors: bool = True,
+            trust_remote_code: bool = True,
+            use_triton=False,
+            quantize_config=None,
+            **kwargs):
+        from auto_gptq.modeling.auto import check_and_get_model_type
+        from auto_gptq.modeling.auto import GPTQ_CAUSAL_LM_MODEL_MAP
+        model_type = check_and_get_model_type(model_name_or_path, trust_remote_code)
+        quant_func = GPTQ_CAUSAL_LM_MODEL_MAP[model_type].from_quantized
+        return quant_func(
+            model_name_or_path=model_name_or_path,
+            device=device,
+            model_basename=model_basename,
+            use_safetensors=use_safetensors,
+            trust_remote_code=trust_remote_code,
+            use_triton=use_triton,
+            quantize_config=quantize_config,
+            **kwargs)
+
+
 class InferenceGPTQ(InferenceBase):
 
     def __init__(self,
@@ -96,7 +124,7 @@ class InferenceGPTQ(InferenceBase):
 
         self._tokenizer = AutoTokenizer.from_pretrained(
             self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, trust_remote_code=True)
-        self._model = AutoGPTQForCausalLM.from_quantized(
+        self._model = CustomAutoGPTQForCausalLM.from_quantized(
             self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, device=self._device,
             use_safetensors=True, trust_remote_code=True, use_triton=False, quantize_config=None,
             **self._model_dict["model_class_kwargs"])
