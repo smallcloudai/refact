@@ -181,4 +181,4 @@ class ScratchpadHuggingfaceStarChat(ScratchpadChatBase):
 
     @property
     def _system_message(self):
-        raise NotImplementedError()
+        return "\n"
