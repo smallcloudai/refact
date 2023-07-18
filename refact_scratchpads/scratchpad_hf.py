@@ -108,26 +108,20 @@ class ScratchpadChatBase(ScratchpadBase):
     def __init__(self, tokenizer, messages: List[Dict[str, str]], **kwargs):
         super().__init__(EncodingHuggingface(tokenizer), **kwargs)
 
-        # self._system_message = "\n"
         self._messages = messages
-
         self._completion = []
         self._tokens_produced = 0
 
-        self._endoftext = self._encode_one_token("<|endoftext|>")
-        self._chat_end = self._encode_one_token("<|end|>")
-        self._chat_system = self._encode_one_token("<|system|>")
-        self._chat_assistant = self._encode_one_token("<|assistant|>")
-        self._chat_user = self._encode_one_token("<|user|>")
-
-    @property
-    def _system_message(self):
-        raise NotImplementedError()
+        self._special_tokens = {
+            *map(self._encode_one_token, tokenizer.special_tokens_map.values()),
+            *tokenizer.additional_special_tokens_ids
+        }
+        self._eos_token = tokenizer.eos_token_id
 
     def _encode_one_token(self, text: str) -> int:
         tokens = self.enc.encode(text)
         if len(tokens) != 1:
-            raise ValueError(f"Too many tokens {tokens} for '{text}'")
+            raise ValueError(f"Must be single token, have {tokens} for '{text}'")
         return tokens[0]
 
     def before_token_selection(self, m, **unused) -> Dict[str, Any]:
@@ -136,9 +130,9 @@ class ScratchpadChatBase(ScratchpadBase):
     def after_token_selection(self, m, chosen_token: th.Tensor, **unused) -> Dict[str, Any]:
         t = chosen_token.item()
 
-        if chosen_token in [self._endoftext]:
+        if chosen_token in [self._eos_token]:
             self.finish_reason = "eot"
-        elif chosen_token in [self._chat_end, self._chat_system, self._chat_user, self._chat_assistant]:
+        elif chosen_token in self._special_tokens:
             self.finish_reason = "chat-stop-seq"
 
         if not self.finish_reason:
@@ -152,21 +146,12 @@ class ScratchpadChatBase(ScratchpadBase):
 
         return dict()
 
+    def _prompt(self) -> str:
+        raise NotImplementedError()
+
     def prompt(self, T: int):
         self._completion = []
-
-        def _wrap_system_token(t: int) -> str:
-            return self.enc.decode([t]) + "\n"
-
-        text = _wrap_system_token(self._chat_system) + self._system_message + _wrap_system_token(self._chat_end)
-        for message in self._messages:
-            if message["role"] == "user":
-                text += _wrap_system_token(self._chat_user)
-            else:
-                text += _wrap_system_token(self._chat_assistant)
-            text += message["content"] + _wrap_system_token(self._chat_end)
-        text += _wrap_system_token(self._chat_assistant)
-        tokens = self.enc.encode(text)
+        tokens = self.enc.encode(self._prompt())
         self.debuglog(f"{len(tokens)} tokens")
         return tokens
 
@@ -179,6 +164,50 @@ class ScratchpadChatBase(ScratchpadBase):
 
 class ScratchpadHuggingfaceStarChat(ScratchpadChatBase):
 
-    @property
-    def _system_message(self):
-        return "\n"
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._chat_end = self._encode_one_token("<|end|>")
+        self._chat_system = self._encode_one_token("<|system|>")
+        self._chat_assistant = self._encode_one_token("<|assistant|>")
+        self._chat_user = self._encode_one_token("<|user|>")
+
+    def _prompt(self) -> str:
+        def _wrap_system_token(t: int) -> str:
+            return self.enc.decode([t]) + "\n"
+
+        text = _wrap_system_token(self._chat_system) + "\n" + _wrap_system_token(self._chat_end)
+        for message in self._messages:
+            if message["role"] == "user":
+                text += _wrap_system_token(self._chat_user)
+            else:
+                text += _wrap_system_token(self._chat_assistant)
+            text += message["content"] + _wrap_system_token(self._chat_end)
+        text += _wrap_system_token(self._chat_assistant)
+        return text
+
+
+class ScratchpadHuggingfaceWizard(ScratchpadChatBase):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._bos_token = self._encode_one_token("<s>")
+
+    def _encode_one_token(self, text: str) -> int:
+        tokens = self.enc.encode(text)[1:]
+        if len(tokens) != 1:
+            raise ValueError(f"Must be single token, have {tokens} for '{text}'")
+        return tokens[0]
+
+    def _prompt(self) -> str:
+        text = "A chat between a curious user and an artificial intelligence assistant. " \
+               "The assistant gives helpful, detailed, and polite answers to the user's questions."
+        for message in self._messages:
+            if message["role"] == "user":
+                text += "USER: "
+            else:
+                text += "ASSISTANT: "
+            text += message["content"] + "\n"
+        text += "ASSISTANT: "
+        return text
