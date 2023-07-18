@@ -11,14 +11,15 @@ class ModelFunction:
     metering: int
     label: str
     type: str
-    supports_highlight: bool
-    supports_selection: bool
     selected_lines_min: int
     selected_lines_max: int
     third_party: Union[bool, List[bool]]
     supports_languages: str
     mini_html: str
     model: List[str]
+    supports_highlight: bool = False
+    supports_selection: bool = False
+    supports_no_selection: bool = False
     model_fixed_intent: str = ""
     function_selection: str = ""
     function_hl_click: str = ""
