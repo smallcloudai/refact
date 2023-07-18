@@ -10,6 +10,7 @@ from transformers import StoppingCriteria
 from transformers import StoppingCriteriaList
 from transformers.generation.streamers import TextStreamer
 
+from refact_scratchpads import ScratchpadBase
 from refact_scratchpads import ScratchpadCompletion
 from self_hosting_machinery.inference import InferenceBase
 from self_hosting_machinery.inference import modload
@@ -26,13 +27,14 @@ DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
 class CancellationStoppingCriteria(StoppingCriteria):
-    def __init__(self, request_id, upload_proxy: UploadProxy, scratchpad):
+
+    def __init__(self, scratchpad: ScratchpadBase, request_id: str, upload_proxy: UploadProxy):
         StoppingCriteria.__init__(self)
         self.scratchpad = scratchpad
         self.upload_proxy = upload_proxy
         self.request_id = request_id
 
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
         if self.request_id in self.upload_proxy.check_cancelled():
             self.scratchpad.finish_reason = "cancelled"
             return True
@@ -40,14 +42,29 @@ class CancellationStoppingCriteria(StoppingCriteria):
 
 
 class StopTokenStoppingCriteria(StoppingCriteria):
-    def __init__(self, scratchpad):
+
+    def __init__(self, scratchpad: ScratchpadBase):
         StoppingCriteria.__init__(self)
         self.scratchpad = scratchpad
 
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
         last_tokens = input_ids[0][-1]
         self.scratchpad.after_token_selection(None, last_tokens)
         return bool(self.scratchpad.finish_reason)
+
+
+class MaxNewTokensStoppingCriteria(StoppingCriteria):
+
+    def __init__(self, scratchpad: ScratchpadBase, start_length: int, max_new_tokens: int):
+        self.scratchpad = scratchpad
+        self.start_length = start_length
+        self.max_new_tokens = max_new_tokens
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        if input_ids.shape[-1] - self.start_length >= self.max_new_tokens:
+            self.scratchpad.finish_reason = "maxlen"
+            return True
+        return False
 
 
 class SMCStream(TextStreamer):
@@ -135,8 +152,10 @@ class InferenceGPTQ(InferenceBase):
                 return
             with torch.inference_mode():
                 stopping_criteria = StoppingCriteriaList([
-                    CancellationStoppingCriteria(request_id, upload_proxy, scratchpad),
-                    StopTokenStoppingCriteria(scratchpad)])
+                    CancellationStoppingCriteria(scratchpad, request_id, upload_proxy),
+                    StopTokenStoppingCriteria(scratchpad),
+                    MaxNewTokensStoppingCriteria(scratchpad, len(tokens_prompt), request["max_tokens"]),
+                ])
                 streamer = SMCStream(self._tokenizer, request_id, upload_proxy, upload_proxy_args, scratchpad)
                 generation_kwargs = dict(input_ids=tokens_prompt.view(1, *tokens_prompt.shape),
                                          streamer=streamer,
