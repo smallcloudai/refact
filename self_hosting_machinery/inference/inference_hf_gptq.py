@@ -50,7 +50,6 @@ class StopTokenStoppingCriteria(StoppingCriteria):
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
         last_tokens = input_ids[0][-1]
         self.scratchpad.after_token_selection(None, last_tokens)
-        assert self.scratchpad.finish_reason
         return bool(self.scratchpad.finish_reason)
 
 
