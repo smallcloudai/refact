@@ -3,8 +3,8 @@ from typing import Optional, Tuple
 import torch
 from torch import nn
 
-from refact_models.attention import MultiheadSelfAttention
-from refact_models.block import Block, BlockCheckpointing
+from refact_models.codify_modules.attention import MultiheadSelfAttention
+from refact_models.codify_modules.block import Block, BlockCheckpointing
 from refact_models.checkpoint_loader import load_config, load_checkpoint
 from refact_models.generation import generate
 from refact_models.lora import LoraMixin
