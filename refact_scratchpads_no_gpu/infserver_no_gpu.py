@@ -30,7 +30,9 @@ gpt_functions = {
     "fix-bug-gpt3.5":            "refact_scratchpads_no_gpu.gpt_toolbox.gpt_fix_bug:GptFixBug",
     "fix-bug-gpt4":              "refact_scratchpads_no_gpu.gpt_toolbox.gpt_fix_bug:GptFixBugGPT4",
 
-    "explain-code-block-gpt4":   "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlockGPT4",
+    "explain-code-block":        "refact_scratchpads_no_gpu.gpt_toolbox.gpt_explain_code_block:GptExplainCodeBlock",
+    "explain-code-block-gpt3.5": "refact_scratchpads_no_gpu.gpt_toolbox.gpt_explain_code_block:GptExplainCodeBlock",
+    "explain-code-block-gpt4":   "refact_scratchpads_no_gpu.gpt_toolbox.gpt_explain_code_block:GptExplainCodeBlockGPT4",
 
     "completion-gpt4":           "refact_scratchpads_no_gpu:ScratchpadCompletionGPT4",
 
@@ -41,8 +43,6 @@ gpt_functions = {
 }
 
 gpt35_functions = {
-    "explain-code-block":        "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlock",
-    "explain-code-block-gpt3.5": "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlock",
 
     # 3.5 only
     "add-console-logs":          "refact_scratchpads_no_gpu:ScratchpadAddConsoleLogs",
