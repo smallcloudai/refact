@@ -3,7 +3,7 @@ import torch as th
 
 from refact_encoding import RefactEncoding
 from refact_scratchpads.scratchpad import ScratchpadBase
-from refact_scratchpads import bigcode_prompts, utils
+from refact_scratchpads import bigcode_prompts, scratchpad_utils
 
 from typing import List, Any, Dict, Set, Optional, Union, Tuple
 
@@ -86,7 +86,7 @@ class ScratchpadBigCode(ScratchpadBase):
             termcolor.colored(join_back[self.cursor1:], "red"),
         )
         if only_full_lines:
-            self.cursor0, self.cursor1, self.selection = utils.full_line_selection(self.cursor0, self.cursor1, join_back)
+            self.cursor0, self.cursor1, self.selection = scratchpad_utils.full_line_selection(self.cursor0, self.cursor1, join_back)
         else:
             self.selection = ""
         self.prefix = join_back[:self.cursor0]
@@ -95,7 +95,7 @@ class ScratchpadBigCode(ScratchpadBase):
     def prompt_infill(self, T: int):
         self._split_source_prefix_suffix_selection(only_full_lines=False)
         # print(f'BEFORE:\nPREFIX:\n{self.prefix}\nSUFFIX:\n{self.suffix}\n')
-        prefix_cut, suffix_cut = utils.trim_context_infill(self.prefix, self.suffix, self.enc, T - self.max_tokens)
+        prefix_cut, suffix_cut = scratchpad_utils.trim_context_infill(self.prefix, self.suffix, self.enc, T - self.max_tokens)
         # print(f'\nAFTER:\nPREFIX:\n{prefix_cut}\nSUFFIX:\n{suffix_cut}')
         prefix_cut_tokens = self.enc.encode(prefix_cut)
         suffix_cut_tokens = self.enc.encode(suffix_cut)
