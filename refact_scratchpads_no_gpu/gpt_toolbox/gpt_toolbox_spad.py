@@ -12,8 +12,8 @@ import tiktoken
 from refact_scratchpads import scratchpad_utils
 from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
-from .gpt_chat_spad import gpt_prices, calculate_chat_tokens
-from .utils import trim_context_tok, code_block_postprocess
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_spad import gpt_prices, calculate_chat_tokens
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_utils import trim_context_tok, code_block_postprocess
 
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")

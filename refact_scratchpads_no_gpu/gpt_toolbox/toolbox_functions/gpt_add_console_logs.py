@@ -1,6 +1,7 @@
-from .gpt_toolbox_spad import ScratchpadToolboxGPT
 from typing import Dict, List
-from .utils import msg
+
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_utils import msg
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_toolbox_spad import ScratchpadToolboxGPT
 
 
 class GptAddConsoleLogs(ScratchpadToolboxGPT):

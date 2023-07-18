@@ -18,39 +18,39 @@ DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
 gpt_functions = {
-    "free-chat":                 "refact_scratchpads_no_gpu:GptChat",
-    "free-chat-gpt3.5":          "refact_scratchpads_no_gpu:GptChat",
-    "free-chat-gpt4":            "refact_scratchpads_no_gpu:GptChat",
+    "free-chat":                 "refact_scratchpads_no_gpu.gpt_toolbox:GptChat",
+    "free-chat-gpt3.5":          "refact_scratchpads_no_gpu.gpt_toolbox:GptChat",
+    "free-chat-gpt4":            "refact_scratchpads_no_gpu.gpt_toolbox:GptChat",
 
-    "make-code-shorter":         "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorter",
-    "make-code-shorter-gpt3.5":  "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorter",
-    "make-code-shorter-gpt4":    "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorterGPT4",
+    "make-code-shorter":         "refact_scratchpads_no_gpu.gpt_toolbox:GptMakeCodeShorter",
+    "make-code-shorter-gpt3.5":  "refact_scratchpads_no_gpu.gpt_toolbox:GptMakeCodeShorter",
+    "make-code-shorter-gpt4":    "refact_scratchpads_no_gpu.gpt_toolbox:GptMakeCodeShorterGPT4",
 
-    "fix-bug":                   "refact_scratchpads_no_gpu.gpt_toolbox.gpt_fix_bug:GptFixBug",
-    "fix-bug-gpt3.5":            "refact_scratchpads_no_gpu.gpt_toolbox.gpt_fix_bug:GptFixBug",
-    "fix-bug-gpt4":              "refact_scratchpads_no_gpu.gpt_toolbox.gpt_fix_bug:GptFixBugGPT4",
+    "fix-bug":                   "refact_scratchpads_no_gpu.gpt_toolbox:GptFixBug",
+    "fix-bug-gpt3.5":            "refact_scratchpads_no_gpu.gpt_toolbox:GptFixBug",
+    "fix-bug-gpt4":              "refact_scratchpads_no_gpu.gpt_toolbox:GptFixBugGPT4",
 
-    "explain-code-block":        "refact_scratchpads_no_gpu.gpt_toolbox.gpt_explain_code_block:GptExplainCodeBlock",
-    "explain-code-block-gpt3.5": "refact_scratchpads_no_gpu.gpt_toolbox.gpt_explain_code_block:GptExplainCodeBlock",
-    "explain-code-block-gpt4":   "refact_scratchpads_no_gpu.gpt_toolbox.gpt_explain_code_block:GptExplainCodeBlockGPT4",
+    "explain-code-block":        "refact_scratchpads_no_gpu.gpt_toolbox:GptExplainCodeBlock",
+    "explain-code-block-gpt3.5": "refact_scratchpads_no_gpu.gpt_toolbox:GptExplainCodeBlock",
+    "explain-code-block-gpt4":   "refact_scratchpads_no_gpu.gpt_toolbox:GptExplainCodeBlockGPT4",
 
-    "comment-each-line":         "refact_scratchpads_no_gpu.gpt_toolbox.gpt_comment_each_line:GptCommentEachLine",
-    "comment-each-line-gpt3.5":  "refact_scratchpads_no_gpu.gpt_toolbox.gpt_comment_each_line:GptCommentEachLine",
+    "comment-each-line":         "refact_scratchpads_no_gpu.gpt_toolbox:GptCommentEachLine",
+    "comment-each-line-gpt3.5":  "refact_scratchpads_no_gpu.gpt_toolbox:GptCommentEachLine",
 
-    "precise-naming":            "refact_scratchpads_no_gpu.gpt_toolbox.gpt_precise_naming:GptPreciseNaming",
-    "precise-naming-gpt3.5":     "refact_scratchpads_no_gpu.gpt_toolbox.gpt_precise_naming:GptPreciseNaming",
+    "precise-naming":            "refact_scratchpads_no_gpu.gpt_toolbox:GptPreciseNaming",
+    "precise-naming-gpt3.5":     "refact_scratchpads_no_gpu.gpt_toolbox:GptPreciseNaming",
 
-    "add-console-logs":          "refact_scratchpads_no_gpu.gpt_toolbox.gpt_add_console_logs:GptAddConsoleLogs",
-    "add-console-logs-gpt3.5":   "refact_scratchpads_no_gpu.gpt_toolbox.gpt_add_console_logs:GptAddConsoleLogs",
+    "add-console-logs":          "refact_scratchpads_no_gpu.gpt_toolbox:GptAddConsoleLogs",
+    "add-console-logs-gpt3.5":   "refact_scratchpads_no_gpu.gpt_toolbox:GptAddConsoleLogs",
 
-    "completion-gpt3.5":         "refact_scratchpads_no_gpu.gpt_toolbox.experimental_gpt_completion:GptCompletion",
-    "completion-gpt4":           "refact_scratchpads_no_gpu.gpt_toolbox.experimental_gpt_completion:GptCompletionGPT4",
+    "completion-gpt3.5":         "refact_scratchpads_no_gpu.gpt_toolbox:GptCompletion",
+    "completion-gpt4":           "refact_scratchpads_no_gpu.gpt_toolbox:GptCompletionGPT4",
 }
 
 experimental_functions = {
-    "bugs-highlight-gpt3.5":             "refact_scratchpads_no_gpu.experimental_gpt_bugs_highlight:GptBugsHighlight",
-    "bugs-highlight-gpt4":               "refact_scratchpads_no_gpu.experimental_gpt_bugs_highlight:GptBugsHighlightGPT4",
-    "vulnerabilities-highlight-gpt4":    "refact_scratchpads_no_gpu.experimental_gpt_vulnerabilities_highlight:GptDetectVulnerabilitiesHighlightGPT4",
+    "bugs-highlight-gpt3.5":             "refact_scratchpads_no_gpu.gpt_toolbox:GptBugsHighlight",
+    "bugs-highlight-gpt4":               "refact_scratchpads_no_gpu.gpt_toolbox:GptBugsHighlightGPT4",
+    "vulnerabilities-highlight-gpt4":    "refact_scratchpads_no_gpu.gpt_toolbox:GptDetectVulnerabilitiesHighlightGPT4",
 }
 
 supported_models = {
