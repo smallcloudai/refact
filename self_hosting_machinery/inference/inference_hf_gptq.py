@@ -94,7 +94,8 @@ class InferenceGPTQ(InferenceBase):
         assert torch.cuda.is_available(), "GPTQ model is only supported on CPU"
         self._device = "cuda:0"
 
-        self._tokenizer = AutoTokenizer.from_pretrained(self._model_dict["model_path"], trust_remote_code=True)
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, trust_remote_code=True)
         self._model = AutoGPTQForCausalLM.from_quantized(
             self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, device=self._device,
             use_safetensors=True, trust_remote_code=True, use_triton=False, quantize_config=None,
