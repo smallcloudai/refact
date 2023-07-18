@@ -1,19 +1,10 @@
 from typing import Dict, List
 
-import ujson as json
-from termcolor import colored
-
 from .gpt_toolbox_spad import ScratchpadToolboxGPT
 from .gpt35_prompts import msg, \
-    explain_code_block_ctxt, \
     add_console_logs, \
     precise_naming_ctxt, \
-    comment_each_line, \
     completion_ctxt
-
-from .gpt4_prompts import code_review
-
-from .utils import code_block_postprocess, find_substring_positions
 
 
 class ScratchpadCompletion(ScratchpadToolboxGPT):
@@ -64,10 +55,3 @@ class ScratchpadPreciseNaming(ScratchpadToolboxGPT):
             msg('user', self.selection)
         ]
 
-
-class ScratchpadCommentEachLine(ScratchpadToolboxGPT):
-    def _messages(self) -> List[Dict[str, str]]:
-        return [
-            *comment_each_line(),
-            msg('user', self.selection)
-        ]

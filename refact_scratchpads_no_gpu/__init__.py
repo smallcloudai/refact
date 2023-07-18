@@ -3,6 +3,5 @@ from refact_scratchpads_no_gpu.gpt_toolbox.gpt4_toolbox import ScratchpadComplet
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadCompletion
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadAddConsoleLogs
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadPreciseNaming
-from refact_scratchpads_no_gpu.gpt_toolbox.gpt35_toolbox import ScratchpadCommentEachLine
 
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_spad import GptChat

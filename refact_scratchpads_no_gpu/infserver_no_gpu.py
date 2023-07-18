@@ -34,8 +34,10 @@ gpt_functions = {
     "explain-code-block-gpt3.5": "refact_scratchpads_no_gpu.gpt_toolbox.gpt_explain_code_block:GptExplainCodeBlock",
     "explain-code-block-gpt4":   "refact_scratchpads_no_gpu.gpt_toolbox.gpt_explain_code_block:GptExplainCodeBlockGPT4",
 
-    "completion-gpt4":           "refact_scratchpads_no_gpu:ScratchpadCompletionGPT4",
+    "comment-each-line":         "refact_scratchpads_no_gpu.gpt_toolbox.gpt_comment_each_line:GptCommentEachLine",
+    "comment-each-line-gpt3.5":  "refact_scratchpads_no_gpu.gpt_toolbox.gpt_comment_each_line:GptCommentEachLine",
 
+    "completion-gpt4":           "refact_scratchpads_no_gpu:ScratchpadCompletionGPT4",
 
     # UNFINISHED:
     # "code-review":               "refact_scratchpads_no_gpu:ScratchpadCodeReviewHighlight",
@@ -49,8 +51,6 @@ gpt35_functions = {
     "add-console-logs-gpt3.5":   "refact_scratchpads_no_gpu:ScratchpadAddConsoleLogs",
     "precise-naming":            "refact_scratchpads_no_gpu:ScratchpadPreciseNaming",
     "precise-naming-gpt3.5":     "refact_scratchpads_no_gpu:ScratchpadPreciseNaming",
-    "comment-each-line":         "refact_scratchpads_no_gpu:ScratchpadCommentEachLine",
-    "comment-each-line-gpt3.5":  "refact_scratchpads_no_gpu:ScratchpadCommentEachLine",
 
     "completion-gpt3.5":         "refact_scratchpads_no_gpu:ScratchpadCompletion",
     # "db-chat-gpt3.5func":          "gpt_toolbox.gpt_chat_functions_spad:GptChat",
