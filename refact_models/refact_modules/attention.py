@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from refact_models.alibias import ALiBiBias
+from refact_models.codify_modules.alibias import ALiBiBias
 
 from typing import Optional, Tuple
 
