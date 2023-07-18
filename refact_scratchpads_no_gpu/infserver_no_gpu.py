@@ -17,9 +17,15 @@ from smallcloud import inference_server_async
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
-gpt4_functions = {
+gpt_functions = {
+    "make-code-shorter":         "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorter",
+    "make-code-shorter-gpt3.5":  "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorter",
     "make-code-shorter-gpt4":    "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorterGPT4",
-    "fix-bug-gpt4":              "refact_scratchpads_no_gpu:ScratchpadFixBugGPT4",
+
+    "fix-bug":                   "refact_scratchpads_no_gpu.gpt_toolbox.gpt_fix_bug:GptFixBug",
+    "fix-bug-gpt3.5":            "refact_scratchpads_no_gpu.gpt_toolbox.gpt_fix_bug:GptFixBug",
+    "fix-bug-gpt4":              "refact_scratchpads_no_gpu.gpt_toolbox.gpt_fix_bug:GptFixBugGPT4",
+
     "explain-code-block-gpt4":   "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlockGPT4",
 
     "completion-gpt4":           "refact_scratchpads_no_gpu:ScratchpadCompletionGPT4",
@@ -33,10 +39,6 @@ gpt4_functions = {
 }
 
 gpt35_functions = {
-    "make-code-shorter":         "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorter",
-    "make-code-shorter-gpt3.5":  "refact_scratchpads_no_gpu.gpt_toolbox.gpt_make_code_shorter:GptMakeCodeShorter",
-    "fix-bug":                   "refact_scratchpads_no_gpu:ScratchpadFixBug",
-    "fix-bug-gpt3.5":            "refact_scratchpads_no_gpu:ScratchpadFixBug",
     "explain-code-block":        "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlock",
     "explain-code-block-gpt3.5": "refact_scratchpads_no_gpu:ScratchpadExplainCodeBlock",
 
@@ -61,8 +63,7 @@ gpt35_functions = {
 supported_models = {
     "longthink/stable": {
         "functions": {
-            **gpt4_functions,
-            **gpt35_functions
+            **gpt_functions,
         }
     },
 }
