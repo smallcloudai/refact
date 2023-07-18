@@ -50,21 +50,8 @@ class StopTokenStoppingCriteria(StoppingCriteria):
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
         last_tokens = input_ids[0][-1]
         self.scratchpad.after_token_selection(None, last_tokens)
+        assert self.scratchpad.finish_reason
         return bool(self.scratchpad.finish_reason)
-
-
-class MaxNewTokensStoppingCriteria(StoppingCriteria):
-
-    def __init__(self, scratchpad: ScratchpadBase, start_length: int, max_new_tokens: int):
-        self.scratchpad = scratchpad
-        self.start_length = start_length
-        self.max_new_tokens = max_new_tokens
-
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        if input_ids.shape[-1] - self.start_length >= self.max_new_tokens:
-            self.scratchpad.finish_reason = "maxlen"
-            return True
-        return False
 
 
 class SMCStream(TextStreamer):
@@ -154,16 +141,17 @@ class InferenceGPTQ(InferenceBase):
                 stopping_criteria = StoppingCriteriaList([
                     CancellationStoppingCriteria(scratchpad, request_id, upload_proxy),
                     StopTokenStoppingCriteria(scratchpad),
-                    MaxNewTokensStoppingCriteria(scratchpad, len(tokens_prompt), request["max_tokens"]),
                 ])
                 streamer = SMCStream(self._tokenizer, request_id, upload_proxy, upload_proxy_args, scratchpad)
                 generation_kwargs = dict(input_ids=tokens_prompt.view(1, *tokens_prompt.shape),
                                          streamer=streamer,
+                                         max_new_tokens=request["max_tokens"],
                                          stopping_criteria=stopping_criteria,
                                          return_dict_in_generate=True,
                                          output_scores=True)
                 self._model.generate(**generation_kwargs)
-            assert scratchpad.finish_reason
+            if not scratchpad.finish_reason:
+                scratchpad.finish_reason = "maxlen"
             if DEBUG:
                 scratchpad.debuglog("finish_reason", scratchpad.finish_reason)
             upload_proxy_args["ts_batch_finished"] = time.time()
