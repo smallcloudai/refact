@@ -153,7 +153,7 @@ function render_models_assigned(models) {
         <input type="radio" class="gpu-switch btn-check" name="gpu-${index}" value="2" id="gpu-${index}-2" autocomplete="off">
         <label class="btn btn-outline-primary" for="gpu-${index}-2">2</label>
         <input type="radio" class="gpu-switch btn-check" name="gpu-${index}" value="4" id="gpu-${index}-3" autocomplete="off">
-        <label class="btn btn-outline-primary" for="gpu-${index}-3">3</label>
+        <label class="btn btn-outline-primary" for="gpu-${index}-3">4</label>
         </div>`;
         gpus_input.classList.add('model-gpus','form-control');
         gpus_input.setAttribute('model', index);
