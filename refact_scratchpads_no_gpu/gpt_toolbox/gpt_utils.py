@@ -3,7 +3,7 @@ from itertools import zip_longest
 from typing import *
 import tiktoken
 
-from refact_scratchpads import scratchpad_utils
+from refact_scratchpads_no_gpu.gpt_toolbox.scratchpad_utils import full_line_selection
 
 
 def msg(role: str, content: str) -> Dict[str, str]:
@@ -32,7 +32,7 @@ def find_substring_positions(substring, text) -> Optional[Tuple[int, int]]:
     if not match:
         return
 
-    c0, c1, _ = scratchpad_utils.full_line_selection(match.start(), match.end(), text)
+    c0, c1, _ = full_line_selection(match.start(), match.end(), text)
     return c0, c1
 
 

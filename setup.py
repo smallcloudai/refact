@@ -31,10 +31,9 @@ known_packages = {
         requires_packages=["refact_encoding"]),
     "refact_scratchpads": PyPackage(
         requires=["termcolor", "torch"],
-        requires_packages=["refact_encoding", "code_contrast"]),
+        requires_packages=["refact_encoding", "code_contrast", "refact_scratchpads_no_gpu"]),
     "refact_scratchpads_no_gpu": PyPackage(
-        requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson"],
-        requires_packages=["refact_scratchpads"]),
+        requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson"]),
     "refact_data_pipeline": PyPackage(
         requires=["numpy", "tokenizers", "torch", "requests", "cloudpickle",
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools',
