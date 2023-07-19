@@ -28,8 +28,8 @@ def log(*args):
         f.write(msg + "\n")
 
 
-compile_required = set()
 compile_successful = set()
+compile_unsuccessful = set()
 compiling_now = ""
 
 
@@ -51,17 +51,18 @@ class TrackedJob:
     def _start(self):
         if self.p is not None:
             return
-        global compile_required, compiling_now
+        global compiling_now
         alt_env = os.environ.copy()
-        CUDA_VISIBLE_DEVICES = ",".join(["%d" % x for x in self.cfg["gpus"]])
         cmdline = list(self.cfg["command_line"])
         if self.cfg.get("needs_compile", False):
-            compile_required.add(self.cmdline_str)
             if compiling_now:
+                return
+            if self.cmdline_str in compile_unsuccessful:
                 return
             if self.cmdline_str not in compile_successful:
                 compiling_now = self.cmdline_str
                 cmdline.append("--compile")
+        CUDA_VISIBLE_DEVICES = ",".join(["%d" % x for x in self.cfg["gpus"]])
         alt_env["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
         self.start_ts = time.time()
         self.p = subprocess.Popen(
@@ -126,8 +127,8 @@ class TrackedJob:
                     log("/finished compiling as recognized by watchdog")
                     compile_successful.add(self.cmdline_str)
                 else:
-                    log("/finished compiling -- failed, probably unrecoverable, but will try again in 5 minutes...")
-                    time.sleep(300)
+                    log("/finished compiling -- failed, probably unrecoverable, will not retry")
+                    compile_unsuccessful.add(self.cmdline_str)
             self.p.communicate()
             self.p = None
             self.sent_sigusr1_ts = 0
