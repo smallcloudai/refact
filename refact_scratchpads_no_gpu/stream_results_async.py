@@ -13,11 +13,10 @@ WAIT_TIMEOUT = 15
 
 
 def infserver_async_session() -> aiohttp.ClientSession:
-    if "SMALLCLOUD_API_KEY" not in os.environ:
-        raise ValueError("Please set SMALLCLOUD_API_KEY environment variable, make sure you have rights to host a model.")
+    bearer = os.environ.get("SMALLCLOUD_API_KEY", "EMPTY")
     s = aiohttp.ClientSession()
     s.headers.update({
-        "Authorization": "Bearer %s" % os.environ["SMALLCLOUD_API_KEY"],
+        "Authorization": "Bearer %s" % bearer,
     })
     return s
 

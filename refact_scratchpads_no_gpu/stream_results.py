@@ -20,11 +20,10 @@ urls_switch_ts = time.time()
 
 
 def infserver_session() -> requests.Session:
-    if "SMALLCLOUD_API_KEY" not in os.environ:
-        raise ValueError("Please set SMALLCLOUD_API_KEY environment variable, make sure you have rights to host a model.")
+    bearer = os.environ.get("SMALLCLOUD_API_KEY", "EMPTY")
     s = requests.Session()
     s.headers.update({
-        "Authorization": "Bearer %s" % os.environ["SMALLCLOUD_API_KEY"],
+        "Authorization": "Bearer %s" % bearer,
     })
     return s
 
