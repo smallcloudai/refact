@@ -5,17 +5,15 @@
 </div>
 
 This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding assistant.
+By running your own server, you can ensure that your code remains under your control. This server supports:
 
-By running your own server, you can ensure that your code remains under your control.
-
-This server supports:
  * Code completion
  * AI Toolbox
  * Chat
  * Fine tuning on your codebase
 
-You can run WizardCoder, StarChat and other open models. To fine tune on your code, use CONTRASTcode/3b/multi
-model that's high quality and fast. You'll need 12Gb of GPU memory to fine tune it.
+You can run Refact models, plus WizardCoder, StarChat and other open models. To fine tune on your code,
+use CONTRASTcode/3b/multi model that's high quality and fast. You'll need 12Gb of GPU memory to fine tune it.
 
 Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
 products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
