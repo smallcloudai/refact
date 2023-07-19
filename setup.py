@@ -15,7 +15,7 @@ class PyPackage:
     data: List[str] = field(default_factory=list)
 
 
-known_packages = {
+all_refact_packages = {
     "code_contrast": PyPackage(
         requires=["cdifflib", "termcolor", "numpy", "dataclasses"],
         requires_packages=["refact_encoding"]),
@@ -57,8 +57,8 @@ known_packages = {
 def find_required_packages(packages: Set[str]) -> Set[str]:
     updated_packages = copy(packages)
     for name in packages:
-        assert name in known_packages, f"Package {name} not found in repo"
-        updated_packages.update(known_packages[name].requires_packages)
+        assert name in all_refact_packages, f"Package {name} not found in repo"
+        updated_packages.update(all_refact_packages[name].requires_packages)
     if updated_packages != packages:
         return find_required_packages(updated_packages)
     return packages
@@ -66,15 +66,15 @@ def find_required_packages(packages: Set[str]) -> Set[str]:
 
 setup_package = os.environ.get("SETUP_PACKAGE", None)
 if setup_package is not None:
-    if setup_package not in known_packages:
+    if setup_package not in all_refact_packages:
         raise ValueError(f"Package {setup_package} not found in repo")
     setup_packages = {
         name: py_package
-        for name, py_package in known_packages.items()
+        for name, py_package in all_refact_packages.items()
         if name in find_required_packages({setup_package})
     }
 else:
-    setup_packages = known_packages
+    setup_packages = all_refact_packages
 
 
 setup(
