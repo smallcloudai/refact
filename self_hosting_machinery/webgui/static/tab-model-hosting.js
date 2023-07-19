@@ -132,7 +132,7 @@ function render_models_assigned(models) {
         model_name.textContent = index;
 
         const completion = document.createElement("td");
-        if (models_info[index].has_completion) {
+        if (models_info[index].hasOwnProperty('has_completion') && models_info[index].has_completion) {
             const completion_input = document.createElement("input");
             completion_input.setAttribute('type','radio');
             completion_input.setAttribute('name','completion-radio-button');
@@ -148,18 +148,20 @@ function render_models_assigned(models) {
             completion.appendChild(completion_input);
         }
         let checked_1 = '', checked_2 = '', checked_4 = '';
-        switch (models[index].gpus_shard) {
-            case 1:
-                checked_1 = 'checked';
-                break;
-            case 2:
-                checked_2 = 'checked';
-                break;
-            case 4:
-                checked_4 = 'checked';
-                break;        
-            default:
-                break;
+        if(models_info[index].hasOwnProperty('gpus_shard')) {
+            switch(models[index].gpus_shard) {
+                case 1:
+                    checked_1 = 'checked';
+                    break;
+                case 2:
+                    checked_2 = 'checked';
+                    break;
+                case 4:
+                    checked_4 = 'checked';
+                    break;        
+                default:
+                    break;
+            }
         }
         select_gpus.innerHTML = `<div class="btn-group btn-group-sm disabled-group" role="group" aria-label="basic radio toggle button group">
         <input type="radio" class="gpu-switch btn-check" tabindex="-1" name="gpu-${index}" value="1" ${checked_1} id="gpu-${index}-1" autocomplete="off">
@@ -214,10 +216,18 @@ function render_models(models) {
         const has_toolbox = document.createElement("td");
         const has_chat = document.createElement("td");
         model_name.textContent = models.models[index].name;
-        has_completion.innerHTML = models.models[index].has_completion ? '<i class="bi bi-check"></i>' : '';
-        has_finetune.innerHTML = models.models[index].has_finetune ? '<i class="bi bi-check"></i>' : '';
-        has_toolbox.innerHTML = models.models[index].has_toolbox ? '<i class="bi bi-check"></i>' : '';
-        has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
+        if(models.models[index].hasOwnProperty('has_completion')) {
+            has_completion.innerHTML = models.models[index].has_completion ? '<i class="bi bi-check"></i>' : '';
+        }
+        if(models.models[index].hasOwnProperty('has_finetune')) {
+            has_finetune.innerHTML = models.models[index].has_finetune ? '<i class="bi bi-check"></i>' : '';
+        }
+        if(models.models[index].hasOwnProperty('has_toolbox')) {
+            has_toolbox.innerHTML = models.models[index].has_toolbox ? '<i class="bi bi-check"></i>' : '';
+        }
+        if(models.models[index].hasOwnProperty('has_chat')) {
+            has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
+        }
         row.appendChild(model_name);
         row.appendChild(has_completion);
         row.appendChild(has_finetune);
