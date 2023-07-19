@@ -1,36 +1,88 @@
+import os
+
+from copy import copy
+from dataclasses import dataclass
+from dataclasses import field
 from setuptools import setup, find_packages
+
+from typing import List, Set
+
+
+@dataclass
+class PyPackage:
+    requires: List[str] = field(default_factory=list)
+    requires_packages: List[str] = field(default_factory=list)
+    data: List[str] = field(default_factory=list)
+
+
+known_packages = {
+    "code_contrast": PyPackage(
+        requires=["cdifflib", "termcolor", "numpy", "dataclasses"],
+        requires_packages=["refact_encoding"]),
+    "known_models_db": PyPackage(
+        requires=["dataclasses", "dataclasses_json"],
+        data=["refact_toolbox_db/htmls/*.html"]),
+    "refact_encoding": PyPackage(
+        requires=["tiktoken", "tokenizers", "sentencepiece", "termcolor"],
+        data=["*.json"]),
+    "refact_models": PyPackage(
+        requires=["torch", "blobfile", "cloudpickle", "huggingface_hub",
+                  "transformers", "dataclasses", "dataclasses_json"],
+        requires_packages=["refact_encoding"]),
+    "refact_scratchpads": PyPackage(
+        requires=["termcolor", "torch"],
+        requires_packages=["refact_encoding", "code_contrast"]),
+    "refact_scratchpads_no_gpu": PyPackage(
+        requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson"],
+        requires_packages=["refact_scratchpads"]),
+    "self_hosting_machinery": PyPackage(
+        requires=["aiohttp", "cryptography", "fastapi", "giturlparse", "pydantic",
+                  "starlette", "uvicorn", "uvloop", "python-multipart", "auto-gptq",
+                  "torch", "transformers", "termcolor"],
+        requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu", "refact_models",
+                          "known_models_db"],  # "refact_data_pipeline"
+        data=["webgui/static/*", "webgui/static/js/*", "watchdog/watchdog.d/*"]),
+}
+
+
+def find_required_packages(packages: Set[str]) -> Set[str]:
+    updated_packages = copy(packages)
+    for name in packages:
+        assert name in known_packages, f"Package {name} not found in repo"
+        updated_packages.update(known_packages[name].requires_packages)
+    if updated_packages != packages:
+        return find_required_packages(updated_packages)
+    return packages
+
+
+setup_package = os.environ.get("SETUP_PACKAGE", None)
+if setup_package is not None:
+    if setup_package not in known_packages:
+        raise ValueError(f"Package {setup_package} not found in repo")
+    setup_packages = {
+        name: py_package
+        for name, py_package in known_packages.items()
+        if name in find_required_packages({setup_package})
+    }
+else:
+    setup_packages = known_packages
 
 
 setup(
     name="refact-self-hosting",
     version="0.9.0",
-    py_modules=[
-        "code_contrast",
-        "refact_encoding",
-        "known_models_db",
-        "refact_scratchpads",
-        "refact_scratchpads_no_gpu",
-        "refact_models",
-        "self_hosting_machinery",
-    ],
+    py_modules=list(setup_packages.keys()),
     package_data={
-        "known_models_db": ["refact_toolbox_db/htmls/*.html"],
-        "refact_encoding": ["*.json"],
-        "self_hosting_machinery": ["webgui/static/*", "webgui/static/js/*", "watchdog/watchdog.d/*"],
+        name: py_package.data
+        for name, py_package in setup_packages.items()
+        if py_package.data
     },
-    packages=find_packages(),
-    install_requires=[
-        "numpy", "torch", "termcolor", "dataclasses_json", "dataclasses", "tiktoken",
-        # code_contrast
-        "cdifflib",
-        # refact_encoding
-        "tokenizers", "sentencepiece",
-        # refact_scratchpads_no_gpu
-        "openai", "ujson",
-        # refact_models
-        "blobfile", "cloudpickle", "huggingface_hub", "transformers",
-        # self_hosting_machinery
-        "aiohttp", "cryptography", "fastapi", "giturlparse", "pydantic",
-        "starlette", "uvicorn", "uvloop", "python-multipart", "auto-gptq",
-    ],
+    packages=find_packages(include=(
+        f"{name}*" for name in setup_packages
+    )),
+    install_requires=list({
+        required_package
+        for py_package in setup_packages.values()
+        for required_package in py_package.requires
+    }),
 )
