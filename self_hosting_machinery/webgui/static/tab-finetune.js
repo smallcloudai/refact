@@ -70,10 +70,10 @@ function render_runs() {
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.setAttribute("need_to_stop", is_working)
     start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
-
-    document.querySelector('.run-table').innerHTML = '';
+    if(data.finetune_runs.length > 0) {
+        document.querySelector('.run-table').innerHTML = '';
+    }
     if(data.finetune_runs.length === 0) {
-        document.querySelector('.table-types').style.display = 'none';
         return;
     }
     document.querySelector('.table-types').style.display = 'table';
