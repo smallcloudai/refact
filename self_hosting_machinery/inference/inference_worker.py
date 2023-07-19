@@ -19,9 +19,16 @@ log = logging.getLogger("MODEL").info
 
 
 def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
-    log("STATUS loading model")
     if model_name not in models_mini_db:
-        raise RuntimeError(f"unknown model \"{model_name}\", try upgrading this repo")
+        log(f"STATUS model \"{model_name}\" not found")
+        if compile:
+            return
+        log("will sleep for 5 minutes and then exit, to slow down service restarts")
+        wake_up_ts = time.time() + 300
+        while time.time() < wake_up_ts and not quit_flag:
+            time.sleep(1)
+        raise RuntimeError(f"unknown model \"{model_name}\"")
+    log("STATUS loading model")
 
     model_dict = models_mini_db[model_name]
     if "model_class" in model_dict:

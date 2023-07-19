@@ -104,7 +104,9 @@ def _models():
     return {"models": models_info}
 
 
-def models_to_watchdog_configs(inference_config):
+def models_to_watchdog_configs(inference_config=None):
+    if inference_config is None:
+        inference_config = get_model_assignment()
     gpus = _gpus()["gpus"]
     model_assignment = inference_config["model_assign"]
     # This must work or installation is bad
