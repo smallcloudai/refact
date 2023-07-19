@@ -142,20 +142,6 @@ class RefactEncoding:
             self.EOT = self._sentencepiece_tokenizer.eos_id()
             self.LF = 13
 
-        elif name in ['bigcode_santacoder']:
-            import tokenizers
-            filename = Path(__file__).resolve().parent / f"{name}.json"
-            self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
-            self.ESCAPE = 49152  # <|endoftext|>
-            self.DIAMOND = self.DUMMY = 49156  # <fim-pad>
-            self.EOT = 49152  # <|endoftext|>
-            self.INFILL = 49154  # <fim-middle>
-            self.PREFIX = 49153  # <fim-prefix>
-            self.SUFFIX = 49155  # <fim-suffix>
-            self.LF = self._encode_token("\n")
-            self.LFLF = self._encode_token("\n\n")
-            self.n_vocab = self._tokenizer.get_vocab_size()
-
         elif name in ['bigcode_largemodel']:
             import tokenizers
             filename = Path(__file__).resolve().parent / f"{name}.json"
@@ -184,39 +170,6 @@ class RefactEncoding:
             self.LF = self._encode_token("\n")
             self.LFLF = self._encode_token("\n\n")
             self.CURSOR = self._encode_token("CURSOR")
-            self.n_vocab = self._tokenizer.get_vocab_size()
-
-        elif name in ['bigcode_starchat']:
-            import tokenizers
-            filename = Path(__file__).resolve().parent / f"{name}.json"
-            self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
-            self.EOT = 0  # <|endoftext|>
-            self.PREFIX = 1  # <fim-prefix>
-            self.INFILL = 2  # <fim-middle>
-            self.SUFFIX = 3  # <fim-suffix>
-            self.DIAMOND = self.DUMMY = 4  # <fim-pad>
-            self.FILE = 5  # <filename>
-            # unique tokens
-            self.GH_STARS = 6  # "<gh_stars>"
-            self.ISSUE_START = 7  # <issue_start>
-            self.ISSUE_COMMENT = 8  # "<issue_comment>"
-            self.ISSUE_CLOSED = 9  # "<issue_closed>"
-            self.JUPYTER_START = 10  # "<jupyter_start>"
-            self.JUPYTER_TEXT = 11  # "<jupyter_text>"
-            self.JUPYTER_CODE = 12  # "<jupyter_code>"
-            self.JUPYTER_OUTPUT = 13  # "<jupyter_output>"
-            self.ESCAPE = self.EMPTY_OUTPUT = 14  # "<empty_output>"
-            self.COMMIT_BEFORE = 15  # "<commit_before>"
-            self.MSG = 16  # "<commit_msg>"
-            self.COMMIT_AFTER = 17  # "<commit_after>"
-            self.REPONAME = 18  # "<reponame>"
-            self.LF = self._encode_token("\n")
-            self.LFLF = self._encode_token("\n\n")
-            self.CURSOR = self._encode_token("CURSOR")
-            self.SYSTEM = 49152  # <|system|>
-            self.USER = 49153  # <|user|>
-            self.ASSISTANT = 49154  # <|assistant|>
-            self.END = 49155  # <|end|>
             self.n_vocab = self._tokenizer.get_vocab_size()
 
         else:
