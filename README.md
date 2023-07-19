@@ -21,6 +21,21 @@ IDEs and [VS Code](https://marketplace.visualstudio.com/items?itemName=smallclou
 [Join us on Discord](https://discord.gg/Jpa9DGeCfH) and say hi!
 
 
+## Setting Up Plugins
+
+Go to plugin settings and set up a custom inference URL `http://127.0.0.1:8008`
+
+<details><summary>JetBrains</summary>
+Settings > Tools > Refact.ai > Advanced > Inference URL
+</details>
+<details><summary>VSCode</summary>
+Extensions > Refact.ai Assistant > Settings > Infurl
+</details>
+
+Now it should work, just try to write some code! If it doesn't, please report your experience to
+[GitHub issues](https://github.com/smallcloudai/refact-self-hosting/issues).
+
+
 ## Demo
 
 <table align="center">
@@ -96,36 +111,26 @@ git clone https://github.com/smallcloudai/refact
 pip install -e refact/
 ```
 
-Now you can run server with following command:
-```commandline
-python -m refact_self_hosting.server --workdir /workdir --model <model name>
-```
-
-
-## Setting Up Plugins
-
-Go to plugin settings and set up a custom inference url:
-```commandline
-https://localhost:8008
-```
-<details><summary>JetBrains</summary>
-Settings > Tools > Refact.ai > Advanced > Inference URL
-</details>
-<details><summary>VSCode</summary>
-Extensions > Refact.ai Assistant > Settings > Infurl
-</details>
-
-
-Now it should work, just try to write some code! If it doesn't, please report your experience to
-[GitHub issues](https://github.com/smallcloudai/refact-self-hosting/issues).
-
-
-and set up this inference url in plugin:
+To run the whole server, use:
 
 ```commandline
-https://inference.smallcloud.local:8008
+python -m self_hosting_machinery.watchdog.docker_watchdog
 ```
-</details>
+
+For debugging, it's better to run HTTP server and inference processes separately, for example in
+separate terminals.
+
+```commandline
+export SMALLCLOUD_API_KEY=dummy_key
+python -m self_hosting_machinery.webgui.webgui
+DEBUG=1 python -m self_hosting_machinery.inference.inference_worker --model wizardlm/7b
+DEBUG=1 python -m refact_scratchpads_no_gpu.infserver_no_gpu longthink/stable --openai_key sk-XXXYYY
+```
+
+The `SMALLCLOUD_API_KEY` environment variable is used for authentication between the HTTP server and the
+inference worker. Any random key will work, as long as it's the same for all processes.
+
+
 
 
 ## Fine Tuning
