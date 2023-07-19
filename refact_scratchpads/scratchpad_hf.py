@@ -1,7 +1,7 @@
 import torch as th
 import time
 
-from refact_scratchpads import scratchpad_utils
+from refact_scratchpads.scratchpad_utils import trim_context_infill
 
 from typing import List, Any, Dict, Optional, Union, Callable, Set
 
@@ -156,7 +156,7 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
         self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
         self._completion.clear()
 
-        prefix_cut, suffix_cut = scratchpad_utils.trim_context_infill(
+        prefix_cut, suffix_cut = trim_context_infill(
             self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens)
         prompt: List[int] = [
             self._fim_prefix,

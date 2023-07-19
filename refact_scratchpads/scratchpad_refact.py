@@ -3,7 +3,7 @@ import torch as th
 
 from refact_encoding import RefactEncoding
 from refact_scratchpads.scratchpad import ScratchpadBase
-from refact_scratchpads import scratchpad_utils
+from refact_scratchpads.scratchpad_utils import trim_context_infill
 
 from typing import List, Any, Dict, Optional
 
@@ -71,7 +71,7 @@ class ScratchpadRefact(ScratchpadBase):
         self._prefix = self._code[:self._cursor]
         self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
 
-        prefix_cut, suffix_cut = scratchpad_utils.trim_context_infill(self._prefix, self._suffix, self.enc, T - self.max_tokens)
+        prefix_cut, suffix_cut = trim_context_infill(self._prefix, self._suffix, self.enc, T - self.max_tokens)
         prefix_cut_tokens = self.enc.encode(prefix_cut)
         suffix_cut_tokens = self.enc.encode(suffix_cut)
         prompt: List[int] = [

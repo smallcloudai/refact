@@ -9,7 +9,7 @@ from typing import List, Union, Callable, Dict, Iterator, Tuple
 import openai
 import tiktoken
 
-from refact_scratchpads import scratchpad_utils
+from refact_scratchpads_no_gpu.gpt_toolbox.scratchpad_utils import full_line_selection
 from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_spad import gpt_prices, calculate_chat_tokens
@@ -79,7 +79,7 @@ class ScratchpadToolboxGPT(ascratch.AsyncScratchpad):
 
         self._txt: str = self.sources.get(self.cursor_file)
 
-        self.cursor0, self.cursor1, self.selection = scratchpad_utils.full_line_selection(
+        self.cursor0, self.cursor1, self.selection = full_line_selection(
             self.cursor0, self.cursor1, self._txt
         )
         self.enc = engine_to_encoding(self.model_name)
