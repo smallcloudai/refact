@@ -4,8 +4,8 @@
 
 </div>
 
-This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding assistant.
-By running your own server, you can ensure that your code remains under your control. This server supports:
+This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding assistant. By running
+your own server, you can ensure that your code remains under your control. This server supports:
 
  * Code completion
  * AI Toolbox
@@ -16,7 +16,7 @@ You can run Refact models, plus WizardCoder, StarChat and other open models. To 
 use CONTRASTcode/3b/multi model that's high quality and fast. You'll need 12Gb of GPU memory to fine tune it.
 
 Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
-products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
+IDEs and [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
 
 [Join us on Discord](https://discord.gg/Jpa9DGeCfH) and say hi!
 
@@ -38,52 +38,64 @@ Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/clou
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
 
 
-<details><summary>Docker commands super short guide</summary>
-Add your yourself to docker group to run docker without sudo (works for Linux):
-```commandline
-sudo usermod -aG docker {your user}
-```
-List all containers:
-```commandline
-docker ps -a
-```
-Create a new container:
-```commandline
-docker run
-```
-Start and stop existing containers (stop doesn't remove them):
-```commandline
-docker start
-docker stop
-```
-Remove a container and all its data:
-```commandline
-docker rm
-```
-
-Shows messages from the container:
-```commandline
-docker logs -f
-```
-</details>
-
-
 Run docker container with following command:
 ```commandline
 docker run -d --rm -p 8008:8008 -v perm-storage:/perm_storage --gpus all smallcloud/refact_self_hosting
 ```
 
-HELP US: it doesn't run on CPU yet, but it's certainly possible to implement this. Join us on Discord
-to participate.
+`perm-storage` is a volume that is mounted inside the container. All the configuration files,
+downloaded weights and logs are stored here.
 
+To upgrade the docker, delete it (`perm-storage` will retain your data), run `docker pull smallcloud/refact_self_hosting`
+and run it again.
 
-### Running Manually
+<details><summary>Docker commands super short refresher</summary>
+Add your yourself to docker group to run docker without sudo (works for Linux):
 
-To run server manually, install this repo first (this might install a lot of packages on your computer):
 ```commandline
-pip install git+https://github.com/smallcloudai/code-contrast.git
-pip install git+https://github.com/smallcloudai/refact-self-hosting.git
+sudo usermod -aG docker {your user}
 ```
+
+List all containers:
+
+```commandline
+docker ps -a
+```
+
+Start and stop existing containers (stop doesn't remove them):
+
+```commandline
+docker start XXX
+docker stop XXX
+```
+
+Shows messages from a container:
+```commandline
+docker logs -f XXX
+```
+
+Remove a container and all its data (except data inside a volume):
+```commandline
+docker rm XXX
+```
+
+Check out or delete a docker volume:
+```commandline
+docker volume inspect VVV
+docker volume rm VVV
+```
+</details>
+
+
+### Contributing
+
+Clone this repo and install it for development:
+
+```commandline
+git clone https://github.com/smallcloudai/refact
+pip install -e refact/
+```
+
 Now you can run server with following command:
 ```commandline
 python -m refact_self_hosting.server --workdir /workdir --model <model name>
@@ -142,13 +154,20 @@ a few lines above, for example, a comment. Alternatively,
 you can use the Manual Suggestion Trigger (a key combination), which always produces a new suggestion.
 
 
+## FAQ
+
+Q: Can I run a model on CPU?
+A: it doesn't run on CPU yet, but it's certainly possible to implement this.
+[Join us on Discord](https://discord.gg/Jpa9DGeCfH) to participate.
+
+
+
 
 ## Community & Support
 
 Join our
 [Discord server](https://www.smallcloud.ai/discord) and follow our
 [Twitter](https://twitter.com/refact_ai) to get the latest updates.
-
 
 
 ## Contributing
