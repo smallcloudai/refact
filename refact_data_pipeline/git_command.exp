@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+
+set args [lrange $argv 0 end]
+spawn {*}$args
+
+set timeout -1
+expect {
+    "User*" { send -- "\r"; exp_continue }
+    "Pass*" { send --  "\r"; exp_continue }
+    "fatal*" { exit 1 }
+    eof {}
+}
