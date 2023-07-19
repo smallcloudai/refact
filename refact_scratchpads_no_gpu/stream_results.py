@@ -295,9 +295,6 @@ def _upload_results_loop(upload_q: multiprocessing.Queue, cancelled_q: multiproc
                         orig += "\n"
                     head, tail = head_and_tail(orig, files[k])
                     mid1 = (files[k][head:-tail]) if tail>0 else (files[k][head:])
-                    # mid2 = utils.simple_stoplist_cut(orig, files[k], head, tail)
-                    # print("mid1", mid1)
-                    # print("mid2", mid2)
                     stream_files[k] = {
                         "head": head,
                         "mid": mid1,
