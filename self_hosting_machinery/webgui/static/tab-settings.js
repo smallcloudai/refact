@@ -105,6 +105,8 @@ export async function init() {
             ssh_field.innerHTML = data.public_key;
             let ssh_button = document.querySelector('.settings-tab-ssh-submit');
             ssh_button.style.display = 'none';
+            let ssh_hide_modal_button = document.querySelector('.settings-tab-ssh-close');
+            ssh_hide_modal_button.classList.remove('d-none');
         })
         .catch(error => {
             document.querySelector('#status-ssh').innerHTML = error.message;
