@@ -23,7 +23,7 @@ def red_time(base_ts):
 
 
 
-verify_api_key = os.environ.get("SMALLCLOUD_API_KEY")
+verify_api_key = os.environ.get("SMALLCLOUD_API_KEY", "EMPTY")
 
 
 def verify_bearer(authorization: str):

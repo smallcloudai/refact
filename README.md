@@ -45,7 +45,7 @@ Now it should work, just try to write some code! If it doesn't, please report yo
 </table>
 
 
-### Running Server in Docker
+## Running Server in Docker
 
 The easiest way to run this server is a pre-build Docker image.
 
@@ -61,8 +61,8 @@ docker run -d --rm -p 8008:8008 -v perm-storage:/perm_storage --gpus all smallcl
 `perm-storage` is a volume that is mounted inside the container. All the configuration files,
 downloaded weights and logs are stored here.
 
-To upgrade the docker, delete it (`perm-storage` will retain your data), run `docker pull smallcloud/refact_self_hosting`
-and run it again.
+To upgrade the docker, delete it using `docker kill XXX` (the volume `perm-storage` will retain your
+data), run `docker pull smallcloud/refact_self_hosting` and run it again.
 
 <details><summary>Docker commands super short refresher</summary>
 Add your yourself to docker group to run docker without sudo (works for Linux):
@@ -102,7 +102,7 @@ docker volume rm VVV
 </details>
 
 
-### Contributing
+## Contributing
 
 Clone this repo and install it for development:
 
@@ -121,14 +121,13 @@ For debugging, it's better to run HTTP server and inference processes separately
 separate terminals.
 
 ```commandline
-export SMALLCLOUD_API_KEY=dummy_key
 python -m self_hosting_machinery.webgui.webgui
 DEBUG=1 python -m self_hosting_machinery.inference.inference_worker --model wizardlm/7b
 DEBUG=1 python -m refact_scratchpads_no_gpu.infserver_no_gpu longthink/stable --openai_key sk-XXXYYY
 ```
 
-The `SMALLCLOUD_API_KEY` environment variable is used for authentication between the HTTP server and the
-inference worker. Any random key will work, as long as it's the same for all processes.
+
+## Adding Toolbox Functions
 
 
 
