@@ -35,12 +35,22 @@ known_packages = {
     "refact_scratchpads_no_gpu": PyPackage(
         requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson"],
         requires_packages=["refact_scratchpads"]),
+    "refact_data_pipeline": PyPackage(
+        requires=["numpy", "tokenizers", "torch", "requests", "cloudpickle",
+                  "tqdm", "dataclasses_json", "termcolor", 'more_itertools',
+                  "cdifflib", "ujson", "zstandard", "scipy", "deepspeed==0.9.2",
+                  "peft", "einops", "mpi4py", "matplotlib", "transformers",
+                  "triton==2.0.0.post1", "torchinfo", "giturlparse", "jsonlines"],
+        requires_packages=["refact_encoding", "code_contrast", "self_hosting_machinery",
+                           "refact_models"],
+        data=["git_command.exp"],
+    ),
     "self_hosting_machinery": PyPackage(
         requires=["aiohttp", "cryptography", "fastapi", "giturlparse", "pydantic",
                   "starlette", "uvicorn", "uvloop", "python-multipart", "auto-gptq",
                   "torch", "transformers", "termcolor"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu", "refact_models",
-                          "known_models_db"],  # "refact_data_pipeline"
+                           "known_models_db", "refact_data_pipeline"],
         data=["webgui/static/*", "webgui/static/js/*", "watchdog/watchdog.d/*"]),
 }
 
