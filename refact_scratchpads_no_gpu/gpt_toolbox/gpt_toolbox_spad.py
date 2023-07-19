@@ -16,7 +16,6 @@ from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_spad import gpt_prices, calc
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_utils import trim_context_tok, code_block_postprocess
 
 
-openai.api_key = os.environ.get("OPENAI_API_KEY")
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
