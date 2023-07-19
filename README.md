@@ -9,26 +9,13 @@ This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding a
 With Refact you can run high-quality AI code completions on-premise and use a number of
 functions for code transformation and ask questions in the chat.
 
-This server allows you to run AI coding models on your hardware, your code doesn't go outside your control.
+This server allows you to run AI coding models on your hardware, so your code doesn't go outside your control.
 
-At the moment, you can choose between following models:
-
-| Model                                                                                | GPU (VRAM) | CPU (RAM) | Completion | AI Toolbox | Chat | Languages supported                                |
-| ------------------------------------------------------------------------------------ | ---------- | --------- | ---------- | ---------- | ---- | -------------------------------------------------- |
-| [CONTRASTcode/medium/multi](https://huggingface.co/smallcloudai/codify_medium_multi) |        3Gb |       3Gb |          + |            |      | [20+ Programming Languages](https://refact.ai/faq) |
-| [CONTRASTcode/3b/multi](https://huggingface.co/smallcloudai/codify_3b_multi)         |        8Gb |      12Gb |          + |            |      | [20+ Programming Languages](https://refact.ai/faq) |
-| [starcoder/15b/base4bit](https://huggingface.co/smallcloudai/starcoder_15b_4bit)     |       16Gb |         - |          + |          + |    + | [80+ Programming languages](https://huggingface.co/blog/starcoder) |
-| [starcoder/15b/base8bit](https://huggingface.co/smallcloudai/starcoder_15b_8bit)     |       32Gb |         - |          + |          + |    + | [80+ Programming languages](https://huggingface.co/blog/starcoder) |
+You can run WizardCoder, StarChat and other open models. For fine tuning on your code, use CONTRASTcode/3b/multi
+model that's high quality and fast. You need 12Gb of GPU memory to fine tune it.
 
 Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
 products and [VS Code IDE](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
-
-NEW: you can fine-tune the model on your own hardware!
-
-
-## Known limitations
-
-- For best results on smaller GPUs we recommend using CONTRASTcode models as the StarCoder models can be quite slow
 
 
 ## Demo
@@ -40,23 +27,15 @@ NEW: you can fine-tune the model on your own hardware!
 </table>
 
 
-## Getting started
-
-Install plugin for your IDE:
-[JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai) or
-[VSCode](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
-
-
 ### Running Server in Docker
 
-The recommended way to run server is a pre-build Docker image.
+The easiest way to run this server is a pre-build Docker image.
 
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
 
 
-<details><summary>Docker tips & tricks</summary>
-
+<details><summary>Docker commands super short guide</summary>
 Add your yourself to docker group to run docker without sudo (works for Linux):
 ```commandline
 sudo usermod -aG docker {your user}
@@ -85,18 +64,14 @@ docker logs -f
 ```
 </details>
 
-Choose model from available ones.
 
 Run docker container with following command:
 ```commandline
-docker run --rm --gpus 0 -p 8008:8008 -v refact_workdir:/workdir --env SERVER_MODEL=<model name> smallcloud/refact_self_hosting
+docker run -d --rm -p 8008:8008 -v perm-storage:/perm_storage --gpus all smallcloud/refact_self_hosting
 ```
-If you don't have a suitable GPU run it on CPU:
-```commandline
-docker run --rm -p 8008:8008 -v refact_workdir:/workdir --env SERVER_MODEL=<model name> smallcloud/refact_self_hosting
-```
-After start container will automatically download the chosen model.
 
+HELP US: it doesn't run on CPU yet, but it's certainly possible to implement this. Join us on Discord
+to participate.
 
 
 ### Running Manually
