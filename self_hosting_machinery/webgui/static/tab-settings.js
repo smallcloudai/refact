@@ -13,7 +13,9 @@ function get_ssh_keys() {
 
 function render_keys(data) {
     let key_list = document.querySelector('.settings-all-keys');
-    key_list.innerHTML = '';
+    if(data.length > 0) {
+        key_list.innerHTML = '';
+    }
     data.forEach(function (key) {
         let key_wrap = document.createElement('div');
         key_wrap.classList.add('tab-settings-ssh-key-item');
@@ -53,6 +55,7 @@ function delete_ssh_key(event) {
         })
         .then(data => {
             console.log('delete ssh key', data);
+            get_ssh_keys();
         })
         .catch(error => {
             document.querySelector('#status-ssh').innerHTML = error.message;
@@ -107,6 +110,7 @@ export async function init() {
             ssh_button.style.display = 'none';
             let ssh_hide_modal_button = document.querySelector('.settings-tab-ssh-close');
             ssh_hide_modal_button.classList.remove('d-none');
+            get_ssh_keys();
         })
         .catch(error => {
             document.querySelector('#status-ssh').innerHTML = error.message;
