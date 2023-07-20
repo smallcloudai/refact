@@ -111,7 +111,7 @@ class CustomAutoGPTQForCausalLM(AutoGPTQForCausalLM):
             **kwargs)
 
 
-class InferenceGPTQ(InferenceBase):
+class InferenceHF(InferenceBase):
 
     def __init__(self,
                  model_name: str,
@@ -120,7 +120,7 @@ class InferenceGPTQ(InferenceBase):
         self._model_name = model_name
         self._model_dict = model_dict
 
-        assert torch.cuda.is_available(), "GPTQ model is only supported on CPU"
+        assert torch.cuda.is_available(), "model is only supported on GPU"
         self._device = "cuda:0"
 
         self._tokenizer = AutoTokenizer.from_pretrained(
