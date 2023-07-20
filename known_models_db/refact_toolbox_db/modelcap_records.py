@@ -2,54 +2,6 @@ from known_models_db.refact_toolbox_db.modelcap_struct import ModelFunction, loa
 
 
 db = [
-    # ModelFunction(
-    #     "select-and-refactor", 0, "Select & Refactor",
-    #     type="toolbox",
-    #     supports_highlight=False,
-    #     supports_selection=True,
-    #     selected_lines_min=1,
-    #     selected_lines_max=20,
-    #     third_party=False,
-    #     supports_languages="*.*",
-    #     mini_html=load_mini_html("select-and-refactor"),
-    #     model=["CONTRASTcode"],
-    #     function_selection="diff-selection",
-    #     catch_all_selection=True,
-    # ),
-
-    # ModelFunction(
-    #     "hl-and-fix", 0, "Highlight & Fix",
-    #     type="toolbox",
-    #     supports_highlight=True,
-    #     supports_selection=False,
-    #     selected_lines_min=0,
-    #     selected_lines_max=0,
-    #     third_party=False,
-    #     supports_languages="*.*",
-    #     mini_html=load_mini_html("hl-and-fix"),
-    #     model=["CONTRASTcode"],
-    #     function_highlight="highlight",
-    #     function_hl_click="diff-atcursor",
-    #     catch_all_hl=True,
-    # ),
-
-    # ModelFunction(
-    #     "add-type-hints", 0, "Add Type Hints",
-    #     type="toolbox",
-    #     supports_highlight=True,
-    #     supports_selection=True,
-    #     selected_lines_min=1,
-    #     selected_lines_max=10,
-    #     third_party=False,
-    #     supports_languages="*.py;*.php;*.js",
-    #     mini_html=load_mini_html("add-type-hints"),
-    #     model=["CONTRASTcode"],
-    #     model_fixed_intent="Add type hints",
-    #     function_highlight="highlight",
-    #     function_hl_click="diff-atcursor",
-    #     function_selection="diff-selection",
-    # ),
-
     ModelFunction(
         "free-chat", 1, "Chat",
         type="chat",
