@@ -164,7 +164,7 @@ function reset_ftf_progress() {
 function render_tab_files(data) {
     const files = document.getElementById("upload-tab-table-body-files");
     let i = 0;
-    if(data.uploaded_files.length > 0) {
+    if(Object.keys(data.uploaded_files).length > 0) {
         files.innerHTML = "";
     }
     for(let item in data.uploaded_files) {
