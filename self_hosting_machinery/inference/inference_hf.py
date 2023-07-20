@@ -5,6 +5,7 @@ import torch
 import traceback
 
 from auto_gptq import AutoGPTQForCausalLM
+from transformers import AutoModelForCausalLM
 from transformers import AutoTokenizer
 from transformers import StoppingCriteria
 from transformers import StoppingCriteriaList
@@ -120,14 +121,21 @@ class InferenceHF(InferenceBase):
         self._model_dict = model_dict
 
         assert torch.cuda.is_available(), "model is only supported on GPU"
-        self._device = "cuda:0"
 
+        self._device = "cuda:0"
         self._tokenizer = AutoTokenizer.from_pretrained(
             self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, trust_remote_code=True)
-        self._model = CustomAutoGPTQForCausalLM.from_quantized(
-            self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, device=self._device,
-            use_safetensors=True, trust_remote_code=True, use_triton=False, quantize_config=None,
-            **self._model_dict["model_class_kwargs"])
+
+        if model_dict["backend"] == "transformers":
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, device_map="auto",
+                **self._model_dict["model_class_kwargs"])
+        elif model_dict["backend"] == "autogptq":
+            self._model = CustomAutoGPTQForCausalLM.from_quantized(
+                self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, device=self._device,
+                **self._model_dict["model_class_kwargs"])
+        else:
+            raise RuntimeError(f"unknown model backend {model_dict['backend']}")
 
     def _prepare_scratchpad(self, request: Dict[str, Any]):
         def logger(*args):
