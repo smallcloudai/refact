@@ -45,4 +45,22 @@ huggingface_gptq_mini_db = {
         },
         "filter_caps": ["wizardlm"],
     },
+    "llama2/7b": {
+        "model_path": "TheBloke/Llama-2-7b-Chat-GPTQ",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",
+        "model_class_kwargs": {
+            "model_basename": "gptq_model-4bit-128g",
+        },
+        "filter_caps": ["llama2"],
+    },
+    "llama2/13b": {
+        "model_path": "TheBloke/Llama-2-13B-chat-GPTQ",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",
+        "model_class_kwargs": {
+            "model_basename": "gptq_model-4bit-128g",
+        },
+        "filter_caps": ["llama2"],
+    },
 }

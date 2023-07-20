@@ -228,7 +228,7 @@ class ScratchpadHuggingfaceWizard(ScratchpadChatBase):
 
     def _prompt(self) -> str:
         text = "A chat between a curious user and an artificial intelligence assistant. " \
-               "The assistant gives helpful, detailed, and polite answers to the user's questions."
+               "The assistant gives helpful, detailed, and polite answers to the user's questions.\n"
         for message in self._messages:
             if message["role"] == "user":
                 text += "USER: "
@@ -236,4 +236,23 @@ class ScratchpadHuggingfaceWizard(ScratchpadChatBase):
                 text += "ASSISTANT: "
             text += message["content"] + "\n"
         text += "ASSISTANT: "
+        return text
+
+
+class ScratchpadHuggingfaceLlama2(ScratchpadChatBase):
+
+    def _prompt(self) -> str:
+        text = "<<SYS>>\n" \
+               "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, " \
+               "while being safe.  Your answers should not include any harmful, unethical, racist, sexist, " \
+               "toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased " \
+               "and positive in nature. If a question does not make any sense, or is not factually coherent, " \
+               "explain why instead of answering something not correct. If you don't know the answer to a " \
+               "question, please don't share false information.\n" \
+               "<</SYS>>\n"
+        for message in self._messages:
+            if message["role"] == "user":
+                text += f"[INST]: {message['content']}[/INST]"
+            else:
+                text += message["content"] + "\n"
         return text
