@@ -11,7 +11,7 @@ from refact_scratchpads_no_gpu.stream_results import UploadProxy
 from refact_scratchpads_no_gpu.stream_results import completions_wait_batch
 
 from self_hosting_machinery.inference import InferenceLegacy
-from self_hosting_machinery.inference import InferenceGPTQ
+from self_hosting_machinery.inference import InferenceHF
 
 
 quit_flag = False
@@ -38,7 +38,7 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
             force_cpu=cpu,
             load_lora=load_lora)
     else:
-        inference_model = InferenceGPTQ(
+        inference_model = InferenceHF(
             model_name=model_name,
             model_dict=model_dict)
 

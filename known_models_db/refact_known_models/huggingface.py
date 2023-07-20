@@ -1,4 +1,4 @@
-huggingface_gptq_mini_db = {
+huggingface_mini_db = {
     "starcoder/15b/base": {
         "model_path": "TheBloke/starcoder-GPTQ",
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadHuggingface",
