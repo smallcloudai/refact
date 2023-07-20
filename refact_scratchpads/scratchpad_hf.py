@@ -215,6 +215,8 @@ class ScratchpadHuggingfaceStarChat(ScratchpadChatBase):
 
         text = _wrap_system_token(self._chat_system) + "\n" + _wrap_system_token(self._chat_end)
         for message in self._messages:
+            if message["content"] == "":
+                continue
             if message["role"] == "user":
                 text += _wrap_system_token(self._chat_user)
             else:
@@ -227,9 +229,10 @@ class ScratchpadHuggingfaceStarChat(ScratchpadChatBase):
 class ScratchpadHuggingfaceWizard(ScratchpadChatBase):
 
     def _prompt(self) -> str:
-        text = "A chat between a curious user and an artificial intelligence assistant. " \
-               "The assistant gives helpful, detailed, and polite answers to the user's questions.\n"
+        text = ""
         for message in self._messages:
+            if message["content"] == "":
+                continue
             if message["role"] == "user":
                 text += "USER: "
             else:
@@ -251,6 +254,8 @@ class ScratchpadHuggingfaceLlama2(ScratchpadChatBase):
                "question, please don't share false information.\n" \
                "<</SYS>>\n"
         for message in self._messages:
+            if message["content"] == "":
+                continue
             if message["role"] == "user":
                 text += f"[INST]: {message['content']}[/INST]"
             else:
