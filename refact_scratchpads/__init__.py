@@ -8,3 +8,4 @@ from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceCompletion
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingface
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceStarChat
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceWizard
+from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceLlama2
