@@ -31,7 +31,7 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
     log("STATUS loading model")
 
     model_dict = models_mini_db[model_name]
-    if "model_class" in model_dict:
+    if "backend" not in model_dict:
         inference_model = InferenceLegacy(
             model_name=model_name,
             model_dict=model_dict,
