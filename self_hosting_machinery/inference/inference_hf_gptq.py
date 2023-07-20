@@ -82,6 +82,7 @@ class SMCStream(TextStreamer):
             )
 
 
+# NOTE: original class AutoGPTQForCausalLM do not handle cache_dir, so we customized it
 class CustomAutoGPTQForCausalLM(AutoGPTQForCausalLM):
 
     @classmethod
