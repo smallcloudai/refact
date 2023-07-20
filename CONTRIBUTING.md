@@ -1,4 +1,5 @@
-Clone this repo and install it for development:
+## How to contribute
+1. Clone this repo and install it for development:
 
 ```commandline
 git clone https://github.com/smallcloudai/refact
@@ -19,7 +20,8 @@ python -m self_hosting_machinery.webgui.webgui
 DEBUG=1 python -m self_hosting_machinery.inference.inference_worker --model wizardlm/7b
 DEBUG=1 python -m refact_scratchpads_no_gpu.infserver_no_gpu longthink/stable --openai_key sk-XXXYYY
 ```
-
+2. Commit your changes
+3. Create a pull request
 
 ## Adding Toolbox Functions
 
