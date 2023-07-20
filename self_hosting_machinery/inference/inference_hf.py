@@ -20,7 +20,6 @@ from self_hosting_machinery import env
 
 from typing import Dict, Any, Union, Optional
 
-log = logging.getLogger("MODEL").info
 
 quit_flag = False
 DEBUG = int(os.environ.get("DEBUG", "0"))
@@ -135,7 +134,7 @@ class InferenceHF(InferenceBase):
             if not DEBUG:
                 return
             s = " ".join([str(a) for a in args])
-            log(s)
+            logging.getLogger("MODEL").info(s)
 
         object_type = request["object"]
         assert object_type in ["diff_completion_req", "text_completion_req", "chat_completion_req"]
@@ -187,8 +186,8 @@ class InferenceHF(InferenceBase):
                 status="completed"
             )
         except Exception as e:
-            logging.error(e)
-            logging.error(traceback.format_exc())
+            logging.getLogger("MODEL").error(e)
+            logging.getLogger("MODEL").error(traceback.format_exc())
 
     def lora_switch_according_to_config(self):
         pass
