@@ -34,7 +34,7 @@ huggingface_mini_db = {
     "wizardlm/7b": {
         "backend": "autogptq",
         "model_path": "TheBloke/WizardLM-7B-V1.0-Uncensored-GPTQ",
-        "diff_scratchpad_class": None,
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceWizardFunctions",
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceWizard",
         "model_class_kwargs": {
             "model_basename": "wizardlm-7b-v1.0-uncensored-GPTQ-4bit-128g.no-act.order",

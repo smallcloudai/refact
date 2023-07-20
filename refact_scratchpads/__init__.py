@@ -9,3 +9,6 @@ from refact_scratchpads.scratchpad_hf import ScratchpadHuggingface
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceStarChat
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceWizard
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceLlama2
+
+# HF_TOOLBOX
+from refact_scratchpads.toolbox_hf import ScratchpadHuggingfaceWizardFunctions
