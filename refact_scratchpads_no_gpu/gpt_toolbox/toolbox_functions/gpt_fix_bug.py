@@ -65,8 +65,7 @@ if __name__ == "__main__":
             if (filtered):
                 return filt.language
         return null
-    }
-"""),
+    }"""),
             msg('assistant',
                 """
 ```
@@ -77,8 +76,7 @@ if __name__ == "__main__":
                 return filt.language
         return None
 ```
-<|end|>
-            """),
+<|end|>"""),
             msg('user', ctxt),
             msg('assistant',
                 "Thanks for giving me the context. "

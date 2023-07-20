@@ -20,29 +20,7 @@ IDEs and [VS Code](https://marketplace.visualstudio.com/items?itemName=smallclou
 
 [Join us on Discord](https://discord.gg/Jpa9DGeCfH) and say hi!
 
-
-## Setting Up Plugins
-
-Go to plugin settings and set up a custom inference URL `http://127.0.0.1:8008`
-
-<details><summary>JetBrains</summary>
-Settings > Tools > Refact.ai > Advanced > Inference URL
-</details>
-<details><summary>VSCode</summary>
-Extensions > Refact.ai Assistant > Settings > Infurl
-</details>
-
-Now it should work, just try to write some code! If it doesn't, please report your experience to
-[GitHub issues](https://github.com/smallcloudai/refact-self-hosting/issues).
-
-
-## Demo
-
-<table align="center">
-<tr>
-<th><img src="https://plugins.jetbrains.com/files/20647/screenshot_277b57c5-2104-4ca8-9efc-1a63b8cb330f" align="center"/></th>
-</tr>
-</table>
+![Image Description](./almost-all-features-05x-dark.jpeg)
 
 
 ## Running Server in Docker
@@ -102,6 +80,21 @@ docker volume rm VVV
 </details>
 
 
+## Setting Up Plugins
+
+Go to plugin settings and set up a custom inference URL `http://127.0.0.1:8008`
+
+<details><summary>JetBrains</summary>
+Settings > Tools > Refact.ai > Advanced > Inference URL
+</details>
+<details><summary>VSCode</summary>
+Extensions > Refact.ai Assistant > Settings > Infurl
+</details>
+
+Now it should work, just try to write some code! If it doesn't, please report your experience to
+[GitHub issues](https://github.com/smallcloudai/refact-self-hosting/issues).
+
+
 ## Contributing
 
 Clone this repo and install it for development:
@@ -129,7 +122,19 @@ DEBUG=1 python -m refact_scratchpads_no_gpu.infserver_no_gpu longthink/stable --
 
 ## Adding Toolbox Functions
 
+Are you missing a function in the toolbox? It's easy to implement it yourself!
 
+It's even possible without a GPU, clone this repo and install it like this:
+
+```
+SETUP_PACKAGE=refact_scratchpads_no_gpu pip install -e refact/
+```
+
+In this folder `refact_scratchpads_no_gpu/gpt_toolbox/toolbox_functions` there are some
+functions implemented using OpenAI API. There you can add a new one by analogy, or even
+make an existing function better.
+
+To test your function, run `infserver_no_gpu` as in the previous section.
 
 
 ## Fine Tuning
