@@ -1,5 +1,8 @@
-## How to contribute
-1. Clone this repo and install it for development:
+# How to contribute
+
+## Install for Development
+
+Clone this repo and install it for development:
 
 ```commandline
 git clone https://github.com/smallcloudai/refact
@@ -20,8 +23,22 @@ python -m self_hosting_machinery.webgui.webgui
 DEBUG=1 python -m self_hosting_machinery.inference.inference_worker --model wizardlm/7b
 DEBUG=1 python -m refact_scratchpads_no_gpu.infserver_no_gpu longthink/stable --openai_key sk-XXXYYY
 ```
-2. Commit your changes
-3. Create a pull request
+
+That should be enough to get started!
+
+If you plan to make changes, you need your own fork of the project -- clone that instead of
+the main repo. Once you have your changes ready, commit them and push them to your fork. After
+that you should be abloe to create a pull request for the main repository.
+
+
+## Install Linguist
+
+For fine tuning, files go through a pre filter. Follow instructions in
+https://github.com/smallcloudai/linguist
+to install it.
+
+If you don't plan to debug fine tuning, you can skip this step.
+
 
 ## Adding Toolbox Functions
 
@@ -37,4 +54,13 @@ In this folder `refact_scratchpads_no_gpu/gpt_toolbox/toolbox_functions` there a
 functions implemented using OpenAI API. There you can add a new one by analogy, or even
 make an existing function better.
 
+Add your new function to `infserver_no_gpu.py` and `modelcap_records.py`.
+
 To test your function, run `infserver_no_gpu` as in the previous section.
+
+
+## Simplifying Toolbox (WORK IN PROGRESS)
+
+1. Toolbox for models with GPU https://github.com/smallcloudai/refact/pull/33
+
+2. Simplify collecting functions list, so you don't have to touch `infserver_no_gpu.py` and `modelcap_records` (no PR yet)

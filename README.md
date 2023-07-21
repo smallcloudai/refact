@@ -42,6 +42,9 @@ downloaded weights and logs are stored here.
 To upgrade the docker, delete it using `docker kill XXX` (the volume `perm-storage` will retain your
 data), run `docker pull smallcloud/refact_self_hosting` and run it again.
 
+Now you can visit http://127.0.0.1:8008 to see the server Web GUI.
+
+
 <details><summary>Docker commands super short refresher</summary>
 Add your yourself to docker group to run docker without sudo (works for Linux):
 
@@ -95,48 +98,6 @@ Now it should work, just try to write some code! If it doesn't, please report yo
 [GitHub issues](https://github.com/smallcloudai/refact-self-hosting/issues).
 
 
-## Contributing
-
-Clone this repo and install it for development:
-
-```commandline
-git clone https://github.com/smallcloudai/refact
-pip install -e refact/
-```
-
-To run the whole server, use:
-
-```commandline
-python -m self_hosting_machinery.watchdog.docker_watchdog
-```
-
-For debugging, it's better to run HTTP server and inference processes separately, for example in
-separate terminals.
-
-```commandline
-python -m self_hosting_machinery.webgui.webgui
-DEBUG=1 python -m self_hosting_machinery.inference.inference_worker --model wizardlm/7b
-DEBUG=1 python -m refact_scratchpads_no_gpu.infserver_no_gpu longthink/stable --openai_key sk-XXXYYY
-```
-
-
-## Adding Toolbox Functions
-
-Are you missing a function in the toolbox? It's easy to implement it yourself!
-
-It's even possible without a GPU, clone this repo and install it like this:
-
-```
-SETUP_PACKAGE=refact_scratchpads_no_gpu pip install -e refact/
-```
-
-In this folder `refact_scratchpads_no_gpu/gpt_toolbox/toolbox_functions` there are some
-functions implemented using OpenAI API. There you can add a new one by analogy, or even
-make an existing function better.
-
-To test your function, run `infserver_no_gpu` as in the previous section.
-
-
 ## Fine Tuning
 
 *Why?*  Code models are trained on a vast amount of code from the internet, which may not perfectly
@@ -166,10 +127,18 @@ you can use the Manual Suggestion Trigger (a key combination), which always prod
 ## FAQ
 
 Q: Can I run a model on CPU?
+
 A: it doesn't run on CPU yet, but it's certainly possible to implement this.
 [Join us on Discord](https://discord.gg/Jpa9DGeCfH) to participate.
 
+Q: Sharding is disabled, why?
 
+A: It's not ready yet, but it's coming soon (Put PR number here).
+
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 
 ## Community & Support
@@ -177,11 +146,3 @@ A: it doesn't run on CPU yet, but it's certainly possible to implement this.
 Join our
 [Discord server](https://www.smallcloud.ai/discord) and follow our
 [Twitter](https://twitter.com/refact_ai) to get the latest updates.
-
-
-## Contributing
-
-We are open for contributions. If you have any ideas and ready to implement this, just:
-- make a [fork](https://github.com/smallcloudai/refact-self-hosting/fork)
-- make your changes, commit to your fork
-- and open a PR
