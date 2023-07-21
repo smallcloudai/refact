@@ -34,8 +34,8 @@ At the moment, you can choose between the following models:
 | ------------------------------------------------------------------------------------ | ---------- | --------- | ---------- | ----------| 
 | [CONTRASTcode/medium/multi](https://huggingface.co/smallcloudai/codify_medium_multi) |    +    |           |           |            |  
 | [CONTRASTcode/3b/multi](https://huggingface.co/smallcloudai/codify_3b_multi)         |    +    |           |           |        +    |    
-| [starcoder/15b/base](https://huggingface.co/smallcloudai/starcoder_15b_4bit)         |   +     |         + |          + |           |   
-| [starcoder/15b/base8bit](https://huggingface.co/smallcloudai/starcoder_15b_8bit)     |    +    |         + |          + |           |  
+| [starcoder/15b/base](https://huggingface.co/smallcloudai/starcoder_15b_4bit)         |   +     |          |           |           |   
+| [starcoder/15b/base8bit](https://huggingface.co/smallcloudai/starcoder_15b_8bit)     |    +    |          |           |           |  
 | starchat/15b/beta                                                                     |        |         + |           |          | 
 | wizardcoder/15b                                                                       |     +   |          |           |           | 
 | wizardlm/7b |        |         + |           |         |
