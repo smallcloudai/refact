@@ -1,13 +1,17 @@
+<p align="center">
+  <img width="300" alt="Refact" src="refact-logo.svg"/>
+</p>
 
-<div align="center">
-
-# <font color="red">[{</font> Refact.ai Inference Server
-
-</div>
+---
 
 [![Discord](https://img.shields.io/discord/1037660742440194089?logo=discord&label=Discord&link=https%3A%2F%2Fsmallcloud.ai%2Fdiscord)](https://smallcloud.ai/discord)
 [![Twitter Follow](https://img.shields.io/twitter/follow/refact_ai)](https://twitter.com/intent/follow?screen_name=refact_ai)
 ![License](https://img.shields.io/github/license/smallcloudai/refact)
+
+[![Visual Studio](https://img.shields.io/visual-studio-marketplace/d/smallcloud.codify?label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
+[![JetBrains](https://img.shields.io/jetbrains/plugin/d/com.smallcloud.codify?label=JetBrains)](https://plugins.jetbrains.com/plugin/20647-codify)
+
+# Refact
 
 This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding assistant. By running
 your own server, you can ensure that your code remains under your control. This server supports:
