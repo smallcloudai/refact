@@ -96,7 +96,7 @@ class LinguistProcessPool:
             for _ in range(num_processes)
         ]
 
-    def process(self, filenames: Iterable[str]):
+    def feed_files(self, filenames: Iterable[str]):
         for idx, filename in enumerate(filenames):
             process = self._processes[idx % len(self._processes)]
             process.push(filename)
@@ -128,7 +128,7 @@ def ls_with_linguist(start_dir):
 
     num_processes = max(1, multiprocessing.cpu_count() // 2)
     linguist = LinguistProcessPool(num_processes)
-    for result in linguist.process(filenames_g(start_dir)):
+    for result in linguist.feed_files(filenames_g(start_dir)):
         yield result
 
 
@@ -362,14 +362,17 @@ def rm_and_unpack(upload_filename, unpack_filename, source_type, filename):
 
 def process_files_in_single_subdir(stats_json, config, subdir):
     subdir_full = os.path.join(env.DIR_UNPACKED, subdir)
-    files = ls_with_linguist(subdir_full)
-    result = []
-    for i, x in enumerate(files):
-        x["subdir"] = subdir
-        result.append(x)
-        if i % 100 == 0:
-            stats_json["uploaded_files"][subdir]["files"] = i
-            stats_save()
+    try:
+        files = ls_with_linguist(subdir_full)
+        result = []
+        for i, x in enumerate(files):
+            x["subdir"] = subdir
+            result.append(x)
+            if i % 100 == 0:
+                stats_json["uploaded_files"][subdir]["files"] = i
+                stats_save()
+    except BrokenPipeError:
+        raise ValueError("Linguist doesn't work, make sure you've installed it from https://github.com/smallcloudai/linguist")
     return True, result
 
 
