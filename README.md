@@ -1,8 +1,13 @@
+
 <div align="center">
 
 # <font color="red">[{</font> Refact.ai Inference Server
 
 </div>
+
+[![Discord](https://img.shields.io/discord/1037660742440194089?logo=discord&label=Discord&link=https%3A%2F%2Fsmallcloud.ai%2Fdiscord)](https://smallcloud.ai/discord)
+[![Twitter Follow](https://img.shields.io/twitter/follow/refact_ai)](https://twitter.com/intent/follow?screen_name=refact_ai)
+![License](https://img.shields.io/github/license/smallcloudai/refact)
 
 This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding assistant. By running
 your own server, you can ensure that your code remains under your control. This server supports:
