@@ -1,4 +1,4 @@
-# How to contribute
+# How to Contribute
 
 ## Install for Development
 
@@ -31,15 +31,6 @@ the main repo. Once you have your changes ready, commit them and push them to yo
 that you should be abloe to create a pull request for the main repository.
 
 
-## Install Linguist
-
-For fine tuning, files go through a pre filter. Follow instructions in
-https://github.com/smallcloudai/linguist
-to install it.
-
-If you don't plan to debug fine tuning, you can skip this step.
-
-
 ## Adding Toolbox Functions
 
 Are you missing a function in the toolbox? It's easy to implement it yourself!
@@ -63,4 +54,13 @@ To test your function, run `infserver_no_gpu` as in the previous section.
 
 1. Toolbox for models with GPU https://github.com/smallcloudai/refact/pull/33
 
-2. Simplify collecting functions list, so you don't have to touch `infserver_no_gpu.py` and `modelcap_records` (no PR yet)
+2. Simplify functions list, so you don't have to touch `infserver_no_gpu.py` and `modelcap_records` (no PR yet)
+
+
+## Install Linguist
+
+For fine tuning, files go through a pre filter. Follow instructions in
+https://github.com/smallcloudai/linguist
+to install it.
+
+If you don't plan to debug fine tuning, you can skip this step.
