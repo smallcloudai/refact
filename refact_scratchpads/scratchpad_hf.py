@@ -261,3 +261,25 @@ class ScratchpadHuggingfaceLlama2(ScratchpadChatBase):
             else:
                 text += message["content"] + "\n"
         return text
+
+
+class ScratchpadHuggingfaceRefact(ScratchpadChatBase):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._esc_token = self._encode_one_token("<empty_output>")
+
+    def _prompt(self) -> str:
+        esc = self._tokenizer.decode(self._esc_token)
+        system_prompt = "You are a chat bot"
+        text = f"{esc}SYSTEM {system_prompt}\n"
+        for message in self._messages:
+            if message["content"] == "":
+                continue
+            if message["role"] == "user":
+                text += f"{esc}USER "
+            else:
+                text += f"{esc}ASSISTANT "
+            text += message["content"] + "\n"
+        text += f"{esc}ASSISTANT "
+        return text
