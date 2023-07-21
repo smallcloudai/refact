@@ -148,7 +148,7 @@ function render_models_assigned(models) {
             completion.appendChild(completion_input);
         }
         let checked_1 = '', checked_2 = '', checked_4 = '';
-        if(models_info[index].hasOwnProperty('gpus_shard')) {
+        if(models[index].hasOwnProperty('gpus_shard')) {
             switch(models[index].gpus_shard) {
                 case 1:
                     checked_1 = 'checked';
@@ -163,7 +163,7 @@ function render_models_assigned(models) {
                     break;
             }
         }
-        select_gpus.innerHTML = `<div class="btn-group btn-group-sm disabled-group" role="group" aria-label="basic radio toggle button group">
+        select_gpus.innerHTML = `<div class="btn-group btn-group-sm" role="group" aria-label="basic radio toggle button group">
         <input type="radio" class="gpu-switch btn-check" tabindex="-1" name="gpu-${index}" value="1" ${checked_1} id="gpu-${index}-1" autocomplete="off">
         <label tabindex="-1" class="btn btn-outline-primary" for="gpu-${index}-1">1</label>
         <input type="radio" class="gpu-switch btn-check" tabindex="-1" name="gpu-${index}" value="2" ${checked_2} id="gpu-${index}-2" autocomplete="off">
@@ -201,6 +201,14 @@ function render_models_assigned(models) {
         row.appendChild(select_gpus);
         row.appendChild(del);
         models_table.appendChild(row);
+
+        const gpus_switches = document.querySelectorAll('.gpu-switch');
+        gpus_switches.forEach(function(gpu_switch) {
+            gpu_switch.addEventListener('change', function() {
+                models_data.model_assign[index].gpus_shard = this.value;
+                save_model_assigned();
+            });
+        });
     }
 }
 
