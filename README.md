@@ -14,7 +14,7 @@ Refact is an open-source Copilot alternative available as a self-hosted or cloud
 - [x] Autocompletion powered by best-in-class open-source code models 
 - [x] Context-aware chat on a current file
 - [x] Refactor, explain, analyse, optimise code, and fix bug functions 
-- [x] Fine-tuning on codebase (Beta, self-hosted only) 
+- [x] Fine-tuning on codebase (Beta, self-hosted only) [Docs](https://refact.ai/docs/fine-tuning/)
 - [ ] Context-aware chat on entire codebase 
       
 ![Image Description](./almost-all-features-05x-dark.jpeg)
@@ -22,78 +22,7 @@ Refact is an open-source Copilot alternative available as a self-hosted or cloud
 ## Getting Started  
 
 1. Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
-2. For the cloud version, create your account at [https://refact.ai/](https://refact.ai/) and start immediately. For the self-hosted version, follow the instructions below.  
-
-### Running Server in Docker
-
-The easiest way to run this server is a pre-build Docker image.
-
-Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
-On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
-
-
-Run docker container with following command:
-```commandline
-docker run -d --rm -p 8008:8008 -v perm-storage:/perm_storage --gpus all smallcloud/refact_self_hosting
-```
-
-`perm-storage` is a volume that is mounted inside the container. All the configuration files,
-downloaded weights and logs are stored here.
-
-To upgrade the docker, delete it using `docker kill XXX` (the volume `perm-storage` will retain your
-data), run `docker pull smallcloud/refact_self_hosting` and run it again.
-
-Now you can visit http://127.0.0.1:8008 to see the server Web GUI.
-
-
-<details><summary>Docker commands super short refresher</summary>
-Add your yourself to docker group to run docker without sudo (works for Linux):
-
-```commandline
-sudo usermod -aG docker {your user}
-```
-
-List all containers:
-
-```commandline
-docker ps -a
-```
-
-Start and stop existing containers (stop doesn't remove them):
-
-```commandline
-docker start XXX
-docker stop XXX
-```
-
-Shows messages from a container:
-```commandline
-docker logs -f XXX
-```
-
-Remove a container and all its data (except data inside a volume):
-```commandline
-docker rm XXX
-```
-
-Check out or delete a docker volume:
-```commandline
-docker volume inspect VVV
-docker volume rm VVV
-```
-</details>
-
-
-### Setting Up Plugins
-
-Go to plugin settings and set up a custom inference URL `http://127.0.0.1:8008`
-
-<details><summary>JetBrains</summary>
-Settings > Tools > Refact.ai > Advanced > Inference URL
-</details>
-<details><summary>VSCode</summary>
-Extensions > Refact.ai Assistant > Settings > Infurl
-</details>
+2. For the cloud version, create your account at [https://refact.ai/](https://refact.ai/) and start immediately. For the self-hosted version, follow the instructions [here](https://refact.ai/docs/self-hosting/).  
 
 ## How Refact works 
 
@@ -125,7 +54,7 @@ A: it doesn't run on CPU yet, but it's certainly possible to implement this.
 
 Q: Sharding is disabled, why?
 
-A: It's not ready yet, but it's coming soon (Put PR number here).
+A: It's not ready yet, but it's coming soon.
 
 ## Community & Support
 
