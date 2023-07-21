@@ -1,29 +1,30 @@
-<div align="center">
+<p align="center">
+  <img width="300" alt="Refact" src="refact-logo.svg"/>
+</p>
 
-# <font color="red">[{</font> Refact.ai Inference Server
+---
 
-</div>
+[![Discord](https://img.shields.io/discord/1037660742440194089?logo=discord&label=Discord&link=https%3A%2F%2Fsmallcloud.ai%2Fdiscord)](https://smallcloud.ai/discord)
+[![Twitter Follow](https://img.shields.io/twitter/follow/refact_ai)](https://twitter.com/intent/follow?screen_name=refact_ai)
+![License](https://img.shields.io/github/license/smallcloudai/refact)
+[![Visual Studio](https://img.shields.io/visual-studio-marketplace/d/smallcloud.codify?label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
+[![JetBrains](https://img.shields.io/jetbrains/plugin/d/com.smallcloud.codify?label=JetBrains)](https://plugins.jetbrains.com/plugin/20647-codify)
 
-This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding assistant. By running
-your own server, you can ensure that your code remains under your control. This server supports:
-
- * Code completion
- * AI Toolbox
- * Chat
- * Fine tuning on your codebase
-
-You can run Refact models, plus WizardCoder, StarChat and other open models. To fine tune on your code,
-use CONTRASTcode/3b/multi model that's high quality and fast. You'll need 12Gb of GPU memory to fine tune it.
-
-Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
-IDEs and [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
-
-[Join us on Discord](https://discord.gg/Jpa9DGeCfH) and say hi!
-
+Refact is an open-source Copilot alternative available as a self-hosted or cloud option.
+- [x] Autocompletion powered by best-in-class open-source code models 
+- [x] Context-aware chat on a current file
+- [x] Refactor, explain, analyse, optimise code, and fix bug functions 
+- [x] Fine-tuning on codebase (Beta, self-hosted only) 
+- [ ] Context-aware chat on entire codebase 
+      
 ![Image Description](./almost-all-features-05x-dark.jpeg)
 
+## Getting Started  
 
-## Running Server in Docker
+1. Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
+2. For the cloud version, create your account at [https://refact.ai/](https://refact.ai/) and start immediately. For the self-hosted version, follow the instructions below.  
+
+### Running Server in Docker
 
 The easiest way to run this server is a pre-build Docker image.
 
@@ -83,7 +84,7 @@ docker volume rm VVV
 </details>
 
 
-## Setting Up Plugins
+### Setting Up Plugins
 
 Go to plugin settings and set up a custom inference URL `http://127.0.0.1:8008`
 
@@ -94,55 +95,43 @@ Settings > Tools > Refact.ai > Advanced > Inference URL
 Extensions > Refact.ai Assistant > Settings > Infurl
 </details>
 
-Now it should work, just try to write some code! If it doesn't, please report your experience to
-[GitHub issues](https://github.com/smallcloudai/refact-self-hosting/issues).
+## How Refact works 
 
+Under the hood, Refact uses the best open-source models.
 
-## Fine Tuning
+At the moment, you can choose between the following models:
 
-*Why?*  Code models are trained on a vast amount of code from the internet, which may not perfectly
-align with your specific codebase, APIs, objects, or coding style.
-By fine-tuning the model, you can make it more familiar with your codebase and coding patterns.
-This allows the model to better understand your specific needs and provide more relevant and
-accurate code suggestions. Fine-tuning essentially helps the model memorize the patterns and
-structures commonly found in your code, resulting in improved suggestions tailored to your
-coding style and requirements.
+| Model                                                                                | Completion | Chat      | AI Toolbox | Fine-tuning | 
+| ------------------------------------------------------------------------------------ | ---------- | --------- | ---------- | ----------| 
+| [CONTRASTcode/medium/multi](https://huggingface.co/smallcloudai/codify_medium_multi) |    +    |           |           |            |  
+| [CONTRASTcode/3b/multi](https://huggingface.co/smallcloudai/codify_3b_multi)         |    +    |           |           |        +    |    
+| [starcoder/15b/base](https://huggingface.co/smallcloudai/starcoder_15b_4bit)         |   +     |         + |          + |           |   
+| [starcoder/15b/base8bit](https://huggingface.co/smallcloudai/starcoder_15b_8bit)     |    +    |         + |          + |           |  
+| starchat/15b/beta                                                                     |        |         + |           |          | 
+| wizardcoder/15b                                                                       |     +   |          |           |           | 
+| wizardlm/7b |        |         + |           |         |
+| wizardlm/13b  |        |         + |           |          |
+| llama2/7b    |        |         + |          |         |
+| llama2/13b   |        |         + |           |           |
 
-*Which Files to Feed?*  It's a good idea to give the model the current code of your projects,
-because it's likely any new code in the same project will be similar -- that's what makes
-suggestions relevant and useful. However, it's NOT a good idea feed 3rd party libraries that
-you use, as the model may learn to generate code similar to the internals of those libraries.
-
-*GUI*  Use `Sources` and `Finetune` tabs in the web UI to upload files (.zip, .gz, .bz2 archive, or
-a link to your git repository) and run the fine-tune process. After the fine-tuning process
-finishes (which should take several hours), you can dynamically turn it on and off and observe
-the difference it makes for code suggestions.
-
-There's a catch: both VS Code and JB plugins cache the responses. To force the model to produce
-a new suggestion (rather than immediately responding with a cached one), you can change the text
-a few lines above, for example, a comment. Alternatively,
-you can use the Manual Suggestion Trigger (a key combination), which always produces a new suggestion.
-
+## Usage
+Refact is free to use for individuals and small teams under BSD-3-Clause license. If you wish to use Refact for Enterprise, please [contact us](https://refact.ai/contact/). 
 
 ## FAQ
 
 Q: Can I run a model on CPU?
 
 A: it doesn't run on CPU yet, but it's certainly possible to implement this.
-[Join us on Discord](https://discord.gg/Jpa9DGeCfH) to participate.
 
 Q: Sharding is disabled, why?
 
 A: It's not ready yet, but it's coming soon (Put PR number here).
 
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-
 ## Community & Support
 
-Join our
-[Discord server](https://www.smallcloud.ai/discord) and follow our
-[Twitter](https://twitter.com/refact_ai) to get the latest updates.
+- Contributing [CONTRIBUTING.md](CONTRIBUTING.md)
+- [GitHub issues](https://github.com/smallcloudai/refact/issues) for bugs and errors 
+- [Community forum](https://github.com/smallcloudai/refact/discussions) for community support and discussions
+- [Discord](https://www.smallcloud.ai/discord) for chatting with community members
+- [Twitter](https://twitter.com/refact_ai) for product news and updates 
+
