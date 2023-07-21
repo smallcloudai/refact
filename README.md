@@ -7,29 +7,25 @@
 [![Discord](https://img.shields.io/discord/1037660742440194089?logo=discord&label=Discord&link=https%3A%2F%2Fsmallcloud.ai%2Fdiscord)](https://smallcloud.ai/discord)
 [![Twitter Follow](https://img.shields.io/twitter/follow/refact_ai)](https://twitter.com/intent/follow?screen_name=refact_ai)
 ![License](https://img.shields.io/github/license/smallcloudai/refact)
-
 [![Visual Studio](https://img.shields.io/visual-studio-marketplace/d/smallcloud.codify?label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
 [![JetBrains](https://img.shields.io/jetbrains/plugin/d/com.smallcloud.codify?label=JetBrains)](https://plugins.jetbrains.com/plugin/20647-codify)
 
-# Refact
+Refact is an open-source Copilot alternative available as a self-hosted or cloud option.
+- [x] Autocompletion powered by best-in-class open-source code models 
+- [x] Context-aware chat on a current file
+- [x] Refactor, explain, analyse, optimise code, and fix bug functions 
+- [x] Fine-tuning on codebase (Beta, self-hosted only) 
+- [ ] Context-aware chat on entire codebase 
+      
 
-This is a self-hosted server for the [refact.ai](https://www.refact.ai) coding assistant. By running
-your own server, you can ensure that your code remains under your control. This server supports:
-
- * Code completion
- * AI Toolbox
- * Chat
- * Fine tuning on your codebase
-
-You can run Refact models, plus WizardCoder, StarChat and other open models. To fine tune on your code,
-use CONTRASTcode/3b/multi model that's high quality and fast. You'll need 12Gb of GPU memory to fine tune it.
-
-Refact is currently available as a plugin for [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
-IDEs and [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify).
-
-[Join us on Discord](https://discord.gg/Jpa9DGeCfH) and say hi!
 
 ![Image Description](./almost-all-features-05x-dark.jpeg)
+
+## Getting Started
+
+1. Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) and [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
+
+
 
 
 ## Running Server in Docker
@@ -138,20 +134,15 @@ you can use the Manual Suggestion Trigger (a key combination), which always prod
 Q: Can I run a model on CPU?
 
 A: it doesn't run on CPU yet, but it's certainly possible to implement this.
-[Join us on Discord](https://discord.gg/Jpa9DGeCfH) to participate.
 
 Q: Sharding is disabled, why?
 
 A: It's not ready yet, but it's coming soon (Put PR number here).
 
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-
 ## Community & Support
+- Contributing [CONTRIBUTING.md](CONTRIBUTING.md)
+- [GitHub issues](https://github.com/smallcloudai/refact/issues) for bugs and errors 
+- [Discord](https://www.smallcloud.ai/discord) for community support and discussions 
+- Community forum for chatting with community members
+- [Twitter](https://twitter.com/refact_ai) for product news and updates 
 
-Join our
-[Discord server](https://www.smallcloud.ai/discord) and follow our
-[Twitter](https://twitter.com/refact_ai) to get the latest updates.
