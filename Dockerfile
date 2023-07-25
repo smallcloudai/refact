@@ -20,6 +20,7 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 RUN pip install --no-cache-dir torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118
 
 # linguist requisites
+RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y \
     expect \
     ruby-full \
@@ -37,7 +38,9 @@ RUN git clone https://github.com/smallcloudai/linguist.git /tmp/linguist \
     && rake build_gem
 ENV PATH="${PATH}:/tmp/linguist/bin"
 
-ENV TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6+PTX"
+ENV BUILD_CUDA_EXT=1
+ENV GITHUB_ACTIONS=true
+ENV TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0+PTX"
 COPY . /tmp/app
 RUN pip install /tmp/app && rm -rf /tmp/app
 
