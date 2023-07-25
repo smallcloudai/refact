@@ -18,7 +18,7 @@ FileUpload = namedtuple('FileUpload', ['name', 'text'])
 class VecDBAPI:
     def __init__(
             self,
-            url: str = 'http://0.0.0.0:8009',
+            url: str = 'http://10.190.99.200:8009',
             api_key: str = ''
     ):
         self._base_url = url
@@ -35,13 +35,13 @@ class VecDBAPI:
 
     def find(
             self,
-            file: str,
+            query: str,
             top_k: int = 1
     ) -> List[Dict]:
-        if isinstance(file, str):
-            file = FileUpload(text=file, name='')
+        if isinstance(query, str):
+            file = FileUpload(text=query, name='')
         else:
-            raise ValueError(f'file should be str; got: {file}; type: {type(file)}')
+            raise ValueError(f'file should be str; got: {query}; type: {type(query)}')
 
         resp = self._r_session.post(
             f'{self._base_url}/v1/find',
@@ -52,7 +52,7 @@ class VecDBAPI:
             timeout=60
         )
         assert resp.status_code == 200, f'Error: {resp.text}'
-        return resp.json()['results'][0]['candidates']
+        return resp.json()['results']
 
     def upload_files(
             self,
@@ -90,7 +90,7 @@ class VecDBAPI:
                 Path,
             ],
     ) -> List[FileUpload]:
-        files: List[Union[Tuple, Path]] = list(files)
+        files: List[Union[Tuple, Path]] = [files] if isinstance(files, Path) else list(files)
         if not files:
             raise ValueError('files should not be empty')
 
@@ -102,9 +102,9 @@ class VecDBAPI:
                 files_dirs = [d for d in files if d.is_dir()]
                 files_files = [f for f in files if f.is_file()]
                 files: List[FileUpload] = [
-                    FileUpload(name=file.name, text=self._read_file(file))
+                    FileUpload(name=str(file), text=self._read_file(file))
                     for file in [
-                        *[files_files],
+                        *files_files,
                         *[file for file_dir in files_dirs for file in file_dir.rglob('*') if file.is_file()]
                     ]
                 ]
@@ -129,11 +129,15 @@ class VecDBAsyncAPI(VecDBAPI):
     ):
         super().__init__(*args, **kwargs)
 
-    async def find(self, file: str, top_k: int = 1):
-        if isinstance(file, str):
-            file = FileUpload(text=file, name='')
+    async def find(
+            self,
+            query: str,
+            top_k: int = 1
+    ) -> List[Dict]:
+        if isinstance(query, str):
+            file = FileUpload(text=query, name='')
         else:
-            raise ValueError(f'file should be str; got: {file}; type: {type(file)}')
+            raise ValueError(f'query should be str; got: {query}; type: {type(query)}')
 
         async with aiohttp.ClientSession() as session:
             session.headers.update(self._headers())
@@ -148,7 +152,7 @@ class VecDBAsyncAPI(VecDBAPI):
             ) as resp:
                 assert resp.status == 200, f'Error: {resp.text}'
                 data = json.loads(await resp.text())
-                return data['results'][0]['candidates']
+                return data['results']
 
     async def upload_files(
             self,
@@ -171,7 +175,7 @@ class VecDBAsyncAPI(VecDBAPI):
                     desc='[VECDB]: Uploading files',
             )):
                 data = {
-                    'files': [(f.name, f.text) for f in files_batch]
+                    'files': [(str(f), f.text) for f in files_batch]
                 }
                 if idx == total - 1:
                     data['final'] = True
@@ -186,11 +190,11 @@ class VecDBAsyncAPI(VecDBAPI):
 if __name__ == '__main__':
     vecdb = VecDBAPI()
     # vecdb.upload_files(
-    #     files_dir=Path('/Users/valaises/PycharmProjects/data-collection/userstats'),
+    #     files=Path('/Users/valaises/PycharmProjects/data-collection/github/scripts'),
     #     batch_size=10
     # )
     res = vecdb.find(
-        'parallel_tasks',
-        top_k=3
+        'ParallelTasks',
+        top_k=1
     )
-    print([c['name'] for c in res[0]['candidates']])
+    print(res[0]['text'])

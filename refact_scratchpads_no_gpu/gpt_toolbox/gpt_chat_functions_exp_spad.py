@@ -109,18 +109,16 @@ class GptChatWithFunctionsExplicit(ascratch.AsyncScratchpad):
 
         if DEBUG:
             self.debuglog(f'CALLING function {name} with params {param}')
-        # f'This an example of using {param}. I want you to understand how it is used:\n'
-        # f'{text}\n'
-        # f'Answer on two questions:\n'
-        # f'1. What is the purpose of {param}\n'
-        # f'2. Write a short example of usage {param} abstracting from the context'
-        #
-        # f'I wanted to find out about: {param} and performed a Google search request. '
-        # f'I have got top-{len(candidates)} results. I want you to summarize them very briefly. '
-        # f'Output summarization with references to each source you found informative. '
-        # f'Here are the results of my search: \n {search_result}'
 
         if name == '/websearch':
+            def websearch_prompt() -> str:
+                return f"""
+I wanted to find out about: {param} and performed a Google search request.
+I have received top-{len(candidates)} results. I want you to summarize them very briefly.
+Output summarization with references to each source you found informative.
+Here are the results of my search: \n {search_result}
+"""
+
             def get_domain_name(url) -> str:
                 try:
                     extracted = tldextract.extract(url)
@@ -133,7 +131,6 @@ class GptChatWithFunctionsExplicit(ascratch.AsyncScratchpad):
                 "role": "assistant",
                 "content": f"Searching web for {param}",
                 "gui_role": "tool_use",
-                # "gui_content": f"Searching web for {param}",
             })
             yield self._new_chat_messages()
 
@@ -144,7 +141,36 @@ class GptChatWithFunctionsExplicit(ascratch.AsyncScratchpad):
             ])
             self._messages.append({
                 "role": "user",
-                "content": search_result,
+                "content": websearch_prompt(),
+                "gui_role": "documents",
+                "gui_content": search_result,
+            })
+            yield self._new_chat_messages()
+
+        elif name == '/vecdb':
+            def vecdb_prompt() -> str:
+                return f"""
+Here is an example of using {param}. I want you to understand how it is used:
+{candidates}
+Answer the two questions:
+1. What is the purpose of {param}
+2. Write a short example of usage {param} abstracting from the context
+"""
+
+            self._messages.append({
+                "role": "assistant",
+                "content": f"Querying vecdb for {param}",
+                "gui_role": "tool_use",
+            })
+            yield self._new_chat_messages()
+
+            candidates = await self._vecdb.find(param)
+            search_result = json.dumps([
+                c for c in candidates  # TODO(valerii): select only needed fields
+            ])
+            self._messages.append({
+                "role": "user",
+                "content": vecdb_prompt(),
                 "gui_role": "documents",
                 "gui_content": search_result,
             })

@@ -9,11 +9,11 @@ from encoder import ChunkifyFiles
 
 
 def hash_string(string: str) -> str:
-    return sha1(string.encode()).hexdigest()
+    return sha1(string.encode()).hexdigest()[:12]
 
 
 def insert_files(files: List):
-    ch_files = ChunkifyFiles(window_size=512, soft_limit=256)
+    ch_files = ChunkifyFiles(window_size=512, soft_limit=512)
 
     code_files_ids_ex = set()
     for row in C.c_session.execute(
