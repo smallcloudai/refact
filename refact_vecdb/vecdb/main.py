@@ -152,7 +152,7 @@ class VecDBAsyncAPI(VecDBAPI):
             ) as resp:
                 assert resp.status == 200, f'Error: {resp.text}'
                 data = json.loads(await resp.text())
-                return data['results']
+                return data['results']  # file_path, file_name, text
 
     async def upload_files(
             self,
@@ -188,13 +188,15 @@ class VecDBAsyncAPI(VecDBAPI):
 
 
 if __name__ == '__main__':
-    vecdb = VecDBAPI()
-    # vecdb.upload_files(
-    #     files=Path('/Users/valaises/PycharmProjects/data-collection/github/scripts'),
-    #     batch_size=10
-    # )
-    res = vecdb.find(
-        'ParallelTasks',
-        top_k=1
+    vecdb = VecDBAPI(
+        url='http://0.0.0.0:8009',
     )
-    print(res[0]['text'])
+    vecdb.upload_files(
+        files=Path('/Users/valaises/PycharmProjects/data-collection/github/scripts'),
+        batch_size=10
+    )
+    # res = vecdb.find(
+    #     'ParallelTasks',
+    #     top_k=1
+    # )
+    # print(res[0]['text'])

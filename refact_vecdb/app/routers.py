@@ -1,7 +1,7 @@
 import json
 import itertools
 
-from typing import Dict
+from typing import Dict, Iterable, List
 from pathlib import Path
 from collections import namedtuple
 
@@ -14,6 +14,7 @@ from params import FindQuery, FilesBulk
 from bootstrap import load_vecdb
 from encoder import ChunkifyFiles
 from crud import insert_files
+from code_extensions import code_extensions_compact
 
 
 class FindRouter(APIRouter):
@@ -56,11 +57,21 @@ class UploadRouter(APIRouter):
         super(UploadRouter, self).add_api_route("/v1/bulk_upload", self._bulk_upload, methods=["POST"])
 
     async def _bulk_upload(self, data: FilesBulk, request: Request):
+        FileUpload = namedtuple('FileUpload', ['name', 'text'])
+
+        def files_filter(files: Iterable[FileUpload]) -> List[FileUpload]:
+            files = [
+                f for f in files
+                if Path(f.name).suffix[1:] in code_extensions_compact and f.text
+            ]
+            return files
+
         x_token = request.headers.get('X-Auth-Token')
         final_batch: bool = data.final
 
-        FileUpload = namedtuple('FileUpload', ['name', 'text'])
-        files = [FileUpload(*f) for f in data.files]
+        files = files_filter([FileUpload(*f) for f in data.files])
+
+
         insert_files(files)
 
         C.vecdb_update_required = True

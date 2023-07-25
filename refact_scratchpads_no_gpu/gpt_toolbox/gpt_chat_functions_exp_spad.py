@@ -136,7 +136,11 @@ Here are the results of my search: \n {search_result}
 
             candidates = await self._websearch.a_search(param)
             search_result = json.dumps([
-                {'link': c.link, 'snippet': c.snippet, 'domain_name': get_domain_name(c.link)}
+                {
+                    'short_name': get_domain_name(c.link),
+                    'full_name': c.link,
+                    'snippet': c.snippet,
+                }
                 for c in candidates
             ])
             self._messages.append({
@@ -144,6 +148,7 @@ Here are the results of my search: \n {search_result}
                 "content": websearch_prompt(),
                 "gui_role": "documents",
                 "gui_content": search_result,
+                "gui_function": "websearch",
             })
             yield self._new_chat_messages()
 
@@ -164,15 +169,21 @@ Answer the two questions:
             })
             yield self._new_chat_messages()
 
-            candidates = await self._vecdb.find(param)
+            candidates = await self._vecdb.find(param, 4)
             search_result = json.dumps([
-                c for c in candidates  # TODO(valerii): select only needed fields
+                {
+                    'short_name': c['file_name'],
+                    'full_name': c['file_path'],
+                    'snippet': c['text']
+                }
+                for c in candidates
             ])
             self._messages.append({
                 "role": "user",
                 "content": vecdb_prompt(),
                 "gui_role": "documents",
                 "gui_content": search_result,
+                "gui_function": "vecdb",
             })
             yield self._new_chat_messages()
 

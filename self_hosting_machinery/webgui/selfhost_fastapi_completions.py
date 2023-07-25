@@ -217,6 +217,8 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
                                 del m["content"]
                         for mi in range(0, message_index_has_delta):
                             ch["messages"][mi] = {}
+                        ch['messages'] = ch['messages'][-1]
+
             tmp = json.dumps(msg)
             yield "data: " + tmp + "\n\n"
             log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
