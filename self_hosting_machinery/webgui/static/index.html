@@ -59,6 +59,9 @@
             <button class="nav-link main-tab-button" id="finetune-tab" data-tab="finetune" type="button">Finetune</button>
           </li>
           <li class="nav-item" role="presentation">
+            <button class="nav-link main-tab-button" id="vecdb-tab" data-tab="vecdb" type="button">VecDB</button>
+          </li>
+          <li class="nav-item" role="presentation">
             <button class="nav-link main-tab-button" id="logs-tab" data-tab="server-logs" type="button">Server Logs</button>
           </li>
           <li class="nav-item" role="presentation">
@@ -77,6 +80,25 @@
       </div>
     </div>
   </nav>
+
+  <div class="container mt-5">
+  <div class="main-tab-content">
+    <div class="main-tab-pane main-active" id="vecdb">
+      <div class="col-4">
+        <div class="pane">
+<!--            <h2>VecDB URL</h2>-->
+          <label for="vecdb-url" class="form-label">VecDB URL</label>
+          <input type="text" class="form-control" id="vecdb-url" value="http://localhost:8009">
+          <div class="d-flex flex-row-reverse mt-3">
+            <button type="button" class="btn btn-primary" id="vecdb-url-save">Save</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-7"></div>
+
+    </div>
+  </div>
+  </div>
 
   <div class="container mt-5">
     <div class="main-tab-content">

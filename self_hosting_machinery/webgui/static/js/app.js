@@ -1,6 +1,7 @@
 import * as model_hosting_tab from './tab-model-hosting.js';
 import * as upload_tab from './tab-upload.js';
 import * as finetune_tab from './tab-finetune.js';
+import * as vecdb_tab from './tab-vecdb.js';
 import * as access_control_tab from './tab-access-contol.js';
 import * as server_log_tab from './tab-server-logs.js';
 import * as ssh_settings_tab from './tab-credentials-settings.js';
@@ -34,6 +35,7 @@ display_comming_soon();
 model_hosting_tab.init();
 upload_tab.init();
 finetune_tab.init();
+vecdb_tab.init();
 access_control_tab.init();
 server_log_tab.init();
 ssh_settings_tab.init();
@@ -82,11 +84,12 @@ schedule_modal.addEventListener('show.bs.modal', function () {
 
 function active_tab_switched_here() {
     const active_tab = document.querySelector('.main-tab-pane.main-active');
-    if (active_tab.id != "model-hosting") model_hosting_tab.tab_switched_away();
-    if (active_tab.id != "upload") upload_tab.tab_switched_away();
-    if (active_tab.id != "finetune") finetune_tab.tab_switched_away();
-    if (active_tab.id != "server-logs") server_log_tab.tab_switched_away();
-    if (active_tab.id != "settings") ssh_settings_tab.tab_switched_away();
+    if (active_tab.id !== "model-hosting") model_hosting_tab.tab_switched_away();
+    if (active_tab.id !== "upload") upload_tab.tab_switched_away();
+    if (active_tab.id !== "finetune") finetune_tab.tab_switched_away();
+    if (active_tab.id !== "vecdb") vecdb_tab.tab_switched_away();
+    if (active_tab.id !== "server-logs") server_log_tab.tab_switched_away();
+    if (active_tab.id !== "settings") ssh_settings_tab.tab_switched_away();
     switch (active_tab.id) {
     case 'model-hosting':
         model_hosting_tab.tab_switched_here();
@@ -96,6 +99,9 @@ function active_tab_switched_here() {
         break;
     case 'finetune':
         finetune_tab.tab_switched_here();
+        break;
+    case 'vecdb':
+        vecdb_tab.tab_switched_here();
         break;
     case 'server-logs':
         server_log_tab.tab_switched_here();
@@ -119,6 +125,9 @@ function active_update_each_couple_of_seconds() {
         break;
     case 'finetune':
         finetune_tab.tab_update_each_couple_of_seconds();
+        break;
+    case 'vecdb':
+        vecdb_tab.tab_update_each_couple_of_seconds();
         break;
     case 'server-logs':
         server_log_tab.tab_update_each_couple_of_seconds();

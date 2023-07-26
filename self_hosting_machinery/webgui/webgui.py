@@ -19,6 +19,8 @@ from self_hosting_machinery.webgui.tab_server_logs import TabServerLogRouter
 from self_hosting_machinery.webgui.tab_settings import TabSettingsRouter
 from self_hosting_machinery.webgui.tab_upload import TabUploadRouter
 from self_hosting_machinery.webgui.tab_finetune import TabFinetuneRouter
+from self_hosting_machinery.webgui.tab_vecdb import TabVecDBRouter
+
 from self_hosting_machinery.webgui.tab_models_host import TabHostRouter
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 
