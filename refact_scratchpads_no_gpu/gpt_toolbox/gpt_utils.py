@@ -1,6 +1,7 @@
 import re
 from itertools import zip_longest
 from typing import *
+
 import tiktoken
 
 from refact_scratchpads_no_gpu.gpt_toolbox.scratchpad_utils import full_line_selection

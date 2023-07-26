@@ -1,2 +1,4 @@
 from refact_scratchpads_no_gpu.gpt_toolbox.toolbox_functions import *
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_spad import GptChat
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_functions_spad import GptChatWithFunctions
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_functions_exp_spad import GptChatWithFunctionsExplicit
