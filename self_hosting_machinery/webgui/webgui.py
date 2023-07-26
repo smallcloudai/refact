@@ -21,6 +21,8 @@ from self_hosting_machinery.webgui.tab_settings import TabSettingsRouter
 from self_hosting_machinery.webgui.tab_upload import TabUploadRouter
 from self_hosting_machinery.webgui.tab_finetune import TabFinetuneRouter
 from self_hosting_machinery.webgui.tab_models_host import TabHostRouter
+from self_hosting_machinery.webgui.tab_context import TabContextRouter
+
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 from self_hosting_machinery.webgui.tab_loras import TabLorasRouter
@@ -62,6 +64,7 @@ class WebGUI(FastAPI):
             model_assigner: ModelAssigner):
         return [
             TabLorasRouter(),
+            TabContextRouter(),
             PluginsRouter(),
             CompletionsRouter(
                 prefix="/v1",
@@ -105,7 +108,7 @@ if __name__ == "__main__":
         handlers=[logging.StreamHandler(stream=sys.stderr)])
 
     model_assigner = ModelAssigner()
-    app = WebGUI(model_assigner, docs_url=None, redoc_url=None)
+    app = WebGUI(model_assigner)  #, docs_url=None, redoc_url=None)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     uvicorn.run(

@@ -10,6 +10,7 @@ class PluginsRouter(APIRouter):
             {"label": "Model Hosting", "tab": "model-hosting"},
             {"label": "Sources", "tab": "upload"},
             {"label": "Finetune", "tab": "finetune"},
+            {"label": "Context", "id": "context-tab", "tab": "context"},
             {"label": "Server Logs", "tab": "server-logs"},
             {"label": "Credentials", "tab": "settings", "hamburger": True},
         ]

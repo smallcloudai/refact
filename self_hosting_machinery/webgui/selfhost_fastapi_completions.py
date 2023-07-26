@@ -14,9 +14,11 @@ from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel, Required
-from typing import List, Dict, Union
+from refact_vecdb.search_api.routers import SearchQuery
+from refact_vecdb import VDBSearchAPI
 
+from pydantic import BaseModel, Required
+from typing import List, Dict, Union, Any, AsyncIterator
 
 __all__ = ["CompletionsRouter"]
 
@@ -101,6 +103,17 @@ class ChatContext(NlpSamplingParams):
     n: int = 1
     model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
     function: str = Query(default="chat", regex="^[a-zA-Z0-9_\.\-]+$")
+
+
+class Embeddings(BaseModel):
+    model: str
+    files: List[Dict[str, str]]
+
+    def clamp(self):
+        return {
+            "model": self.model,
+            "files": self.files,
+        }
 
 
 async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts):
@@ -216,6 +229,33 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
         ticket.done()
 
 
+async def embeddings_streamer(ticket: Ticket, timeout, created_ts):
+    try:
+        while 1:
+            try:
+                msg: Dict = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
+                msg['choices'] = msg['choices'][0]
+                msg["files"] = [json.loads(v) for v in msg['choices']['files'].values()]
+                del msg['choices']
+            except asyncio.TimeoutError:
+                log("TIMEOUT %s" % ticket.id())
+                msg = {"status": "error", "human_readable_message": "timeout"}
+
+            tmp = json.dumps(msg)
+            yield tmp
+            log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
+            if msg.get("status", "") != "in_progress":
+                break
+
+        log(red_time(created_ts) + " /finished call %s" % ticket.id())
+        ticket.done()
+    finally:
+        if ticket.id() is not None:
+            log("   ***  CANCEL  ***  cancelling %s" % ticket.id() + red_time(created_ts))
+        ticket.cancelled = True
+        ticket.done()
+
+
 async def error_string_streamer(ticket_id, static_message, account, created_ts):
     yield "data: " + json.dumps(
         {"object": "smc.chat.chunk", "role": "assistant", "delta": static_message, "finish_reason": "END"}) + "\n\n"
@@ -238,6 +278,8 @@ class CompletionsRouter(APIRouter):
         self.add_api_route("/secret-key-activate", self._secret_key_activate, methods=["GET"])
         self.add_api_route("/contrast", self._contrast, methods=["POST"])
         self.add_api_route("/chat", self._chat, methods=["POST"])
+        self.add_api_route("/embeddings", self._embeddings, methods=["POST"])
+        self.add_api_route("/vdb-search", self._vdb_search, methods=["POST"])
 
         # API for LSP server
         self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
@@ -422,3 +464,43 @@ class CompletionsRouter(APIRouter):
         self._id2ticket[ticket.id()] = ticket
         await q.put(ticket)
         return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))
+
+    async def _embeddings(self, post: Embeddings, request: Request, account: str = "XXX"):
+        account = "XXX"
+        ticket = Ticket("embed-")
+        model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
+        if err_msg:
+            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
+            raise HTTPException(status_code=400, detail=err_msg)
+        log("%s chat model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
+
+        req = post.clamp()
+        req.update({
+            "id": ticket.id(),
+            "account": account,
+            "object": "embeddings_req",
+            "model": model_name,
+            "stream": True,
+            "created": time.time()
+        })
+        ticket.call.update(req)
+        q = self._inference_queue.model_name_to_queue(ticket, model_name, no_checks=True)
+        self._id2ticket[ticket.id()] = ticket
+        await q.put(ticket)
+
+        results = []
+        async for result in embeddings_streamer(ticket, 240, req["created"]):
+            results.extend(json.loads(result)['files'])
+        return {'data': results}
+
+    async def _vdb_search(self, post: SearchQuery, request: Request, account: str = "XXX"):
+        api = VDBSearchAPI()
+
+        async def stream_results():
+            results = []
+            async for result in api.a_search(post.texts, account, post.top_k):
+                results.append(result)
+            return results
+
+        results = await stream_results()
+        return results
