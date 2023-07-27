@@ -175,7 +175,8 @@ def make_model(
         lora_dropout=lora_dropout,
         lora_init_scale=lora_init_scale
     )
-    model = apply_flash_attention(model)
+    if th.cuda.get_device_capability() >= (8, 0):
+        model = apply_flash_attention(model)
     for param in list(model.parameters()):
         param.requires_grad = True
     model = freeze_model(
