@@ -168,15 +168,7 @@ class ConfigBuilder:
         }
 
         scores_per_loraconfigs = {
-            (0, 2): dict(lora_target_modules=[
-                "qkv", "out",
-            ], lora_r=4, lora_alpha=8, lora_dropout=0.05, lora_init_scale=0.01,
-                freeze_exceptions=["lora"]),
-            (2, 4): dict(lora_target_modules=[
-                "qkv", "out",
-            ], lora_r=8, lora_alpha=16, lora_dropout=0.05, lora_init_scale=0.01,
-                freeze_exceptions=["lora"]),
-            (4, 6): dict(lora_target_modules=[
+            (0, 6): dict(lora_target_modules=[
                 "qkv", "out",
             ], lora_r=32, lora_alpha=64, lora_dropout=0.01, lora_init_scale=0.01,
                 freeze_exceptions=["lora"]),
