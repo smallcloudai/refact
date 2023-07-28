@@ -178,7 +178,7 @@ def pre_filtering():
     has_train_files = os.path.exists(os.path.join(env.DIR_UNPACKED, unfiltered_train)) and \
                       len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, unfiltered_train))))
     if not has_train_files:
-        raise RuntimeError("No train files has been provided for filtering")
+        raise RuntimeError("No train files have been provided for filtering")
 
     logging.info("STATUS smart filter init")
     logging.info("Train set filtering, loading model...")

@@ -119,7 +119,7 @@ def create_data(cfg, enc) -> Tuple[Any, Optional[Any]]:
     has_train_files = os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_train)) and \
                       len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_train)))) > 0
     if not has_train_files:
-        raise RuntimeError("No train files has been provided")
+        raise RuntimeError("No train files have been provided")
 
     has_test_files = os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_test)) \
                      and len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_test)))) > 0
