@@ -25,10 +25,12 @@ Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemNam
 
 You can start using Refact Cloud immediately, just create an account at [https://refact.ai/](https://refact.ai/).
 
+Instructions below are for the self-hosted version.
+
 
 ### Running Refact Self-Hosted in a Docker Container
 
-The easiest way to run this server is a pre-build Docker image.
+The easiest way to run the self-hosted server is a pre-build Docker image.
 
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
