@@ -11,23 +11,22 @@
 [![JetBrains](https://img.shields.io/jetbrains/plugin/d/com.smallcloud.codify?label=JetBrains)](https://plugins.jetbrains.com/plugin/20647-codify)
 
 Refact is an open-source Copilot alternative available as a self-hosted or cloud option.
-- [x] Autocompletion powered by best-in-class open-source code models 
+- [x] Autocompletion powered by best-in-class open-source code models
 - [x] Context-aware chat on a current file
-- [x] Refactor, explain, analyse, optimise code, and fix bug functions 
+- [x] Refactor, explain, analyse, optimise code, and fix bug functions
 - [x] Fine-tuning on codebase (Beta, self-hosted only) [Docs](https://refact.ai/docs/fine-tuning/)
-- [ ] Context-aware chat on entire codebase 
-      
+- [ ] Context-aware chat on entire codebase
+
 ![Image Description](./almost-all-features-05x-dark.jpeg)
 
-## Getting Started  
+## Getting Started
 
 Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
 
-### Refact Cloud
-Create your account at [https://refact.ai/](https://refact.ai/) and start immediately. 
+You can start using Refact Cloud immediately, just create an account at [https://refact.ai/](https://refact.ai/).
 
-### Refact Self-hosted
-Step 1. Running Server in Docker
+
+### Running Refact Self-Hosted in a Docker Container
 
 The easiest way to run this server is a pre-build Docker image.
 
@@ -86,8 +85,11 @@ docker volume rm VVV
 ```
 </details>
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for installation without a docker container.
 
-Step 2. Setting Up Plugins
+
+
+### Setting Up Plugins
 
 Go to plugin settings and set up a custom inference URL `http://127.0.0.1:8008`
 
@@ -98,27 +100,28 @@ Settings > Tools > Refact.ai > Advanced > Inference URL
 Extensions > Refact.ai Assistant > Settings > Infurl
 </details>
 
-## How Refact works 
 
-Under the hood, Refact uses the best open-source models.
+## How Refact Works
+
+Under the hood, it uses Refact models and the best open-source models.
 
 At the moment, you can choose between the following models:
 
-| Model                                                                                | Completion | Chat      | AI Toolbox | Fine-tuning | 
-| ------------------------------------------------------------------------------------ | ---------- | --------- | ---------- | ----------| 
-| [CONTRASTcode/medium/multi](https://huggingface.co/smallcloudai/codify_medium_multi) |    +    |           |           |            |  
-| [CONTRASTcode/3b/multi](https://huggingface.co/smallcloudai/codify_3b_multi)         |    +    |           |           |        +    |    
-| [starcoder/15b/base](https://huggingface.co/smallcloudai/starcoder_15b_4bit)         |   +     |          |           |           |   
-| [starcoder/15b/base8bit](https://huggingface.co/smallcloudai/starcoder_15b_8bit)     |    +    |          |           |           |  
-| starchat/15b/beta                                                                     |        |         + |           |          | 
-| wizardcoder/15b                                                                       |     +   |          |           |           | 
+| Model                                                                                | Completion | Chat      | AI Toolbox | Fine-tuning |
+| ------------------------------------------------------------------------------------ | ---------- | --------- | ---------- | ----------|
+| [CONTRASTcode/medium/multi](https://huggingface.co/smallcloudai/codify_medium_multi) |    +    |           |           |            |
+| [CONTRASTcode/3b/multi](https://huggingface.co/smallcloudai/codify_3b_multi)         |    +    |           |           |        +    |
+| [starcoder/15b/base](https://huggingface.co/smallcloudai/starcoder_15b_4bit)         |   +     |          |           |           |
+| [starcoder/15b/base8bit](https://huggingface.co/smallcloudai/starcoder_15b_8bit)     |    +    |          |           |           |
+| starchat/15b/beta                                                                     |        |         + |           |          |
+| wizardcoder/15b                                                                       |     +   |          |           |           |
 | wizardlm/7b |        |         + |           |         |
 | wizardlm/13b  |        |         + |           |          |
 | llama2/7b    |        |         + |          |         |
 | llama2/13b   |        |         + |           |           |
 
 ## Usage
-Refact is free to use for individuals and small teams under BSD-3-Clause license. If you wish to use Refact for Enterprise, please [contact us](https://refact.ai/contact/). 
+Refact is free to use for individuals and small teams under BSD-3-Clause license. If you wish to use Refact for Enterprise, please [contact us](https://refact.ai/contact/).
 
 ## FAQ
 
@@ -133,8 +136,8 @@ A: It's not ready yet, but it's coming soon.
 ## Community & Support
 
 - Contributing [CONTRIBUTING.md](CONTRIBUTING.md)
-- [GitHub issues](https://github.com/smallcloudai/refact/issues) for bugs and errors 
+- [GitHub issues](https://github.com/smallcloudai/refact/issues) for bugs and errors
 - [Community forum](https://github.com/smallcloudai/refact/discussions) for community support and discussions
 - [Discord](https://www.smallcloud.ai/discord) for chatting with community members
-- [Twitter](https://twitter.com/refact_ai) for product news and updates 
+- [Twitter](https://twitter.com/refact_ai) for product news and updates
 
