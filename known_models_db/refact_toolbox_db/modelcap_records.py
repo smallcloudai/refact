@@ -12,7 +12,7 @@ db = [
         third_party=[True, True, False, False, False, False],
         supports_languages="*.*",
         mini_html=load_mini_html("free-chat"),
-        model=["gpt3.5", "gpt4", "starchat", "wizardlm", "llama2", "refact"],
+        model=["gpt3.5", "gpt4", "starchat", "wizardlm", "llama2", "Refact"],
         catch_question_mark=True,
     ),
 
