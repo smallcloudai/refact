@@ -1,10 +1,18 @@
+import functools
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Optional, Tuple
 
 from refact_models.codify_modules import ALiBiBias
 
-from typing import Optional, Tuple
+
+@functools.lru_cache(maxsize=1)
+def get_attention_mask(context_size: int, device) -> torch.Tensor:
+    mask = torch.ones((context_size, context_size),
+                      dtype=torch.bool, device=device)
+    mask = torch.triu(mask, 1)
+    return mask
 
 
 class MultiHeadAttention(nn.Module):
@@ -34,6 +42,10 @@ class MultiHeadAttention(nn.Module):
             query.shape[0], query.shape[2], key.shape[2],
             query.device, query.dtype)
         attn_weights = attn_weights + alibi
+        if attention_mask is None:
+            # get the attention mask anyway because we're dealing only with decoder models here
+            attention_mask = get_attention_mask(context_size=key.shape[2], device=key.device)
+
         if attention_mask is not None:
             attn_weights = torch.masked_fill(attn_weights, attention_mask, -10000)
 
