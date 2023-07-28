@@ -116,9 +116,14 @@ def create_data(cfg, enc) -> Tuple[Any, Optional[Any]]:
         batch_size=cfg['train_batch_size'],
         drop_last=True
     ))
+    has_train_files = os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_train)) and \
+                      len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_train)))) > 0
+    if not has_train_files:
+        raise RuntimeError("No train files has been provided")
 
-    if os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_test)) and \
-            len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_test)))) > 0:
+    has_test_files = os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_test)) \
+                     and len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_test)))) > 0
+    if has_test_files:
         test_ds = finetune_datasource.local_sequence_plain_infill(filtered_test, test_dataopts)
         test_ds = list(test_ds)
     else:
