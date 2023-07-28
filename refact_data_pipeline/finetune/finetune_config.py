@@ -210,9 +210,7 @@ class ConfigBuilder:
                 self.cfg['model_info']['lora'] = lora_cfg
                 break
 
-        traces.log(f'Selected the model by heuristics avg_loss={initial_loss:.2f}, ds_len={ds_len}:\n'
-                   f'Freeze exceptions: {self.cfg["model_info"]["freeze_exceptions"]}\n'
-                   f'Lora config: {self.cfg["model_info"]["lora"]}\n')
+        traces.log(f'Lora parameters heuristic avg_loss={initial_loss:.2f}, ds_len={ds_len} => complexity score={score_acc}')
 
         return self
 

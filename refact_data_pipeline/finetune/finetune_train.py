@@ -96,6 +96,10 @@ def load_finetune_config() -> Dict[str, Any]:
          .set_limit_time_seconds(user_cfg['limit_time_seconds'])
          .set_weight_decay(user_cfg['weight_decay']))
 
+    traces.log(f'Freeze exceptions: {cfg_builder.cfg["model_info"]["freeze_exceptions"]}')
+    for k, v in cfg_builder.cfg["model_info"]["lora"].items():
+        traces.log(f'Lora config: {k:>20} {v}')
+
     with open(os.path.join(traces.context().path, "config.json"), "w") as f:
         json.dump(cfg_builder.cfg, f, indent=4)
 
