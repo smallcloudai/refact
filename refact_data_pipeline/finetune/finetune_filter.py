@@ -249,14 +249,9 @@ def pre_filtering():
 
     traces.log("-" * 40 + "TEST SET" + "-" * 40)
     with open(filtered_test, "w") as f:
-        if most_typical_file_fdict is not None:
-            traces.log("test set is auto selected, consists of one file called: %s" % most_typical_file_fdict["path"])
-            traces.log("this file is removed from the train set.")
-            f.write(json.dumps(most_typical_file_fdict) + "\n")
-        else:
-            for fdict in test_files:
-                traces.log("test set file: %s" % (fdict["path"]))
-                f.write(json.dumps(fdict) + "\n")
+        for fdict in test_files:
+            traces.log("test set file: %s" % (fdict["path"]))
+            f.write(json.dumps(fdict) + "\n")
 
 
 def needs_any_work():
