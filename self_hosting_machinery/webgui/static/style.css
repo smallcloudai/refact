@@ -195,6 +195,7 @@ h3 {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    margin-right: 5px;
 }
 .upload-tab-table-files td:nth-child(2),
 .upload-tab-table-files th:nth-child(2) {

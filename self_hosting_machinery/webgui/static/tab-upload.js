@@ -257,9 +257,14 @@ function render_tab_files(data) {
                         event.target.nextElementSibling.style.display = 'none';
                     });
                 } else {
-                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}`;
+                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
                 }
                 if (current_status == "working" || current_status == "starting") {
+                    if(item_object.files === undefined) {
+                        target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
+                    } else {
+                        target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span><span>${item_object.files} files</span>`;
+                    }
                     any_working = true;
                 }
                 break;
@@ -611,6 +616,7 @@ function delete_file(file) {
     })
     .then(function(response) {
         process_now_update_until_finished();
+        get_tab_files();
         console.log(response);
     });
 }
