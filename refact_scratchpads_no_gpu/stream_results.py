@@ -137,6 +137,7 @@ class UploadProxy:
             self,
             upload_q: Optional[multiprocessing.Queue],
             cancelled_q: Optional[multiprocessing.Queue],
+            custom_urls: List[str] = []
     ):
         try:
             multiprocessing.set_start_method("spawn")
@@ -144,6 +145,7 @@ class UploadProxy:
             pass
         self.upload_q = upload_q or multiprocessing.Queue()
         self.cancelled_q = cancelled_q or multiprocessing.Queue()
+        self.custom_urls = custom_urls
         self.proc = None
         self._cancelled: Set[str] = set()
 
@@ -152,7 +154,7 @@ class UploadProxy:
             return
         self.proc = multiprocessing.Process(
             target=_upload_results_loop,
-            args=(self.upload_q, self.cancelled_q),
+            args=(self.upload_q, self.cancelled_q, self.custom_urls),
             name="upload_results",
         )
         self.proc.start()
@@ -244,9 +246,15 @@ class UploadProxy:
         return self._cancelled
 
 
-def _upload_results_loop(upload_q: multiprocessing.Queue, cancelled_q: multiprocessing.Queue):
+def _upload_results_loop(
+        upload_q: multiprocessing.Queue,
+        cancelled_q: multiprocessing.Queue,
+        custom_urls: List[str]
+):
     req_session = infserver_session()
     exit_flag = False
+    global urls_to_try
+    urls_to_try += custom_urls
     while not exit_flag:
         try:
             upload_dict = upload_q.get(timeout=600)
