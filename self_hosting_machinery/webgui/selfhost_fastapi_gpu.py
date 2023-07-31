@@ -22,8 +22,7 @@ def red_time(base_ts):
     return termcolor.colored("%0.1fms" % (1000*(time.time() - base_ts)), "red")
 
 
-
-verify_api_key = os.environ.get("SMALLCLOUD_API_KEY")
+verify_api_key = os.environ.get("SMALLCLOUD_API_KEY", "EMPTY")
 
 
 def verify_bearer(authorization: str):
