@@ -164,8 +164,11 @@ function reset_ftf_progress() {
 function render_tab_files(data) {
     const files = document.getElementById("upload-tab-table-body-files");
     let i = 0;
-    if(Object.keys(data.uploaded_files).length > 0) {
+    if(Object.keys(data.uploaded_files).length >= 0) {
         files.innerHTML = "";
+    }
+    if(Object.keys(data.uploaded_files).length === 0) {
+        files.innerHTML = `<tr><td>No sources added.</td><td></td><td></td><td></td><td></td></tr>`;
     }
     for(let item in data.uploaded_files) {
         const row = document.createElement('tr');
@@ -616,7 +619,6 @@ function delete_file(file) {
     })
     .then(function(response) {
         process_now_update_until_finished();
-        get_tab_files();
         console.log(response);
     });
 }
