@@ -76,10 +76,24 @@ function render_tab_files(data) {
         const which_set = data.uploaded_files[item].which_set;
         if(which_set === "train") {
             // TODO XXX : lora-input?
-            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off" checked><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off"><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>`
+            set.innerHTML = `
+<div class="btn-group" role="group" aria-label="basic radio toggle button group">
+<input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off" checked>
+<label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label>
+<input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off">
+<label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label>
+</div>
+`
         }
         if(which_set === "test") {
-            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off"><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off" checked><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>`
+            set.innerHTML = `
+<div class="btn-group" role="group" aria-label="basic radio toggle button group">
+<input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off">
+<label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label>
+<input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off" checked>
+<label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label>
+</div>
+`
         }
         delete_file.innerHTML = `<button type="button" data-file="${item}" class="btn btn-danger file-remove"><i class="bi bi-trash3-fill"></i></button>`;
         row.appendChild(name);

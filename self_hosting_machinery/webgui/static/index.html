@@ -60,7 +60,11 @@
       {{#each items}}
       {{#unless hamburger}}
       <li class="nav-item" role="presentation">
-        <button class="nav-link main-tab-button {{#if active}}main-active{{/if}}" id="{{id}}" data-tab="{{tab}}" {{#if disabled}}disabled{{/if}}>{{label}}</button>
+        <button class="
+        nav-link main-tab-button
+        {{#if active}}main-active{{/if}}
+        {{#if hidden}}hidden{{/if}}
+        " id="{{id}}" data-tab="{{tab}}" {{#if disabled}}disabled{{/if}}>{{label}}</button>
       </li>
       {{/unless}}
       {{/each}}
@@ -86,6 +90,8 @@
       <div class="main-tab-pane" id="upload">
       </div>
       <div class="main-tab-pane" id="finetune">
+      </div>
+      <div class="main-tab-pane" id="vecdb">
       </div>
       <div class="main-tab-pane" id="server-logs">
       </div>

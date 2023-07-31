@@ -21,6 +21,9 @@ body {
     position: relative;
     z-index: 0;
 }
+.hidden {
+    display: none;
+}
 .temp-info {
     text-transform: uppercase;
     font-weight: 600;

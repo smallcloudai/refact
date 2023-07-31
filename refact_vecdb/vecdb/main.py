@@ -129,6 +129,28 @@ class VecDBAsyncAPI(VecDBAPI):
     ):
         super().__init__(*args, **kwargs)
 
+    async def health(self):
+        async with aiohttp.ClientSession() as session:
+            session.headers.update(self._headers())
+            async with session.get(
+                f'{self._base_url}/v1/health',
+                timeout=3
+            ) as resp:
+                assert resp.status == 200, f'Error: {resp.text}'
+                data = json.loads(await resp.text())
+                return data
+
+    async def files_stats(self):
+        async with aiohttp.ClientSession() as session:
+            session.headers.update(self._headers())
+            async with session.get(
+                f'{self._base_url}/v1/files-stats',
+                timeout=3
+            ) as resp:
+                assert resp.status == 200, f'Error: {resp.text}'
+                data = json.loads(await resp.text())
+                return data
+
     async def find(
             self,
             query: str,

@@ -17,6 +17,36 @@ from crud import insert_files
 from code_extensions import code_extensions_compact
 
 
+class StatusRouter(APIRouter):
+    def __init__(self, *args, **kwargs):
+        super(StatusRouter, self).__init__(*args, **kwargs)
+        super(StatusRouter, self).add_api_route("/v1/status", self._status, methods=["GET"])
+        super(StatusRouter, self).add_api_route("/v1/health", self._health, methods=["GET"])
+        super(StatusRouter, self).add_api_route("/v1/files-stats", self._files_stats, methods=["GET"])
+
+    async def _status(self, request: Request):
+        x_token = request.headers.get('X-Auth-Token')
+
+        return Response(content=json.dumps({
+            "status": "ok"
+        }))
+
+    async def _health(self, request: Request):
+        return Response(content=json.dumps({
+            "status": "ok"
+        }))
+
+    async def _files_stats(self, request: Request):
+        x_token = request.headers.get('X-Auth-Token')
+
+        files_cnt = C.c_session.execute('SELECT COUNT(*) FROM files_description;').one()['count']
+        chunks_cnt = C.c_session.execute('SELECT COUNT(*) FROM code_files;').one()['count']
+
+        return Response(content=json.dumps(
+            {"files_cnt": files_cnt, "chunks_cnt": chunks_cnt}
+        ))
+
+
 class FindRouter(APIRouter):
     def __init__(self, *args, **kwargs):
         super(FindRouter, self).__init__(*args, **kwargs)
