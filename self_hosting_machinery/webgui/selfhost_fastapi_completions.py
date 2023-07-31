@@ -146,6 +146,7 @@ async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen
             # fastapi_stats.stats_accum["stat_api_cancelled"] += 1
             # fastapi_stats.stats_accum["stat_m_" + post.model + "_cancelled"] += 1
         ticket.cancelled = True
+        ticket.done()
 
 
 async def diff_streamer(ticket: Ticket, post: DiffCompletion, timeout, created_ts):
@@ -183,7 +184,7 @@ async def diff_streamer(ticket: Ticket, post: DiffCompletion, timeout, created_t
 
 
 async def chat_streamer(ticket: Ticket, timeout, created_ts):
-    seen: Dict[int, str] = dict()
+    seen: Dict[str, str] = dict()
     try:
         while 1:
             try:
@@ -194,12 +195,29 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
             if "choices" in msg:
                 for ch in msg["choices"]:
                     idx = ch["index"]
-                    seen_here = seen.get(idx, "")
-                    content = ch.get("content", "")
-                    ch["delta"] = content[len(seen_here):]
-                    seen[idx] = content
                     if "content" in ch:
-                        del ch["content"]
+                        seen_key = "simple_%02d" % idx
+                        seen_here = seen.get(seen_key, "")
+                        content = ch.get("content", "")
+                        ch["delta"] = content[len(seen_here):]
+                        seen[seen_key] = content
+                        if "content" in ch:
+                            del ch["content"]
+                    if "messages" in ch:
+                        message_index_has_delta = 0
+                        for mi, m in enumerate(ch["messages"]):
+                            seen_key = "msg_%02d_%02d" % (idx, mi)
+                            seen_here = seen.get(seen_key, "")
+                            if len(seen_here) < len(m["content"]):
+                                message_index_has_delta = mi
+                            m["delta"] = m["content"][len(seen_here):]
+                            seen[seen_key] = m["content"]
+                            if "content" in m:
+                                del m["content"]
+                        for mi in range(0, message_index_has_delta):
+                            ch["messages"][mi] = {}
+                        ch['messages'] = ch['messages'][-1]
+
             tmp = json.dumps(msg)
             yield "data: " + tmp + "\n\n"
             log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))

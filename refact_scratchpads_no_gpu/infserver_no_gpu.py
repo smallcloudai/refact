@@ -18,45 +18,40 @@ DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
 gpt_functions = {
-    "make-code-shorter":         "refact_scratchpads_no_gpu:GptMakeCodeShorter",
-    "make-code-shorter-gpt3.5":  "refact_scratchpads_no_gpu:GptMakeCodeShorter",
-    "make-code-shorter-gpt4":    "refact_scratchpads_no_gpu:GptMakeCodeShorterGPT4",
+    "free-chat": "refact_scratchpads_no_gpu:GptChat",
+    # ATTENTION! Chat with Functions is on by default
+    "free-chat-gpt3.5": "refact_scratchpads_no_gpu:GptChatWithFunctionsExplicit",
+    "free-chat-gpt4": "refact_scratchpads_no_gpu:GptChat",
 
-    "fix-bug":                   "refact_scratchpads_no_gpu:GptFixBug",
-    "fix-bug-gpt3.5":            "refact_scratchpads_no_gpu:GptFixBug",
-    "fix-bug-gpt4":              "refact_scratchpads_no_gpu:GptFixBugGPT4",
+    "make-code-shorter": "refact_scratchpads_no_gpu:GptMakeCodeShorter",
+    "make-code-shorter-gpt3.5": "refact_scratchpads_no_gpu:GptMakeCodeShorter",
+    "make-code-shorter-gpt4": "refact_scratchpads_no_gpu:GptMakeCodeShorterGPT4",
 
-    "explain-code-block":        "refact_scratchpads_no_gpu:GptExplainCodeBlock",
+    "fix-bug": "refact_scratchpads_no_gpu:GptFixBug",
+    "fix-bug-gpt3.5": "refact_scratchpads_no_gpu:GptFixBug",
+    "fix-bug-gpt4": "refact_scratchpads_no_gpu:GptFixBugGPT4",
+
+    "explain-code-block": "refact_scratchpads_no_gpu:GptExplainCodeBlock",
     "explain-code-block-gpt3.5": "refact_scratchpads_no_gpu:GptExplainCodeBlock",
-    "explain-code-block-gpt4":   "refact_scratchpads_no_gpu:GptExplainCodeBlockGPT4",
+    "explain-code-block-gpt4": "refact_scratchpads_no_gpu:GptExplainCodeBlockGPT4",
 
-    "completion-gpt4":           "refact_scratchpads_no_gpu:ScratchpadCompletionGPT4",
-    "free-chat-gpt4":            "refact_scratchpads_no_gpu:GptChat",
+    "comment-each-line": "refact_scratchpads_no_gpu:GptCommentEachLine",
+    "comment-each-line-gpt3.5": "refact_scratchpads_no_gpu:GptCommentEachLine",
 
-    # UNFINISHED:
-    # "detect-bugs":               "refact_scratchpads_no_gpu:ScratchpadDetectBugsHighlight",
-    # "detect-vulnerabilities":    "refact_scratchpads_no_gpu:ScratchpadDetectVulnerabilitiesHighlight",
-    # "code-review":               "refact_scratchpads_no_gpu:ScratchpadCodeReviewHighlight",
-    # "detect-bugs-highlight-gpt4": "refact_scratchpads_no_gpu:ScratchpadFixBugsHighlightGPT4",
+    "precise-naming": "refact_scratchpads_no_gpu:GptPreciseNaming",
+    "precise-naming-gpt3.5": "refact_scratchpads_no_gpu:GptPreciseNaming",
+
+    "add-console-logs": "refact_scratchpads_no_gpu:GptAddConsoleLogs",
+    "add-console-logs-gpt3.5": "refact_scratchpads_no_gpu:GptAddConsoleLogs",
+
+    "completion-gpt3.5": "refact_scratchpads_no_gpu:GptCompletion",
+    "completion-gpt4": "refact_scratchpads_no_gpu:GptCompletionGPT4",
 }
 
-gpt35_functions = {
-
-    # 3.5 only
-    "add-console-logs":          "refact_scratchpads_no_gpu:ScratchpadAddConsoleLogs",
-    "add-console-logs-gpt3.5":   "refact_scratchpads_no_gpu:ScratchpadAddConsoleLogs",
-    "precise-naming":            "refact_scratchpads_no_gpu:ScratchpadPreciseNaming",
-    "precise-naming-gpt3.5":     "refact_scratchpads_no_gpu:ScratchpadPreciseNaming",
-    "comment-each-line":         "refact_scratchpads_no_gpu:ScratchpadCommentEachLine",
-    "comment-each-line-gpt3.5":  "refact_scratchpads_no_gpu:ScratchpadCommentEachLine",
-
-    "completion-gpt3.5":         "refact_scratchpads_no_gpu:ScratchpadCompletion",
-    "free-chat":                 "refact_scratchpads_no_gpu:GptChat",
-    "free-chat-gpt3.5":          "refact_scratchpads_no_gpu:GptChatWithFunctionsExplicit",  # replace back with GptChat
-    # "db-chat-gpt3.5func":          "gpt_toolbox.gpt_chat_functions_spad:GptChat",
-
-    # UNFINISHED
-    # "detect-bugs-highlight-gpt3.5": "gpt_toolbox.gpt_toolbox:ScratchpadFixBugsHighlight",
+experimental_functions = {
+    "bugs-highlight-gpt3.5":             "refact_scratchpads_no_gpu:GptBugsHighlight",
+    "bugs-highlight-gpt4":               "refact_scratchpads_no_gpu:GptBugsHighlightGPT4",
+    "vulnerabilities-highlight-gpt4":    "refact_scratchpads_no_gpu:GptDetectVulnerabilitiesHighlightGPT4",
 }
 
 
@@ -64,6 +59,7 @@ supported_models = {
     "longthink/stable": {
         "functions": {
             **gpt_functions,
+            **experimental_functions
         }
     },
 }

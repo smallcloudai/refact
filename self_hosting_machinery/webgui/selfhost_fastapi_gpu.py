@@ -23,7 +23,7 @@ def red_time(base_ts):
 
 
 
-verify_api_key = os.environ.get("SMALLCLOUD_API_KEY", "EMPTY")
+verify_api_key = os.environ.get("SMALLCLOUD_API_KEY")
 
 
 def verify_bearer(authorization: str):
@@ -59,6 +59,7 @@ class SubSingleNlpChoice(BaseModel):
     files_head_mid_tail: Optional[Dict[str, HeadMidTail]]
     role: Optional[str]
     content: Optional[str]
+    messages: Optional[List[Dict[str, str]]]
     logprobs: Optional[float]
     finish_reason: Optional[str]
 
@@ -174,6 +175,8 @@ class GPURouter(APIRouter):
                 if x.role is not None:
                     choice["role"] = x.role
                     choice["content"] = x.content
+                if x.messages is not None:
+                    choice["messages"] = x.messages
                 msgj["choices"].append(choice)
             if resp.status == "completed":
                 created = resp.created
