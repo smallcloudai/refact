@@ -2,6 +2,10 @@
 
   <div class="col-5">
     <div class="pane">
+      <h3>Model Selection</h3>
+      <select id="finetune-model" class="form-select" aria-label="Model Selector"></select>
+    </div>
+    <div class="pane">
       <h3>Use Finetuned Model</h3>
       <div class="lora-group">
         <div class="btn-group" role="group" aria-label="basic radio toggle button group">
@@ -40,9 +44,28 @@
     </div>
     <div class="pane">
       <h3>Start New Finetune<span></span></h3>
-      <button id="run_now" type="button" class="btn mt-2 btn-primary tab-finetune-run-now">Run Now</button>
-      <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn mt-2 btn-secondary">Finetune Settings</button>
-      <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn mt-2 btn-secondary">Autorun Settings</button>
+      <div class="start-funetune-step1">
+        <h4>Step 1: Filtering<span></span></h4>
+        <button type="button" class="sources-run-button btn btn-primary btn-lg"><i class="bi bi-gpu-card"></i>Run
+          filter</button>
+        <button type="button" data-bs-toggle="modal" data-bs-target="#upload-tab-source-settings-modal"
+          class="btn btn-link sources-settings">Settings</button>
+        <div class="start-funetune-stats">
+          <div class="ftf-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+            <div class="ftf-bar bg-success" style="width: 0%"></div>
+          </div>
+          <div class="ftf-eta"></div>
+          <div class="ftf-status d-none">Status:<span></span></div>
+          <div class="ftf-error d-none">Error:<span class="text-danger"></span></div>
+          <div class="ftf-stats"></div>
+        </div>
+      </div>
+      <div class="start-funetune-step2">
+        <h4>Step 2: Training<span></span></h4>
+        <button id="run_now" type="button" class="btn mt-2 btn-primary tab-finetune-run-now">Run Now</button>
+        <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn mt-2 btn-secondary">Finetune Settings</button>
+        <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn mt-2 btn-secondary">Autorun Settings</button>
+      </div>
     </div>
   </div>
 
