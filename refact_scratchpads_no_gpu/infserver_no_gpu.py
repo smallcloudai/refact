@@ -16,42 +16,42 @@ from refact_scratchpads_no_gpu import stream_results_async
 
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
-
+gpt_toolbox_path = 'refact_scratchpads_no_gpu:gpt_toolbox'
 gpt_functions = {
-    "free-chat": "refact_scratchpads_no_gpu:GptChat",
+    "free-chat": f"{gpt_toolbox_path}:GptChat",
     # ATTENTION! Chat with Functions is on by default
-    "free-chat-gpt3.5": "refact_scratchpads_no_gpu:GptChatWithFunctionsExplicit",
-    "free-chat-gpt4": "refact_scratchpads_no_gpu:GptChat",
+    "free-chat-gpt3.5": f"{gpt_toolbox_path}:GptChatWithFunctionsExplicit",
+    "free-chat-gpt4": f"{gpt_toolbox_path}:GptChat",
 
-    "make-code-shorter": "refact_scratchpads_no_gpu:GptMakeCodeShorter",
-    "make-code-shorter-gpt3.5": "refact_scratchpads_no_gpu:GptMakeCodeShorter",
-    "make-code-shorter-gpt4": "refact_scratchpads_no_gpu:GptMakeCodeShorterGPT4",
+    "make-code-shorter": f"{gpt_toolbox_path}:GptMakeCodeShorter",
+    "make-code-shorter-gpt3.5": f"{gpt_toolbox_path}:GptMakeCodeShorter",
+    "make-code-shorter-gpt4": f"{gpt_toolbox_path}:GptMakeCodeShorterGPT4",
 
-    "fix-bug": "refact_scratchpads_no_gpu:GptFixBug",
-    "fix-bug-gpt3.5": "refact_scratchpads_no_gpu:GptFixBug",
-    "fix-bug-gpt4": "refact_scratchpads_no_gpu:GptFixBugGPT4",
+    "fix-bug": f"{gpt_toolbox_path}:GptFixBug",
+    "fix-bug-gpt3.5": f"{gpt_toolbox_path}:GptFixBug",
+    "fix-bug-gpt4": f"{gpt_toolbox_path}:GptFixBugGPT4",
 
-    "explain-code-block": "refact_scratchpads_no_gpu:GptExplainCodeBlock",
-    "explain-code-block-gpt3.5": "refact_scratchpads_no_gpu:GptExplainCodeBlock",
-    "explain-code-block-gpt4": "refact_scratchpads_no_gpu:GptExplainCodeBlockGPT4",
+    "explain-code-block": f"{gpt_toolbox_path}:GptExplainCodeBlock",
+    "explain-code-block-gpt3.5": f"{gpt_toolbox_path}:GptExplainCodeBlock",
+    "explain-code-block-gpt4": f"{gpt_toolbox_path}:GptExplainCodeBlockGPT4",
 
-    "comment-each-line": "refact_scratchpads_no_gpu:GptCommentEachLine",
-    "comment-each-line-gpt3.5": "refact_scratchpads_no_gpu:GptCommentEachLine",
+    "comment-each-line": f"{gpt_toolbox_path}:GptCommentEachLine",
+    "comment-each-line-gpt3.5": f"{gpt_toolbox_path}:GptCommentEachLine",
 
-    "precise-naming": "refact_scratchpads_no_gpu:GptPreciseNaming",
-    "precise-naming-gpt3.5": "refact_scratchpads_no_gpu:GptPreciseNaming",
+    "precise-naming": f"{gpt_toolbox_path}:GptPreciseNaming",
+    "precise-naming-gpt3.5": f"{gpt_toolbox_path}:GptPreciseNaming",
 
-    "add-console-logs": "refact_scratchpads_no_gpu:GptAddConsoleLogs",
-    "add-console-logs-gpt3.5": "refact_scratchpads_no_gpu:GptAddConsoleLogs",
+    "add-console-logs": f"{gpt_toolbox_path}:GptAddConsoleLogs",
+    "add-console-logs-gpt3.5": f"{gpt_toolbox_path}:GptAddConsoleLogs",
 
-    "completion-gpt3.5": "refact_scratchpads_no_gpu:GptCompletion",
-    "completion-gpt4": "refact_scratchpads_no_gpu:GptCompletionGPT4",
+    "completion-gpt3.5": f"{gpt_toolbox_path}:GptCompletion",
+    "completion-gpt4": f"{gpt_toolbox_path}:GptCompletionGPT4",
 }
 
 experimental_functions = {
-    "bugs-highlight-gpt3.5":             "refact_scratchpads_no_gpu:GptBugsHighlight",
-    "bugs-highlight-gpt4":               "refact_scratchpads_no_gpu:GptBugsHighlightGPT4",
-    "vulnerabilities-highlight-gpt4":    "refact_scratchpads_no_gpu:GptDetectVulnerabilitiesHighlightGPT4",
+    "bugs-highlight-gpt3.5":             f"{gpt_toolbox_path}:GptBugsHighlight",
+    "bugs-highlight-gpt4":               f"{gpt_toolbox_path}:GptBugsHighlightGPT4",
+    "vulnerabilities-highlight-gpt4":    f"{gpt_toolbox_path}:GptDetectVulnerabilitiesHighlightGPT4",
 }
 
 
