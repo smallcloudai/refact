@@ -1,3 +1,5 @@
+from typing import List, Dict
+
 import openai
 
 from refact_scratchpads_no_gpu.gpt_toolbox.smc_functions import SMC_FUNCTIONS

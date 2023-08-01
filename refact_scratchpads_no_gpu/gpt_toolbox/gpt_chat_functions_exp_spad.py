@@ -9,6 +9,7 @@ from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_generator import ChatGenerator
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_metering import gpt_prices, calculate_chat_tokens
 from refact_scratchpads_no_gpu.gpt_toolbox.smc_functions import SMC_FUNCTIONS_CMD
+from refact_scratchpads_no_gpu.gpt_toolbox import vecdb_call
 
 from refact_vecdb import VecDBAsyncAPI
 
@@ -61,7 +62,6 @@ class GptChatWithFunctionsExplicit(ascratch.AsyncScratchpad):
         self._function_call = self._get_function_from_msg()
 
         self._vecdb = VecDBAsyncAPI()
-        self._websearch = WebSearch()
 
     def _get_function_from_msg(self) -> Dict:
         print(f'Checking function from msg')
@@ -107,40 +107,11 @@ class GptChatWithFunctionsExplicit(ascratch.AsyncScratchpad):
         if DEBUG:
             self.debuglog(f'CALLING function {name} with params {param}')
 
-        elif name == '/vecdb':
-            def vecdb_prompt() -> str:
-                return f"""
-Here is an example of using {param}. I want you to understand how it is used:
-{candidates}
-Answer the two questions:
-1. What is the purpose of {param}
-2. Write a short example of usage {param} abstracting from the context
-"""
-
-            self._messages.append({
-                "role": "assistant",
-                "content": f"Querying vecdb for {param}",
-                "gui_role": "tool_use",
-            })
-            yield self._new_chat_messages()
-
-            candidates = await self._vecdb.find(param, 4)
-            search_result = json.dumps([
-                {
-                    'short_name': c['file_name'],
-                    'full_name': c['file_path'],
-                    'snippet': c['text']
-                }
-                for c in candidates
-            ])
-            self._messages.append({
-                "role": "user",
-                "content": vecdb_prompt(),
-                "gui_role": "documents",
-                "gui_content": search_result,
-                "gui_function": "vecdb",
-            })
-            yield self._new_chat_messages()
+        if name == '/vecdb':
+            async for res in vecdb_call(param):
+                self._messages.append(res)
+                print(res)
+                yield self._new_chat_messages()
 
     def _create_chat_gen(self, use_functions: bool) -> ChatGenerator:
         return ChatGenerator(
