@@ -4,12 +4,9 @@ import asyncio
 
 from typing import *
 
-from tldextract import tldextract
-
 from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_generator import ChatGenerator
-from refact_scratchpads_no_gpu.gpt_toolbox.websearch import WebSearch
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_metering import gpt_prices, calculate_chat_tokens
 from refact_scratchpads_no_gpu.gpt_toolbox.smc_functions import SMC_FUNCTIONS_CMD
 
@@ -109,48 +106,6 @@ class GptChatWithFunctionsExplicit(ascratch.AsyncScratchpad):
 
         if DEBUG:
             self.debuglog(f'CALLING function {name} with params {param}')
-
-        if name == '/websearch':
-            def websearch_prompt() -> str:
-                return f"""
-I wanted to find out about: {param} and performed a Google search request.
-I have received top-{len(candidates)} results. I want you to summarize them very briefly.
-Output summarization with references to each source you found informative.
-Here are the results of my search: \n {search_result}
-"""
-
-            def get_domain_name(url) -> str:
-                try:
-                    extracted = tldextract.extract(url)
-                    domain = extracted.registered_domain
-                    return domain
-                except Exception:
-                    return url
-
-            self._messages.append({
-                "role": "assistant",
-                "content": f"Searching web for {param}",
-                "gui_role": "tool_use",
-            })
-            yield self._new_chat_messages()
-
-            candidates = await self._websearch.a_search(param)
-            search_result = json.dumps([
-                {
-                    'short_name': get_domain_name(c.link),
-                    'full_name': c.link,
-                    'snippet': c.snippet,
-                }
-                for c in candidates
-            ])
-            self._messages.append({
-                "role": "user",
-                "content": websearch_prompt(),
-                "gui_role": "documents",
-                "gui_content": search_result,
-                "gui_function": "websearch",
-            })
-            yield self._new_chat_messages()
 
         elif name == '/vecdb':
             def vecdb_prompt() -> str:
