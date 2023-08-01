@@ -164,8 +164,11 @@ function reset_ftf_progress() {
 function render_tab_files(data) {
     const files = document.getElementById("upload-tab-table-body-files");
     let i = 0;
-    if(Object.keys(data.uploaded_files).length > 0) {
+    if(Object.keys(data.uploaded_files).length >= 0) {
         files.innerHTML = "";
+    }
+    if(Object.keys(data.uploaded_files).length === 0) {
+        files.innerHTML = `<tr><td>No sources added.</td><td></td><td></td><td></td><td></td></tr>`;
     }
     for(let item in data.uploaded_files) {
         const row = document.createElement('tr');
@@ -257,9 +260,14 @@ function render_tab_files(data) {
                         event.target.nextElementSibling.style.display = 'none';
                     });
                 } else {
-                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}`;
+                    target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
                 }
                 if (current_status == "working" || current_status == "starting") {
+                    if(item_object.files === undefined) {
+                        target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span>`;
+                    } else {
+                        target_cell.innerHTML = `<span class="file-status badge rounded-pill ${status_color}">${current_status}</span><span>${item_object.files} files</span>`;
+                    }
                     any_working = true;
                 }
                 break;
