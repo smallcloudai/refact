@@ -3,9 +3,9 @@ import asyncio
 
 from typing import AsyncIterator, List, Union, Dict, Tuple, Any
 
-from refact_scratchpads_no_gpu.async_scratchpad import ascratch
+import openai
 
-from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_generator import ChatGenerator
+from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_metering import gpt_prices, calculate_chat_tokens
 from refact_scratchpads_no_gpu.gpt_toolbox import vecdb_call, SMC_FUNCTIONS
 
@@ -108,18 +108,19 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
                 self._messages.append(res)
                 yield self._new_chat_messages()
 
-    def _create_chat_gen(self) -> ChatGenerator:
-        return ChatGenerator(
+    def _create_chat_gen(self) -> Any:
+        return openai.ChatCompletion.acreate(
             model=self._model_name,
             messages=[
                 {
                     "role": x["role"],
-                    "content": x["content"],  # means filter other keys
+                    "content": x["content"]
                 }
                 for x in self._messages
             ],
             max_tokens=self.max_tokens,
             temperature=self.temp,
+            stream=True
         )
 
     async def _call_openai_api_based_on_stored_messages(
@@ -145,7 +146,7 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
                 async for res in self._run_function():
                     yield res
 
-            gen = self._create_chat_gen()
+            gen = await self._create_chat_gen()
             while True:
                 resp = await asyncio.wait_for(gen.__anext__(), self._stream_timeout_sec)
                 if not resp:
