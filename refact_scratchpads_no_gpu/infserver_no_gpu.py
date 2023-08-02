@@ -16,11 +16,11 @@ from refact_scratchpads_no_gpu import stream_results_async
 
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
-gpt_toolbox_path = 'refact_scratchpads_no_gpu:gpt_toolbox'
+gpt_toolbox_path = 'refact_scratchpads_no_gpu.gpt_toolbox'
 gpt_functions = {
     "free-chat": f"{gpt_toolbox_path}:GptChat",
     # ATTENTION! Chat with Functions is on by default
-    "free-chat-gpt3.5": f"{gpt_toolbox_path}:GptChatWithFunctionsExplicit",
+    "free-chat-gpt3.5": f"{gpt_toolbox_path}:GptChatWithFunctions",
     "free-chat-gpt4": f"{gpt_toolbox_path}:GptChat",
 
     "make-code-shorter": f"{gpt_toolbox_path}:GptMakeCodeShorter",

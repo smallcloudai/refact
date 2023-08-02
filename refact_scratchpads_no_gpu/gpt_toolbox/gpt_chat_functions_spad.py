@@ -1,5 +1,4 @@
 import os
-import json
 import asyncio
 
 from typing import *
@@ -8,15 +7,14 @@ from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_generator import ChatGenerator
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_metering import gpt_prices, calculate_chat_tokens
-from refact_scratchpads_no_gpu.gpt_toolbox.smc_functions import SMC_FUNCTIONS_CMD
-from refact_scratchpads_no_gpu.gpt_toolbox import vecdb_call
+from refact_scratchpads_no_gpu.gpt_toolbox import vecdb_call, SMC_FUNCTIONS
 
 from refact_vecdb import VecDBAsyncAPI
 
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
-class GptChatWithFunctionsExplicit(ascratch.AsyncScratchpad):
+class GptChatWithFunctions(ascratch.AsyncScratchpad):
     def __init__(
             self,
             id: str,  # noqa
@@ -64,14 +62,12 @@ class GptChatWithFunctionsExplicit(ascratch.AsyncScratchpad):
         self._vecdb = VecDBAsyncAPI()
 
     def _get_function_from_msg(self) -> Dict:
-        print(f'Checking function from msg')
         if self._messages:
-            last_m = self._messages[-1]['content']
-            function_l = [f for f in SMC_FUNCTIONS_CMD if last_m.startswith(f)]
-            function = function_l[0] if function_l else None
-            if not function:
+            last_m = self._messages[-1]
+            function = last_m.get('function')
+            if not function or function not in SMC_FUNCTIONS:
                 return {}
-            arg = last_m.replace(function, '').strip()
+            arg = last_m['content'].strip()
             self._on_function = True
             return {
                 'name': function,
@@ -101,16 +97,15 @@ class GptChatWithFunctionsExplicit(ascratch.AsyncScratchpad):
     async def _run_function(self) -> AsyncIterator[
         Dict[str, List[Dict[str, str]]]
     ]:
-        name: str = self._function_call['name']
-        param: str = self._function_call['arguments']
+        f_name: str = self._function_call['name']
+        f_param: str = self._function_call['arguments']
 
         if DEBUG:
-            self.debuglog(f'CALLING function {name} with params {param}')
+            self.debuglog(f'CALLING function {f_name} with params {f_param}')
 
-        if name == '/vecdb':
-            async for res in vecdb_call(param):
+        if f_name == 'vecdb':
+            async for res in vecdb_call(f_param):
                 self._messages.append(res)
-                print(res)
                 yield self._new_chat_messages()
 
     def _create_chat_gen(self, use_functions: bool) -> ChatGenerator:
@@ -146,17 +141,10 @@ class GptChatWithFunctionsExplicit(ascratch.AsyncScratchpad):
             accum = ""
 
         create_streaming_msg = True
-        print(f'self._function_call: {self._function_call}')
         try:
-            print(f'ON FUNCTION={self._on_function}')
             if self._on_function:
-                try:
-                    async for res in self._run_function():
-                        yield res
-
-                except json.JSONDecodeError:
-                    self._messages.append({"role": "error", "content": "OpenAI JSONDecodeError"})
-                    yield self._new_chat_messages()
+                async for res in self._run_function():
+                    yield res
 
             gen = self._create_chat_gen(use_functions=False)
             while True:
