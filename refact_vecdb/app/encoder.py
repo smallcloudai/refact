@@ -3,6 +3,7 @@ from typing import Any, List, Optional, Iterable
 
 class UnknownProviderException(Exception):
     def __init__(self, provider, providers):
+        # ada or instructor
         self.provider = provider
         self.providers = providers
         super().__init__(f"Unknown provider: {provider}; must be one of {providers}")
@@ -106,7 +107,7 @@ class Encoder:
             self._encoder = INSTRUCTOR('hkunlp/instructor-xl')
             # self._encoder.max_seq_len = self._window_size
         elif self._provider == 'ada':
-            from embeddings import OpenAIEmbedding
+            from embed_openai import OpenAIEmbedding
 
             self._encoder = OpenAIEmbedding('text-embedding-ada-002')
         else:

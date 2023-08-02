@@ -1,28 +1,25 @@
-import uuid
-
 from datetime import datetime
-
 
 from cassandra.cqlengine import columns
 from cassandra.cqlengine.management import sync_table
 from cassandra.cqlengine.models import Model
 
 
-class CodeFiles(Model):
+class FileChunksText(Model):
     id = columns.Text(primary_key=True)
     text = columns.Text()
     name = columns.Text()
     created_ts = columns.DateTime(default=datetime.now)
 
 
-class FilesEmbedding(Model):
+class FileChunksEmbedding(Model):
     id = columns.Text(primary_key=True)
     embedding = columns.List(value_type=columns.Float)
     name = columns.Text()
     created_ts = columns.DateTime(default=datetime.now)
 
 
-class FilesDescription(Model):
+class FilesFullText(Model):
     id = columns.Text(primary_key=True)
     text = columns.Text()
     name = columns.Text()
@@ -31,5 +28,5 @@ class FilesDescription(Model):
 
 
 def sync_tables():
-    for m in [CodeFiles, FilesEmbedding, FilesDescription]:
+    for m in [FileChunksText, FileChunksEmbedding, FilesFullText]:
         sync_table(m)

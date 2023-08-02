@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from context import CONTEXT as C
 from vecdb import VecDB
-from db_models import sync_tables, FilesEmbedding
+from db_models import sync_tables, FileChunksEmbedding
 from encoder import Encoder
 
 DEFAULT_VECDB_FILEPATH = Path('/tmp/smc.vecdb')
@@ -44,7 +44,7 @@ def vecdb_from_cassandra():
     ids = []
     modified_ts = -1
     record = None
-    for record in tqdm(FilesEmbedding.objects):
+    for record in tqdm(FileChunksEmbedding.objects):
         embedding = record.embedding
         embeddings.append(embedding)
         ids.append(record.id)

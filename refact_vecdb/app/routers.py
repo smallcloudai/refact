@@ -9,7 +9,7 @@ from fastapi import APIRouter
 from fastapi import Response, Request
 
 from context import CONTEXT as C
-from db_models import CodeFiles, FilesEmbedding, FilesDescription
+from db_models import FileChunksText, FileChunksEmbedding, FilesFullText
 from params import FindQuery, FilesBulk
 from bootstrap import load_vecdb
 from encoder import ChunkifyFiles
@@ -39,8 +39,8 @@ class StatusRouter(APIRouter):
     async def _files_stats(self, request: Request):
         x_token = request.headers.get('X-Auth-Token')
 
-        files_cnt = C.c_session.execute('SELECT COUNT(*) FROM files_description;').one()['count']
-        chunks_cnt = C.c_session.execute('SELECT COUNT(*) FROM code_files;').one()['count']
+        files_cnt = C.c_session.execute('SELECT COUNT(*) FROM files_full_text;').one()['count']
+        chunks_cnt = C.c_session.execute('SELECT COUNT(*) FROM file_chunks_text;').one()['count']
 
         return Response(content=json.dumps(
             {"files_cnt": files_cnt, "chunks_cnt": chunks_cnt}
@@ -62,8 +62,8 @@ class FindRouter(APIRouter):
         chunks = [chunk for chunk in ch_files.chunkify(data.query)]
         embeddings = [C.Encoder.encode(c) for c in chunks]
         ids, scores = C.db.search(embeddings, data.top_k)
-        query: Dict[str, CodeFiles] = {
-            q.id: q for q in CodeFiles.filter(id__in=list(set(itertools.chain(*ids))))
+        query: Dict[str, FileChunksText] = {
+            q.id: q for q in FileChunksText.filter(id__in=list(set(itertools.chain(*ids))))
         }
         result = [
             {

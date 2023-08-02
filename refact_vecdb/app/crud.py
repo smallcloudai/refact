@@ -4,7 +4,7 @@ from hashlib import sha1
 from typing import List
 
 from context import CONTEXT as C
-from db_models import CodeFiles, FilesEmbedding, FilesDescription
+from db_models import FileChunksText, FileChunksEmbedding, FilesFullText
 from encoder import ChunkifyFiles
 
 
@@ -18,7 +18,7 @@ def insert_files(files: List):
     code_files_ids_ex = set()
     for row in C.c_session.execute(
             """
-            select id from code_files;
+            select id from file_chunks_text;
             """):
         code_files_ids_ex.add(row['id'])
     mappings = [
@@ -35,7 +35,7 @@ def insert_files(files: List):
     print(f'SKIPPED {init_len - len(mappings)} files as replicates [mappings]')
     if mappings:
         for m in mappings:
-            CodeFiles.create(**m)
+            FileChunksText.create(**m)
 
         embed_mappings = [
             {
@@ -47,12 +47,12 @@ def insert_files(files: List):
             for m in mappings
         ]
         for m in embed_mappings:
-            FilesEmbedding.create(**m)
+            FileChunksEmbedding.create(**m)
 
     files_desc_ids_ex = set()
     for row in C.c_session.execute(
             """
-            select id from files_description;
+            select id from files_full_text;
             """):
         files_desc_ids_ex.add(row['id'])
     files_desc_mappings = [
@@ -68,4 +68,4 @@ def insert_files(files: List):
     files_desc_mappings = [m for m in files_desc_mappings if m['id'] not in files_desc_ids_ex]
     print(f'SKIPPED {init_len - len(files_desc_mappings)} files as replicates [files_desc_mappings]')
     for m in files_desc_mappings:
-        FilesDescription.create(**m)
+        FilesFullText.create(**m)
