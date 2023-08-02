@@ -153,7 +153,7 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
 
     def prompt(self, T: int):
         self._prefix = self._code[:self._cursor]
-        self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        self._suffix = self._code[self._cursor:]
         self._completion.clear()
 
         prefix_cut, suffix_cut = trim_context_infill(

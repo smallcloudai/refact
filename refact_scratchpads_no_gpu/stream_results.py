@@ -293,6 +293,7 @@ def _upload_results_loop(upload_q: multiprocessing.Queue, cancelled_q: multiproc
                     orig = orig_files[k]
                     if not orig.endswith("\n"):
                         orig += "\n"
+                        files[k] += "\n"
                     head, tail = head_and_tail(orig, files[k])
                     mid1 = (files[k][head:-tail]) if tail>0 else (files[k][head:])
                     stream_files[k] = {
