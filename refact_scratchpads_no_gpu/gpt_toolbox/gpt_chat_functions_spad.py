@@ -1,7 +1,7 @@
 import os
 import asyncio
 
-from typing import *
+from typing import AsyncIterator, List, Union, Dict, Tuple, Any
 
 from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
@@ -108,9 +108,8 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
                 self._messages.append(res)
                 yield self._new_chat_messages()
 
-    def _create_chat_gen(self, use_functions: bool) -> ChatGenerator:
+    def _create_chat_gen(self) -> ChatGenerator:
         return ChatGenerator(
-            use_functions=use_functions,
             model=self._model_name,
             messages=[
                 {
@@ -146,7 +145,7 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
                 async for res in self._run_function():
                     yield res
 
-            gen = self._create_chat_gen(use_functions=False)
+            gen = self._create_chat_gen()
             while True:
                 resp = await asyncio.wait_for(gen.__anext__(), self._stream_timeout_sec)
                 if not resp:

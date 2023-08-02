@@ -1,6 +1,6 @@
 import re
 from itertools import zip_longest
-from typing import *
+from typing import Dict, Optional, Tuple
 
 import tiktoken
 
