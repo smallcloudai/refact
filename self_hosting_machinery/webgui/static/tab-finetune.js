@@ -7,6 +7,12 @@ let loras_switch_latest = null;
 let loras_switch_specific = null;
 let loras_switch_no_reaction = false;
 let finetune_settings_defaults = [];
+let progress_bar = null;
+let sources_run_pane = null;
+let sources_run_button = null;
+let sources_settings = null;
+let sources_status = null;
+let sources_error = null;
 // let checkpoint_name = "best";
 // let selected_model = ""; // we don't have model choice, empty for now
 
@@ -493,9 +499,231 @@ function revert_to_default(input_id) {
     input.value = finetune_settings_defaults[input_id];
 }
 
+function run_stop_filtering() {
+    // sources_run_button = document.querySelector('.sources-run-button');
+    const status = sources_run_button.getAttribute("ftf_status")
+    sources_run_button.disabled = true;
+    switch (status) {
+        case 'undefined':
+        case 'interrupted':
+        case 'failed':
+        case 'error':
+        case 'finished':
+            do_starting_state()
+            run_now();
+            break;
+        case 'starting':
+        default:
+            stop_filtering();
+    }
+}
+
+function run_now() {
+    fetch("/tab-finetune-run-now?filter_only=1")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('run_now');
+    });
+}
+
+function stop_filtering() {
+    fetch("/tab-finetune-stop-now")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        // console.log(data);
+    });
+}
+
+function render_ftf_stats(data) {
+    const ftf_wrapper = document.querySelector('.ftf-stats');
+    if(Object.keys(data).length > 0 && data.accepted !== undefined && data.rejected !== undefined) {
+        ftf_wrapper.innerHTML = '';
+        const content = `<h6>GPU Filtering stats</h6><div>Accepted: ${data.accepted} <a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=rejected">Full list</a></div>`;
+        ftf_wrapper.innerHTML = content;
+    }
+}
+
+function get_filters_settings(defaults = false) {
+    fetch("/tab-finetune-smart-filter-get")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('tab-finetune-smart-filter-get',data);
+        let settings_data = null;
+        if(Object.keys(data.user_config).length > 0 && !defaults) {
+            settings_data = data.user_config;
+        } else {
+            settings_data = data.defaults;
+        }
+        document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value = settings_data.filter_loss_threshold;
+    });
+}
+
+function render_filter_progress(progress_value) {
+    progress_bar.style.width = progress_value + "%";
+}
+function render_ftf_progress(filtering_progress) {
+    const ftf_bar = document.querySelector('.ftf-bar');
+    ftf_bar.style.width = filtering_progress + "%";
+}
+
+function reset_ftf_progress() {
+    const eta_state = document.querySelector('.ftf-eta');
+    eta_state.innerHTML = '';
+    const progress_container = document.querySelector('.ftf-progress');
+    progress_container.classList.add('d-none');
+    const ftf_bar = document.querySelector('.ftf-bar');
+    ftf_bar.style.width = "0%";
+}
+
+function do_starting_state() {
+    sources_run_button.disabled = true;
+    if(!document.querySelector('.sources-run-button .spinner-border')) {
+        sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
+        sources_status.innerHTML = 'starting';
+    }
+}
+
+function save_filters_settings() {
+    fetch("/tab-finetune-smart-filter-setup", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            filter_loss_threshold: document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value,
+        })
+    })
+    .then(function(response) {
+        if(response.ok) {
+            get_filters_settings();
+        }
+    });
+}
+
+function get_tab_files() {
+    fetch("/tab-files-get")
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            // console.log('tab-files-get',data);
+            // tab_files_data = data;
+            if(data.scan_error && data.scan_error.length > 0) {
+                let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
+                const scan_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
+                if(!show_scan_error) {
+                    document.querySelector('.upload-tab-scan-error-toast .toast-body').innerHTML = data.scan_error;
+                    scan_error_toast.show()
+                    show_scan_error = true;
+                }
+            }
+            // TODO: move 
+            render_ftf_stats(data.filestats_ftf);
+            if(data.filestats_ftf) {
+                if(data.filestats_ftf.status) {
+                    document.querySelector('.ftf-status').classList.remove('d-none');
+                } else {
+                    document.querySelector('.ftf-status').classList.add('d-none');
+                }
+                // sources_run_button = document.querySelector('.sources-run-button');
+                // sources_run_button.disabled = false;
+                const status = data.filestats_ftf.status;
+                sources_run_button.setAttribute("ftf_status", status)
+                if(!data.filestats_ftf.error || data.filestats_ftf.error === '') {
+                    if(sources_error && !sources_error.classList.contains('d-none')) {
+                        sources_error.classList.add('d-none');
+                    }
+                    sources_error.querySelector('span').innerHTML = '';
+                }
+                if(data.filestats_ftf.eta_minutes && data.filestats_ftf.eta_minutes !== 0) {
+                    const eta_state = document.querySelector('.ftf-eta');
+                    eta_state.innerHTML = 'ETA: ' + data.filestats_ftf.eta_minutes + ' minute(s)';
+
+                    const progress_container = document.querySelector('.ftf-progress');
+                    progress_container.classList.remove('d-none');
+                    render_ftf_progress(data.filtering_progress);
+                }
+                sources_settings.disabled = false
+                switch(status) {
+                    case undefined:
+                    case 'interrupted':
+                    case 'finished':
+                        sources_run_button.disabled = false;
+                        let status_line = "";
+                        if (status !== undefined) {
+                            status_line = status;
+                        }
+                        sources_status.innerHTML = status_line;
+                        sources_run_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
+                        // sources_pane.classList.remove('pane-disabled');
+                        sources_settings.disabled = false;
+                        reset_ftf_progress();
+                        break;
+                    case 'starting':
+                        do_starting_state()
+                        break;
+                    case 'error':
+                        sources_run_button.disabled = true;
+                        sources_status.innerHTML = status;
+                        sources_settings.disabled = false;
+                        reset_ftf_progress();
+                        if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
+                            if(sources_error && sources_error.classList.contains('d-none')) {
+                                sources_error.classList.remove('d-none');
+                            }
+                            sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
+                        }
+                        break;
+                    case 'failed':
+                        sources_status.innerHTML = status;
+                        sources_settings.disabled = false;
+                        reset_ftf_progress();
+                        if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
+                            if(sources_error && sources_error.classList.contains('d-none')) {
+                                sources_error.classList.remove('d-none');
+                            }
+                            sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
+                        }
+                        break;
+                    default:
+                        sources_run_button.disabled = false;
+                        sources_run_button.innerHTML = `Stop filter`;
+                        if(!document.querySelector('.sources-run-button .spinner-border')) {
+                            sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter`;
+                            sources_status.innerHTML = data.filestats_ftf.status;
+                        }
+                        sources_pane.classList.add('pane-disabled');
+                        filetypes_pane.classList.add('pane-disabled');
+                        sources_run_pane.classList.remove('pane-disabled');
+                        sources_settings.disabled = true
+                        break;
+                }
+            }
+            if (data.finetune_working_now) {
+                // sources_pane.classList.add('pane-disabled');
+                // filetypes_pane.classList.add('pane-disabled');
+                // sources_run_pane.classList.add('pane-disabled');
+                // sources_settings.disabled = true;
+            }
+        });
+}
+
 export async function init() {
     let req = await fetch('/tab-finetune.html');
     document.querySelector('#finetune').innerHTML = await req.text();
+    progress_bar = document.querySelector('.sources-run-progress .progress-bar');
+    sources_run_pane = document.querySelector('.run-pane');
+    sources_run_button = document.querySelector('.sources-run-button');
+    sources_settings = document.querySelector('.sources-settings');
+    sources_status = document.querySelector('.ftf-status span');
+    sources_error = document.querySelector('.ftf-error');
+
     const log_container = document.querySelector('.log-container');
     function handle_auto_scroll() {
         if (log_container.scrollHeight - log_container.scrollTop === log_container.clientHeight) {
@@ -565,10 +793,31 @@ export async function init() {
             revert_to_default(event.target.parentNode.previousElementSibling.id);
         });
     });
+
+    sources_run_button = document.querySelector('.sources-run-button');
+    sources_run_button.addEventListener('click', run_stop_filtering);
+
+    const settings_modal = document.getElementById('upload-tab-source-settings-modal');
+    settings_modal.addEventListener('show.bs.modal', function () {
+        get_filters_settings();
+    });
+
+    const settings_modal_submit = document.querySelector('.tab-upload-source-settings-submit');
+    settings_modal_submit.addEventListener('click', function() {
+        save_filters_settings();
+        const settings_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-source-settings-modal'));
+        settings_modal.hide();
+    });
+
+    const settings_modal_defaults = document.querySelector('.tab-upload-source-settings-default');
+    settings_modal_defaults.addEventListener('click', function() {
+        get_filters_settings(true);
+    });
 }
 
 export function tab_switched_here() {
     finetune_data();
+    get_tab_files();
     render_schedule_dialog();
 }
 
@@ -576,5 +825,6 @@ export function tab_switched_away() {
 }
 
 export function tab_update_each_couple_of_seconds() {
+    get_tab_files();
     finetune_data();
 }

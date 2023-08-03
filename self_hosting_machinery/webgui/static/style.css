@@ -404,13 +404,12 @@ h3 {
     margin-top: 2rem;
 }
 .sources-run-button {
-    width: 220px;
     font-weight: bold;
     position: relative;
 }
 .sources-run-button i,
 .sources-run-button span {
-    margin-right: 10px;
+    margin-right: 5px;
 }
 .sources-buttons {
     display: flex;
@@ -428,16 +427,6 @@ h3 {
 }
 .sources-list-active {
     font-weight: bold;
-}
-.sources-settings {
-    text-decoration: none;
-    color: #333;
-    text-transform: uppercase;
-    text-align: center;
-    display: block;
-    font-weight: bold;
-    font-size: 0.8rem;
-    width: 100%;
 }
 .source-files-table {
     align-items: stretch;
@@ -549,12 +538,14 @@ h3 {
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     line-height: 1.2;
     padding: 0;
     margin: 0;
     margin-bottom: 20px;
     font-size: 13px;
+    margin-top: 7px;
+    opacity: 0.7;
 }
 .ftf-stats h6 {
     margin: 0;
@@ -635,4 +626,29 @@ h3 {
 .disabled-group {
     opacity: 0.4;
     pointer-events: none;
+}
+.start-funetune__inline {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 10px;
+    margin-bottom: 10px;
+}
+.tab-finetune-run-now {
+    font-weight: bold;
+}
+.tab-finetune-run-now i {
+    margin-right: 5px;
+}
+.finetune-autorun i {
+    margin-right: 5px;
+}
+.start-funetune-step1 {
+    margin-top: 15px;
+}
+.start-funetune-step2 {
+    margin-top: 15px;
+}
+.start-funetune-step1 h6,
+.start-funetune-step2 h6 {
+    font-weight: bold;
 }

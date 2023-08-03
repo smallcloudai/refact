@@ -5,14 +5,14 @@ let sort_order = 'asc';
 let sort_started = false;
 let dont_disable_file_types = false;
 
-let progress_bar = null;
+// let progress_bar = null;
 let sources_pane = null;
 let filetypes_pane = null;
-let sources_run_pane = null;
-let sources_run_button = null;
-let sources_settings = null;
-let sources_status = null;
-let sources_error = null;
+// let sources_run_pane = null;
+// let sources_run_button = null;
+// let sources_settings = null;
+// let sources_status = null;
+// let sources_error = null;
 
 
 function do_starting_state() {
@@ -46,119 +46,100 @@ function get_tab_files() {
             // render_filter_progress(data.filtering_progress);
             if(dont_disable_file_types || data.scan_status && data.scan_status === 'completed') {
                 document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
-                document.querySelector('.run-pane').classList.remove('pane-disabled');
             } else {
                 document.querySelector('.filetypes-pane').classList.add('pane-disabled');
-                document.querySelector('.run-pane').classList.add('pane-disabled');
             }
             render_tab_files(data);
             render_filetypes(data.mime_types, data.filetypes);
             render_force_filetypes(data.filetypes);
-            render_ftf_stats(data.filestats_ftf);
-            if(data.filestats_ftf) {
-                if(data.filestats_ftf.status) {
-                    document.querySelector('.ftf-status').classList.remove('d-none');
-                } else {
-                    document.querySelector('.ftf-status').classList.add('d-none');
-                }
-                sources_run_button.disabled = false;
-                const status = data.filestats_ftf.status;
-                sources_run_button.setAttribute("ftf_status", status)
-                if(!data.filestats_ftf.error || data.filestats_ftf.error === '') {
-                    if(sources_error && !sources_error.classList.contains('d-none')) {
-                        sources_error.classList.add('d-none');
-                    }
-                    sources_error.querySelector('span').innerHTML = '';
-                }
-                if(data.filestats_ftf.eta_minutes && data.filestats_ftf.eta_minutes !== 0) {
-                    const eta_state = document.querySelector('.ftf-eta');
-                    eta_state.innerHTML = 'ETA: ' + data.filestats_ftf.eta_minutes + ' minute(s)';
+            // TODO: move 
+            // render_ftf_stats(data.filestats_ftf);
+            // if(data.filestats_ftf) {
+            //     if(data.filestats_ftf.status) {
+            //         document.querySelector('.ftf-status').classList.remove('d-none');
+            //     } else {
+            //         document.querySelector('.ftf-status').classList.add('d-none');
+            //     }
+            //     // sources_run_button.disabled = false;
+            //     const status = data.filestats_ftf.status;
+            //     sources_run_button.setAttribute("ftf_status", status)
+            //     if(!data.filestats_ftf.error || data.filestats_ftf.error === '') {
+            //         if(sources_error && !sources_error.classList.contains('d-none')) {
+            //             sources_error.classList.add('d-none');
+            //         }
+            //         sources_error.querySelector('span').innerHTML = '';
+            //     }
+            //     if(data.filestats_ftf.eta_minutes && data.filestats_ftf.eta_minutes !== 0) {
+            //         const eta_state = document.querySelector('.ftf-eta');
+            //         eta_state.innerHTML = 'ETA: ' + data.filestats_ftf.eta_minutes + ' minute(s)';
 
-                    const progress_container = document.querySelector('.ftf-progress');
-                    progress_container.classList.remove('d-none');
-                    render_ftf_progress(data.filtering_progress);
-                }
-                sources_settings.disabled = false
-                switch(status) {
-                    case undefined:
-                    case 'interrupted':
-                    case 'finished':
-                        sources_run_button.disabled = false;
-                        let status_line = "";
-                        if (status !== undefined) {
-                            status_line = status;
-                        }
-                        sources_status.innerHTML = status_line;
-                        sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
-                        sources_pane.classList.remove('pane-disabled');
-                        sources_settings.disabled = false;
-                        reset_ftf_progress();
-                        break;
-                    case 'starting':
-                        do_starting_state()
-                        break;
-                    case 'error':
-                        sources_run_button.disabled = true;
-                        sources_status.innerHTML = status;
-                        sources_settings.disabled = false;
-                        reset_ftf_progress();
-                        if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
-                            if(sources_error && sources_error.classList.contains('d-none')) {
-                                sources_error.classList.remove('d-none');
-                            }
-                            sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
-                        }
-                        break;
-                    case 'failed':
-                        sources_status.innerHTML = status;
-                        sources_settings.disabled = false;
-                        reset_ftf_progress();
-                        if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
-                            if(sources_error && sources_error.classList.contains('d-none')) {
-                                sources_error.classList.remove('d-none');
-                            }
-                            sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
-                        }
-                        break;
-                    default:
-                        sources_run_button.disabled = false;
-                        sources_run_button.innerHTML = `Stop filter`;
-                        if(!document.querySelector('.sources-run-button .spinner-border')) {
-                            sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter`;
-                            sources_status.innerHTML = data.filestats_ftf.status;
-                        }
-                        sources_pane.classList.add('pane-disabled');
-                        filetypes_pane.classList.add('pane-disabled');
-                        sources_run_pane.classList.remove('pane-disabled');
-                        sources_settings.disabled = true
-                        break;
-                }
-            }
+            //         const progress_container = document.querySelector('.ftf-progress');
+            //         progress_container.classList.remove('d-none');
+            //         render_ftf_progress(data.filtering_progress);
+            //     }
+            //     sources_settings.disabled = false
+            //     switch(status) {
+            //         case undefined:
+            //         case 'interrupted':
+            //         case 'finished':
+            //             sources_run_button.disabled = false;
+            //             let status_line = "";
+            //             if (status !== undefined) {
+            //                 status_line = status;
+            //             }
+            //             sources_status.innerHTML = status_line;
+            //             sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
+            //             sources_pane.classList.remove('pane-disabled');
+            //             sources_settings.disabled = false;
+            //             reset_ftf_progress();
+            //             break;
+            //         case 'starting':
+            //             do_starting_state()
+            //             break;
+            //         case 'error':
+            //             sources_run_button.disabled = true;
+            //             sources_status.innerHTML = status;
+            //             sources_settings.disabled = false;
+            //             reset_ftf_progress();
+            //             if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
+            //                 if(sources_error && sources_error.classList.contains('d-none')) {
+            //                     sources_error.classList.remove('d-none');
+            //                 }
+            //                 sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
+            //             }
+            //             break;
+            //         case 'failed':
+            //             sources_status.innerHTML = status;
+            //             sources_settings.disabled = false;
+            //             reset_ftf_progress();
+            //             if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
+            //                 if(sources_error && sources_error.classList.contains('d-none')) {
+            //                     sources_error.classList.remove('d-none');
+            //                 }
+            //                 sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
+            //             }
+            //             break;
+            //         default:
+            //             sources_run_button.disabled = false;
+            //             sources_run_button.innerHTML = `Stop filter`;
+            //             if(!document.querySelector('.sources-run-button .spinner-border')) {
+            //                 sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter`;
+            //                 sources_status.innerHTML = data.filestats_ftf.status;
+            //             }
+            //             sources_pane.classList.add('pane-disabled');
+            //             filetypes_pane.classList.add('pane-disabled');
+            //             sources_run_pane.classList.remove('pane-disabled');
+            //             sources_settings.disabled = true
+            //             break;
+            //     }
+            // }
             if (data.finetune_working_now) {
                 sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
-                sources_run_pane.classList.add('pane-disabled');
-                sources_settings.disabled = true;
+                // sources_run_pane.classList.add('pane-disabled');
+                // sources_settings.disabled = true;
             }
         });
-}
-
-
-function render_filter_progress(progress_value) {
-    progress_bar.style.width = progress_value + "%";
-}
-function render_ftf_progress(filtering_progress) {
-    const ftf_bar = document.querySelector('.ftf-bar');
-    ftf_bar.style.width = filtering_progress + "%";
-}
-
-function reset_ftf_progress() {
-    const eta_state = document.querySelector('.ftf-eta');
-    eta_state.innerHTML = '';
-    const progress_container = document.querySelector('.ftf-progress');
-    progress_container.classList.add('d-none');
-    const ftf_bar = document.querySelector('.ftf-bar');
-    ftf_bar.style.width = "0%";
 }
 
 function render_tab_files(data) {
@@ -288,43 +269,6 @@ function render_tab_files(data) {
     }
 }
 
-function run_stop_filtering() {
-    const status = sources_run_button.getAttribute("ftf_status")
-    sources_run_button.disabled = true;
-    switch (status) {
-        case 'undefined':
-        case 'interrupted':
-        case 'failed':
-        case 'error':
-        case 'finished':
-            do_starting_state()
-            run_now();
-            break;
-        case 'starting':
-        default:
-            stop_filtering();
-    }
-}
-
-function stop_filtering() {
-    fetch("/tab-finetune-stop-now")
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(data) {
-        // console.log(data);
-    });
-}
-
-function render_ftf_stats(data) {
-    const ftf_wrapper = document.querySelector('.ftf-stats');
-    if(Object.keys(data).length > 0 && data.accepted !== undefined && data.rejected !== undefined) {
-        ftf_wrapper.innerHTML = '';
-        const content = `<h6>GPU Filtering stats</h6><div>Accepted: ${data.accepted} <a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=rejected">Full list</a></div>`;
-        ftf_wrapper.innerHTML = content;
-    }
-}
-
 function get_ssh_keys() {
     fetch("/tab-settings-get-all-ssh-keys")
         .then(function(response) {
@@ -437,6 +381,27 @@ function watch_filetypes() {
     }
 }
 
+function save_filter_setup() {
+    const include_file_types = {};
+    const checked_types = document.querySelectorAll('.upload-tab-table-type-body tr input[type="checkbox"]:checked')
+    checked_types.forEach(function(element) {
+        include_file_types[element.dataset.name] = true;
+    });
+    const force_include = document.querySelector('#force_include').value;
+    const force_exclude = document.querySelector('#force_exclude').value;
+    fetch("/tab-files-filetypes-setup", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            filetypes_finetune: include_file_types,
+            force_include: force_include,
+            force_exclude: force_exclude,
+        })
+    })
+}
+
 function render_stats() {
     const stats_finetune = document.querySelector('.sources-stats-finetune');
     // const stats_db = document.querySelector('.sources-stats-db');
@@ -450,17 +415,6 @@ function render_stats() {
             fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log?phase=scan&accepted_or_rejected=rejected">Full List</a>`;
         }
     }
-    // if (tab_files_data.filestats_scan_db && typeof tab_files_data.filestats_scan_finetune === 'object') {
-    //     if(Object.keys(tab_files_data.filestats_scan_db).length > 0) {
-    //         stats_db.style.display = 'block';
-    //         const db_accepted = document.querySelector('.sources-stats-db-accepted');
-    //         db_accepted.innerHTML = `Accepted: ${tab_files_data.filestats_scan_db.accepted}`;
-    //         db_accepted.href = `/tab-files-log?phase=scan&accepted_or_rejected=accepted`;
-    //         const db_rejected = document.querySelector('.sources-stats-db-rejected');
-    //         db_rejected.innerHTML = `Rejected: ${tab_files_data.filestats_scan_db.rejected}`;
-    //         db_rejected.href = `/tab-files-log?phase=scan&accepted_or_rejected=rejected`;
-    //     }
-    // }
 }
 
 function upload_url() {
@@ -687,85 +641,13 @@ function file_status_color(status) {
     return status_color;
 }
 
-function get_filters_settings(defaults = false) {
-    fetch("/tab-finetune-smart-filter-get")
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(data) {
-        console.log('tab-finetune-smart-filter-get',data);
-        let settings_data = null;
-        if(Object.keys(data.user_config).length > 0 && !defaults) {
-            settings_data = data.user_config;
-        } else {
-            settings_data = data.defaults;
-        }
-        document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value = settings_data.filter_loss_threshold;
-    });
-}
-
-function save_filters_settings() {
-    fetch("/tab-finetune-smart-filter-setup", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            filter_loss_threshold: document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value,
-        })
-    })
-    .then(function(response) {
-        if(response.ok) {
-            get_filters_settings();
-        }
-    });
-}
-
-function save_filter_setup() {
-    const include_file_types = {};
-    const checked_types = document.querySelectorAll('.upload-tab-table-type-body tr input[type="checkbox"]:checked')
-    checked_types.forEach(function(element) {
-        include_file_types[element.dataset.name] = true;
-    });
-    const force_include = document.querySelector('#force_include').value;
-    const force_exclude = document.querySelector('#force_exclude').value;
-    fetch("/tab-files-filetypes-setup", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            filetypes_finetune: include_file_types,
-            force_include: force_include,
-            force_exclude: force_exclude,
-        })
-    })
-}
-
-function run_now() {
-    fetch("/tab-finetune-run-now?filter_only=1")
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(data) {
-        console.log('run_now');
-    });
-}
-
 export async function init() {
     let req = await fetch('/tab-upload.html');
     document.querySelector('#upload').innerHTML = await req.text();
-    progress_bar = document.querySelector('.sources-run-progress .progress-bar');
     sources_pane = document.querySelector('.sources-pane');
     filetypes_pane = document.querySelector('.filetypes-pane');
-    sources_run_pane = document.querySelector('.run-pane');
-    sources_run_button = document.querySelector('.sources-run-button');
-    sources_settings = document.querySelector('.sources-settings');
-    sources_status = document.querySelector('.ftf-status span');
-    sources_error = document.querySelector('.ftf-error');
 
 
-    sources_run_button.addEventListener('click', run_stop_filtering)
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());
     tab_upload_file_submit.addEventListener('click', function() {
@@ -806,23 +688,6 @@ export async function init() {
     url_modal.addEventListener('show.bs.modal', function () {
         url_modal.querySelector('#tab-upload-url-input').value = '';
         url_modal.querySelector('#status-url').innerHTML = '';
-    });
-
-    const settings_modal = document.getElementById('upload-tab-source-settings-modal');
-    settings_modal.addEventListener('show.bs.modal', function () {
-        get_filters_settings();
-    });
-
-    const settings_modal_submit = document.querySelector('.tab-upload-source-settings-submit');
-    settings_modal_submit.addEventListener('click', function() {
-        save_filters_settings();
-        const settings_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-source-settings-modal'));
-        settings_modal.hide();
-    });
-
-    const settings_modal_defaults = document.querySelector('.tab-upload-source-settings-default');
-    settings_modal_defaults.addEventListener('click', function() {
-        get_filters_settings(true);
     });
 
     const git_modal = document.getElementById('upload-tab-git-modal');
