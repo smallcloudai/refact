@@ -151,6 +151,33 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
         self._fim_suffix = self._encode_one_token("<fim_suffix>")
         self._fim_middle = self._encode_one_token("<fim_middle>")
 
+    def after_token_selection(self, m, chosen_token: th.Tensor, top_tokens: List[int] = [], **unused) -> Dict[str, Any]:
+        t = chosen_token.item()
+        self.debuglog("%05d %s" % (t, self._tokenizer.decode([t])))
+
+        if chosen_token in [self._tokenizer.eos_token_id] or self._tokenizer.eos_token_id in top_tokens:
+            self.finish_reason = "eot"
+
+        elif chosen_token in self._special_tokens:
+            self.finish_reason = "special-token"
+
+        if not self.finish_reason:
+            self._completion.append(t)
+        if chosen_token in self._stop_tokens:
+            self.finish_reason = "stoptoken"
+
+        t_str = self._tokenizer.decode([t])
+        if self._stop_lf and t_str.startswith("\n"):
+            self.finish_reason = "stop-lf"
+        if self._stop_lf_lf and t_str.startswith("\n\n"):
+            self.finish_reason = "stop-lflf"
+
+        self._tokens_produced += 1
+        if self._tokens_produced % 5 == 0:
+            self.needs_upload = True
+
+        return dict()
+
     def prompt(self, T: int):
         self._prefix = self._code[:self._cursor]
         self._suffix = self._code[self._cursor:]
