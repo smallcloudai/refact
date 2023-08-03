@@ -18,7 +18,7 @@ FileUpload = namedtuple('FileUpload', ['name', 'text'])
 class VecDBAPI:
     def __init__(
             self,
-            url: str = 'http://10.190.99.200:8009',
+            url: str = 'http://0.0.0.0:8009',
             api_key: str = ''
     ):
         self._base_url = url

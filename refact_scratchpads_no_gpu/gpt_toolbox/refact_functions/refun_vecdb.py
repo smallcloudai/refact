@@ -1,3 +1,5 @@
+import os
+
 from typing import Any, AsyncIterator, Dict
 
 import ujson as json
@@ -5,6 +7,9 @@ import ujson as json
 from refact_vecdb import VecDBAsyncAPI
 
 __all__ = ['vecdb_call']
+
+
+VECDB_URL = os.getenv('VECDB_URL', 'http://localhost:8008')
 
 
 def vecdb_prompt(query: str, candidates: Any) -> str:
@@ -23,7 +28,7 @@ async def vecdb_call(
 ) -> AsyncIterator[
     Dict[str, Any]
 ]:
-    vecdb = VecDBAsyncAPI()
+    vecdb = VecDBAsyncAPI(url=VECDB_URL)
 
     yield {
         "role": "assistant",

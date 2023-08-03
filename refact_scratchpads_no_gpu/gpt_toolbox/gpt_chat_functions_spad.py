@@ -9,7 +9,6 @@ from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_metering import gpt_prices, calculate_chat_tokens
 from refact_scratchpads_no_gpu.gpt_toolbox import vecdb_call, SMC_FUNCTIONS
 
-from refact_vecdb import VecDBAsyncAPI
 
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
@@ -58,8 +57,6 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
         self._messages_orig_len = len(messages)
         self._on_function = False
         self._function_call = self._get_function_from_msg()
-
-        self._vecdb = VecDBAsyncAPI()
 
     def _get_function_from_msg(self) -> Dict:
         if self._messages:
