@@ -13,6 +13,11 @@ VECDB_URL = os.getenv('VECDB_URL', 'http://localhost:8008')
 
 
 def vecdb_prompt(query: str, candidates: Any) -> str:
+    candidates = json.dumps([{
+        'short_name': c['file_name'],
+        'snippet': c['text']
+    } for c in candidates])
+
     return f"""
 Here is an example of using {query}. I want you to understand how it is used:
 {candidates}
