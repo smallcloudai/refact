@@ -6,7 +6,7 @@ from typing import AsyncIterator, List, Union, Dict, Tuple, Any
 import openai
 
 from refact_scratchpads_no_gpu.async_scratchpad import ascratch
-from refact_scratchpads_no_gpu.gpt_toolbox.gpt_metering import gpt_prices, calculate_chat_tokens
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_metering import gpt_prices, calculate_chat_tokens, engine_to_encoding
 from refact_scratchpads_no_gpu.gpt_toolbox import vecdb_call, SMC_FUNCTIONS
 
 
@@ -57,6 +57,7 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
         self._messages_orig_len = len(messages)
         self._on_function = False
         self._function_call = self._get_function_from_msg()
+        self._enc = None
 
     def _get_function_from_msg(self) -> Dict:
         if self._messages:
@@ -79,6 +80,7 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
             if self._model_n and (self._model_n == 'gpt-3.5-turbo' or self._model_n == 'gpt-4'):
                 model_name = self._model_n + '-0613'
             self.__model_name = model_name
+            self._enc = engine_to_encoding(self.__model_name)
         return self.__model_name
 
     @_model_name.setter
@@ -101,7 +103,7 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
             self.debuglog(f'CALLING function {f_name} with params {f_param}')
 
         if f_name == 'vecdb':
-            async for res in vecdb_call(f_param):
+            async for res in vecdb_call(self._enc, f_param, 256):
                 self._messages.append(res)
                 yield self._new_chat_messages()
 
