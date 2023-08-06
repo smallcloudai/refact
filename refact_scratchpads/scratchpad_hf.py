@@ -1,5 +1,6 @@
 import torch as th
 import time
+import json
 
 from refact_scratchpads.scratchpad_utils import trim_context_infill
 
@@ -12,7 +13,7 @@ class EncodingWrapper:
         self._tokenizer = tokenizer
 
     def encode(self, text: str) -> List[int]:
-        return self._tokenizer.encode(text)
+        return self._tokenizer.encode(text, add_special_tokens=False)
 
     def decode(self, tokens: List[int]) -> str:
         return self._tokenizer.decode(tokens)
@@ -30,7 +31,7 @@ class ScratchpadHuggingfaceBase:
         **unused
     ):
         self._tokenizer = tokenizer
-        self._tokenizer_skip_first = bool(tokenizer.encode(""))
+        self._tokenizer_skip_first = bool(tokenizer.encode(""))    # XXX: replace with add_special_tokens=False ?
         self._max_tokens = max_tokens
         self._logger = logger
         self._created = created
@@ -69,7 +70,6 @@ class ScratchpadHuggingfaceBase:
 
     def after_token_selection(self, m, chosen_token: th.Tensor, **unused) -> Dict[str, Any]:
         t = chosen_token.item()
-        self.debuglog("%05d %s" % (t, self._tokenizer.decode([t])))
 
         if chosen_token in [self._tokenizer.eos_token_id]:
             self.finish_reason = "eot"
@@ -100,6 +100,13 @@ class ScratchpadHuggingfaceBase:
         if len(tokens) != 1:
             raise ValueError(f"Must be single token, have {tokens} for '{text}'")
         return tokens[0]
+
+    def encode_without_special_tokens(self, txt: str) -> List[int]:
+        if hasattr(self._tokenizer, "tokenizer_copy_but_does_not_encode_special_tokens"):
+            t = self._tokenizer.tokenizer_copy_but_does_not_encode_special_tokens
+        else:
+            t = self._tokenizer.backend_tokenizer
+        return t.encode(txt, add_special_tokens=False).ids
 
     @property
     def generated_tokens_n(self):
@@ -180,18 +187,27 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
 
     def prompt(self, T: int):
         self._prefix = self._code[:self._cursor]
-        self._suffix = self._code[self._cursor:]
+        self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
         self._completion.clear()
 
         prefix_cut, suffix_cut = trim_context_infill(
             self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens)
+        self.debuglog(f"ScratchpadHuggingfaceFIM prompt prefix %i chars, suffix %i chars, T=%i max_tokens=%i" % (
+            len(prefix_cut), len(suffix_cut), T, self._max_tokens))
+        a = self.encode_without_special_tokens(prefix_cut)
+        b = self.encode_without_special_tokens(suffix_cut)
+        assert self._fim_prefix not in a
+        assert self._fim_prefix not in b
         prompt: List[int] = [
             self._fim_prefix,
-            *self._tokenizer.encode(prefix_cut),
+            *a,
             self._fim_suffix,
-            *self._tokenizer.encode(suffix_cut),
+            *b,
             self._fim_middle,
         ]
+        # self.debuglog("-"*40)
+        # self.debuglog(self._tokenizer.decode(prompt))
+        # self.debuglog("-"*40)
         return prompt
 
     def completion(self, final: bool):

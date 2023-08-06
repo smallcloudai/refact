@@ -51,9 +51,6 @@ def validate_description_dict(
     model: str,
     B: int,
     max_thinking_time: int,
-    *,
-    T: int = 0,               # deprecated
-    encoding_name: str = "",  # deprecated
 ):
     return {
         "infmod_guid": model_guid_allowed_characters(infeng_instance_guid),
@@ -296,6 +293,14 @@ def _upload_results_loop(upload_q: multiprocessing.Queue, cancelled_q: multiproc
                         files[k] += "\n"
                     head, tail = head_and_tail(orig, files[k])
                     mid1 = (files[k][head:-tail]) if tail>0 else (files[k][head:])
+                    # Uncomment to debug:
+                    # head_str = orig[:head][-20:]
+                    # tail_str = orig[-tail:][:20]
+                    # print("head \"...%s\" mid \"%s\" tail \"%s...\"" % (
+                    #     termcolor.colored(head_str.replace("\n", "\\n"), "yellow"),
+                    #     termcolor.colored(mid1.replace("\n", "\\n"), "green"),
+                    #     termcolor.colored(tail_str.replace("\n", "\\n"), "yellow")
+                    # ))
                     stream_files[k] = {
                         "head": head,
                         "mid": mid1,
