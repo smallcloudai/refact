@@ -11,7 +11,10 @@ from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response, StreamingResponse, JSONResponse
 
 from self_hosting_machinery.scripts import best_lora
-from refact_data_pipeline.finetune import finetune_filtering_defaults, finetune_train_defaults
+from refact_data_pipeline.finetune.finetune_utils import get_active_loras
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
+from refact_data_pipeline.finetune.finetune_filtering_defaults import finetune_filtering_defaults
+from refact_data_pipeline.finetune.finetune_train_defaults import finetune_train_defaults
 from self_hosting_machinery import env
 
 from pydantic import BaseModel
@@ -99,6 +102,10 @@ def get_finetune_runs():
             "worked_steps": "0",
             "status": "unknown",  # working, starting, completed, failed
         }
+        try:
+            d["model_name"] = best_lora.get_run_model_name(dir_path)
+        except RuntimeError:
+            continue
         status_fn = os.path.join(dir_path, "status.json")
         if os.path.exists(status_fn):
             d.update(json.load(open(status_fn, "r")))
@@ -149,28 +156,21 @@ class TabFinetuneRouter(APIRouter):
                 "run_at_night": "True",
                 "run_at_night_time": "04:00",
                 "auto_delete_n_runs": "5",
+                **get_finetune_config(),  # TODO: why we mix finetune config for training and schedule?
             },
             "filtering_status": "unknown",
             "finetune_working_now": anyone_works,
+            "active": get_active_loras(),
         }
-        if os.path.exists(env.CONFIG_FINETUNE):
-            result["config"] = json.load(open(env.CONFIG_FINETUNE, "r"))
-        if os.path.exists(env.CONFIG_ACTIVE_LORA):
-            result["active"] = json.load(open(env.CONFIG_ACTIVE_LORA, "r"))
-        else:
-            result["active"] = {
-                "model": "",
-                "lora_mode": "latest-best",
-            }
         if os.path.exists(env.CONFIG_FINETUNE_FILTER_STATS):
             c = json.load(open(env.CONFIG_FINETUNE_FILTER_STATS, "r"))
             result["filtering_status"] = c['status']
-        result["finetune_latest_best"] = best_lora.find_best_lora("CONTRASTcode/3b/multi")
+        result["finetune_latest_best"] = best_lora.find_best_lora(result["config"]["model_name"])
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_finetune_smart_filter_setup(self, post: FilteringSetup):
         validated = post.dict()
-        for dkey, dval in finetune_filtering_defaults.finetune_filtering_defaults.items():
+        for dkey, dval in finetune_filtering_defaults.items():
             if dkey in validated and (validated[dkey] == dval or validated[dkey] is None):
                 del validated[dkey]
         with open(env.CONFIG_HOW_TO_FILTER + ".tmp", "w") as f:
@@ -180,7 +180,7 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_finetune_smart_filter_get(self):
         result = {
-            "defaults": finetune_filtering_defaults.finetune_filtering_defaults,
+            "defaults": finetune_filtering_defaults,
             "user_config": {}
         }
         if os.path.exists(env.CONFIG_HOW_TO_FILTER):
@@ -189,7 +189,7 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_finetune_training_setup(self, post: TabFinetuneTrainingSetup):
         validated = post.dict()
-        for dkey, dval in finetune_train_defaults.finetune_train_defaults.items():
+        for dkey, dval in finetune_train_defaults.items():
             if dkey in validated and (validated[dkey] == dval or validated[dkey] is None):
                 del validated[dkey]
         with open(env.CONFIG_FINETUNE + ".tmp", "w") as f:
@@ -199,11 +199,9 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_finetune_training_get(self):
         result = {
-            "defaults": finetune_train_defaults.finetune_train_defaults,
-            "user_config": {}
+            "defaults": finetune_train_defaults,
+            "user_config": get_finetune_config(),
         }
-        if os.path.exists(env.CONFIG_FINETUNE):
-            result["user_config"] = json.load(open(env.CONFIG_FINETUNE))
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_funetune_log(self, run_id: str):

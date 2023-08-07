@@ -17,7 +17,8 @@ from torchinfo import summary
 import refact_data_pipeline.finetune.traces as traces
 from refact_data_pipeline import DatasetOpts, finetune_datasource
 from refact_data_pipeline.datautils import BatchIterator
-from refact_data_pipeline.finetune import finetune_filtering_defaults
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
+from refact_data_pipeline.finetune.finetune_filtering_defaults import finetune_filtering_defaults
 from refact_data_pipeline.finetune.finetune_config import base_config
 from refact_data_pipeline.finetune.model_handling import make_model, masked_loss
 from refact_data_pipeline.finetune.finetune_train import save_status_json
@@ -170,7 +171,9 @@ def loss_based_filter(
 
 
 def pre_filtering():
-    fcfg = {**finetune_filtering_defaults.finetune_filtering_defaults}
+    finetune_cfg = get_finetune_config(logger=traces.log)
+
+    fcfg = {**finetune_filtering_defaults}
     if os.path.exists(env.CONFIG_HOW_TO_FILTER):
         traces.log("Reading %s" % env.CONFIG_HOW_TO_FILTER)
         fcfg.update(**json.load(open(env.CONFIG_HOW_TO_FILTER)))
@@ -184,7 +187,7 @@ def pre_filtering():
     logging.info("Train set filtering, loading model...")
     traces.log("Train set filtering, loading model...")
     t0 = time.time()
-    cfg = base_config(env)
+    cfg = base_config(finetune_cfg["model_name"])
     model = make_model(
         weights_path=cfg['model_info']['weight_path'],
         repo_id=cfg['model_info']['repo_id'],

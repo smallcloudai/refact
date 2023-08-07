@@ -19,10 +19,12 @@ from self_hosting_machinery.scripts import best_lora
 from refact_models.checkpoint_loader import load_finetune_checkpoint
 from refact_models.checkpoint_loader import load_finetune_checkpoint_only
 from refact_models.checkpoint_loader import load_checkpoint_embeddings
+from known_models_db.refact_known_models import models_mini_db
 
 from self_hosting_machinery.inference import modload
 from self_hosting_machinery.inference import InferenceBase
 from refact_scratchpads_no_gpu.stream_results import UploadProxy
+from refact_data_pipeline.finetune.finetune_utils import get_active_loras
 
 from self_hosting_machinery import env
 
@@ -305,37 +307,36 @@ class InferenceLegacy(InferenceBase):
             log("using lora %s" % lora_checkpoint_dir)
 
     def lora_switch_according_to_config(self):
-        if not os.path.exists(env.CONFIG_ACTIVE_LORA):
-            j = {
-                "model": "",
-                "lora_mode": "latest-best",
-            }
-        else:
-            j = json.load(open(env.CONFIG_ACTIVE_LORA))
+        if self._model_name not in models_mini_db:
+            raise RuntimeError(f"Unknown model {self._model_name}, try to update repo")
+        model_info = models_mini_db[self._model_name]
+        if "finetune" not in model_info.get("filter_caps", []):
+            log(f"Model {self._model_name} does not support finetune")
+            self.lora_switch(lora_checkpoint_dir="")
+            return
+
+        active_loras = get_active_loras()
+        assert self._model_name in active_loras
+        cfg = active_loras[self._model_name]
         # {
-        #     "model": "",
         #     "lora_mode": "specific",
         #     "specific_lora_run_id": "lora-20230614-164840",
         #     "specific_checkpoint": "iter0666"
         # }
-        # NOTE: lora only for 3b model now
-        if self._model_name not in ["CONTRASTcode/3b/multi"]:
-            log("lora disabled for %s" % self._model_name)
-            self.lora_switch(lora_checkpoint_dir="")
-            return
-        if j["lora_mode"] not in ["specific", "latest-best"]:
+
+        if cfg["lora_mode"] not in ["specific", "latest-best"]:
             self.lora_switch(lora_checkpoint_dir="")
             return
         lora_checkpoint_dir = ""
         some_problem_with_explicit = False
-        if j["lora_mode"] == "specific":
-            t = os.path.join(env.DIR_LORAS, j["specific_lora_run_id"], "checkpoints", j["specific_checkpoint"])
+        if cfg["lora_mode"] == "specific":
+            t = os.path.join(env.DIR_LORAS, cfg["specific_lora_run_id"], "checkpoints", cfg["specific_checkpoint"])
             if os.path.isdir(t):
                 lora_checkpoint_dir = t
             else:
                 log("lora cannot find \"%s\", switching to latest-best" % t)
                 some_problem_with_explicit = True
-        if j["lora_mode"] == "latest-best" or some_problem_with_explicit:
+        if cfg["lora_mode"] == "latest-best" or some_problem_with_explicit:
             tmp = best_lora.find_best_lora(self._model_name)
             lora_checkpoint_dir = tmp["path"]
         self.lora_switch(lora_checkpoint_dir=lora_checkpoint_dir)
