@@ -7,12 +7,15 @@ let loras_switch_latest = null;
 let loras_switch_specific = null;
 let loras_switch_no_reaction = false;
 let finetune_settings_defaults = [];
-let progress_bar = null;
-let sources_run_pane = null;
-let sources_run_button = null;
-let sources_settings = null;
-let sources_status = null;
-let sources_error = null;
+let fine_filter_progress = null;
+let fine_filter_pane = null;
+let fine_filter_button = null;
+let fine_filter_settings = null;
+let fine_filter_status = null;
+let fine_filter_error = null;
+
+let fine_tuning_pane = null;
+let fine_tuning_button = null;
 // let checkpoint_name = "best";
 // let selected_model = ""; // we don't have model choice, empty for now
 
@@ -75,7 +78,7 @@ function render_runs() {
     let is_working = false;
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.setAttribute("need_to_stop", is_working)
-    start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
+    // start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
     if(data.finetune_runs.length > 0) {
         document.querySelector('.run-table').innerHTML = '';
     }
@@ -178,7 +181,7 @@ function render_runs() {
     if(is_working) {
         start_finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
     } else {
-        start_finetune_button.textContent = 'Start Now';
+        start_finetune_button.innerHTML = '<i class="bi bi-gpu-card"></i> Run Now';
     }
     start_finetune_button.setAttribute("need_to_stop", is_working)
     start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
@@ -500,16 +503,17 @@ function revert_to_default(input_id) {
 }
 
 function run_stop_filtering() {
-    // sources_run_button = document.querySelector('.sources-run-button');
-    const status = sources_run_button.getAttribute("ftf_status")
-    sources_run_button.disabled = true;
+    // fine_filter_button = document.querySelector('.sources-run-button');
+    const status = fine_filter_button.getAttribute("ftf_status")
+    console.log('----------------------------------------------', status);
+    fine_filter_button.disabled = true;
     switch (status) {
         case 'undefined':
         case 'interrupted':
         case 'failed':
         case 'error':
         case 'finished':
-            do_starting_state()
+            do_starting_state();
             run_now();
             break;
         case 'starting':
@@ -565,7 +569,7 @@ function get_filters_settings(defaults = false) {
 }
 
 function render_filter_progress(progress_value) {
-    progress_bar.style.width = progress_value + "%";
+    fine_filter_progress.style.width = progress_value + "%";
 }
 function render_ftf_progress(filtering_progress) {
     const ftf_bar = document.querySelector('.ftf-bar');
@@ -582,10 +586,13 @@ function reset_ftf_progress() {
 }
 
 function do_starting_state() {
-    sources_run_button.disabled = true;
+    fine_filter_button.disabled = true;
+    fine_filter_pane.classList.add('pane-disabled');
+    fine_tuning_button.disabled = true;
+    fine_tuning_pane.classList.add('pane-disabled');
     if(!document.querySelector('.sources-run-button .spinner-border')) {
-        sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
-        sources_status.innerHTML = 'starting';
+        fine_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
+        fine_filter_status.innerHTML = 'starting';
     }
 }
 
@@ -612,7 +619,7 @@ function get_tab_files() {
             return response.json();
         })
         .then(function(data) {
-            // console.log('tab-files-get',data);
+            console.log('tab-files-get',data);
             // tab_files_data = data;
             if(data.scan_error && data.scan_error.length > 0) {
                 let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
@@ -623,23 +630,32 @@ function get_tab_files() {
                     show_scan_error = true;
                 }
             }
-            // TODO: move 
+            if(data.scan_status === 'completed') {
+                fine_filter_button.disabled = false;
+                fine_filter_pane.classList.remove('pane-disabled');
+            } else {
+                fine_filter_pane.classList.add('pane-disabled');
+                fine_filter_button.disabled = true;
+            }
             render_ftf_stats(data.filestats_ftf);
-            if(data.filestats_ftf) {
+            // console.log('data.filestats_ftf',data.filestats_ftf);
+            if(data.scan_finished) {
+                fine_filter_pane.classList.remove('pane-disabled');
                 if(data.filestats_ftf.status) {
                     document.querySelector('.ftf-status').classList.remove('d-none');
+                    document.querySelector('.start-funetune-stats').classList.remove('d-none');
                 } else {
                     document.querySelector('.ftf-status').classList.add('d-none');
+                    document.querySelector('.start-funetune-stats').classList.add('d-none');
                 }
-                // sources_run_button = document.querySelector('.sources-run-button');
-                // sources_run_button.disabled = false;
+                fine_filter_button.disabled = false;
                 const status = data.filestats_ftf.status;
-                sources_run_button.setAttribute("ftf_status", status)
+                fine_filter_button.setAttribute("ftf_status", status)
                 if(!data.filestats_ftf.error || data.filestats_ftf.error === '') {
-                    if(sources_error && !sources_error.classList.contains('d-none')) {
-                        sources_error.classList.add('d-none');
+                    if(fine_filter_error && !fine_filter_error.classList.contains('d-none')) {
+                        fine_filter_error.classList.add('d-none');
                     }
-                    sources_error.querySelector('span').innerHTML = '';
+                    fine_filter_error.querySelector('span').innerHTML = '';
                 }
                 if(data.filestats_ftf.eta_minutes && data.filestats_ftf.eta_minutes !== 0) {
                     const eta_state = document.querySelector('.ftf-eta');
@@ -648,68 +664,69 @@ function get_tab_files() {
                     const progress_container = document.querySelector('.ftf-progress');
                     progress_container.classList.remove('d-none');
                     render_ftf_progress(data.filtering_progress);
+
                 }
-                sources_settings.disabled = false
+                fine_filter_settings.disabled = false
                 switch(status) {
                     case undefined:
                     case 'interrupted':
                     case 'finished':
-                        sources_run_button.disabled = false;
+                        fine_filter_button.disabled = false;
                         let status_line = "";
                         if (status !== undefined) {
                             status_line = status;
                         }
-                        sources_status.innerHTML = status_line;
-                        sources_run_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
+                        fine_filter_status.innerHTML = status_line;
+                        fine_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
                         // sources_pane.classList.remove('pane-disabled');
-                        sources_settings.disabled = false;
+                        fine_filter_settings.disabled = false;
                         reset_ftf_progress();
                         break;
                     case 'starting':
                         do_starting_state()
                         break;
                     case 'error':
-                        sources_run_button.disabled = true;
-                        sources_status.innerHTML = status;
-                        sources_settings.disabled = false;
+                        fine_filter_button.disabled = true;
+                        fine_filter_status.innerHTML = status;
+                        fine_filter_settings.disabled = false;
                         reset_ftf_progress();
                         if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
-                            if(sources_error && sources_error.classList.contains('d-none')) {
-                                sources_error.classList.remove('d-none');
+                            if(fine_filter_error && fine_filter_error.classList.contains('d-none')) {
+                                fine_filter_error.classList.remove('d-none');
                             }
-                            sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
+                            fine_filter_error.querySelector('span').innerHTML = data.filestats_ftf.error;
                         }
                         break;
                     case 'failed':
-                        sources_status.innerHTML = status;
-                        sources_settings.disabled = false;
+                        fine_filter_status.innerHTML = status;
+                        fine_filter_settings.disabled = false;
                         reset_ftf_progress();
                         if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
-                            if(sources_error && sources_error.classList.contains('d-none')) {
-                                sources_error.classList.remove('d-none');
+                            if(fine_filter_error && fine_filter_error.classList.contains('d-none')) {
+                                fine_filter_error.classList.remove('d-none');
                             }
-                            sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
+                            fine_filter_error.querySelector('span').innerHTML = data.filestats_ftf.error;
                         }
                         break;
                     default:
-                        sources_run_button.disabled = false;
-                        sources_run_button.innerHTML = `Stop filter`;
+                        fine_filter_button.disabled = false;
+                        fine_filter_button.innerHTML = `Stop filter`;
                         if(!document.querySelector('.sources-run-button .spinner-border')) {
-                            sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter`;
-                            sources_status.innerHTML = data.filestats_ftf.status;
+                            fine_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter`;
+                            fine_filter_status.innerHTML = data.filestats_ftf.status;
                         }
-                        sources_pane.classList.add('pane-disabled');
-                        filetypes_pane.classList.add('pane-disabled');
-                        sources_run_pane.classList.remove('pane-disabled');
-                        sources_settings.disabled = true
+                        fine_filter_pane.classList.remove('pane-disabled');
+                        fine_filter_settings.disabled = true
                         break;
                 }
             }
+            else {
+                document.querySelector('.ftf-status').classList.add('d-none');
+                document.querySelector('.start-funetune-stats').classList.add('d-none');
+            }
             if (data.finetune_working_now) {
-                // sources_pane.classList.add('pane-disabled');
-                // filetypes_pane.classList.add('pane-disabled');
-                // sources_run_pane.classList.add('pane-disabled');
-                // sources_settings.disabled = true;
+                fine_filter_pane.classList.add('pane-disabled');
+                fine_filter_settings.disabled = true;
             }
         });
 }
@@ -717,12 +734,18 @@ function get_tab_files() {
 export async function init() {
     let req = await fetch('/tab-finetune.html');
     document.querySelector('#finetune').innerHTML = await req.text();
-    progress_bar = document.querySelector('.sources-run-progress .progress-bar');
-    sources_run_pane = document.querySelector('.run-pane');
-    sources_run_button = document.querySelector('.sources-run-button');
-    sources_settings = document.querySelector('.sources-settings');
-    sources_status = document.querySelector('.ftf-status span');
-    sources_error = document.querySelector('.ftf-error');
+    fine_filter_pane = document.querySelector('.start-funetune-step1');
+    fine_filter_pane.classList.add('pane-disabled');
+    fine_tuning_pane = document.querySelector('.start-funetune-step2');
+    fine_tuning_pane.classList.add('pane-disabled');
+    fine_filter_progress = document.querySelector('.start-funetune-stats .progress-bar');
+    fine_filter_settings = document.querySelector('.sources-settings');
+    fine_filter_status = document.querySelector('.ftf-status span');
+    fine_filter_error = document.querySelector('.ftf-error');
+    fine_filter_button = document.querySelector('.sources-run-button');
+    fine_filter_button.disabled = true;
+    fine_tuning_button = document.querySelector('.tab-finetune-run-now');
+    fine_tuning_button.disabled = true;
 
     const log_container = document.querySelector('.log-container');
     function handle_auto_scroll() {
@@ -731,18 +754,18 @@ export async function init() {
         }
     }
     log_container.addEventListener('scroll', handle_auto_scroll);
-    const start_finetune_button = document.querySelector('.tab-finetune-run-now');
-    start_finetune_button.addEventListener('click', function () {
-        let url = "/tab-finetune-run-now";
-        start_finetune_button.disabled = true;
-        if (start_finetune_button.getAttribute("need_to_stop") === 'true') {
-            url = "/tab-finetune-stop-now";
-        }
-        fetch(url)
-            .then(function (response) {
-                finetune_data();
-            })
-    });
+    // const start_finetune_button = document.querySelector('.tab-finetune-run-now');
+    // start_finetune_button.addEventListener('click', function () {
+    //     let url = "/tab-finetune-run-now";
+    //     start_finetune_button.disabled = true;
+    //     if (start_finetune_button.getAttribute("need_to_stop") === 'true') {
+    //         url = "/tab-finetune-stop-now";
+    //     }
+    //     fetch(url)
+    //         .then(function (response) {
+    //             finetune_data();
+    //         })
+    // });
     const loras = document.querySelectorAll('.lora-switch');
     loras.forEach(element => {
         if (element.value === 'off')
@@ -794,8 +817,8 @@ export async function init() {
         });
     });
 
-    sources_run_button = document.querySelector('.sources-run-button');
-    sources_run_button.addEventListener('click', run_stop_filtering);
+    fine_filter_button = document.querySelector('.sources-run-button');
+    fine_filter_button.addEventListener('click', run_stop_filtering);
 
     const settings_modal = document.getElementById('upload-tab-source-settings-modal');
     settings_modal.addEventListener('show.bs.modal', function () {
@@ -813,6 +836,11 @@ export async function init() {
     settings_modal_defaults.addEventListener('click', function() {
         get_filters_settings(true);
     });
+
+    // const scan_error_toast = document.querySelector('.upload-tab-scan-error-toast');
+    // scan_error_toast.addEventListener('hidden.bs.toast', () => {
+    //     show_scan_error = false;
+    // })
 }
 
 export function tab_switched_here() {

@@ -542,10 +542,8 @@ h3 {
     line-height: 1.2;
     padding: 0;
     margin: 0;
-    margin-bottom: 20px;
     font-size: 13px;
     margin-top: 7px;
-    opacity: 0.7;
 }
 .ftf-stats h6 {
     margin: 0;
@@ -565,9 +563,6 @@ h3 {
     margin-right: 10px;
 }
 .ftf-error {
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 60%;
 }
 .ftf-progress {
     width: 200px;
@@ -643,12 +638,21 @@ h3 {
     margin-right: 5px;
 }
 .start-funetune-step1 {
-    margin-top: 15px;
+    margin-top: 25px;
 }
 .start-funetune-step2 {
-    margin-top: 15px;
+    margin-top: 25px;
 }
 .start-funetune-step1 h6,
 .start-funetune-step2 h6 {
     font-weight: bold;
+}
+.callout {
+    padding: 1rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #e9ecef;
+    border-left-width: 0.25rem;
+    border-radius: 0.25rem;
+    border-left-color: #5bc0de;
 }

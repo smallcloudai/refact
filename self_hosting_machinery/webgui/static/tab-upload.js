@@ -5,21 +5,11 @@ let sort_order = 'asc';
 let sort_started = false;
 let dont_disable_file_types = false;
 
-// let progress_bar = null;
 let sources_pane = null;
 let filetypes_pane = null;
-// let sources_run_pane = null;
-// let sources_run_button = null;
-// let sources_settings = null;
-// let sources_status = null;
-// let sources_error = null;
-
 
 function do_starting_state() {
-    sources_run_button.disabled = true;
-    sources_run_pane.classList.add('pane-disabled');
     filetypes_pane.classList.add('pane-disabled');
-    sources_pane.classList.add('pane-disabled');
     if(!document.querySelector('.sources-run-button .spinner-border')) {
         sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
         sources_status.innerHTML = 'starting';
@@ -52,92 +42,9 @@ function get_tab_files() {
             render_tab_files(data);
             render_filetypes(data.mime_types, data.filetypes);
             render_force_filetypes(data.filetypes);
-            // TODO: move 
-            // render_ftf_stats(data.filestats_ftf);
-            // if(data.filestats_ftf) {
-            //     if(data.filestats_ftf.status) {
-            //         document.querySelector('.ftf-status').classList.remove('d-none');
-            //     } else {
-            //         document.querySelector('.ftf-status').classList.add('d-none');
-            //     }
-            //     // sources_run_button.disabled = false;
-            //     const status = data.filestats_ftf.status;
-            //     sources_run_button.setAttribute("ftf_status", status)
-            //     if(!data.filestats_ftf.error || data.filestats_ftf.error === '') {
-            //         if(sources_error && !sources_error.classList.contains('d-none')) {
-            //             sources_error.classList.add('d-none');
-            //         }
-            //         sources_error.querySelector('span').innerHTML = '';
-            //     }
-            //     if(data.filestats_ftf.eta_minutes && data.filestats_ftf.eta_minutes !== 0) {
-            //         const eta_state = document.querySelector('.ftf-eta');
-            //         eta_state.innerHTML = 'ETA: ' + data.filestats_ftf.eta_minutes + ' minute(s)';
-
-            //         const progress_container = document.querySelector('.ftf-progress');
-            //         progress_container.classList.remove('d-none');
-            //         render_ftf_progress(data.filtering_progress);
-            //     }
-            //     sources_settings.disabled = false
-            //     switch(status) {
-            //         case undefined:
-            //         case 'interrupted':
-            //         case 'finished':
-            //             sources_run_button.disabled = false;
-            //             let status_line = "";
-            //             if (status !== undefined) {
-            //                 status_line = status;
-            //             }
-            //             sources_status.innerHTML = status_line;
-            //             sources_run_button.innerHTML = `<i class="bi bi-gpu-card"></i>Run filter`;
-            //             sources_pane.classList.remove('pane-disabled');
-            //             sources_settings.disabled = false;
-            //             reset_ftf_progress();
-            //             break;
-            //         case 'starting':
-            //             do_starting_state()
-            //             break;
-            //         case 'error':
-            //             sources_run_button.disabled = true;
-            //             sources_status.innerHTML = status;
-            //             sources_settings.disabled = false;
-            //             reset_ftf_progress();
-            //             if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
-            //                 if(sources_error && sources_error.classList.contains('d-none')) {
-            //                     sources_error.classList.remove('d-none');
-            //                 }
-            //                 sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
-            //             }
-            //             break;
-            //         case 'failed':
-            //             sources_status.innerHTML = status;
-            //             sources_settings.disabled = false;
-            //             reset_ftf_progress();
-            //             if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
-            //                 if(sources_error && sources_error.classList.contains('d-none')) {
-            //                     sources_error.classList.remove('d-none');
-            //                 }
-            //                 sources_error.querySelector('span').innerHTML = data.filestats_ftf.error;
-            //             }
-            //             break;
-            //         default:
-            //             sources_run_button.disabled = false;
-            //             sources_run_button.innerHTML = `Stop filter`;
-            //             if(!document.querySelector('.sources-run-button .spinner-border')) {
-            //                 sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter`;
-            //                 sources_status.innerHTML = data.filestats_ftf.status;
-            //             }
-            //             sources_pane.classList.add('pane-disabled');
-            //             filetypes_pane.classList.add('pane-disabled');
-            //             sources_run_pane.classList.remove('pane-disabled');
-            //             sources_settings.disabled = true
-            //             break;
-            //     }
-            // }
             if (data.finetune_working_now) {
                 sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
-                // sources_run_pane.classList.add('pane-disabled');
-                // sources_settings.disabled = true;
             }
         });
 }
@@ -732,11 +639,6 @@ export async function init() {
         dont_disable_file_types = true;
         save_filter_setup();
         force_include_exclude_is_changed = false;
-    })
-
-    const scan_error_toast = document.querySelector('.upload-tab-scan-error-toast');
-    scan_error_toast.addEventListener('hidden.bs.toast', () => {
-        show_scan_error = false;
     })
 
     const mime_sort = document.querySelector('.upload-tab-table-mime-sort');
