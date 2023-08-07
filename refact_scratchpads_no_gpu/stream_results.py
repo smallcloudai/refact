@@ -75,7 +75,7 @@ def completions_wait_batch(req_session, my_desc, verbose=False):
             json_resp = resp.json()
         except requests.exceptions.ReadTimeout as e:
             t1 = time.time()
-            logger.warning("%s %0.1fms %s %s" % (datetime.datetime.now().strftime("%H:%M:%S.%f"), 1000*(t1 - t0), url, termcolor.colored("TIMEOUT", "green")))
+            logger.warning("%0.1fms %s %s" % (1000*(t1 - t0), url, termcolor.colored("TIMEOUT", "green")))
             url_complain_doesnt_work()
             continue
         except Exception as e:
@@ -90,8 +90,7 @@ def completions_wait_batch(req_session, my_desc, verbose=False):
     if json_resp is None:
         return "ERROR", []
     t1 = time.time()
-    hms = datetime.datetime.now().strftime("%H:%M:%S.%f")
-    logger.info("%s %0.1fms %s %s" % (hms, 1000*(t1 - t0), url, termcolor.colored(json_resp.get("retcode", "no retcode"), "green")))
+    logger.info("%0.1fms %s %s" % (1000*(t1 - t0), url, termcolor.colored(json_resp.get("retcode", "no retcode"), "green")))
     if verbose or "retcode" not in json_resp:
         logger.warning("%s unrecognized json: %s" % (url, json.dumps(json_resp, indent=4)))
     return json_resp.get("retcode", "ERROR"), json_resp.get("batch", [])
@@ -242,13 +241,16 @@ class UploadProxy:
 
 
 def _upload_results_loop(upload_q: multiprocessing.Queue, cancelled_q: multiprocessing.Queue):
+    import setproctitle
+    setproctitle.setproctitle("upload_results_loop")
     req_session = infserver_session()
     exit_flag = False
     while not exit_flag:
         try:
             upload_dict = upload_q.get(timeout=600)
         except queue.Empty as e:
-            logger.warning("%s %s" % (datetime.datetime.now().strftime("%H:%M:%S.%f"), termcolor.colored("upload_results_loop timeout, exiting", "red")))
+            msg = termcolor.colored("upload_results_loop timeout, exiting", "red")
+            logger.warning(msg)
             exit_flag = True
             continue
         if "exit" in upload_dict:
