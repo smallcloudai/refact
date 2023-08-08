@@ -516,7 +516,6 @@ function save_tab_files() {
         body: JSON.stringify(data)
     })
     .then(function(response) {
-        console.log('tab-files-save-config',tab-files-save-config);
         if(response.ok) {
             get_tab_files();
         }
