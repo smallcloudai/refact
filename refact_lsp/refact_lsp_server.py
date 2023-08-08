@@ -18,28 +18,6 @@ from lsprotocol.types import (
 server = LanguageServer("refact-lsp", "v0.1")
 
 
-# def run_diff_call(func, src_py, src_txt, cursor, intent):
-#     j = inf.nlp_model_call(
-#         "contrast",
-#         MODEL,
-#         sources={src_py: src_txt},
-#         intent=intent,
-#         function=func,
-#         cursor_file=src_py,
-#         cursor0=cursor,
-#         cursor1=cursor,
-#         temperature=TEMPERATURE,
-#         max_tokens=MAX_TOKENS,
-#         top_p=TOP_P,
-#         max_edits=1,
-#         verbose=1,
-#     )
-#     if "status" not in j or j["status"] != "completed":
-#         log(str(j))
-#         quit(1)
-#     return j["choices"][0]
-
-
 @server.feature(TEXT_DOCUMENT_COMPLETION)
 async def completions(params: CompletionParams):
     items = []
