@@ -13,6 +13,7 @@ let fine_filter_button = null;
 let fine_filter_settings = null;
 let fine_filter_status = null;
 let fine_filter_error = null;
+let tab_files_data = null;
 
 let fine_tuning_pane = null;
 let fine_tuning_button = null;
@@ -30,16 +31,31 @@ function finetune_data() {
             downloaded_data = data;
             render_lora_switch();
             render_runs();
+            render_model_select();
+            if(data.filtering_status === 'finished' && tab_files_data.uploaded_files.length > 0) {
+                fine_tuning_pane.classList.remove('pane-disabled');
+                fine_tuning_button.disabled = false;
+            } else {
+                fine_tuning_pane.classList.add('pane-disabled');
+                fine_tuning_button.disabled = true;
+            }
+            if(tab_files_data.uploaded_files.length === 0) {
+                reset_ftf_progress();
+            }
         });
 }
 
-function render_model_select() {
+function render_model_select(force = false) {
+    const model_selector = document.querySelector('#finetune-model');
+    if (model_selector && model_selector.options.length > 0 && !force) {
+        return;
+    }
     fetch("/tab-host-models-get")
     .then(function(response) {
         return response.json();
     })
     .then(function(data) {
-      const model_selector = document.querySelector('#finetune-model');
+      model_selector.innerHTML = '';
       data.models.forEach(model => {
         if(model.has_finetune) {
             const new_option = new Option(model.name, model.name); 
@@ -49,19 +65,6 @@ function render_model_select() {
             model_selector.appendChild(new_option);
         }
       });
-    });
-}
-
-function change_model() {
-    const model_selector = document.querySelector('#finetune-model');
-    const model = model_selector.options[model_selector.selectedIndex].value;
-    fetch(`/tab-finetune-model/${model}`)
-    .then(response => {
-        return response.json();
-    })
-    .then(data => {
-        render_model_select();
-        document.querySelector('#finetune-model').value = data.model_name;
     });
 }
 
@@ -119,6 +122,7 @@ function render_runs() {
     }
     document.querySelector('.table-types').style.display = 'table';
     data.finetune_runs.forEach(element => {
+        if(element.model_name !== data.config.model_name) { return; }
         const row = document.createElement('tr');
         row.style.whiteSpace = 'nowrap';
         const run_name = document.createElement("td");
@@ -229,7 +233,7 @@ const find_checkpoints_by_run = (run_id) => {
 };
 
 function render_lora_switch() {
-    let mode = downloaded_data.active ? downloaded_data.active.lora_mode : "latest-best";
+    let mode = downloaded_data.active[downloaded_data.config.model_name] ? downloaded_data.active[downloaded_data.config.model_name].lora_mode : "latest-best";
     loras_switch_no_reaction = true; // avoid infinite loop when setting .checked
     if (mode === 'off') {
         loras_switch_off.checked = true;
@@ -246,8 +250,8 @@ function render_lora_switch() {
         lora_switch_checkpoint.style.display = 'block';
         lora_switch_run_id.style.opacity = 1;
         lora_switch_checkpoint.style.opacity = 1;
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active.specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active.specific_checkpoint}`;
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active[downloaded_data.config.model_name].specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active[downloaded_data.config.model_name].specific_checkpoint}`;
     } else if (mode == 'latest-best') {
         lora_switch_run_id.style.display = 'block';
         lora_switch_checkpoint.style.display = 'block';
@@ -258,8 +262,8 @@ function render_lora_switch() {
     } else {
         lora_switch_run_id.style.display = 'none';
         lora_switch_checkpoint.style.display = 'none';
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active.specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active.specific_checkpoint}`;
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active[downloaded_data.config.model_name].specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active[downloaded_data.config.model_name].specific_checkpoint}`;
     }
 }
 
@@ -471,6 +475,7 @@ function save_finetune_settings() {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+            model_name: document.querySelector('#finetune-model').value,
             limit_time_seconds: document.querySelector('#finetune-tab-settings-modal #limit_time_seconds').value,
             lr: document.querySelector('#finetune-tab-settings-modal #lr').value,
             batch_size: document.querySelector('#finetune-tab-settings-modal #batch_size').value,
@@ -537,7 +542,6 @@ function revert_to_default(input_id) {
 function run_stop_filtering() {
     // fine_filter_button = document.querySelector('.sources-run-button');
     const status = fine_filter_button.getAttribute("ftf_status")
-    console.log('----------------------------------------------', status);
     fine_filter_button.disabled = true;
     switch (status) {
         case 'undefined':
@@ -653,7 +657,7 @@ function get_tab_files() {
         })
         .then(function(data) {
             console.log('tab-files-get',data);
-            // tab_files_data = data;
+            tab_files_data = data;
             if(data.scan_error && data.scan_error.length > 0) {
                 let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
                 const scan_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
@@ -682,7 +686,7 @@ function get_tab_files() {
                     document.querySelector('.start-funetune-stats').classList.add('d-none');
                 }
                 fine_filter_button.disabled = false;
-                const status = data.filestats_ftf.status;
+                const status = data.filestats_ftf.status
                 fine_filter_button.setAttribute("ftf_status", status)
                 if(!data.filestats_ftf.error || data.filestats_ftf.error === '') {
                     if(fine_filter_error && !fine_filter_error.classList.contains('d-none')) {
@@ -871,6 +875,11 @@ export async function init() {
         get_filters_settings(true);
     });
 
+    const model_select_dropdown = document.querySelector('#finetune-model');
+    model_select_dropdown.addEventListener('change', function() {
+        save_finetune_settings();
+    });
+
     // const scan_error_toast = document.querySelector('.upload-tab-scan-error-toast');
     // scan_error_toast.addEventListener('hidden.bs.toast', () => {
     //     show_scan_error = false;
@@ -878,10 +887,9 @@ export async function init() {
 }
 
 export function tab_switched_here() {
-    finetune_data();
     get_tab_files();
+    finetune_data();
     render_schedule_dialog();
-    render_model_select();
 }
 
 export function tab_switched_away() {
