@@ -59,16 +59,23 @@ class TabHostRouter(APIRouter):
 
 def _gpus(include_busy: bool = False):
     if os.path.exists(env.CONFIG_ENUM_GPUS):
-        j1 = json.load(open(env.CONFIG_ENUM_GPUS, "r"))
+        result = json.load(open(env.CONFIG_ENUM_GPUS, "r"))
     else:
-        j1 = {"gpus": []}
+        result = {"gpus": []}
     if include_busy and os.path.exists(env.CONFIG_BUSY_GPUS):
-        j2 = json.load(open(env.CONFIG_BUSY_GPUS, "r"))
-        j1len = len(j1["gpus"])
-        j2len = len(j2["gpus"])
-        for i in range(min(j1len, j2len)):
-            j1["gpus"][i].update(j2["gpus"][i])
-    return j1
+        statuses = json.load(open(env.CONFIG_BUSY_GPUS, "r"))
+        if isinstance(statuses["gpus"], list):  # convert old format to new
+            statuses["gpus"] = {
+                idx: [status]
+                for idx, status in enumerate(statuses["gpus"])
+                if status
+            }
+        statuses["gpus"] = {
+            int(k): v for k, v in statuses["gpus"].items()
+        }
+        for idx, gpu_info in enumerate(result["gpus"]):
+            gpu_info["statuses"] = statuses["gpus"].get(idx, [])
+    return result
 
 
 def _model_assignment():
