@@ -14,6 +14,7 @@ let fine_filter_settings = null;
 let fine_filter_status = null;
 let fine_filter_error = null;
 let tab_files_data = null;
+let show_scan_error = false;
 
 let fine_tuning_pane = null;
 let fine_tuning_button = null;
@@ -307,20 +308,24 @@ function loras_switch_clicked() {
     }
 }
 
+// TODO get switch param and send with downloaded_data.active
 function finetune_switch_activate(lora_mode, run_id, checkpoint) {
-    let send_this = {
-        "model": "",
-        "lora_mode": lora_mode,
-        "specific_lora_run_id": run_id ? run_id : downloaded_data.active.specific_lora_run_id,
-        "specific_checkpoint": checkpoint ? checkpoint : downloaded_data.active.specific_checkpoint,
-    }
+    // // model1: {lora_mode, run_id, checkpoint}
+    // // model2: {lora_mode, run_id, checkpoint}
+
+    // let send_this = {
+    //     "model": "",
+    //     "lora_mode": lora_mode,
+    //     "specific_lora_run_id": run_id ? run_id : downloaded_data.active.specific_lora_run_id,
+    //     "specific_checkpoint": checkpoint ? checkpoint : downloaded_data.active.specific_checkpoint,
+    // }
     console.log(send_this);
     fetch("/tab-finetune-activate", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(send_this)
+        body: JSON.stringify(downloaded_data.active)
     })
     .then(function (response) {
         finetune_data();
