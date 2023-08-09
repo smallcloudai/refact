@@ -72,6 +72,7 @@ class FilteringSetup(BaseModel):
 
 
 class TabFinetuneTrainingSetup(BaseModel):
+    model_name: Optional[str] = Query(default=None)
     limit_time_seconds: Optional[int] = Query(default=600, ge=600, le=3600*48)
     lr: Optional[float] = Query(default=30e-5, ge=1e-5, le=300e-5)
     batch_size: Optional[int] = Query(default=128, ge=4, le=1024)
