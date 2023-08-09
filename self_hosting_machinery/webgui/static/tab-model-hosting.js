@@ -195,14 +195,14 @@ function render_models_assigned(models) {
         gpus_checkbox.setAttribute('value',index);
         gpus_checkbox.setAttribute('name',`share-${index}`);
         gpus_checkbox.classList.add('form-check-input');
-        if(models_info[index].hasOwnProperty('share_gpu') && models_info[index].share_gpu) {
+        if(models_data.model_assign[index].share_gpu) {
             gpus_checkbox.checked = true;
         } 
         gpus_checkbox.addEventListener('change', function() {
             if(this.checked) {
-                models_data.model_assign[index].share_gpu = 1;
+                models_data.model_assign[index].share_gpu = true;
             } else {
-                models_data.model_assign[index].share_gpu = 0;
+                models_data.model_assign[index].share_gpu = false;
             }
             save_model_assigned();
         });

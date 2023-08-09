@@ -22,6 +22,7 @@ __all__ = ["TabHostRouter"]
 
 class TabHostModelRec(BaseModel):
     gpus_shard: int = Query(default=1, ge=1, le=4)
+    share_gpu: bool = False
 
 
 class TabHostModelsAssign(BaseModel):
