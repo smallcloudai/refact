@@ -34,37 +34,39 @@ function render_gpus(gpus) {
         gpu_mem.classList.add('gpus-mem');
         const gpu_temp = document.createElement("div");
         gpu_temp.classList.add('gpus-temp');
-        const gpu_command = document.createElement("div");
-        gpu_command.classList.add('gpus-command');
-        const gpu_status = document.createElement("div");
-        gpu_status.classList.add('gpus-status');
-
         const used_gb = format_memory(element.mem_used_mb);
         const total_gb = format_memory(element.mem_total_mb);
         const used_mem = Math.round(element.mem_used_mb / (element.mem_total_mb / 100));
         gpu_name.innerHTML = element.name;
         gpu_mem.innerHTML = `<b>Mem</b><div class="gpus-mem-wrap"><div class="gpus-mem-bar"><span style="width: ${used_mem}%"></span></div>${used_gb}/${total_gb} GB</div>`;
         gpu_temp.innerHTML = `<b>Temp</b>` + element.temp_celsius + '°C';
-        gpu_command.innerHTML = `<span class="gpus-current-status">${element.status}</span>`;
-        gpu_status.innerHTML += `<div><b>Command</b>${element.command}</div>`;
-        gpu_status.innerHTML += `<div><b>Status</b>${element.status}</div>`;
-        gpu_command.appendChild(gpu_status);
-        gpu_command.addEventListener('mouseover',function(e) {
-            gpus_popup = true;
-            this.querySelector('.gpus-status').classList.add('gpus-status-visible');
-        });
-        gpu_command.addEventListener('mouseout',function(e) {
-            gpus_popup = false;
-            this.querySelector('.gpus-status').classList.remove('gpus-status-visible');
-        });
-        if(!element.status || element.status === '') {
-            gpu_command.classList.add('gpus-status-invisible');
-        }
         row.appendChild(gpu_image);
         gpu_wrapper.appendChild(gpu_name);
         gpu_wrapper.appendChild(gpu_mem);
         gpu_wrapper.appendChild(gpu_temp);
-        gpu_wrapper.appendChild(gpu_command);
+        element.statuses.forEach(status => {
+            const gpu_command = document.createElement("div");
+            gpu_command.classList.add('gpus-command');
+            const gpu_status = document.createElement("div");
+            gpu_status.classList.add('gpus-status');
+            gpu_command.innerHTML = `<span class="gpus-current-status">${status.status}</span>`;
+            gpu_status.innerHTML += `<div><b>Command</b>${status.command}</div>`;
+            gpu_status.innerHTML += `<div><b>Status</b>${status.status}</div>`;
+            gpu_command.appendChild(gpu_status);
+            gpu_command.addEventListener('mouseover',function(e) {
+                gpus_popup = true;
+                this.querySelector('.gpus-status').classList.add('gpus-status-visible');
+            });
+            gpu_command.addEventListener('mouseout',function(e) {
+                gpus_popup = false;
+                this.querySelector('.gpus-status').classList.remove('gpus-status-visible');
+            });
+            if(!status.status || status.status === '') {
+                gpu_command.classList.add('gpus-status-invisible');
+            }
+            gpu_wrapper.appendChild(gpu_command);
+        });
+
         row.appendChild(gpu_wrapper);
         gpus_list.appendChild(row);
     });
@@ -187,6 +189,24 @@ function render_models_assigned(models) {
         //     // models_gpus_change = true;
         // });
         gpus.appendChild(gpus_input);
+        const gpus_share = document.createElement("td");
+        const gpus_checkbox = document.createElement("input");
+        gpus_checkbox.setAttribute('type','checkbox');
+        gpus_checkbox.setAttribute('value',index);
+        gpus_checkbox.setAttribute('name',`share-${index}`);
+        gpus_checkbox.classList.add('form-check-input');
+        if(models_info[index].hasOwnProperty('share_gpu') && models_info[index].share_gpu) {
+            gpus_checkbox.checked = true;
+        } 
+        gpus_checkbox.addEventListener('change', function() {
+            if(this.checked) {
+                models_data.model_assign[index].share_gpu = 1;
+            } else {
+                models_data.model_assign[index].share_gpu = 0;
+            }
+            save_model_assigned();
+        });
+        gpus_share.appendChild(gpus_checkbox);
         del_button.innerHTML = `<i class="bi bi-trash3-fill"></i>`;
         del_button.dataset.model = index;
         del_button.addEventListener('click', function() {
@@ -199,6 +219,7 @@ function render_models_assigned(models) {
         row.appendChild(model_name);
         row.appendChild(completion);
         row.appendChild(select_gpus);
+        row.appendChild(gpus_share);
         row.appendChild(del);
         models_table.appendChild(row);
     }
