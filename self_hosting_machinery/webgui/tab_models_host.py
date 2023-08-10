@@ -117,6 +117,12 @@ def _models():
 class ModelGroup:
     model_assign: Dict[str, Dict] = field(default_factory=dict)
 
+    def required_memory_mb(self) -> int:
+        return sum(
+            models_mini_db[model_name].get("required_memory_mb", 0)
+            for model_name in self.model_assign.keys()
+        )
+
     def gpus_shard(self) -> int:
         if not self.model_assign:
             return 0
@@ -151,6 +157,7 @@ def models_to_watchdog_configs(inference_config=None):
     model_cfg_template = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model.cfg")))
     cursor = 0
     allowed_to_exist = []
+    required_memory_exceed_available = False
     more_models_than_gpus = False
     for model_group in model_groups:
         models_message = ' '.join([f"'{model_name}'" for model_name in model_group.model_assign.keys()])
@@ -170,7 +177,11 @@ def models_to_watchdog_configs(inference_config=None):
                     model_cfg_j["share_gpu"] = assignment.get("share_gpu", False)
                     del model_cfg_j["unfinished"]
                     json.dump(model_cfg_j, f, indent=4)
-        cursor += model_group.gpus_shard()
+        for _ in range(model_group.gpus_shard()):
+            if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb():
+                required_memory_exceed_available = True
+            cursor += 1
+    log("required_memory_exceed_available %d" % required_memory_exceed_available)
     log("more_models_than_gpus %d" % more_models_than_gpus)
     cfgs_on_disk = [cfg for cfg in os.listdir(env.DIR_WATCHDOG_D) if cfg.endswith(".cfg") and cfg.startswith("model-")]
     for cfg_fn in cfgs_on_disk:
@@ -204,6 +215,7 @@ def models_to_watchdog_configs(inference_config=None):
 
     with open(env.CONFIG_INFERENCE, "w") as f:
         json.dump({
+            "required_memory_exceed_available": required_memory_exceed_available,
             "more_models_than_gpus": more_models_than_gpus,
             **inference_config,
         }, f, indent=4)
