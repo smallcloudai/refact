@@ -2,7 +2,7 @@ import aiohttp
 import time
 import os
 import json
-from typing import Optional, Tuple, Generator, Union, Dict
+from typing import Optional, Tuple, Generator, Union, Dict, Any, Coroutine
 
 
 base_url = "https://inference.smallcloud.ai/v1/"
@@ -10,6 +10,9 @@ base_url = "https://inference.smallcloud.ai/v1/"
 
 class APIConnectionError(Exception):
     pass
+
+
+global_only_one_active_request: Optional[Coroutine[Any, Any, Any]] = None
 
 
 async def nlp_model_call(
@@ -48,7 +51,11 @@ async def nlp_model_call(
     txt = ""
     try:
         t0 = time.time()
-        resp = await req_session.post(url, json=data)
+        timeout = aiohttp.ClientTimeout(total=30)   # four floats inside
+        task = req_session.post(url, json=data, timeout=timeout)
+        # global global_only_one_active_request
+        # global_only_one_active_request = task
+        resp = await task
         t1 = time.time()
         if verbose > 0:
             print("%0.1fms %s" % (1000*(t1 - t0), url))

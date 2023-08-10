@@ -16,6 +16,7 @@ from lsprotocol.types import (
     TextDocumentSyncOptions,
     TextDocumentSyncKind,
     CancelRequestNotification,
+    InsertTextMode,
     DidChangeTextDocumentParams,
     CompletionItem,
     CompletionList,
@@ -32,12 +33,17 @@ from lsprotocol.types import (
 server = LanguageServer("refact-lsp", "v0.1")
 
 
-global_only_one_active_request: Optional[Coroutine[Any, Any, Any]] = None
 global_socket_session: Optional[aiohttp.ClientSession] = None
 
 
 @server.feature(TEXT_DOCUMENT_COMPLETION)
 async def completions(params: CompletionParams):
+    global global_socket_session
+    if global_socket_session is None:
+        global_socket_session = aiohttp.ClientSession(headers={
+        "Authorization": "Bearer %s" % os.environ["SMALLCLOUD_API_KEY"],
+        })
+
     items = []
     document = server.workspace.get_document(params.text_document.uri)
     uri = params.text_document.uri
@@ -50,37 +56,74 @@ async def completions(params: CompletionParams):
     print("root_uri \"%s\"" % root_uri)
     print("short path \"%s\"" % short_filename)
 
+    cursor_pos = 0
+    for line, line_txt in enumerate(document.lines):
+        if params.position.line == line:
+            cursor_pos += params.position.character
+            break
+        cursor_pos += len(line_txt)
     try:
         files = {
-            short_filename: "\n".join(document.lines),
+            short_filename: "".join(document.lines),
         }
+        print("%s|" % files[short_filename][:cursor_pos])
 
-        current_line = document.lines[params.position.line].strip()
-        print("asked for completions \"%s\"" % current_line)
-        if current_line.endswith("trigger_text"):
-            print(files)
-            # completion_coroutine = refact_client.regular_code_completion(
-            #     global_socket_session,
-            #     files,
-            #     "hello_world.py",
-            #     len(example1),
-            #     50,
-            #     multiline=True,
-            # )
-
-            items = [
-                CompletionItem(
-                    label="trigger_text.line1\nline2\nline3",
-                    text_edit=TextEdit(
-                        range=Range(
-                            start=Position(line=params.position.line, character=params.position.character - len("trigger_text")),
-                            end=params.position
-                        ),
-                        new_text="trigger_text.line1\nline2\nline3"
-                    )
+        current_line = document.lines[params.position.line]
+        current_line0 = current_line[:params.position.character]
+        current_line1 = current_line[params.position.character:]
+        print("asked for completions \"%s\" | \"%s\"" % (current_line0.replace("\n", "\\n"), current_line1.replace("\n", "\\n")))
+        unfinished_token = ""
+        import re
+        tmp = current_line0
+        while len(tmp) > 0 and re.match(r"\w", tmp[-1]):
+            unfinished_token = tmp[-1] + unfinished_token
+            tmp = tmp[:-1]
+        print("unfinished_token \"%s\"" % unfinished_token)
+        unfinished_token_len = len(unfinished_token)
+        if 1:
+            # print(files)
+            # refact_client.global_only_one_active_request.close()
+            completion = ""
+            try:
+                completion = await asyncio.wait_for(
+                    refact_client.regular_code_completion(
+                        global_socket_session,
+                        files,
+                        short_filename,
+                        cursor_pos,
+                        50,
+                        multiline=True,
+                    ),
+                    timeout=30,
                 )
-            ]
-            await asyncio.sleep(5)
+                print("completion success \"%s\"" % completion.replace("\n", "\\n"))
+            except Exception as e:
+                print("exception %s (%s)\n\n" % (e, str(type(e))))
+
+            items = []
+            if completion:
+                label = completion.rstrip("\n")
+                if "\n" in label:
+                    tmp = label.split("\n")
+                    label = tmp[0] + " → %d lines more" % (len(tmp) - 1)
+                items = [
+                    # CompletionItem(label="hello", kind=CompletionItemKind.Text),
+                    # CompletionItem(label="world"),
+                    CompletionItem(
+                        label=unfinished_token + label,
+                        kind=CompletionItemKind.Text,
+                        text_edit=TextEdit(
+                            range=Range(
+                                # start=Position(line=params.position.line, character=params.position.character - unfinished_token_len),
+                                # end=params.position,
+                                start=Position(line=params.position.line, character=params.position.character - unfinished_token_len),
+                                end=Position(line=params.position.line, character=len(current_line)),
+                            ),
+                            new_text=(unfinished_token + completion.rstrip("\n")),
+                        ),
+                        insert_text_mode=InsertTextMode.AsIs,
+                    ),
+                ]
 
     except asyncio.CancelledError:
         print("Cancelled")
@@ -96,7 +139,6 @@ async def completions(params: CompletionParams):
 @server.feature(TEXT_DOCUMENT_DID_CHANGE)
 async def did_change(params: DidChangeTextDocumentParams):
     for change in params.content_changes:
-        # Process each content change
         range = change.range
         text = change.text
         print("change is \"%s\"" % text)
