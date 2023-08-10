@@ -1,5 +1,6 @@
 import json
-from typing import List, Set
+from pathlib import Path
+from typing import List, Set, Tuple
 
 
 class DatasetDef:
@@ -15,6 +16,26 @@ class DatasetDef:
     def __repr__(self):
         return "dataset definition %s with %i files and filters %s" % (
             self.cloud_path, len(self.cloud_files), str(self.to_apply))
+
+
+class DatasetDumpedDef:
+    def __init__(
+            self,
+            path: str,
+            to_apply: Set[str],
+            suffixes: Tuple[str, ...] = ('.h5', '.hdf5')
+    ):
+        assert not path.startswith('gs://'), "DatasetDumpedDef doesn't support cloud-based paths " \
+                                             "due to high files random access"
+        # Those paths are not cloud, just for names compatibility
+        self.cloud_path = path
+        self.cloud_files = [p for p in sorted(Path(path).iterdir(), key=lambda p: p.name)
+                            if p.suffix in suffixes]
+        self.to_apply = to_apply
+
+    def __repr__(self):
+        return "dataset definition %s with %i files and filters %s" % (
+            self.cloud_path, len(self.cloud_path), str(self.to_apply))
 
 
 class DatasetMix:

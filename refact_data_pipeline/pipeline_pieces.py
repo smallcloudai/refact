@@ -8,10 +8,14 @@ import random
 import datetime
 import traceback
 
+from mpi4py import MPI
+
 from refact_encoding import RefactEncoding
 from refact_data_pipeline.datadef import DatasetOpts
-from refact_data_pipeline.datadef import DatasetDef
+from refact_data_pipeline.datadef import DatasetDef, DatasetDumpedDef
 from refact_data_pipeline.datadef import DatasetMix
+from refact_data_pipeline.filters_hdfs import Hdf5Dataset
+from refact_data_pipeline.filters_packing import Packer, SinglePacker, DensePacker
 
 from typing import Dict, List, Union, Iterable, Any
 
@@ -219,121 +223,6 @@ class PromptCompletionToTokensMask:
             }
 
 
-class Packer:
-    """
-    Pack several tokenized records along time axis.
-    Stat dict comes from last inner record.
-    """
-    def __init__(self,
-        inner_filter,
-        dataopts: DatasetOpts,
-        force16: bool=False,
-        force_pack_complete: bool=False,
-        force_pack1: bool=False,
-        keys: List[str] = ["tokens", "mask", "first"]
-    ):
-        self.inner_filter = inner_filter
-        self.enc = dataopts.encoding
-        self.pack_at_most: int = dataopts.get("pack_at_most", 6)
-        if force_pack1:
-            self.pack_at_most = 1
-        self.pack_complete: int = dataopts.get("pack_complete", 0) == 1 or force_pack_complete
-        self.pack_pad0: int = dataopts.get("pack_pad0", 1) == 1
-        self.n_ctx: int = dataopts.get("n_ctx", 2048)
-        self.force16 = force16
-        self.keys = keys
-
-    def __iter__(self):
-        accum = {k: list() for k in self.keys}
-        stats: Dict[str, int] = {
-            "packed_in": 0,
-            "packed_out": 0,
-            "packed_skip5tokens": 0,
-        }
-        last_rec_stats = dict()
-        def dict_to_emit():
-            nonlocal accum
-            stats["packed_out"] += 1
-            stats["pusher_resmem"] = psutil.Process().memory_info().rss / 1e9
-            last_rec_stats.update(stats)
-            accum_cut = {k: v[:self.n_ctx] for k, v in accum.items()}
-            emit = {
-                "stats": {**last_rec_stats, **stats},
-                **accum_cut,
-            }
-            if self.pack_pad0:
-                for k in self.keys:
-                    if k=="tokens":
-                        emit[k].extend([self.enc.DIAMOND]*(self.n_ctx - len(emit[k])))
-                    else:
-                        emit[k].extend([0]*(self.n_ctx - len(emit[k])))
-            accum = {k: accum[k][self.n_ctx:] for k in self.keys}
-            return emit
-        packed_n = 0
-        for rec in self.inner_filter:
-            if sum(rec["mask"]) < 5:
-                stats["packed_skip5tokens"] += 1
-                continue
-            last_rec_stats = rec["stats"]
-            stats["packed_in"] += 1
-            existing_len = len(accum[self.keys[0]])
-            if self.pack_complete:
-                predict_len = existing_len + len(rec["tokens"])
-                if existing_len > 0 and (
-                    predict_len >= self.n_ctx or packed_n >= self.pack_at_most
-                ):
-                    yield dict_to_emit()
-                    for a in accum.values():
-                        a.clear()
-                    packed_n = 0
-            for k in self.keys:
-                accum[k].extend(rec[k])
-            while self.force16 and len(accum[self.keys[0]]) & 15:
-                padlen = 16 - (len(accum[self.keys[0]]) & 15)
-                for k in self.keys:
-                    if k=="tokens":
-                        accum[k].extend([self.enc.DIAMOND]*padlen)
-                    else:
-                        accum[k].extend([0]*padlen)
-            packed_n += 1
-            if not self.pack_complete:
-                while len(accum[self.keys[0]]) >= self.n_ctx:
-                    yield dict_to_emit()
-                    packed_n = 1
-            len0 = len(accum[self.keys[0]])
-            assert all(len0==len(accum[k]) for k in self.keys[1:])
-        if len(accum[self.keys[0]]):
-            yield dict_to_emit()
-
-
-class SinglePacker:
-    """
-    Pack several tokenized records along time axis.
-    Stat dict comes from last inner record.
-    """
-
-    def __init__(
-            self,
-            inner_filter,
-            dataopts: DatasetOpts,
-            keys: List[str] = ["tokens", "first"]
-    ):
-        self.inner_filter = inner_filter
-        self.enc = dataopts.encoding
-        self.n_ctx: int = dataopts.get("n_ctx", 2048)
-        self.keys = keys
-
-    def __iter__(self):
-        for rec in self.inner_filter:
-            output = dict(stats=rec["stats"])
-            for k in self.keys:
-                if len(rec[k]) < self.n_ctx:
-                    rec[k] += [self.enc.DIAMOND] * (self.n_ctx - len(rec[k]))
-                output[k] = rec[k][:self.n_ctx]
-            output["mask"] = [t != self.enc.DIAMOND for t in output['tokens']]
-            yield output
-
-
 class Shuffle:
     def __init__(self,
         inner_filter,
@@ -382,10 +271,10 @@ def build_filter_stack(
     datadef: Union[DatasetDef, DatasetMix],
     dataopts: DatasetOpts,
     enc: RefactEncoding,
-    comm: Any,
+    comm: MPI.Comm,
     cold_restart: List[int] = [],
     cold_restart_offset = 0,
-    skip_assert_flag: bool = False,
+    skip_assert_flag: bool = False
 ):
     dataopts.set_encoding(enc)
     if isinstance(datadef, DatasetMix):
@@ -401,12 +290,17 @@ def build_filter_stack(
         cold_restart = [0]*comm.size
     path = datadef.cloud_path
     files_len = len(datadef.cloud_files)
-    if files_len == 1:
-        my_files = datadef.cloud_files
-    elif files_len % comm.size == 0:
-        my_files = [fn for i, fn in enumerate(datadef.cloud_files) if i % comm.size == comm.rank]
+
+    if not isinstance(datadef, DatasetDumpedDef):
+        if files_len == 1:
+            my_files = datadef.cloud_files
+        elif files_len % comm.size == 0:
+            my_files = [fn for i, fn in enumerate(datadef.cloud_files) if i % comm.size == comm.rank]
+        else:
+            assert 0, "datadef.cloud_files has %i files, but comm.size is %i" % (files_len, comm.size)
     else:
-        assert 0, "datadef.cloud_files has %i files, but comm.size is %i" % (files_len, comm.size)
+        my_files = datadef.cloud_files
+
     log("dataset '%s' has %i files" % (path, len(my_files)))
     assert len(my_files) > 0
     ds = None
@@ -414,6 +308,10 @@ def build_filter_stack(
         if ds is None and filt == "jsonl":
             ds = JsonlFilesReaderCached(dataopts, path, my_files, datarank=comm.rank,
                 cold_restart_key=cold_restart_offset + comm.rank,
+                cold_restart_skip=cold_restart[cold_restart_offset + comm.rank],
+                )
+        elif ds is None and filt == 'hdfs':
+            ds = Hdf5Dataset(dataopts, my_files, comm=comm,
                 cold_restart_skip=cold_restart[cold_restart_offset + comm.rank],
                 )
         elif filt == "splitranks":
@@ -426,6 +324,8 @@ def build_filter_stack(
             ds = Packer(ds, dataopts)
         elif ds and filt == "single_pack":
             ds = SinglePacker(ds, dataopts)
+        elif ds and filt == "dense_pack":
+            ds = DensePacker(ds, dataopts)
         elif ds and filt == "pack16":
             ds = Packer(ds, dataopts, force16=True)
         elif ds and filt == "shuffle":
