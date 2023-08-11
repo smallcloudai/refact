@@ -3,9 +3,9 @@ from datetime import datetime
 from hashlib import sha1
 from typing import List
 
-from context import CONTEXT as C
-from db_models import FileChunksText, FileChunksEmbedding, FilesFullText
-from encoder import ChunkifyFiles
+from refact_vecdb.app.context import CONTEXT as C
+from refact_vecdb.app.db_models import FileChunksText, FileChunksEmbedding, FilesFullText
+from refact_vecdb.app.encoder import ChunkifyFiles
 
 
 def hash_string(string: str) -> str:

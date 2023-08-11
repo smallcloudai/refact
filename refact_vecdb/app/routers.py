@@ -8,13 +8,12 @@ from collections import namedtuple
 from fastapi import APIRouter
 from fastapi import Response, Request
 
-from context import CONTEXT as C
-from db_models import FileChunksText, FileChunksEmbedding, FilesFullText
-from params import FindQuery, FilesBulk
-from bootstrap import load_vecdb
-from encoder import ChunkifyFiles
-from crud import insert_files
-from code_extensions import code_extensions_compact
+from refact_vecdb.app.context import CONTEXT as C
+from refact_vecdb.app.db_models import FileChunksText, FileChunksEmbedding, FilesFullText
+from refact_vecdb.app.params import FindQuery, FilesBulk
+from refact_vecdb.app.bootstrap import load_vecdb
+from refact_vecdb.app.encoder import ChunkifyFiles
+from refact_vecdb.app.crud import insert_files
 
 
 class StatusRouter(APIRouter):
@@ -89,18 +88,10 @@ class UploadRouter(APIRouter):
     async def _bulk_upload(self, data: FilesBulk, request: Request):
         FileUpload = namedtuple('FileUpload', ['name', 'text'])
 
-        def files_filter(files: Iterable[FileUpload]) -> List[FileUpload]:
-            files = [
-                f for f in files
-                if Path(f.name).suffix[1:] in code_extensions_compact and f.text
-            ]
-            return files
-
         x_token = request.headers.get('X-Auth-Token')
         final_batch: bool = data.final
 
-        files = files_filter([FileUpload(*f) for f in data.files])
-
+        files = [FileUpload(*f) for f in data.files]
 
         insert_files(files)
 
@@ -113,12 +104,12 @@ class UploadRouter(APIRouter):
 class DeleteAllRecordsRouter(APIRouter):
     def __init__(self, *args, **kwargs):
         super(DeleteAllRecordsRouter, self).__init__(*args, **kwargs)
-        super(DeleteAllRecordsRouter, self).add_api_route("/v1/delete_all", self._delete_all, methods=["POST"])
+        super(DeleteAllRecordsRouter, self).add_api_route("/v1/delete_all", self._delete_all, methods=["GET"])
 
     async def _delete_all(self, request: Request):
         x_token = request.headers.get('X-Auth-Token')
 
-        C.c_session.execute('DELETE FROM files_embedding;')
-        C.c_session.execute('DELETE FROM code_files;')
-        C.c_session.commit()
+        C.c_session.execute('TRUNCATE file_chunks_embedding;')
+        C.c_session.execute('TRUNCATE file_chunks_text;')
+        C.c_session.execute('TRUNCATE files_full_text;')
         return Response(status_code=200)

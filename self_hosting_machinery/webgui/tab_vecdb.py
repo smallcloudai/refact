@@ -39,49 +39,44 @@ class TabVecDBRouter(APIRouter):
         self.add_api_route("/tab-vecdb-health", self._health, methods=["GET"])
         self.add_api_route("/tab-vecdb-files-stats", self._files_stats, methods=["GET"])
 
-        self.add_api_route("/tab-vecdb-save-url", self._save_url, methods=["POST"])
-        self.add_api_route("/tab-vecdb-get-url", self._get_url, methods=["GET"])
+        self.add_api_route("/tab-vecdb-upload-files", self._tab_vecdb_upload_files, methods=["GET"])
 
-        self.add_api_route("/tab-vecdb-enable", self._enable_vecdb, methods=["GET"])
-        self.add_api_route("/tab-vecdb-disable", self._disable_vecdb, methods=["GET"])
-        self.add_api_route("/tab-vecdb-is-enabled", self._is_vecdb_enabled, methods=["GET"])
+    async def _tab_vecdb_upload_files(self):
+        try:
+            unpacked_dir = Path(env.DIR_UNPACKED)
 
-        self.add_api_route("/tab-vecdb-find", self._find_req_vecdb, methods=["POST"])
+            train_set_filtered = unpacked_dir / 'train_set_filtered.jsonl'
+            test_set_filtered = unpacked_dir / 'test_set_filtered.jsonl'
+
+            if not train_set_filtered.is_file() or not test_set_filtered.is_file():
+                return Response(content=json.dumps({"status": "train set or test set not found"}), status_code=200)
+
+            train_set = [json.loads(line) for line in train_set_filtered.open('r')]
+            test_set = [json.loads(line) for line in test_set_filtered.open('r')]
+
+            file_paths: List[Path] = [unpacked_dir.joinpath(d['path']) for d in [*train_set, *test_set] if d['path']]
+            file_paths: List[str] = [str(p) for p in file_paths if p.is_file()]
+            if not file_paths:
+                return Response(content=json.dumps({"status": "no files to upload"}), status_code=200)
+
+            with unpacked_dir.joinpath('vecdb_paths_upload.json').open('w') as f:
+                f.write(json.dumps(file_paths))
+
+            with Path(env.FLAG_VECDB_FILES_UPLOAD).open('w') as f:
+                f.write('')
+
+            return Response(content=json.dumps({"status": "scheduled"}), status_code=200)
+        except Exception as e:
+            return Response(content=json.dumps({"status": str(e)}), status_code=200)
+
 
     @property
     def _url(self) -> str:
-        return self._get_settings_cfg().get("url", 'http://127.0.0.1:8008')
+        return 'http://0.0.0.0:8009'
 
     @property
     def _vecdb_api(self) -> VecDBAsyncAPI:
         return VecDBAsyncAPI(url=self._url)
-
-    async def _find_req_vecdb(self, post: VecDBFindRequest):
-        def fmt_results(res: List[Dict[str, Any]]) -> str:
-            s = ''
-            for r in res:
-                s += f'file_path: {r["file_path"]}\nfile_name: {r["file_name"]}\nTEXT:\n{r["text"]}\n\n'
-            return s
-        if not post.query:
-            return Response(content=json.dumps({"text": "", "error": "ERROR: Query is required"}), status_code=500)
-
-        try:
-            res = await self._vecdb_api.find(query=post.query, top_k=post.top_k)
-        except Exception as e:
-            return Response(content=json.dumps({"text": "", "error": str(e)}), status_code=500)
-        return Response(content=json.dumps({"text": fmt_results(res), "error": ""}), status_code=200)
-
-    async def _enable_vecdb(self):
-        self._settings_values_save({"enabled": True})
-        return Response(content=json.dumps({"enabled": True}))
-
-    async def _disable_vecdb(self):
-        self._settings_values_save({"enabled": False})
-        return Response(content=json.dumps({"enabled": False}))
-
-    async def _is_vecdb_enabled(self):
-        enabled = self._get_settings_cfg().get("enabled", False)
-        return Response(content=json.dumps({"enabled": enabled}))
 
     async def _health(self):
         def content(status, display_text, error):
@@ -93,28 +88,18 @@ class TabVecDBRouter(APIRouter):
         try:
             await self._vecdb_api.health()
         except Exception as e:
-            return Response(content=content("error", "down", str(e)), status_code=500)
+            return Response(content=content("error", str(e), str(e)), status_code=200)
         return Response(content=content("ok", "healthy ❤️", ""), status_code=200)
 
     async def _files_stats(self):
         try:
             files_stats = await self._vecdb_api.files_stats()
         except Exception as e:
-            return Response(content=json.dumps({"error": str(e)}), status_code=500)
+            return Response(content=json.dumps({"error": str(e)}), status_code=200)
         return Response(content=json.dumps({
             'files_cnt': files_stats['files_cnt'],
             'chunks_cnt': files_stats['chunks_cnt']
         }))
-
-    async def _save_url(self, post: VecDBURLUpdate):
-        url = post.url
-        self._settings_values_save({"url": url})
-        return Response(content=json.dumps({"url": url}))
-
-    async def _get_url(self):
-        return Response(
-            content=json.dumps({"url": self._url})
-        )
 
     def _settings_values_save(self, kwargs: Dict[str, Any]) -> None:
         ex_settings = self._get_settings_cfg()

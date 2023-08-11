@@ -1,8 +1,8 @@
 import uvicorn
 from fastapi import FastAPI
 
-from bootstrap import bootstrap
-from routers import StatusRouter, FindRouter, UploadRouter, DeleteAllRecordsRouter
+from refact_vecdb.app.bootstrap import bootstrap
+from refact_vecdb.app.routers import StatusRouter, FindRouter, UploadRouter, DeleteAllRecordsRouter
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -10,6 +10,8 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--host", type=str, default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8009)
+    parser.add_argument('--cassandra_host', type=str, default="0.0.0.0")
+    parser.add_argument('--cassandra_port', type=int, default=9042)
     args = parser.parse_args()
 
     # logdir = args.workdir / "logs"
@@ -28,5 +30,5 @@ if __name__ == "__main__":
 
     @app.on_event("startup")
     async def startup_event():
-        bootstrap(["0.0.0.0"], 9042, "cassandra", "cassandra")
+        bootstrap([args.cassandra_host], args.cassandra_port, "cassandra", "cassandra")
     uvicorn.run(app, host=args.host, port=args.port, loop="uvloop", timeout_keep_alive=600)

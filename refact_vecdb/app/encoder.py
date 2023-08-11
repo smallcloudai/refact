@@ -107,7 +107,7 @@ class Encoder:
             self._encoder = INSTRUCTOR('hkunlp/instructor-xl')
             # self._encoder.max_seq_len = self._window_size
         elif self._provider == 'ada':
-            from embed_openai import OpenAIEmbedding
+            from refact_vecdb.app.embed_openai import OpenAIEmbedding
 
             self._encoder = OpenAIEmbedding('text-embedding-ada-002')
         else:

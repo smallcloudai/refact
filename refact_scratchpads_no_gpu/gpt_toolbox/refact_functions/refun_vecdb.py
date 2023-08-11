@@ -9,9 +9,6 @@ from refact_vecdb import VecDBAsyncAPI
 __all__ = ['vecdb_call']
 
 
-VECDB_URL = os.getenv('VECDB_URL', 'http://localhost:8008')
-
-
 def vecdb_prompt(query: str, candidates: Any) -> str:
     candidates = json.dumps([{
         'short_name': c['file_name'],
@@ -19,11 +16,9 @@ def vecdb_prompt(query: str, candidates: Any) -> str:
     } for c in candidates])
 
     return f"""
-Here is an example of using {query}. I want you to understand how it is used:
+Here are examples that you will use to answer the questions above. 
 {candidates}
-Answer the two questions:
-1. What is the purpose of {query}
-2. Write a short example of usage {query} abstracting from the context
+Having these examples in mind, answer the question I asked you before.
     """
 
 
@@ -49,7 +44,7 @@ async def vecdb_call(
 ) -> AsyncIterator[
     Dict[str, Any]
 ]:
-    vecdb = VecDBAsyncAPI(url=VECDB_URL)
+    vecdb = VecDBAsyncAPI(url='http://localhost:8009')
 
     yield {
         "role": "assistant",

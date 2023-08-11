@@ -217,25 +217,15 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("longthink_variant", type=str, default='longthink/stable')
     parser.add_argument("--openai_key", type=str)
-    parser.add_argument("--vecdb_url", type=str)
     parser.add_argument("-w", "--workers", type=int, default=1)
     args = parser.parse_args()
 
     if not (args.openai_key or os.environ.get('OPENAI_API_KEY')):
         raise RuntimeError("set OPENAI_API_KEY or use --openai_key")
 
-    if not (args.vecdb_url or os.environ.get('VECDB_URL')):
-        raise RuntimeError("set VECDB_URL or use --vecdb_url")
-
     if args.openai_key:
         import openai
         openai.api_key = args.openai_key
-
-    if args.vecdb_url:
-        os.environ['VECDB_URL'] = args.vecdb_url
-        vecdb_url = os.getenv('VECDB_URL')
-        assert 'http' in vecdb_url, f"VECDB_URL must be a http(s) url. VECDB_URL={args.vecdb_url}"
-        assert ':' in vecdb_url, f"VECDB_URL has no port specified. VECDB_URL={args.vecdb_url}"
 
     sys.excepthook = except_hook
     signal.signal(signal.SIGUSR1, catch_sigusr1)

@@ -1,10 +1,4 @@
 
-function is_vecdb_enabled() {
-    let vecdb_tab = document.getElementById('vecdb-tab');
-    let data_active = vecdb_tab.getAttribute('data-active');
-    return data_active === 'true';
-}
-
 function fetch_and_set_health() {
     fetch("/tab-vecdb-health")
         .then(function(response) {
@@ -31,54 +25,6 @@ function fetch_and_set_files_loaded_cnt() {
             document.querySelector('#vecdb-files-loaded-cnt').innerHTML = data['files_cnt'];
             document.querySelector('#vecdb-chunks-loaded-cnt').innerHTML = data['chunks_cnt'];
         });
-}
-
-
-async function fetch_and_set_vecdb_url() {
-    await fetch('/tab-vecdb-get-url')
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(data) {
-            document.querySelector('#vecdb-url').value = data['url'];
-        });
-}
-
-function on_url_save_btn_click(event) {
-    function sleep (time) {
-      return new Promise((resolve) => setTimeout(resolve, time));
-    }
-
-    function check_and_set_url() {
-        let url_input_value = document.querySelector('#vecdb-url').value;
-        fetch(
-            "/tab-vecdb-save-url",
-            {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({'url': url_input_value})
-            }).then(response => {
-            if (!response.ok) {
-                return response.json()
-                    .then(error => {
-                        throw new Error(error.message);
-                    });
-            }
-            return response.json();
-        });
-    }
-    check_and_set_url();
-    sleep(100).then(() => {
-        fetch_and_set_health();
-        fetch_and_set_files_loaded_cnt();
-    })
-}
-
-
-async function on_delete_all_btn_click(event) {
-
 }
 
 async function on_status_refresh_btn_click(event) {
@@ -114,37 +60,36 @@ async function on_test_request_btn_click(event) {
 }
 
 
+async function on_upload_files_btn_click(event) {
+    fetch('/tab-vecdb-upload-files').then(response => {
+        if (response.ok) {
+            return response.json();
+        } else {
+            return {'status': 'unknown error'}
+        }
+    }).then(data => {
+        document.querySelector('#vecdb-upload-files-status').innerHTML = data['status'];
+    });
+}
+
 export async function init() {
-    if (!is_vecdb_enabled()) {
-        return;
-    }
     let req = await fetch('/tab-vecdb.html');
     document.querySelector('#vecdb').innerHTML = await req.text();
 
-    let url_save_btn = document.getElementById('vecdb-url-save-btn');
-    url_save_btn.addEventListener('click', on_url_save_btn_click);
+    let upload_files_btn = document.getElementById('vecdb-upload-files-btn');
+    upload_files_btn.addEventListener('click', on_upload_files_btn_click);
 
     let status_refresh_btn = document.getElementById('vecdb-status-refresh-btn');
     status_refresh_btn.addEventListener('click', on_status_refresh_btn_click);
 
-    let delete_all_modal = document.getElementById('vecdb-delete-all-modal');
-    let delete_all_btn = document.getElementById('vecdb-delete-all-btn');
-    delete_all_btn.addEventListener('click', () => {
-        let delete_modal_instance = bootstrap.Modal.getOrCreateInstance(delete_all_modal);
-        delete_modal_instance.show();
-    });
-
-    let test_request_btn = document.getElementById('vecdb-test-request-btn');
-    test_request_btn.addEventListener('click', on_test_request_btn_click);
-
-    await fetch_and_set_vecdb_url();
     fetch_and_set_health();
     fetch_and_set_files_loaded_cnt();
 }
 
 
 export async function tab_switched_here() {
-    await init();
+    fetch_and_set_health();
+    fetch_and_set_files_loaded_cnt();
 }
 
 
@@ -154,7 +99,5 @@ export async function tab_switched_away() {
 
 
 export async function tab_update_each_couple_of_seconds() {
-    if (is_vecdb_enabled()) {
-        fetch_and_set_health();
-    }
+    fetch_and_set_health();
 }

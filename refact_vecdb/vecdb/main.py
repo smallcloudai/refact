@@ -151,6 +151,12 @@ class VecDBAsyncAPI(VecDBAPI):
                 data = json.loads(await resp.text())
                 return data
 
+    async def delete_all_records(self):
+        async with aiohttp.ClientSession() as session:
+            session.headers.update(self._headers())
+            async with session.get(f'{self._base_url}/v1/delete_all', timeout=10) as resp:
+                assert resp.status == 200, f'Error: {resp.text}'
+
     async def find(
             self,
             query: str,
@@ -197,7 +203,7 @@ class VecDBAsyncAPI(VecDBAPI):
                     desc='[VECDB]: Uploading files',
             )):
                 data = {
-                    'files': [(str(f), f.text) for f in files_batch]
+                    'files': [(str(f.name), f.text) for f in files_batch]
                 }
                 if idx == total - 1:
                     data['final'] = True

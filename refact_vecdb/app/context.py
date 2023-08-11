@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional, Any
 
-from vecdb import VecDB
-from encoder import Encoder
+from refact_vecdb.app.vecdb import VecDB
+from refact_vecdb.app.encoder import Encoder
 
 
 @dataclass

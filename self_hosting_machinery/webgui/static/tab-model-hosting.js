@@ -101,42 +101,6 @@ function get_models()
 }
 
 
-function check_and_set_refact_toolbox_switches() {
-    function check_and_set_vecdb() {
-        const vecdb_tab = document.getElementById('vecdb-tab');
-        const enable_vecdb_switch = document.getElementById('enable_vecdb');
-
-        function enable_vecdb(send) {
-            if (send) {fetch('/tab-vecdb-enable');}
-            enable_vecdb_switch.checked = true;
-            vecdb_tab.classList.remove('hidden');
-            vecdb_tab.setAttribute('data-active', 'true');
-        }
-        function disable_vecdb(send) {
-            if (send) {fetch('/tab-vecdb-disable');}
-            vecdb_tab.classList.remove('hidden');
-            vecdb_tab.classList.add('hidden');
-            vecdb_tab.setAttribute('data-active', 'false');
-        }
-
-        fetch('/tab-vecdb-is-enabled').then(
-            function (response) {
-                return response.json();
-            }
-        ).then(
-            function (data) {
-                data['enabled'] ? enable_vecdb(false) : disable_vecdb(false);
-            }
-        )
-        enable_vecdb_switch.addEventListener('change', () => {
-            enable_vecdb_switch.checked ? enable_vecdb(true) : disable_vecdb(true);
-        })
-    }
-
-    check_and_set_vecdb();
-}
-
-
 function save_model_assigned() {
     let openai_enable = document.querySelector('#enable_chat_gpt');
     const data = {
@@ -319,7 +283,6 @@ export async function init() {
     document.querySelector('#model-hosting').innerHTML = await req.text();
     get_gpus();
     get_models();
-    check_and_set_refact_toolbox_switches();
     const add_model_modal = document.getElementById('add-model-modal');
     add_model_modal.addEventListener('show.bs.modal', function () {
         render_models(models_data);
@@ -330,7 +293,6 @@ export async function init() {
 export function tab_switched_here() {
     get_gpus();
     get_models();
-    check_and_set_refact_toolbox_switches();
 }
 
 export function tab_switched_away() {

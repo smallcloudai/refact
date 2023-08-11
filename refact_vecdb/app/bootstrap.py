@@ -11,10 +11,10 @@ from cassandra.cqlengine.management import create_keyspace_simple
 from pynndescent import NNDescent
 from tqdm import tqdm
 
-from context import CONTEXT as C
-from vecdb import VecDB
-from db_models import sync_tables, FileChunksEmbedding
-from encoder import Encoder
+from refact_vecdb.app.context import CONTEXT as C
+from refact_vecdb.app.vecdb import VecDB
+from refact_vecdb.app.db_models import sync_tables, FileChunksEmbedding
+from refact_vecdb.app.encoder import Encoder
 
 DEFAULT_VECDB_FILEPATH = Path('/tmp/smc.vecdb')
 
