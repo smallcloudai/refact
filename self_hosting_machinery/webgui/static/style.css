@@ -626,6 +626,11 @@ h3 {
 }
 .model-hosting-error {
     color: darkred;
+    text-align: right;
+}
+.model-memory-error {
+    color: darkred;
+    text-align: right;
 }
 .disabled-group {
     opacity: 0.4;
