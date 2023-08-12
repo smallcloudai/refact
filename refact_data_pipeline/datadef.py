@@ -26,7 +26,7 @@ class DatasetDumpedDef:
             suffixes: Tuple[str, ...] = ('.h5', '.hdf5')
     ):
         assert not path.startswith('gs://'), "DatasetDumpedDef doesn't support cloud-based paths " \
-                                             "due to high files random access"
+                                             "because of random access to files"
         # Those paths are not cloud, just for names compatibility
         self.cloud_path = path
         self.cloud_files = [p for p in sorted(Path(path).iterdir(), key=lambda p: p.name)
