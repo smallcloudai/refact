@@ -149,7 +149,7 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
             cursor0: int,
             cursor1: int,
             cut_line_residual: bool = False,
-            ignore_special_tokens: bool = True
+            ignore_special_tokens: bool = True,
             **kwargs
     ):
         super().__init__(**kwargs)
