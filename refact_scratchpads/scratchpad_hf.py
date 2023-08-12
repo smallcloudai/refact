@@ -190,8 +190,8 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
             prefix_cut_tokens = self.encode_without_special_tokens(prefix_cut)
             suffix_cut_tokens = self.encode_without_special_tokens(suffix_cut)
         else:
-            prefix_cut_tokens = self._tokenizer.encode(prefix_cut).ids
-            suffix_cut_tokens = self._tokenizer.encode(suffix_cut).ids
+            prefix_cut_tokens = self._tokenizer.encode(prefix_cut)
+            suffix_cut_tokens = self._tokenizer.encode(suffix_cut)
 
         prompt: List[int] = [
             self._fim_suffix,
