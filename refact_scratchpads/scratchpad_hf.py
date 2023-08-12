@@ -148,7 +148,8 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
             cursor_file: str,
             cursor0: int,
             cursor1: int,
-            cut_line_residual: bool = False
+            cut_line_residual: bool = False,
+            ignore_special_tokens: bool = True
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -158,6 +159,7 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
         self._cursor_file = cursor_file
         self._cursor = cursor0
         self._cut_line_residual = cut_line_residual
+        self._ignore_special_tokens = ignore_special_tokens
         self._code = sources[cursor_file]
 
         self._prefix: Optional[str] = None
@@ -184,13 +186,18 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
             f"ScratchpadHuggingfaceFIM prompt prefix {len(prefix_cut)} chars, "
             f"suffix {len(suffix_cut)} chars, T={T} max_tokens={self._max_tokens}"
         )
-        prefix_cut_tokens = self.encode_without_special_tokens(prefix_cut)
-        suffix_cut_tokens = self.encode_without_special_tokens(suffix_cut)
+        if self._ignore_special_tokens:
+            prefix_cut_tokens = self.encode_without_special_tokens(prefix_cut)
+            suffix_cut_tokens = self.encode_without_special_tokens(suffix_cut)
+        else:
+            prefix_cut_tokens = self._tokenizer.encode(prefix_cut).ids
+            suffix_cut_tokens = self._tokenizer.encode(suffix_cut).ids
+
         prompt: List[int] = [
             self._fim_suffix,
-            *prefix_cut_tokens,
-            self._fim_prefix,
             *suffix_cut_tokens,
+            self._fim_prefix,
+            *prefix_cut_tokens,
             self._fim_middle,
         ]
         # self.debuglog("-"*40)
