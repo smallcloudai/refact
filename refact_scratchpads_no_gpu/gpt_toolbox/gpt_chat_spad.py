@@ -6,6 +6,7 @@ from typing import List, Tuple, Dict, Union, Iterator
 from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
 import openai
+from litellm import acompletion
 import tiktoken
 
 
@@ -91,7 +92,7 @@ class GptChat(ascratch.AsyncScratchpad):
         return gpt_prices(self._model_name)
 
     async def completion(self) -> Iterator[Dict[str, str]]:
-        gen = await openai.ChatCompletion.acreate(
+        gen = await acompletion(
             model=self._model_name,
             messages=self._messages,
             max_tokens=self.max_tokens,

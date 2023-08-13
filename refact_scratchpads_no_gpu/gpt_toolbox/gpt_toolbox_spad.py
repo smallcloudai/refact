@@ -7,6 +7,7 @@ import json
 from typing import List, Union, Callable, Dict, Iterator, Tuple
 
 import openai
+from litellm import acompletion
 import tiktoken
 
 from refact_scratchpads_no_gpu.gpt_toolbox.scratchpad_utils import full_line_selection
@@ -119,7 +120,7 @@ class ScratchpadToolboxGPT(ascratch.AsyncScratchpad):
             return {self.cursor_file: modified}
 
         try:
-            gen = await openai.ChatCompletion.acreate(
+            gen = await acompletion(
                 model=self.model_name,
                 messages=self.messages,
                 max_tokens=self.max_tokens,

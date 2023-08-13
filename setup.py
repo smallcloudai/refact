@@ -33,7 +33,7 @@ all_refact_packages = {
         requires=["termcolor", "torch"],
         requires_packages=["refact_encoding", "code_contrast", "refact_scratchpads_no_gpu"]),
     "refact_scratchpads_no_gpu": PyPackage(
-        requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson"]),
+        requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson", "litellm"]),
     "refact_data_pipeline": PyPackage(
         requires=["numpy", "tokenizers", "torch", "requests", "cloudpickle",
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools',
