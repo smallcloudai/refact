@@ -148,7 +148,6 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
             cursor_file: str,
             cursor0: int,
             cursor1: int,
-            cut_line_residual: bool = False,
             ignore_special_tokens: bool = True,
             **kwargs
     ):
@@ -158,12 +157,12 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
 
         self._cursor_file = cursor_file
         self._cursor = cursor0
-        self._cut_line_residual = cut_line_residual
         self._ignore_special_tokens = ignore_special_tokens
         self._code = sources[cursor_file]
 
         self._prefix: Optional[str] = None
         self._suffix: Optional[str] = None
+        self._suffix_line0cut: Optional[str] = None
         self._completion = []
 
         self._tokens_produced = 0
@@ -173,10 +172,17 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
 
     def prompt(self, T: int):
         self._prefix = self._code[:self._cursor]
-        if self._cut_line_residual:
-            self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
-        else:
-            self._suffix = self._code[self._cursor:]
+        # Why we need to cut the line right of the cursor?
+        # Example 1:
+        # function_call(param1, GENERATED_TONENS<EOF>)
+        # => everything works right
+        # Example 2:
+        # function_call(param1, GENERATED_TONENS)\nMORE_TOKENS\nSOME_OTHER_CALL(OTHER_PARAM<EOF>)
+        #                                        ^^ but we stop here because we need single line completion
+        # => we have two closing parenthesis.
+        # self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        self._suffix = self._code[self._cursor:]
+        self._suffix_line0cut = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
         self._completion.clear()
 
         prefix_cut, suffix_cut = trim_context_infill(
@@ -209,9 +215,13 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
         assert self._prefix is not None
         assert self._suffix is not None
         completion = self._tokenizer.decode(self._completion).rstrip(os.linesep)
-        return {
-            self._cursor_file: self._prefix + completion + self._suffix,
-        }
+        if self.finish_reason == "eot":
+            # Correct stop
+            return {self._cursor_file: self._prefix + completion + self._suffix}
+        else:
+            # "stop-lf" or "length" or not stopped yet (empty reason), it's better to remove first line remainder
+            return {self._cursor_file: self._prefix + completion + self._suffix_line0cut}
+
 
 
 class ScratchpadChatBase(ScratchpadHuggingfaceBase):
