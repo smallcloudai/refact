@@ -87,16 +87,17 @@ class UploadRouter(APIRouter):
 
     async def _bulk_upload(self, data: FilesBulk, request: Request):
         FileUpload = namedtuple('FileUpload', ['name', 'text'])
+        print('uploading files...')
 
         x_token = request.headers.get('X-Auth-Token')
         final_batch: bool = data.final
 
         files = [FileUpload(*f) for f in data.files]
 
-        insert_files(files)
+        inserted_f_cnt = insert_files(files)
 
         C.vecdb_update_required = True
-        if final_batch:
+        if final_batch and inserted_f_cnt:
             load_vecdb()
         return Response(status_code=200)
 

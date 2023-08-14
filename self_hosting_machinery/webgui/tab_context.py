@@ -18,7 +18,7 @@ from self_hosting_machinery import env
 from refact_vecdb import VecDBAsyncAPI
 
 
-__all__ = ['TabVecDBRouter']
+__all__ = ['TabContextRouter']
 
 
 class VecDBURLUpdate(BaseModel):
@@ -30,7 +30,7 @@ class VecDBFindRequest(BaseModel):
     top_k: int = 3
 
 
-class TabVecDBRouter(APIRouter):
+class TabContextRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,37 +38,6 @@ class TabVecDBRouter(APIRouter):
 
         self.add_api_route("/tab-vecdb-health", self._health, methods=["GET"])
         self.add_api_route("/tab-vecdb-files-stats", self._files_stats, methods=["GET"])
-
-        self.add_api_route("/tab-vecdb-upload-files", self._tab_vecdb_upload_files, methods=["GET"])
-
-    async def _tab_vecdb_upload_files(self):
-        try:
-            unpacked_dir = Path(env.DIR_UNPACKED)
-
-            train_set_filtered = unpacked_dir / 'train_set_filtered.jsonl'
-            test_set_filtered = unpacked_dir / 'test_set_filtered.jsonl'
-
-            if not train_set_filtered.is_file() or not test_set_filtered.is_file():
-                return Response(content=json.dumps({"status": "train set or test set not found"}), status_code=200)
-
-            train_set = [json.loads(line) for line in train_set_filtered.open('r')]
-            test_set = [json.loads(line) for line in test_set_filtered.open('r')]
-
-            file_paths: List[Path] = [unpacked_dir.joinpath(d['path']) for d in [*train_set, *test_set] if d['path']]
-            file_paths: List[str] = [str(p) for p in file_paths if p.is_file()]
-            if not file_paths:
-                return Response(content=json.dumps({"status": "no files to upload"}), status_code=200)
-
-            with unpacked_dir.joinpath('vecdb_paths_upload.json').open('w') as f:
-                f.write(json.dumps(file_paths))
-
-            with Path(env.FLAG_VECDB_FILES_UPLOAD).open('w') as f:
-                f.write('')
-
-            return Response(content=json.dumps({"status": "scheduled"}), status_code=200)
-        except Exception as e:
-            return Response(content=json.dumps({"status": str(e)}), status_code=200)
-
 
     @property
     def _url(self) -> str:

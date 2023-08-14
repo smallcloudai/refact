@@ -68,15 +68,34 @@ function render_tab_files(data) {
         row.style.whiteSpace = 'nowrap';
         const name = document.createElement("td");
         const is_git = document.createElement("td");
+        const context = document.createElement("td");
         const status = document.createElement("td");
         const set = document.createElement("td");
         const delete_file = document.createElement("td");
         name.innerHTML = item;
 
+        context.innerHTML = `
+<div class="d-flex justify-content-center align-items-center" style="transform: scale(1.25);">
+    <div class="form-check form-switch align-items-center">
+          <input class="form-check-input form-check-input-context" type="checkbox" id="context-check-input${i}" data-file="${item}" name="file-to-db[${i}]"> 
+    </div>
+</div>
+`
+        const file_to_db = data.uploaded_files[item].to_db;
+        if (file_to_db === true) {
+            context.querySelector(`#context-check-input${i}`).checked = true;
+        }
+
         const which_set = data.uploaded_files[item].which_set;
         if(which_set === "train") {
             // TODO XXX : lora-input?
-            set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off" checked><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off"><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>`
+            set.innerHTML = `
+<div class="btn-group" role="group" aria-label="basic radio toggle button group">
+<input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off" checked>
+<label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label>
+<input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off">
+<label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label>
+</div>`
         }
         if(which_set === "test") {
             set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off"><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off" checked><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>`
@@ -84,6 +103,7 @@ function render_tab_files(data) {
         delete_file.innerHTML = `<button type="button" data-file="${item}" class="btn btn-danger file-remove"><i class="bi bi-trash3-fill"></i></button>`;
         row.appendChild(name);
         row.appendChild(is_git);
+        row.appendChild(context)
         row.appendChild(status);
         row.appendChild(set);
         row.appendChild(delete_file);
@@ -108,7 +128,7 @@ function render_tab_files(data) {
                     is_git_cell.innerHTML = `<span class="badge rounded-pill text-bg-info">file</span>`;
                 }
 
-                const target_cell = row.querySelector('td:nth-child(3)');
+                const target_cell = row.querySelector('td:nth-child(4)');
                 let current_status = item_object.status;
                 if (!current_status) {
                     current_status = "";
@@ -510,6 +530,12 @@ function change_events() {
             save_tab_files();
         });
     });
+    const context_switch = document.querySelectorAll('.form-check-input-context');
+    context_switch.forEach(function(element) {
+        element.addEventListener('change', function () {
+            save_filter_setup();
+        })
+    });
 }
 
 function save_tab_files() {
@@ -520,8 +546,10 @@ function save_tab_files() {
     files.forEach(function(element) {
         const name = element.dataset.file;
         const which_set = element.querySelector(`input[name="file-which[${i}]"]:checked`).value;
+        const to_db = element.querySelector(`input[name="file-to-db[${i}]"]:checked`)?.value === 'on';
         uploaded_files[name] = {
             which_set: which_set,
+            to_db: to_db
         }
         i++;
     });
@@ -598,7 +626,6 @@ export async function init() {
                 process_now_update_until_finished();
             });
     });
-
     const file_modal = document.getElementById('upload-tab-files-modal');
     file_modal.addEventListener('show.bs.modal', function () {
         file_modal.querySelector('#tab-upload-file-input').value = '';

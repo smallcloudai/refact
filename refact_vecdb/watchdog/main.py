@@ -1,7 +1,7 @@
 import os
-import sys
 import signal
 import asyncio
+import time
 from typing import Iterable
 from pathlib import Path
 
@@ -14,7 +14,6 @@ from refact_vecdb import VecDBAsyncAPI
 
 async def upload_vecdb_paths(paths: Iterable[Path]):
     vecdb_api = VecDBAsyncAPI()
-    await vecdb_api.delete_all_records()
     await vecdb_api.upload_files(paths)
 
 
@@ -27,22 +26,40 @@ def catch_sigusr1(signum, frame):
 
 def main():
     signal.signal(signal.SIGUSR1, catch_sigusr1)
+    unpacked_dir = Path(env.DIR_UNPACKED)
+    db_set_file = unpacked_dir / 'database_set.jsonl'
+    db_set_meta_file = unpacked_dir / 'database_set_meta.json'
+    while True:
+        try:
+            if not db_set_file.is_file() or not db_set_meta_file.is_file():
+                raise Exception('db_set_file or db_set_meta_file is not found')
 
-    try:
-        print('vecdb_upload: starting')
-        unpacked_dir = Path(env.DIR_UNPACKED)
-        assert unpacked_dir.is_dir(), f'{unpacked_dir} is not a directory'
+            db_set = db_set_file.read_text()
+            db_set_meta = json.loads(db_set_meta_file.read_text())
 
-        paths_upload_file = unpacked_dir / 'vecdb_paths_upload.json'
-        assert paths_upload_file.is_file(), f'{paths_upload_file} is not a file or does not exist'
+            if not db_set or not db_set_meta or not db_set_meta.get('modified_ts'):
+                raise Exception('db_set or db_set_meta is empty')
 
-        paths_upload = json.loads(paths_upload_file.read_text())
-        assert paths_upload, f'paths_upload is empty'
+            if not (to_process := db_set_meta.get('to_process')):
+                raise Exception(f'to_process flag interrupted: {to_process}')
 
-        asyncio.run(upload_vecdb_paths([Path(p) for p in paths_upload]))
-    except Exception as e:
-        print("vecdb_upload: %s" % e)
-        sys.exit(1)
+            if (modified_time := (time.time() - (db_set_meta.get('modified_ts')))) < 30:
+                raise Exception(f'modified_ts is no older than 30 seconds: {int(modified_time)}s')
+
+            paths_upload = [unpacked_dir / json.loads(line)['path'] for line in db_set.splitlines()]
+
+            if not paths_upload:
+                raise Exception('paths_upload is empty')
+
+            asyncio.run(upload_vecdb_paths(paths_upload))
+
+        except Exception as e:
+            print("vecdb_upload: %s" % e)
+        else:
+            with db_set_meta_file.open('w') as f:
+                f.write(json.dumps({'modified_ts': time.time(), 'to_process': False}))
+
+        time.sleep(10)
 
 
 if __name__ == "__main__":

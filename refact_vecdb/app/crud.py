@@ -12,15 +12,58 @@ def hash_string(string: str) -> str:
     return sha1(string.encode()).hexdigest()[:12]
 
 
-def insert_files(files: List):
-    ch_files = ChunkifyFiles(window_size=512, soft_limit=512)
+def insert_files(
+        files: List
+):
+    file_names = {f.name for f in files}
+    print(f'file_names: {file_names}')
 
-    code_files_ids_ex = set()
+    names_db_drop = set()
+    names_rejected = set()
     for row in C.c_session.execute(
             """
-            select id from file_chunks_text;
+            select id, name from files_full_text;
             """):
-        code_files_ids_ex.add(row['id'])
+        idx = row['id']
+        name = row['name']
+        print(f'idx: {idx}, name: {name}')
+
+        if name in file_names:
+            file = [f for f in files if f.name == name][0]
+            if hash_string(file.text) == idx:
+                names_rejected.add(name)
+                continue
+            names_db_drop.add(name)
+
+    if names_db_drop:
+
+        def bulk_candidates_str(names) -> str:
+            return "(" + ", ".join(f"'{n}'" for n in names) + ")"
+
+        delete_names_str = bulk_candidates_str(names_db_drop)
+
+        tables = ['file_chunks_embedding', 'file_chunks_text', 'files_full_text']
+        tables_drop_ids = {}
+        for t in tables:
+            for row in C.c_session.execute(
+                f"""
+                select id from {t} where name in {delete_names_str} ALLOW FILTERING;
+                """
+            ):
+                tables_drop_ids.setdefault(t, []).append(row['id'])
+
+        for t, ids in tables_drop_ids.items():
+            C.c_session.execute(f'delete from {t} where id in {bulk_candidates_str(ids)} ALLOW FILTERING;')
+
+    files_init_len = files.__len__()
+    files = [f for f in files if f.name not in names_rejected]
+    print(f'Files passed dup check: {files.__len__()}/{files_init_len}')
+    print(f'Names to drop cnt: {names_db_drop.__len__()}')
+    if not files:
+        return 0
+
+    ch_files = ChunkifyFiles(window_size=512, soft_limit=512)
+
     mappings = [
         {
             'id': hash_string(chunk),
@@ -30,9 +73,8 @@ def insert_files(files: List):
         }
         for file in files for chunk in ch_files.chunkify(file.text)
     ]
-    init_len = len(mappings)
-    mappings = [m for m in mappings if m['id'] not in code_files_ids_ex]
-    print(f'SKIPPED {init_len - len(mappings)} files as replicates [mappings]')
+    mappings = [m for m in mappings]
+
     if mappings:
         for m in mappings:
             FileChunksText.create(**m)
@@ -49,13 +91,7 @@ def insert_files(files: List):
         for m in embed_mappings:
             FileChunksEmbedding.create(**m)
 
-    files_desc_ids_ex = set()
-    for row in C.c_session.execute(
-            """
-            select id from files_full_text;
-            """):
-        files_desc_ids_ex.add(row['id'])
-    files_desc_mappings = [
+    files_full_text_mappings = [
         {
             'id': hash_string(file.text),
             'text': file.text,
@@ -64,8 +100,8 @@ def insert_files(files: List):
         }
         for file in files
     ]
-    init_len = len(files_desc_mappings)
-    files_desc_mappings = [m for m in files_desc_mappings if m['id'] not in files_desc_ids_ex]
-    print(f'SKIPPED {init_len - len(files_desc_mappings)} files as replicates [files_desc_mappings]')
+    files_desc_mappings = [m for m in files_full_text_mappings]
     for m in files_desc_mappings:
         FilesFullText.create(**m)
+
+    return len(files)
