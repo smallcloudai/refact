@@ -621,7 +621,7 @@ function render_ftf_stats(data) {
     const ftf_wrapper = document.querySelector('.ftf-stats');
     if(Object.keys(data).length > 0 && data.accepted !== undefined && data.rejected !== undefined) {
         ftf_wrapper.innerHTML = '';
-        const content = `<h6>GPU Filtering stats</h6><div>Accepted: ${data.accepted} <a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-files-log?phase=finetune_filter&accepted_or_rejected=rejected">Full list</a></div>`;
+        const content = `<h6>GPU Filtering stats</h6><div>Accepted: ${data.accepted} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=rejected">Full list</a></div>`;
         ftf_wrapper.innerHTML = content;
     }
 }

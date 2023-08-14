@@ -136,6 +136,7 @@ class TabFinetuneRouter(APIRouter):
         super().__init__(*args, **kwargs)
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
+        self.add_api_route("/tab-finetune-filter-log", self._tab_finetune_filter_log, methods=["GET"])
         self.add_api_route("/tab-finetune-progress-svg/{run_id}", self._tab_funetune_progress_svg, methods=["GET"])
         self.add_api_route("/tab-finetune-schedule-save", self._tab_finetune_schedule_save, methods=["POST"])
         self.add_api_route("/tab-finetune-activate", self._tab_finetune_activate, methods=["POST"])
@@ -214,6 +215,19 @@ class TabFinetuneRouter(APIRouter):
             stream_text_file(log_path),
             media_type="text/event-stream"
         )
+
+    async def _tab_finetune_filter_log(self, accepted_or_rejected: str):
+        if accepted_or_rejected == "accepted":
+            fn = env.LOG_FILES_ACCEPTED_FTF
+        else:
+            fn = env.LOG_FILES_REJECTED_FTF
+        if os.path.isfile(fn):
+            return StreamingResponse(
+                stream_text_file(fn),
+                media_type="text/plain"
+            )
+        else:
+            return Response("File list empty\n", media_type="text/plain")
 
     async def _tab_funetune_progress_svg(self, run_id: str):
         sanitize_run_id(run_id)

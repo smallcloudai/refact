@@ -254,18 +254,11 @@ class TabUploadRouter(APIRouter):
             pass
         return JSONResponse("OK")
 
-    async def _tab_files_log(self, phase: str, accepted_or_rejected: str):
-        fn = ""
-        if phase == "finetune_filter":
-            if accepted_or_rejected == "accepted":
-                fn = env.LOG_FILES_ACCEPTED_FTF
-            else:
-                fn = env.LOG_FILES_REJECTED_FTF
+    async def _tab_files_log(self, accepted_or_rejected: str):
+        if accepted_or_rejected == "accepted":
+            fn = env.LOG_FILES_ACCEPTED_SCAN
         else:
-            if accepted_or_rejected == "accepted":
-                fn = env.LOG_FILES_ACCEPTED_SCAN
-            else:
-                fn = env.LOG_FILES_REJECTED_SCAN
+            fn = env.LOG_FILES_REJECTED_SCAN
         if os.path.isfile(fn):
             return StreamingResponse(
                 stream_text_file(fn),

@@ -317,9 +317,9 @@ function render_stats() {
             stats_finetune.style.display = 'flex';
             stats_finetune.style.whiteSpace = 'nowrap';
             const fine_accepted = document.querySelector('.sources-stats-fine-accepted span');
-            fine_accepted.innerHTML = `${tab_files_data.filestats_scan_finetune.accepted} <a target="_blank" class="sources-stats-fine-accepted" href="/tab-files-log?phase=scan&accepted_or_rejected=accepted">Full List</a>`;
+            fine_accepted.innerHTML = `${tab_files_data.filestats_scan_finetune.accepted} <a target="_blank" class="sources-stats-fine-accepted" href="/tab-files-log?accepted_or_rejected=accepted">Full List</a>`;
             const fine_rejected = document.querySelector('.sources-stats-fine-rejected span');
-            fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log?phase=scan&accepted_or_rejected=rejected">Full List</a>`;
+            fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log?accepted_or_rejected=rejected">Full List</a>`;
         }
     }
 }
