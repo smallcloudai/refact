@@ -18,14 +18,14 @@ import refact_data_pipeline.finetune.traces as traces
 from refact_data_pipeline import DatasetOpts, finetune_datasource
 from refact_data_pipeline.datautils import BatchIterator
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stats
 from refact_data_pipeline.finetune.finetune_filtering_defaults import finetune_filtering_defaults
 from refact_data_pipeline.finetune.finetune_config import base_config
 from refact_data_pipeline.finetune.model_handling import make_model, masked_loss
-from refact_data_pipeline.finetune.finetune_train import save_status_json
 from refact_data_pipeline.finetune.process_uploaded_files import make_matcher
 from self_hosting_machinery import env
 
-from typing import List
+from typing import List, Dict, Any
 
 
 unfiltered_train = os.path.join(env.DIR_UNPACKED, "train_set.jsonl")
@@ -34,32 +34,16 @@ unfiltered_test = os.path.join(env.DIR_UNPACKED, "test_set.jsonl")
 filtered_train = os.path.join(env.DIR_UNPACKED, "train_set_filtered.jsonl")
 filtered_test = os.path.join(env.DIR_UNPACKED, "test_set_filtered.jsonl")
 
-status_dict = {
-    "started_ts": time.time(),
-    "total_steps": 0,
-    "worked_steps": 0,
-    "worked_minutes": 0,
-    "eta_minutes": 0,
-    "status": "starting",
-    "accepted": 0,
-    "rejected": 0,
-    "avg_loss": 0.0
-}
 
-
-def _save_stats(status_string):
-    save_status_json(status_dict, status_string)
+def _update_and_dump_status(status_dict: Dict[str, Any], status_string: str):
+    if status_string in ["starting"]:
+        status_dict = get_finetune_filter_stats(default=True)
+        status_dict["started_ts"] = time.time()
+    status_dict["status"] = status_string
     with open(env.CONFIG_FINETUNE_FILTER_STATS + ".tmp", "w") as f:
         json.dump(status_dict, f, indent=4)
     os.rename(env.CONFIG_FINETUNE_FILTER_STATS + ".tmp", env.CONFIG_FINETUNE_FILTER_STATS)
-
-
-def _try_load_stats():
-    global status_dict
-    if not os.path.exists(env.CONFIG_FINETUNE_FILTER_STATS):
-        return
-    with open(env.CONFIG_FINETUNE_FILTER_STATS, "r") as f:
-        status_dict = json.load(f)
+    return status_dict
 
 
 def _file_accepted(reason, path):
@@ -70,12 +54,6 @@ def _file_accepted(reason, path):
 def _file_rejected(reason, path):
     with open(env.LOG_FILES_REJECTED_FTF, "a") as f:
         f.write("%s %s\n" % (reason, path))
-
-
-def catch_sigusr1(signum, frame):
-    status_dict["error"] = "interrupted"
-    _save_stats("interrupted")
-    sys.exit(1)
 
 
 def get_force_included_excluded_matchers():
@@ -101,7 +79,8 @@ def loss_based_filter(
         loss_function,
         dataopts,
         *,
-        fcfg
+        fcfg,
+        status_dict,
 ):
     t0 = time.time()
     iter_times = []
@@ -113,7 +92,7 @@ def loss_based_filter(
     is_force_included, is_force_excluded = get_force_included_excluded_matchers()
     for iter_n, file in enumerate(train_files):
         t0_iter = time.time()
-        _save_stats("filtering")
+        status_dict = _update_and_dump_status(status_dict, "filtering")
         file_losses = []
         if is_force_included(file['path']):
             _file_accepted("FILTER1 INCLUDED_BY_MASK", file["path"])
@@ -170,7 +149,7 @@ def loss_based_filter(
     return rejected
 
 
-def pre_filtering():
+def pre_filtering(status_dict):
     finetune_cfg = get_finetune_config(logger=traces.log)
 
     fcfg = {**finetune_filtering_defaults}
@@ -228,7 +207,7 @@ def pre_filtering():
     traces.log(textwrap.fill(text, width=100))
 
     filtered = loss_based_filter(
-        train_files, model, loss_function, dataopts, fcfg=fcfg
+        train_files, model, loss_function, dataopts, fcfg=fcfg, status_dict=status_dict,
     )
 
     test_filenames = set()
@@ -270,21 +249,20 @@ def needs_any_work():
     return any(has_updates)
 
 
-def main():
+def main(status_dict):
     if not needs_any_work():
-        _try_load_stats()
-        _save_stats("finished")
+        _update_and_dump_status(status_dict, "finished")
         logging.info("Train set filtering: nothing changed since last time, quit")
         return
 
-    _save_stats("starting")
+    status_dict = _update_and_dump_status(status_dict, "starting")
     with open(env.LOG_FILES_ACCEPTED_FTF, "w") as f:
         f.write("")
     with open(env.LOG_FILES_REJECTED_FTF, "w") as f:
         f.write("")
     try:
-        pre_filtering()
-        _save_stats("finished")
+        pre_filtering(status_dict)
+        _update_and_dump_status(status_dict, "finished")
     except BaseException as e:  # BaseException includes KeyboardInterrupt
         if traces.context():
             logging.error("FAILED finetune filter at %s" % traces.context().path)
@@ -292,7 +270,7 @@ def main():
             t = str(e) or str(type(e))
             status_dict["error"] = t
             logging.error(t)
-            _save_stats("failed")
+            _update_and_dump_status(status_dict, "failed")
         if not isinstance(e, ValueError):  # don't print stack for ValueError which is used for mundane data problems
             raise e
 
@@ -300,5 +278,12 @@ def main():
 if __name__ == "__main__":
     YMD_hms = os.environ.get("LORA_LOGDIR", "") or time.strftime("lora-%Y%m%d-%H%M%S")
     traces.configure(task_dir="loras", task_name=YMD_hms, work_dir=env.PERMDIR)
+    status_dict = get_finetune_filter_stats()
+
+    def catch_sigusr1(signum, frame):
+        status_dict["error"] = "interrupted"
+        _update_and_dump_status(status_dict, "interrupted")
+        sys.exit(1)
+
     signal.signal(signal.SIGUSR1, catch_sigusr1)
-    main()
+    main(status_dict)

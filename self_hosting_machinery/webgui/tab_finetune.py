@@ -13,6 +13,9 @@ from fastapi.responses import Response, StreamingResponse, JSONResponse
 from self_hosting_machinery.scripts import best_lora
 from refact_data_pipeline.finetune.finetune_utils import get_active_loras
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stats
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_step
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_runs
 from refact_data_pipeline.finetune.finetune_filtering_defaults import finetune_filtering_defaults
 from refact_data_pipeline.finetune.finetune_train_defaults import finetune_train_defaults
 from self_hosting_machinery import env
@@ -20,7 +23,7 @@ from self_hosting_machinery import env
 from pydantic import BaseModel
 
 
-__all__ = ["TabFinetuneRouter", "get_finetune_runs"]
+__all__ = ["TabFinetuneRouter"]
 
 
 def sanitize_run_id(run_id: str):
@@ -88,52 +91,11 @@ class TabFinetuneTrainingSetup(BaseModel):
     low_gpu_mem_mode: Optional[bool] = Query(default=True)
 
 
-def get_finetune_runs():
-    res = []
-    anyone_works = False
-    if not os.path.isdir(env.DIR_LORAS):
-        return [], anyone_works
-    for dirname in sorted(os.listdir(env.DIR_LORAS)):
-        dir_path = os.path.join(env.DIR_LORAS, dirname)
-        if not os.path.isdir(dir_path):
-            continue
-        d = {
-            "run_id": dirname,
-            "worked_minutes": "0",
-            "worked_steps": "0",
-            "status": "unknown",  # working, starting, completed, failed
-        }
-        try:
-            d["model_name"] = best_lora.get_run_model_name(dir_path)
-        except RuntimeError:
-            continue
-        status_fn = os.path.join(dir_path, "status.json")
-        if os.path.exists(status_fn):
-            d.update(json.load(open(status_fn, "r")))
-        if d["status"] in ["working", "starting"]:
-            mtime = os.path.getmtime(status_fn)
-            if mtime + 300 < time.time():
-                d["status"] = "failed"
-            else:
-                anyone_works = True
-        d["checkpoints"] = []
-        checkpoints_dir = os.path.join(dir_path, "checkpoints")
-        if os.path.isdir(checkpoints_dir):
-            for checkpoint_dir in sorted(os.listdir(checkpoints_dir)):
-                checkpoint_path = os.path.join(checkpoints_dir, checkpoint_dir)
-                if not os.path.isdir(checkpoint_path):
-                    continue
-                d["checkpoints"].append({
-                    "checkpoint_name": checkpoint_dir,
-                })
-        res.append(d)
-    return res, anyone_works
-
-
 class TabFinetuneRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
         self.add_api_route("/tab-finetune-filter-log", self._tab_finetune_filter_log, methods=["GET"])
@@ -147,10 +109,20 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-smart-filter-get", self._tab_finetune_smart_filter_get, methods=["GET"])
         self.add_api_route("/tab-finetune-training-setup", self._tab_finetune_training_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
-        self.__setup_filter_status()
+
+    async def _tab_finetune_get(self):
+        finetune_step = get_finetune_step()
+        result = {
+            "filter_working_now": finetune_step == "filter",
+            "finetune_working_now": finetune_step == "finetune",
+            "finetune_filter_stats": get_finetune_filter_stats(),
+        }
+        return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_finetune_config_and_runs(self):
-        runs, anyone_works = get_finetune_runs()
+        finetune_step = get_finetune_step()
+        runs, _ = get_finetune_runs()
+        config = get_finetune_config()
         result = {
             "finetune_runs": runs,
             "config": {
@@ -158,16 +130,13 @@ class TabFinetuneRouter(APIRouter):
                 "run_at_night": "True",
                 "run_at_night_time": "04:00",
                 "auto_delete_n_runs": "5",
-                **get_finetune_config(),  # TODO: why we mix finetune config for training and schedule?
+                **config,  # TODO: why we mix finetune config for training and schedule?
             },
-            "filtering_status": "unknown",
-            "finetune_working_now": anyone_works,
+            "filter_working_now": finetune_step == "filter",
+            "finetune_working_now": finetune_step == "finetune",
             "active": get_active_loras(),
+            "finetune_latest_best": best_lora.find_best_lora(config["model_name"]),
         }
-        if os.path.exists(env.CONFIG_FINETUNE_FILTER_STATS):
-            c = json.load(open(env.CONFIG_FINETUNE_FILTER_STATS, "r"))
-            result["filtering_status"] = c['status']
-        result["finetune_latest_best"] = best_lora.find_best_lora(result["config"]["model_name"])
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_finetune_smart_filter_setup(self, post: FilteringSetup):
@@ -249,21 +218,10 @@ class TabFinetuneRouter(APIRouter):
     async def _tab_finetune_schedule_save(self, config: TabFinetuneConfig):
         pass
 
-    def __setup_filter_status(self):
-        if os.path.isfile(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY):
-            if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS):
-                config = json.load(open(env.CONFIG_FINETUNE_FILTER_STATS))
-            else:
-                config = {}
-            config['status'] = 'starting'
-            json.dump(config, open(env.CONFIG_FINETUNE_FILTER_STATS, 'w'), indent=4)
-
     async def _tab_finetune_run_now(self, filter_only: bool = False):
         flag = env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY if filter_only else env.FLAG_LAUNCH_FINETUNE
         with open(flag, "w") as f:
             f.write("")
-        if filter_only:
-            self.__setup_filter_status()
         return JSONResponse("OK")
 
     async def _tab_finetune_stop_now(self):
