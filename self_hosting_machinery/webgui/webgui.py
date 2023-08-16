@@ -11,7 +11,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-import self_hosting_machinery
 from self_hosting_machinery.webgui.selfhost_plugins import PluginsRouter
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_fastapi_completions import CompletionsRouter
@@ -24,22 +23,57 @@ from self_hosting_machinery.webgui.tab_models_host import TabHostRouter
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 
-
-
-try:
-    import refact_enterprise.webgui
-    self_hosting_machinery.webgui.selfhost_plugins.plugins.extend(refact_enterprise.webgui.plugins)
-    self_hosting_machinery.webgui.selfhost_static.static_folders.append(refact_enterprise.webgui.static_folder)
-except ImportError:
-    pass
-
-
 from typing import Dict
 
 
-def handle_sigint(*args):
-    print("Received SIGINT or SIGUSR1, exiting...")
-    exit(1)
+class WebGUI(FastAPI):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        inference_queue = InferenceQueue()
+        id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
+        for router in self._routers_list(id2ticket, inference_queue):
+            self.include_router(router)
+
+        class NoCacheMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                response = await call_next(request)
+                response.headers["Cache-Control"] = "no-cache"
+                return response
+
+        self.add_middleware(
+            CORSMiddleware,
+            allow_origins=[],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        self.add_middleware(NoCacheMiddleware)
+
+        self.add_event_handler("startup", self._startup_event)
+
+    @staticmethod
+    def _routers_list(id2ticket: weakref.WeakValueDictionary, inference_queue: InferenceQueue):
+        return [
+            CompletionsRouter(prefix="/v1", id2ticket=id2ticket, inference_queue=inference_queue),
+            GPURouter(prefix="/infengine-v1", id2ticket=id2ticket, inference_queue=inference_queue),
+            TabServerLogRouter(),
+            TabUploadRouter(),
+            TabFinetuneRouter(),
+            TabHostRouter(),
+            TabSettingsRouter(),
+            StaticRouter(),
+            PluginsRouter(),
+        ]
+
+    async def _startup_event(self):
+        def handle_sigint(*args):
+            print("Received SIGINT or SIGUSR1, exiting...")
+            exit(1)
+
+        signal.signal(signal.SIGINT, handle_sigint)
+        signal.signal(signal.SIGUSR1, handle_sigint)
 
 
 if __name__ == "__main__":
@@ -50,47 +84,13 @@ if __name__ == "__main__":
     parser.add_argument("--port", default=8008, type=int)
     args = parser.parse_args()
 
-    inference_queue = InferenceQueue()
-    id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
-
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s WEBUI %(message)s',
         datefmt='%Y%m%d %H:%M:%S',
         handlers=[logging.StreamHandler(stream=sys.stderr)])
 
-    app = FastAPI(docs_url=None, redoc_url=None)
-
-    app.include_router(PluginsRouter())
-    app.include_router(CompletionsRouter(prefix="/v1", id2ticket=id2ticket, inference_queue=inference_queue))
-    app.include_router(GPURouter(prefix="/infengine-v1", id2ticket=id2ticket, inference_queue=inference_queue))
-    app.include_router(TabServerLogRouter())
-    app.include_router(TabUploadRouter())
-    app.include_router(TabFinetuneRouter())
-    app.include_router(TabHostRouter())
-    app.include_router(TabSettingsRouter())
-    app.include_router(StaticRouter())
-
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    class NoCacheMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request, call_next):
-            response = await call_next(request)
-            response.headers["Cache-Control"] = "no-cache"
-            return response
-    app.add_middleware(NoCacheMiddleware)
-
-    @app.on_event("startup")
-    async def startup_event():
-        signal.signal(signal.SIGINT, handle_sigint)
-        signal.signal(signal.SIGUSR1, handle_sigint)
+    app = WebGUI(docs_url=None, redoc_url=None)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     uvicorn.run(
