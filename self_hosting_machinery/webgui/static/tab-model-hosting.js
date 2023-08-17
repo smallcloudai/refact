@@ -92,7 +92,7 @@ function get_models()
             more_gpus_notification.classList.add('d-none');
         }
         const required_memory_exceed_available = document.querySelector('.model-memory-error');
-        if(models_data && models_data.length >0 && models_data.required_memory_exceed_available) {
+        if(models_data && models_data.length > 0 && models_data.required_memory_exceed_available) {
             required_memory_exceed_available.classList.remove('d-none');
         } else {
             required_memory_exceed_available.classList.add('d-none');
