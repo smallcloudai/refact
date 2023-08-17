@@ -1,16 +1,18 @@
-from dataclasses import dataclass
-from typing import Optional, Any
-
-from refact_vecdb.app.vecdb import VecDB
-from refact_vecdb.app.encoder import Encoder
+from dataclasses import dataclass, field
+from typing import Optional, Any, Dict
 
 
 @dataclass
 class Context:
-    db: Optional[VecDB] = None
-    encoder: Optional[Encoder] = None
+    vecdb: Optional[Any] = None
+    provider: Optional[str] = None
     c_session: Optional[Any] = None
+
     vecdb_update_required: bool = False
+
+    encoder: Optional[Any] = None
+    models: Dict[str, Any] = field(default_factory=dict)
+    tokenizers: Dict[str, Any] = field(default_factory=dict)
 
 
 CONTEXT = Context()

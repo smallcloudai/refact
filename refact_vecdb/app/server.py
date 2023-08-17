@@ -1,13 +1,17 @@
 import uvicorn
+
 from fastapi import FastAPI
 
 from refact_vecdb.app.bootstrap import bootstrap
 from refact_vecdb.app.routers import StatusRouter, FindRouter, UploadRouter, DeleteAllRecordsRouter
+from refact_vecdb.app.embed_spads import embed_providers
+
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
+    parser.add_argument("--provider", type=str, default="gte", choices=embed_providers.keys())
     parser.add_argument("--host", type=str, default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8009)
     parser.add_argument('--cassandra_host', type=str, default="0.0.0.0")
@@ -20,9 +24,8 @@ if __name__ == "__main__":
     # stream_handler = logging.StreamHandler(stream=sys.stdout)
     # logging.basicConfig(level=logging.INFO, handlers=[stream_handler, file_handler]) 
 
-    app = FastAPI(
-        # docs_url=None, redoc_url=None # TODO: UNCOMMENT ME ON PROD
-    )
+    app = FastAPI(docs_url=None, redoc_url=None)
+
     app.include_router(StatusRouter())
     app.include_router(FindRouter())
     app.include_router(UploadRouter())
@@ -30,5 +33,11 @@ if __name__ == "__main__":
 
     @app.on_event("startup")
     async def startup_event():
-        bootstrap([args.cassandra_host], args.cassandra_port, "cassandra", "cassandra")
+        bootstrap(
+            args.provider,
+            args.cassandra_host,
+            args.cassandra_port,
+            "cassandra",
+            "cassandra",
+        )
     uvicorn.run(app, host=args.host, port=args.port, loop="uvloop", timeout_keep_alive=600)

@@ -9,10 +9,10 @@ from fastapi import APIRouter
 from fastapi import Response, Request
 
 from refact_vecdb.app.context import CONTEXT as C
-from refact_vecdb.app.db_models import FileChunksText, FileChunksEmbedding, FilesFullText
+from refact_vecdb.app.db_models import FileChunksText
 from refact_vecdb.app.params import FindQuery, FilesBulk
 from refact_vecdb.app.bootstrap import load_vecdb
-from refact_vecdb.app.encoder import ChunkifyFiles
+from refact_vecdb.app.embed_spads import ChunkifyFiles
 from refact_vecdb.app.crud import insert_files
 
 
@@ -59,8 +59,9 @@ class FindRouter(APIRouter):
 
         ch_files = ChunkifyFiles(window_size=512, soft_limit=512)
         chunks = [chunk for chunk in ch_files.chunkify(data.query)]
-        embeddings = [C.Encoder.encode(c) for c in chunks]
-        ids, scores = C.db.search(embeddings, data.top_k)
+
+        embeddings = list(C.encoder.encode([c for c in chunks]))
+        ids, scores = C.vecdb.search(embeddings, data.top_k)
         query: Dict[str, FileChunksText] = {
             q.id: q for q in FileChunksText.filter(id__in=list(set(itertools.chain(*ids))))
         }
@@ -69,7 +70,7 @@ class FindRouter(APIRouter):
                 'file_path': query[uid].name,
                 'file_name': Path(query[uid].name).name,
                 'text': query[uid].text,
-                # 'score': round(score, 3)
+                'score': str(round(score, 3))
             }
             for uid_batch, scores_batch in zip(ids, scores)
             for uid, score in zip(uid_batch, scores_batch)

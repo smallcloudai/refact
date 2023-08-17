@@ -27,6 +27,12 @@ class FilesFullText(Model):
     created_ts = columns.DateTime(default=datetime.now)
 
 
+class VecdbData(Model):
+    id = columns.Text(primary_key=True)
+    vdb_index = columns.Bytes()
+    vdb_ids = columns.Bytes()
+
+
 def sync_tables():
-    for m in [FileChunksText, FileChunksEmbedding, FilesFullText]:
+    for m in [FileChunksText, FileChunksEmbedding, FilesFullText, VecdbData]:
         sync_table(m)

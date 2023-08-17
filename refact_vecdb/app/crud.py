@@ -5,7 +5,7 @@ from typing import List
 
 from refact_vecdb.app.context import CONTEXT as C
 from refact_vecdb.app.db_models import FileChunksText, FileChunksEmbedding, FilesFullText
-from refact_vecdb.app.encoder import ChunkifyFiles
+from refact_vecdb.app.embed_spads import ChunkifyFiles
 
 
 def hash_string(string: str) -> str:
@@ -16,7 +16,6 @@ def insert_files(
         files: List
 ):
     file_names = {f.name for f in files}
-    print(f'file_names: {file_names}')
 
     names_db_drop = set()
     names_rejected = set()
@@ -26,7 +25,6 @@ def insert_files(
             """):
         idx = row['id']
         name = row['name']
-        print(f'idx: {idx}, name: {name}')
 
         if name in file_names:
             file = [f for f in files if f.name == name][0]
@@ -79,14 +77,15 @@ def insert_files(
         for m in mappings:
             FileChunksText.create(**m)
 
+        embeddings = C.encoder.encode([m['text'] for m in mappings])
         embed_mappings = [
             {
                 'id': m['id'],
-                'embedding': C.Encoder.encode(m['text']),
+                'embedding': emb,
                 'name': m['name'],
                 'created_ts': datetime.now()
             }
-            for m in mappings
+            for m, emb in zip(mappings, embeddings)
         ]
         for m in embed_mappings:
             FileChunksEmbedding.create(**m)

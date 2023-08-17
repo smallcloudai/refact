@@ -1,7 +1,8 @@
 import pickle
 
-from pathlib import Path
 from typing import List, Optional
+
+from refact_vecdb.app.context import CONTEXT as C
 
 from pynndescent import NNDescent
 
@@ -14,14 +15,17 @@ class VecDB:
 
     def search(self, embeddings: List, top_k: int = 1):
         ids, scores = self._index.query(embeddings, k=top_k)
-        return [[self._ids[i] for i in batch] for batch in ids], scores
+        return [
+            [self._ids[i] for i in batch]
+            for batch in ids
+        ], scores
 
     @classmethod
-    def from_file(cls, filepath: Path):
+    def from_cassandra(cls):
         db = cls()
-        with filepath.open('rb') as f:
-            data = pickle.load(f)
-            db._index = data['index']
-            db._ids = data['ids']
-            db._modified_ts = data['modified_ts']
+        row = list(C.c_session.execute(
+            "select vdb_index, vdb_ids from vecdb_data"
+        ))[0]
+        db._index = pickle.loads(row['vdb_index'])
+        db._ids = pickle.loads(row['vdb_ids'])
         return db
