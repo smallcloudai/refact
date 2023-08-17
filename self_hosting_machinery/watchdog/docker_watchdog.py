@@ -6,6 +6,9 @@ import subprocess
 import sys
 import time
 import uuid
+
+from pathlib import Path
+
 from typing import Dict, Optional
 
 from self_hosting_machinery import env
@@ -200,17 +203,17 @@ class TrackedJob:
 
 
 tracked: Dict[str, TrackedJob] = {}
+watchdog_templates = list(Path(env.DIR_WATCHDOG_TEMPLATES).iterdir())
 
 
 def create_tracked_jobs_from_configs():
     now_missing = set(tracked.keys())
-    dir1 = os.listdir(env.DIR_WATCHDOG_D)
-    dir2 = os.listdir(env.DIR_WATCHDOG_TEMPLATES)
-    for fn in sorted(dir1 + dir2):
-        if not fn.endswith(".cfg"):
+    watchdog_configs = list(Path(env.DIR_WATCHDOG_D).iterdir())
+    for filename in sorted(watchdog_configs + watchdog_templates):
+        if not filename.name.endswith(".cfg"):
             continue
-        dir = env.DIR_WATCHDOG_D if (fn in dir1) else env.DIR_WATCHDOG_TEMPLATES
-        cfg = json.load(open(os.path.join(dir, fn)))
+        fn = filename.name
+        cfg = json.loads(filename.read_text())
         if cfg.get("unfinished", False):
             continue
         for i in range(len(cfg["command_line"])):
