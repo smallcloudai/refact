@@ -135,13 +135,13 @@ pub async fn compress_basic_telemetry_to_file(
     }
     // even if there's an error with i/o, storage is now clear, preventing infinite memory growth
     info!("basic telemetry save \"{}\"", fn_net.to_str().unwrap());
-    let io_result = _file_save(fn_net.clone(), big_json_net).await;
+    let io_result = file_save(fn_net.clone(), big_json_net).await;
     if io_result.is_err() {
         error!("error: {}", io_result.err().unwrap());
     }
 }
 
-async fn _file_save(path: PathBuf, json: serde_json::Value) -> Result<(), String> {
+pub async fn file_save(path: PathBuf, json: serde_json::Value) -> Result<(), String> {
     let mut f = tokio::fs::File::create(path).await.map_err(|e| format!("{:?}", e))?;
     f.write_all(serde_json::to_string_pretty(&json).unwrap().as_bytes()).await.map_err(|e| format!("{}", e))?;
     Ok(())

@@ -83,6 +83,33 @@ async fn _read_file(path: PathBuf) -> Result<String, String> {
     Ok(contents)
 }
 
+pub async fn send_telemetry_data(
+    contents: String,
+    telemetry_dest: &String,
+    api_key: &String,
+) -> Result<(), String>{
+    let resp_maybe = reqwest::Client::new().post(telemetry_dest.clone())
+        .body(contents)
+        .header(reqwest::header::AUTHORIZATION, format!("Bearer {}", api_key))
+        .header(reqwest::header::CONTENT_TYPE, format!("application/json"))
+        .send().await;
+    if resp_maybe.is_err() {
+        return Err(format!("telemetry send failed: {}\ndest url was\n{}", resp_maybe.err().unwrap(), telemetry_dest));
+    }
+    let resp = resp_maybe.unwrap();
+    if resp.status()!= reqwest::StatusCode::OK {
+        return Err(format!("telemetry send failed: {}\ndest url was\n{}", resp.status(), telemetry_dest));
+    }
+    let resp_body = resp.text().await.unwrap_or_else(|_| "-empty-".to_string());
+    info!("telemetry send success, response:\n{}", resp_body);
+    let resp_json = serde_json::from_str::<serde_json::Value>(&resp_body).unwrap_or_else(|_| json!({}));
+    let retcode = resp_json["retcode"].as_str().unwrap_or("").to_string();
+    if retcode != "OK" {
+        return Err("retcode is not OK".to_string());
+    }
+    Ok(())
+}
+
 pub async fn send_telemetry_files_to_mothership(
     dir_compressed: PathBuf,
     dir_sent: PathBuf,
@@ -91,36 +118,23 @@ pub async fn send_telemetry_files_to_mothership(
 ) {
     // Send files found in dir_compressed, move to dir_sent if successful.
     let files = _sorted_files(dir_compressed.clone()).await;
-    let http_client = reqwest::Client::new();
     for path in files {
         let contents_maybe = _read_file(path.clone()).await;
         if contents_maybe.is_err() {
             error!("cannot read {}: {}", path.display(), contents_maybe.err().unwrap());
-            break;
+            continue
         }
         let contents = contents_maybe.unwrap();
-        info!("sending telemetry file\n{}\nto url\n{}", path.to_str().unwrap(), telemetry_basic_dest);
-        let resp_maybe = http_client.post(telemetry_basic_dest.clone())
-           .body(contents)
-           .header(reqwest::header::AUTHORIZATION, format!("Bearer {}", api_key))
-           .header(reqwest::header::CONTENT_TYPE, format!("application/json"))
-           .send().await;
-        if resp_maybe.is_err() {
-            error!("telemetry send failed: {}\ndest url was\n{}", resp_maybe.err().unwrap(), telemetry_basic_dest);
-            break;
-        }
-        let resp = resp_maybe.unwrap();
-        if resp.status()!= reqwest::StatusCode::OK {
-            error!("telemetry send failed: {}\ndest url was\n{}", resp.status(), telemetry_basic_dest);
-            break;
-        }
-        let resp_body = resp.text().await.unwrap_or_else(|_| "-empty-".to_string());
-        info!("telemetry send success, response:\n{}", resp_body);
-        let resp_json = serde_json::from_str::<serde_json::Value>(&resp_body).unwrap_or_else(|_| json!({}));
-        let retcode = resp_json["retcode"].as_str().unwrap_or("").to_string();
-        if retcode != "OK" {
-            error!("retcode is not OK");
-            break;
+
+        if path.to_str().unwrap().ends_with("-net.json") {
+            info!("sending telemetry file\n{}\nto url\n{}", path.to_str().unwrap(), telemetry_basic_dest);
+            let resp = send_telemetry_data(contents, &telemetry_basic_dest, &api_key).await;
+            if resp.is_err() {
+                error!("telemetry send failed: {}", resp.err().unwrap());
+                continue;
+            }
+        } else {
+            continue;
         }
         let new_path = dir_sent.join(path.file_name().unwrap());
         info!("success, moving file to {}", new_path.to_str().unwrap());
@@ -151,13 +165,18 @@ pub async fn telemetry_full_cycle(
         mothership_enabled = cx.cmdline.basic_telemetry;
     }
     if caps.is_some() {
-        telemetry_basic_dest = caps.unwrap().read().unwrap().telemetry_basic_dest.clone();
+        telemetry_basic_dest = caps.clone().unwrap().read().unwrap().telemetry_basic_dest.clone();
     }
     telemetry_basic::compress_basic_telemetry_to_file(global_context.clone()).await;
     let dir_compressed = cache_dir.join("telemetry").join("compressed");
     let dir_sent = cache_dir.join("telemetry").join("sent");
     if mothership_enabled && !telemetry_basic_dest.is_empty() && !skip_sending_part {
-        send_telemetry_files_to_mothership(dir_compressed.clone(), dir_sent.clone(), telemetry_basic_dest, api_key).await;
+        send_telemetry_files_to_mothership(
+            dir_compressed.clone(),
+            dir_sent.clone(),
+            telemetry_basic_dest,
+            api_key
+        ).await;
     }
     if !mothership_enabled {
         info!("telemetry sending not enabled, skip");
@@ -170,7 +189,7 @@ pub async fn telemetry_background_task(
     global_context: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> () {
     loop {
-        tokio::time::sleep(std::time::Duration::from_secs(TELEMETRY_COMPRESSION_SECONDS)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_COMPRESSION_SECONDS)).await;
         telemetry_full_cycle(global_context.clone(), false).await;
     }
 }

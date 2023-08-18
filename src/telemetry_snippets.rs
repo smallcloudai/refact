@@ -1,16 +1,12 @@
-use tracing::info;
+use tracing::{error, info};
 use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 use std::sync::RwLock as StdRwLock;
-// use std::collections::HashMap;
-// use reqwest_eventsource::Event;
-// use futures::StreamExt;
-// use async_stream::stream;
-// use serde_json::json;
-// use crate::caps::CodeAssistantCaps;
+
 use crate::call_validation;
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json::json;
 use crate::global_context;
 use crate::completion_cache;
 use crate::telemetry_storage;
@@ -23,6 +19,8 @@ use difference;
 // ?. IDE detects accept, sends /v1/completion-accepted with {"snippet_telemetry_id":101}
 // 3. LSP looks at file changes (LSP can be replaced with reaction to a next completion?)
 // 4. Changes are translated to "after_walkaway_remaining50to95" etc
+
+const SNIP_FINISHED_AFTER : i64 = 300;
 
 
 #[derive(Debug, Clone)]
@@ -56,6 +54,7 @@ pub struct SnippetTelemetry {
     // pub remaining_percent_300s: f64,
     // pub remaining_percent_walkaway: f64,
     // pub walkaway_ms: u64,
+    pub created_at: i64
 }
 
 pub fn snippet_register(
@@ -71,6 +70,7 @@ pub fn snippet_register(
         accepted: false,
         corrected_by_user: "".to_string(),
         remaining_percent_30s: 0.0,
+        created_at: chrono::Local::now().timestamp(),
     };
     storage_locked.tele_snippet_next_id += 1;
     storage_locked.tele_snippets.push(snip);
@@ -135,10 +135,12 @@ pub async fn sources_changed(
         if !orig_text.is_some() {
             continue;
         }
+        // let time_from_creation = chrono::Local::now().timestamp() - snip.created_at;
         let (valid1, mut gray_suggested) = if_head_tail_equal_return_added_text(
             orig_text.unwrap(),
             text
         );
+        snip.corrected_by_user = gray_suggested.clone();
         gray_suggested = gray_suggested.replace("\r", "");
         info!("valid1: {:?}, gray_suggested: {:?}", valid1, gray_suggested);
         info!("orig grey_text: {:?}", snip.grey_text);
@@ -218,4 +220,77 @@ pub fn unchanged_percentage(
     }
     let largest_of_two = text_a.len().max(text_b.len());
     (common as f64) / (largest_of_two as f64)
+}
+
+async fn manage_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext>>) {
+    let tele_storage;
+    let now = chrono::Local::now().timestamp();
+    let enduser_client_version;
+    let api_key: String;
+    let caps;
+    let mothership_enabled: bool;
+    let mut telemetry_corrected_snippets_dest = String::new();
+    {
+        let cx = gcx.read().await;
+        enduser_client_version = cx.cmdline.enduser_client_version.clone();
+        tele_storage = cx.telemetry.clone();
+        api_key = cx.cmdline.api_key.clone();
+        caps = cx.caps.clone();
+        mothership_enabled = cx.cmdline.snippet_telemetry;
+    }
+    if let Some(caps) = &caps {
+        telemetry_corrected_snippets_dest = caps.read().unwrap().telemetry_corrected_snippets_dest.clone();
+    }
+
+    let mut snips_send: Vec<SnippetTelemetry> = vec![];
+    {
+        let mut to_remove: Vec<usize> = vec![];
+        let mut storage_locked = tele_storage.write().unwrap();
+        for (idx, snip) in &mut storage_locked.tele_snippets.iter().enumerate() {
+            if now - snip.created_at >= SNIP_FINISHED_AFTER {
+                if snip.accepted {
+                    snips_send.push(snip.clone());
+                }
+                to_remove.push(idx);
+            }
+        }
+        for idx in to_remove.iter().rev() {
+            storage_locked.tele_snippets.remove(*idx);
+        }
+    }
+
+    if !mothership_enabled {
+        info!("telemetry snippets sending not enabled, skip");
+        return;
+    }
+
+    for snip in snips_send {
+        let json_dict = serde_json::to_value(snip).unwrap();
+        let big_json_snip = json!({
+            "records": [json_dict],
+            "ts_start": now,
+            "ts_end": chrono::Local::now().timestamp(),
+            "teletype": "snippets",
+            "enduser_client_version": enduser_client_version,
+        });
+        let resp_maybe = telemetry_storage::send_telemetry_data(
+            big_json_snip.to_string(),
+            &telemetry_corrected_snippets_dest,
+            &api_key
+        ).await;
+        if resp_maybe.is_err() {
+            error!("snippet send failed: {}", resp_maybe.err().unwrap());
+            error!("too bad snippet is lost now");
+            continue;
+        }
+    }
+}
+
+pub async fn tele_snip_background_task(
+    global_context: Arc<ARwLock<global_context::GlobalContext>>,
+) -> () {
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+        manage_finished_snippets(global_context.clone()).await;
+    }
 }

@@ -51,6 +51,7 @@ async fn main() {
     let gcx4 = gcx.clone();
     let caps_reload_task = tokio::spawn(global_context::caps_background_reload(gcx.clone()));
     let tele_backgr_task = tokio::spawn(telemetry_storage::telemetry_background_task(gcx.clone()));
+    let tele_snip_backgr_task = tokio::spawn(telemetry_snippets::tele_snip_background_task(gcx.clone()));
     let http_server_task = tokio::spawn(async move {
         let gcx_clone = gcx.clone();
         let server = http_server::start_server(gcx_clone);
@@ -109,6 +110,8 @@ async fn main() {
     let _ = caps_reload_task.await;
     tele_backgr_task.abort();
     let _ = tele_backgr_task.await;
+    tele_snip_backgr_task.abort();
+    let _ = tele_snip_backgr_task.await;
     lsp_task.abort();
     let _ = lsp_task.await;
     info!("saving telemetry without sending, so should be quick");
