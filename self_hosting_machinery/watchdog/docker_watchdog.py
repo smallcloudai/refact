@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 import uuid
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from self_hosting_machinery import env
 
@@ -188,7 +188,7 @@ class TrackedJob:
             if can_start:
                 self._start()
         elif "always_on_low_priority" in policy:
-            can_start = low_priority_can_start(self.cfg.get("gpus", []))
+            can_start = low_priority_can_start(self)
             if can_start:
                 self._start()
         elif "at_night" in policy:
@@ -197,6 +197,15 @@ class TrackedJob:
             if self.start_ts + self.cfg["restart_every"] < time.time():
                 self._start()
 
+    def __str__(self):
+        return f"TrackedJob:\n" \
+               f"  pid: {self.p.pid if self.p else None}\n" \
+               f"  cmd: '{self.cmdline_str}'\n" \
+               f"  start_ts: {self.start_ts}\n" \
+               f"  cfg: {self.cfg}\n" \
+               f"  shutdown: {self.please_shutdown}\n" \
+               f"  remove: {self.remove_this}\n" \
+               f"  status: {self.status_from_stderr}\n"
 
 
 tracked: Dict[str, TrackedJob] = {}
@@ -244,11 +253,13 @@ def preempt_low_priority(gpus):
     return can_start
 
 
-def low_priority_can_start(gpus):
+def low_priority_can_start(job: TrackedJob):
     can_start = True
-    for job in tracked.values():
-        if set(gpus) & set(job.cfg["gpus"]):
-            if job.p is not None:
+    for tracked_job in tracked.values():
+        if job.cfg.get("share_gpu", False) and tracked_job.cfg.get("share_gpu", False):
+            continue
+        if set(job.cfg.get("gpus", [])) & set(tracked_job.cfg.get("gpus", [])):
+            if tracked_job.p is not None:
                 can_start = False
     return can_start
 
@@ -258,26 +269,20 @@ _inform_about_gpu_status = ""
 
 def inform_about_gpu_status():
     global _inform_about_gpu_status
-    MAX = 16
-    gpu_command = [""] * MAX
-    gpu_status = [""] * MAX
+    gpu_status: Dict[int, List[Dict]] = {}
     for job in tracked.values():
         if job.p is None:
             continue
-        for gpu in job.cfg["gpus"]:
-            if gpu >= 0 and gpu < len(gpu_status):
+        for gpu in map(int, job.cfg["gpus"]):
+            if gpu >= 0:
                 t = job.cmdline_str
                 if t.startswith("python -m"):
                     t = t[len("python -m"):]
-                gpu_command[gpu] = t.strip()
-                gpu_status[gpu] = job.status_from_stderr
-    j = {"gpus": [{}]*16}
-    for i in range(MAX):
-        j["gpus"][i] = {
-            "command": gpu_command[i],
-            "status": gpu_status[i],
-        }
-    s = json.dumps(j, indent=4) + "\n"
+                gpu_status.setdefault(gpu, []).append({
+                    "command": t.strip(),
+                    "status": job.status_from_stderr,
+                })
+    s = json.dumps({"gpus": gpu_status}, indent=4) + "\n"
     if s != _inform_about_gpu_status:
         with open(env.CONFIG_BUSY_GPUS + ".tmp", "w") as f:
             f.write(s)

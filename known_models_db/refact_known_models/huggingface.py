@@ -5,6 +5,7 @@ huggingface_mini_db = {
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadHuggingface",
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
+        "required_memory_mb": 18000,
         "filter_caps": ["completion"],
     },
     "starcoder/15b/plus": {
@@ -13,6 +14,7 @@ huggingface_mini_db = {
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadHuggingface",
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
+        "required_memory_mb": 18000,
         "filter_caps": ["completion"],
     },
     "starchat/15b/beta": {
@@ -21,6 +23,7 @@ huggingface_mini_db = {
         "diff_scratchpad_class": None,
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceStarChat",
         "model_class_kwargs": {},
+        "required_memory_mb": 18000,
         "filter_caps": ["starchat"],
     },
     "wizardcoder/15b": {
@@ -29,6 +32,7 @@ huggingface_mini_db = {
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadHuggingface",
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
+        "required_memory_mb": 18000,
         "filter_caps": ["completion"],
     },
     "wizardlm/7b": {
@@ -39,6 +43,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {
             "model_basename": "wizardlm-7b-v1.0-uncensored-GPTQ-4bit-128g.no-act.order",
         },
+        "required_memory_mb": 8000,
         "filter_caps": ["wizardlm"],
     },
     "wizardlm/13b": {
@@ -49,6 +54,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {
             "model_basename": "wizardlm-13b-v1.1-GPTQ-4bit-128g.no-act.order",
         },
+        "required_memory_mb": 14000,
         "filter_caps": ["wizardlm"],
     },
     "llama2/7b": {
@@ -59,6 +65,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {
             "model_basename": "gptq_model-4bit-128g",
         },
+        "required_memory_mb": 8000,
         "filter_caps": ["llama2"],
     },
     "llama2/13b": {
@@ -69,6 +76,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {
             "model_basename": "gptq_model-4bit-128g",
         },
+        "required_memory_mb": 14000,
         "filter_caps": ["llama2"],
     },
     "wizardlm/30b/4bit": {
