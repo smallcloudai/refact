@@ -18,6 +18,7 @@ async def test_run(session, url):
         "top_p": 0.95,
         "stop": ["<|endoftext|>"],
         "echo": False,
+        "return_full_text": False,
     }
     data = {
         "inputs": inputs,
@@ -38,7 +39,6 @@ async def main():
     session.headers.update({"Authorization": "Bearer " + token})
     modelIdOrEndpoint = "bigcode/starcoder"
     url = "https://api-inference.huggingface.co/models/" + modelIdOrEndpoint
-
     try:
         await test_run(session, url)
     finally:

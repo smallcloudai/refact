@@ -1,0 +1,20 @@
+curl http://127.0.0.1:8008/code-completion -k \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "inputs": {
+    "sources": {"hello.py": "# Long comment\n# Long comment\n"},
+    "cursor": {
+      "file": "hello.py",
+      "line": 0,
+      "character": 0
+    }
+  },
+  "model": "bigcode/starcoder",
+  "stream": true,
+  "multiline": true,
+  "parameters": {
+    "temperature": 0.1,
+    "max_new_tokens": 20
+  }
+}
+'
