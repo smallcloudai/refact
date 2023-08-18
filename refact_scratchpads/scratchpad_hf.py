@@ -1,5 +1,6 @@
 import torch as th
 import time
+import termcolor
 
 from refact_scratchpads.scratchpad_utils import trim_context_infill
 
@@ -69,7 +70,7 @@ class ScratchpadHuggingfaceBase:
 
     def after_token_selection(self, m, chosen_token: th.Tensor, **unused) -> Dict[str, Any]:
         t = chosen_token.item()
-        self.debuglog("%05d %s" % (t, self._tokenizer.decode([t])))
+        self.debuglog("%05d %s" % (t, self._tokenizer.decode([t]).replace("\n", "\\n")))
 
         if chosen_token in [self._tokenizer.eos_token_id]:
             self.finish_reason = "eot"
@@ -189,6 +190,8 @@ class ScratchpadChatBase(ScratchpadHuggingfaceBase):
         self._completion = []
         text = self._prompt()
         tokens = self._tokenizer.encode(text)
+        self.debuglog(termcolor.colored(str(self._messages), "yellow"))
+        self.debuglog(termcolor.colored(text, "red"))
         self.debuglog(f"prompt {len(tokens)} tokens")
         return tokens
 
@@ -237,8 +240,8 @@ class ScratchpadHuggingfaceWizard(ScratchpadChatBase):
                 text += "USER: "
             else:
                 text += "ASSISTANT: "
-            text += message["content"] + "\n"
-        text += "ASSISTANT: "
+            text += message["content"].strip() + "\n\n"
+        text += "ASSISTANT:"
         return text
 
 
