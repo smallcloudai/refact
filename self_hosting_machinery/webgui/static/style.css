@@ -233,7 +233,7 @@ h3 {
 }
 .gpus-item {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     text-align: center;
     border: 1px solid rgba(0,0,0,0.15);
     border-radius: 8px;
