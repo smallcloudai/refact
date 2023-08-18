@@ -8,6 +8,8 @@ use std::sync::RwLock as StdRwLock;
 use tokenizers::Tokenizer;
 use ropey::Rope;
 use tracing::info;
+use async_trait::async_trait;
+
 use crate::completion_cache;
 use crate::telemetry_storage;
 use crate::telemetry_snippets;
@@ -42,6 +44,7 @@ impl SingleFileFIM {
 }
 
 
+#[async_trait]
 impl ScratchpadAbstract for SingleFileFIM {
     fn apply_model_adaptation_patch(
         &mut self,
@@ -63,7 +66,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         Ok(())
     }
 
-    fn prompt(
+    async fn prompt(
         &mut self,
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
@@ -170,24 +173,25 @@ impl ScratchpadAbstract for SingleFileFIM {
         stopped: Vec<bool>
     ) -> Result<serde_json::Value, String> {
         let json_choices = choices.iter().enumerate().map(|(i, x)| {
-                let (mut cc, mut finished) = cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
-                finished |= stopped[i];
-                let finish_reason = if finished {
-                    cc = cc.trim_end().to_string();
-                    "stop"
-                } else {
-                    "length"
-                }.to_string();
-                if i==0 {
-                    self.data4cache.completion0_text = cc.clone();
-                    self.data4cache.completion0_finish_reason = finish_reason.clone();
-                }
-                serde_json::json!({
-                    "index": i,
-                    "code_completion": cc,
-                    "finish_reason": finish_reason.clone(),
-                })
+            let (mut cc, mut finished) = cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
+            finished |= stopped[i];
+            let finish_reason = if finished {
+                cc = cc.trim_end().to_string();
+                "stop"
+            } else {
+                "length"
+            }.to_string();
+            if i==0 {
+                self.data4cache.completion0_text = cc.clone();
+                self.data4cache.completion0_finish_reason = finish_reason.clone();
+            }
+            serde_json::json!({
+                "index": i,
+                "code_completion": cc,
+                "finish_reason": finish_reason.clone(),
+            })
         }).collect::<Vec<_>>();
+
         telemetry_snippets::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
         return Ok(serde_json::json!(
             {

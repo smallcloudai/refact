@@ -21,6 +21,7 @@ use crate::custom_error::ScratchError;
 use crate::telemetry_basic;
 use crate::telemetry_snippets;
 use crate::completion_cache;
+// use crate::vecdb_search::VecdbSearch;
 
 
 async fn _get_caps_and_tokenizer(
@@ -152,7 +153,7 @@ pub async fn handle_v1_code_completion(
     let prompt = scratchpad.prompt(
         2048,
         &mut code_completion_post.parameters,
-    ).map_err(|e|
+    ).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
     // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
@@ -200,11 +201,13 @@ async fn handle_v1_chat(
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
     )?;
 
+    let vecdb_search = global_context.read().await.vecdb_search.clone();
     let mut scratchpad = scratchpads::create_chat_scratchpad(
         chat_post.clone(),
         &scratchpad_name,
         &scratchpad_patch,
         tokenizer_arc.clone(),
+        vecdb_search,
     ).map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
@@ -212,7 +215,7 @@ async fn handle_v1_chat(
     let prompt = scratchpad.prompt(
         2048,
         &mut chat_post.parameters,
-    ).map_err(|e|
+    ).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
     // info!("chat prompt {:?}\n{}", t1.elapsed(), prompt);

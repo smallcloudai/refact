@@ -1,5 +1,7 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use tokio::sync::Mutex as AMutex;
+
 use tokenizers::Tokenizer;
 
 pub mod completion_single_file_fim;
@@ -13,6 +15,7 @@ use crate::call_validation::ChatPost;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::completion_cache;
 use crate::telemetry_storage;
+use crate::vecdb_search;
 
 
 fn verify_has_send<T: Send>(_x: &T) {}
@@ -44,12 +47,13 @@ pub fn create_chat_scratchpad(
     scratchpad_name: &str,
     scratchpad_patch: &serde_json::Value,
     tokenizer_arc: Arc<StdRwLock<Tokenizer>>,
+    vecdb_search: Arc<AMutex<Box<dyn vecdb_search::VecdbSearch + Send>>>,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
     if scratchpad_name == "CHAT-GENERIC" {
-        result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc, post));
+        result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc, post, vecdb_search));
     } else if scratchpad_name == "CHAT-LLAMA2" {
-        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post));
+        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post, vecdb_search));
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }

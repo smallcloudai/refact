@@ -5,8 +5,12 @@ use crate::call_validation::ChatPost;
 use crate::call_validation::ChatMessage;
 use crate::call_validation::SamplingParameters;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
+use crate::vecdb_search::{VecdbSearch, embed_vecdb_results};
+
 use std::sync::Arc;
 use std::sync::RwLock;
+use async_trait::async_trait;
+use tokio::sync::Mutex as AMutex;
 
 use tokenizers::Tokenizer;
 use tracing::info;
@@ -14,7 +18,6 @@ use tracing::info;
 const DEBUG: bool = true;
 
 
-#[derive(Debug)]
 pub struct GenericChatScratchpad {
     pub t: HasTokenizerAndEot,
     pub dd: DeltaDeltaChatStreamer,
@@ -24,12 +27,14 @@ pub struct GenericChatScratchpad {
     pub keyword_user: String,
     pub keyword_asst: String,
     pub default_system_message: String,
+    pub vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
 }
 
 impl GenericChatScratchpad {
     pub fn new(
         tokenizer: Arc<RwLock<Tokenizer>>,
         post: ChatPost,
+        vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
     ) -> Self {
         GenericChatScratchpad {
             t: HasTokenizerAndEot::new(tokenizer),
@@ -40,10 +45,12 @@ impl GenericChatScratchpad {
             keyword_user: "".to_string(),
             keyword_asst: "".to_string(),
             default_system_message: "".to_string(),
+            vecdb_search
         }
     }
 }
 
+#[async_trait]
 impl ScratchpadAbstract for GenericChatScratchpad {
     fn apply_model_adaptation_patch(
         &mut self,
@@ -71,11 +78,12 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         Ok(())
     }
 
-    fn prompt(
+    async fn prompt(
         &mut self,
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
+        embed_vecdb_results(self.vecdb_search.clone(), &mut self.post, 3).await;
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post, context_size, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
         // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24

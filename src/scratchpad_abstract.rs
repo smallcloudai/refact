@@ -3,15 +3,17 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use tokenizers::Tokenizer;
 use crate::call_validation::SamplingParameters;
+use async_trait::async_trait;
 
 
+#[async_trait]
 pub trait ScratchpadAbstract: Send {
     fn apply_model_adaptation_patch(
         &mut self,
         patch: &serde_json::Value,
     ) -> Result<(), String>;
 
-    fn prompt(
+    async fn prompt(
         &mut self,
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
