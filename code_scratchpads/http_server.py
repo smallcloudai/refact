@@ -16,7 +16,7 @@ import os
 import json
 
 
-logger = logging.getLogger("AAA")
+logger = logging.getLogger("HTTP")
 
 
 FILE_TOO_BIG = 200_000
@@ -98,24 +98,24 @@ class CompletionsRouter(APIRouter):
             model_name=post.model,
             prompt=prompt,
             sampling_parameters=sampling_parameters,
-            stream=request.stream
+            stream=post.stream
         )
         re_stream = spad.re_stream_response(text_generator)
         logger.info("code-completion init+tokenizer %0.2fms, prompt %0.2fms" % (1000*(t1-t0), 1000*(t2-t1)))
         return StreamingResponse(code_completion_streamer(
             re_stream,
             request_created_ts=t0,
-            real_stream=request.stream,
+            real_stream=post.stream,
             ))
 
 
 async def code_completion_streamer(re_stream, request_created_ts, real_stream):
-    model_says: List[str]
-    async for model_says in re_stream:
+    scratchpad_says: List[str]
+    async for scratchpad_says in re_stream:
         if not real_stream:
-            yield model_says
+            yield json.dumps(scratchpad_says)
             return
-        tmp = json.dumps(model_says)
+        tmp = json.dumps(scratchpad_says)
         yield "data: " + tmp + "\n\n"
     yield "data: [DONE]" + "\n\n"
 
@@ -129,10 +129,18 @@ if __name__ == "__main__":
     app.include_router(CompletionsRouter(forward_to_hf_endpoint=args.forward_to_hf_endpoint))
 
     DEBUG = int(os.environ.get("DEBUG", "0"))
-    logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
+    # Startup event of FastAPI
+    uvicorn_logger = logging.getLogger("uvicorn.error")
+
+    logging.basicConfig(
+        level=logging.DEBUG if DEBUG else logging.INFO,
+        format='%(asctime)s %(message)s',
+        datefmt='%Y%m%d %H:%M:%S'
+    )
 
     uvicorn.run(app,
         workers=1,
         host="127.0.0.1",
         port=8008,
+        log_config=None,
     )

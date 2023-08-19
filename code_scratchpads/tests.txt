@@ -10,7 +10,7 @@ curl http://127.0.0.1:8008/code-completion -k \
     }
   },
   "model": "bigcode/starcoder",
-  "stream": true,
+  "stream": false,
   "multiline": true,
   "parameters": {
     "temperature": 0.1,

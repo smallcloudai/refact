@@ -71,23 +71,28 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
             suffix = suffix.replace(special, "")
         prompt = self._fim_prefix + prefix + self._fim_suffix + suffix + self._fim_middle
         self._debuglog("SingleFileFIM prompt dump:\n" +
-            "-"*80 + "\n" +
             termcolor.colored(self._fim_prefix, 'yellow') +
             termcolor.colored(prefix, 'green') +
             termcolor.colored(self._fim_suffix, 'yellow') +
             termcolor.colored(suffix, 'cyan') +
-            termcolor.colored(self._fim_middle, 'yellow') +
-            "\n" + "-"*80
+            termcolor.colored(self._fim_middle, 'yellow')
         )
         return prompt
 
     async def re_stream_response(self, text_generator: AsyncGenerator[Any, None]):
         async for model_says in text_generator:
             if "token" in model_says:
-                print("token!", model_says["token"]["txt"])
-            if "generated_text" in model_says:
-                print("generated_text!", model_says["generated_text"])
-            yield model_says
+                if model_says["token"]["text"] == self._eot:
+                    return
+                yield {"code_completion_delta": model_says["token"]["text"]}
+            if isinstance(model_says, list):
+                yield [{"code_completion": self.remove_eof(x["generated_text"])} for x in model_says]
+
+    def remove_eof(self, txt: str):
+        i = txt.find(self._eot)
+        if i != -1:
+            return txt[:i]
+        return txt
 
         # Why we need to cut the line right of the cursor?
         # Example 1:

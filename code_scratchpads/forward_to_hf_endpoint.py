@@ -3,7 +3,11 @@ import aiohttp
 import time
 import os
 import json
+import logging
 from typing import Dict, Any
+
+
+logger = logging.getLogger("HF_CLIENT")
 
 
 async def real_work(
@@ -24,30 +28,30 @@ async def real_work(
     data = {
         "inputs": prompt,
         "parameters": sampling_parameters,
+        "stream": stream,
     }
-    if stream:
-        data["stream"] = True
     try:
         t0 = time.time()
-        async with session.post(url, json=data) as response:
-            async for byteline in response.content:
-                txt = byteline.decode("utf-8").strip()
-                if not txt.startswith("data:"):
-                    continue
-                txt = txt[5:]
-                print("-"*20, "line", "-"*20, "%0.2fms" % ((time.time() - t0) * 1000))
-                print(txt)
-                print("-"*20, "/line", "-"*20)
-                line = json.loads(txt)
-                yield line
-
-            # xxx = await response.text()
-            # if response.status == 200:
-            #     response_json = await response.json()
-            #     yield response_json
-            # else:
-            #     print(response.status)
-            #     print(await response.text())
+        if stream:
+            async with session.post(url, json=data) as response:
+                async for byteline in response.content:
+                    txt = byteline.decode("utf-8").strip()
+                    if not txt.startswith("data:"):
+                        continue
+                    txt = txt[5:]
+                    # print("-"*20, "line", "-"*20, "%0.2fms" % ((time.time() - t0) * 1000))
+                    # print(txt)
+                    # print("-"*20, "/line", "-"*20)
+                    line = json.loads(txt)
+                    yield line
+        else:
+            async with session.post(url, json=data) as response:
+                response_txt = await response.text()
+                if response.status == 200:
+                    response_json = json.loads(response_txt)
+                    yield response_json
+                else:
+                    logger.warning("http status %s, response text was:\n%s" % (response.status, response_txt))
     finally:
         await session.close()
 
