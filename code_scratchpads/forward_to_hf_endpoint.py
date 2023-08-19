@@ -57,7 +57,7 @@ async def real_work(
 
 
 async def test_hf_works_or_not():
-    test_code = "def hello_world():\n    \"\"\"\n    This prints the message \"Hello, World!\".\n    \"\"\""
+    test_code = "def hello_world():\n    \"\"\"\n    This prints the message \"Hello, World!\" and returns True.\n    \"\"\""
     hf_token = os.environ["HUGGINGFACE_TOKEN"]
     session = aiohttp.ClientSession()
     session.headers.update({"Content-Type": "application/json"})
@@ -71,7 +71,7 @@ async def test_hf_works_or_not():
             "temperature": 0.2,
             "do_sample": True,
             "top_p": 0.95,
-            "stop": ["<|endoftext|>"],
+            "stop": ["<|endoftext|>", "\n   "],
             "return_full_text": False,
             "num_return_sequences": 2,
         }
