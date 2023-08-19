@@ -1,25 +1,25 @@
 from code_scratchpads import scratchpad_code_completion
 from code_scratchpads.scratchpads_code_completion import single_file_fim
 from code_scratchpads.cached_tokenizers import cached_get_tokenizer
+from code_scratchpads import forward_to_hf_endpoint
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from fastapi.param_functions import Query, Optional
 from pydantic import BaseModel
-from typing import Dict, List, Union
+from typing import Dict, List, Union, AsyncGenerator
 import logging
 import argparse
 import uvicorn
 import time
 import os
+import json
 
 
 logger = logging.getLogger("AAA")
 
 
 FILE_TOO_BIG = 200_000
-
-
-forward_to_hf_endpoint = ""
 
 
 class Position(BaseModel):
@@ -46,7 +46,6 @@ class CodeCompletionCall(BaseModel):
     inputs: CodeCompletionTask
     parameters: SamplingParameters
     stream: bool = False
-
 
 
 def _validate_code_completion_parameters(task: CodeCompletionTask):
@@ -90,11 +89,35 @@ class CompletionsRouter(APIRouter):
             max_new_tokens=post.parameters.max_new_tokens,
             **_validate_code_completion_parameters(post.inputs)
         )
+        sampling_parameters = post.parameters.dict(exclude_unset=True)
+        sampling_parameters["return_full_text"] = False
         t1 = time.time()
-        prompt = spad.prompt(2048)
+        prompt = spad.prompt(2048, sampling_parameters_to_patch=sampling_parameters)
         t2 = time.time()
+        text_generator: AsyncGenerator[str, None] = forward_to_hf_endpoint.real_work(
+            model_name=post.model,
+            prompt=prompt,
+            sampling_parameters=sampling_parameters,
+            stream=request.stream
+        )
+        re_stream = spad.re_stream_response(text_generator)
         logger.info("code-completion init+tokenizer %0.2fms, prompt %0.2fms" % (1000*(t1-t0), 1000*(t2-t1)))
-        return True
+        return StreamingResponse(code_completion_streamer(
+            re_stream,
+            request_created_ts=t0,
+            real_stream=request.stream,
+            ))
+
+
+async def code_completion_streamer(re_stream, request_created_ts, real_stream):
+    model_says: List[str]
+    async for model_says in re_stream:
+        if not real_stream:
+            yield model_says
+            return
+        tmp = json.dumps(model_says)
+        yield "data: " + tmp + "\n\n"
+    yield "data: [DONE]" + "\n\n"
 
 
 if __name__ == "__main__":
@@ -112,6 +135,4 @@ if __name__ == "__main__":
         workers=1,
         host="127.0.0.1",
         port=8008,
-        # debug=True,
-        # loop="asyncio",
     )

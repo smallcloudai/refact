@@ -2,11 +2,11 @@ curl http://127.0.0.1:8008/code-completion -k \
   -H 'Content-Type: application/json' \
   -d '{
   "inputs": {
-    "sources": {"hello.py": "# Long comment\n# Long comment\n"},
+    "sources": {"hello.py": "def hello_world():"},
     "cursor": {
       "file": "hello.py",
       "line": 0,
-      "character": 0
+      "character": 18
     }
   },
   "model": "bigcode/starcoder",

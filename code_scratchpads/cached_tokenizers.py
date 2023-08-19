@@ -1,7 +1,6 @@
 import json
 from functools import lru_cache
 from transformers import AutoTokenizer
-from typing import List, Tuple
 
 
 @lru_cache(maxsize=100)

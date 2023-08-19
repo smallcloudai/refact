@@ -32,14 +32,20 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self._fim_prefix = self._assert_one_token("<fim_prefix>")
-        self._fim_suffix = self._assert_one_token("<fim_suffix>")
-        self._fim_middle = self._assert_one_token("<fim_middle>")
+        def _assert_one_token(text: str):
+            tokens = self.tokenizer.encode(text)
+            assert len(tokens) == 1
+            return text
+        self._fim_prefix = _assert_one_token("<fim_prefix>")
+        self._fim_suffix = _assert_one_token("<fim_suffix>")
+        self._fim_middle = _assert_one_token("<fim_middle>")
+        self._eot = _assert_one_token("<|endoftext|>")
         self._prefix: Optional[str] = None
         self._suffix: Optional[str] = None
         self._suffix_line0cut: Optional[str] = None
 
-    def prompt(self, context_size: int):
+    def prompt(self, context_size: int, sampling_parameters_to_patch: Dict[str, Any]):
+        sampling_parameters_to_patch["stop"] = [self._eot]
         txt: List[str] = self.sources[self.cursor_file]
         prefix_lines = txt[:self.cursor_line] + [txt[self.cursor_line][:self.cursor_character]]
         suffix_lines = [txt[self.cursor_line][self.cursor_character:]] + txt[self.cursor_line + 1:]
@@ -64,7 +70,7 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
             prefix = prefix.replace(special, "")
             suffix = suffix.replace(special, "")
         prompt = self._fim_prefix + prefix + self._fim_suffix + suffix + self._fim_middle
-        self._debuglog(
+        self._debuglog("SingleFileFIM prompt dump:\n" +
             "-"*80 + "\n" +
             termcolor.colored(self._fim_prefix, 'yellow') +
             termcolor.colored(prefix, 'green') +
@@ -74,6 +80,14 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
             "\n" + "-"*80
         )
         return prompt
+
+    async def re_stream_response(self, text_generator: AsyncGenerator[Any, None]):
+        async for model_says in text_generator:
+            if "token" in model_says:
+                print("token!", model_says["token"]["txt"])
+            if "generated_text" in model_says:
+                print("generated_text!", model_says["generated_text"])
+            yield model_says
 
         # Why we need to cut the line right of the cursor?
         # Example 1:
