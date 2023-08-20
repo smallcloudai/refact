@@ -1,20 +1,89 @@
 from datetime import datetime
 
 from hashlib import sha1
-from typing import List
+from math import ceil
+from typing import List, Optional, Iterator
+
+from more_itertools import chunked
 
 from refact_vecdb.app.context import CONTEXT as C
 from refact_vecdb.app.db_models import FileChunksText, FileChunksEmbedding, FilesFullText
-from refact_vecdb.app.embed_spads import ChunkifyFiles
+from refact_vecdb.app.params import FileUpload
 
 
 def hash_string(string: str) -> str:
     return sha1(string.encode()).hexdigest()[:12]
 
 
-def insert_files(
-        files: List
-):
+def on_model_change_update_embeddings(batch_size: int) -> Optional[Iterator[int]]:
+    files = []
+    for row in C.c_session.execute(
+        """
+        select name, text from files_full_text;
+        """
+    ):
+        files.append(FileUpload(**row))
+    if not files:
+        return
+
+    C.c_session.execute('TRUNCATE file_chunks_embedding;')
+    C.c_session.execute('TRUNCATE files_full_text;')
+
+    total_batches = ceil(len(files) / batch_size)
+    for idx, f_batch in enumerate(chunked(files, batch_size), 1):
+        create_and_insert_chunks(f_batch)
+        yield {'step': str(idx), 'total': str(total_batches)}
+
+
+def create_and_insert_chunks(files: List[FileUpload]):
+    provider = C.provider
+    mappings = [
+        {
+            'id': hash_string(chunk),
+            'provider': provider,
+            'text': chunk,
+            'name': file.name,
+            'created_ts': datetime.now()
+        }
+        for file, file_chunks in
+        zip(files, C.encoder.chunkify(f.text for f in files))
+        for chunk in file_chunks
+    ]
+    mappings = [m for m in mappings]
+
+    if mappings:
+        for m in mappings:
+            FileChunksText.create(**m)
+
+        embeddings = C.encoder.encode([m['text'] for m in mappings])
+        embed_mappings = [
+            {
+                'id': m['id'],
+                'provider': m['provider'],
+                'embedding': emb,
+                'name': m['name'],
+                'created_ts': datetime.now()
+            }
+            for m, emb in zip(mappings, embeddings)
+        ]
+        for m in embed_mappings:
+            FileChunksEmbedding.create(**m)
+
+    files_full_text_mappings = [
+        {
+            'id': hash_string(file.text),
+            'text': file.text,
+            'name': file.name,
+            'created_ts': datetime.now()
+        }
+        for file in files
+    ]
+    files_desc_mappings = [m for m in files_full_text_mappings]
+    for m in files_desc_mappings:
+        FilesFullText.create(**m)
+
+
+def insert_files(files: List[FileUpload]) -> int:
     file_names = {f.name for f in files}
 
     names_db_drop = set()
@@ -60,47 +129,12 @@ def insert_files(
     if not files:
         return 0
 
-    ch_files = ChunkifyFiles(window_size=512, soft_limit=512)
-
-    mappings = [
-        {
-            'id': hash_string(chunk),
-            'text': chunk,
-            'name': file.name,
-            'created_ts': datetime.now()
-        }
-        for file in files for chunk in ch_files.chunkify(file.text)
-    ]
-    mappings = [m for m in mappings]
-
-    if mappings:
-        for m in mappings:
-            FileChunksText.create(**m)
-
-        embeddings = C.encoder.encode([m['text'] for m in mappings])
-        embed_mappings = [
-            {
-                'id': m['id'],
-                'embedding': emb,
-                'name': m['name'],
-                'created_ts': datetime.now()
-            }
-            for m, emb in zip(mappings, embeddings)
-        ]
-        for m in embed_mappings:
-            FileChunksEmbedding.create(**m)
-
-    files_full_text_mappings = [
-        {
-            'id': hash_string(file.text),
-            'text': file.text,
-            'name': file.name,
-            'created_ts': datetime.now()
-        }
-        for file in files
-    ]
-    files_desc_mappings = [m for m in files_full_text_mappings]
-    for m in files_desc_mappings:
-        FilesFullText.create(**m)
+    create_and_insert_chunks(files)
 
     return len(files)
+
+
+def delete_all_records() -> None:
+    C.c_session.execute('TRUNCATE file_chunks_embedding;')
+    C.c_session.execute('TRUNCATE file_chunks_text;')
+    C.c_session.execute('TRUNCATE files_full_text;')

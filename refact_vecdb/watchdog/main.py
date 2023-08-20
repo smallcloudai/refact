@@ -17,6 +17,12 @@ async def upload_vecdb_paths(paths: Iterable[Path]):
     await vecdb_api.upload_files(paths)
 
 
+async def vecdb_update_provider(provider: str):
+    vecdb_api = VecDBAsyncAPI()
+    async for batch in vecdb_api.update_provider(provider):
+        pass
+
+
 def catch_sigusr1(signum, frame):
     print("catched SIGUSR1")
     current_process = psutil.Process()
@@ -29,8 +35,14 @@ def main():
     unpacked_dir = Path(env.DIR_UNPACKED)
     db_set_file = unpacked_dir / 'database_set.jsonl'
     db_set_meta_file = unpacked_dir / 'database_set_meta.json'
+    vecdb_update_provider_file = unpacked_dir / 'vecdb_update_provider.json'
     while True:
         try:
+            if vecdb_update_provider_file.exists():
+                provider = json.loads(vecdb_update_provider_file.read_text())['provider']
+                vecdb_update_provider_file.unlink()
+                asyncio.run(vecdb_update_provider(provider))
+
             if not db_set_file.is_file() or not db_set_meta_file.is_file():
                 raise Exception('db_set_file or db_set_meta_file is not found')
 
@@ -59,7 +71,7 @@ def main():
             with db_set_meta_file.open('w') as f:
                 f.write(json.dumps({'modified_ts': time.time(), 'to_process': False}))
 
-        time.sleep(10)
+        time.sleep(5)
 
 
 if __name__ == "__main__":

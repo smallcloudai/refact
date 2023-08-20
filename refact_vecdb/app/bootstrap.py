@@ -57,6 +57,7 @@ def load_vecdb():
         C.c_session.execute('TRUNCATE vecdb_data;')
         VecdbData.create(**{
             'id': str(uuid.uuid4()),
+            'provider': C.provider,
             'vdb_index': pickle.dumps(index),
             'vdb_ids': pickle.dumps(ids)
         })

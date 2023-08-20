@@ -2,7 +2,7 @@
 from math import ceil
 from pathlib import Path
 from collections import namedtuple
-from typing import Iterable, Tuple, Optional, Union, List, Dict
+from typing import Iterable, Tuple, Optional, Union, List, Dict, AsyncIterator
 
 import requests
 import aiohttp
@@ -129,11 +129,11 @@ class VecDBAsyncAPI(VecDBAPI):
     ):
         super().__init__(*args, **kwargs)
 
-    async def health(self):
+    async def status(self):
         async with aiohttp.ClientSession() as session:
             session.headers.update(self._headers())
             async with session.get(
-                f'{self._base_url}/v1/health',
+                f'{self._base_url}/v1/status',
                 timeout=3
             ) as resp:
                 assert resp.status == 200, f'Error: {resp.text}'
@@ -151,11 +151,27 @@ class VecDBAsyncAPI(VecDBAPI):
                 data = json.loads(await resp.text())
                 return data
 
-    async def delete_all_records(self):
+    async def update_provider(self, provider: str, batch_size: int = 10) -> AsyncIterator[Dict[str, str]]:
         async with aiohttp.ClientSession() as session:
             session.headers.update(self._headers())
-            async with session.get(f'{self._base_url}/v1/delete_all', timeout=10) as resp:
-                assert resp.status == 200, f'Error: {resp.text}'
+            async with session.post(
+                f'{self._base_url}/v1/update-provider',
+                json={
+                    'provider': provider,
+                    'batch_size': batch_size
+                },
+                timeout=100000
+            ) as resp:
+                if resp.status == 200:
+                    async for chunk in resp.content.iter_any():
+                        if chunk:
+                            yield json.loads(chunk)
+
+    # async def delete_all_records(self):
+    #     async with aiohttp.ClientSession() as session:
+    #         session.headers.update(self._headers())
+    #         async with session.get(f'{self._base_url}/v1/delete_all', timeout=10) as resp:
+    #             assert resp.status == 200, f'Error: {resp.text}'
 
     async def find(
             self,
@@ -176,7 +192,7 @@ class VecDBAsyncAPI(VecDBAPI):
                     'query': file.text,
                     'top_k': top_k
                 },
-                timeout=60
+                timeout=5
             ) as resp:
                 assert resp.status == 200, f'Error: {resp.text}'
                 data = json.loads(await resp.text())
@@ -201,12 +217,8 @@ class VecDBAsyncAPI(VecDBAPI):
                     chunked(files, batch_size),
                     total=total,
                     desc='[VECDB]: Uploading files',
-            )):
-                data = {
-                    'files': [(str(f.name), f.text) for f in files_batch]
-                }
-                if idx == total - 1:
-                    data['final'] = True
+            ), 1):
+                data = {'files': [(str(f.name), f.text) for f in files_batch], 'step': str(idx), 'total': str(total)}
                 async with session.post(
                     f'{self._base_url}/v1/bulk_upload',
                     json=data,

@@ -1,3 +1,4 @@
+from collections import namedtuple
 from typing import List
 
 from pydantic import BaseModel
@@ -9,6 +10,15 @@ class FindQuery(BaseModel):
     top_k: int = 1
 
 
-class FilesBulk(BaseModel):
+class FilesBulkUpload(BaseModel):
     files: List[Tuple[str, str]]
-    final: bool = False
+    step: int
+    total: int
+
+
+class VecDBUpdateProvider(BaseModel):
+    provider: str
+    batch_size: int
+
+
+FileUpload = namedtuple('FileUpload', ['name', 'text'])

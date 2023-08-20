@@ -3,7 +3,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from refact_vecdb.app.bootstrap import bootstrap
-from refact_vecdb.app.routers import StatusRouter, FindRouter, UploadRouter, DeleteAllRecordsRouter
+from refact_vecdb.app.routers import StatusRouter, FindRouter, FilesUpdateRouter
 from refact_vecdb.app.embed_spads import embed_providers
 
 
@@ -24,12 +24,13 @@ if __name__ == "__main__":
     # stream_handler = logging.StreamHandler(stream=sys.stdout)
     # logging.basicConfig(level=logging.INFO, handlers=[stream_handler, file_handler]) 
 
-    app = FastAPI(docs_url=None, redoc_url=None)
+    app = FastAPI(
+        # docs_url=None, redoc_url=None
+    )
 
     app.include_router(StatusRouter())
     app.include_router(FindRouter())
-    app.include_router(UploadRouter())
-    app.include_router(DeleteAllRecordsRouter())
+    app.include_router(FilesUpdateRouter())
 
     @app.on_event("startup")
     async def startup_event():

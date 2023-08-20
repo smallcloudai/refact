@@ -7,6 +7,7 @@ from cassandra.cqlengine.models import Model
 
 class FileChunksText(Model):
     id = columns.Text(primary_key=True)
+    provider = columns.Text()
     text = columns.Text()
     name = columns.Text()
     created_ts = columns.DateTime(default=datetime.now)
@@ -14,6 +15,7 @@ class FileChunksText(Model):
 
 class FileChunksEmbedding(Model):
     id = columns.Text(primary_key=True)
+    provider = columns.Text()
     embedding = columns.List(value_type=columns.Float)
     name = columns.Text()
     created_ts = columns.DateTime(default=datetime.now)
@@ -29,6 +31,7 @@ class FilesFullText(Model):
 
 class VecdbData(Model):
     id = columns.Text(primary_key=True)
+    provider = columns.Text()
     vdb_index = columns.Bytes()
     vdb_ids = columns.Bytes()
 

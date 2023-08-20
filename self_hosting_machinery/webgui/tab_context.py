@@ -1,18 +1,13 @@
 import copy
 import json
-import os
-import aiohttp
-import time
-import shutil
 
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
-from pydantic import BaseModel, Required
-from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
-from fastapi.responses import Response, JSONResponse, StreamingResponse
+from pydantic import BaseModel
+from fastapi import APIRouter, Request
+from fastapi.responses import Response
 
-from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery import env
 
 from refact_vecdb import VecDBAsyncAPI
@@ -25,9 +20,8 @@ class VecDBURLUpdate(BaseModel):
     url: str
 
 
-class VecDBFindRequest(BaseModel):
-    query: str
-    top_k: int = 3
+class VecDBUpdateProvider(BaseModel):
+    provider: str
 
 
 class TabContextRouter(APIRouter):
@@ -36,8 +30,14 @@ class TabContextRouter(APIRouter):
         super().__init__(*args, **kwargs)
         self._cfg_file = Path(env.CONFIG_VECDB)
 
-        self.add_api_route("/tab-vecdb-health", self._health, methods=["GET"])
         self.add_api_route("/tab-vecdb-files-stats", self._files_stats, methods=["GET"])
+        self.add_api_route("/tab-vecdb-status", self._status, methods=["GET"])
+        self.add_api_route('/tab-vecdb-update-provider', self._update_provider, methods=["POST"])
+
+    async def _update_provider(self, data: VecDBUpdateProvider, request: Request):
+        provider = data.provider
+        with Path(env.DIR_UNPACKED).joinpath('vecdb_update_provider.json').open('w') as f:
+            f.write(json.dumps({'provider': provider}))
 
     @property
     def _url(self) -> str:
@@ -47,18 +47,26 @@ class TabContextRouter(APIRouter):
     def _vecdb_api(self) -> VecDBAsyncAPI:
         return VecDBAsyncAPI(url=self._url)
 
-    async def _health(self):
-        def content(status, display_text, error):
-            return json.dumps({
-                'status': status,
-                'display_text': display_text,
-                'error': error
-            })
+    async def _status(self):
         try:
-            await self._vecdb_api.health()
+            status_resp = await self._vecdb_api.status()
+            if Path(env.FLAG_VECDB_CHANGE_MODEL).exists():
+                status_resp['ongoing'] = {'indexing': {'status': 'scheduled'}}
         except Exception as e:
-            return Response(content=content("error", str(e), str(e)), status_code=200)
-        return Response(content=content("ok", "healthy ❤️", ""), status_code=200)
+            content = json.dumps({
+                'status': str(e),
+            })
+        else:
+            print(f'status: {status_resp}')
+            content = json.dumps({
+                "status": status_resp.get('status'),
+                "embed_model": status_resp.get('embed_model'),
+                "provider": status_resp.get('provider'),
+                "available_providers": status_resp.get('available_providers'),
+                "ongoing": status_resp.get('ongoing', {}),
+            })
+
+        return Response(content=content, status_code=200)
 
     async def _files_stats(self):
         try:

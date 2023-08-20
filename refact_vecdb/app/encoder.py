@@ -1,7 +1,7 @@
 from typing import Any, List, Iterator, Iterable, Union
 
 from refact_vecdb.app.context import CONTEXT as C
-from refact_vecdb.app.embed_spads import embed_providers
+from refact_vecdb.app.embed_spads import embed_providers, ChunkifyFiles
 
 
 class UnknownProviderException(Exception):
@@ -27,6 +27,18 @@ class VecDBEncoder:
 
         else:
             raise UnknownProviderException(self._provider)
+
+    def chunkify(self, texts: Union[str, Iterable[str]]) -> Iterator[List[str]]:
+        texts = [texts] if isinstance(texts, str) else texts
+        if self._provider == 'ada':
+            ch_files = ChunkifyFiles(512, 512)
+        elif self._provider == 'gte':
+            ch_files = ChunkifyFiles(512, 512)
+        else:
+            raise UnknownProviderException(self._provider)
+
+        for text in texts:
+            yield list(ch_files.chunkify(text))
 
     def _checkup(self) -> None:
         if self._provider not in embed_providers.keys():
