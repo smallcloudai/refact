@@ -36,18 +36,16 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
             suffix_lines = txt[self.cursor_line + 1:]
             if self.multiline:
                 suffix_lines.insert(0, txt[self.cursor_line][self.cursor_character:])
-        # prefix_reversed = prefix_lines
-        # merged_lines = [x for pair in zip_longest(prefix_reversed, suffix_lines) for x in pair if x]
         prefix_result_reversed, suffix_result = [], []
         tokens_limit = context_size - self.max_new_tokens
         for p_line, s_line in zip_longest(prefix_lines[::-1], suffix_lines):
             if p_line is not None:
-                if line_tok_cnt := len(self.tokenizer.encode(p_line)) >= tokens_limit:
+                if (line_tok_cnt := len(self.tokenizer.encode(p_line))) >= tokens_limit:
                     break
                 prefix_result_reversed.append(p_line)
                 tokens_limit -= line_tok_cnt
             if s_line is not None:
-                if line_tok_cnt := len(self.tokenizer.encode(s_line)) >= tokens_limit:
+                if (line_tok_cnt := len(self.tokenizer.encode(s_line))) >= tokens_limit:
                     break
                 suffix_result.append(s_line)
                 tokens_limit -= line_tok_cnt
@@ -94,27 +92,3 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
         if cut_at:
             return txt[:min(cut_at)]
         return txt
-
-        # Why we need to cut the line right of the cursor?
-        # Example 1:
-        # function_call(param1, GENERATED_TONENS<EOF>)
-        # => everything works right
-        # Example 2:
-        # function_call(param1, GENERATED_TONENS)\nMORE_TOKENS\nSOME_OTHER_CALL(OTHER_PARAM<EOF>)
-        #                                        ^^ but we stop here because we need single line completion
-        # => we have two closing parenthesis if we stop.
-        # self._suffix = self._code[self._cursor:]
-        # self._suffix_line0cut = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
-
-        # # self.debuglog()
-
-    # def completion(self, final: bool):
-    #     assert self._prefix is not None
-    #     assert self._suffix is not None
-    #     completion = self._tokenizer.decode(self._completion).rstrip(os.linesep)
-    #     if self.finish_reason == "eot":
-    #         # Correct stop
-    #         return {self._cursor_file: self._prefix + completion + self._suffix}
-    #     else:
-    #         # "stop-lf" or "length" or not stopped yet (empty reason), it's better to remove first line remainder
-    #         return {self._cursor_file: self._prefix + completion + self._suffix_line0cut}

@@ -3,9 +3,10 @@ from code_scratchpads.scratchpads_code_completion import single_file_fim
 from code_scratchpads.cached_tokenizers import cached_get_tokenizer
 from code_scratchpads import forward_to_hf_endpoint
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.param_functions import Query, Optional
+from fastapi.security import HTTPBearer
 from pydantic import BaseModel
 from typing import Dict, List, Union, AsyncGenerator
 import logging
@@ -85,7 +86,7 @@ class CompletionsRouter(APIRouter):
         self._forward_to_hf_endpoint = forward_to_hf_endpoint
         self.add_api_route("/code-completion", self.code_completion, methods=["POST"])
 
-    async def code_completion(self, post: CodeCompletionCall, request: Request):
+    async def code_completion(self, post: CodeCompletionCall, bearer: str = Depends(HTTPBearer(auto_error=False))):
         t0 = time.time()
         tokenizer = cached_get_tokenizer(post.model)
         spad: scratchpad_code_completion.ScratchpadCodeCompletion = single_file_fim.SingleFileFIM(
@@ -103,7 +104,8 @@ class CompletionsRouter(APIRouter):
             model_name=post.model,
             prompt=prompt,
             sampling_parameters=sampling_parameters,
-            stream=post.stream
+            stream=post.stream,
+            auth_from_client=(bearer.credentials if bearer else None),
         )
         re_stream = spad.re_stream_response(text_generator)
         logger.info("code-completion init+tokenizer %0.2fms, prompt %0.2fms" % (1000*(t1-t0), 1000*(t2-t1)))
@@ -142,6 +144,11 @@ if __name__ == "__main__":
         format='%(asctime)s %(message)s',
         datefmt='%Y%m%d %H:%M:%S'
     )
+
+    @app.on_event("shutdown")
+    def startup_event():
+        if args.forward_to_hf_endpoint:
+            forward_to_hf_endpoint.global_hf_session_close()
 
     uvicorn.run(app,
         workers=1,
