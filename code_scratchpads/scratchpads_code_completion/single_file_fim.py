@@ -28,11 +28,14 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
             stop.append("\n")
         sampling_parameters_to_patch["stop"] = stop
         txt: List[str] = self.sources[self.cursor_file]
-        prefix_lines = txt[:self.cursor_line] + [txt[self.cursor_line][:self.cursor_character]]
-        # suffix_lines = [txt[self.cursor_line][self.cursor_character:]] + txt[self.cursor_line + 1:]
-        suffix_lines = txt[self.cursor_line + 1:]
-        if self.multiline:
-            suffix_lines.insert(0, txt[self.cursor_line][self.cursor_character:])
+        if self.cursor_line >= len(txt):
+            prefix_lines = txt
+            suffix_lines = []
+        else:
+            prefix_lines = txt[:self.cursor_line] + [txt[self.cursor_line][:self.cursor_character]]
+            suffix_lines = txt[self.cursor_line + 1:]
+            if self.multiline:
+                suffix_lines.insert(0, txt[self.cursor_line][self.cursor_character:])
         # prefix_reversed = prefix_lines
         # merged_lines = [x for pair in zip_longest(prefix_reversed, suffix_lines) for x in pair if x]
         prefix_result_reversed, suffix_result = [], []
@@ -50,7 +53,6 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
                 tokens_limit -= line_tok_cnt
         prefix = '\n'.join(reversed(prefix_result_reversed))
         suffix = '\n'.join(suffix_result)
-        print("SUFF2", suffix)
         for special in self.tokenizer.special_tokens:
             prefix = prefix.replace(special, "")
             suffix = suffix.replace(special, "")
@@ -76,11 +78,9 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
                     return
                 yield {"code_completion_delta": t}
             if isinstance(model_says, list):
-                print("xxxxxx", model_says)
                 ans = [{"code_completion": self.cut_result(x["generated_text"])} for x in model_says]
-                print("xxxans", ans)
                 if len(ans) >= 1:
-                    self._debuglog("SingleFileFIM no streaming completion: \"%s\"" % ans[0]["code_completion"].replace("\n", "\\n"))
+                    self._debuglog("SingleFileFIM completion: \"%s\"" % ans[0]["code_completion"].replace("\n", "\\n"))
                 yield ans
 
     def cut_result(self, txt: str):

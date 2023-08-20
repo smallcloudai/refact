@@ -59,10 +59,15 @@ def _validate_code_completion_parameters(task: CodeCompletionTask):
             raise HTTPException(status_code=400, detail="file '%s' is too long (%d bytes)" % (fn, len(text)))
         sources_split[fn] = text.splitlines()
     cursor_source_split = sources_split[task.cursor.file]
-    if task.cursor.line > len(cursor_source_split):
+    lines_count = len(cursor_source_split)
+    if task.cursor.line > lines_count:
         raise HTTPException(status_code=400, detail="cursor line=%d is beyond file length=%d" % (task.cursor.line, len(cursor_source_split)))
-    if task.cursor.character > len(cursor_source_split[task.cursor.line]):
-        raise HTTPException(status_code=400, detail="cursor character=%d is beyond line %d length=%d" % (task.cursor.character, task.cursor.line, len(cursor_source_split[task.cursor.line])))
+    if task.cursor.line < lines_count:
+        if task.cursor.character > len(cursor_source_split[task.cursor.line]):
+            raise HTTPException(status_code=400, detail="cursor character=%d is beyond line %d length=%d" % (task.cursor.character, task.cursor.line, len(cursor_source_split[task.cursor.line])))
+    else:
+        if task.cursor.character > 0:
+            raise HTTPException(status_code=400, detail="cursor character=%d is beyond end of file" % (task.cursor.character))
     return {
         "sources": sources_split,
         "cursor_file": task.cursor.file,
