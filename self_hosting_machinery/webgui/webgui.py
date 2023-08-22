@@ -54,8 +54,9 @@ class WebGUI(FastAPI):
         self.add_event_handler("startup", self._startup_event)
 
     @staticmethod
-    def _routers_list(id2ticket: weakref.WeakValueDictionary, inference_queue: InferenceQueue):
+    def _routers_list(id2ticket: Dict[str, Ticket], inference_queue: InferenceQueue):
         return [
+            PluginsRouter(),
             CompletionsRouter(prefix="/v1", id2ticket=id2ticket, inference_queue=inference_queue),
             GPURouter(prefix="/infengine-v1", id2ticket=id2ticket, inference_queue=inference_queue),
             TabServerLogRouter(),
@@ -64,7 +65,6 @@ class WebGUI(FastAPI):
             TabHostRouter(),
             TabSettingsRouter(),
             StaticRouter(),
-            PluginsRouter(),
         ]
 
     async def _startup_event(self):
