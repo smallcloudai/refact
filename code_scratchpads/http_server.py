@@ -2,13 +2,12 @@ from code_scratchpads import scratchpad_code_completion
 from code_scratchpads.models_db import db_code_completion_models
 from code_scratchpads.cached_tokenizers import cached_get_tokenizer
 from code_scratchpads import forward_to_hf_endpoint
+from code_scratchpads import call_validation
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse
-from fastapi.param_functions import Query, Optional
 from fastapi.security import HTTPBearer
-from pydantic import BaseModel
-from typing import Dict, List, Union, AsyncGenerator
+from typing import AsyncGenerator, Dict, Any, List, Union
 import logging
 import argparse
 import uvicorn
@@ -19,64 +18,6 @@ import importlib
 
 
 logger = logging.getLogger("HTTP")
-
-
-FILE_TOO_BIG = 200_000
-
-
-class Position(BaseModel):
-    file: str
-    line: int         # zero based, names like in LSP
-    character: int
-
-
-class CodeCompletionTask(BaseModel):
-    sources: Dict[str, str]
-    cursor: Position
-    multiline: bool = False
-
-
-class SamplingParameters(BaseModel):
-    max_new_tokens: int = Query(default=50, ge=0, le=4096)
-    temperature: Optional[float] = Query(default=None, ge=0.0, le=2.0)
-    top_p: Optional[float] = Query(default=None, ge=0.5, le=1.0)
-    stop: Optional[List[str]] = Query(default=None, min_items=0, max_items=10)
-
-
-class CodeCompletionCall(BaseModel):
-    model: str = Query(default="", pattern="^[a-z/A-Z0-9_\.]*$")
-    inputs: CodeCompletionTask
-    parameters: SamplingParameters
-    stream: bool = False
-
-
-def _validate_code_completion_parameters(task: CodeCompletionTask):
-    if task.cursor.file not in task.sources:
-        raise HTTPException(status_code=400, detail="cursor.file='%s' is not in sources=%s" % (task.cursor.file, list(task.sources.keys())))
-    if task.cursor.line < 0 or task.cursor.character < 0:
-        raise HTTPException(status_code=400, detail="cursor position is negative (%d, %d)" % (task.cursor.line, task.cursor.character))
-    sources_split: Dict[str, List[str]] = {}
-    for fn, text in task.sources.items():
-        if len(text) > FILE_TOO_BIG:
-            raise HTTPException(status_code=400, detail="file '%s' is too long (%d bytes)" % (fn, len(text)))
-        sources_split[fn] = text.splitlines()
-    cursor_source_split = sources_split[task.cursor.file]
-    lines_count = len(cursor_source_split)
-    if task.cursor.line > lines_count:
-        raise HTTPException(status_code=400, detail="cursor line=%d is beyond file length=%d" % (task.cursor.line, len(cursor_source_split)))
-    if task.cursor.line < lines_count:
-        if task.cursor.character > len(cursor_source_split[task.cursor.line]):
-            raise HTTPException(status_code=400, detail="cursor character=%d is beyond line %d length=%d" % (task.cursor.character, task.cursor.line, len(cursor_source_split[task.cursor.line])))
-    else:
-        if task.cursor.character > 0:
-            raise HTTPException(status_code=400, detail="cursor character=%d is beyond end of file" % (task.cursor.character))
-    return {
-        "sources": sources_split,
-        "cursor_file": task.cursor.file,
-        "cursor_line": task.cursor.line,
-        "cursor_character": task.cursor.character,
-        "multiline": task.multiline,
-    }
 
 
 class CompletionsRouter(APIRouter):
@@ -97,7 +38,7 @@ class CompletionsRouter(APIRouter):
             "retcode": "OK",
         }
 
-    async def code_completion(self, post: CodeCompletionCall, bearer: str = Depends(HTTPBearer(auto_error=False))):
+    async def code_completion(self, post: call_validation.CodeCompletionCall, bearer: str = Depends(HTTPBearer(auto_error=False))):
         t0 = time.time()
         model_rec: db_code_completion_models.CompletionModelRecord = db_code_completion_models.model_lookup(post.model)
         if model_rec is None:
@@ -111,7 +52,7 @@ class CompletionsRouter(APIRouter):
             tokenizer=tokenizer,
             max_new_tokens=post.parameters.max_new_tokens,
             supports_stop=model_rec.supports_stop,
-            **_validate_code_completion_parameters(post.inputs)
+            **call_validation.validate_code_completion_parameters(post.inputs)
         )
         sampling_parameters = post.parameters.dict(exclude_unset=True)
         sampling_parameters["return_full_text"] = False
@@ -128,7 +69,7 @@ class CompletionsRouter(APIRouter):
                 auth_from_client=(bearer.credentials if bearer else None),
             )
         else:
-            # TODO: alternatives to forward_to_hf_endpoint, default local inference
+            # TODO: alternatives to forward_to_hf_endpoint, such as regular local inference
             pass
         re_stream = spad.re_stream_response(text_generator)
         logger.info("start code-completion model='%s' init+tokenizer %0.2fms, prompt %0.2fms" % (
@@ -137,28 +78,35 @@ class CompletionsRouter(APIRouter):
         return StreamingResponse(code_completion_streamer(
             re_stream,
             request_created_ts=t0,
-            real_stream=post.stream,
+            streaming=post.stream,
+            model_name=model_rec.model_name,
             ))
 
 
-async def code_completion_streamer(re_stream, request_created_ts, real_stream):
-    scratchpad_says: List[str]
+async def code_completion_streamer(re_stream_generator, request_created_ts, model_name, streaming):
+    scratchpad_says: Union[Dict[str, Any], List[Dict[str, Any]]]
     try:
-        async for scratchpad_says in re_stream:
-            if not real_stream:
+        async for scratchpad_says in re_stream_generator:
+            if not streaming:
+                # list of dicts
+                for x in scratchpad_says:
+                    x["model"] = model_name
                 yield json.dumps(scratchpad_says)
                 logger.info("finished request in %0.2fms" % (1000*(time.time()-request_created_ts)))
                 return
-            tmp = json.dumps(scratchpad_says)
-            yield "data: " + tmp + "\n\n"
-        if real_stream:
+            else:
+                # dict
+                scratchpad_says["model"] = model_name
+                tmp = json.dumps(scratchpad_says)
+                yield "data: " + tmp + "\n\n"
+        if streaming:
             logger.info("finished streaming in %0.2fms" % (1000*(time.time()-request_created_ts)))
             yield "data: [DONE]" + "\n\n"
     except ValueError as e:
         # ValueError is a way to stop generation and send message to the user.
         # Message must be a correct json.
         logger.info("returning error json: %s" % e)
-        if not real_stream:
+        if not streaming:
             yield str(e)
         else:
             yield "data: " + str(e) + "\n\n"
