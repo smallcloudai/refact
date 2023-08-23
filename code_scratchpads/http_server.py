@@ -101,6 +101,8 @@ class CompletionsRouter(APIRouter):
     async def code_completion(self, post: CodeCompletionCall, bearer: str = Depends(HTTPBearer(auto_error=False))):
         t0 = time.time()
         model_rec: db_code_completion_models.CompletionModelRecord = db_code_completion_models.model_lookup(post.model)
+        if model_rec is None:
+            raise HTTPException(status_code=400, detail="model '%s' is not supported" % post.model)
         tokenizer = cached_get_tokenizer(model_rec.model_name)
         module_name, Class_name = model_rec.code_completion_scratchpad.split(":")
         ScratchpadClass = importlib.import_module("code_scratchpads.scratchpads_code_completion." + module_name).__dict__[Class_name]
@@ -142,15 +144,26 @@ class CompletionsRouter(APIRouter):
 
 async def code_completion_streamer(re_stream, request_created_ts, real_stream):
     scratchpad_says: List[str]
-    async for scratchpad_says in re_stream:
+    try:
+        async for scratchpad_says in re_stream:
+            if not real_stream:
+                yield json.dumps(scratchpad_says)
+                logger.info("finished request in %0.2fms" % (1000*(time.time()-request_created_ts)))
+                return
+            tmp = json.dumps(scratchpad_says)
+            yield "data: " + tmp + "\n\n"
+        if real_stream:
+            logger.info("finished streaming in %0.2fms" % (1000*(time.time()-request_created_ts)))
+            yield "data: [DONE]" + "\n\n"
+    except ValueError as e:
+        # ValueError is a way to stop generation and send message to the user.
+        # Message must be a correct json.
+        logger.info("returning error json: %s" % e)
         if not real_stream:
-            yield json.dumps(scratchpad_says)
-            logger.info("finished request in %0.2fms" % (1000*(time.time()-request_created_ts)))
-            return
-        tmp = json.dumps(scratchpad_says)
-        yield "data: " + tmp + "\n\n"
-    logger.info("finished streaming in %0.2fms" % (1000*(time.time()-request_created_ts)))
-    yield "data: [DONE]" + "\n\n"
+            yield str(e)
+        else:
+            yield "data: " + str(e) + "\n\n"
+            yield "data: [DONE]" + "\n\n"
 
 
 if __name__ == "__main__":

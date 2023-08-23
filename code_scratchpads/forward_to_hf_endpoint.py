@@ -49,6 +49,7 @@ async def real_work(
     if stream:
         async with session.post(url, json=data, headers=headers) as response:
             async for byteline in response.content:
+                # TODO: handle response errors
                 txt = byteline.decode("utf-8").strip()
                 if not txt.startswith("data:"):
                     continue
@@ -66,5 +67,4 @@ async def real_work(
                 yield response_json
             else:
                 logger.warning("forward_to_hf_endpoint: http status %s, response text was:\n%s" % (response.status, response_txt))
-                raise ValueError("hf_endpoint says: %s" % (textwrap.shorten(response_txt, 50)))
-
+                raise ValueError(json.dumps({"error": "hf_endpoint says: %s" % (textwrap.shorten(response_txt, 50))}))
