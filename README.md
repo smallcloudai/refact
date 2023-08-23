@@ -8,7 +8,7 @@ This code converts high level code completion calls to low level prompts and con
 Simple example:
 
 ```
-curl http://127.0.0.1:8008/code-completion -k \
+curl http://127.0.0.1:8001/v1/code-completion -k \
   -H 'Content-Type: application/json' \
   -d '{
   "inputs": {
@@ -31,5 +31,5 @@ curl http://127.0.0.1:8008/code-completion -k \
 
 Output is `[{"code_completion": "\n    return \"Hello World!\"\n"}]`.
 
-To check out more examples, look at [code_scratchpads/test_api.py](code_scratchpads/test_api.py).
+To check out more examples, look at [code_scratchpads/tests/test_api.py](code_scratchpads/tests/test_api.py).
 

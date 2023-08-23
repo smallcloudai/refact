@@ -1,5 +1,4 @@
 from code_scratchpads import scratchpad_code_completion
-from code_scratchpads.scratchpads_code_completion import single_file_fim
 from code_scratchpads.models_db import db_code_completion_models
 from code_scratchpads.cached_tokenizers import cached_get_tokenizer
 from code_scratchpads import forward_to_hf_endpoint
