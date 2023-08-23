@@ -11,9 +11,18 @@ def cached_get_tokenizer(name) -> AutoTokenizer:
     for token_dict in j["added_tokens"]:
         content = token_dict["content"]
         special.append(content)
-    #     token_dict["content"] = "⬥⬥⬥" + content + "⬥⬥⬥"
-    # tokenizer.tokenizer_copy_but_does_not_encode_special_tokens = tokenizer.backend_tokenizer.from_str(
-    #     json.dumps(j)
-    # )
     tokenizer.special_tokens = special
+    # slash_n = []
+    # slash_n_slash_n = []
+    # for txt, idx in j["model"]["vocab"].items():
+    #     if "ĊĊ" in txt:
+    #         slash_n_slash_n.append(tokenizer.decode([idx]))
+    #     if "Ċ" in txt:
+    #         slash_n.append(tokenizer.decode([idx]))
+    # tokenizer.slash_n = slash_n
+    # tokenizer.slash_n_slash_n = slash_n_slash_n
     return tokenizer
+
+
+if __name__ == "__main__":
+    cached_get_tokenizer("bigcode/starcoder")
