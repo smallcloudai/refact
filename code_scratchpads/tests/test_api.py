@@ -16,7 +16,7 @@ def call_completion(
     multiline,
 ):
     r = requests.post(
-        "http://127.0.0.1:8008/code-completion",
+        "http://127.0.0.1:8001/v1/code-completion",
         json={
             "inputs": {
                 "sources": {"test.py": code},
