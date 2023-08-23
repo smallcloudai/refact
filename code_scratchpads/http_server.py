@@ -1,5 +1,6 @@
 from code_scratchpads import scratchpad_code_completion
 from code_scratchpads.scratchpads_code_completion import single_file_fim
+from code_scratchpads.models_db import db_code_completion_models
 from code_scratchpads.cached_tokenizers import cached_get_tokenizer
 from code_scratchpads import forward_to_hf_endpoint
 
@@ -15,6 +16,7 @@ import uvicorn
 import time
 import os
 import json
+import importlib
 
 
 logger = logging.getLogger("HTTP")
@@ -43,7 +45,7 @@ class SamplingParameters(BaseModel):
 
 
 class CodeCompletionCall(BaseModel):
-    model: str = Query(default="", pattern="^[a-z/A-Z0-9_\.]+$")
+    model: str = Query(default="", pattern="^[a-z/A-Z0-9_\.]*$")
     inputs: CodeCompletionTask
     parameters: SamplingParameters
     stream: bool = False
@@ -80,19 +82,34 @@ def _validate_code_completion_parameters(task: CodeCompletionTask):
 
 class CompletionsRouter(APIRouter):
     def __init__(self,
-        forward_to_hf_endpoint: str,
+        forward_to_hf_endpoint: bool,
     ):
         super().__init__()
         self._forward_to_hf_endpoint = forward_to_hf_endpoint
-        self.add_api_route("/code-completion", self.code_completion, methods=["POST"])
+        self.add_api_route("/v1/code-completion", self.code_completion, methods=["POST"])
+        self.add_api_route("/v1/login", self._login, methods=["GET"])
+
+    async def _login(self, request: Request, bearer: str = Depends(HTTPBearer(auto_error=False))):
+        if bearer is None:
+            raise HTTPException(status_code=401, detail="No API key provided")
+        logger.info("Login from %s, API key ***%s" % (request.client.host, bearer.credentials[-3:]))
+        return {
+            "account": "dummy_accout",
+            "retcode": "OK",
+        }
 
     async def code_completion(self, post: CodeCompletionCall, bearer: str = Depends(HTTPBearer(auto_error=False))):
         t0 = time.time()
-        tokenizer = cached_get_tokenizer(post.model)
-        spad: scratchpad_code_completion.ScratchpadCodeCompletion = single_file_fim.SingleFileFIM(
+        model_rec: db_code_completion_models.CompletionModelRecord = db_code_completion_models.model_lookup(post.model)
+        tokenizer = cached_get_tokenizer(model_rec.model_name)
+        module_name, Class_name = model_rec.code_completion_scratchpad.split(":")
+        ScratchpadClass = importlib.import_module("code_scratchpads.scratchpads_code_completion." + module_name).__dict__[Class_name]
+        assert issubclass(ScratchpadClass, scratchpad_code_completion.ScratchpadCodeCompletion)
+        spad: scratchpad_code_completion.ScratchpadCodeCompletion = ScratchpadClass(
             request_created_ts=t0,
             tokenizer=tokenizer,
             max_new_tokens=post.parameters.max_new_tokens,
+            supports_stop=model_rec.supports_stop,
             **_validate_code_completion_parameters(post.inputs)
         )
         sampling_parameters = post.parameters.dict(exclude_unset=True)
@@ -100,15 +117,22 @@ class CompletionsRouter(APIRouter):
         t1 = time.time()
         prompt = spad.prompt(2048, sampling_parameters_to_patch=sampling_parameters)
         t2 = time.time()
-        text_generator: AsyncGenerator[str, None] = forward_to_hf_endpoint.real_work(
-            model_name=post.model,
-            prompt=prompt,
-            sampling_parameters=sampling_parameters,
-            stream=post.stream,
-            auth_from_client=(bearer.credentials if bearer else None),
-        )
+        text_generator: AsyncGenerator[str, None]
+        if self._forward_to_hf_endpoint:
+            text_generator = forward_to_hf_endpoint.real_work(
+                model_name=model_rec.model_name,
+                prompt=prompt,
+                sampling_parameters=sampling_parameters,
+                stream=post.stream,
+                auth_from_client=(bearer.credentials if bearer else None),
+            )
+        else:
+            # TODO: alternatives to forward_to_hf_endpoint, default local inference
+            pass
         re_stream = spad.re_stream_response(text_generator)
-        logger.info("code-completion init+tokenizer %0.2fms, prompt %0.2fms" % (1000*(t1-t0), 1000*(t2-t1)))
+        logger.info("start code-completion model='%s' init+tokenizer %0.2fms, prompt %0.2fms" % (
+            model_rec.model_name,
+            1000*(t1-t0), 1000*(t2-t1)))
         return StreamingResponse(code_completion_streamer(
             re_stream,
             request_created_ts=t0,
@@ -121,24 +145,23 @@ async def code_completion_streamer(re_stream, request_created_ts, real_stream):
     async for scratchpad_says in re_stream:
         if not real_stream:
             yield json.dumps(scratchpad_says)
+            logger.info("finished request in %0.2fms" % (1000*(time.time()-request_created_ts)))
             return
         tmp = json.dumps(scratchpad_says)
         yield "data: " + tmp + "\n\n"
+    logger.info("finished streaming in %0.2fms" % (1000*(time.time()-request_created_ts)))
     yield "data: [DONE]" + "\n\n"
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--forward-to-hf-endpoint", type=str, help="Forward to this endpoint")
+    parser.add_argument("--forward-to-hf-endpoint", type=bool, default=True)
     args = parser.parse_args()
 
     app = FastAPI(title="Code Completion", description="Code Completion for Python")
     app.include_router(CompletionsRouter(forward_to_hf_endpoint=args.forward_to_hf_endpoint))
 
     DEBUG = int(os.environ.get("DEBUG", "0"))
-    # Startup event of FastAPI
-    uvicorn_logger = logging.getLogger("uvicorn.error")
-
     logging.basicConfig(
         level=logging.DEBUG if DEBUG else logging.INFO,
         format='%(asctime)s %(message)s',

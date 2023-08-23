@@ -23,10 +23,11 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
         self._suffix_line0cut: Optional[str] = None
 
     def prompt(self, context_size: int, sampling_parameters_to_patch: Dict[str, Any]):
-        stop = [self._eot, "\n\n"]
-        if not self.multiline:
-            stop.append("\n")
-        sampling_parameters_to_patch["stop"] = stop
+        if self.supports_stop:
+            stop = [self._eot, "\n\n"]
+            if not self.multiline:
+                stop.append("\n")
+            sampling_parameters_to_patch["stop"] = stop
         txt: List[str] = self.sources[self.cursor_file]
         if self.cursor_line >= len(txt):
             prefix_lines = txt
