@@ -3,6 +3,7 @@ import time
 import termcolor
 
 from refact_scratchpads.scratchpad_utils import trim_context_infill
+from refact_scratchpads_no_gpu.gpt_toolbox import vecdb_call, SMC_FUNCTIONS
 
 from typing import List, Any, Dict, Optional, Union, Callable, Set
 
@@ -318,6 +319,23 @@ class ScratchpadHuggingfaceStarChat(ScratchpadChatBase):
         self._chat_assistant = self._encode_one_token("<|assistant|>")
         self._chat_user = self._encode_one_token("<|user|>")
 
+        self._on_function = False
+        self._function_call = self._get_function_from_msg()
+
+    def _get_function_from_msg(self) -> Dict:
+        if not self._messages:
+            return {}
+        last_m = self._messages[-1]
+        function = last_m.get('function')
+        if not function or function not in SMC_FUNCTIONS:
+            return {}
+        arg = last_m['content'].strip()
+        self._on_function = True
+        return {
+            'name': function,
+            'arguments': arg
+        }
+
     def _prompt(self) -> str:
         def _wrap_system_token(t: int) -> str:
             return self._tokenizer.decode([t]) + "\n"
@@ -333,6 +351,17 @@ class ScratchpadHuggingfaceStarChat(ScratchpadChatBase):
             text += message["content"] + _wrap_system_token(self._chat_end)
         text += _wrap_system_token(self._chat_assistant)
         return text
+
+    def completion(self, final: bool):
+        if self._on_function:
+            pass
+        return {
+            "chat__messages": self._messages.append({
+                'role': "assistant",
+                'content': self._tokenizer.decode(self._completion),
+                }
+            )
+        }
 
 
 class ScratchpadHuggingfaceWizard(ScratchpadChatBase):

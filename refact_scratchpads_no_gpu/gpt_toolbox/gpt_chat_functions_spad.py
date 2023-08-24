@@ -60,18 +60,18 @@ class GptChatWithFunctions(ascratch.AsyncScratchpad):
         self._enc = None
 
     def _get_function_from_msg(self) -> Dict:
-        if self._messages:
-            last_m = self._messages[-1]
-            function = last_m.get('function')
-            if not function or function not in SMC_FUNCTIONS:
-                return {}
-            arg = last_m['content'].strip()
-            self._on_function = True
-            return {
-                'name': function,
-                'arguments': arg,
-            }
-        return {}
+        if not self._messages:
+            return {}
+        last_m = self._messages[-1]
+        function = last_m.get('function')
+        if not function or function not in SMC_FUNCTIONS:
+            return {}
+        arg = last_m['content'].strip()
+        self._on_function = True
+        return {
+            'name': function,
+            'arguments': arg
+        }
 
     @property
     def _model_name(self) -> str:

@@ -193,6 +193,7 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
                 log("TIMEOUT %s" % ticket.id())
                 msg = {"status": "error", "human_readable_message": "timeout"}
             if "choices" in msg:
+                print('msg before', msg)
                 for ch in msg["choices"]:
                     idx = ch["index"]
                     if "content" in ch:
@@ -217,7 +218,11 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
                         for mi in range(0, message_index_has_delta):
                             ch["messages"][mi] = {}
                         ch['messages'] = ch['messages'][-1]
-
+                    elif "messages" not in ch: ...
+                        # GPU chats support
+                        # ch['messages'] = {'role': ch['role'], 'delta': ch['delta']}
+                        # del ch['role'], ch['delta']
+            print('msg', msg)
             tmp = json.dumps(msg)
             yield "data: " + tmp + "\n\n"
             log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))

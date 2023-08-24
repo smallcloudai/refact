@@ -151,7 +151,7 @@ class VecDBAsyncAPI(VecDBAPI):
                 data = json.loads(await resp.text())
                 return data
 
-    async def update_provider(self, provider: str, batch_size: int = 10) -> AsyncIterator[Dict[str, str]]:
+    async def update_provider(self, provider: str, batch_size: int = 1) -> AsyncIterator[Dict[str, str]]:
         async with aiohttp.ClientSession() as session:
             session.headers.update(self._headers())
             async with session.post(
@@ -166,6 +166,25 @@ class VecDBAsyncAPI(VecDBAPI):
                     async for chunk in resp.content.iter_any():
                         if chunk:
                             yield json.loads(chunk)
+
+    async def get_all_file_names(self) -> List[str]:
+        async with aiohttp.ClientSession() as session:
+            session.headers.update(self._headers())
+            async with session.get(f'{self._base_url}/v1/retrieve-files', timeout=15) as resp:
+                assert resp.status == 200, f'Error: {resp.text}'
+                data = json.loads(await resp.text())
+                return data['results']
+
+    async def delete_files_by_name(self, file_names: Iterable[str]):
+        assert file_names, 'file_names should not be empty'
+        async with aiohttp.ClientSession() as session:
+            session.headers.update(self._headers())
+            async with session.post(
+                f'{self._base_url}/v1/delete-files',
+                json={'file_names': list(file_names)},
+                timeout=120
+            ) as resp:
+                assert resp.status == 200, f'Error: {resp.text}'
 
     # async def delete_all_records(self):
     #     async with aiohttp.ClientSession() as session:
@@ -205,7 +224,7 @@ class VecDBAsyncAPI(VecDBAPI):
                 Iterable[Path],
                 Path,
             ],
-            batch_size: int = 10
+            batch_size: int = 1
     ):
         files = self._resolve_files(files)
         total = ceil(len(files) / batch_size)
@@ -222,9 +241,9 @@ class VecDBAsyncAPI(VecDBAPI):
                 async with session.post(
                     f'{self._base_url}/v1/bulk_upload',
                     json=data,
-                    timeout=6 * batch_size
+                    timeout=240 * batch_size
                 ) as resp:
-                    pass
+                    assert resp.status == 200, f'Error: {resp.text}'
 
 
 if __name__ == '__main__':

@@ -1,6 +1,4 @@
-import os
-
-from typing import Any, AsyncIterator, Dict, List, Iterator
+from typing import Any, AsyncIterator, Dict, List, Iterator, Callable
 
 import ujson as json
 
@@ -9,7 +7,7 @@ from refact_vecdb import VecDBAsyncAPI
 __all__ = ['vecdb_call']
 
 
-def vecdb_prompt(query: str, candidates: Any) -> str:
+def vecdb_prompt(candidates: Any) -> str:
     candidates = json.dumps([{
         'short_name': c['file_name'],
         'snippet': c['text']
@@ -40,7 +38,8 @@ def cut_candidates(
 async def vecdb_call(
         enc: Any,
         query: str,
-        max_tokens: int = 1024
+        max_tokens: int = 1024,
+        prompt: Callable = vecdb_prompt
 ) -> AsyncIterator[
     Dict[str, Any]
 ]:
@@ -69,7 +68,7 @@ async def vecdb_call(
 
     yield {
         "role": "user",
-        "content": vecdb_prompt(query, candidates),
+        "content": prompt(candidates),
         "gui_role": "documents",
         "gui_content": search_result,
         "gui_function": "vecdb",

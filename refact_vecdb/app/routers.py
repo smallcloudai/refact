@@ -4,16 +4,18 @@ import itertools
 from typing import Dict, Iterable, List
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, UploadFile
 from fastapi import Response, Request
 from fastapi.responses import StreamingResponse
 
 from refact_vecdb.app.context import CONTEXT as C
 from refact_vecdb.app.db_models import FileChunksText
 from refact_vecdb.app.embed_spads import embed_providers
-from refact_vecdb.app.params import FindQuery, FilesBulkUpload, VecDBUpdateProvider, FileUpload
+from refact_vecdb.app.params import FindQuery, FilesBulkUpload, VecDBUpdateProvider, FileUpload, DeleteFilesByNames
 from refact_vecdb.app.bootstrap import load_vecdb
-from refact_vecdb.app.crud import insert_files, delete_all_records, on_model_change_update_embeddings
+from refact_vecdb.app.crud import \
+    insert_files, delete_all_records, on_model_change_update_embeddings, \
+    get_all_file_names, delete_files_by_name
 
 
 class StatusRouter(APIRouter):
@@ -22,6 +24,9 @@ class StatusRouter(APIRouter):
         super(StatusRouter, self).add_api_route("/v1/status", self._status, methods=["GET"])
         super(StatusRouter, self).add_api_route("/v1/files-stats", self._files_stats, methods=["GET"])
         super(StatusRouter, self).add_api_route("/v1/update-provider", self._update_provider, methods=["POST"])
+        super(StatusRouter, self).add_api_route("/v1/retrieve-files", self._retrieve_files, methods=["GET"])
+        super(StatusRouter, self).add_api_route("/v1/delete-files", self._delete_files_by_name, methods=["POST"])
+
 
     async def _status(self, request: Request):
         x_token = request.headers.get('X-Auth-Token')
@@ -47,6 +52,7 @@ class StatusRouter(APIRouter):
 
     async def _update_provider(self, data: VecDBUpdateProvider, request: Request):
         x_token = request.headers.get('X-Auth-Token')
+
         C.provider = data.provider
         C.vecdb_update_required = True
         C.status_ongoing.setdefault('default', {})
@@ -64,6 +70,20 @@ class StatusRouter(APIRouter):
             C.status_ongoing['default']['indexing'] = {'status': 'done'}
 
         return StreamingResponse(update_embeddings())
+
+    async def _retrieve_files(self, request: Request):
+        x_token = request.headers.get('X-Auth-Token')
+
+        return Response(content=json.dumps({
+            "results": list(get_all_file_names())
+        }))
+
+    async def _delete_files_by_name(self, data: DeleteFilesByNames, request: Request):
+        x_token = request.headers.get('X-Auth-Token')
+
+        delete_files_by_name(data.file_names)
+        print(f'Deleting files:\n{data.file_names}')
+        return Response(status_code=200)
 
 
 class FindRouter(APIRouter):

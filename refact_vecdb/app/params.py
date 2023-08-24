@@ -21,4 +21,8 @@ class VecDBUpdateProvider(BaseModel):
     batch_size: int
 
 
+class DeleteFilesByNames(BaseModel):
+    file_names: List[str]
+
+
 FileUpload = namedtuple('FileUpload', ['name', 'text'])

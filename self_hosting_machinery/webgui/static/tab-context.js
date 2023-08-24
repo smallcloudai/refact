@@ -84,7 +84,9 @@ async function vecdb_render_select_model(available_providers, provider) {
     ) {
         return;
     }
-    console.log('fetching models...')
+    if (!provider || !available_providers) {
+        return;
+    }
     select_model_div.innerHTML = '';
     for (let p of available_providers) {
         let option = document.createElement('option');
@@ -144,6 +146,7 @@ async function render_vecdb_status() {
                 if (prev_state && prev_state !== 'done') {
                     select_model_div.removeAttribute('disabled');
                     fetch_vecdb_status()
+                    fetch_and_set_files_loaded_cnt()
                 }
             }
             indexing_status_span.setAttribute('data-prev-state', indexing_status);

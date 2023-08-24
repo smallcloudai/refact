@@ -2,7 +2,7 @@ from datetime import datetime
 
 from hashlib import sha1
 from math import ceil
-from typing import List, Optional, Iterator
+from typing import List, Optional, Iterator, Iterable
 
 from more_itertools import chunked
 
@@ -83,6 +83,27 @@ def create_and_insert_chunks(files: List[FileUpload]):
         FilesFullText.create(**m)
 
 
+def delete_files_by_name(names_db_drop: Iterable[str]) -> None:
+    def bulk_candidates_str(names: Iterable[str]) -> str:
+        return "(" + ", ".join(f"'{n}'" for n in names) + ")"
+
+    delete_names_str = bulk_candidates_str(names_db_drop)
+
+    tables = ['file_chunks_embedding', 'file_chunks_text', 'files_full_text']
+    tables_drop_ids = {}
+    for t in tables:
+        for row in C.c_session.execute(
+                f"""
+            select id from {t} where name in {delete_names_str} ALLOW FILTERING;
+            """
+        ):
+            tables_drop_ids.setdefault(t, []).append(row['id'])
+
+    for t, ids in tables_drop_ids.items():
+        q = f'delete from {t} where id in {bulk_candidates_str(ids)};'
+        C.c_session.execute(q)
+
+
 def insert_files(files: List[FileUpload]) -> int:
     file_names = {f.name for f in files}
 
@@ -103,24 +124,7 @@ def insert_files(files: List[FileUpload]) -> int:
             names_db_drop.add(name)
 
     if names_db_drop:
-
-        def bulk_candidates_str(names) -> str:
-            return "(" + ", ".join(f"'{n}'" for n in names) + ")"
-
-        delete_names_str = bulk_candidates_str(names_db_drop)
-
-        tables = ['file_chunks_embedding', 'file_chunks_text', 'files_full_text']
-        tables_drop_ids = {}
-        for t in tables:
-            for row in C.c_session.execute(
-                f"""
-                select id from {t} where name in {delete_names_str} ALLOW FILTERING;
-                """
-            ):
-                tables_drop_ids.setdefault(t, []).append(row['id'])
-
-        for t, ids in tables_drop_ids.items():
-            C.c_session.execute(f'delete from {t} where id in {bulk_candidates_str(ids)} ALLOW FILTERING;')
+        delete_files_by_name(names_db_drop)
 
     files_init_len = files.__len__()
     files = [f for f in files if f.name not in names_rejected]
@@ -138,3 +142,13 @@ def delete_all_records() -> None:
     C.c_session.execute('TRUNCATE file_chunks_embedding;')
     C.c_session.execute('TRUNCATE file_chunks_text;')
     C.c_session.execute('TRUNCATE files_full_text;')
+
+
+def get_all_file_names() -> Iterator[str]:
+    for row in C.c_session.execute(
+        """
+        select name from files_full_text;
+        """
+    ):
+        yield row['name']
+
