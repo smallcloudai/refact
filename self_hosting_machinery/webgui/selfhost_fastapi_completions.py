@@ -68,7 +68,6 @@ class NlpCompletion(NlpSamplingParams):
     n: int = 1
     echo: bool = False
     stream: bool = False
-    account: str = "XXX"
 
 
 class POI(BaseModel):
@@ -91,7 +90,6 @@ class DiffCompletion(NlpSamplingParams):
     max_edits: int = 4
     stream: bool = False
     poi: List[POI] = []
-    account: str = "XXX"
 
 
 class ChatMessage(BaseModel):
@@ -104,7 +102,6 @@ class ChatContext(NlpSamplingParams):
     n: int = 1
     model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
     function: str = Query(default="chat", regex="^([a-z0-9\.\-]+)$")
-    account: str = "XXX"
 
 
 async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts):
@@ -299,17 +296,17 @@ class CompletionsRouter(APIRouter):
             "human_readable_message": "API key verified",
         }
 
-    async def _completions(self, post: NlpCompletion):
+    async def _completions(self, post: NlpCompletion, account: str = "XXX"):
         ticket = Ticket("comp-")
         req = post.clamp()
         model_name, err_msg = completion_resolve_model(self._inference_queue)
         if err_msg:
-            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, post.account))
+            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)
-        log("%s model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, post.account))
+        log("%s model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
         req.update({
             "object": "text_completion_req",
-            "account": post.account,
+            "account": account,
             "prompt": post.prompt,
             "model": model_name,
             "stream": post.stream,
@@ -322,7 +319,7 @@ class CompletionsRouter(APIRouter):
         seen = [""] * post.n
         return StreamingResponse(completion_streamer(ticket, post, self._timeout, seen, req["created"]))
 
-    async def _contrast(self, post: DiffCompletion, request: Request):
+    async def _contrast(self, post: DiffCompletion, request: Request, account: str = "XXX"):
         if post.function != "diff-anywhere":
             if post.cursor_file not in post.sources:
                 raise HTTPException(status_code=400, detail="cursor_file='%s' is not in sources=%s" % (post.cursor_file, list(post.sources.keys())))
@@ -340,15 +337,15 @@ class CompletionsRouter(APIRouter):
         else:
             model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
         if err_msg:
-            log("%s model resolve \"%s\" func \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, post.function, err_msg, post.account))
+            log("%s model resolve \"%s\" func \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, post.function, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)
-        log("%s model resolve \"%s\" func \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, post.function, model_name, post.account))
+        log("%s model resolve \"%s\" func \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, post.function, model_name, account))
         if post.function == "highlight":
             post.max_tokens = 0
         req = post.clamp()
         req.update({
             "object": "diff_completion_req",
-            "account": post.account,
+            "account": account,
             "model": model_name,
             "intent": post.intent,
             "sources": post.sources,
@@ -364,19 +361,19 @@ class CompletionsRouter(APIRouter):
             req["poi"] = post_raw["poi"]
         ticket.call.update(req)
         q = self._inference_queue.model_name_to_queue(ticket, model_name)
-        # kt, kcomp = await _model_hit(red, ticket, req, model_name, post.account)
+        # kt, kcomp = await _model_hit(red, ticket, req, model_name, account)
         self._id2ticket[ticket.id()] = ticket
         await q.put(ticket)
         return StreamingResponse(diff_streamer(ticket, post, self._timeout, req["created"]))
 
-    async def _chat(self, post: ChatContext, request: Request):
+    async def _chat(self, post: ChatContext, request: Request, account: str = "XXX"):
         ticket = Ticket("comp-")
 
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
         if err_msg:
-            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, post.account))
+            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)
-        log("%s chat model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, post.account))
+        log("%s chat model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
 
         req = post.clamp()
         post_raw = await request.json()
@@ -384,11 +381,11 @@ class CompletionsRouter(APIRouter):
         if len(messages) == 0:
             return StreamingResponse(
                 error_string_streamer(
-                    ticket.id(), "Your messsage is too large, the limit is 4k characters", post.account, req["created"]))
+                    ticket.id(), "Your messsage is too large, the limit is 4k characters", account, req["created"]))
         req.update({
             "id": ticket.id(),
             "object": "chat_completion_req",
-            "account": post.account,
+            "account": account,
             "model": model_name,
             "function": post.function,
             "messages": messages,
