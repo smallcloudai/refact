@@ -4,15 +4,8 @@ import json
 from typing import Dict
 
 from self_hosting_machinery import env
+from refact_data_pipeline.finetune.finetune_utils import get_run_model_name
 from refact_data_pipeline.finetune.finetune_utils import default_finetune_model
-
-
-def get_run_model_name(run_dir: str) -> str:
-    config_json_fn = os.path.join(run_dir, "config.json")
-    if not os.path.isfile(config_json_fn):
-        raise RuntimeError("get run model name: no config.json found")
-    with open(config_json_fn) as f:
-        return json.load(f).get("model_name", default_finetune_model)
 
 
 def find_best_lora(model_name: str) -> Dict[str, str]:

@@ -5,13 +5,20 @@ import time
 from known_models_db.refact_known_models import models_mini_db
 from refact_data_pipeline.finetune.finetune_train_defaults import finetune_train_defaults
 
-from self_hosting_machinery.scripts import best_lora
 from self_hosting_machinery import env
 
 from typing import Any, Dict, Optional, Callable
 
 
 default_finetune_model = "CONTRASTcode/3b/multi"
+
+
+def get_run_model_name(run_dir: str) -> str:
+    config_json_fn = os.path.join(run_dir, "config.json")
+    if not os.path.isfile(config_json_fn):
+        raise RuntimeError("get run model name: no config.json found")
+    with open(config_json_fn) as f:
+        return json.load(f).get("model_name", default_finetune_model)
 
 
 def get_finetune_runs():
@@ -30,7 +37,7 @@ def get_finetune_runs():
             "status": "unknown",  # working, starting, completed, failed
         }
         try:
-            d["model_name"] = best_lora.get_run_model_name(dir_path)
+            d["model_name"] = get_run_model_name(dir_path)
         except RuntimeError:
             continue
         status_fn = os.path.join(dir_path, "status.json")
