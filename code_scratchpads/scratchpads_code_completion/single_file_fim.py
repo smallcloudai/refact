@@ -91,5 +91,5 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
             cut_at.append(txt.find("\n"))
         cut_at = [x for x in cut_at if x != -1]
         if cut_at:
-            return txt[:min(cut_at)]
-        return txt
+            txt = txt[:min(cut_at)]
+        return txt.rstrip()
