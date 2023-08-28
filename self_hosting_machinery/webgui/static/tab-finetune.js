@@ -19,6 +19,7 @@ let show_scan_error = false;
 
 let fine_tuning_pane = null;
 let fine_tuning_button = null;
+let fine_tuning_settings = null;
 // let checkpoint_name = "best";
 // let selected_model = ""; // we don't have model choice, empty for now
 
@@ -45,28 +46,6 @@ function finetune_data() {
             render_lora_switch();
             render_runs();
             render_model_select();
-            // filtering_status();
-            // filter_working();
-            // if(data.filter_working_now) {
-            //     fine_filter_button.innerHTML = `Stop filtering`;
-            //     fine_filter_button.removeEventListner('click', run_gpu_filtering);
-            //     fine_filter_button.addEventListener('click', stop_filtering);
-            // }
-            // else {
-            //     fine_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
-            //     fine_filter_button.removeEventListner('click', stop_filtering);
-            //     fine_filter_button.addEventListener('click', run_gpu_filtering);
-            // }
-            // if(data.filtering_status === 'finished' && tab_files_data !== null && tab_files_data.uploaded_files.length > 0) {
-            //     fine_tuning_pane.classList.remove('pane-disabled');
-            //     fine_tuning_button.disabled = false;
-            // } else {
-            //     fine_tuning_pane.classList.add('pane-disabled');
-            //     fine_tuning_button.disabled = true;
-            // }
-            // if(tab_files_data.uploaded_files.length === 0) {
-            //     reset_ftf_progress();
-            // }
         });
 }
 
@@ -245,7 +224,7 @@ function render_runs() {
         start_finetune_button.innerHTML = '<i class="bi bi-gpu-card"></i> Run Now';
     }
     start_finetune_button.setAttribute("need_to_stop", is_working)
-    start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
+    // start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
 }
 
 const find_checkpoints_by_run = (run_id) => {
@@ -604,43 +583,68 @@ function revert_to_default(input_id) {
 
 function finetune_status() {
     if(!downloaded_stats) { return; }
-    // finetune working
     if(downloaded_stats.finetune_filter_stats.status) {
         document.querySelector('.ftf-status').classList.remove('d-none');
         document.querySelector('.start-funetune-stats').classList.remove('d-none');
         document.querySelector('.ftf-status span').innerHTML = downloaded_stats.finetune_filter_stats.status;
     }
-    if(downloaded_stats.finetune_filter_stats.status === 'filtering') {
-        const progress_container = document.querySelector('.ftf-progress');
-        progress_container.classList.remove('d-none')
-        const eta_state = document.querySelector('.ftf-eta');
-        eta_state.innerHTML = 'ETA: ' + downloaded_stats.finetune_filter_stats.eta_minutes + ' minute(s)';
+    const progress_container = document.querySelector('.ftf-progress');
+    const eta_state = document.querySelector('.ftf-eta');
+    const ftf_bar = document.querySelector('.ftf-bar');
+    if(!downloaded_stats.finetune_working_now) {
+        switch(downloaded_stats.finetune_filter_stats.status) {
+            case 'starting':
+                fine_tuning_pane.classList.add('pane-disabled');       
+                break;
+            case 'filtering':
+                fine_filter_settings.disabled = true;
+                progress_container.classList.remove('d-none')
+                eta_state.innerHTML = 'ETA: ' + downloaded_stats.finetune_filter_stats.eta_minutes + ' minute(s)';
+                break;
+            case 'failed':
+                document.querySelector('.ftf-error').classList.remove('d-none');
+                document.querySelector('.ftf-error span').innerHTML = downloaded_stats.finetune_filter_stats.error;
+                eta_state.innerHTML = '';
+                progress_container.classList.add('d-none');
+                ftf_bar.style.width = "0%";
+                fine_filter_settings.disabled = false;
+                break;
+            case 'finished':
+                progress_container.classList.add('d-none');
+                eta_state.innerHTML = '';
+                ftf_bar.style.width = "100%";
+                fine_filter_settings.disabled = false;
+                fine_filter_button.disabled = false;
+                fine_tuning_button.disabled = false;
+                fine_tuning_pane.classList.remove('pane-disabled');
+                break;
+        }
     }
-    if(downloaded_stats.finetune_filter_stats.status === 'failed') {
-        document.querySelector('.ftf-error').classList.remove('d-none');
-        document.querySelector('.ftf-error span').innerHTML = downloaded_stats.finetune_filter_stats.error;
-    }
-    if(downloaded_stats.finetune_working_now && !downloaded_stats.finetune_filter_working_now) {
-        // fine_tuning_pane.classList.remove('pane-disabled');
-        // fine_tuning_button.disabled = false;
-        // fine_filter_button.innerHTML = `Start filtering`;
+    if(downloaded_stats.finetune_working_now && !downloaded_stats.filter_working_now) {
+        fine_tuning_pane.classList.remove('pane-disabled');
+        fine_filter_pane.classList.add('pane-disabled');
+        fine_filter_button.disabled = true;
+        fine_tuning_settings.disabled = true;
     }
     // filter working
     if(downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
-        // fine_tuning_pane.classList.add('pane-disabled');
-        // fine_tuning_button.disabled = true;
+        fine_tuning_pane.classList.add('pane-disabled');
         if(!fine_filter_button.querySelector('.spinner-border')) {
             fine_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop filtering`;
         }
         render_ftf_stats(downloaded_stats.finetune_filter_stats);
-        // render_ftf_progress(downloaded_stats.finetune_filter.filtering_progress);
-
     }
     // both not working
     if(!downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
-        // fine_tuning_pane.classList.remove('pane-disabled');
-        // fine_tuning_button.disabled = false;
+        if(tab_files_data && !tab_files_data.hasOwnProperty('scan_finished') || !tab_files_data.scan_finished) {
+            return;
+        }
         fine_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
+        fine_tuning_pane.classList.remove('pane-disabled');
+        fine_filter_pane.classList.remove('pane-disabled');
+        fine_filter_button.disabled = false;
+        fine_tuning_button.disabled = false;
+        fine_tuning_settings.disabled = false;
     }
 }
 
@@ -658,32 +662,6 @@ function filtering_button() {
         stop_filtering();
     }
 }
-function finetuning_button() {
-
-}
-
-// function run_gpu_filtering() {
-//     console.log('status ====>', tab_files_data);
-//     if(tab_files_data.scan_finished && tab_files_data.scan_status === "completed") {
-//         fine_filter_button.disabled = true;
-//         do_starting_state();
-//         start_filtering();
-//     }
-    
-//     // switch (status) {
-//     //     case 'undefined':
-//     //     case 'interrupted':
-//     //     case 'failed':
-//     //     case 'error':
-//     //     case 'finished':
-//     //         do_starting_state();
-//     //         run_now();
-//     //         break;
-//     //     case 'starting':
-//     //     default:
-//     //         stop_filtering();
-//     // }
-// }
 
 function start_filtering() {
     fetch("/tab-finetune-run-now?filter_only=1")
@@ -711,6 +689,10 @@ function render_ftf_stats(data) {
         ftf_wrapper.innerHTML = '';
         const content = `<h6>GPU Filtering stats</h6><div style="display:flex;"><div class="margin-right: 20px;">Accepted: ${data.accepted} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=rejected">Full list</a></div></div>`;
         ftf_wrapper.innerHTML = content;
+        const total_steps = data.total_steps;
+        const working_steps = data.worked_steps;
+        const percentage = (Number(working_steps) / Number(total_steps)) * 100;
+        render_ftf_progress(percentage);
     }
 }
 
@@ -731,15 +713,17 @@ function get_filters_settings(defaults = false) {
     });
 }
 
-// function render_filter_progress(progress_value) {
-//     fine_filter_progress.style.width = progress_value + "%";
-// }
-// function render_ftf_progress(filtering_progress) {
-//     const ftf_bar = document.querySelector('.ftf-bar');
-//     ftf_bar.style.width = filtering_progress + "%";
-// }
+function render_ftf_progress(filtering_progress) {
+    console.log('filtering_progress',filtering_progress);
+    const ftf_bar = document.querySelector('.ftf-bar');
+    ftf_bar.style.width = filtering_progress + "%";
+}
 
 function reset_ftf_progress() {
+    const fine_filter_status = document.querySelector('.ftf-status span');
+    fine_filter_status.innerHTML = '';
+    const fine_filter_stats = document.querySelector('.ftf-stats');
+    fine_filter_stats.innerHTML = '';
     const eta_state = document.querySelector('.ftf-eta');
     eta_state.innerHTML = '';
     const progress_container = document.querySelector('.ftf-progress');
@@ -783,16 +767,6 @@ function get_tab_files() {
         .then(function(data) {
             console.log('tab-files-get',data);
             tab_files_data = data;
-            // if(Object.keys(data.uploaded_files).length === 0) {
-            //     // fine_filter_pane.classList.add('pane-disabled');
-            //     // fine_filter_button.disabled = true;
-            //     // fine_filter_settings.disabled = true;
-            //     // fine_tuning_button.disabled = true;    
-            //     // fine_tuning_pane.classList.add('pane-disabled');
-            //     // document.querySelector('.ftf-status').classList.add('d-none');
-            //     // document.querySelector('.start-funetune-stats').classList.add('d-none');
-            //     // reset_ftf_progress();
-            // }
             if(data.scan_error && data.scan_error.length > 0) {
                 let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
                 const scan_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
@@ -802,104 +776,16 @@ function get_tab_files() {
                     show_scan_error = true;
                 }
             }
-            if(data['scan_finished'] !== undefined && data.scan_finished) {
-                if(fine_filter_pane.classList.contains('pane-disabled')) {
-                    fine_filter_button.disabled = false;
+            if(downloaded_stats && !downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
+                if(data.hasOwnProperty('scan_finished') && data.scan_finished) {
+                    fine_tuning_pane.classList.remove('pane-disabled');
                     fine_filter_pane.classList.remove('pane-disabled');
                 }
-            } else {
-                if(!fine_filter_pane.classList.contains('pane-disabled')) {
+                else {
+                    fine_tuning_pane.classList.add('pane-disabled');
                     fine_filter_pane.classList.add('pane-disabled');
-                    fine_filter_button.disabled = true;
                 }
             }
-            // if(!data.hasOwnProperty('filestats_ftf')) {
-            //     return;
-            // }
-            // const status = data.filestats_ftf.status;
-            // if(status !== undefined) {
-            //     fine_filter_button.setAttribute("ftf_status", status);
-            //     if(Object.keys(data.uploaded_files).length > 0) {
-            //         document.querySelector('.ftf-status').classList.remove('d-none');
-            //         document.querySelector('.start-funetune-stats').classList.remove('d-none');
-            //     }
-            //     if(!data.filestats_ftf.error || data.filestats_ftf.error === '') {
-            //         if(fine_filter_error && !fine_filter_error.classList.contains('d-none')) {
-            //             fine_filter_error.classList.add('d-none');
-            //         }
-            //         fine_filter_error.querySelector('span').innerHTML = '';
-            //     }
-            //     if(data.filestats_ftf.eta_minutes && data.filestats_ftf.eta_minutes !== 0) {
-            //         const eta_state = document.querySelector('.ftf-eta');
-            //         eta_state.innerHTML = 'ETA: ' + data.filestats_ftf.eta_minutes + ' minute(s)';
-            //         const progress_container = document.querySelector('.ftf-progress');
-            //         progress_container.classList.remove('d-none');
-            //         render_ftf_progress(data.filtering_progress);
-            //     }
-            //     switch(status) {
-            //         case undefined:
-            //         case 'interrupted':
-            //             fine_filter_button.disabled = false;
-            //             fine_filter_settings.disabled = false;
-            //             if (status !== undefined) {
-            //                 fine_filter_status.innerHTML = status;
-            //             }
-            //             fine_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
-            //             reset_ftf_progress();
-            //             break;
-            //         case 'finished':
-            //             if (status !== undefined) {
-            //                 fine_filter_status.innerHTML = status;
-            //             }
-            //             fine_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
-            //             reset_ftf_progress();
-            //             if(Object.keys(data.uploaded_files).length > 0) {
-            //                 fine_filter_button.disabled = false;
-            //                 fine_filter_settings.disabled = false;
-            //                 fine_tuning_button.disabled = false;
-            //                 fine_tuning_pane.classList.remove('pane-disabled');
-            //             }
-            //             break;
-            //         case 'starting':
-            //             do_starting_state()
-            //             break;
-            //         case 'error':
-            //             fine_filter_button.disabled = true;
-            //             fine_filter_status.innerHTML = status;
-            //             fine_filter_settings.disabled = false;
-            //             reset_ftf_progress();
-            //             if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
-            //                 if(fine_filter_error && fine_filter_error.classList.contains('d-none')) {
-            //                     fine_filter_error.classList.remove('d-none');
-            //                 }
-            //                 fine_filter_error.querySelector('span').innerHTML = data.filestats_ftf.error;
-            //             }
-            //             break;
-            //         case 'failed':
-            //             fine_filter_status.innerHTML = status;
-            //             fine_filter_settings.disabled = false;
-            //             reset_ftf_progress();
-            //             if(data.filestats_ftf.error && data.filestats_ftf.error !== '') {
-            //                 if(fine_filter_error && fine_filter_error.classList.contains('d-none')) {
-            //                     fine_filter_error.classList.remove('d-none');
-            //                 }
-            //                 fine_filter_error.querySelector('span').innerHTML = data.filestats_ftf.error;
-            //             }
-            //             break;
-            //         default:
-            //             fine_filter_button.disabled = false;
-            //             fine_filter_button.innerHTML = `Stop filter`;
-            //             if(!document.querySelector('.sources-run-button .spinner-border')) {
-            //                 fine_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Stop filter`;
-            //                 fine_filter_status.innerHTML = data.filestats_ftf.status;
-            //             }
-            //             document.querySelector('.ftf-status').classList.remove('d-none');
-            //             document.querySelector('.start-funetune-stats').classList.remove('d-none');
-            //             fine_filter_pane.classList.remove('pane-disabled');
-            //             fine_filter_settings.disabled = true
-            //             break;
-            //     }
-            // }
         });
 }
 
@@ -918,6 +804,7 @@ export async function init() {
     fine_filter_button.disabled = true;
     fine_tuning_button = document.querySelector('.tab-finetune-run-now');
     fine_tuning_button.disabled = true;
+    fine_tuning_settings = document.querySelector('.tab-finetune-fine-settings');
 
     const log_container = document.querySelector('.log-container');
     function handle_auto_scroll() {

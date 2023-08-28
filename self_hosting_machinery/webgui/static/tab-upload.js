@@ -1,5 +1,6 @@
 let tab_files_data = null;
 let show_scan_error = false;
+let show_info_toast = false;
 let sort_type = 'filetype';
 let sort_order = 'asc';
 let sort_started = false;
@@ -29,9 +30,12 @@ function get_tab_files() {
                 const scan_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
                 if(!show_scan_error) {
                     document.querySelector('.upload-tab-scan-error-toast .toast-body').innerHTML = data.scan_error;
-                    scan_error_toast.show()
+                    scan_error_toast.show();
                     show_scan_error = true;
                 }
+            }
+            if(!data.scan_status) {
+                document.querySelector('.filetypes-pane').classList.add('pane-disabled');
             }
             // render_filter_progress(data.filtering_progress);
             if(dont_disable_file_types || data.scan_status && data.scan_status === 'completed') {
@@ -306,6 +310,21 @@ function save_filter_setup() {
             force_include: force_include,
             force_exclude: force_exclude,
         })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(response.statusText);
+        }
+        let success_toast_div = document.querySelector('.upload-tab-scan-success-toast');
+        const success_toast = bootstrap.Toast.getOrCreateInstance(success_toast_div);
+        if(!show_info_toast) {
+            show_info_toast = true;
+            document.querySelector('.upload-tab-scan-success-toast .toast-body').innerHTML = 'Source files are ready, you can start GPU filtering now.';
+            setTimeout(function() {
+                success_toast.show();
+                show_info_toast = false;
+            }, 2000);
+        }
     })
 }
 
