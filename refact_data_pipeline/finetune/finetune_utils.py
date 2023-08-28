@@ -120,13 +120,16 @@ def get_finetune_step() -> Optional[str]:
             scan_stats.update(**json.load(open(env.CONFIG_PROCESSING_STATS, "r")))
         return scan_stats
 
-    if get_sources_stats()["scan_status"] in ["working"]:
+    if os.path.exists(env.FLAG_LAUNCH_PROCESS_UPLOADS) or \
+            get_sources_stats()["scan_status"] in ["working"]:
         return "sources"
 
-    if get_finetune_filter_stats()["status"] in ["starting", "filtering"]:
+    if os.path.exists(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY) or \
+            get_finetune_filter_stats()["status"] in ["starting", "filtering"]:
         return "filter"
 
-    if get_finetune_runs()[1]:
+    if os.path.exists(env.FLAG_LAUNCH_FINETUNE) or \
+            get_finetune_runs()[1]:
         return "finetune"
 
     return None
