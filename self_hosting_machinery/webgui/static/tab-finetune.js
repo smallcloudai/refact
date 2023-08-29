@@ -311,7 +311,6 @@ function loras_switch_clicked() {
     }
 }
 
-// TODO get switch param and send with downloaded_data.active
 function finetune_switch_activate(lora_mode, run_id, checkpoint) {
     let send_this = {
         "model": document.querySelector('#finetune-model').value,
@@ -493,6 +492,9 @@ function change_finetune_model() {
             return response.json();
         }
         finetune_data();
+        render_checkpoints();
+        document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/none`;
+        document.querySelector('.tab-upload-finetune-logs').textContent = '';
     })
     .catch(error_data => {
         console.log('Error:', error_data);
