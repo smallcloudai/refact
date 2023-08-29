@@ -200,6 +200,89 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
             suffix_cut_tokens = self._tokenizer.encode(suffix_cut)
 
         prompt: List[int] = [
+            self._fim_prefix,
+            *prefix_cut_tokens,
+            self._fim_suffix,
+            *suffix_cut_tokens,
+            self._fim_middle,
+        ]
+        # self.debuglog("-"*40)
+        # self.debuglog(self._tokenizer.decode(prompt))
+        # self.debuglog("-"*40)
+        return prompt
+
+    def completion(self, final: bool):
+        assert self._prefix is not None
+        assert self._suffix is not None
+        completion = self._tokenizer.decode(self._completion)
+        if self.finish_reason == "eot":
+            # Correct stop
+            return {self._cursor_file: self._prefix + completion + self._suffix}
+        else:
+            # "stop-lf" or "length" or not stopped yet (empty reason), it's better to remove first line remainder
+            return {self._cursor_file: self._prefix + completion + self._suffix_line0cut}
+
+
+class ScratchpadRefactFIM(ScratchpadHuggingfaceBase):
+
+    def __init__(
+            self,
+            sources: Dict[str, str],
+            cursor_file: str,
+            cursor0: int,
+            cursor1: int,
+            ignore_special_tokens: bool = True,
+            **kwargs
+    ):
+        super().__init__(**kwargs)
+
+        assert cursor0 == cursor1
+
+        self._cursor_file = cursor_file
+        self._cursor = cursor0
+        self._ignore_special_tokens = ignore_special_tokens
+        self._code = sources[cursor_file]
+
+        self._prefix: Optional[str] = None
+        self._suffix: Optional[str] = None
+        self._suffix_line0cut: Optional[str] = None
+        self._completion = []
+
+        self._tokens_produced = 0
+        self._fim_prefix = self._encode_one_token("<fim_prefix>")
+        self._fim_suffix = self._encode_one_token("<fim_suffix>")
+        self._fim_middle = self._encode_one_token("<fim_middle>")
+
+    def prompt(self, T: int):
+        self._prefix = self._code[:self._cursor]
+        # Why we need to cut the line right of the cursor?
+        # Example 1:
+        # function_call(param1, GENERATED_TONENS<EOF>)
+        # => everything works right
+        # Example 2:
+        # function_call(param1, GENERATED_TONENS)\nMORE_TOKENS\nSOME_OTHER_CALL(OTHER_PARAM<EOF>)
+        #                                        ^^ but we stop here because we need single line completion
+        # => we have two closing parenthesis.
+        # self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        self._suffix = self._code[self._cursor:]
+        self._suffix_line0cut = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        self._completion.clear()
+
+        prefix_cut, suffix_cut = trim_context_infill(
+            self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens
+        )
+        self.debuglog(
+            f"ScratchpadRefactFIM prompt prefix {len(prefix_cut)} chars, "
+            f"suffix {len(suffix_cut)} chars, T={T} max_tokens={self._max_tokens}"
+        )
+        if self._ignore_special_tokens:
+            prefix_cut_tokens = self.encode_without_special_tokens(prefix_cut)
+            suffix_cut_tokens = self.encode_without_special_tokens(suffix_cut)
+        else:
+            prefix_cut_tokens = self._tokenizer.encode(prefix_cut)
+            suffix_cut_tokens = self._tokenizer.encode(suffix_cut)
+
+        prompt: List[int] = [
             self._fim_suffix,
             *suffix_cut_tokens,
             self._fim_prefix,
@@ -214,7 +297,7 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
     def completion(self, final: bool):
         assert self._prefix is not None
         assert self._suffix is not None
-        completion = self._tokenizer.decode(self._completion).rstrip(os.linesep)
+        completion = self._tokenizer.decode(self._completion)
         if self.finish_reason == "eot":
             # Correct stop
             return {self._cursor_file: self._prefix + completion + self._suffix}
