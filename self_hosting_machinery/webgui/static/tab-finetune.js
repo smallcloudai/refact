@@ -122,6 +122,7 @@ function render_runs() {
             run_status.innerHTML = `<span class="badge rounded-pill ${status_color}">${element.status}</span>`;
         }
         if (element.eta_minutes) {
+            if(element.status === 'completed' || element.status === 'finished') { return; }
             run_minutes.innerHTML = element.eta_minutes;
         }
         run_steps.innerHTML = element.worked_steps;
