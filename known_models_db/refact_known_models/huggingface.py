@@ -79,6 +79,17 @@ huggingface_mini_db = {
         "required_memory_mb": 14000,
         "filter_caps": ["llama2"],
     },
+    "codellama/7b": {
+        "backend": "transformers",
+        "model_path": "TheBloke/CodeLlama-7B-fp16",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadCodeLlama",
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {
+            "load_in_8bit": True,
+        },
+        "required_memory_mb": 14000,
+        "filter_caps": ["completion"],
+    },
     "wizardlm/30b/4bit": {
         "backend": "transformers",
         "model_path": "TheBloke/WizardLM-30B-fp16",
