@@ -86,13 +86,13 @@ function get_models()
         enable_chat_gpt_switch.checked = models_data['openai_api_enable'];
         enable_chat_gpt_switch.addEventListener('change', save_model_assigned);
         const more_gpus_notification = document.querySelector('.model-hosting-error');
-        if(models_data && models_data.length > 0 && models_data.more_models_than_gpus) {
+        if(data.hasOwnProperty('more_models_than_gpus') && data.more_models_than_gpus) {
             more_gpus_notification.classList.remove('d-none');
         } else {
             more_gpus_notification.classList.add('d-none');
         }
         const required_memory_exceed_available = document.querySelector('.model-memory-error');
-        if(models_data && models_data.length > 0 && models_data.required_memory_exceed_available) {
+        if(data.hasOwnProperty('required_memory_exceed_available') && data.required_memory_exceed_available) {
             required_memory_exceed_available.classList.remove('d-none');
         } else {
             required_memory_exceed_available.classList.add('d-none');
