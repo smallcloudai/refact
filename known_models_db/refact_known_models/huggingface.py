@@ -40,9 +40,7 @@ huggingface_mini_db = {
         "model_path": "TheBloke/WizardLM-7B-V1.0-Uncensored-GPTQ",
         "diff_scratchpad_class": None,
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceWizard",
-        "model_class_kwargs": {
-            "model_basename": "wizardlm-7b-v1.0-uncensored-GPTQ-4bit-128g.no-act.order",
-        },
+        "model_class_kwargs": {},
         "required_memory_mb": 8000,
         "filter_caps": ["wizardlm"],
     },
@@ -51,9 +49,7 @@ huggingface_mini_db = {
         "model_path": "TheBloke/WizardLM-13B-V1.1-GPTQ",
         "diff_scratchpad_class": None,
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceWizard",
-        "model_class_kwargs": {
-            "model_basename": "wizardlm-13b-v1.1-GPTQ-4bit-128g.no-act.order",
-        },
+        "model_class_kwargs": {},
         "required_memory_mb": 14000,
         "filter_caps": ["wizardlm"],
     },
@@ -62,9 +58,7 @@ huggingface_mini_db = {
         "model_path": "TheBloke/Llama-2-7b-Chat-GPTQ",
         "diff_scratchpad_class": None,
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",
-        "model_class_kwargs": {
-            "model_basename": "gptq_model-4bit-128g",
-        },
+        "model_class_kwargs": {},
         "required_memory_mb": 8000,
         "filter_caps": ["llama2"],
     },
@@ -73,9 +67,7 @@ huggingface_mini_db = {
         "model_path": "TheBloke/Llama-2-13B-chat-GPTQ",
         "diff_scratchpad_class": None,
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",
-        "model_class_kwargs": {
-            "model_basename": "gptq_model-4bit-128g",
-        },
+        "model_class_kwargs": {},
         "required_memory_mb": 14000,
         "filter_caps": ["llama2"],
     },
