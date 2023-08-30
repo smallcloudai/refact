@@ -1,5 +1,6 @@
 import torch as th
 import time
+import termcolor
 
 from refact_scratchpads.scratchpad_utils import trim_context_infill
 
@@ -69,16 +70,16 @@ class ScratchpadHuggingfaceBase:
 
     def after_token_selection(self, m, chosen_token: th.Tensor, **unused) -> Dict[str, Any]:
         t = chosen_token.item()
-        self.debuglog("%05d %s" % (t, self._tokenizer.decode([t])))
+        self.debuglog("%05d %s" % (t, self._tokenizer.decode([t]).replace("\n", "\\n")))
 
-        if chosen_token in [self._tokenizer.eos_token_id]:
+        if t in [self._tokenizer.eos_token_id]:
             self.finish_reason = "eot"
-        elif chosen_token in self._special_tokens:
+        elif t in self._special_tokens:
             self.finish_reason = "special-token"
 
         if not self.finish_reason:
             self._completion.append(t)
-        if chosen_token in self._stop_tokens:
+        if t in self._stop_tokens:
             self.finish_reason = "stoptoken"
 
         t_str = self._tokenizer.decode([t])
@@ -175,6 +176,55 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
         }
 
 
+class ScratchpadCodeLlama(ScratchpadHuggingfaceBase):
+
+    def __init__(self, sources: Dict[str, str], cursor_file: str, cursor0: int, cursor1: int, **kwargs):
+        super().__init__(**kwargs)
+
+        assert cursor0 == cursor1
+
+        self._cursor_file = cursor_file
+        self._cursor = cursor0
+        self._code = sources[cursor_file]
+
+        self._prefix: Optional[str] = None
+        self._suffix: Optional[str] = None
+        self._completion = []
+
+        self._tokens_produced = 0
+        self._fim_prefix = self._encode_one_token("<PRE>")
+        self._fim_suffix = self._encode_one_token("<SUF>")
+        self._fim_middle = self._encode_one_token("<MID>")
+        self._fim_eot = self._encode_one_token("<EOT>")
+        self._special_tokens.update({
+            self._fim_prefix, self._fim_suffix, self._fim_middle, self._fim_eot,
+        })
+
+    def prompt(self, T: int):
+        self._prefix = self._code[:self._cursor]
+        self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        self._completion.clear()
+
+        prefix_cut, suffix_cut = trim_context_infill(
+            self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens)
+        prompt: List[int] = [
+            self._eos_token,
+            self._fim_prefix,
+            *self._tokenizer.encode(prefix_cut),
+            self._fim_suffix,
+            *self._tokenizer.encode(suffix_cut),
+            self._fim_middle,
+        ]
+        return prompt
+
+    def completion(self, final: bool):
+        assert self._prefix is not None
+        assert self._suffix is not None
+        return {
+            self._cursor_file: self._prefix + self._tokenizer.decode(self._completion) + self._suffix,
+        }
+
+
 class ScratchpadChatBase(ScratchpadHuggingfaceBase):
 
     def __init__(self, messages: List[Dict[str, str]], **kwargs):
@@ -189,6 +239,8 @@ class ScratchpadChatBase(ScratchpadHuggingfaceBase):
         self._completion = []
         text = self._prompt()
         tokens = self._tokenizer.encode(text)
+        self.debuglog(termcolor.colored(str(self._messages), "yellow"))
+        self.debuglog(termcolor.colored(text, "red"))
         self.debuglog(f"prompt {len(tokens)} tokens")
         return tokens
 
@@ -237,8 +289,8 @@ class ScratchpadHuggingfaceWizard(ScratchpadChatBase):
                 text += "USER: "
             else:
                 text += "ASSISTANT: "
-            text += message["content"] + "\n"
-        text += "ASSISTANT: "
+            text += message["content"].strip() + "\n\n"
+        text += "ASSISTANT:"
         return text
 
 
