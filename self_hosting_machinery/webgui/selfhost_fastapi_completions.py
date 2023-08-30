@@ -4,7 +4,7 @@ import copy
 import asyncio
 import termcolor
 
-from fastapi import APIRouter, Request, HTTPException, Query
+from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import StreamingResponse
 
 from known_models_db.refact_toolbox_db import modelcap_records
@@ -16,7 +16,7 @@ from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 
 from pydantic import BaseModel, Required
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Set
 
 
 __all__ = ["CompletionsRouter"]
@@ -296,8 +296,7 @@ class CompletionsRouter(APIRouter):
             "human_readable_message": "API key verified",
         }
 
-    async def _completions(self, post: NlpCompletion):
-        account = "XXX"
+    async def _completions(self, post: NlpCompletion, account: str = "XXX"):
         ticket = Ticket("comp-")
         req = post.clamp()
         model_name, err_msg = completion_resolve_model(self._inference_queue)
@@ -320,8 +319,7 @@ class CompletionsRouter(APIRouter):
         seen = [""] * post.n
         return StreamingResponse(completion_streamer(ticket, post, self._timeout, seen, req["created"]))
 
-    async def _contrast(self, post: DiffCompletion, request: Request):
-        account = "XXX"
+    async def _contrast(self, post: DiffCompletion, request: Request, account: str = "XXX"):
         if post.function != "diff-anywhere":
             if post.cursor_file not in post.sources:
                 raise HTTPException(status_code=400, detail="cursor_file='%s' is not in sources=%s" % (post.cursor_file, list(post.sources.keys())))
@@ -368,8 +366,7 @@ class CompletionsRouter(APIRouter):
         await q.put(ticket)
         return StreamingResponse(diff_streamer(ticket, post, self._timeout, req["created"]))
 
-    async def _chat(self, post: ChatContext, request: Request):
-        account = "XXX"
+    async def _chat(self, post: ChatContext, request: Request, account: str = "XXX"):
         ticket = Ticket("comp-")
 
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)

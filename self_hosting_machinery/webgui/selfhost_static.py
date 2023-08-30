@@ -6,11 +6,6 @@ from fastapi.responses import FileResponse
 __all__ = ["StaticRouter"]
 
 
-static_folders = [
-os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-]
-
-
 class StaticRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
@@ -18,9 +13,12 @@ class StaticRouter(APIRouter):
         super().add_api_route("/", self._index, methods=["GET"])
         super().add_api_route("/{file_path:path}", self._static_file, methods=["GET"])
         super().add_api_route("/ping", self._ping_handler, methods=["GET"])
+        self.static_folders = [
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+        ]
 
     async def _index(self):
-        for spath in static_folders:
+        for spath in self.static_folders:
             fn = os.path.join(spath, "index.html")
             if os.path.exists(fn):
                 return FileResponse(fn, media_type="text/html")
@@ -29,7 +27,7 @@ class StaticRouter(APIRouter):
     async def _static_file(self, file_path: str):
         if ".." in file_path:
             raise HTTPException(404, "Path \"%s\" not found" % file_path)
-        for spath in static_folders:
+        for spath in self.static_folders:
             fn = os.path.join(spath, file_path)
             if os.path.exists(fn):
                 return FileResponse(fn)
