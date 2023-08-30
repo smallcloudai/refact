@@ -60,7 +60,7 @@ async def real_work(
                 line = json.loads(txt)
                 yield line
     else:
-        async with session.post(url, json=data) as response:
+        async with session.post(url, json=data, headers=headers) as response:
             response_txt = await response.text()
             if response.status == 200:
                 response_json = json.loads(response_txt)
