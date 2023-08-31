@@ -1,5 +1,5 @@
 refact_mini_db = {
-    "Refact/2b": {
+    "Refact/1.6B-fim": {
         "backend": "transformers",
         "model_path": "smallcloudai/Refact-1_6B-fim",
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadHuggingface",
