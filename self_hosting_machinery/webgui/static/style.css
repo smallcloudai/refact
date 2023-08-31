@@ -233,7 +233,7 @@ h3 {
 }
 .gpus-item {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     text-align: center;
     border: 1px solid rgba(0,0,0,0.15);
     border-radius: 8px;
@@ -626,6 +626,11 @@ h3 {
 }
 .model-hosting-error {
     color: darkred;
+    text-align: right;
+}
+.model-memory-error {
+    color: darkred;
+    text-align: right;
 }
 .disabled-group {
     opacity: 0.4;
