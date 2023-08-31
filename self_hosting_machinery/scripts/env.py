@@ -35,7 +35,6 @@ FLAG_LAUNCH_PROCESS_UPLOADS = os.path.join(DIR_WATCHDOG_D, "_launch_process_uplo
 FLAG_LAUNCH_FINETUNE_FILTER_ONLY = os.path.join(DIR_WATCHDOG_D, "_launch_finetune_filter_only.flag")
 FLAG_LAUNCH_FINETUNE = os.path.join(DIR_WATCHDOG_D, "_launch_finetune.flag")
 FLAG_STOP_FINETUNE = os.path.join(DIR_WATCHDOG_D, "_stop_finetune.flag")
-FLAG_VECDB_CHANGE_MODEL = os.path.join(DIR_WATCHDOG_D, "_vecdb_change_model.flag")
 
 os.makedirs(DIR_WATCHDOG_D, exist_ok=True)
 os.makedirs(DIR_WEIGHTS, exist_ok=True)

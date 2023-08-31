@@ -134,17 +134,27 @@ async function render_vecdb_status() {
 
     function check_ongoing(vecdb_status) {
         let select_model_div = document.getElementById('vecdb-select-model');
+        let indexing_progress_div = document.getElementById('vecdb-indexing-progress-row')
+
         let ongoing = vecdb_status['ongoing'];
         if (ongoing && 'indexing' in ongoing) {
             const indexing_status = ongoing['indexing']['status'];
             let indexing_status_span = document.getElementById('vecdb-indexing-status')
             indexing_status_span.innerHTML = indexing_status;
+            if (indexing_status === 'in progress') {
+                indexing_progress_div.removeAttribute("hidden");
+                let indexing_progress_bar = document.getElementById('vecdb-upload-files-progress-bar')
+                let indexing_progress_span = document.getElementById('vecdb-upload-files-progress-span')
+                indexing_progress_bar.style.width = `${ongoing['indexing']['progress_val']}%`;
+                indexing_progress_span.innerHTML = ongoing['indexing']['progress_text'];
+            }
             if (indexing_status !== 'done') {
                 select_model_div.setAttribute('disabled', "");
             } else {
+                indexing_progress_div.setAttribute("hidden", "");
+                select_model_div.removeAttribute('disabled');
                 let prev_state = indexing_status_span.getAttribute('data-prev-state');
                 if (prev_state && prev_state !== 'done') {
-                    select_model_div.removeAttribute('disabled');
                     fetch_vecdb_status()
                     fetch_and_set_files_loaded_cnt()
                 }

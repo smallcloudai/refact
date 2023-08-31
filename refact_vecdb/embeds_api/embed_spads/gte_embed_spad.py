@@ -4,7 +4,6 @@ import torch.nn.functional as F
 from torch import Tensor
 from transformers import AutoTokenizer, AutoModel
 
-from refact_vecdb.app.context import CONTEXT as C
 
 __all__ = ['GTEEmbeddingSpad']
 
@@ -23,16 +22,8 @@ class GTEEmbeddingSpad:
             model_name: str = 'thenlper/gte-base'
     ):
         self._model_name = model_name
-        C.models.setdefault(self._model_name, AutoModel.from_pretrained(self._model_name))
-        C.tokenizers.setdefault(self._model_name, AutoTokenizer.from_pretrained(self._model_name))
-
-    @property
-    def _model(self) -> Any:
-        return C.models[self._model_name]
-
-    @property
-    def _tokenizer(self) -> Any:
-        return C.tokenizers[self._model_name]
+        self._model = AutoModel.from_pretrained(self._model_name)
+        self._tokenizer = AutoTokenizer.from_pretrained(self._model_name)
 
     def create(self, text: Union[str, List[str]]) -> List[List[float]]:
         text = text if isinstance(text, list) else [text]

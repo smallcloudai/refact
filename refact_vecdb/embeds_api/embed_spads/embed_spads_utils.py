@@ -1,4 +1,7 @@
-from typing import Iterable, List, Callable
+from typing import Iterable, List, Callable, Union
+
+
+__all__ = ['ChunkifyFiles']
 
 
 class ChunkifyFiles:
@@ -12,7 +15,12 @@ class ChunkifyFiles:
         self._hard_window = window_size + soft_limit
         self._len_calc = len_calc
 
-    def chunkify(self, text: str) -> Iterable[str]:
+    def create(self, texts: Union[str, Iterable[str]]) -> Iterable[List[str]]:
+        texts = texts if isinstance(texts, Iterable) else [texts]
+        for text in texts:
+            yield list(self._chunkify(text))
+
+    def _chunkify(self, text: str) -> Iterable[str]:
         if not text:
             yield ''
         else:

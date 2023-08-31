@@ -622,10 +622,6 @@ def save_jsonl_if_changed(fn, a_list):
     log("Writing '%s'" % fn)
     with open(fn, "w") as f:
         f.write(new_text)
-    if Path(fn).stem == "database_set":
-        with Path(fn).parent.joinpath('database_set_meta.json').open('w') as f:
-            f.write(json.dumps({'modified_ts': time.time(), 'to_process': True}))
-
 
 # "filter/file.py": {
 #     "lines": 163,

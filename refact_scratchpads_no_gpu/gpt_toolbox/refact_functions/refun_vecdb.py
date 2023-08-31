@@ -2,7 +2,7 @@ from typing import Any, AsyncIterator, Dict, List, Iterator, Callable
 
 import ujson as json
 
-from refact_vecdb import VecDBAsyncAPI
+from refact_vecdb import VDBSearchAPI
 
 __all__ = ['vecdb_call']
 
@@ -43,7 +43,7 @@ async def vecdb_call(
 ) -> AsyncIterator[
     Dict[str, Any]
 ]:
-    vecdb = VecDBAsyncAPI(url='http://localhost:8009')
+    vecdb = VDBSearchAPI()
 
     yield {
         "role": "assistant",
@@ -53,7 +53,7 @@ async def vecdb_call(
 
     candidates = list(cut_candidates(
         enc=enc,
-        candidates=await vecdb.find(query, 10),
+        candidates=list(vecdb.search(query, 'main', 10)),
         max_tokens=max_tokens
     ))
 

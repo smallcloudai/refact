@@ -27,25 +27,6 @@
 			</div>
 			<div class="row">
 				<div class="col-3">
-<!--					<div class="pane">-->
-<!--						<h3>Upload files</h3>-->
-<!--						<div>-->
-<!--							<span>Status: </span><span id="vecdb-upload-files-status">No upload is scheduled</span>-->
-<!--						</div>-->
-<!--						<div id="vecdb-upload-files-progress">-->
-<!--							<div class="progress">-->
-<!--								<div-->
-<!--												id="vecdb-upload-files-progress-bar"-->
-<!--												class="progress-bar progress-bar-striped bg-success progress-bar-animated"-->
-<!--												role="progressbar"-->
-<!--												style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"-->
-<!--								></div>-->
-<!--							</div>-->
-<!--						</div>-->
-<!--						<div class="d-flex flex-row-reverse mt-3">-->
-<!--							<button type="button" class="btn btn-primary" id="vecdb-upload-files-btn">Upload</button>-->
-<!--						</div>-->
-<!--					</div>-->
 					<div class="pane">
 						<h3>Select Model</h3>
 						<select id="vecdb-select-model" class="form-select disabled" data-selected="" data-options="" data-selected-temp="" aria-label="">
@@ -55,6 +36,21 @@
 					<div class="pane">
 						<h3>Indexing</h3>
 						<span>Status: <span id="vecdb-indexing-status" data-prev-state=""></span></span>
+						<div id="vecdb-indexing-progress-row" class="row" hidden="">
+							<div class="col-lg-9">
+								<div class="progress">
+									<div
+													id="vecdb-upload-files-progress-bar"
+													class="progress-bar progress-bar-striped progress-bar-animated"
+													role="progressbar"
+													style="width: 0" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+									></div>
+								</div>
+							</div>
+							<div class="col-3">
+									<span id="vecdb-upload-files-progress-span"></span>
+							</div>
+						</div>
 					</div>
 
 					<div class="pane">
