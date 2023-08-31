@@ -2,6 +2,11 @@
 
   <div class="col-5">
     <div class="pane">
+      <h3>Select Model</h3>
+      <select id="finetune-model" class="form-select">
+      </select>
+    </div>
+    <div class="pane">
       <h3>Use Finetuned Model</h3>
       <div class="lora-group">
         <div class="btn-group" role="group" aria-label="basic radio toggle button group">
@@ -40,9 +45,30 @@
     </div>
     <div class="pane">
       <h3>Start New Finetune<span></span></h3>
-      <button id="run_now" type="button" class="btn mt-2 btn-primary tab-finetune-run-now">Run Now</button>
-      <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn mt-2 btn-secondary">Finetune Settings</button>
-      <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn mt-2 btn-secondary">Autorun Settings</button>
+      <div class="start-funetune-step1">
+        <h6>Step 1: Filtering<span></span></h6>
+        <div class="start-funetune__inline">
+          <button type="button" class="sources-run-button btn btn-primary"><i class="bi bi-funnel-fill"></i> Run filter</button>
+          <button type="button" data-bs-toggle="modal" data-bs-target="#upload-tab-source-settings-modal" class="btn btn-outline-primary sources-settings">Settings</button>
+        </div>
+        <div class="start-funetune-stats callout d-none">
+          <div class="ftf-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+            <div class="ftf-bar bg-success" style="width: 0%"></div>
+          </div>
+          <div class="ftf-eta"></div>
+          <div class="ftf-status d-none">Status:<span></span></div>
+          <div class="ftf-error d-none">Error:<span class="text-danger"></span></div>
+          <div class="ftf-stats"></div>
+        </div>
+      </div>
+      <div class="start-funetune-step2">
+        <h6>Step 2: Training<span></span></h6>
+        <div class="start-funetune__inline">
+          <button id="run_now" type="button" class="btn btn-primary tab-finetune-run-now"><i class="bi bi-gpu-card"></i> Run Now</button>
+          <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn btn-outline-primary tab-finetune-fine-settings">Finetune Settings</button>
+        </div>
+        <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn finetune-autorun btn-sm btn-outline-primary mt-1"><i class="bi bi-stopwatch-fill"></i>Autorun Settings</button>
+      </div>
     </div>
   </div>
 
@@ -91,6 +117,31 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="delete-lora-modal-submit submit btn btn-primary">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="upload-tab-source-settings-modal" tabindex="-1" aria-labelledby="upload-tab-source-settings-modal" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="urlModalLabel">GPU-Based Filter Settings</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="filter_loss_threshold" class="form-label">Filter 1: File loss threshold</label>
+            <input type="text" data-min="2.1" data-max="10" step="0.1" class="validate form-control" id="filter_loss_threshold">
+            <div class="form-text">
+              If initial loss is too big calculated on a single file, remove it. This likely means the file doesn't contain code, or the code is unusual. Min 2.1 - Max 10
+            </div>
+          </div>
+          <div class="settings-error d-none"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="tab-upload-source-settings-default btn btn-secondary">Reset to defaults</button>
+          <button class="tab-upload-source-settings-submit btn btn-primary">Apply</button>
         </div>
       </div>
     </div>

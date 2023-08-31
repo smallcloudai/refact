@@ -7,8 +7,9 @@ import shutil
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_step
+
 from self_hosting_machinery.webgui.selfhost_webutils import log
-from self_hosting_machinery.webgui.tab_finetune import get_finetune_runs
 from self_hosting_machinery import env
 
 from pydantic import BaseModel, Required
@@ -126,11 +127,7 @@ class TabUploadRouter(APIRouter):
         del scan_stats["uploaded_files"]
 
         result.update(scan_stats)
-        result["filestats_ftf"] = {}
-        if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS):
-            result["filestats_ftf"] = json.load(open(env.CONFIG_FINETUNE_FILTER_STATS))
-        _, anyone_works = get_finetune_runs()
-        result["finetune_working_now"] = anyone_works
+        result["finetune_working_now"] = get_finetune_step() in ["filter", "finetune"]
 
         # 0 new zip
         # 1 files done, pick file types
@@ -254,18 +251,11 @@ class TabUploadRouter(APIRouter):
             pass
         return JSONResponse("OK")
 
-    async def _tab_files_log(self, phase: str, accepted_or_rejected: str):
-        fn = ""
-        if phase == "finetune_filter":
-            if accepted_or_rejected == "accepted":
-                fn = env.LOG_FILES_ACCEPTED_FTF
-            else:
-                fn = env.LOG_FILES_REJECTED_FTF
+    async def _tab_files_log(self, accepted_or_rejected: str):
+        if accepted_or_rejected == "accepted":
+            fn = env.LOG_FILES_ACCEPTED_SCAN
         else:
-            if accepted_or_rejected == "accepted":
-                fn = env.LOG_FILES_ACCEPTED_SCAN
-            else:
-                fn = env.LOG_FILES_REJECTED_SCAN
+            fn = env.LOG_FILES_REJECTED_SCAN
         if os.path.isfile(fn):
             return StreamingResponse(
                 stream_text_file(fn),

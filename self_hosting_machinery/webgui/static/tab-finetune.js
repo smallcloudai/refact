@@ -1,15 +1,39 @@
 let logstream_reader = null;
 let logstream_runid = null;
 let downloaded_data = null;
+let downloaded_stats = null;
 let blue_lora = "";
 let loras_switch_off = null;
 let loras_switch_latest = null;
 let loras_switch_specific = null;
 let loras_switch_no_reaction = false;
 let finetune_settings_defaults = [];
+let fine_filter_progress = null;
+let fine_filter_pane = null;
+let fine_filter_button = null;
+let fine_filter_settings = null;
+let fine_filter_status = null;
+let fine_filter_error = null;
+let tab_files_data = null;
+let show_scan_error = false;
+
+let fine_tuning_pane = null;
+let fine_tuning_button = null;
+let fine_tuning_settings = null;
 // let checkpoint_name = "best";
 // let selected_model = ""; // we don't have model choice, empty for now
 
+function finetine_status() {
+    fetch("tab-finetune-get")
+    .then(function (response) {
+        return response.json();
+    })
+    .then(function (data) {
+        downloaded_stats = data;
+        finetune_status();
+        console.log('tab-finetune-get',data);
+    });
+}
 function finetune_data() {
     fetch("/tab-finetune-config-and-runs")
         .then(function (response) {
@@ -21,7 +45,31 @@ function finetune_data() {
             downloaded_data = data;
             render_lora_switch();
             render_runs();
+            render_model_select();
         });
+}
+
+function render_model_select(force = false) {
+    const model_selector = document.querySelector('#finetune-model');
+    if (model_selector && model_selector.options.length > 0 && !force) {
+        return;
+    }
+    fetch("/tab-host-models-get")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+      model_selector.innerHTML = '';
+      data.models.forEach(model => {
+        if(model.has_finetune) {
+            const new_option = new Option(model.name, model.name); 
+            if(downloaded_data.config.model_name === model.name) {
+                new_option.selected = true;
+            }
+            model_selector.appendChild(new_option);
+        }
+      });
+    });
 }
 
 function render_finetune_settings(data = {}) {
@@ -54,7 +102,7 @@ function delete_run(run_id) {
         }
         const gfx = document.querySelector('.fine-gfx');
         gfx.src = `/tab-finetune-progress-svg/none`;
-        const log_container = document.querySelector('.tab-upload-finetune-logs');
+          const log_container = document.querySelector('.tab-upload-finetune-logs');
         if (log_container) {
             log_container.innerHTML = '';
         }
@@ -69,7 +117,7 @@ function render_runs() {
     let is_working = false;
     const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     start_finetune_button.setAttribute("need_to_stop", is_working)
-    start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
+    // start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
     if(data.finetune_runs.length > 0) {
         document.querySelector('.run-table').innerHTML = '';
     }
@@ -78,6 +126,7 @@ function render_runs() {
     }
     document.querySelector('.table-types').style.display = 'table';
     data.finetune_runs.forEach(element => {
+        if(element.model_name !== data.config.model_name) { return; }
         const row = document.createElement('tr');
         row.style.whiteSpace = 'nowrap';
         const run_name = document.createElement("td");
@@ -172,10 +221,10 @@ function render_runs() {
     if(is_working) {
         start_finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
     } else {
-        start_finetune_button.textContent = 'Start Now';
+        start_finetune_button.innerHTML = '<i class="bi bi-gpu-card"></i> Run Now';
     }
     start_finetune_button.setAttribute("need_to_stop", is_working)
-    start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
+    // start_finetune_button.disabled = ![undefined, 'interrupted', 'finished', 'error'].includes(data.filtering_status)
 }
 
 const find_checkpoints_by_run = (run_id) => {
@@ -188,7 +237,7 @@ const find_checkpoints_by_run = (run_id) => {
 };
 
 function render_lora_switch() {
-    let mode = downloaded_data.active ? downloaded_data.active.lora_mode : "latest-best";
+    let mode = downloaded_data.active[downloaded_data.config.model_name] ? downloaded_data.active[downloaded_data.config.model_name].lora_mode : "latest-best";
     loras_switch_no_reaction = true; // avoid infinite loop when setting .checked
     if (mode === 'off') {
         loras_switch_off.checked = true;
@@ -205,8 +254,8 @@ function render_lora_switch() {
         lora_switch_checkpoint.style.display = 'block';
         lora_switch_run_id.style.opacity = 1;
         lora_switch_checkpoint.style.opacity = 1;
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active.specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active.specific_checkpoint}`;
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active[downloaded_data.config.model_name].specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active[downloaded_data.config.model_name].specific_checkpoint}`;
     } else if (mode == 'latest-best') {
         lora_switch_run_id.style.display = 'block';
         lora_switch_checkpoint.style.display = 'block';
@@ -217,8 +266,8 @@ function render_lora_switch() {
     } else {
         lora_switch_run_id.style.display = 'none';
         lora_switch_checkpoint.style.display = 'none';
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active.specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active.specific_checkpoint}`;
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${downloaded_data.active[downloaded_data.config.model_name].specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${downloaded_data.active[downloaded_data.config.model_name].specific_checkpoint}`;
     }
 }
 
@@ -264,12 +313,12 @@ function loras_switch_clicked() {
 
 function finetune_switch_activate(lora_mode, run_id, checkpoint) {
     let send_this = {
-        "model": "",
+        "model": document.querySelector('#finetune-model').value,
         "lora_mode": lora_mode,
         "specific_lora_run_id": run_id ? run_id : downloaded_data.active.specific_lora_run_id,
         "specific_checkpoint": checkpoint ? checkpoint : downloaded_data.active.specific_checkpoint,
     }
-    console.log(send_this);
+    // console.log(send_this);
     fetch("/tab-finetune-activate", {
         method: "POST",
         headers: {
@@ -414,6 +463,43 @@ function get_finetune_settings(defaults = false) {
     });
 }
 
+function change_finetune_model() {
+    let finetune_settings = downloaded_data.config;
+    fetch("/tab-finetune-training-setup", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model_name: document.querySelector('#finetune-model').value,
+            limit_time_seconds: finetune_settings.limit_time_seconds,
+            lr: finetune_settings.lr,
+            batch_size: finetune_settings.batch_size,
+            warmup_num_steps: finetune_settings.warmup_num_steps,
+            weight_decay: finetune_settings.weight_decay,
+            use_heuristics: finetune_settings.use_heuristics,
+            train_steps: finetune_settings.train_steps,
+            lr_decay_steps: finetune_settings.lr_decay_steps,
+            lora_r: finetune_settings.lora_r,
+            lora_alpha: finetune_settings.lora_alpha,
+            lora_init_scale: finetune_settings.lora_init_scale,
+            lora_dropout: finetune_settings.lora_dropout,
+            low_gpu_mem_mode: finetune_settings.low_gpu_mem_mode,
+        })
+    })
+    .then(function(response) {
+        if(!response.ok) {
+            return response.json();
+        }
+        finetune_data();
+        render_checkpoints();
+        document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/none`;
+        document.querySelector('.tab-upload-finetune-logs').textContent = '';
+    })
+    .catch(error_data => {
+        console.log('Error:', error_data);
+    });
+}
 function save_finetune_settings() {
     console.log('save_finetune_settings');
     let low_gpu = false;
@@ -430,6 +516,7 @@ function save_finetune_settings() {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+            model_name: document.querySelector('#finetune-model').value,
             limit_time_seconds: document.querySelector('#finetune-tab-settings-modal #limit_time_seconds').value,
             lr: document.querySelector('#finetune-tab-settings-modal #lr').value,
             batch_size: document.querySelector('#finetune-tab-settings-modal #batch_size').value,
@@ -493,9 +580,231 @@ function revert_to_default(input_id) {
     input.value = finetune_settings_defaults[input_id];
 }
 
+function finetune_status() {
+    if(!downloaded_stats) { return; }
+    if(downloaded_stats.finetune_filter_stats.status) {
+        document.querySelector('.ftf-status').classList.remove('d-none');
+        document.querySelector('.start-funetune-stats').classList.remove('d-none');
+        document.querySelector('.ftf-status span').innerHTML = downloaded_stats.finetune_filter_stats.status;
+    }
+    const progress_container = document.querySelector('.ftf-progress');
+    const eta_state = document.querySelector('.ftf-eta');
+    const ftf_bar = document.querySelector('.ftf-bar');
+    if(!downloaded_stats.finetune_working_now) {
+        switch(downloaded_stats.finetune_filter_stats.status) {
+            case 'starting':
+                fine_tuning_pane.classList.add('pane-disabled');       
+                break;
+            case 'filtering':
+                fine_filter_settings.disabled = true;
+                progress_container.classList.remove('d-none')
+                eta_state.innerHTML = 'ETA: ' + downloaded_stats.finetune_filter_stats.eta_minutes + ' minute(s)';
+                break;
+            case 'failed':
+                document.querySelector('.ftf-error').classList.remove('d-none');
+                document.querySelector('.ftf-error span').innerHTML = downloaded_stats.finetune_filter_stats.error;
+                eta_state.innerHTML = '';
+                progress_container.classList.add('d-none');
+                ftf_bar.style.width = "0%";
+                fine_filter_settings.disabled = false;
+                break;
+            case 'finished':
+                progress_container.classList.add('d-none');
+                eta_state.innerHTML = '';
+                ftf_bar.style.width = "100%";
+                fine_filter_settings.disabled = false;
+                fine_filter_button.disabled = false;
+                fine_tuning_button.disabled = false;
+                fine_tuning_pane.classList.remove('pane-disabled');
+                break;
+        }
+    }
+    if(downloaded_stats.finetune_working_now && !downloaded_stats.filter_working_now) {
+        fine_tuning_pane.classList.remove('pane-disabled');
+        fine_filter_pane.classList.add('pane-disabled');
+        fine_filter_button.disabled = true;
+        fine_tuning_settings.disabled = true;
+    }
+    // filter working
+    if(downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
+        fine_tuning_pane.classList.add('pane-disabled');
+        if(!fine_filter_button.querySelector('.spinner-border')) {
+            fine_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop filtering`;
+        }
+        render_ftf_stats(downloaded_stats.finetune_filter_stats);
+    }
+    // both not working
+    if(!downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
+        if(tab_files_data && !tab_files_data.hasOwnProperty('scan_finished') || !tab_files_data.scan_finished) {
+            return;
+        }
+        fine_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
+        fine_tuning_pane.classList.remove('pane-disabled');
+        fine_filter_pane.classList.remove('pane-disabled');
+        fine_filter_button.disabled = false;
+        fine_tuning_button.disabled = false;
+        fine_tuning_settings.disabled = false;
+    }
+}
+
+function filtering_button() {
+    if(!downloaded_stats) { return; }
+    // filter not working - start
+    if(!downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
+        reset_ftf_progress();
+        fine_filter_button.disabled = true;
+        do_starting_state();
+        start_filtering();
+    }
+    // filter working - stop
+    if(downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
+        stop_filtering();
+    }
+}
+
+function start_filtering() {
+    fetch("/tab-finetune-run-now?filter_only=1")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('run_now');
+    });
+}
+
+function stop_filtering() {
+    fetch("/tab-finetune-stop-now")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        // console.log(data);
+    });
+}
+
+function render_ftf_stats(data) {
+    const ftf_wrapper = document.querySelector('.ftf-stats');
+    if(Object.keys(data).length > 0 && data.accepted !== undefined && data.rejected !== undefined) {
+        ftf_wrapper.innerHTML = '';
+        const content = `<h6>GPU Filtering stats</h6><div style="display:flex;"><div class="margin-right: 20px;">Accepted: ${data.accepted} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=rejected">Full list</a></div></div>`;
+        ftf_wrapper.innerHTML = content;
+        const total_steps = data.total_steps;
+        const working_steps = data.worked_steps;
+        const percentage = (Number(working_steps) / Number(total_steps)) * 100;
+        render_ftf_progress(percentage);
+    }
+}
+
+function get_filters_settings(defaults = false) {
+    fetch("/tab-finetune-smart-filter-get")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('tab-finetune-smart-filter-get',data);
+        let settings_data = null;
+        if(Object.keys(data.user_config).length > 0 && !defaults) {
+            settings_data = data.user_config;
+        } else {
+            settings_data = data.defaults;
+        }
+        document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value = settings_data.filter_loss_threshold;
+    });
+}
+
+function render_ftf_progress(filtering_progress) {
+    console.log('filtering_progress',filtering_progress);
+    const ftf_bar = document.querySelector('.ftf-bar');
+    ftf_bar.style.width = filtering_progress + "%";
+}
+
+function reset_ftf_progress() {
+    const fine_filter_status = document.querySelector('.ftf-status span');
+    fine_filter_status.innerHTML = '';
+    const fine_filter_stats = document.querySelector('.ftf-stats');
+    fine_filter_stats.innerHTML = '';
+    const eta_state = document.querySelector('.ftf-eta');
+    eta_state.innerHTML = '';
+    const progress_container = document.querySelector('.ftf-progress');
+    progress_container.classList.add('d-none');
+    const ftf_bar = document.querySelector('.ftf-bar');
+    ftf_bar.style.width = "0%";
+    const error = document.querySelector('.ftf-error');
+    error.classList.add('d-none');
+    error.innerHTML = '';
+}
+
+function do_starting_state() {
+    if(!document.querySelector('.sources-run-button .spinner-border')) {
+        fine_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
+        fine_filter_status.innerHTML = 'starting';
+    }
+}
+
+function save_filters_settings() {
+    fetch("/tab-finetune-smart-filter-setup", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            filter_loss_threshold: Number(document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value),
+        })
+    })
+    .then(function(response) {
+        if(response.ok) {
+            get_filters_settings();
+        }
+    });
+}
+
+function get_tab_files() {
+    fetch("/tab-files-get")
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            console.log('tab-files-get',data);
+            tab_files_data = data;
+            if(data.scan_error && data.scan_error.length > 0) {
+                let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
+                const scan_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
+                if(!show_scan_error) {
+                    document.querySelector('.upload-tab-scan-error-toast .toast-body').innerHTML = data.scan_error;
+                    scan_error_toast.show()
+                    show_scan_error = true;
+                }
+            }
+            if(downloaded_stats && !downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
+                if(data.hasOwnProperty('scan_finished') && data.scan_finished) {
+                    fine_tuning_pane.classList.remove('pane-disabled');
+                    fine_filter_pane.classList.remove('pane-disabled');
+                }
+                else {
+                    fine_tuning_pane.classList.add('pane-disabled');
+                    fine_filter_pane.classList.add('pane-disabled');
+                }
+            }
+        });
+}
+
 export async function init() {
     let req = await fetch('/tab-finetune.html');
     document.querySelector('#finetune').innerHTML = await req.text();
+    fine_filter_pane = document.querySelector('.start-funetune-step1');
+    fine_filter_pane.classList.add('pane-disabled');
+    fine_tuning_pane = document.querySelector('.start-funetune-step2');
+    fine_tuning_pane.classList.add('pane-disabled');
+    fine_filter_progress = document.querySelector('.start-funetune-stats .progress-bar');
+    fine_filter_settings = document.querySelector('.sources-settings');
+    fine_filter_status = document.querySelector('.ftf-status span');
+    fine_filter_error = document.querySelector('.ftf-error');
+    fine_filter_button = document.querySelector('.sources-run-button');
+    fine_filter_button.disabled = true;
+    fine_tuning_button = document.querySelector('.tab-finetune-run-now');
+    fine_tuning_button.disabled = true;
+    fine_tuning_settings = document.querySelector('.tab-finetune-fine-settings');
+
     const log_container = document.querySelector('.log-container');
     function handle_auto_scroll() {
         if (log_container.scrollHeight - log_container.scrollTop === log_container.clientHeight) {
@@ -507,6 +816,7 @@ export async function init() {
     start_finetune_button.addEventListener('click', function () {
         let url = "/tab-finetune-run-now";
         start_finetune_button.disabled = true;
+        start_finetune_button.innerHTML = `<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>Starting...`;
         if (start_finetune_button.getAttribute("need_to_stop") === 'true') {
             url = "/tab-finetune-stop-now";
         }
@@ -565,16 +875,50 @@ export async function init() {
             revert_to_default(event.target.parentNode.previousElementSibling.id);
         });
     });
+
+    fine_filter_button = document.querySelector('.sources-run-button');
+    fine_filter_button.addEventListener('click', filtering_button);
+
+    const settings_modal = document.getElementById('upload-tab-source-settings-modal');
+    settings_modal.addEventListener('show.bs.modal', function () {
+        get_filters_settings();
+    });
+
+    const settings_modal_submit = document.querySelector('.tab-upload-source-settings-submit');
+    settings_modal_submit.addEventListener('click', function() {
+        save_filters_settings();
+        const settings_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-source-settings-modal'));
+        settings_modal.hide();
+    });
+
+    const settings_modal_defaults = document.querySelector('.tab-upload-source-settings-default');
+    settings_modal_defaults.addEventListener('click', function() {
+        get_filters_settings(true);
+    });
+
+    const model_select_dropdown = document.querySelector('#finetune-model');
+    model_select_dropdown.addEventListener('change', function() {
+        change_finetune_model();
+    });
+
+    // const scan_error_toast = document.querySelector('.upload-tab-scan-error-toast');
+    // scan_error_toast.addEventListener('hidden.bs.toast', () => {
+    //     show_scan_error = false;
+    // })
 }
 
 export function tab_switched_here() {
-    finetune_data();
+    finetine_status();
+    get_tab_files();
     render_schedule_dialog();
+    finetune_data();
 }
 
 export function tab_switched_away() {
 }
 
 export function tab_update_each_couple_of_seconds() {
+    finetine_status();
+    get_tab_files();
     finetune_data();
 }

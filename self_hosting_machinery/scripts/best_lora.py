@@ -2,7 +2,10 @@ import re
 import os
 import json
 from typing import Dict
+
 from self_hosting_machinery import env
+from refact_data_pipeline.finetune.finetune_utils import get_run_model_name
+from refact_data_pipeline.finetune.finetune_utils import default_finetune_model
 
 
 def find_best_lora(model_name: str) -> Dict[str, str]:
@@ -17,6 +20,11 @@ def find_best_lora(model_name: str) -> Dict[str, str]:
             continue
         status_json_fn = os.path.join(run_dir, "status.json")
         if not os.path.isfile(status_json_fn):
+            continue
+        try:
+            if get_run_model_name(run_dir) != model_name:
+                continue
+        except RuntimeError:
             continue
         error = "a completed run found, but there are no valid checkpoints"
         best_test_loss = 13
@@ -60,4 +68,4 @@ def find_best_lora(model_name: str) -> Dict[str, str]:
 
 
 if __name__ == "__main__":
-    print(find_best_lora("CONTRASTcode/3b/multi"))
+    print(find_best_lora(default_finetune_model))

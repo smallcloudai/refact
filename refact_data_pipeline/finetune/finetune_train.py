@@ -20,7 +20,7 @@ from refact_data_pipeline.finetune import traces
 from refact_data_pipeline import DatasetOpts, finetune_datasource
 from refact_data_pipeline.datautils import BatchIterator
 from refact_data_pipeline.finetune.finetune_config import base_config, ConfigBuilder
-from refact_data_pipeline.finetune.finetune_train_defaults import finetune_train_defaults
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
 from refact_data_pipeline.finetune.model_handling import make_model, masked_loss, save_model_state
 from self_hosting_machinery import env
 
@@ -67,11 +67,9 @@ def load_finetune_config() -> Dict[str, Any]:
 
     with open(env.CONFIG_FINETUNE_FILTER_STATS, 'r') as f:
         initial_loss = json.load(f)["avg_loss"]
-    cfg_builder = ConfigBuilder(base_config(env))
-    user_cfg = {**finetune_train_defaults}
-    if os.path.exists(env.CONFIG_FINETUNE):
-        traces.log("Reading %s" % env.CONFIG_FINETUNE)
-        user_cfg.update(**json.load(open(env.CONFIG_FINETUNE)))
+
+    user_cfg = get_finetune_config(logger=traces.log)
+    cfg_builder = ConfigBuilder(base_config(user_cfg['model_name']))
     if user_cfg['use_heuristics']:
         traces.log("Retrieving dataset length per epoch, it may take a while...")
         ds_len = _get_ds_len_per_epoch(cfg_builder)

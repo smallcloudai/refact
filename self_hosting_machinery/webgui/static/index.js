@@ -161,4 +161,4 @@ inputs_for_validate.forEach((input) => {
         validate_input(input);
       }, 750);
     });
-  });
+});

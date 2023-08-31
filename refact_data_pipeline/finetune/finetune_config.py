@@ -1,17 +1,25 @@
 import math
 import torch
 
+from known_models_db.refact_known_models import models_mini_db
 from refact_data_pipeline.finetune import traces
+from self_hosting_machinery import env
 
 from typing import Any, Dict, List
 
 
-def base_config(env):
+def base_config(model_name: str):
+    if model_name not in models_mini_db:
+        raise RuntimeError(f"Unknown model {model_name}, try to update repo")
+    model_info = models_mini_db[model_name]
+    if "finetune" not in model_info.get("filter_caps", []):
+        raise RuntimeError(f"Model {model_name} does not support finetune")
     return dict(
+        model_name=model_name,
         model_info=dict(
             weight_path=env.DIR_WEIGHTS,
-            repo_id='smallcloudai/codify_3b_multi',
-            ctx_size=2048,
+            repo_id=model_info['model_path'],
+            ctx_size=model_info['T'],
             lora={
                 "lora_target_modules": [
                     "qkv",
