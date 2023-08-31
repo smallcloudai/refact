@@ -1,7 +1,18 @@
-import os, sys, json, re, time, datetime, termcolor, multiprocessing, copy, queue
+import os
+import json
+import re
+import time
+import datetime
+import termcolor
+import multiprocessing
+import copy
+import queue
 import requests
-from typing import Dict, Any, List, Optional, Set
+import setproctitle
 import logging
+
+from typing import Dict, Any, List, Optional, Set
+
 logger = logging.getLogger("INFSERVER")
 
 
@@ -241,7 +252,6 @@ class UploadProxy:
 
 
 def _upload_results_loop(upload_q: multiprocessing.Queue, cancelled_q: multiprocessing.Queue):
-    import setproctitle
     setproctitle.setproctitle("upload_results_loop")
     req_session = infserver_session()
     exit_flag = False

@@ -33,13 +33,14 @@ all_refact_packages = {
         requires=["termcolor", "torch"],
         requires_packages=["refact_encoding", "code_contrast", "refact_scratchpads_no_gpu"]),
     "refact_scratchpads_no_gpu": PyPackage(
-        requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson"]),
+        requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson", "setproctitle"]),
     "refact_data_pipeline": PyPackage(
         requires=["numpy", "tokenizers", "torch", "requests", "cloudpickle",
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools',
                   "cdifflib", "ujson", "zstandard", "scipy", "deepspeed==0.9.2",
                   "peft", "einops", "mpi4py", "matplotlib", "transformers",
-                  "triton==2.0.0.post1", "torchinfo", "giturlparse", "jsonlines"],
+                  "triton==2.0.0.post1", "torchinfo", "giturlparse", "jsonlines",
+                  "binpacking", "filelock", "tables"],
         requires_packages=["refact_encoding", "code_contrast", "self_hosting_machinery",
                            "refact_models"],
         data=["git_command.exp"],
