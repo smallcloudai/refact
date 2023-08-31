@@ -21,13 +21,12 @@ refact_mini_db = {
         "filter_caps": ["CONTRASTcode", "completion", "finetune"],
     },
 
-    "Refact/2b": {
+    "Refact/1.6B-fim": {
         "backend": "transformers",
-        "model_path": "smallcloudai/Refact-2b",
+        "model_path": "smallcloudai/Refact-1_6B-fim",
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadHuggingface",
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceRefact",
         "model_class_kwargs": {},
         "filter_caps": ["Refact", "completion"],
-        "hidden": True,   # only for debugging because model is still training
     },
 }
