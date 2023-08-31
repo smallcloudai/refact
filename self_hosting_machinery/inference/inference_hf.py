@@ -155,7 +155,10 @@ class InferenceHF(InferenceBase):
             Scratchpad = ScratchpadHuggingfaceCompletion
 
         scratchpad = Scratchpad(tokenizer=self._tokenizer, logger=logger, **request)
-        p = scratchpad.prompt(self._tokenizer.max_len_single_sentence)
+        T = self._tokenizer.max_len_single_sentence
+        if not isinstance(T, int) or T <= 0 or T > 4096:
+            T = 2048
+        p = scratchpad.prompt(T)
         if len(p) == 0:
             raise RuntimeError("empty tokens prompt")
 
