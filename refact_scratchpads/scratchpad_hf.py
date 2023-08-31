@@ -463,5 +463,5 @@ class ScratchpadHuggingfaceRefact(ScratchpadChatBase):
             else:
                 text += f"{self._esc}ASSISTANT "
             text += message["content"] + "\n"
-        text += f"{self._esc}ASSISTANT "
+        text += f"{self._esc}ASSISTANT"
         return text

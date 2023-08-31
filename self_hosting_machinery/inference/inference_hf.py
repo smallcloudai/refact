@@ -184,7 +184,10 @@ class InferenceHF(InferenceBase):
                                          max_new_tokens=request["max_tokens"],
                                          stopping_criteria=stopping_criteria,
                                          return_dict_in_generate=True,
-                                         output_scores=True)
+                                         output_scores=True,
+                                         top_p=request.get('top_p', 1.0),
+                                         temperature=request.get('temperature', 0.2))
+
                 self._model.generate(**generation_kwargs)
             if not scratchpad.finish_reason:
                 scratchpad.finish_reason = "maxlen"
