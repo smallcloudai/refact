@@ -59,7 +59,7 @@ class TabFinetuneConfig(BaseModel):
 
 class TabFinetuneActivate(BaseModel):
     model: str
-    lora_mode: str = Query(default="latest-best", regex="off|latest-best|specific")
+    lora_mode: str = Query(default="off", regex="off|latest-best|specific")
     specific_lora_run_id: str = Query(default="")
     specific_checkpoint: str = Query(default="")
 
