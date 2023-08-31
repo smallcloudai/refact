@@ -42,7 +42,7 @@ def verify_bearer(authorization: str):
 class EngineDescription(BaseModel):
     infmod_guid: str
     B: int = Query(default=0, ge=1, le=64)
-    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.]+$")
+    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
     engine_started_ts: int
     max_thinking_time: int
 
