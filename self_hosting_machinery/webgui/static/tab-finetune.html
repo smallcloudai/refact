@@ -1,12 +1,12 @@
 <div class="row">
 
   <div class="col-5">
-    <div class="pane">
+    <div class="pane select-model-pane">
       <h3>Select Model</h3>
       <select id="finetune-model" class="form-select">
       </select>
     </div>
-    <div class="pane">
+    <div class="pane use-model-pane">
       <h3>Use Finetuned Model</h3>
       <div class="lora-group">
         <div class="btn-group" role="group" aria-label="basic radio toggle button group">
@@ -196,7 +196,7 @@
                 <input type="text" data-min="1" data-max="100" class="validate form-control" id="warmup_num_steps">
                 <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                 <div class="form-text">
-                  Max 1, Max 100
+                  Min 1, Max 100
                 </div>
               </div>
             </div>

@@ -317,7 +317,7 @@ function save_filter_setup() {
         }
         let success_toast_div = document.querySelector('.upload-tab-scan-success-toast');
         const success_toast = bootstrap.Toast.getOrCreateInstance(success_toast_div);
-        if(!show_info_toast) {
+        if(!show_info_toast && checked_types.length > 0) {
             show_info_toast = true;
             document.querySelector('.upload-tab-scan-success-toast .toast-body').innerHTML = 'Source files are ready, you can start GPU filtering now.';
             setTimeout(function() {
