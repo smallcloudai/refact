@@ -128,8 +128,9 @@ class InferenceHF(InferenceBase):
 
         if model_dict["backend"] == "transformers":
             self._model = AutoModelForCausalLM.from_pretrained(
-                self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, device_map="auto",
-                trust_remote_code=True, **self._model_dict["model_class_kwargs"])
+                self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS,
+                device_map="auto", torch_dtype="auto", trust_remote_code=True,
+                **self._model_dict["model_class_kwargs"])
         elif model_dict["backend"] == "autogptq":
             self._model = CustomAutoGPTQForCausalLM.from_quantized(
                 self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, device=self._device,
@@ -154,7 +155,10 @@ class InferenceHF(InferenceBase):
             Scratchpad = ScratchpadHuggingfaceCompletion
 
         scratchpad = Scratchpad(tokenizer=self._tokenizer, logger=logger, **request)
-        p = scratchpad.prompt(self._tokenizer.max_len_single_sentence)
+        T = self._tokenizer.max_len_single_sentence
+        if not isinstance(T, int) or T <= 0 or T > 4096:
+            T = 2048
+        p = scratchpad.prompt(T)
         if len(p) == 0:
             raise RuntimeError("empty tokens prompt")
 
