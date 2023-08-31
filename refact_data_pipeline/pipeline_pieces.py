@@ -246,12 +246,16 @@ class Shuffle:
 
 
 class Mix:
-    def __init__(self, src: List[Iterable], proportions: List[float]):
+    def __init__(self, src: List[Iterable], proportions: List[float], seed: int = 42, shuffle_depth : int =   1000):
         self.src = src
         self.proportions = proportions if len(proportions) == len(src) else [1/len(src)]*len(src)
+        self.seed = seed
+        self.shuffle_depth: int = shuffle_depth
+        self.random_state = random.Random(self.seed if self.seed else None)
         assert abs(sum(self.proportions) - 1) < 0.0000001
 
     def __iter__(self):
+        buf = []
         iters = [iter(s) for s in self.src]
         accum = [0.0] * len(iters)
         emitted = [0] * len(iters)
@@ -262,7 +266,10 @@ class Mix:
                 if accum[i] > emitted[i]:
                     try:
                         emitted[i] += 1
-                        yield next(iters[i])
+                        buf.append(next(iters[i]))
+                        if len(buf) >= self.shuffle_depth:
+                            t = buf.pop(self.random_state.randrange(len(buf)))
+                            yield t
                     except StopIteration:
                         assert 0, "It only makes sense to mix infinite datasets"
 

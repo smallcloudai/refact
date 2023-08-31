@@ -1,5 +1,7 @@
 import torch as th
 import time
+import json
+import os
 import termcolor
 
 from refact_scratchpads.scratchpad_utils import trim_context_infill
@@ -13,7 +15,7 @@ class EncodingWrapper:
         self._tokenizer = tokenizer
 
     def encode(self, text: str) -> List[int]:
-        return self._tokenizer.encode(text)
+        return self._tokenizer.encode(text, add_special_tokens=False)
 
     def decode(self, tokens: List[int]) -> str:
         return self._tokenizer.decode(tokens)
@@ -31,7 +33,7 @@ class ScratchpadHuggingfaceBase:
         **unused
     ):
         self._tokenizer = tokenizer
-        self._tokenizer_skip_first = bool(tokenizer.encode(""))
+        self._tokenizer_skip_first = bool(tokenizer.encode(""))    # XXX: replace with add_special_tokens=False ?
         self._max_tokens = max_tokens
         self._logger = logger
         self._created = created
@@ -70,7 +72,6 @@ class ScratchpadHuggingfaceBase:
 
     def after_token_selection(self, m, chosen_token: th.Tensor, **unused) -> Dict[str, Any]:
         t = chosen_token.item()
-        self.debuglog("%05d %s" % (t, self._tokenizer.decode([t]).replace("\n", "\\n")))
 
         if t in [self._tokenizer.eos_token_id]:
             self.finish_reason = "eot"
@@ -101,6 +102,13 @@ class ScratchpadHuggingfaceBase:
         if len(tokens) != 1:
             raise ValueError(f"Must be single token, have {tokens} for '{text}'")
         return tokens[0]
+
+    def encode_without_special_tokens(self, txt: str) -> List[int]:
+        if hasattr(self._tokenizer, "tokenizer_copy_but_does_not_encode_special_tokens"):
+            t = self._tokenizer.tokenizer_copy_but_does_not_encode_special_tokens
+        else:
+            t = self._tokenizer.backend_tokenizer
+        return t.encode(txt, add_special_tokens=False).ids
 
     @property
     def generated_tokens_n(self):
@@ -134,17 +142,28 @@ class ScratchpadHuggingfaceCompletion(ScratchpadHuggingfaceBase):
 
 
 class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
-    def __init__(self, sources: Dict[str, str], cursor_file: str, cursor0: int, cursor1: int, **kwargs):
+
+    def __init__(
+            self,
+            sources: Dict[str, str],
+            cursor_file: str,
+            cursor0: int,
+            cursor1: int,
+            ignore_special_tokens: bool = True,
+            **kwargs
+    ):
         super().__init__(**kwargs)
 
         assert cursor0 == cursor1
 
         self._cursor_file = cursor_file
         self._cursor = cursor0
+        self._ignore_special_tokens = ignore_special_tokens
         self._code = sources[cursor_file]
 
         self._prefix: Optional[str] = None
         self._suffix: Optional[str] = None
+        self._suffix_line0cut: Optional[str] = None
         self._completion = []
 
         self._tokens_produced = 0
@@ -154,26 +173,139 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
 
     def prompt(self, T: int):
         self._prefix = self._code[:self._cursor]
-        self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        # Why we need to cut the line right of the cursor?
+        # Example 1:
+        # function_call(param1, GENERATED_TONENS<EOF>)
+        # => everything works right
+        # Example 2:
+        # function_call(param1, GENERATED_TONENS)\nMORE_TOKENS\nSOME_OTHER_CALL(OTHER_PARAM<EOF>)
+        #                                        ^^ but we stop here because we need single line completion
+        # => we have two closing parenthesis.
+        # self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        self._suffix = self._code[self._cursor:]
+        self._suffix_line0cut = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
         self._completion.clear()
 
         prefix_cut, suffix_cut = trim_context_infill(
-            self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens)
+            self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens
+        )
+        self.debuglog(
+            f"ScratchpadHuggingfaceFIM prompt prefix {len(prefix_cut)} chars, "
+            f"suffix {len(suffix_cut)} chars, T={T} max_tokens={self._max_tokens}"
+        )
+        if self._ignore_special_tokens:
+            prefix_cut_tokens = self.encode_without_special_tokens(prefix_cut)
+            suffix_cut_tokens = self.encode_without_special_tokens(suffix_cut)
+        else:
+            prefix_cut_tokens = self._tokenizer.encode(prefix_cut)
+            suffix_cut_tokens = self._tokenizer.encode(suffix_cut)
+
         prompt: List[int] = [
             self._fim_prefix,
-            *self._tokenizer.encode(prefix_cut),
+            *prefix_cut_tokens,
             self._fim_suffix,
-            *self._tokenizer.encode(suffix_cut),
+            *suffix_cut_tokens,
             self._fim_middle,
         ]
+        # self.debuglog("-"*40)
+        # self.debuglog(self._tokenizer.decode(prompt))
+        # self.debuglog("-"*40)
         return prompt
 
     def completion(self, final: bool):
         assert self._prefix is not None
         assert self._suffix is not None
-        return {
-            self._cursor_file: self._prefix + self._tokenizer.decode(self._completion) + self._suffix,
-        }
+        completion = self._tokenizer.decode(self._completion)
+        if self.finish_reason == "eot":
+            # Correct stop
+            return {self._cursor_file: self._prefix + completion + self._suffix}
+        else:
+            # "stop-lf" or "length" or not stopped yet (empty reason), it's better to remove first line remainder
+            return {self._cursor_file: self._prefix + completion + self._suffix_line0cut}
+
+
+class ScratchpadRefactFIM(ScratchpadHuggingfaceBase):
+
+    def __init__(
+            self,
+            sources: Dict[str, str],
+            cursor_file: str,
+            cursor0: int,
+            cursor1: int,
+            ignore_special_tokens: bool = True,
+            **kwargs
+    ):
+        super().__init__(**kwargs)
+
+        assert cursor0 == cursor1
+
+        self._cursor_file = cursor_file
+        self._cursor = cursor0
+        self._ignore_special_tokens = ignore_special_tokens
+        self._code = sources[cursor_file]
+
+        self._prefix: Optional[str] = None
+        self._suffix: Optional[str] = None
+        self._suffix_line0cut: Optional[str] = None
+        self._completion = []
+
+        self._tokens_produced = 0
+        self._fim_prefix = self._encode_one_token("<fim_prefix>")
+        self._fim_suffix = self._encode_one_token("<fim_suffix>")
+        self._fim_middle = self._encode_one_token("<fim_middle>")
+
+    def prompt(self, T: int):
+        self._prefix = self._code[:self._cursor]
+        # Why we need to cut the line right of the cursor?
+        # Example 1:
+        # function_call(param1, GENERATED_TONENS<EOF>)
+        # => everything works right
+        # Example 2:
+        # function_call(param1, GENERATED_TONENS)\nMORE_TOKENS\nSOME_OTHER_CALL(OTHER_PARAM<EOF>)
+        #                                        ^^ but we stop here because we need single line completion
+        # => we have two closing parenthesis.
+        # self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        self._suffix = self._code[self._cursor:]
+        self._suffix_line0cut = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        self._completion.clear()
+
+        prefix_cut, suffix_cut = trim_context_infill(
+            self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens
+        )
+        self.debuglog(
+            f"ScratchpadRefactFIM prompt prefix {len(prefix_cut)} chars, "
+            f"suffix {len(suffix_cut)} chars, T={T} max_tokens={self._max_tokens}"
+        )
+        if self._ignore_special_tokens:
+            prefix_cut_tokens = self.encode_without_special_tokens(prefix_cut)
+            suffix_cut_tokens = self.encode_without_special_tokens(suffix_cut)
+        else:
+            prefix_cut_tokens = self._tokenizer.encode(prefix_cut)
+            suffix_cut_tokens = self._tokenizer.encode(suffix_cut)
+
+        prompt: List[int] = [
+            self._fim_suffix,
+            *suffix_cut_tokens,
+            self._fim_prefix,
+            *prefix_cut_tokens,
+            self._fim_middle,
+        ]
+        # self.debuglog("-"*40)
+        # self.debuglog(self._tokenizer.decode(prompt))
+        # self.debuglog("-"*40)
+        return prompt
+
+    def completion(self, final: bool):
+        assert self._prefix is not None
+        assert self._suffix is not None
+        completion = self._tokenizer.decode(self._completion)
+        if self.finish_reason == "eot":
+            # Correct stop
+            return {self._cursor_file: self._prefix + completion + self._suffix}
+        else:
+            # "stop-lf" or "length" or not stopped yet (empty reason), it's better to remove first line remainder
+            return {self._cursor_file: self._prefix + completion + self._suffix_line0cut}
+
 
 
 class ScratchpadCodeLlama(ScratchpadHuggingfaceBase):
