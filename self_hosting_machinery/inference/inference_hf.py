@@ -171,6 +171,7 @@ class InferenceHF(InferenceBase):
         if not isinstance(T, int) or T <= 0 or T > 4096:
             T = 2048
         p = scratchpad.prompt(T)
+        logger("prompt %i tokens, max_new_tokens %i" % (len(p), request["max_tokens"]))
         if len(p) == 0:
             raise RuntimeError("empty tokens prompt")
 

@@ -35,7 +35,7 @@ def chat_limit_messages(messages: List[Dict[str, str]]):
         raise HTTPException(status_code=400, detail="No messages")
     while len(messages) > 10:
         del messages[0:2]  # user, assistant
-    while sum([len(m["content"] + m["role"]) for m in messages]) > 4000:
+    while sum([len(m["content"] + m["role"]) for m in messages]) > 8000:
         del messages[0:2]  # user, assistant
     return messages
 

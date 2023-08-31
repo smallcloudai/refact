@@ -454,15 +454,13 @@ class ScratchpadHuggingfaceRefact(ScratchpadChatBase):
         self._esc = "<empty_output>"
 
     def _prompt(self) -> str:
-        text = (f"{self._esc}SYSTEM You are a programming assistant. Strictly follow the instructions. "
-                f"If you don't understand the question, just say: I don't get it")
+        text = self._esc + "SYSTEM You are a programming assistant. If you don't understand the question, just say: I don't understand the question.\n"
         for message in self._messages:
             if message["content"] == "":
                 continue
             if message["role"] == "user":
-                text += f"{self._esc}USER "
+                text += self._esc + "USER " + message["content"].strip() + "\n"
             else:
-                text += f"{self._esc}ASSISTANT "
-            text += message["content"] + "\n"
-        text += f"{self._esc}ASSISTANT"
+                text += self._esc + "ASSISTANT " + message["content"].strip() + "\n"
+        text += self._esc + "ASSISTANT"
         return text
