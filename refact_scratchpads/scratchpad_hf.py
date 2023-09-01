@@ -31,7 +31,6 @@ class ScratchpadHuggingfaceBase:
         **unused
     ):
         self._tokenizer = tokenizer
-        self._tokenizer_skip_first = bool(tokenizer.encode(""))    # XXX: replace with add_special_tokens=False ?
         self._max_tokens = max_tokens
         self._logger = logger
         self._created = created
@@ -94,14 +93,12 @@ class ScratchpadHuggingfaceBase:
         return dict()
 
     def _encode_one_token(self, text: str) -> int:
-        tokens = self._tokenizer.encode(text)
-        if self._tokenizer_skip_first:
-            tokens = tokens[1:]
+        tokens = self._tokenizer.encode(text, add_special_tokens=False)
         if len(tokens) != 1:
             raise ValueError(f"Must be single token, have {tokens} for '{text}'")
         return tokens[0]
 
-    def encode_without_special_tokens(self, txt: str) -> List[int]:
+    def _encode_without_special_tokens(self, txt: str) -> List[int]:
         if hasattr(self._tokenizer, "tokenizer_copy_but_does_not_encode_special_tokens"):
             t = self._tokenizer.tokenizer_copy_but_does_not_encode_special_tokens
         else:
@@ -188,8 +185,8 @@ class ScratchpadFIM(ScratchpadHuggingfaceBase):
         prefix_cut, suffix_cut = trim_context_infill(
             self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens
         )
-        prefix_cut_tokens = self.encode_without_special_tokens(prefix_cut)
-        suffix_cut_tokens = self.encode_without_special_tokens(suffix_cut)
+        prefix_cut_tokens = self._encode_without_special_tokens(prefix_cut)
+        suffix_cut_tokens = self._encode_without_special_tokens(suffix_cut)
         self.debuglog(
             "ScratchpadFIM prompt prefix %d chars -> %d tokens, suffix %d chars -> %d tokens, T=%d max_new_tokens=%d" %
             (len(prefix_cut), len(prefix_cut_tokens), len(suffix_cut), len(suffix_cut_tokens), T, self._max_tokens)
