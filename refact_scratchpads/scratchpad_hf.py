@@ -380,13 +380,13 @@ class ScratchpadHuggingfaceRefact(ScratchpadChatBase):
 
     def _prompt(self) -> str:
         if len(self._messages) <= 2:
-            # We are ignoring the `system prompt` here 'cause the model
-            # haven't seen more than two messages with a `system prompt` while training
-            # Going to fix this later with the next iteration
             text = self._esc + ("SYSTEM You are a programming assistant. "
                                 "If you don't understand the question, just say: "
                                 "I don't understand the question.\n")
         else:
+            # We are ignoring the `system prompt` here 'cause the model
+            # haven't seen more than two messages with a `system prompt` while training
+            # Going to fix this later with the next iteration
             text = ""
         for message in self._messages:
             if message["content"] == "":
