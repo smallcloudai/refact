@@ -6,7 +6,7 @@ refact_mini_db = {
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceRefact",
         "model_class_kwargs": {},
         "required_memory_mb": 6000,
-        "filter_caps": ["Refact", "completion", "finetune"],
+        "filter_caps": ["Refact", "completion"],
     },
 
     "CONTRASTcode/medium/multi": {
