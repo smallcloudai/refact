@@ -2,7 +2,7 @@ huggingface_mini_db = {
     "starcoder/15b/base": {
         "backend": "autogptq",
         "model_path": "TheBloke/starcoder-GPTQ",
-        "diff_scratchpad_class": "refact_scratchpads:ScratchpadHuggingface",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadFIM",
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "required_memory_mb": 18000,
@@ -11,7 +11,7 @@ huggingface_mini_db = {
     "starcoder/15b/plus": {
         "backend": "autogptq",
         "model_path": "TheBloke/starcoderplus-GPTQ",
-        "diff_scratchpad_class": "refact_scratchpads:ScratchpadHuggingface",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadFIM",
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "required_memory_mb": 18000,
@@ -29,7 +29,7 @@ huggingface_mini_db = {
     "wizardcoder/15b": {
         "backend": "autogptq",
         "model_path": "TheBloke/WizardCoder-15B-1.0-GPTQ",
-        "diff_scratchpad_class": "refact_scratchpads:ScratchpadHuggingface",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadFIM",
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "required_memory_mb": 18000,
