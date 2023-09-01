@@ -1,7 +1,5 @@
 import torch as th
 import time
-import json
-import os
 import termcolor
 
 from refact_scratchpads.scratchpad_utils import trim_context_infill
@@ -149,7 +147,6 @@ class ScratchpadFIM(ScratchpadHuggingfaceBase):
             cursor_file: str,
             cursor0: int,
             cursor1: int,
-            suffix_first: bool = False,
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -158,7 +155,6 @@ class ScratchpadFIM(ScratchpadHuggingfaceBase):
 
         self._cursor_file = cursor_file
         self._cursor = cursor0
-        self._suffix_first = suffix_first
         self._code = sources[cursor_file]
 
         self._prefix: Optional[str] = None
@@ -170,6 +166,9 @@ class ScratchpadFIM(ScratchpadHuggingfaceBase):
         self._fim_prefix = self._encode_one_token("<fim_prefix>")
         self._fim_suffix = self._encode_one_token("<fim_suffix>")
         self._fim_middle = self._encode_one_token("<fim_middle>")
+
+    def _prompt_format(self, prefix_tokens, suffix_tokens):
+        raise NotImplementedError()
 
     def prompt(self, T: int):
         self._prefix = self._code[:self._cursor]
@@ -195,23 +194,7 @@ class ScratchpadFIM(ScratchpadHuggingfaceBase):
             "ScratchpadFIM prompt prefix %d chars -> %d tokens, suffix %d chars -> %d tokens, T=%d max_new_tokens=%d" %
             (len(prefix_cut), len(prefix_cut_tokens), len(suffix_cut), len(suffix_cut_tokens), T, self._max_tokens)
         )
-        prompt: List[int]
-        if self._suffix_first:
-            prompt = [
-                self._fim_suffix,
-                *suffix_cut_tokens,
-                self._fim_prefix,
-                *prefix_cut_tokens,
-                self._fim_middle,
-            ]
-        else:
-            prompt = [
-                self._fim_prefix,
-                *prefix_cut_tokens,
-                self._fim_suffix,
-                *suffix_cut_tokens,
-                self._fim_middle,
-            ]
+        prompt: List[int] = self._prompt_format(prefix_cut_tokens, suffix_cut_tokens)
         self.debuglog("-"*40)
         self.debuglog(self._tokenizer.decode(prompt))
         self.debuglog("-"*40)
@@ -229,9 +212,28 @@ class ScratchpadFIM(ScratchpadHuggingfaceBase):
             return {self._cursor_file: self._prefix + completion + self._suffix_line0cut}
 
 
-class ScratchpadFIM_SuffixFirst(ScratchpadFIM):
-    def __init__(self, **kwargs):
-        super().__init__(suffix_first=True, **kwargs)
+class ScratchpadSPM(ScratchpadFIM):
+
+    def _prompt_format(self, prefix_tokens, suffix_tokens):
+        return [
+            self._fim_suffix,
+            *suffix_tokens,
+            self._fim_prefix,
+            *prefix_tokens,
+            self._fim_middle,
+        ]
+
+
+class ScratchpadPSM(ScratchpadFIM):
+
+    def _prompt_format(self, prefix_tokens, suffix_tokens):
+        return [
+            self._fim_prefix,
+            *prefix_tokens,
+            self._fim_suffix,
+            *suffix_tokens,
+            self._fim_middle,
+        ]
 
 
 class ScratchpadCodeLlama(ScratchpadHuggingfaceBase):

@@ -2,7 +2,7 @@ refact_mini_db = {
     "Refact/1.6B": {
         "backend": "transformers",
         "model_path": "smallcloudai/Refact-1_6B-fim",
-        "diff_scratchpad_class": "refact_scratchpads:ScratchpadFIM_SuffixFirst",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadSPM",
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceRefact",
         "model_class_kwargs": {},
         "required_memory_mb": 6000,
