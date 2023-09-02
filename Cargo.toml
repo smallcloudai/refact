@@ -1,0 +1,19 @@
+[package]
+name = "code-scratchpads"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+home = "0.5"
+ropey = "1.6"
+serde = { version = "1", features = ["derive"] }
+reqwest = { version = "0.11", features = ["json"] }
+tokenizers = "0.13"
+tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread"] }
+tower-lsp = "0.20"
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
