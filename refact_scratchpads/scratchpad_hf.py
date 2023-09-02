@@ -1,7 +1,5 @@
 import torch as th
 import time
-import json
-import os
 import termcolor
 
 from refact_scratchpads.scratchpad_utils import trim_context_infill
@@ -33,7 +31,6 @@ class ScratchpadHuggingfaceBase:
         **unused
     ):
         self._tokenizer = tokenizer
-        self._tokenizer_skip_first = bool(tokenizer.encode(""))    # XXX: replace with add_special_tokens=False ?
         self._max_tokens = max_tokens
         self._logger = logger
         self._created = created
@@ -96,14 +93,12 @@ class ScratchpadHuggingfaceBase:
         return dict()
 
     def _encode_one_token(self, text: str) -> int:
-        tokens = self._tokenizer.encode(text)
-        if self._tokenizer_skip_first:
-            tokens = tokens[1:]
+        tokens = self._tokenizer.encode(text, add_special_tokens=False)
         if len(tokens) != 1:
             raise ValueError(f"Must be single token, have {tokens} for '{text}'")
         return tokens[0]
 
-    def encode_without_special_tokens(self, txt: str) -> List[int]:
+    def _encode_without_special_tokens(self, txt: str) -> List[int]:
         if hasattr(self._tokenizer, "tokenizer_copy_but_does_not_encode_special_tokens"):
             t = self._tokenizer.tokenizer_copy_but_does_not_encode_special_tokens
         else:
@@ -141,7 +136,7 @@ class ScratchpadHuggingfaceCompletion(ScratchpadHuggingfaceBase):
         return {"text": self._tokenizer.decode(self._completion)}
 
 
-class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
+class ScratchpadFIM(ScratchpadHuggingfaceBase):
 
     def __init__(
             self,
@@ -149,7 +144,6 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
             cursor_file: str,
             cursor0: int,
             cursor1: int,
-            ignore_special_tokens: bool = True,
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -158,7 +152,6 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
 
         self._cursor_file = cursor_file
         self._cursor = cursor0
-        self._ignore_special_tokens = ignore_special_tokens
         self._code = sources[cursor_file]
 
         self._prefix: Optional[str] = None
@@ -171,6 +164,9 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
         self._fim_suffix = self._encode_one_token("<fim_suffix>")
         self._fim_middle = self._encode_one_token("<fim_middle>")
 
+    def _prompt_format(self, prefix_tokens, suffix_tokens):
+        raise NotImplementedError()
+
     def prompt(self, T: int):
         self._prefix = self._code[:self._cursor]
         # Why we need to cut the line right of the cursor?
@@ -182,34 +178,23 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
         #                                        ^^ but we stop here because we need single line completion
         # => we have two closing parenthesis.
         # self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
-        self._suffix = self._code[self._cursor:]
+        self._suffix = self._code[self._cursor:].lstrip(" \t")
         self._suffix_line0cut = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
         self._completion.clear()
 
         prefix_cut, suffix_cut = trim_context_infill(
             self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens
         )
+        prefix_cut_tokens = self._encode_without_special_tokens(prefix_cut)
+        suffix_cut_tokens = self._encode_without_special_tokens(suffix_cut)
         self.debuglog(
-            f"ScratchpadHuggingfaceFIM prompt prefix {len(prefix_cut)} chars, "
-            f"suffix {len(suffix_cut)} chars, T={T} max_tokens={self._max_tokens}"
+            "ScratchpadFIM prompt prefix %d chars -> %d tokens, suffix %d chars -> %d tokens, T=%d max_new_tokens=%d" %
+            (len(prefix_cut), len(prefix_cut_tokens), len(suffix_cut), len(suffix_cut_tokens), T, self._max_tokens)
         )
-        if self._ignore_special_tokens:
-            prefix_cut_tokens = self.encode_without_special_tokens(prefix_cut)
-            suffix_cut_tokens = self.encode_without_special_tokens(suffix_cut)
-        else:
-            prefix_cut_tokens = self._tokenizer.encode(prefix_cut)
-            suffix_cut_tokens = self._tokenizer.encode(suffix_cut)
-
-        prompt: List[int] = [
-            self._fim_prefix,
-            *prefix_cut_tokens,
-            self._fim_suffix,
-            *suffix_cut_tokens,
-            self._fim_middle,
-        ]
-        # self.debuglog("-"*40)
-        # self.debuglog(self._tokenizer.decode(prompt))
-        # self.debuglog("-"*40)
+        prompt: List[int] = self._prompt_format(prefix_cut_tokens, suffix_cut_tokens)
+        self.debuglog("-"*40)
+        self.debuglog(self._tokenizer.decode(prompt))
+        self.debuglog("-"*40)
         return prompt
 
     def completion(self, final: bool):
@@ -224,88 +209,28 @@ class ScratchpadHuggingface(ScratchpadHuggingfaceBase):
             return {self._cursor_file: self._prefix + completion + self._suffix_line0cut}
 
 
-class ScratchpadRefactFIM(ScratchpadHuggingfaceBase):
+class ScratchpadSPM(ScratchpadFIM):
 
-    def __init__(
-            self,
-            sources: Dict[str, str],
-            cursor_file: str,
-            cursor0: int,
-            cursor1: int,
-            ignore_special_tokens: bool = True,
-            **kwargs
-    ):
-        super().__init__(**kwargs)
-
-        assert cursor0 == cursor1
-
-        self._cursor_file = cursor_file
-        self._cursor = cursor0
-        self._ignore_special_tokens = ignore_special_tokens
-        self._code = sources[cursor_file]
-
-        self._prefix: Optional[str] = None
-        self._suffix: Optional[str] = None
-        self._suffix_line0cut: Optional[str] = None
-        self._completion = []
-
-        self._tokens_produced = 0
-        self._fim_prefix = self._encode_one_token("<fim_prefix>")
-        self._fim_suffix = self._encode_one_token("<fim_suffix>")
-        self._fim_middle = self._encode_one_token("<fim_middle>")
-
-    def prompt(self, T: int):
-        self._prefix = self._code[:self._cursor]
-        # Why we need to cut the line right of the cursor?
-        # Example 1:
-        # function_call(param1, GENERATED_TONENS<EOF>)
-        # => everything works right
-        # Example 2:
-        # function_call(param1, GENERATED_TONENS)\nMORE_TOKENS\nSOME_OTHER_CALL(OTHER_PARAM<EOF>)
-        #                                        ^^ but we stop here because we need single line completion
-        # => we have two closing parenthesis.
-        # self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
-        self._suffix = self._code[self._cursor:]
-        self._suffix_line0cut = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
-        self._completion.clear()
-
-        prefix_cut, suffix_cut = trim_context_infill(
-            self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens
-        )
-        self.debuglog(
-            f"ScratchpadRefactFIM prompt prefix {len(prefix_cut)} chars, "
-            f"suffix {len(suffix_cut)} chars, T={T} max_tokens={self._max_tokens}"
-        )
-        if self._ignore_special_tokens:
-            prefix_cut_tokens = self.encode_without_special_tokens(prefix_cut)
-            suffix_cut_tokens = self.encode_without_special_tokens(suffix_cut)
-        else:
-            prefix_cut_tokens = self._tokenizer.encode(prefix_cut)
-            suffix_cut_tokens = self._tokenizer.encode(suffix_cut)
-
-        prompt: List[int] = [
+    def _prompt_format(self, prefix_tokens, suffix_tokens):
+        return [
             self._fim_suffix,
-            *suffix_cut_tokens,
+            *suffix_tokens,
             self._fim_prefix,
-            *prefix_cut_tokens,
+            *prefix_tokens,
             self._fim_middle,
         ]
-        # self.debuglog("-"*40)
-        # self.debuglog(self._tokenizer.decode(prompt))
-        # self.debuglog("-"*40)
-        return prompt
 
-    def completion(self, final: bool):
-        assert self._prefix is not None
-        assert self._suffix is not None
-        completion = self._tokenizer.decode(self._completion)
-        if self.finish_reason == "eot":
-            # Correct stop
-            return {self._cursor_file: self._prefix + completion + self._suffix}
-        else:
-            # "stop-lf" or "length" or not stopped yet (empty reason), it's better to remove first line remainder
-            return {self._cursor_file: self._prefix + completion + self._suffix_line0cut}
 
+class ScratchpadPSM(ScratchpadFIM):
+
+    def _prompt_format(self, prefix_tokens, suffix_tokens):
+        return [
+            self._fim_prefix,
+            *prefix_tokens,
+            self._fim_suffix,
+            *suffix_tokens,
+            self._fim_middle,
+        ]
 
 
 class ScratchpadCodeLlama(ScratchpadHuggingfaceBase):
@@ -454,14 +379,21 @@ class ScratchpadHuggingfaceRefact(ScratchpadChatBase):
         self._esc = "<empty_output>"
 
     def _prompt(self) -> str:
-        text = ""
+        if len(self._messages) <= 2:
+            text = self._esc + ("SYSTEM You are a programming assistant. "
+                                "If you don't understand the question, just say: "
+                                "I don't understand the question.\n")
+        else:
+            # We are ignoring the `system prompt` here 'cause the model
+            # haven't seen more than two messages with a `system prompt` while training
+            # Going to fix this later with the next iteration
+            text = ""
         for message in self._messages:
             if message["content"] == "":
                 continue
             if message["role"] == "user":
-                text += f"{self._esc}USER "
+                text += self._esc + "USER " + message["content"].strip() + "\n"
             else:
-                text += f"{self._esc}ASSISTANT "
-            text += message["content"] + "\n"
-        text += f"{self._esc}ASSISTANT "
+                text += self._esc + "ASSISTANT " + message["content"].strip() + "\n"
+        text += self._esc + "ASSISTANT"
         return text

@@ -68,4 +68,10 @@ def find_best_lora(model_name: str) -> Dict[str, str]:
 
 
 if __name__ == "__main__":
-    print(find_best_lora(default_finetune_model))
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("--model", type=str, default=default_finetune_model)
+    args = parser.parse_args()
+
+    print(find_best_lora(args.model))

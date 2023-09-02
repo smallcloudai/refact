@@ -3,6 +3,7 @@ import os
 import time
 import torch
 import traceback
+import termcolor
 
 from auto_gptq import AutoGPTQForCausalLM
 from transformers import AutoModelForCausalLM
@@ -41,15 +42,26 @@ class CancellationStoppingCriteria(StoppingCriteria):
         return False
 
 
-class StopTokenStoppingCriteria(StoppingCriteria):
+class FeedScratchoadCriteria(StoppingCriteria):
 
-    def __init__(self, scratchpad: ScratchpadHuggingfaceBase):
+    def __init__(self, tokenizer, t0: float, scratchpad: ScratchpadHuggingfaceBase):
         StoppingCriteria.__init__(self)
+        self.tokenizer = tokenizer
         self.scratchpad = scratchpad
+        self.t0 = t0
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        last_tokens = input_ids[0][-1]
-        self.scratchpad.after_token_selection(None, last_tokens)
+        token = input_ids[0][-1]
+        if DEBUG:
+            def _format(t: str, color: str):
+                return "\"%s\"" % termcolor.colored(t.replace("\n", "\\n").replace("\r", "\\r"), color)
+            text = _format(self.tokenizer.decode([token.item()]), "green")
+            text = text.ljust(40)
+            # for tok, logprob in sorted(logprobs.items(), key=lambda x: -x[-1]):
+            #     text += " %i %s" % (tok, _format(self.tokenizer.decode([tok]), "yellow"))
+            #     text += " %0.2f%%" % (100 * math.exp(logprob))
+            logging.getLogger("MODEL").info("%6.1fms %s" % (1000 * (time.time() - self.t0), text))
+        self.scratchpad.after_token_selection(None, token)
         return bool(self.scratchpad.finish_reason)
 
 
@@ -159,6 +171,7 @@ class InferenceHF(InferenceBase):
         if not isinstance(T, int) or T <= 0 or T > 4096:
             T = 2048
         p = scratchpad.prompt(T)
+        logger("prompt %i tokens, max_new_tokens %i" % (len(p), request["max_tokens"]))
         if len(p) == 0:
             raise RuntimeError("empty tokens prompt")
 
@@ -166,6 +179,7 @@ class InferenceHF(InferenceBase):
         return scratchpad, tokens_prompt
 
     def infer(self, request: Dict[str, Any], upload_proxy: UploadProxy, upload_proxy_args: Dict):
+        t0 = time.time()
         request_id = request["id"]
         try:
             scratchpad, tokens_prompt = self._prepare_scratchpad(request)
@@ -176,7 +190,7 @@ class InferenceHF(InferenceBase):
             with torch.inference_mode():
                 stopping_criteria = StoppingCriteriaList([
                     CancellationStoppingCriteria(scratchpad, request_id, upload_proxy),
-                    StopTokenStoppingCriteria(scratchpad),
+                    FeedScratchoadCriteria(self._tokenizer, t0, scratchpad),
                 ])
                 streamer = SMCStream(self._tokenizer, request_id, upload_proxy, upload_proxy_args, scratchpad)
                 generation_kwargs = dict(input_ids=tokens_prompt.view(1, *tokens_prompt.shape),
@@ -184,7 +198,10 @@ class InferenceHF(InferenceBase):
                                          max_new_tokens=request["max_tokens"],
                                          stopping_criteria=stopping_criteria,
                                          return_dict_in_generate=True,
-                                         output_scores=True)
+                                         output_scores=True,
+                                         top_p=request.get('top_p', 1.0),
+                                         temperature=request.get('temperature', 0.2))
+
                 self._model.generate(**generation_kwargs)
             if not scratchpad.finish_reason:
                 scratchpad.finish_reason = "maxlen"

@@ -9,6 +9,8 @@ def modload(import_str):
     import_mod, import_class = import_str.rsplit(":", 1)
     model = importlib.import_module(import_mod)
     Class = getattr(model, import_class, None)
+    if Class is None:
+        raise ValueError("cannot find \"%s\"" % import_str)
     return Class
 
 

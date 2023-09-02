@@ -59,7 +59,7 @@ class TabFinetuneConfig(BaseModel):
 
 class TabFinetuneActivate(BaseModel):
     model: str
-    lora_mode: str = Query(default="default", regex="off|latest-best|specific")
+    lora_mode: str = Query(default="off", regex="off|latest-best|specific")
     specific_lora_run_id: str = Query(default="")
     specific_checkpoint: str = Query(default="")
 
@@ -238,6 +238,8 @@ class TabFinetuneRouter(APIRouter):
         return JSONResponse("OK")
 
     async def _tab_finetune_activate(self, activate: TabFinetuneActivate):
+        active_loras = get_active_loras()
+        active_loras[activate.model] = activate.dict()
         with open(env.CONFIG_ACTIVE_LORA, "w") as f:
-            f.write(activate.json(indent=4))
+            json.dump(active_loras, f, indent=4)
         return JSONResponse("OK")

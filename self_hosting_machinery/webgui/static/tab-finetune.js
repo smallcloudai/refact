@@ -22,6 +22,9 @@ let fine_tuning_button = null;
 let fine_tuning_settings = null;
 // let checkpoint_name = "best";
 // let selected_model = ""; // we don't have model choice, empty for now
+let use_model_pane = null;
+let select_model_pane = null;
+
 
 function finetine_status() {
     fetch("tab-finetune-get")
@@ -593,12 +596,18 @@ function finetune_status() {
     if(!downloaded_stats.finetune_working_now) {
         switch(downloaded_stats.finetune_filter_stats.status) {
             case 'starting':
-                fine_tuning_pane.classList.add('pane-disabled');       
+                fine_tuning_pane.classList.add('pane-disabled');
+                use_model_pane.classList.add('pane-disabled');
+                select_model_pane.classList.add('pane-disabled');
+                console.log('..starting');
                 break;
             case 'filtering':
                 fine_filter_settings.disabled = true;
                 progress_container.classList.remove('d-none')
                 eta_state.innerHTML = 'ETA: ' + downloaded_stats.finetune_filter_stats.eta_minutes + ' minute(s)';
+                use_model_pane.classList.remove('pane-disabled');
+                select_model_pane.classList.remove('pane-disabled');
+                console.log('..filtering');
                 break;
             case 'failed':
                 document.querySelector('.ftf-error').classList.remove('d-none');
@@ -607,6 +616,8 @@ function finetune_status() {
                 progress_container.classList.add('d-none');
                 ftf_bar.style.width = "0%";
                 fine_filter_settings.disabled = false;
+                use_model_pane.classList.remove('pane-disabled');
+                select_model_pane.classList.remove('pane-disabled');
                 break;
             case 'finished':
                 progress_container.classList.add('d-none');
@@ -616,6 +627,8 @@ function finetune_status() {
                 fine_filter_button.disabled = false;
                 fine_tuning_button.disabled = false;
                 fine_tuning_pane.classList.remove('pane-disabled');
+                use_model_pane.classList.remove('pane-disabled');
+                select_model_pane.classList.remove('pane-disabled');
                 break;
         }
     }
@@ -628,6 +641,8 @@ function finetune_status() {
     // filter working
     if(downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
         fine_tuning_pane.classList.add('pane-disabled');
+        use_model_pane.classList.add('pane-disabled');
+        select_model_pane.classList.add('pane-disabled');
         if(!fine_filter_button.querySelector('.spinner-border')) {
             fine_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop filtering`;
         }
@@ -635,7 +650,7 @@ function finetune_status() {
     }
     // both not working
     if(!downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
-        if(tab_files_data && !tab_files_data.hasOwnProperty('scan_finished') || !tab_files_data.scan_finished) {
+        if(tab_files_data && !tab_files_data.hasOwnProperty('scan_finished') && !tab_files_data.scan_finished) {
             return;
         }
         fine_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
@@ -644,6 +659,8 @@ function finetune_status() {
         fine_filter_button.disabled = false;
         fine_tuning_button.disabled = false;
         fine_tuning_settings.disabled = false;
+        use_model_pane.classList.remove('pane-disabled');
+        select_model_pane.classList.remove('pane-disabled');
     }
 }
 
@@ -804,6 +821,9 @@ export async function init() {
     fine_tuning_button = document.querySelector('.tab-finetune-run-now');
     fine_tuning_button.disabled = true;
     fine_tuning_settings = document.querySelector('.tab-finetune-fine-settings');
+
+    use_model_pane = document.querySelector('.use-model-pane');
+    select_model_pane = document.querySelector('.select-model-pane');
 
     const log_container = document.querySelector('.log-container');
     function handle_auto_scroll() {
