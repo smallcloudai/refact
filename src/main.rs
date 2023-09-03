@@ -16,22 +16,24 @@ use serde::{Deserialize, Serialize};
 
 use hyper::{Body, Request, Response, Server};
 use hyper::{Method, StatusCode};
-use hyper::server::conn::{AddrStream};
+use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
-
-use route_recognizer::{Match, Params, Router};
-
-// use tower::ServiceBuilder;
 
 use tracing::{error, info};
 
 // https://blog.logrocket.com/a-minimal-web-service-in-rust-using-hyper/
+// use route_recognizer::{Match, Params, Router};
 
+mod scratchpad_abstract;
 
-#[derive(Debug)]
-struct MyContext {
-    router: Router<String>,
+pub mod scratchpads_code_completion {
+    pub mod single_file_fim;
 }
+
+use scratchpads_code_completion::single_file_fim::SingleFileFIM;
+
+use crate::scratchpad_abstract::Scratchpad;
+
 
 #[derive(Debug, Deserialize)]
 struct MyRequest {
@@ -54,7 +56,11 @@ async fn handle_v1_code_completion(
               .into());
         }
     };
-    let txt = format!("hurray a call! model was: {}\n",
+
+    let aaa = SingleFileFIM::new();
+    aaa.prompt(333);
+
+    let txt = format!("hurray a call! model was: {}",
         my_request.model,
         );
     info!("handle_v1_code_completion returning: {}", txt);
@@ -65,25 +71,19 @@ async fn handle_v1_code_completion(
     Ok(response)
 }
 
+
 async fn handle_request(
     remote_addr: SocketAddr,
     path: String,
     method: Method,
     req: Request<Body>,
 ) -> Result<Response<Body>, hyper::Error> {
-    if method!= Method::POST {
-        return Ok(Response::builder()
-           .status(StatusCode::METHOD_NOT_ALLOWED)
-           .body(Body::from("Method not allowed"))
-           .unwrap());
-    }
     let body_bytes = hyper::body::to_bytes(req.into_body()).await?;
-    if path.starts_with("/v1/code-completion") {
+    info!("{} {} {} body_bytes={}", remote_addr, method, path, body_bytes.len());
+    if method == Method::POST && path == "/v1/code-completion" {
         return handle_v1_code_completion(body_bytes).await;
     }
-    let txt = format!("not found path {}, your ip is {}\n",
-        path,
-        remote_addr);
+    let txt = format!("404 not found, path {}\n", path);
     let response = Response::builder()
         .status(StatusCode::NOT_FOUND)
         .header("Content-Type", "application/json")
@@ -111,7 +111,7 @@ async fn main() {
             }))
         }
     });
-    let addr = ([127, 0, 0, 1], 8008).into();
+    let addr = ([127, 0, 0, 1], 8001).into();
     let server = Server::bind(&addr).serve(make_svc);
     println!("Server listening on http://{}", addr);
     if let Err(e) = server.await {
