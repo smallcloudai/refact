@@ -1,18 +1,17 @@
-// use reqwest::header::AUTHORIZATION;
 // use ropey::Rope;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use serde::{Deserialize, Serialize};
 // use serde_json::Error as SerdeJsonError;
-// use std::collections::HashMap;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
-// use std::sync::Arc;
-
-// use tokenizers::Tokenizer;
+use std::sync::Arc;
 
 // use tokio::io::AsyncWriteExt;
-// use tokio::sync::RwLock;
+use tokio::sync::RwLock;
 // use async_trait::async_trait;
+use tokenizers::Tokenizer;
 
 use hyper::{Body, Request, Response, Server};
 use hyper::{Method, StatusCode};
@@ -24,15 +23,20 @@ use tracing::{error, info};
 // https://blog.logrocket.com/a-minimal-web-service-in-rust-using-hyper/
 // use route_recognizer::{Match, Params, Router};
 
+mod cached_tokenizers;
 mod scratchpad_abstract;
-
 pub mod scratchpads_code_completion {
     pub mod single_file_fim;
 }
-
 use scratchpads_code_completion::single_file_fim::SingleFileFIM;
-
 use crate::scratchpad_abstract::Scratchpad;
+
+
+struct GlobalContext {
+    http_client: reqwest::Client,
+    cache_dir: PathBuf,
+    tokenizer_map: Arc<RwLock<HashMap<String, Tokenizer>>>,
+}
 
 
 #[derive(Debug, Deserialize)]
@@ -41,7 +45,27 @@ struct MyRequest {
 }
 
 
+async fn get_tokenizer(
+    global_context: Arc<RwLock<GlobalContext>>,
+    model: &str
+) -> Result<Tokenizer, ()> {
+    let cx_locked = global_context.write().await;
+    let mut tokenizer_map_locked = cx_locked.tokenizer_map.write().await;
+
+    let api_key ="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".to_string();
+    let tokenizer = cached_tokenizers::get_tokenizer(
+        model,
+        &mut tokenizer_map_locked,
+        &cx_locked.http_client,
+        &cx_locked.cache_dir,
+        Some(&api_key),
+    ).await.unwrap();
+    Ok(tokenizer)
+}
+
+
 async fn handle_v1_code_completion(
+    global_context: Arc<RwLock<GlobalContext>>,
     body_bytes: hyper::body::Bytes
 ) -> Result<Response<Body>, hyper::Error> {
     let my_request_result = serde_json::from_slice::<MyRequest>(&body_bytes);
@@ -50,14 +74,17 @@ async fn handle_v1_code_completion(
         Err(e) => {
             error!("Error deserializing request body: {}", e);
             return Ok(Response::builder()
-               .status(hyper::StatusCode::BAD_REQUEST)
-              .body(format!("could not parse JSON: {}", e).into())
-              .unwrap()
-              .into());
+                .status(hyper::StatusCode::BAD_REQUEST)
+                .body(format!("could not parse JSON: {}", e).into())
+                .unwrap()
+                .into());
         }
     };
-
-    let aaa = SingleFileFIM::new();
+    let tokenizer = get_tokenizer(global_context, &my_request.model).await.unwrap();
+    let aaa = SingleFileFIM::new(
+        &tokenizer,
+        &my_request.model,
+    );
     aaa.prompt(333);
 
     let txt = format!("hurray a call! model was: {}",
@@ -73,6 +100,7 @@ async fn handle_v1_code_completion(
 
 
 async fn handle_request(
+    global_context: Arc<RwLock<GlobalContext>>,
     remote_addr: SocketAddr,
     path: String,
     method: Method,
@@ -81,7 +109,7 @@ async fn handle_request(
     let body_bytes = hyper::body::to_bytes(req.into_body()).await?;
     info!("{} {} {} body_bytes={}", remote_addr, method, path, body_bytes.len());
     if method == Method::POST && path == "/v1/code-completion" {
-        return handle_v1_code_completion(body_bytes).await;
+        return handle_v1_code_completion(global_context, body_bytes).await;
     }
     let txt = format!("404 not found, path {}\n", path);
     let response = Response::builder()
@@ -101,13 +129,23 @@ async fn main() {
         .with_line_number(true)
         .compact()
         .init();
+
+    let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
+    let global_context = Arc::new(RwLock::new(GlobalContext {
+        http_client: reqwest::Client::new(),
+        cache_dir: home_dir.join(".cache/refact"),
+        tokenizer_map: Arc::new(RwLock::new(HashMap::new())),
+    }));
+
     let make_svc = make_service_fn(|conn: &AddrStream| {
         let remote_addr = conn.remote_addr();
+        let context_ptr = global_context.clone();
         async move {
             Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
                 let path = req.uri().path().to_string();
                 let method = req.method().clone();
-                handle_request(remote_addr, path, method, req)
+                let context_ptr2 = context_ptr.clone();
+                handle_request(context_ptr2, remote_addr, path, method, req)
             }))
         }
     });
@@ -118,7 +156,6 @@ async fn main() {
         eprintln!("server error: {}", e);
     }
 
-    // let http_client = reqwest::Client::new();
     // let (service, socket) = LspService::build(|client| Backend {
     //     cache_dir,
     //     client,
