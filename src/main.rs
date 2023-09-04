@@ -30,50 +30,14 @@ mod cached_tokenizers;
 mod scratchpads;
 mod forward_to_hf_endpoint;
 use crate::scratchpads::call_validation::CodeCompletionPost;
-use crate::scratchpads::scratchpad_abstract::CodeCompletionScratchpad;
 
 
 struct GlobalContext {
     http_client: reqwest::Client,
     cache_dir: PathBuf,
-    tokenizer_map: Arc<RwLock<HashMap< String, Arc<StdRwLock<Tokenizer>> >>>,
+    tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
 }
 
-
-async fn get_tokenizer(
-    cx_locked: &GlobalContext,
-    model: &str
-) -> Result<Arc<StdRwLock<Tokenizer>>, String> {
-    let mut tokenizer_map_locked = cx_locked.tokenizer_map.write().await;
-
-    let api_key ="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".to_string();
-    let tokenizer_maybe = cached_tokenizers::get_tokenizer(
-        model,
-        &mut tokenizer_map_locked,
-        &cx_locked.http_client,
-        &cx_locked.cache_dir,
-        Some(&api_key),
-    ).await;
-    let tokenizer = match tokenizer_maybe {
-        Ok(x) => x,
-        Err(_e) => {
-            error!("Cannot get tokenizer");
-            return Err(format!("Cannot get tokenizer"));
-        }
-    };
-    Ok(tokenizer)
-}
-
-
-async fn get_tokenizer_and_client(
-    global_context: Arc<RwLock<GlobalContext>>,
-    code_completion_model: &str,
-) -> Result<(Arc<StdRwLock<Tokenizer>>, reqwest::Client), String> {
-    let cx_locked = global_context.write().await;
-    let tokenizer = get_tokenizer(&cx_locked, code_completion_model).await?;
-    let client = cx_locked.http_client.clone();
-    Ok((tokenizer, client))
-}
 
 async fn handle_v1_code_completion(
     global_context: Arc<RwLock<GlobalContext>>,
@@ -92,24 +56,36 @@ async fn handle_v1_code_completion(
         }
     };
 
-    let t0: std::time::Instant = std::time::Instant::now();
-    // let cx_locked = global_context.write().await;
-    // let tokenizer = get_tokenizer(&cx_locked, &code_completion_post.model).await.unwrap();
-    // let client = cx_locked.http_client.clone();
     let tokenizer: Arc<StdRwLock<Tokenizer>>;
-    let t_and_c_maybe = get_tokenizer_and_client(global_context, &code_completion_post.model).await;
-    let (tokenizer, client) = match t_and_c_maybe {
-        Ok(x) => x,
-        Err(e) => {
-            error!("Cannot get tokenizer: {}", e);
-            return Ok(Response::builder()
-                .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                .body(format!("Cannot get tokenizer: {}", e).into())
-                .unwrap()
-                .into());
-        }
-    };
-    info!("get_tokenizer {:?}", t0.elapsed());
+    let http_client: reqwest::Client;
+    let client2: reqwest::Client;
+    {
+        let t0: std::time::Instant = std::time::Instant::now();
+        let mut cx_locked = global_context.write().await;
+        let api_key: String ="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".to_string();
+        http_client = cx_locked.http_client.clone();
+        client2 = cx_locked.http_client.clone();
+        let cache_dir = cx_locked.cache_dir.clone();
+        let maybe_tokenizer = cached_tokenizers::get_tokenizer(
+            &code_completion_post.model,
+            &mut cx_locked.tokenizer_map,
+            client2,
+            &cache_dir,
+            Some(&api_key),
+        ).await;
+        tokenizer = match maybe_tokenizer {
+            Ok(x) => x,
+            Err(e) => {
+                error!("Cannot get tokenizer: {}", e);
+                return Ok(Response::builder()
+                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(format!("Cannot get tokenizer").into())
+                    .unwrap()
+                    .into());
+            }
+        };
+        info!("get_tokenizer {:?}", t0.elapsed());
+    }
 
     let prompt: String;
     {
@@ -139,7 +115,7 @@ async fn handle_v1_code_completion(
     let ret = forward_to_hf_endpoint::simple_forward_to_hf_endpoint_no_streaming(
         &code_completion_post.model,
         &prompt,
-        &client,
+        &http_client,
         &hf_api_key,
     ).await;
     info!("forward_to_hf_endpoint {:?}", ret);
@@ -184,12 +160,11 @@ async fn main() {
         .with_line_number(true)
         .compact()
         .init();
-
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
     let global_context = Arc::new(RwLock::new(GlobalContext {
         http_client: reqwest::Client::new(),
         cache_dir: home_dir.join(".cache/refact"),
-        tokenizer_map: Arc::new(RwLock::new(HashMap::new())),
+        tokenizer_map: HashMap::new(),
     }));
 
     let make_svc = make_service_fn(|conn: &AddrStream| {
