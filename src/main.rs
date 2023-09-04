@@ -7,8 +7,12 @@ use std::path::PathBuf;
 
 use std::sync::Arc;
 
+
 // use tokio::io::AsyncWriteExt;
+// use tokio::sync::Mutex;
 use tokio::sync::RwLock;
+use std::sync::RwLock as StdRwLock;
+
 // use async_trait::async_trait;
 use tokenizers::Tokenizer;
 
@@ -24,34 +28,52 @@ use tracing::{error, info};
 
 mod cached_tokenizers;
 mod scratchpads;
+mod forward_to_hf_endpoint;
 use crate::scratchpads::call_validation::CodeCompletionPost;
+use crate::scratchpads::scratchpad_abstract::CodeCompletionScratchpad;
 
 
 struct GlobalContext {
     http_client: reqwest::Client,
     cache_dir: PathBuf,
-    tokenizer_map: Arc<RwLock<HashMap<String, Tokenizer>>>,
+    tokenizer_map: Arc<RwLock<HashMap< String, Arc<StdRwLock<Tokenizer>> >>>,
 }
 
 
 async fn get_tokenizer(
-    global_context: Arc<RwLock<GlobalContext>>,
+    cx_locked: &GlobalContext,
     model: &str
-) -> Result<Tokenizer, ()> {
-    let cx_locked = global_context.write().await;
+) -> Result<Arc<StdRwLock<Tokenizer>>, String> {
     let mut tokenizer_map_locked = cx_locked.tokenizer_map.write().await;
 
     let api_key ="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".to_string();
-    let tokenizer = cached_tokenizers::get_tokenizer(
+    let tokenizer_maybe = cached_tokenizers::get_tokenizer(
         model,
         &mut tokenizer_map_locked,
         &cx_locked.http_client,
         &cx_locked.cache_dir,
         Some(&api_key),
-    ).await.unwrap();
+    ).await;
+    let tokenizer = match tokenizer_maybe {
+        Ok(x) => x,
+        Err(_e) => {
+            error!("Cannot get tokenizer");
+            return Err(format!("Cannot get tokenizer"));
+        }
+    };
     Ok(tokenizer)
 }
 
+
+async fn get_tokenizer_and_client(
+    global_context: Arc<RwLock<GlobalContext>>,
+    code_completion_model: &str,
+) -> Result<(Arc<StdRwLock<Tokenizer>>, reqwest::Client), String> {
+    let cx_locked = global_context.write().await;
+    let tokenizer = get_tokenizer(&cx_locked, code_completion_model).await?;
+    let client = cx_locked.http_client.clone();
+    Ok((tokenizer, client))
+}
 
 async fn handle_v1_code_completion(
     global_context: Arc<RwLock<GlobalContext>>,
@@ -70,31 +92,57 @@ async fn handle_v1_code_completion(
         }
     };
 
-    let t0 = std::time::Instant::now();
-    let tokenizer = get_tokenizer(global_context, &code_completion_post.model).await.unwrap();
-    info!("get_tokenizer {:?}", t0.elapsed());
-
-    let scratchpad = scratchpads::create_code_completion_scratchpad(
-        &tokenizer,
-        &code_completion_post,
-    );
-
-    let t1 = std::time::Instant::now();
-    let prompt_maybe = scratchpad.prompt(
-        2048,
-        );
-    let prompt = match prompt_maybe {
+    let t0: std::time::Instant = std::time::Instant::now();
+    // let cx_locked = global_context.write().await;
+    // let tokenizer = get_tokenizer(&cx_locked, &code_completion_post.model).await.unwrap();
+    // let client = cx_locked.http_client.clone();
+    let tokenizer: Arc<StdRwLock<Tokenizer>>;
+    let t_and_c_maybe = get_tokenizer_and_client(global_context, &code_completion_post.model).await;
+    let (tokenizer, client) = match t_and_c_maybe {
         Ok(x) => x,
         Err(e) => {
-            error!("Cannot produce prompt: {}", e);
+            error!("Cannot get tokenizer: {}", e);
             return Ok(Response::builder()
-               .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-              .body(format!("Cannot produce prompt").into())
-              .unwrap()
-              .into());
+                .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+                .body(format!("Cannot get tokenizer: {}", e).into())
+                .unwrap()
+                .into());
         }
     };
-    info!("prompt {:?}\n{}", t1.elapsed(), prompt);
+    info!("get_tokenizer {:?}", t0.elapsed());
+
+    let prompt: String;
+    {
+        let scratchpad = scratchpads::create_code_completion_scratchpad(
+            tokenizer.clone(),
+            code_completion_post.clone(),
+        );
+        // let scratchpad1 = Arc::clone(&scratchpad);
+        let t1 = std::time::Instant::now();
+        let prompt_maybe = scratchpad.prompt(2048);
+        prompt = match prompt_maybe {
+            Ok(x) => x,
+            Err(e) => {
+                error!("Cannot produce prompt: {}", e);
+                return Ok(Response::builder()
+                .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+                .body(format!("Cannot produce prompt").into())
+                .unwrap()
+                .into());
+            }
+        };
+        info!("prompt {:?}\n{}", t1.elapsed(), prompt);
+        // scratchpad_arc = Arc::new(RwLock::new(scratchpad));
+    }
+
+    let hf_api_key ="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".to_string();
+    let ret = forward_to_hf_endpoint::simple_forward_to_hf_endpoint_no_streaming(
+        &code_completion_post.model,
+        &prompt,
+        &client,
+        &hf_api_key,
+    ).await;
+    info!("forward_to_hf_endpoint {:?}", ret);
 
     let txt = "{}";
     info!("handle_v1_code_completion returning: {}", txt);

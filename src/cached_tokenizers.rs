@@ -4,8 +4,9 @@ use tracing::{error, info};
 use std::collections::HashMap;
 use tokenizers::Tokenizer;
 use tokio::io::AsyncWriteExt;
-// use tokio::sync::RwLock;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::RwLock;
 
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -69,11 +70,11 @@ pub async fn download_tokenizer_file(
 
 pub async fn get_tokenizer(
     model: &str,
-    tokenizer_map: &mut HashMap<String, Tokenizer>,
+    tokenizer_map: &mut HashMap<String, Arc<RwLock<Tokenizer>>>,
     http_client: &reqwest::Client,
     cache_dir: &Path,
     api_token: Option<&String>,
-) -> Result<Tokenizer> {
+) -> Result<Arc<RwLock<Tokenizer>>> {
     // tokenizer_path: Option<&String>,
     // if model.starts_with("http://") || model.starts_with("https://") {
     //     let tokenizer = match tokenizer_path {
@@ -83,7 +84,7 @@ pub async fn get_tokenizer(
     //     Ok(tokenizer)
     // } else {
     match tokenizer_map.get(model) {
-        Some(tokenizer) => Ok(tokenizer.clone()),
+        Some(arc) => Ok(arc.clone()),
         None => {
             let tokenizer_cache_dir = PathBuf::from(cache_dir); //.join("tokenizers");
             tokio::fs::create_dir_all(&tokenizer_cache_dir)
@@ -92,8 +93,9 @@ pub async fn get_tokenizer(
             let path = tokenizer_cache_dir.join(model).join("tokenizer.json");
             download_tokenizer_file(http_client, model, api_token, &path).await?;
             let tokenizer = Tokenizer::from_file(path).map_err(tokenizer_error)?;
-            tokenizer_map.insert(model.to_owned(), tokenizer.clone());
-            Ok(tokenizer)
+            let arc = Arc::new(RwLock::new(tokenizer));
+            tokenizer_map.insert(model.to_owned(), arc.clone());
+            Ok(arc)
         }
     }
 }

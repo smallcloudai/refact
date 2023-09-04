@@ -1,26 +1,28 @@
 use crate::scratchpads::scratchpad_abstract::CodeCompletionScratchpad;
 use crate::scratchpads::call_validation::CodeCompletionPost;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 use tokenizers::Tokenizer;
 use ropey::Rope;
 use tracing::info;
 
 
-pub struct SingleFileFIM<'a> {
-    pub tokenizer: &'a Tokenizer,
-    pub post: &'a CodeCompletionPost,
+pub struct SingleFileFIM {
+    pub tokenizer: Arc<RwLock<Tokenizer>>,
+    pub post: CodeCompletionPost,
 }
 
-impl<'a> SingleFileFIM<'a> {
+impl SingleFileFIM {
     pub fn new(
-        tokenizer: &'a Tokenizer,
-        post: &'a CodeCompletionPost,
+        tokenizer: Arc<RwLock<Tokenizer>>,
+        post: CodeCompletionPost,
     ) -> Self {
         SingleFileFIM { tokenizer, post }
     }
 }
 
-impl<'a> CodeCompletionScratchpad for SingleFileFIM<'a> {
+impl CodeCompletionScratchpad for SingleFileFIM {
     fn prompt(
         &self,
         context_size: usize,
@@ -56,7 +58,7 @@ impl<'a> CodeCompletionScratchpad for SingleFileFIM<'a> {
         while before_line.is_some() || after_line.is_some() {
             if let Some(before_line) = before_line {
                 let before_line = before_line.to_string();
-                let tokens = self.tokenizer
+                let tokens = self.tokenizer.read().unwrap()
                     .encode(before_line.clone(), false)
                     .map_err(|err| {
                         return format!("Encoding error: {}", err);
@@ -71,7 +73,7 @@ impl<'a> CodeCompletionScratchpad for SingleFileFIM<'a> {
             }
             if let Some(after_line) = after_line {
                 let after_line = after_line.to_string();
-                let tokens = self.tokenizer
+                let tokens = self.tokenizer.read().unwrap()
                     .encode(after_line.clone(), false)
                     .map_err(|err| {
                         return format!("Encoding error: {}", err);
@@ -97,7 +99,42 @@ impl<'a> CodeCompletionScratchpad for SingleFileFIM<'a> {
         ))
     }
 
-    fn re_stream_response(&self)
-    {
+    fn re_stream_response(
+        &self,
+    ) {
+        // text_generator: &mut dyn futures::stream::Stream<Item = Result<serde_json::Value, _>>,
+        // while let Some(model_says) = text_generator.next().await {
+        //     if let Ok(model_says) = model_says {
+        //         if let Some(token) = model_says.get("token") {
+        //             if let Some(t) = token.get("text") {
+        //                 let t = t.as_str().unwrap();
+        //                 if t == self._eot {
+        //                     return;
+        //                 }
+        //                 if t.contains("\n\n") || (t.contains("\n") && !self.multiline) {
+        //                     yield {"code_completion_delta": self.cut_result(t)};
+        //                     return;
+        //                 }
+        //                 yield {"code_completion_delta": t};
+        //             }
+        //         }
+        //         if let Some(model_says) = model_says.as_array() {
+        //             let ans = model_says
+        //                 .iter()
+        //                 .map(|x| {
+        //                     let generated_text = x.get("generated_text").unwrap().as_str().unwrap();
+        //                     {"code_completion": self.cut_result(generated_text)}
+        //                 })
+        //                 .collect::<Vec<_>>();
+        //             if ans.len() >= 1 {
+        //                 self._debuglog(format!(
+        //                     "SingleFileFIM completion: \"{}\"",
+        //                     ans[0]["code_completion"].replace("\n", "\\n")
+        //                 ));
+        //             }
+        //             yield ans;
+        //         }
+        //     }
+        //}
     }
 }

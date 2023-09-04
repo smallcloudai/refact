@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct CursorPosition {
     pub file: String,
     pub line: i32,
@@ -10,7 +10,7 @@ pub struct CursorPosition {
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct CodeCompletionInputs {
     pub sources: HashMap<String, String>,
     pub cursor: CursorPosition,
@@ -18,7 +18,7 @@ pub struct CodeCompletionInputs {
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct CodeCompletionPost {
     pub model: String,
     pub stream: bool,
