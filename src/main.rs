@@ -1,7 +1,6 @@
 // use ropey::Rope;
 use std::convert::Infallible;
 use std::net::SocketAddr;
-use serde::{Deserialize, Serialize};
 // use serde_json::Error as SerdeJsonError;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -24,24 +23,14 @@ use tracing::{error, info};
 // use route_recognizer::{Match, Params, Router};
 
 mod cached_tokenizers;
-mod scratchpad_abstract;
-pub mod scratchpads_code_completion {
-    pub mod single_file_fim;
-}
-use scratchpads_code_completion::single_file_fim::SingleFileFIM;
-use crate::scratchpad_abstract::Scratchpad;
+mod scratchpads;
+use crate::scratchpads::call_validation::CodeCompletionPost;
 
 
 struct GlobalContext {
     http_client: reqwest::Client,
     cache_dir: PathBuf,
     tokenizer_map: Arc<RwLock<HashMap<String, Tokenizer>>>,
-}
-
-
-#[derive(Debug, Deserialize)]
-struct MyRequest {
-    model: String,
 }
 
 
@@ -68,11 +57,11 @@ async fn handle_v1_code_completion(
     global_context: Arc<RwLock<GlobalContext>>,
     body_bytes: hyper::body::Bytes
 ) -> Result<Response<Body>, hyper::Error> {
-    let my_request_result = serde_json::from_slice::<MyRequest>(&body_bytes);
-    let my_request: MyRequest = match my_request_result {
+    let is_it_valid = serde_json::from_slice::<CodeCompletionPost>(&body_bytes);
+    let code_completion_post = match is_it_valid {
         Ok(x) => x,
         Err(e) => {
-            error!("Error deserializing request body: {}", e);
+            error!("Error deserializing request body: {}\n{:?}", e, body_bytes);
             return Ok(Response::builder()
                 .status(hyper::StatusCode::BAD_REQUEST)
                 .body(format!("could not parse JSON: {}", e).into())
@@ -80,15 +69,24 @@ async fn handle_v1_code_completion(
                 .into());
         }
     };
-    let tokenizer = get_tokenizer(global_context, &my_request.model).await.unwrap();
-    let aaa = SingleFileFIM::new(
+
+    let t0 = std::time::Instant::now();
+    let tokenizer = get_tokenizer(global_context, &code_completion_post.model).await.unwrap();
+    info!("get_tokenizer {:?}", t0.elapsed());
+
+    let scratchpad = scratchpads::create_code_completion_scratchpad(
         &tokenizer,
-        &my_request.model,
+        &code_completion_post,
     );
-    aaa.prompt(333);
+
+    let t1 = std::time::Instant::now();
+    scratchpad.prompt(
+        2048,
+        );
+    info!("prompt {:?}", t1.elapsed());
 
     let txt = format!("hurray a call! model was: {}",
-        my_request.model,
+        code_completion_post.model,
         );
     info!("handle_v1_code_completion returning: {}", txt);
     let response = Response::builder()
