@@ -40,9 +40,9 @@ pub async fn download_tokenizer_file(
         to.as_ref()
             .parent()
             .ok_or_else(|| tokenizer_error("tokenizer path has no parent"))?,
-    )
-    .await
-    .map_err(tokenizer_error)?;
+        )
+        .await
+        .map_err(tokenizer_error)?;
     let mut req = http_client.get(format!(
         "https://huggingface.co/{model}/resolve/main/tokenizer.json"
     ));

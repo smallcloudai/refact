@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use std::net::SocketAddr;
 // use serde_json::Error as SerdeJsonError;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use std::sync::Arc;
 
@@ -80,14 +80,23 @@ async fn handle_v1_code_completion(
     );
 
     let t1 = std::time::Instant::now();
-    scratchpad.prompt(
+    let prompt_maybe = scratchpad.prompt(
         2048,
         );
-    info!("prompt {:?}", t1.elapsed());
+    let prompt = match prompt_maybe {
+        Ok(x) => x,
+        Err(e) => {
+            error!("Cannot produce prompt: {}", e);
+            return Ok(Response::builder()
+               .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+              .body(format!("Cannot produce prompt").into())
+              .unwrap()
+              .into());
+        }
+    };
+    info!("prompt {:?}\n{}", t1.elapsed(), prompt);
 
-    let txt = format!("hurray a call! model was: {}",
-        code_completion_post.model,
-        );
+    let txt = "{}";
     info!("handle_v1_code_completion returning: {}", txt);
     let response = Response::builder()
         .header("Content-Type", "application/json")
