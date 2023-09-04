@@ -121,8 +121,12 @@ At the moment, you can choose between the following models:
 | wizardlm/13b  |        |         + |           |          |
 | llama2/7b    |        |         + |          |         |
 | llama2/13b   |        |         + |           |           |
+| CodeLlama   |    +    |         + |           |           |
+| Refact LLM/1.6B    |   +     |         + |           |           |
+
 
 ## Usage
+
 Refact is free to use for individuals and small teams under BSD-3-Clause license. If you wish to use Refact for Enterprise, please [contact us](https://refact.ai/contact/).
 
 ## FAQ
