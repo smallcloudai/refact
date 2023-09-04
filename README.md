@@ -109,20 +109,24 @@ Under the hood, it uses Refact models and the best open-source models.
 
 At the moment, you can choose between the following models:
 
-| Model                                                                                | Completion | Chat      | AI Toolbox | Fine-tuning |
-| ------------------------------------------------------------------------------------ | ---------- | --------- | ---------- | ----------|
-| [CONTRASTcode/medium/multi](https://huggingface.co/smallcloudai/codify_medium_multi) |    +    |           |           |            |
-| [CONTRASTcode/3b/multi](https://huggingface.co/smallcloudai/codify_3b_multi)         |    +    |           |           |        +    |
-| [starcoder/15b/base](https://huggingface.co/smallcloudai/starcoder_15b_4bit)         |   +     |          |           |           |
-| [starcoder/15b/base8bit](https://huggingface.co/smallcloudai/starcoder_15b_8bit)     |    +    |          |           |           |
-| starchat/15b/beta                                                                     |        |         + |           |          |
-| wizardcoder/15b                                                                       |     +   |          |           |           |
-| wizardlm/7b |        |         + |           |         |
-| wizardlm/13b  |        |         + |           |          |
-| llama2/7b    |        |         + |          |         |
-| llama2/13b   |        |         + |           |           |
+| Model                                                                                | Completion | Chat | AI Toolbox | Fine-tuning |
+|--------------------------------------------------------------------------------------|------------|------|------------|-------------|
+| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                   | +          | +    |            |             |
+| [CONTRASTcode/medium/multi](https://huggingface.co/smallcloudai/codify_medium_multi) | +          |      |            | +           |
+| [CONTRASTcode/3b/multi](https://huggingface.co/smallcloudai/codify_3b_multi)         | +          |      |            | +           |
+| [starcoder/15b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)                 | +          |      |            |             |
+| [starcoder/15b/plus](https://huggingface.co/TheBloke/starcoderplus-GPTQ)             | +          |      |            |             |
+| [wizardcoder/15b](https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GPTQ)          | +          |      |            |             |
+| [codellama/7b](https://huggingface.co/TheBloke/CodeLlama-7B-fp16)                    | +          |      |            |             |
+| [starchat/15b/beta](https://huggingface.co/TheBloke/starchat-beta-GPTQ)              |            | +    |            |             |
+| [wizardlm/7b](https://huggingface.co/TheBloke/WizardLM-7B-V1.0-Uncensored-GPTQ)      |            | +    |            |             |
+| [wizardlm/13b](https://huggingface.co/TheBloke/WizardLM-13B-V1.1-GPTQ)               |            | +    |            |             |
+| [llama2/7b](https://huggingface.co/TheBloke/Llama-2-7b-Chat-GPTQ)                    |            | +    |            |             |
+| [llama2/13b](https://huggingface.co/TheBloke/Llama-2-13B-chat-GPTQ)                  |            | +    |            |             |
+
 
 ## Usage
+
 Refact is free to use for individuals and small teams under BSD-3-Clause license. If you wish to use Refact for Enterprise, please [contact us](https://refact.ai/contact/).
 
 ## FAQ
