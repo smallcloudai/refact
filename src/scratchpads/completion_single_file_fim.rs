@@ -3,9 +3,13 @@ use crate::scratchpads::call_validation::CodeCompletionPost;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+// use ropey::RopeSlice;
 use tokenizers::Tokenizer;
 use ropey::Rope;
 use tracing::{info, error};
+
+
+const DEBUG: bool = true;
 
 
 #[derive(Debug)]
@@ -41,17 +45,29 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         };
         let mut token_count = context_size;
         let pos = &self.post.inputs.cursor;
-        let mut before_iter = text.lines_at(pos.line as usize + 1).reversed();
-        let mut after_iter = text.lines_at(pos.line as usize);
+        let mut before_iter = text.lines_at(pos.line as usize).reversed();
+        let mut after_iter = text.lines_at(pos.line as usize + 1);
+
         let mut before_line = before_iter.next();
+        info!("before_line {:?}", before_line);
+
+        let cursor_line1: String;
         let col = pos.character as usize;
-        if let Some(line) = before_line {
-            before_line = Some(line.slice(0..col));
-        }
+        cursor_line1 = text.line(pos.line as usize).slice(0..col).to_string();
+        // UNFINISHED LI|
+        info!("cursor_line1 {:?}", cursor_line1);
+
         let mut after_line = after_iter.next();
-        if let Some(line) = after_line {
-            after_line = Some(line.slice(col..));
+        info!("after_line {:?}", after_line);
+
+        let cursor_line2: String;
+        if self.post.inputs.multiline {
+            cursor_line2 = text.line(pos.line as usize).slice(col..).to_string();
+        } else {
+            cursor_line2 = "".to_string();
         }
+        info!("cursor_line2 {:?}", cursor_line2);
+
         let mut before = vec![];
         let mut after = String::new();
         let mut stat_tokens = 0;
@@ -92,20 +108,29 @@ impl CodeCompletionScratchpad for SingleFileFIM {
             after_line = after_iter.next();
         }
         info!("single file FIM prompt {} tokens < context {}", stat_tokens, context_size);
-        Ok(format!(
-            "{}{}{}{}{}",
+        let prompt = format!(
+            "{}{}{}{}{}{}{}",
             fim_prefix,
             before.into_iter().rev().collect::<Vec<_>>().join(""),
+            cursor_line1,
             fim_suffix,
+            cursor_line2,
             after,
             fim_middle
-        ))
+        );
+        if DEBUG {
+            info!("prompt\n{}", prompt);
+        }
+        Ok(prompt)
     }
 
     fn re_stream_response(
         &self,
         model_says: serde_json::Value,
     ) -> Result<(serde_json::Value, bool), String> {
+        if DEBUG {
+            info!("re_stream_response\n{:?}\n", model_says);
+        }
         let ans: serde_json::Value;
         let mut finish = false;
 

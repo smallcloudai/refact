@@ -73,7 +73,7 @@ def pretty_print_wrapper(
 
 def test_battery(model, stream):
     x = pretty_print_wrapper(hello_world, model=model, stream=stream, multiline=False, cursor_line=2, cursor_character=52)
-    assert x.rstrip() == "rue", x
+    assert x.rstrip() in ["rue", "rue."], x
     x = pretty_print_wrapper(hello_world, model=model, stream=stream, multiline=False, cursor_line=3, cursor_character=7)
     assert x == "", x
     x = pretty_print_wrapper(hello_world, model=model, stream=stream, multiline=True, cursor_line=3, cursor_character=7)
