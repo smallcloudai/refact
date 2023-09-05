@@ -8,6 +8,7 @@ use ropey::Rope;
 use tracing::info;
 
 
+#[derive(Debug)]
 pub struct SingleFileFIM {
     pub tokenizer: Arc<RwLock<Tokenizer>>,
     pub post: CodeCompletionPost,

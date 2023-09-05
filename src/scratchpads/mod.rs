@@ -8,10 +8,15 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 
 
+fn verify_has_send<T: Send>(_x: &T) {}
+
+
 pub fn create_code_completion_scratchpad(
     t: Arc<StdRwLock<Tokenizer>>,
     post: CodeCompletionPost,
 ) -> Box<dyn scratchpad_abstract::CodeCompletionScratchpad> {
     // FIXME: pick scratchpad depending on code_completion_post.model
-    Box::new(completion_single_file_fim::SingleFileFIM::new(t, post))
+    let result = Box::new(completion_single_file_fim::SingleFileFIM::new(t, post));
+    verify_has_send(&result);
+    result
 }

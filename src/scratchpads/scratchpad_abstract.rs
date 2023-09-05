@@ -1,4 +1,4 @@
-pub trait CodeCompletionScratchpad {
+pub trait CodeCompletionScratchpad: Send {
     fn prompt(
         &self,
         context_size: usize,
@@ -8,3 +8,4 @@ pub trait CodeCompletionScratchpad {
         &self,
     );
 }
+

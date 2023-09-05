@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 
 // use tokio::io::AsyncWriteExt;
-// use tokio::sync::Mutex;
 use tokio::sync::RwLock;
 use std::sync::RwLock as StdRwLock;
 
@@ -56,7 +55,7 @@ async fn handle_v1_code_completion(
         }
     };
 
-    let tokenizer: Arc<StdRwLock<Tokenizer>>;
+    let tokenizer_arc: Arc<StdRwLock<Tokenizer>>;
     let http_client: reqwest::Client;
     let client2: reqwest::Client;
     {
@@ -73,7 +72,7 @@ async fn handle_v1_code_completion(
             &cache_dir,
             Some(&api_key),
         ).await;
-        tokenizer = match maybe_tokenizer {
+        tokenizer_arc = match maybe_tokenizer {
             Ok(x) => x,
             Err(e) => {
                 error!("Cannot get tokenizer: {}", e);
@@ -88,12 +87,11 @@ async fn handle_v1_code_completion(
     }
 
     let prompt: String;
-    {
-        let scratchpad = scratchpads::create_code_completion_scratchpad(
-            tokenizer.clone(),
+    let scratchpad = scratchpads::create_code_completion_scratchpad(
+            tokenizer_arc.clone(),
             code_completion_post.clone(),
         );
-        // let scratchpad1 = Arc::clone(&scratchpad);
+    {
         let t1 = std::time::Instant::now();
         let prompt_maybe = scratchpad.prompt(2048);
         prompt = match prompt_maybe {
@@ -108,7 +106,6 @@ async fn handle_v1_code_completion(
             }
         };
         info!("prompt {:?}\n{}", t1.elapsed(), prompt);
-        // scratchpad_arc = Arc::new(RwLock::new(scratchpad));
     }
 
     let hf_api_key ="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".to_string();
