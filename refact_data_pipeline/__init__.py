@@ -1,7 +1,7 @@
 import importlib
 from typing import Union
 
-from refact_data_pipeline.datadef import DatasetDef, DatasetMix, DatasetOpts
+from refact_data_pipeline.datadef import DatasetDef, DatasetMix, DatasetOpts, DatasetDumpedDef
 
 
 def find_dataset_def(dsname: str) -> Union[DatasetDef, DatasetMix]:
@@ -11,5 +11,5 @@ def find_dataset_def(dsname: str) -> Union[DatasetDef, DatasetMix]:
     f = getattr(mod, name)
     assert callable(f)
     d = f()
-    assert isinstance(d, (DatasetDef, DatasetMix))
+    assert isinstance(d, (DatasetDef, DatasetMix, DatasetDumpedDef))
     return d
