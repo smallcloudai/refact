@@ -45,7 +45,7 @@ async fn handle_v1_code_completion(
 ) -> Result<Response<Body>, hyper::Error> {
     info!("bearer {:?}", bearer);
     let is_it_valid = serde_json::from_slice::<CodeCompletionPost>(&body_bytes);
-    let code_completion_post = match is_it_valid {
+    let mut code_completion_post = match is_it_valid {
         Ok(x) => x,
         Err(e) => {
             error!("Error deserializing request body: {}\n{:?}", e, body_bytes);
@@ -56,6 +56,9 @@ async fn handle_v1_code_completion(
                 .into());
         }
     };
+    if code_completion_post.model.is_empty() {
+        code_completion_post.model = "bigcode/starcoder".to_string();
+    }
 
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>>;
     let http_client: reqwest::Client;

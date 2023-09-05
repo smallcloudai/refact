@@ -190,5 +190,6 @@ fn cut_result(text: &str, eot_token: &str, multiline: bool) -> String {
     }
     let cut_at = cut_at.into_iter().min().unwrap_or(text.len());
     // info!("cut_result text: {:?}, cut_at={:?}", text, cut_at);
-    text.split_at(cut_at).0.to_string()
+    let ans = text.split_at(cut_at).0.to_string();
+    ans.replace("\r", "")
 }

@@ -20,7 +20,9 @@ pub struct CodeCompletionInputs {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct CodeCompletionPost {
+    #[serde(default)]
     pub model: String,
+    #[serde(default)]
     pub stream: bool,
     pub inputs: CodeCompletionInputs,
 }
