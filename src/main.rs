@@ -40,8 +40,10 @@ struct GlobalContext {
 
 async fn handle_v1_code_completion(
     global_context: Arc<RwLock<GlobalContext>>,
+    bearer: Option<String>,
     body_bytes: hyper::body::Bytes
 ) -> Result<Response<Body>, hyper::Error> {
+    info!("bearer {:?}", bearer);
     let is_it_valid = serde_json::from_slice::<CodeCompletionPost>(&body_bytes);
     let code_completion_post = match is_it_valid {
         Ok(x) => x,
@@ -61,7 +63,6 @@ async fn handle_v1_code_completion(
     {
         let t0: std::time::Instant = std::time::Instant::now();
         let mut cx_locked = global_context.write().await;
-        let api_key: String ="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".to_string();
         http_client = cx_locked.http_client.clone();
         client2 = cx_locked.http_client.clone();
         let cache_dir = cx_locked.cache_dir.clone();
@@ -70,7 +71,7 @@ async fn handle_v1_code_completion(
             &mut cx_locked.tokenizer_map,
             client2,
             &cache_dir,
-            Some(&api_key),
+            bearer.clone(),
         ).await;
         tokenizer_arc = match maybe_tokenizer {
             Ok(x) => x,
@@ -109,13 +110,12 @@ async fn handle_v1_code_completion(
         info!("prompt {:?}", t1.elapsed());
     }
 
-    let hf_api_key ="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".to_string();
     let t2 = std::time::Instant::now();
     let hf_endpoint_result = forward_to_hf_endpoint::simple_forward_to_hf_endpoint_no_streaming(
         &code_completion_post.model,
         &prompt,
         &http_client,
-        &hf_api_key,
+        bearer.clone(),
     ).await;
     if let Err(e) = hf_endpoint_result {
         error!("Error in forward_to_hf_endpoint {:?}", e);
@@ -150,6 +150,7 @@ async fn handle_v1_code_completion(
 async fn handle_request(
     global_context: Arc<RwLock<GlobalContext>>,
     remote_addr: SocketAddr,
+    bearer: Option<String>,
     path: String,
     method: Method,
     req: Request<Body>,
@@ -157,7 +158,7 @@ async fn handle_request(
     let body_bytes = hyper::body::to_bytes(req.into_body()).await?;
     info!("{} {} {} body_bytes={}", remote_addr, method, path, body_bytes.len());
     if method == Method::POST && path == "/v1/code-completion" {
-        return handle_v1_code_completion(global_context, body_bytes).await;
+        return handle_v1_code_completion(global_context, bearer, body_bytes).await;
     }
     let txt = format!("404 not found, path {}\n", path);
     let response = Response::builder()
@@ -192,7 +193,8 @@ async fn main() {
                 let path = req.uri().path().to_string();
                 let method = req.method().clone();
                 let context_ptr2 = context_ptr.clone();
-                handle_request(context_ptr2, remote_addr, path, method, req)
+                let bearer = req.headers().get("Authorization").and_then(|x| x.to_str().ok().map(|s| s.to_owned()));
+                handle_request(context_ptr2, remote_addr, bearer, path, method, req)
             }))
         }
     });

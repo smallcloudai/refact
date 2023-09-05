@@ -17,7 +17,7 @@ pub struct Error {
 pub async fn download_tokenizer_file(
     http_client: &reqwest::Client,
     model: &str,
-    api_token: Option<&String>,
+    api_token: Option<String>,
     to: impl AsRef<Path>,
 ) -> Result<(), String> {
     if to.as_ref().exists() {
@@ -58,7 +58,7 @@ pub async fn get_tokenizer(
     tokenizer_map: &mut HashMap<String, Arc<RwLock<Tokenizer>>>,
     http_client: reqwest::Client,
     cache_dir: &Path,
-    api_token: Option<&String>,
+    api_token: Option<String>,
 ) -> Result<Arc<RwLock<Tokenizer>>, String> {
     // tokenizer_path: Option<&String>,
     // if model.starts_with("http://") || model.starts_with("https://") {

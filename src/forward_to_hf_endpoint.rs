@@ -9,7 +9,7 @@ pub async fn simple_forward_to_hf_endpoint_no_streaming(
     model_name: &str,
     prompt: &str,
     client: &reqwest::Client,
-    hf_api_token: &str,
+    bearer: Option<String>,
     // sampling_parameters: &Dict<String, Any>,
     // stream: bool,
     // auth_from_client:
@@ -17,8 +17,10 @@ pub async fn simple_forward_to_hf_endpoint_no_streaming(
 ) -> Result<serde_json::Value, serde_json::Error> {
     let url = format!("https://api-inference.huggingface.co/models/{}", model_name);
     let mut headers = HeaderMap::new();
-    headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", hf_api_token)).unwrap());
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
+    if let Some(t) = bearer {
+        headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", t)).unwrap());
+    }
     let data = json!({
         "inputs": prompt,
         "parameters": {

@@ -5,7 +5,7 @@ use std::sync::RwLock;
 
 use tokenizers::Tokenizer;
 use ropey::Rope;
-use tracing::info;
+use tracing::{info, error};
 
 
 #[derive(Debug)]
@@ -138,7 +138,8 @@ impl CodeCompletionScratchpad for SingleFileFIM {
             finish = true;
 
         } else {
-            return Err("No token or array".to_string());
+            error!("No token or array {:?}", model_says);
+            return Err("HF-style endpoint response unrecognized, see logs".to_string());
         }
 
         return Ok((ans, finish));
