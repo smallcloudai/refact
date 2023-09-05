@@ -105,10 +105,12 @@ async fn handle_v1_code_completion(
                     .into());
             }
         };
-        info!("prompt {:?}\n{}", t1.elapsed(), prompt);
+        // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
+        info!("prompt {:?}", t1.elapsed());
     }
 
     let hf_api_key ="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".to_string();
+    let t2 = std::time::Instant::now();
     let hf_endpoint_result = forward_to_hf_endpoint::simple_forward_to_hf_endpoint_no_streaming(
         &code_completion_post.model,
         &prompt,
@@ -118,16 +120,25 @@ async fn handle_v1_code_completion(
     if let Err(e) = hf_endpoint_result {
         error!("Error in forward_to_hf_endpoint {:?}", e);
         return Ok(Response::builder()
-           .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-           .body(format!("Error in forward_to_hf_endpoint: {}", e).into())
-          .unwrap()
-          .into());
+            .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+            .body(format!("Error in forward_to_hf_endpoint: {}", e).into())
+            .unwrap()
+            .into());
     }
-    info!("forward_to_hf_endpoint {:?}", hf_endpoint_result);
+    info!("forward_to_hf_endpoint {:?}", t2.elapsed());
     let answer = scratchpad.re_stream_response(hf_endpoint_result.unwrap());
+    if let Err(e) = answer {
+        error!("Error in re_stream_response {:?}", e);
+        return Ok(Response::builder()
+            .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+            .body(format!("Error in re_stream_response: {}", e).into())
+            .unwrap()
+            .into());
+    }
 
-    let txt = serde_json::to_string(&answer).unwrap();
-    info!("handle_v1_code_completion returning: {}", txt);
+    let tuple_json_finished = answer.unwrap();
+    let txt = serde_json::to_string(&tuple_json_finished.0).unwrap();
+    info!("handle_v1_code_completion return {}", txt);
     let response = Response::builder()
         .header("Content-Type", "application/json")
         .body(Body::from(txt))

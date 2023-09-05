@@ -54,6 +54,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         }
         let mut before = vec![];
         let mut after = String::new();
+        let mut stat_tokens = 0;
         while before_line.is_some() || after_line.is_some() {
             if let Some(before_line) = before_line {
                 let before_line = before_line.to_string();
@@ -68,6 +69,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
                     break;
                 }
                 token_count -= tokens;
+                stat_tokens += tokens;
                 before.push(before_line);
             }
             if let Some(after_line) = after_line {
@@ -83,11 +85,13 @@ impl CodeCompletionScratchpad for SingleFileFIM {
                     break;
                 }
                 token_count -= tokens;
+                stat_tokens += tokens;
                 after.push_str(&after_line);
             }
             before_line = before_iter.next();
             after_line = after_iter.next();
         }
+        info!("single file FIM prompt {} tokens < context {}", stat_tokens, context_size);
         Ok(format!(
             "{}{}{}{}{}",
             fim_prefix,
@@ -159,6 +163,6 @@ fn cut_result(text: &str, eot_token: &str, multiline: bool) -> String {
         return text.to_string();
     }
     let cut_at = cut_at.into_iter().min().unwrap_or(text.len());
-    info!("cut_result text: {:?}, cut_at={:?}", text, cut_at);
+    // info!("cut_result text: {:?}, cut_at={:?}", text, cut_at);
     text.split_at(cut_at).0.to_string()
 }
