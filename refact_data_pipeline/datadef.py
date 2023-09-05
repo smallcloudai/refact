@@ -56,7 +56,10 @@ class DatasetOpts:
                 if "." in v:
                     self.opts[k] = float(v)
                 else:
-                    self.opts[k] = int(v)
+                    try:
+                        self.opts[k] = int(v)
+                    except ValueError:
+                        self.opts[k] = v
         self.used = set()
         self.encoding = None
 
