@@ -77,6 +77,7 @@ class SingleFileFIM(scratchpad_code_completion.ScratchpadCodeCompletion):
                     return
                 yield {"code_completion_delta": t}
             if isinstance(model_says, list):
+                # Several completions in array
                 ans = [{"code_completion": self.cut_result(x["generated_text"])} for x in model_says]
                 if len(ans) >= 1:
                     self._debuglog("SingleFileFIM completion: \"%s\"" % ans[0]["code_completion"].replace("\n", "\\n"))

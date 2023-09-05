@@ -99,25 +99,34 @@ async fn handle_v1_code_completion(
             Err(e) => {
                 error!("Cannot produce prompt: {}", e);
                 return Ok(Response::builder()
-                .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                .body(format!("Cannot produce prompt").into())
-                .unwrap()
-                .into());
+                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(format!("Cannot produce prompt").into())
+                    .unwrap()
+                    .into());
             }
         };
         info!("prompt {:?}\n{}", t1.elapsed(), prompt);
     }
 
     let hf_api_key ="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".to_string();
-    let ret = forward_to_hf_endpoint::simple_forward_to_hf_endpoint_no_streaming(
+    let hf_endpoint_result = forward_to_hf_endpoint::simple_forward_to_hf_endpoint_no_streaming(
         &code_completion_post.model,
         &prompt,
         &http_client,
         &hf_api_key,
     ).await;
-    info!("forward_to_hf_endpoint {:?}", ret);
+    if let Err(e) = hf_endpoint_result {
+        error!("Error in forward_to_hf_endpoint {:?}", e);
+        return Ok(Response::builder()
+           .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+           .body(format!("Error in forward_to_hf_endpoint: {}", e).into())
+          .unwrap()
+          .into());
+    }
+    info!("forward_to_hf_endpoint {:?}", hf_endpoint_result);
+    let answer = scratchpad.re_stream_response(hf_endpoint_result.unwrap());
 
-    let txt = "{}";
+    let txt = serde_json::to_string(&answer).unwrap();
     info!("handle_v1_code_completion returning: {}", txt);
     let response = Response::builder()
         .header("Content-Type", "application/json")

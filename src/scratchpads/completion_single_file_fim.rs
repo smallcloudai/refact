@@ -32,8 +32,6 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         let fim_prefix = "<fim_prefix>";
         let fim_suffix = "<fim_suffix>";
         let fim_middle = "<fim_middle>";
-        // let toks = self.tokenizer.encode("hello world".to_string(), false).unwrap();
-        info!("self.post.inputs.cursor.file: {}", self.post.inputs.cursor.file);
         let text_cursor_file_maybe = self.post.inputs.sources.get(&self.post.inputs.cursor.file);
         let text = match text_cursor_file_maybe {
             Some(x) => Rope::from_str(x),
@@ -102,40 +100,65 @@ impl CodeCompletionScratchpad for SingleFileFIM {
 
     fn re_stream_response(
         &self,
-    ) {
-        // text_generator: &mut dyn futures::stream::Stream<Item = Result<serde_json::Value, _>>,
-        // while let Some(model_says) = text_generator.next().await {
-        //     if let Ok(model_says) = model_says {
-        //         if let Some(token) = model_says.get("token") {
-        //             if let Some(t) = token.get("text") {
-        //                 let t = t.as_str().unwrap();
-        //                 if t == self._eot {
-        //                     return;
-        //                 }
-        //                 if t.contains("\n\n") || (t.contains("\n") && !self.multiline) {
-        //                     yield {"code_completion_delta": self.cut_result(t)};
-        //                     return;
-        //                 }
-        //                 yield {"code_completion_delta": t};
-        //             }
-        //         }
-        //         if let Some(model_says) = model_says.as_array() {
-        //             let ans = model_says
-        //                 .iter()
-        //                 .map(|x| {
-        //                     let generated_text = x.get("generated_text").unwrap().as_str().unwrap();
-        //                     {"code_completion": self.cut_result(generated_text)}
-        //                 })
-        //                 .collect::<Vec<_>>();
-        //             if ans.len() >= 1 {
-        //                 self._debuglog(format!(
-        //                     "SingleFileFIM completion: \"{}\"",
-        //                     ans[0]["code_completion"].replace("\n", "\\n")
-        //                 ));
-        //             }
-        //             yield ans;
-        //         }
-        //     }
-        //}
+        model_says: serde_json::Value,
+    ) -> Result<(serde_json::Value, bool), String> {
+        let ans: serde_json::Value;
+        let mut finish = false;
+
+        if let Some(token) = model_says.get("token") {
+            // streaming branch
+            let mut token_text = "".to_string();
+            if let Some(t) = token.get("text") {
+                token_text = t.as_str().unwrap().to_string();
+            }
+            if token_text.contains("\n\n") || (token_text.contains("\n") && !self.post.inputs.multiline) {
+                ans = serde_json::json!({
+                    "code_completion_delta": cut_result(&token_text, "\n\n", self.post.inputs.multiline)
+                });
+                finish = true;
+            } else {
+                ans = serde_json::json!({
+                    "code_completion_delta": token_text
+                });
+            }
+
+        } else if let Some(arr) = model_says.as_array() {
+            let tmp = arr.iter()
+               .map(|x| {
+                    let generated_text = x.get("generated_text").unwrap().as_str().unwrap();
+                    serde_json::json!({
+                        "code_completion": cut_result(&generated_text, "<|endoftext|>", self.post.inputs.multiline),
+                    })
+               }).collect::<Vec<_>>();
+            ans = serde_json::json!(tmp);
+            finish = true;
+
+        } else {
+            return Err("No token or array".to_string());
+        }
+
+        return Ok((ans, finish));
     }
+
+}
+
+fn cut_result(text: &str, eot_token: &str, multiline: bool) -> String {
+    let mut cut_at = vec![];
+    if let Some(x) = text.find(eot_token) {
+        cut_at.push(x);
+    }
+    if let Some(x) = text.find("\n\n") {
+        cut_at.push(x);
+    }
+    if !multiline {
+        if let Some(x) = text.find("\n") {
+            cut_at.push(x);
+        }
+    }
+    if cut_at.is_empty() {
+        return text.to_string();
+    }
+    let cut_at = cut_at.into_iter().min().unwrap_or(text.len());
+    info!("cut_result text: {:?}, cut_at={:?}", text, cut_at);
+    text.split_at(cut_at).0.to_string()
 }
