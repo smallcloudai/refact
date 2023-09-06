@@ -21,7 +21,7 @@ Refact is an open-source Copilot alternative available as a self-hosted or cloud
 
 ## Getting Started
 
-Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
+Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai).
 
 You can start using Refact Cloud immediately, just create an account at [https://refact.ai/](https://refact.ai/).
 
