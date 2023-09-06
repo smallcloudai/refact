@@ -54,8 +54,8 @@ pub async fn download_tokenizer_file(
 }
 
 pub async fn get_tokenizer(
-    model: &str,
     tokenizer_map: &mut HashMap<String, Arc<RwLock<Tokenizer>>>,
+    model: &str,
     http_client: reqwest::Client,
     cache_dir: &Path,
     api_token: Option<String>,

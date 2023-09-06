@@ -162,6 +162,10 @@ impl CodeCompletionScratchpad for SingleFileFIM {
             ans = serde_json::json!(tmp);
             finish = true;
 
+        } else if let Some(err) = model_says.get("error") {
+            // XXX: maybe move it higher so each scratchpad doesn't have to handle that?
+            return Err(err.as_str().unwrap().to_string());
+
         } else {
             error!("No token or array {:?}", model_says);
             return Err("HF-style endpoint response unrecognized, see logs".to_string());

@@ -29,6 +29,7 @@ mod cached_tokenizers;
 mod scratchpads;
 mod forward_to_hf_endpoint;
 use crate::scratchpads::call_validation::CodeCompletionPost;
+use serde_json::json;
 
 
 struct GlobalContext {
@@ -38,105 +39,76 @@ struct GlobalContext {
 }
 
 
+fn explain_whats_wrong(status_code: StatusCode, msg: String) -> Result<Response<Body>, hyper::Error> {
+    error!("{}", msg);
+    let body = json!({"detail": msg}).to_string();
+    let response = Response::builder()
+       .status(status_code)
+       .header("Content-Type", "application/json")
+       .body(Body::from(body))
+       .unwrap();
+    Ok(response)
+}
+
+
 async fn handle_v1_code_completion(
     global_context: Arc<RwLock<GlobalContext>>,
     bearer: Option<String>,
     body_bytes: hyper::body::Bytes
 ) -> Result<Response<Body>, hyper::Error> {
-    info!("bearer {:?}", bearer);
-    let is_it_valid = serde_json::from_slice::<CodeCompletionPost>(&body_bytes);
-    let mut code_completion_post = match is_it_valid {
-        Ok(x) => x,
-        Err(e) => {
-            error!("Error deserializing request body: {}\n{:?}", e, body_bytes);
-            return Ok(Response::builder()
-                .status(hyper::StatusCode::BAD_REQUEST)
-                .body(format!("could not parse JSON: {}", e).into())
-                .unwrap()
-                .into());
-        }
-    };
-    if code_completion_post.model.is_empty() {
-        code_completion_post.model = "bigcode/starcoder".to_string();
-    }
+    let code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
+        return explain_whats_wrong(
+            StatusCode::BAD_REQUEST,
+            format!("JSON problem: {}", e))
+    ).unwrap();
 
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>>;
-    let http_client: reqwest::Client;
+    let client1: reqwest::Client;
     let client2: reqwest::Client;
     {
-        let t0: std::time::Instant = std::time::Instant::now();
         let mut cx_locked = global_context.write().await;
-        http_client = cx_locked.http_client.clone();
+        client1 = cx_locked.http_client.clone();
         client2 = cx_locked.http_client.clone();
         let cache_dir = cx_locked.cache_dir.clone();
-        let maybe_tokenizer = cached_tokenizers::get_tokenizer(
-            &code_completion_post.model,
+        tokenizer_arc = cached_tokenizers::get_tokenizer(
             &mut cx_locked.tokenizer_map,
+            &code_completion_post.model,
             client2,
             &cache_dir,
             bearer.clone(),
-        ).await;
-        tokenizer_arc = match maybe_tokenizer {
-            Ok(x) => x,
-            Err(e) => {
-                error!("Cannot get tokenizer: {}", e);
-                return Ok(Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(format!("Cannot get tokenizer").into())
-                    .unwrap()
-                    .into());
-            }
-        };
-        info!("get_tokenizer {:?}", t0.elapsed());
+        ).await.map_err(|e|
+            return explain_whats_wrong(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Tokenizer: {}", e))
+        ).unwrap();
     }
 
-    let prompt: String;
     let scratchpad = scratchpads::create_code_completion_scratchpad(
             tokenizer_arc.clone(),
             code_completion_post.clone(),
         );
-    {
-        let t1 = std::time::Instant::now();
-        let prompt_maybe = scratchpad.prompt(2048);
-        prompt = match prompt_maybe {
-            Ok(x) => x,
-            Err(e) => {
-                error!("Cannot produce prompt: {}", e);
-                return Ok(Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(format!("Cannot produce prompt").into())
-                    .unwrap()
-                    .into());
-            }
-        };
-        // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
-        info!("prompt {:?}", t1.elapsed());
-    }
+    let t1 = std::time::Instant::now();
+    let prompt = scratchpad.prompt(2048).map_err(|e|
+        return explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
+    ).unwrap();
+    // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
+    info!("prompt {:?}", t1.elapsed());
 
     let t2 = std::time::Instant::now();
     let hf_endpoint_result = forward_to_hf_endpoint::simple_forward_to_hf_endpoint_no_streaming(
         &code_completion_post.model,
         &prompt,
-        &http_client,
+        &client1,
         bearer.clone(),
-    ).await;
-    if let Err(e) = hf_endpoint_result {
-        error!("Error in forward_to_hf_endpoint {:?}", e);
-        return Ok(Response::builder()
-            .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-            .body(format!("Error in forward_to_hf_endpoint: {}", e).into())
-            .unwrap()
-            .into());
-    }
+    ).await.map_err(|e|
+        return explain_whats_wrong(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("forward_to_hf_endpoint: {}", e))
+    ).unwrap();
     info!("forward_to_hf_endpoint {:?}", t2.elapsed());
-    let answer = scratchpad.re_stream_response(hf_endpoint_result.unwrap());
+    let answer = scratchpad.re_stream_response(hf_endpoint_result);
     if let Err(e) = answer {
-        error!("Error in re_stream_response {:?}", e);
-        return Ok(Response::builder()
-            .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-            .body(format!("Error in re_stream_response: {}", e).into())
-            .unwrap()
-            .into());
+        return explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("re_stream_response: {}", e))
     }
 
     let tuple_json_finished = answer.unwrap();
@@ -159,7 +131,11 @@ async fn handle_request(
     req: Request<Body>,
 ) -> Result<Response<Body>, hyper::Error> {
     let body_bytes = hyper::body::to_bytes(req.into_body()).await?;
-    info!("{} {} {} body_bytes={}", remote_addr, method, path, body_bytes.len());
+    let mut bearer4log = "none".to_string();
+    if let Some(x) = bearer.clone() {
+        bearer4log = x.chars().skip(7).take(7).collect::<String>() + "…";
+    }
+    info!("{} {} {} body_bytes={} bearer={}", remote_addr, method, path, body_bytes.len(), bearer4log);
     if method == Method::POST && path == "/v1/code-completion" {
         return handle_v1_code_completion(global_context, bearer, body_bytes).await;
     }
