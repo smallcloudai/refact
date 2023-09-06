@@ -39,15 +39,15 @@ struct GlobalContext {
 }
 
 
-fn explain_whats_wrong(status_code: StatusCode, msg: String) -> Result<Response<Body>, hyper::Error> {
-    error!("{}", msg);
+fn explain_whats_wrong(status_code: StatusCode, msg: String) -> Response<Body> {
+    error!("{:?}", msg);
     let body = json!({"detail": msg}).to_string();
     let response = Response::builder()
        .status(status_code)
        .header("Content-Type", "application/json")
        .body(Body::from(body))
        .unwrap();
-    Ok(response)
+    response
 }
 
 
@@ -55,12 +55,13 @@ async fn handle_v1_code_completion(
     global_context: Arc<RwLock<GlobalContext>>,
     bearer: Option<String>,
     body_bytes: hyper::body::Bytes
-) -> Result<Response<Body>, hyper::Error> {
-    let code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
-        return explain_whats_wrong(
-            StatusCode::BAD_REQUEST,
-            format!("JSON problem: {}", e))
-    ).unwrap();
+) -> Result<Response<Body>, Response<Body>> {
+    let mut code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
+        explain_whats_wrong(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    )?;
+    if code_completion_post.model.is_empty() {
+        code_completion_post.model = "bigcode/starcoder".to_string();
+    }
 
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>>;
     let client1: reqwest::Client;
@@ -77,10 +78,10 @@ async fn handle_v1_code_completion(
             &cache_dir,
             bearer.clone(),
         ).await.map_err(|e|
-            return explain_whats_wrong(
+            explain_whats_wrong(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Tokenizer: {}", e))
-        ).unwrap();
+        )?;
     }
 
     let scratchpad = scratchpads::create_code_completion_scratchpad(
@@ -89,8 +90,8 @@ async fn handle_v1_code_completion(
         );
     let t1 = std::time::Instant::now();
     let prompt = scratchpad.prompt(2048).map_err(|e|
-        return explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
-    ).unwrap();
+        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
+    )?;
     // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
     info!("prompt {:?}", t1.elapsed());
 
@@ -101,17 +102,15 @@ async fn handle_v1_code_completion(
         &client1,
         bearer.clone(),
     ).await.map_err(|e|
-        return explain_whats_wrong(
+        explain_whats_wrong(
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("forward_to_hf_endpoint: {}", e))
-    ).unwrap();
+    )?;
     info!("forward_to_hf_endpoint {:?}", t2.elapsed());
-    let answer = scratchpad.re_stream_response(hf_endpoint_result);
-    if let Err(e) = answer {
-        return explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("re_stream_response: {}", e))
-    }
-
-    let tuple_json_finished = answer.unwrap();
+    let tuple_json_finished = scratchpad.re_stream_response(hf_endpoint_result)
+        .map_err(|e|
+            explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("re_stream_response: {}", e))
+    )?;
     let txt = serde_json::to_string(&tuple_json_finished.0).unwrap();
     info!("handle_v1_code_completion return {}", txt);
     let response = Response::builder()
@@ -130,22 +129,24 @@ async fn handle_request(
     method: Method,
     req: Request<Body>,
 ) -> Result<Response<Body>, hyper::Error> {
+    let t0 = std::time::Instant::now();
     let body_bytes = hyper::body::to_bytes(req.into_body()).await?;
     let mut bearer4log = "none".to_string();
     if let Some(x) = bearer.clone() {
         bearer4log = x.chars().skip(7).take(7).collect::<String>() + "…";
     }
     info!("{} {} {} body_bytes={} bearer={}", remote_addr, method, path, body_bytes.len(), bearer4log);
+    let result: Result<Response<Body>, Response<Body>>;
     if method == Method::POST && path == "/v1/code-completion" {
-        return handle_v1_code_completion(global_context, bearer, body_bytes).await;
+        result = handle_v1_code_completion(global_context, bearer, body_bytes).await;
+    } else {
+        result = Ok(explain_whats_wrong(StatusCode::NOT_FOUND, format!("no handler for {}", path)));
     }
-    let txt = format!("404 not found, path {}\n", path);
-    let response = Response::builder()
-        .status(StatusCode::NOT_FOUND)
-        .header("Content-Type", "application/json")
-        .body(Body::from(txt))
-        .unwrap();
-    Ok(response)
+    if let Err(e) = result {
+        return Ok(e);
+    }
+    info!("{} completed in {:?}", path, t0.elapsed());
+    return Ok(result.unwrap());
 }
 
 

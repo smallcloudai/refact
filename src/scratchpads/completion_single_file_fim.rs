@@ -9,7 +9,7 @@ use ropey::Rope;
 use tracing::{info, error};
 
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 
 #[derive(Debug)]
@@ -25,6 +25,18 @@ impl SingleFileFIM {
     ) -> Self {
         SingleFileFIM { tokenizer, post }
     }
+
+    fn count_tokens(
+        &self,
+        tokenizer: Arc<RwLock<Tokenizer>>,
+        text: &str,
+    ) -> Result<usize, String> {
+        let tokenizer = tokenizer.write().unwrap();
+        let tokens = tokenizer.encode(text, false).map_err(|err| {
+            return format!("Encoding error: {}", err);
+        })?;
+        Ok(tokens.len())
+    }
 }
 
 impl CodeCompletionScratchpad for SingleFileFIM {
@@ -36,14 +48,10 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         let fim_prefix = "<fim_prefix>";
         let fim_suffix = "<fim_suffix>";
         let fim_middle = "<fim_middle>";
-        let text_cursor_file_maybe = self.post.inputs.sources.get(&self.post.inputs.cursor.file);
-        let text = match text_cursor_file_maybe {
-            Some(x) => Rope::from_str(x),
-            None => {
-                return Err("Cursor is in file not found in sources".to_string());
-            }
-        };
-        let mut token_count = context_size;
+        let text = Rope::from_str(
+            self.post.inputs.sources.get(&self.post.inputs.cursor.file)
+            .ok_or("Cursor is in file not found in sources".to_string())?
+        );
         let pos = &self.post.inputs.cursor;
         let mut before_iter = text.lines_at(pos.line as usize).reversed();
         let mut after_iter = text.lines_at(pos.line as usize + 1);
@@ -70,44 +78,32 @@ impl CodeCompletionScratchpad for SingleFileFIM {
 
         let mut before = vec![];
         let mut after = String::new();
-        let mut stat_tokens = 0;
+        let mut tokens_used = self.count_tokens(self.tokenizer.clone(),
+            (cursor_line1.clone() + &cursor_line2).as_str()
+        )?;
         while before_line.is_some() || after_line.is_some() {
             if let Some(before_line) = before_line {
                 let before_line = before_line.to_string();
-                let tokens = self.tokenizer.read().unwrap()
-                    .encode(before_line.clone(), false)
-                    .map_err(|err| {
-                        return format!("Encoding error: {}", err);
-                    })
-                    .unwrap()
-                    .len();
-                if tokens > token_count {
+                let tokens = self.count_tokens(self.tokenizer.clone(), before_line.as_str())?;
+                if tokens_used + tokens > context_size {
                     break;
                 }
-                token_count -= tokens;
-                stat_tokens += tokens;
+                tokens_used += tokens;
                 before.push(before_line);
             }
             if let Some(after_line) = after_line {
                 let after_line = after_line.to_string();
-                let tokens = self.tokenizer.read().unwrap()
-                    .encode(after_line.clone(), false)
-                    .map_err(|err| {
-                        return format!("Encoding error: {}", err);
-                    })
-                   .unwrap()
-                   .len();
-                if tokens > token_count {
+                let tokens = self.count_tokens(self.tokenizer.clone(), after_line.as_str())?;
+                if tokens_used + tokens > context_size {
                     break;
                 }
-                token_count -= tokens;
-                stat_tokens += tokens;
+                tokens_used += tokens;
                 after.push_str(&after_line);
             }
             before_line = before_iter.next();
             after_line = after_iter.next();
         }
-        info!("single file FIM prompt {} tokens < context {}", stat_tokens, context_size);
+        info!("single file FIM prompt {} tokens used < context {}", tokens_used, context_size);
         let prompt = format!(
             "{}{}{}{}{}{}{}",
             fim_prefix,
