@@ -10,7 +10,7 @@ use ropey::Rope;
 use tracing::{info, error};
 
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 
 #[derive(Debug)]
@@ -68,16 +68,13 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         let mut after_iter = text.lines_at(pos.line as usize + 1);
 
         let mut before_line = before_iter.next();
-        info!("before_line {:?}", before_line);
 
         let cursor_line1: String;
         let col = pos.character as usize;
         cursor_line1 = text.line(pos.line as usize).slice(0..col).to_string();
         // UNFINISHED LI|
-        info!("cursor_line1 {:?}", cursor_line1);
 
         let mut after_line = after_iter.next();
-        info!("after_line {:?}", after_line);
 
         let cursor_line2: String;
         if self.post.inputs.multiline {
@@ -85,7 +82,6 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         } else {
             cursor_line2 = "".to_string();
         }
-        info!("cursor_line2 {:?}", cursor_line2);
 
         let mut before = vec![];
         let mut after = String::new();
@@ -201,7 +197,6 @@ fn cut_result(text: &str, eot_token: &str, multiline: bool) -> String {
         return text.to_string();
     }
     let cut_at = cut_at.into_iter().min().unwrap_or(text.len());
-    // info!("cut_result text: {:?}, cut_at={:?}", text, cut_at);
     let ans = text.split_at(cut_at).0.to_string();
     ans.replace("\r", "")
 }
