@@ -9,7 +9,6 @@ pub struct CursorPosition {
     pub character: i32,
 }
 
-
 #[derive(Debug, Deserialize, Clone)]
 pub struct CodeCompletionInputs {
     pub sources: HashMap<String, String>,
@@ -17,6 +16,16 @@ pub struct CodeCompletionInputs {
     pub multiline: bool,
 }
 
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct SamplingParameters {
+    #[serde(default)]
+    pub max_new_tokens: usize,
+    #[serde(default)]
+    pub temperature: f32,
+    #[serde(default)]
+    pub top_p: f32,
+    pub stop: Option<Vec<String>>,
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct CodeCompletionPost {
@@ -25,6 +34,8 @@ pub struct CodeCompletionPost {
     #[serde(default)]
     pub stream: bool,
     pub inputs: CodeCompletionInputs,
+    #[serde(default)]
+    pub parameters: SamplingParameters
 }
 
 // class SamplingParameters(BaseModel):

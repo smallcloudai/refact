@@ -89,7 +89,10 @@ async fn handle_v1_code_completion(
             code_completion_post.clone(),
         );
     let t1 = std::time::Instant::now();
-    let prompt = scratchpad.prompt(2048).map_err(|e|
+    let prompt = scratchpad.prompt(
+        2048,
+        &mut code_completion_post.parameters,
+    ).map_err(|e|
         explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
     // info!("prompt {:?}\n{}", t1.elapsed(), prompt);

@@ -1,6 +1,7 @@
 import requests
 import termcolor
 import json
+import os
 
 
 hello_world = "def hello_world():\n    '''\n    This function prints 'Hello World' and returns True.\n    '''\n"
@@ -15,6 +16,10 @@ def call_completion(
     stream,
     multiline,
 ):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer %s" % os.environ.get("HF_TOKEN"),
+        }
     r = requests.post(
         "http://127.0.0.1:8001/v1/code-completion",
         json={
@@ -30,7 +35,8 @@ def call_completion(
             "parameters": {},
             "model": model,
             "stream": stream,
-        }
+        },
+        headers=headers,
     )
     if r.status_code != 200:
         raise ValueError("Unexpected response\n%s" % r.text)
@@ -78,6 +84,12 @@ def test_battery(model, stream):
     assert x == "", x
     x = pretty_print_wrapper(hello_world, model=model, stream=stream, multiline=True, cursor_line=3, cursor_character=7)
     assert x.rstrip() == "\n    print('Hello World')\n    return True", x
+    x = pretty_print_wrapper(hello_world + "    \n", model=model, stream=stream, multiline=True, cursor_line=4, cursor_character=4)
+    assert x.rstrip() == "print('Hello World')\n    return True", x
+    x = pretty_print_wrapper(hello_world.replace("hello_world", ""), model=model, stream=stream, multiline=True, cursor_line=0, cursor_character=4)
+    assert x.rstrip() in ["hello_world", "print_hello"], x
+    x = pretty_print_wrapper(hello_world.replace("hello_world", ""), model=model, stream=stream, multiline=False, cursor_line=0, cursor_character=4)
+    assert x.rstrip() in ["hello_world():", "print_hello():"], x
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 use crate::scratchpads::scratchpad_abstract::CodeCompletionScratchpad;
 use crate::scratchpads::call_validation::CodeCompletionPost;
+use crate::scratchpads::call_validation::SamplingParameters;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -9,7 +10,7 @@ use ropey::Rope;
 use tracing::{info, error};
 
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 
 #[derive(Debug)]
@@ -43,7 +44,17 @@ impl CodeCompletionScratchpad for SingleFileFIM {
     fn prompt(
         &self,
         context_size: usize,
+        sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
+        let limit = context_size - self.post.parameters.max_new_tokens;
+        let supports_stop = true;
+        if supports_stop {
+            let mut stop_list = vec!["<|endoftext|>".to_string(), "\n\n".to_string()];
+            if !self.post.inputs.multiline {
+                stop_list.push("\n".to_string());  // This doesn't stop hf inference, only whole tokens do
+            }
+            sampling_parameters_to_patch.stop = Some(stop_list);
+        }
         // TODO: assert one token
         let fim_prefix = "<fim_prefix>";
         let fim_suffix = "<fim_suffix>";
@@ -85,7 +96,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
             if let Some(before_line) = before_line {
                 let before_line = before_line.to_string();
                 let tokens = self.count_tokens(self.tokenizer.clone(), before_line.as_str())?;
-                if tokens_used + tokens > context_size {
+                if tokens_used + tokens > limit {
                     break;
                 }
                 tokens_used += tokens;
@@ -94,7 +105,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
             if let Some(after_line) = after_line {
                 let after_line = after_line.to_string();
                 let tokens = self.count_tokens(self.tokenizer.clone(), after_line.as_str())?;
-                if tokens_used + tokens > context_size {
+                if tokens_used + tokens > limit {
                     break;
                 }
                 tokens_used += tokens;
@@ -103,7 +114,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
             before_line = before_iter.next();
             after_line = after_iter.next();
         }
-        info!("single file FIM prompt {} tokens used < context {}", tokens_used, context_size);
+        info!("single file FIM prompt {} tokens used < limit {}", tokens_used, limit);
         let prompt = format!(
             "{}{}{}{}{}{}{}",
             fim_prefix,
@@ -116,6 +127,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         );
         if DEBUG {
             info!("prompt\n{}", prompt);
+            info!("re-encode whole string again gives {} tokes\n",self.count_tokens(self.tokenizer.clone(), prompt.as_str())?);
         }
         Ok(prompt)
     }
