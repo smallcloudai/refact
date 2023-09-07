@@ -43,7 +43,10 @@ class CompletionsRouter(APIRouter):
         model_rec: db_code_completion_models.CompletionModelRecord = db_code_completion_models.model_lookup(post.model)
         if model_rec is None:
             raise HTTPException(status_code=400, detail="model '%s' is not supported" % post.model)
-        tokenizer = cached_get_tokenizer(model_rec.model_name)
+        tokenizer = cached_get_tokenizer(
+            model_rec.model_name,
+            auth_from_client=(bearer.credentials if bearer else None),
+        )
         module_name, Class_name = model_rec.code_completion_scratchpad.split(":")
         ScratchpadClass = importlib.import_module("code_scratchpads.scratchpads_code_completion." + module_name).__dict__[Class_name]
         assert issubclass(ScratchpadClass, scratchpad_code_completion.ScratchpadCodeCompletion)

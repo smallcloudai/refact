@@ -1,11 +1,19 @@
 import json
 from functools import lru_cache
 from transformers import AutoTokenizer
+from typing import Optional
 
 
 @lru_cache(maxsize=100)
-def cached_get_tokenizer(name) -> AutoTokenizer:
-    tokenizer = AutoTokenizer.from_pretrained(name, trust_remote_code=True)
+def cached_get_tokenizer(
+    name,
+    auth_from_client: Optional[str] = None,
+) -> AutoTokenizer:
+    tokenizer = AutoTokenizer.from_pretrained(
+        name,
+        trust_remote_code=True,
+        use_auth_token=auth_from_client or False,  # this actually works
+        )
     j = json.loads(tokenizer.backend_tokenizer.to_str())
     special = []
     for token_dict in j["added_tokens"]:
