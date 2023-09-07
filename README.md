@@ -2,10 +2,6 @@
 
 Refact is an open-source Copilot alternative available as a self-hosted or cloud option.
 
-<p align="center">
-  <img width="300" alt="Refact" src="refact-logo.svg"/>
-</p>
-
 ---
 
 [![Discord](https://img.shields.io/discord/1037660742440194089?logo=discord&label=Discord&link=https%3A%2F%2Fsmallcloud.ai%2Fdiscord)](https://smallcloud.ai/discord)
