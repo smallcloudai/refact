@@ -1,5 +1,8 @@
-<p align="center">
-  <img width="300" alt="Refact" src="white-refact-logo.svg"/>
+<p align='center'>
+  <picture>
+   <source width='300px' media="(prefers-color-scheme: dark)" srcset="white-refact-logo.svg">
+   <img width='300px' alt="Shows an illustrated sun in light color mode and a moon with stars in dark color mode." src="refact-logo.svg">
+  </picture>
 </p>
 
 ---
