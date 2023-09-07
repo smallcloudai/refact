@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 
 
@@ -16,14 +17,12 @@ pub struct CodeCompletionInputs {
     pub multiline: bool,
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SamplingParameters {
     #[serde(default)]
     pub max_new_tokens: usize,
-    #[serde(default)]
-    pub temperature: f32,
-    #[serde(default)]
-    pub top_p: f32,
+    pub temperature: Option<f32>,
+    pub top_p: Option<f32>,
     pub stop: Option<Vec<String>>,
 }
 

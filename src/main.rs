@@ -62,7 +62,9 @@ async fn handle_v1_code_completion(
     if code_completion_post.model.is_empty() {
         code_completion_post.model = "bigcode/starcoder".to_string();
     }
-
+    if code_completion_post.parameters.max_new_tokens == 0 {
+        code_completion_post.parameters.max_new_tokens = 50;
+    }
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>>;
     let client1: reqwest::Client;
     let client2: reqwest::Client;
@@ -100,10 +102,11 @@ async fn handle_v1_code_completion(
 
     let t2 = std::time::Instant::now();
     let hf_endpoint_result = forward_to_hf_endpoint::simple_forward_to_hf_endpoint_no_streaming(
+        bearer.clone(),
         &code_completion_post.model,
         &prompt,
         &client1,
-        bearer.clone(),
+        &code_completion_post.parameters,
     ).await.map_err(|e|
         explain_whats_wrong(
             StatusCode::INTERNAL_SERVER_ERROR,

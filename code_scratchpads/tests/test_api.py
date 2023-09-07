@@ -32,7 +32,9 @@ def call_completion(
                 },
                 "multiline": multiline,
             },
-            "parameters": {},
+            "parameters": {
+                # "temperature": 0.8,
+            },
             "model": model,
             "stream": stream,
         },
