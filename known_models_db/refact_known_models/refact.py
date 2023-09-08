@@ -5,11 +5,13 @@ refact_mini_db = {
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadSPM",
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceRefact",
         "model_class_kwargs": {},
+        "T": 1024,
         "required_memory_mb": 6000,
-        "filter_caps": ["Refact", "completion"],
+        "filter_caps": ["Refact", "completion", "finetune"],
     },
 
     "CONTRASTcode/medium/multi": {
+        "backend": "legacy",
         "model_path_type": "huggingface",
         "model_path": "smallcloudai/codify_medium_multi",
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadDiff",
@@ -21,6 +23,7 @@ refact_mini_db = {
     },
 
     "CONTRASTcode/3b/multi": {
+        "backend": "legacy",
         "model_path_type": "huggingface",
         "model_path": "smallcloudai/codify_3b_multi",
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadDiff",
