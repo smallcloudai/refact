@@ -21,7 +21,7 @@ from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stats
 from refact_data_pipeline.finetune.finetune_filtering_defaults import finetune_filtering_defaults
 from refact_data_pipeline.finetune.finetune_config import base_config
-from refact_data_pipeline.finetune.model_handling import make_model, masked_loss
+from refact_data_pipeline.finetune.model_handling import make_model, masked_loss, model_forward
 from refact_data_pipeline.finetune.process_uploaded_files import make_matcher
 from self_hosting_machinery import env
 
@@ -81,6 +81,7 @@ def loss_based_filter(
         *,
         fcfg,
         status_dict,
+        cfg,
 ):
     t0 = time.time()
     iter_times = []
@@ -106,7 +107,7 @@ def loss_based_filter(
             continue
 
         for batch, stats in batch_iter_fn(finetune_datasource.local_plain([file], dataopts)):
-            logits = model.lm_forward(model(batch['input'].contiguous(), attention_mask=None)[0])
+            logits = model_forward(model, batch, low_gpu_mem_mode=False, backend=cfg['model_info']['backend'])
             loss = float(loss_function(
                 logits=logits.to(th.bfloat16),  # more stable than float16 and takes much less memory than float32
                 labels=batch['labels'],
@@ -168,8 +169,10 @@ def pre_filtering(status_dict):
     t0 = time.time()
     cfg = base_config(finetune_cfg["model_name"])
     model = make_model(
+        model_name=finetune_cfg["model_name"],
         weights_path=cfg['model_info']['weight_path'],
         repo_id=cfg['model_info']['repo_id'],
+        backend=cfg['model_info']['backend'],
         freeze_exceptions=cfg['model_info']['freeze_exceptions'],
         lora_target_modules=cfg['model_info']['lora']['lora_target_modules'],
         lora_r=cfg['model_info']['lora']['lora_r'],
@@ -208,6 +211,7 @@ def pre_filtering(status_dict):
 
     filtered = loss_based_filter(
         train_files, model, loss_function, dataopts, fcfg=fcfg, status_dict=status_dict,
+        cfg=cfg
     )
 
     test_filenames = set()

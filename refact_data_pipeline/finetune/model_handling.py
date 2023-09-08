@@ -1,6 +1,10 @@
 from collections import deque
 from functools import partial
 from pathlib import Path
+
+from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel
+
+from refact_data_pipeline.finetune.finetune_config import MODELS_CONFIGS
 from refact_encoding import RefactEncoding
 
 import einops
@@ -9,10 +13,11 @@ import torch.nn.functional as F
 
 from refact_models.codify_model import CodifyModel
 from refact_data_pipeline.finetune.sa import flash_attn_func
-
+from refact_models.checkpoint_loader import load_config
 
 from typing import List, Tuple, Optional
 
+from refact_models.lora import LoraMixin
 
 unmasked_avg_buf = None
 
@@ -58,6 +63,7 @@ def masked_loss(
                 return termcolor.colored(t, color)
             else:
                 return t
+
         with th.no_grad():
             b = 0
             for ti in range(T):
@@ -72,7 +78,9 @@ def masked_loss(
                     "label=%-20s" % token_str(labels[b, ti].item(), mask[b, ti].item(), "green"),
                     "mask=%i" % mask[b, ti].item(),
                     "largest_logit=%05i" % largest_logit_n,
-                    "modelthinks=%-10s" % token_str(largest_logit_n, (mask[b, ti].item() and labels[b, ti].item() != largest_logit_n), "red"),
+                    "modelthinks=%-10s" % token_str(largest_logit_n,
+                                                    (mask[b, ti].item() and labels[b, ti].item() != largest_logit_n),
+                                                    "red"),
                 ]))
         debug_dump.append("-- (ce * mask).sum(dim=1) = %s" % (ce * mask).sum(dim=1))
         debug_dump.append("-- avg_mask_sum = %s" % avg_mask_sum)
@@ -114,7 +122,8 @@ def apply_flash_attention(model):
         return attn_output, None
 
     if type(model) != CodifyModel:
-        raise NotImplementedError()
+
+        return model
     else:
         for block in model.blocks:
             block.sa.forward = _forward.__get__(block.sa, type(block.sa))
@@ -149,9 +158,76 @@ def save_model_state(model, save_path, tag):
         th.save(cp, str(cp_path))
 
 
-def make_model(
+def setup_encoding(
+        model_name: str,
+        weights_path: str,
+        repo_id: str
+):
+    model_config = MODELS_CONFIGS[model_name]
+    if "tokenizer" in model_config:
+        encoding = AutoTokenizer.from_pretrained(
+            repo_id, cache_dir=weights_path,
+            trust_remote_code=True
+        )
+        encoding.encode_stochastic = lambda x, *args, **kwargs: (encoding.encode(x), None)
+        encoding.decode_utf8 = lambda x, *args, **kwargs: encoding.decode(x)
+    else:
+        encoding = RefactEncoding(
+            load_config(root_path=weights_path, repo_id=repo_id).enc_name
+        )
+    encoding.EOT = model_config["tokenizer"]["eot_idx"]
+    encoding.DIAMOND = model_config["tokenizer"]["padding_idx"]
+    encoding.PREFIX = model_config["tokenizer"]["fim_prefix"]
+    encoding.INFILL = model_config["tokenizer"]["fim_middle"]
+    encoding.SUFFIX = model_config["tokenizer"]["fim_suffix"]
+    encoding.ESCAPE = model_config["tokenizer"]["escape"]
+    return encoding
+
+
+def setup_model_specific_params(
+        model_name: str,
         weights_path: str,
         repo_id: str,
+        freeze_exceptions: List[str],
+        lora_target_modules: List[str]
+) -> Tuple[Optional[AutoTokenizer], List[str], List[str]]:
+    assert model_name in MODELS_CONFIGS
+    model_config = MODELS_CONFIGS[model_name]
+    encoding = setup_encoding(model_name, weights_path, repo_id)
+    freeze_exceptions = [model_config["freeze_exceptions_mapping"][e] for e in freeze_exceptions]
+    lora_target_modules_mapping = [m for modules in lora_target_modules
+                                   for m in model_config["lora_target_modules_mapping"][modules]]
+    return encoding, list(set(freeze_exceptions)), list(set(lora_target_modules_mapping))
+
+
+def model_forward(
+        model: th.nn.Module,
+        input: th.Tensor,
+        low_gpu_mem_mode: bool,
+        backend: str
+) -> th.Tensor:
+    if backend == "transformers":
+        if low_gpu_mem_mode:
+            model.gradient_checkpointing_enable()
+        else:
+            model.gradient_checkpointing_disable()
+        logits = model.forward(
+            input,
+            return_dict=False, output_attentions=False, output_hidden_states=False
+        )[0]
+    else:
+        if low_gpu_mem_mode:
+            logits = model.forward_train_cp(input)
+        else:
+            logits = model.lm_forward(model(input, attention_mask=None)[0])
+    return logits
+
+
+def make_model(
+        model_name: str,
+        weights_path: str,
+        repo_id: str,
+        backend: str,
         *,
         freeze_exceptions: List[str],
         lora_target_modules: List[str],
@@ -164,19 +240,41 @@ def make_model(
         device: str = "cuda",
 ) -> th.nn.Module:
     # init_device CPU is to save memory
-    model = CodifyModel.from_pretrained(
-        weights_path, device=init_device, repo_id=repo_id
-    ).to(dtype)
-    model = model.apply_lora(
-        model.to(device),
-        lora_target_modules=lora_target_modules,
-        lora_r=int(lora_r),
-        lora_alpha=lora_alpha,
-        lora_dropout=lora_dropout,
-        lora_init_scale=lora_init_scale
+    encoding, freeze_exceptions, lora_target_modules = setup_model_specific_params(
+        model_name, weights_path, repo_id, freeze_exceptions, lora_target_modules
     )
-    if th.cuda.get_device_capability() >= (8, 0):
-        model = apply_flash_attention(model)
+    if backend == "legacy":
+        model = CodifyModel.from_pretrained(
+            weights_path, device=init_device, repo_id=repo_id
+        ).to(dtype)
+        if th.cuda.get_device_capability() >= (8, 0):
+            model = apply_flash_attention(model)
+        model = model.apply_lora(
+            model.to(device),
+            lora_target_modules=lora_target_modules,
+            lora_r=int(lora_r),
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
+            lora_init_scale=lora_init_scale
+        )
+    elif backend == "transformers":
+        model = AutoModelForCausalLM.from_pretrained(
+            repo_id, cache_dir=weights_path,
+            device_map="auto", torch_dtype="auto",
+            trust_remote_code=True
+        ).to(dtype)
+        model.encoding = encoding
+        model = LoraMixin.apply_lora(
+            model.to(device),
+            lora_target_modules=lora_target_modules,
+            lora_r=int(lora_r),
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
+            lora_init_scale=lora_init_scale
+        )
+    else:
+        raise ValueError("Unknown backend")
+
     for param in list(model.parameters()):
         param.requires_grad = True
     model = freeze_model(

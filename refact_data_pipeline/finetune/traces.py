@@ -15,7 +15,7 @@ _cx: Optional['TraceContext'] = None
 
 
 def p(tensor) -> str:
-    return "·".join(["%i" % i for i in tensor.shape]) \
+    return "*".join(["%i" % i for i in tensor.shape]) \
         + " " + str(tensor.dtype).replace("torch.", "")
 
 

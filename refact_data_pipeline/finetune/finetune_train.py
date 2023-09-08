@@ -14,14 +14,13 @@ from pathlib import Path
 from jsonlines import jsonlines
 from torchinfo import summary
 
-from refact_encoding import RefactEncoding
-from refact_models.checkpoint_loader import load_config
 from refact_data_pipeline.finetune import traces
 from refact_data_pipeline import DatasetOpts, finetune_datasource
 from refact_data_pipeline.datautils import BatchIterator
-from refact_data_pipeline.finetune.finetune_config import base_config, ConfigBuilder
+from refact_data_pipeline.finetune.finetune_config import base_config, ConfigBuilder, MODELS_CONFIGS
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
-from refact_data_pipeline.finetune.model_handling import make_model, masked_loss, save_model_state
+from refact_data_pipeline.finetune.model_handling import make_model, masked_loss, save_model_state, model_forward, \
+    setup_encoding
 from self_hosting_machinery import env
 
 from typing import Optional, Callable, Dict, Any, Tuple
@@ -50,13 +49,18 @@ def save_status_json(status_dict, status_string):
 
 
 def load_finetune_config() -> Dict[str, Any]:
-    def _get_ds_len_per_epoch(cfg_builder):
-        ds_opts = DatasetOpts(f"n_ctx={cfg_builder.cfg['model_info']['ctx_size'] + 1},"
-                              f"pack_at_most=1,quit_on_epoch=1,seed=42")
-        ds_opts.set_encoding(RefactEncoding(
-            load_config(root_path=cfg_builder.cfg['model_info']['weight_path'],
-                        repo_id=cfg_builder.cfg['model_info']['repo_id']).enc_name))
-        ds = finetune_datasource.local_mix_plain_infill(filtered_train, ds_opts)
+    def _get_ds_len_per_epoch(model_name, cfg_builder):
+        model_config = MODELS_CONFIGS[model_name]
+        ds_opts = DatasetOpts(model_config["train_ds_pipeline"]["ds_opts"].format(
+            n_ctx=cfg_builder.cfg['model_info']['ctx_size'] + 1
+        ) + ",quit_on_epoch=1")
+        ds_opts.set_encoding(setup_encoding(
+            model_name=model_name,
+            weights_path=cfg_builder.cfg['model_info']['weight_path'],
+            repo_id=cfg_builder.cfg['model_info']['repo_id']
+        ))
+        pipe = getattr(finetune_datasource, model_config["train_ds_pipeline"]["pipeline_name"])
+        ds = pipe(filtered_train, ds_opts)
         ds_len = 0
         try:
             for _ in ds:
@@ -72,7 +76,7 @@ def load_finetune_config() -> Dict[str, Any]:
     cfg_builder = ConfigBuilder(base_config(user_cfg['model_name']))
     if user_cfg['use_heuristics']:
         traces.log("Retrieving dataset length per epoch, it may take a while...")
-        ds_len = _get_ds_len_per_epoch(cfg_builder)
+        ds_len = _get_ds_len_per_epoch(user_cfg['model_name'], cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
         (cfg_builder
          .set_lora_quality_by_heuristics(ds_len=ds_len, initial_loss=initial_loss)
@@ -104,12 +108,21 @@ def load_finetune_config() -> Dict[str, Any]:
     return cfg_builder.cfg
 
 
-def create_data(cfg, enc) -> Tuple[Any, Optional[Any]]:
-    train_dataopts = DatasetOpts("n_ctx=%d,pack_at_most=10,shuffle_depth=3000" % (cfg['model_info']['ctx_size'] + 1))
+def create_data(model_name, cfg, enc) -> Tuple[Any, Optional[Any]]:
+    model_config = MODELS_CONFIGS[model_name]
+    train_dataopts = DatasetOpts(model_config["train_ds_pipeline"]["ds_opts"].format(
+        n_ctx=cfg['model_info']['ctx_size'] + 1
+    ))
     train_dataopts.set_encoding(enc)
-    test_dataopts = DatasetOpts("n_ctx=%d,pack_at_most=1,quit_on_epoch=1,seed=42" % (cfg['model_info']['ctx_size'] + 1))
+    test_dataopts = DatasetOpts(model_config["test_ds_pipeline"]["ds_opts"].format(
+        n_ctx=cfg['model_info']['ctx_size'] + 1
+    ))
     test_dataopts.set_encoding(enc)
-    train_ds = finetune_datasource.local_mix_plain_infill(filtered_train, train_dataopts)
+
+    train_pipe = getattr(finetune_datasource, model_config["train_ds_pipeline"]["pipeline_name"])
+    test_pipe = getattr(finetune_datasource, model_config["test_ds_pipeline"]["pipeline_name"])
+
+    train_ds = train_pipe(filtered_train, train_dataopts)
     train_ds = BatchIterator(train_ds, dataopts=dict(
         batch_size=cfg['train_batch_size'],
         drop_last=True
@@ -122,7 +135,7 @@ def create_data(cfg, enc) -> Tuple[Any, Optional[Any]]:
     has_test_files = os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_test)) \
                      and len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_test)))) > 0
     if has_test_files:
-        test_ds = finetune_datasource.local_sequence_plain_infill(filtered_test, test_dataopts)
+        test_ds = test_pipe(filtered_test, test_dataopts)
         test_ds = list(test_ds)
     else:
         traces.log("Warning: no test set has been provided")
@@ -147,6 +160,7 @@ def loop(
         drop_last=False
     ))
     micro_bs = cfg['micro_batch_size']
+    backend = cfg['model_info']['backend']
     tokens_n = 0
     iter_time_last = None
     t0 = time.time()
@@ -167,19 +181,14 @@ def loop(
             data_path = Path(traces.context().path) / ('debug_data/iter%04d' % iter_n)
             data_path.mkdir(exist_ok=True, parents=True)
         traces.log(
-            "iter %i/%i  tokens %0.3fG  input=%s  mask=%s (%i/%i)" % (
-                iter_n, cfg['train_iters'], tokens_n / 1e9, traces.p(batch['input']), traces.p(batch["mask"]),
-                batch["mask"].sum(), batch["mask"].numel()
-            )
+            f"iter {iter_n}/{cfg['train_iters']}  tokens {tokens_n / 1e9:0.3f} "
+            f"input={traces.p(batch['input'])}  mask={traces.p(batch['mask'])} "
+            f"({batch['mask'].sum()}/{batch['mask'].numel()})"
         )
 
         for b0 in range(0, cfg.get("train_batch_size"), cfg.get("micro_batch_size")):
             input = batch['input'][b0:b0 + micro_bs].contiguous()
-            if cfg['low_gpu_mem_mode']:
-                logits = model.forward_train_cp(input)
-            else:
-                logits = model.lm_forward(model(input, attention_mask=None)[0])
-
+            logits = model_forward(model, input, low_gpu_mem_mode=cfg['low_gpu_mem_mode'], backend=backend)
             loss = loss_function(
                 logits=logits,
                 labels=batch['labels'][b0:b0 + micro_bs].contiguous(),
@@ -198,7 +207,8 @@ def loop(
             model.eval()
             with th.inference_mode():
                 for batch, _ in test_ds_fn(test_ds):
-                    logits = model.lm_forward(model(batch['input'], attention_mask=None)[0])
+                    logits = model_forward(model, batch['input'],
+                                           low_gpu_mem_mode=cfg['low_gpu_mem_mode'], backend=backend)
                     loss = loss_function(
                         logits=logits,
                         labels=batch['labels'],
@@ -258,8 +268,10 @@ def finetune(status_dict):
     traces.log("creating model...")
     t0 = time.time()
     model = make_model(
+        model_name=cfg['model_name'],
         weights_path=cfg['model_info']['weight_path'],
         repo_id=cfg['model_info']['repo_id'],
+        backend=cfg['model_info']['backend'],
         freeze_exceptions=cfg['model_info']['freeze_exceptions'],
         lora_target_modules=cfg['model_info']['lora']['lora_target_modules'],
         lora_r=cfg['model_info']['lora']['lora_r'],
@@ -280,7 +292,7 @@ def finetune(status_dict):
         model_parameters=[p for p in model.parameters() if p.requires_grad],
         dist_init_required=True
     )
-    train_ds, test_ds = create_data(cfg, model.encoding)
+    train_ds, test_ds = create_data(cfg['model_name'], cfg, model.encoding)
     logging.info("STATUS finetune working")
     loop(
         cfg=cfg,
