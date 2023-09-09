@@ -16,6 +16,8 @@ use crate::scratchpads;
 use crate::forward_to_hf_endpoint;
 use crate::scratchpads::call_validation::CodeCompletionPost;
 use crate::global_context::GlobalContext;
+use crate::recommendations::CodeAssistantRecommendations;
+
 
 // https://blog.logrocket.com/a-minimal-web-service-in-rust-using-hyper/
 // use route_recognizer::{Match, Params, Router};
@@ -138,7 +140,10 @@ async fn handle_request(
 }
 
 
-pub async fn start_server(global_context: Arc<ARwLock<GlobalContext>>) -> Result<(), String> {
+pub async fn start_server(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    recommendations: Arc<ARwLock<CodeAssistantRecommendations>>,
+) -> Result<(), String> {
     let make_svc = make_service_fn(|conn: &AddrStream| {
         let remote_addr = conn.remote_addr();
         let context_ptr = global_context.clone();
