@@ -31,6 +31,8 @@ pub struct CodeCompletionPost {
     #[serde(default)]
     pub model: String,
     #[serde(default)]
+    pub scratchpad: String,
+    #[serde(default)]
     pub stream: bool,
     pub inputs: CodeCompletionInputs,
     #[serde(default)]

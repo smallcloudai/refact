@@ -12,11 +12,11 @@ use serde_json::json;
 use tokenizers::Tokenizer;
 
 use crate::cached_tokenizers;
+use crate::recommendations;
 use crate::scratchpads;
 use crate::forward_to_hf_endpoint;
 use crate::scratchpads::call_validation::CodeCompletionPost;
 use crate::global_context::GlobalContext;
-use crate::recommendations::CodeAssistantRecommendations;
 
 
 // https://blog.logrocket.com/a-minimal-web-service-in-rust-using-hyper/
@@ -34,6 +34,25 @@ fn explain_whats_wrong(status_code: StatusCode, msg: String) -> Response<Body> {
     response
 }
 
+async fn lookup_code_completion_scratchpad(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    code_completion_post: &CodeCompletionPost,
+) -> Result<(String, String, serde_json::Value), String> {
+    let cx = global_context.read().await;
+    let rec = cx.recommendations.read().unwrap();
+    let (model_name, recommended_model_record) =
+        recommendations::which_model_to_use(
+            &rec.code_completion_models,
+            &code_completion_post.model,
+            &rec.code_completion_default_model,
+        )?;
+    let (sname, patch) = recommendations::which_scratchpad_to_use(
+        &recommended_model_record.supports_scratchpads,
+        &code_completion_post.scratchpad,
+        &recommended_model_record.default_scratchpad,
+    )?;
+    Ok((model_name, sname.clone(), patch.clone()))
+}
 
 async fn handle_v1_code_completion(
     global_context: Arc<ARwLock<GlobalContext>>,
@@ -43,9 +62,12 @@ async fn handle_v1_code_completion(
     let mut code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
         explain_whats_wrong(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     )?;
-    if code_completion_post.model.is_empty() {
-        code_completion_post.model = "bigcode/starcoder".to_string();
-    }
+    let (model_name, scratchpad_name, scratchpad_patch) = lookup_code_completion_scratchpad(
+        global_context.clone(),
+        &code_completion_post,
+    ).await.map_err(|e| {
+        explain_whats_wrong(StatusCode::BAD_REQUEST, format!("{}", e))
+    })?;
     if code_completion_post.parameters.max_new_tokens == 0 {
         code_completion_post.parameters.max_new_tokens = 50;
     }
@@ -59,7 +81,7 @@ async fn handle_v1_code_completion(
         let cache_dir = cx_locked.cache_dir.clone();
         tokenizer_arc = cached_tokenizers::get_tokenizer(
             &mut cx_locked.tokenizer_map,
-            &code_completion_post.model,
+            &model_name,
             client2,
             &cache_dir,
             bearer.clone(),
@@ -87,7 +109,7 @@ async fn handle_v1_code_completion(
     let t2 = std::time::Instant::now();
     let hf_endpoint_result = forward_to_hf_endpoint::simple_forward_to_hf_endpoint_no_streaming(
         bearer.clone(),
-        &code_completion_post.model,
+        &model_name,
         &prompt,
         &client1,
         &code_completion_post.parameters,
@@ -142,7 +164,6 @@ async fn handle_request(
 
 pub async fn start_server(
     global_context: Arc<ARwLock<GlobalContext>>,
-    recommendations: Arc<ARwLock<CodeAssistantRecommendations>>,
 ) -> Result<(), String> {
     let make_svc = make_service_fn(|conn: &AddrStream| {
         let remote_addr = conn.remote_addr();

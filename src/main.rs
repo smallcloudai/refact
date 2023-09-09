@@ -16,10 +16,10 @@ async fn main() {
         .compact()
         .init();
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
-    let global_context = global_context::create_global_context(home_dir);
     let recommendations = recommendations::load_recommendations();
+    let global_context = global_context::create_global_context(home_dir, recommendations);
     let server_task = tokio::spawn(async move {
-        let server = http_server::start_server(global_context, recommendations);
+        let server = http_server::start_server(global_context);
         let server_result = server.await;
         if let Err(e) = server_result {
             error!("server error: {}", e);
