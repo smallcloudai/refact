@@ -93,9 +93,13 @@ async fn handle_v1_code_completion(
     }
 
     let scratchpad = scratchpads::create_code_completion_scratchpad(
-            tokenizer_arc.clone(),
-            code_completion_post.clone(),
-        );
+        code_completion_post.clone(),
+        &scratchpad_name,
+        &scratchpad_patch,
+        tokenizer_arc.clone(),
+    ).map_err(|e|
+        explain_whats_wrong(StatusCode::BAD_REQUEST, e)
+    )?;
     let t1 = std::time::Instant::now();
     let prompt = scratchpad.prompt(
         2048,

@@ -57,7 +57,7 @@ pub fn which_model_to_use<'a>(
         return Ok((take_this_one.to_string(), model_rec));
     } else {
         return Err(format!(
-            "Model '{}' not found. This rust binary blob supports these models: {:?}",
+            "Model '{}' not found. This rust binary supports these models: {:?}",
             take_this_one,
             models.keys()
         ));
@@ -70,14 +70,14 @@ pub fn which_scratchpad_to_use<'a>(
     default_scratchpad: &str,
 ) -> Result<(String, &'a serde_json::Value), String> {
     let mut take_this_one = default_scratchpad;
-    if user_wants_scratchpad!= "" {
-        take_this_one = default_scratchpad;
+    if user_wants_scratchpad != "" {
+        take_this_one = user_wants_scratchpad;
     }
     if let Some(scratchpad_patch) = scratchpads.get(take_this_one) {
         return Ok((take_this_one.to_string(), scratchpad_patch));
     } else {
         return Err(format!(
-            "Scratchpad '{}' not found. This rust binary blob supports these scratchpads: {:?}",
+            "Scratchpad '{}' not found. This rust binary supports these scratchpads: {:?}",
             take_this_one,
             scratchpads.keys()
         ));
