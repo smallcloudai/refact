@@ -1,9 +1,8 @@
 // mod scratchpads {
 pub mod completion_single_file_fim;
 pub mod scratchpad_abstract;
-pub mod call_validation;
 use tokenizers::Tokenizer;
-use crate::scratchpads::call_validation::CodeCompletionPost;
+use crate::call_validation::CodeCompletionPost;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 

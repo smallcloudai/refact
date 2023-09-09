@@ -2,7 +2,7 @@ use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
 use reqwest::header::HeaderValue;
-use crate::scratchpads::call_validation::SamplingParameters;
+use crate::call_validation::SamplingParameters;
 use serde_json::json;
 
 

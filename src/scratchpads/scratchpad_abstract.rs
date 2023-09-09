@@ -1,4 +1,4 @@
-use crate::scratchpads::call_validation::SamplingParameters;
+use crate::call_validation::SamplingParameters;
 use serde_json;
 
 

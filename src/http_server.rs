@@ -15,7 +15,7 @@ use crate::cached_tokenizers;
 use crate::recommendations;
 use crate::scratchpads;
 use crate::forward_to_hf_endpoint;
-use crate::scratchpads::call_validation::CodeCompletionPost;
+use crate::call_validation::CodeCompletionPost;
 use crate::global_context::GlobalContext;
 
 

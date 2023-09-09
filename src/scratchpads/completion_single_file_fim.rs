@@ -1,6 +1,6 @@
 use crate::scratchpads::scratchpad_abstract::CodeCompletionScratchpad;
-use crate::scratchpads::call_validation::CodeCompletionPost;
-use crate::scratchpads::call_validation::SamplingParameters;
+use crate::call_validation::CodeCompletionPost;
+use crate::call_validation::SamplingParameters;
 use std::sync::Arc;
 use std::sync::RwLock;
 

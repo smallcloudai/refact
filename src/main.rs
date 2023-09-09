@@ -4,6 +4,7 @@ mod scratchpads;
 mod forward_to_hf_endpoint;
 mod global_context;
 mod http_server;
+mod call_validation;
 mod recommendations;
 
 
