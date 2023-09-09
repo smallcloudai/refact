@@ -24,8 +24,8 @@ use crate::global_context::GlobalContext;
 
 
 fn explain_whats_wrong(status_code: StatusCode, msg: String) -> Response<Body> {
-    error!("{:?}", msg);
     let body = json!({"detail": msg}).to_string();
+    error!("client will see {}", body);
     let response = Response::builder()
        .status(status_code)
        .header("Content-Type", "application/json")

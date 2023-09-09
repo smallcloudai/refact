@@ -14,6 +14,8 @@ pub struct ModelRecord {
     pub supports_stop: bool,
     pub supports_scratchpads: HashMap<String, serde_json::Value>,
     pub default_scratchpad: String,
+    #[serde(default)]
+    pub similar_models: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -31,7 +33,14 @@ pub fn load_recommendations() -> Arc<StdRwLock<CodeAssistantRecommendations>> {
     let mut file = File::open(file_path).expect(format!("Failed to open file '{}'", file_path).as_str());
     let mut buffer = String::new();
     file.read_to_string(&mut buffer).expect(format!("Failed to read file '{}'", file_path).as_str());
-    let r = serde_json::from_str(&buffer).expect("Failed to parse json");
+    let mut r: CodeAssistantRecommendations = serde_json::from_str(&buffer).expect("Failed to parse json");
+    let model_keys_copy = r.code_completion_models.keys().cloned().collect::<Vec<String>>();
+    for model_key in model_keys_copy {
+        let model_rec = r.code_completion_models[&model_key].clone();
+        for similar_model in model_rec.similar_models.iter() {
+            r.code_completion_models.insert(similar_model.to_string(), model_rec.clone());
+        }
+    }
     Arc::new(StdRwLock::new(r))
 }
 
