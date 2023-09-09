@@ -5,7 +5,7 @@ use tokenizers::Tokenizer;
 use tokio::io::AsyncWriteExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::RwLock;
+use std::sync::RwLock as StdRwLock;
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,12 +54,12 @@ pub async fn download_tokenizer_file(
 }
 
 pub async fn get_tokenizer(
-    tokenizer_map: &mut HashMap<String, Arc<RwLock<Tokenizer>>>,
+    tokenizer_map: &mut HashMap<String, Arc<StdRwLock<Tokenizer>>>,
     model: &str,
     http_client: reqwest::Client,
     cache_dir: &Path,
     api_token: Option<String>,
-) -> Result<Arc<RwLock<Tokenizer>>, String> {
+) -> Result<Arc<StdRwLock<Tokenizer>>, String> {
     // tokenizer_path: Option<&String>,
     // if model.starts_with("http://") || model.starts_with("https://") {
     //     let tokenizer = match tokenizer_path {
@@ -78,7 +78,7 @@ pub async fn get_tokenizer(
             let path = tokenizer_cache_dir.join(model).join("tokenizer.json");
             download_tokenizer_file(&http_client, model, api_token, &path).await?;
             let tokenizer = Tokenizer::from_file(path).map_err(|e| format!("failed to load tokenizer: {}", e))?;
-            let arc = Arc::new(RwLock::new(tokenizer));
+            let arc = Arc::new(StdRwLock::new(tokenizer));
             tokenizer_map.insert(model.to_owned(), arc.clone());
             Ok(arc)
         }
