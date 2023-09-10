@@ -1,6 +1,7 @@
 use tracing::{error, info};
 use std::convert::Infallible;
 use std::net::SocketAddr;
+use std::io::Write;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock as ARwLock;
@@ -17,6 +18,7 @@ use crate::scratchpads;
 use crate::forward_to_hf_endpoint;
 use crate::call_validation::CodeCompletionPost;
 use crate::global_context::GlobalContext;
+use crate::recommendations::CodeAssistantRecommendations;
 
 
 // https://blog.logrocket.com/a-minimal-web-service-in-rust-using-hyper/
@@ -39,7 +41,7 @@ async fn lookup_code_completion_scratchpad(
     code_completion_post: &CodeCompletionPost,
 ) -> Result<(String, String, serde_json::Value), String> {
     let cx = global_context.read().await;
-    let rec = cx.recommendations.read().unwrap();
+    let rec = cx.caps.read().unwrap();
     let (model_name, recommended_model_record) =
         recommendations::which_model_to_use(
             &rec.code_completion_models,
@@ -74,10 +76,12 @@ async fn handle_v1_code_completion(
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>>;
     let client1: reqwest::Client;
     let client2: reqwest::Client;
+    let caps: Arc<StdRwLock<CodeAssistantRecommendations>>;
     {
         let mut cx_locked = global_context.write().await;
         client1 = cx_locked.http_client.clone();
         client2 = cx_locked.http_client.clone();
+        caps = cx_locked.caps.clone();
         let cache_dir = cx_locked.cache_dir.clone();
         tokenizer_arc = cached_tokenizers::get_tokenizer(
             &mut cx_locked.tokenizer_map,
@@ -109,11 +113,13 @@ async fn handle_v1_code_completion(
     info!("prompt {:?}", t1.elapsed());
 
     let t2 = std::time::Instant::now();
+    let endpoint_template = caps.read().unwrap().endpoint_template.clone();
     let hf_endpoint_result = forward_to_hf_endpoint::simple_forward_to_hf_endpoint_no_streaming(
         bearer.clone(),
         &model_name,
         &prompt,
         &client1,
+        &endpoint_template,
         &code_completion_post.parameters,
     ).await.map_err(|e|
         explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_hf_endpoint: {}", e))
@@ -182,8 +188,14 @@ pub async fn start_server(
         }
     });
     let addr = ([127, 0, 0, 1], 8001).into();
-    let server = Server::bind(&addr).serve(make_svc);
-    info!("Server listening on http://{}", addr);
+    let builder = Server::try_bind(&addr).map_err(|e| {
+        write!(std::io::stdout(), "PORT_BUSY: {}\n", e).unwrap();
+        std::io::stdout().flush().unwrap();
+        format!("port busy, address {}: {}", addr, e)
+    })?;
+    write!(std::io::stdout(), "STARTED\n").unwrap();
+    std::io::stdout().flush().unwrap();
+    let server = builder.serve(make_svc);
     let resp = server.await.map_err(|e| format!("HTTP server error: {}", e));
     resp
 }

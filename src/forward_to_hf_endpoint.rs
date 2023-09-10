@@ -11,10 +11,11 @@ pub async fn simple_forward_to_hf_endpoint_no_streaming(
     model_name: &str,
     prompt: &str,
     client: &reqwest::Client,
+    endpoint_template: &String,
     sampling_parameters: &SamplingParameters,
     // stream: bool,
 ) -> Result<serde_json::Value, String> {
-    let url = format!("https://api-inference.huggingface.co/models/{}", model_name);
+    let url = endpoint_template.replace("$MODEL", model_name);
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
     if let Some(t) = bearer {
@@ -34,14 +35,14 @@ pub async fn simple_forward_to_hf_endpoint_no_streaming(
        .body(data.to_string())
        .send()
        .await;
-    let resp = req.map_err(|e| format!("when making request: {}", e))?;
+    let resp = req.map_err(|e| format!("when making request {}: {}", url, e))?;
     let status_code = resp.status().as_u16();
     let response_txt = resp.text().await.map_err(|e|
-        format!("reading from socket: {}", e)
+        format!("reading from socket {}: {}", url, e)
     )?;
     if status_code != 200 {
         // error!("status={} text {:?}", status_code, response_txt);
-        return Err(format!("status={} text {}", status_code, response_txt));
+        return Err(format!("{} status={} text {}", url, status_code, response_txt));
     }
     Ok(serde_json::from_str(&response_txt).unwrap())
 }

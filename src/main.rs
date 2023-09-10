@@ -7,34 +7,32 @@ mod http_server;
 mod call_validation;
 mod scratchpad_abstract;
 mod recommendations;
+use std::io::Write;
 
 
 #[tokio::main]
 async fn main() {
     let _builder1 = tracing_subscriber::fmt()
-        .with_writer(std::io::stdout)
+        .with_writer(std::io::stderr)
         .with_target(true)
         .with_line_number(true)
         .compact()
         .init();
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
-    let recommendations = recommendations::load_recommendations();
-    let global_context = global_context::create_global_context(home_dir, recommendations);
-    let server_task = tokio::spawn(async move {
-        let server = http_server::start_server(global_context);
-        let server_result = server.await;
-        if let Err(e) = server_result {
-            error!("server error: {}", e);
-        } else {
-            info!("clean shutdown");
-        }
-    });
-
-    tokio::signal::ctrl_c().await.unwrap();
-    info!("Ctrl+C");
-    server_task.abort();
-    let _typically_err_cancelled = server_task.await;
-    info!("bb");
+    let global_context_maybe = global_context::create_global_context(home_dir).await;
+    if let Err(e) = global_context_maybe {
+        write!(std::io::stdout(), "URL_NOT_WORKING: {}\n", e).unwrap();
+        std::io::stdout().flush().unwrap();
+        return;
+    };
+    let global_context = global_context_maybe.unwrap();
+    let server = http_server::start_server(global_context);
+    let server_result = server.await;
+    if let Err(e) = server_result {
+        error!("server error: {}", e);
+    } else {
+        info!("clean shutdown");
+    }
 
     // let (service, socket) = LspService::build(|client| Backend {
     //     cache_dir,

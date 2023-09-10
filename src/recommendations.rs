@@ -1,10 +1,15 @@
+use tracing::info;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fs::File;
+use std::path::PathBuf;
 use std::collections::HashMap;
 use std::io::Read;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use url::Url;
+
+const CAPS_FILENAME: &str = "coding_assistant_caps.json";
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -28,12 +33,33 @@ pub struct CodeAssistantRecommendations {
     pub code_chat_default_model: String,
 }
 
-pub fn load_recommendations() -> Arc<StdRwLock<CodeAssistantRecommendations>> {
-    let file_path = "code_assistant_recommendations.json";
-    let mut file = File::open(file_path).expect(format!("Failed to open file '{}'", file_path).as_str());
+pub async fn load_recommendations(
+    cmdline: crate::global_context::CommandLine,
+) -> Result<Arc<StdRwLock<CodeAssistantRecommendations>>, String> {
     let mut buffer = String::new();
-    file.read_to_string(&mut buffer).expect(format!("Failed to read file '{}'", file_path).as_str());
-    let mut r: CodeAssistantRecommendations = serde_json::from_str(&buffer).expect("Failed to parse json");
+    let not_http = !cmdline.address_url.starts_with("http");
+    let report_url: String;
+    if not_http {
+        let base: PathBuf = PathBuf::from(cmdline.address_url.clone());
+        let file_path = base.join(CAPS_FILENAME);
+        let mut file = File::open(file_path.clone()).map_err(|_| format!("failed to open file {:?}", file_path))?;
+        file.read_to_string(&mut buffer).map_err(|_| format!("failed to read file {:?}", file_path))?;
+        report_url = file_path.to_str().unwrap().to_string();
+    } else {
+        let base_url = Url::parse(&cmdline.address_url.clone()).map_err(|_| "failed to parse address url (1)".to_string())?;
+        let joined_url = base_url.join(&CAPS_FILENAME).map_err(|_| "failed to parse address url (2)".to_string())?;
+        report_url = joined_url.to_string();
+        let http_client = reqwest::Client::new();
+        let response = http_client.get(joined_url).send().await.map_err(|e| format!("Failed to send request: {}", e))?;
+        let status = response.status().as_u16();
+        buffer = response.text().await.map_err(|e| format!("failed to read response: {}", e))?;
+        if status != 200 {
+            return Err(format!("server responded with: {:?}", buffer));
+        }
+    }
+    let mut r: CodeAssistantRecommendations = serde_json::from_str(&buffer).map_err(|e|
+        format!("failed to parse {}: {}", report_url, e)
+    )?;
     let model_keys_copy = r.code_completion_models.keys().cloned().collect::<Vec<String>>();
     for model_key in model_keys_copy {
         let model_rec = r.code_completion_models[&model_key].clone();
@@ -41,7 +67,14 @@ pub fn load_recommendations() -> Arc<StdRwLock<CodeAssistantRecommendations>> {
             r.code_completion_models.insert(similar_model.to_string(), model_rec.clone());
         }
     }
-    Arc::new(StdRwLock::new(r))
+    if !r.endpoint_template.starts_with("http") {
+        let joined_url = Url::parse(&cmdline.address_url.clone())
+            .and_then(|base_url| base_url.join(&r.endpoint_template))
+            .map_err(|_| format!("failed to join URL \"{}\" and possibly relative \"{}\"", &cmdline.address_url, &r.endpoint_template))?;
+        r.endpoint_template = joined_url.to_string();
+        info!("endpoint_template relative path: {}", &r.endpoint_template);
+    }
+    Ok(Arc::new(StdRwLock::new(r)))
 }
 
 pub fn which_model_to_use<'a>(
