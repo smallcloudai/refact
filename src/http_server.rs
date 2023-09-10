@@ -86,9 +86,7 @@ async fn handle_v1_code_completion(
             &cache_dir,
             bearer.clone(),
         ).await.map_err(|e|
-            explain_whats_wrong(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Tokenizer: {}", e))
+            explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
         )?;
     }
 
@@ -118,14 +116,11 @@ async fn handle_v1_code_completion(
         &client1,
         &code_completion_post.parameters,
     ).await.map_err(|e|
-        explain_whats_wrong(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("forward_to_hf_endpoint: {}", e))
+        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_hf_endpoint: {}", e))
     )?;
     info!("forward_to_hf_endpoint {:?}", t2.elapsed());
-    let tuple_json_finished = scratchpad.re_stream_response(hf_endpoint_result)
-        .map_err(|e|
-            explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("re_stream_response: {}", e))
+    let tuple_json_finished = scratchpad.re_stream_response(hf_endpoint_result).map_err(|e|
+        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("re_stream_response: {}", e))
     )?;
     let txt = serde_json::to_string(&tuple_json_finished.0).unwrap();
     info!("handle_v1_code_completion return {}", txt);

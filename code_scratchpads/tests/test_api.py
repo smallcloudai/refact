@@ -36,6 +36,7 @@ def call_completion(
                 # "temperature": 0.8,
             },
             "model": model,
+            # "scratchpad": "FIM-PSM",
             "stream": stream,
         },
         headers=headers,
