@@ -5,6 +5,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::io::Read;
+use std::io::Write;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use url::Url;
@@ -57,6 +58,7 @@ pub async fn load_recommendations(
             return Err(format!("server responded with: {:?}", buffer));
         }
     }
+    info!("reading caps from {}", report_url);
     let mut r: CodeAssistantRecommendations = serde_json::from_str(&buffer).map_err(|e|
         format!("failed to parse {}: {}", report_url, e)
     )?;
@@ -74,6 +76,8 @@ pub async fn load_recommendations(
         r.endpoint_template = joined_url.to_string();
         info!("endpoint_template relative path: {}", &r.endpoint_template);
     }
+    write!(std::io::stdout(), "CAPS {}\n", serde_json::to_string(&r).unwrap()).unwrap();
+    std::io::stdout().flush().unwrap();
     Ok(Arc::new(StdRwLock::new(r)))
 }
 

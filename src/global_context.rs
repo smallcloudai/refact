@@ -13,6 +13,8 @@ use crate::recommendations::CodeAssistantRecommendations;
 pub struct CommandLine {
     #[structopt(long, short="u", help="URL to start working. The first step is to fetch coding_assistant_caps.json.")]
     pub address_url: String,
+    #[structopt(long, short="p", default_value="8000", help="Bind 127.0.0.1:<port> to listen for requests.")]
+    pub port: u16,
 }
 
 

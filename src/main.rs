@@ -21,7 +21,7 @@ async fn main() {
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
     let global_context_maybe = global_context::create_global_context(home_dir).await;
     if let Err(e) = global_context_maybe {
-        write!(std::io::stdout(), "URL_NOT_WORKING: {}\n", e).unwrap();
+        write!(std::io::stdout(), "URL_NOT_WORKING {}\n", e).unwrap();
         std::io::stdout().flush().unwrap();
         return;
     };
