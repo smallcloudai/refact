@@ -35,13 +35,73 @@ pub struct CodeAssistantRecommendations {
     pub code_chat_default_model: String,
 }
 
+const HF_DEFAULT_CAPS: &str = r#"
+{
+    "cloud_name": "Hugging Face",
+    "endpoint_template": "https://api-inference.huggingface.co/models/$MODEL",
+    "endpoint_style": "hf",
+    "code_completion_default_model": "bigcode/starcoder",
+    "code_completion_models": {
+        "bigcode/starcoder": {
+            "n_ctx": 4096,
+            "supports_stop": true,
+            "supports_scratchpads": {
+                "FIM-PSM": {},
+                "FIM-SPM": {}
+            },
+            "default_scratchpad": "FIM-PSM",
+            "similar_models": ["bigcode/starcoderbase", "smallcloudai/Refact-1_6B-fim"]
+        },
+        "codellama/CodeLlama-13b-hf": {
+            "n_ctx": 4096,
+            "supports_stop": true,
+            "supports_scratchpads": {
+                "FIM-PSM": {"prefix_token": "<PRE>", "suffix_token": "<SUF>", "middle_token": "<MID>", "eot_token": "<EOT>"}
+            },
+            "default_scratchpad": "FIM-PSM",
+            "similar_models": []
+        }
+    },
+    "code_chat_models": {},
+    "code_chat_default_model": ""
+}
+"#;
+
+const SMC_DEFAULT_CAPS: &str = r#"
+{
+    "cloud_name": "Refact",
+    "endpoint_template": "https://inference.smallcloud.ai/v1/completions",
+    "endpoint_style": "openai",
+    "code_completion_default_model": "smallcloudai/Refact-1_6B-fim",
+    "code_completion_models": {
+        "smallcloudai/Refact-1_6B-fim": {
+            "n_ctx": 4096,
+            "supports_stop": true,
+            "supports_scratchpads": {
+                "FIM-PSM": {},
+                "FIM-SPM": {}
+            },
+            "default_scratchpad": "FIM-PSM"
+        }
+    },
+    "code_chat_models": {},
+    "code_chat_default_model": ""
+}
+"#;
+
 pub async fn load_recommendations(
     cmdline: crate::global_context::CommandLine,
 ) -> Result<Arc<StdRwLock<CodeAssistantRecommendations>>, String> {
     let mut buffer = String::new();
     let not_http = !cmdline.address_url.starts_with("http");
     let report_url: String;
-    if not_http {
+    if cmdline.address_url == "HF" {
+        buffer = HF_DEFAULT_CAPS.to_string();
+        report_url = "<compiled-in-caps-hf>".to_string();
+    } else if cmdline.address_url == "SMC" {
+        buffer = SMC_DEFAULT_CAPS.to_string();
+        report_url = "<compiled-in-caps-smc>".to_string();
+    } else if not_http {
         let base: PathBuf = PathBuf::from(cmdline.address_url.clone());
         let file_path = base.join(CAPS_FILENAME);
         let mut file = File::open(file_path.clone()).map_err(|_| format!("failed to open file {:?}", file_path))?;

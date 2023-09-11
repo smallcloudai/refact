@@ -41,14 +41,8 @@ pub async fn forward_to_hf_style_endpoint(
         format!("reading from socket {}: {}", url, e)
     )?;
     if status_code != 200 {
-        // error!("status={} text {:?}", status_code, response_txt);
         return Err(format!("{} status={} text {}", url, status_code, response_txt));
     }
     Ok(serde_json::from_str(&response_txt).unwrap())
 }
-
-
-// with streaming:
-// use futures::stream::Stream;
-// -> impl Stream<Item = String>
 

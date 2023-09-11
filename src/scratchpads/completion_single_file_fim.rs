@@ -8,7 +8,7 @@ use std::sync::RwLock;
 // use ropey::RopeSlice;
 use tokenizers::Tokenizer;
 use ropey::Rope;
-use tracing::{info, error};
+use tracing::info;
 
 const DEBUG: bool = false;
 

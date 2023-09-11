@@ -12,8 +12,8 @@ async def minimal_hf_endpoint_test():
     session = aiohttp.ClientSession()
     session.headers.update({"Content-Type": "application/json"})
     session.headers.update({"Authorization": "Bearer " + HUGGINGFACE_TOKEN})
-    modelIdOrEndpoint = "bigcode/tiny_starcoder_py"
-    # modelIdOrEndpoint = "bigcode/starcoder"
+    # modelIdOrEndpoint = "bigcode/tiny_starcoder_py"
+    modelIdOrEndpoint = "bigcode/starcoder"
     url = "https://api-inference.huggingface.co/models/" + modelIdOrEndpoint
     try:
         inputs = "<fim_prefix>" + test_code + "<fim_suffix><fim_middle>"
