@@ -5,6 +5,8 @@
   </picture>
 </p>
 
+Refact is an open-source Copilot alternative available as a self-hosted or cloud option.
+
 ---
 
 [![Discord](https://img.shields.io/discord/1037660742440194089?logo=discord&label=Discord&link=https%3A%2F%2Fsmallcloud.ai%2Fdiscord)](https://smallcloud.ai/discord)
@@ -13,7 +15,6 @@
 [![Visual Studio](https://img.shields.io/visual-studio-marketplace/d/smallcloud.codify?label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
 [![JetBrains](https://img.shields.io/jetbrains/plugin/d/com.smallcloud.codify?label=JetBrains)](https://plugins.jetbrains.com/plugin/20647-codify)
 
-Refact is an open-source Copilot alternative available as a self-hosted or cloud option.
 - [x] Autocompletion powered by best-in-class open-source code models
 - [x] Context-aware chat on a current file
 - [x] Refactor, explain, analyse, optimise code, and fix bug functions
@@ -24,7 +25,7 @@ Refact is an open-source Copilot alternative available as a self-hosted or cloud
 
 ## Getting Started
 
-Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai)
+Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai).
 
 You can start using Refact Cloud immediately, just create an account at [https://refact.ai/](https://refact.ai/).
 
