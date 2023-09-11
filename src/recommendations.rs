@@ -137,8 +137,8 @@ pub async fn load_recommendations(
         r.endpoint_template = joined_url.to_string();
         info!("endpoint_template relative path: {}", &r.endpoint_template);
     }
-    write!(std::io::stdout(), "CAPS {}\n", serde_json::to_string(&r).unwrap()).unwrap();
-    std::io::stdout().flush().unwrap();
+    info!("caps completion models: {:?}", r.code_completion_models.keys().collect::<Vec<_>>());
+    info!("caps chat models: {:?}", r.code_chat_models.keys().collect::<Vec<_>>());
     Ok(Arc::new(StdRwLock::new(r)))
 }
 

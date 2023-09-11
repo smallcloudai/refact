@@ -189,6 +189,18 @@ async fn handle_v1_code_completion(
     // )?;
 }
 
+async fn handle_v1_caps(
+    global_context: Arc<ARwLock<GlobalContext>>,
+) -> Response<Body> {
+    let cx = global_context.read().await;
+    let caps = cx.caps.read().unwrap();
+    let body = json!(*caps).to_string();
+    let response = Response::builder()
+        .header("Content-Type", "application/json")
+        .body(Body::from(body))
+        .unwrap();
+    response
+}
 
 async fn handle_request(
     global_context: Arc<ARwLock<GlobalContext>>,
@@ -208,6 +220,8 @@ async fn handle_request(
     let result: Result<Response<Body>, Response<Body>>;
     if method == Method::POST && path == "/v1/code-completion" {
         result = handle_v1_code_completion(global_context, bearer, body_bytes).await;
+    } else if method == Method::GET && path == "/v1/caps" {
+        result = Ok(handle_v1_caps(global_context).await);
     } else {
         result = Ok(explain_whats_wrong(StatusCode::NOT_FOUND, format!("no handler for {}", path)));
     }
