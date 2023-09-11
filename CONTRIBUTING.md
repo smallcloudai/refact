@@ -33,28 +33,7 @@ that you should be abloe to create a pull request for the main repository.
 
 ## Adding Toolbox Functions
 
-Are you missing a function in the toolbox? It's easy to implement it yourself!
-
-It's even possible without a GPU, clone this repo and install it like this:
-
-```
-SETUP_PACKAGE=refact_scratchpads_no_gpu pip install -e refact/
-```
-
-In this folder `refact_scratchpads_no_gpu/gpt_toolbox/toolbox_functions` there are some
-functions implemented using OpenAI API. There you can add a new one by analogy, or even
-make an existing function better.
-
-Add your new function to `infserver_no_gpu.py` and `modelcap_records.py`.
-
-To test your function, run `infserver_no_gpu` as in the previous section.
-
-
-## Simplifying Toolbox (WORK IN PROGRESS)
-
-1. Toolbox for models with GPU https://github.com/smallcloudai/refact/pull/33
-
-2. Simplify functions list, so you don't have to touch `infserver_no_gpu.py` and `modelcap_records` (no PR yet)
+UPDATE: toolbox is under reconstruction.
 
 
 ## Install Linguist
