@@ -28,6 +28,7 @@ pub struct ModelRecord {
 pub struct CodeAssistantRecommendations {
     pub cloud_name: String,
     pub endpoint_template: String,
+    pub endpoint_style: String,
     pub code_completion_models: HashMap<String, ModelRecord>,
     pub code_completion_default_model: String,
     pub code_chat_models: HashMap<String, ModelRecord>,

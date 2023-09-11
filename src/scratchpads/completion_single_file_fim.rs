@@ -39,6 +39,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         &mut self,
         patch: &serde_json::Value,
     ) -> Result<(), String> {
+        // That will work for some models (starcoder) without patching
         self.fim_prefix = patch.get("fim_prefix").and_then(|x| x.as_str()).unwrap_or("<fim_prefix>").to_string();
         self.fim_suffix = patch.get("fim_suffix").and_then(|x| x.as_str()).unwrap_or("<fim_suffix>").to_string();
         self.fim_middle = patch.get("fim_middle").and_then(|x| x.as_str()).unwrap_or("<fim_middle>").to_string();
@@ -56,7 +57,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         let limit = context_size - self.post.parameters.max_new_tokens;
-        let supports_stop = true;
+        let supports_stop = true; // TODO: take from model caps
         if supports_stop {
             let mut stop_list = vec!["<|endoftext|>".to_string(), "\n\n".to_string()];
             if !self.post.inputs.multiline {
@@ -140,66 +141,46 @@ impl CodeCompletionScratchpad for SingleFileFIM {
                 self.fim_middle,
             );
         } else {
-            return Err(format!("order \"{}\" recognized", self.order));
+            return Err(format!("order \"{}\" not recognized", self.order));
         }
         if DEBUG {
             info!("prompt\n{}", prompt);
-            info!("re-encode whole string again gives {} tokes", self.t.count_tokens(prompt.as_str())?);
+            info!("re-encode whole prompt again gives {} tokes", self.t.count_tokens(prompt.as_str())?);
         }
         Ok(prompt)
     }
 
-    fn re_stream_response(
+    fn response_n_choices(
         &self,
-        model_says: serde_json::Value,
-    ) -> Result<(serde_json::Value, bool), String> {
-        if DEBUG {
-            info!("model_says\n{:?}", model_says);
-        }
-        let ans: serde_json::Value;
-        let mut finish = false;
-
-        if let Some(token) = model_says.get("token") {
-            // streaming branch
-            let mut token_text = "".to_string();
-            if let Some(t) = token.get("text") {
-                token_text = t.as_str().unwrap().to_string();
-            }
-            if token_text.contains("\n\n") || (token_text.contains("\n") && !self.post.inputs.multiline) {
-                ans = serde_json::json!({
-                    "code_completion_delta": cut_result(&token_text, "\n\n", self.post.inputs.multiline)
-                });
-                finish = true;
-            } else {
-                ans = serde_json::json!({
-                    "code_completion_delta": token_text
-                });
-            }
-
-        } else if let Some(arr) = model_says.as_array() {
-            let tmp = arr.iter()
-               .map(|x| {
-                    let generated_text = x.get("generated_text").unwrap().as_str().unwrap();
-                    serde_json::json!({
-                        "code_completion": cut_result(&generated_text, "<|endoftext|>", self.post.inputs.multiline),
-                    })
-               }).collect::<Vec<_>>();
-            ans = serde_json::json!(tmp);
-            finish = true;
-
-        } else if let Some(err) = model_says.get("error") {
-            // XXX: maybe move it higher so each scratchpad doesn't have to handle that?
-            return Err(err.as_str().unwrap().to_string());
-
-        } else {
-            error!("No token or array {:?}", model_says);
-            return Err("HF-style endpoint response unrecognized, see logs".to_string());
-        }
-
-        return Ok((ans, finish));
+        choices: Vec<String>,
+    ) -> Result<serde_json::Value, String> {
+        let tmp = choices.iter()
+            .map(|x| {
+                serde_json::json!({
+                    "code_completion": cut_result(&x, "<|endoftext|>", self.post.inputs.multiline),
+                })
+            }).collect::<Vec<_>>();
+        return Ok(serde_json::json!(tmp));
     }
 
+    //     if let Some(token) = model_says.get("token") {
+    //         // streaming branch
+    //         let mut token_text = "".to_string();
+    //         if let Some(t) = token.get("text") {
+    //             token_text = t.as_str().unwrap().to_string();
+    //         }
+    //         if token_text.contains("\n\n") || (token_text.contains("\n") && !self.post.inputs.multiline) {
+    //             ans = serde_json::json!({
+    //                 "code_completion_delta": cut_result(&token_text, "\n\n", self.post.inputs.multiline)
+    //             });
+    //             finish = true;
+    //         } else {
+    //             ans = serde_json::json!({
+    //                 "code_completion_delta": token_text
+    //             });
+    //         }
 }
+
 
 fn cut_result(text: &str, eot_token: &str, multiline: bool) -> String {
     let mut cut_at = vec![];

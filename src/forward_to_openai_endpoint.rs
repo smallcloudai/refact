@@ -1,3 +1,4 @@
+use tracing::log::info;
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
@@ -6,7 +7,7 @@ use crate::call_validation::SamplingParameters;
 use serde_json::json;
 
 
-pub async fn forward_to_hf_style_endpoint(
+pub async fn forward_to_openai_style_endpoint(
     bearer: Option<String>,
     model_name: &str,
     prompt: &str,
@@ -26,10 +27,17 @@ pub async fn forward_to_hf_style_endpoint(
     params_json["return_full_text"] = serde_json::Value::Bool(false);
 
     let data = json!({
-        "inputs": prompt,
-        "parameters": params_json,
+        "model": model_name,
+        "prompt": prompt,
+        "echo": false,
+        "stream": false,
+        "temperature": sampling_parameters.temperature,
+        "max_tokens": sampling_parameters.max_new_tokens,
+        // "parameters": params_json,
         // "stream": stream,
     });
+    info!("sending to {}", url);
+    info!("data={:?}", data);
     let req = client.post(&url)
        .headers(headers)
        .body(data.to_string())
@@ -44,11 +52,12 @@ pub async fn forward_to_hf_style_endpoint(
         // error!("status={} text {:?}", status_code, response_txt);
         return Err(format!("{} status={} text {}", url, status_code, response_txt));
     }
+    info!("response={:?}", response_txt);
     Ok(serde_json::from_str(&response_txt).unwrap())
 }
 
 
-// with streaming:
-// use futures::stream::Stream;
-// -> impl Stream<Item = String>
-
+// bugs:
+// gunicorn deploy_front_py.python_fastapi_server:app --bind 0.0.0.0:8009 --workers 1 --max-requests 30000
+// works:
+// gunicorn deploy_front_py.python_fastapi_server:app --bind 0.0.0.0:8009 --workers 1 --max-requests 30000 -k uvicorn.workers.UvicornWorker --access-logfile '-' --error-logfile '-'

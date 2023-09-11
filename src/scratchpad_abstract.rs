@@ -17,10 +17,15 @@ pub trait CodeCompletionScratchpad: Send {
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String>;
 
-    fn re_stream_response(
+    fn response_n_choices(   // Not streaming, convert what model says (choices) to final result
         &self,
-        model_says: serde_json::Value,
-    ) -> Result<(serde_json::Value, bool), String>;
+        choices: Vec<String>,
+    ) -> Result<serde_json::Value, String>;
+
+    // fn response_streaming(   // Only 1 choice, but streaming. Returns delta the user should see, and finished flag
+    //     &self,
+    //     delta: String,
+    // ) -> Result<(serde_json::Value, bool), String>;
 }
 
 

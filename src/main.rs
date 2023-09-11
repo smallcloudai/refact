@@ -2,6 +2,7 @@ use tracing::{error, info};
 mod cached_tokenizers;
 mod scratchpads;
 mod forward_to_hf_endpoint;
+mod forward_to_openai_endpoint;
 mod global_context;
 mod http_server;
 mod call_validation;
