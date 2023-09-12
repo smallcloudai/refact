@@ -49,7 +49,11 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
             return set()
     dummy_calls = [
         {
-            'temperature': 0.8, 'top_p': 0.95, 'max_tokens': 40, 'id': 'comp-wkCX57Le8giP-1337', 'object': 'text_completion_req',
+            'temperature': 0.8,
+            'top_p': 0.95,
+            'max_tokens': 40,
+            'id': 'comp-wkCX57Le8giP-1337',
+            'object': 'text_completion_req',
             'function': 'completion',
             'echo': False,
             'stop_tokens': [],

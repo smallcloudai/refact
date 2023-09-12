@@ -1,18 +1,17 @@
+import importlib
 from collections import deque
 from functools import partial
 from pathlib import Path
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from refact_data_pipeline.finetune.finetune_config import MODELS_CONFIGS
 from refact_encoding import RefactEncoding
 
-import einops
 import torch as th
 import torch.nn.functional as F
 
 from refact_models.codify_model import CodifyModel
-from refact_data_pipeline.finetune.sa import flash_attn_func
 from refact_models.checkpoint_loader import load_config
 
 from typing import List, Tuple, Optional
@@ -95,49 +94,10 @@ def freeze_model(
 ) -> th.nn.Module:
     for name, p in model.named_parameters():
         if any([e in name for e in freeze_exceptions]):
-            continue
-        p.requires_grad_(False)
+            p.requires_grad_(True)
+        else:
+            p.requires_grad_(False)
     return model
-
-
-def apply_flash_attention(model):
-    def _forward(
-            self,
-            x: th.Tensor,
-            attention_mask: Optional[th.Tensor],
-            layer_past: Optional[Tuple[th.Tensor, th.Tensor]],
-            use_cache: bool = False
-    ):
-        q, k, v = self.qkv(x).chunk(3, dim=-1)
-        q = einops.rearrange(q, "b t (h d) -> b t h d", h=self.num_heads)
-        k = einops.rearrange(k, "b t (h d) -> b t h d", h=self.num_heads)
-        v = einops.rearrange(v, "b t (h d) -> b t h d", h=self.num_heads)
-
-        attn_output = flash_attn_func(
-            q, k, v, self.scale, True, True
-        )
-        attn_output = einops.rearrange(attn_output, "b t h d -> b t (h d)")
-
-        attn_output = self.out(attn_output)
-        return attn_output, None
-
-    if type(model) != CodifyModel:
-
-        return model
-    else:
-        for block in model.blocks:
-            block.sa.forward = _forward.__get__(block.sa, type(block.sa))
-        return model
-
-
-def lora_state_dict(model, *args, destination=None, prefix='', keep_vars=False, layer_names):
-    return {
-        name: p
-        for name, p in model.old_state_dict(
-            *args, destination=destination, prefix=prefix, keep_vars=keep_vars
-        ).items()
-        if any(n in name for n in layer_names)
-    }
 
 
 def save_model_state(model, save_path, tag):
@@ -184,7 +144,45 @@ def setup_encoding(
     return encoding
 
 
-def setup_model_specific_params(
+def model_forward(
+        model: th.nn.Module,
+        input: th.Tensor,
+        low_gpu_mem_mode: bool,
+        backend: str
+) -> th.Tensor:
+    if backend == "transformers":
+        if low_gpu_mem_mode:
+            model.gradient_checkpointing_enable()
+
+            def make_inputs_require_grad(module, input, output):
+                output.requires_grad_(True)
+
+            model.get_input_embeddings().register_forward_hook(make_inputs_require_grad)
+        else:
+            model.gradient_checkpointing_disable()
+        logits = model.forward(
+            input,
+            return_dict=False, output_attentions=False, output_hidden_states=False
+        )[0]
+    else:
+        if low_gpu_mem_mode:
+            logits = model.forward_train_cp(input)
+        else:
+            logits = model.lm_forward(model(input, attention_mask=None)[0])
+    return logits
+
+
+def _lora_state_dict(model, *args, destination=None, prefix='', keep_vars=False, layer_names):
+    return {
+        name: p
+        for name, p in model.old_state_dict(
+            *args, destination=destination, prefix=prefix, keep_vars=keep_vars
+        ).items()
+        if any(n in name for n in layer_names)
+    }
+
+
+def _setup_model_specific_params(
         model_name: str,
         weights_path: str,
         repo_id: str,
@@ -200,27 +198,12 @@ def setup_model_specific_params(
     return encoding, list(set(freeze_exceptions)), list(set(lora_target_modules_mapping))
 
 
-def model_forward(
-        model: th.nn.Module,
-        input: th.Tensor,
-        low_gpu_mem_mode: bool,
-        backend: str
-) -> th.Tensor:
-    if backend == "transformers":
-        if low_gpu_mem_mode:
-            model.gradient_checkpointing_enable()
-        else:
-            model.gradient_checkpointing_disable()
-        logits = model.forward(
-            input,
-            return_dict=False, output_attentions=False, output_hidden_states=False
-        )[0]
-    else:
-        if low_gpu_mem_mode:
-            logits = model.forward_train_cp(input)
-        else:
-            logits = model.lm_forward(model(input, attention_mask=None)[0])
-    return logits
+def _apply_model_modifiers(model: th.nn.Module, modifiers: List[str]):
+    for modifier in modifiers:
+        path, modifier_name = modifier.rsplit('.', maxsplit=1)
+        mod_path = importlib.import_module(f"refact_data_pipeline.finetune.{path}")
+        mod = getattr(mod_path, modifier_name)
+        mod(model)
 
 
 def make_model(
@@ -240,23 +223,14 @@ def make_model(
         device: str = "cuda",
 ) -> th.nn.Module:
     # init_device CPU is to save memory
-    encoding, freeze_exceptions, lora_target_modules = setup_model_specific_params(
+    encoding, freeze_exceptions, lora_target_modules = _setup_model_specific_params(
         model_name, weights_path, repo_id, freeze_exceptions, lora_target_modules
     )
     if backend == "legacy":
         model = CodifyModel.from_pretrained(
             weights_path, device=init_device, repo_id=repo_id
         ).to(dtype)
-        if th.cuda.get_device_capability() >= (8, 0):
-            model = apply_flash_attention(model)
-        model = model.apply_lora(
-            model.to(device),
-            lora_target_modules=lora_target_modules,
-            lora_r=int(lora_r),
-            lora_alpha=lora_alpha,
-            lora_dropout=lora_dropout,
-            lora_init_scale=lora_init_scale
-        )
+        _apply_model_modifiers(model, MODELS_CONFIGS[model_name]['train_model_modifiers'])
     elif backend == "transformers":
         model = AutoModelForCausalLM.from_pretrained(
             repo_id, cache_dir=weights_path,
@@ -264,26 +238,25 @@ def make_model(
             trust_remote_code=True
         ).to(dtype)
         model.encoding = encoding
-        model = LoraMixin.apply_lora(
-            model.to(device),
-            lora_target_modules=lora_target_modules,
-            lora_r=int(lora_r),
-            lora_alpha=lora_alpha,
-            lora_dropout=lora_dropout,
-            lora_init_scale=lora_init_scale
-        )
+        _apply_model_modifiers(model, MODELS_CONFIGS[model_name]['train_model_modifiers'])
     else:
         raise ValueError("Unknown backend")
 
-    for param in list(model.parameters()):
-        param.requires_grad = True
+    LoraMixin.apply_lora(
+        model.to(device),
+        lora_target_modules=lora_target_modules,
+        lora_r=int(lora_r),
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
+        lora_init_scale=lora_init_scale
+    )
     model = freeze_model(
         model,
         freeze_exceptions=freeze_exceptions
     )
     model.old_state_dict = model.state_dict
     model.state_dict = partial(
-        lora_state_dict.__get__(model, type(model)),
+        _lora_state_dict.__get__(model, type(model)),
         layer_names=freeze_exceptions
     )
     model = model.to(dtype)

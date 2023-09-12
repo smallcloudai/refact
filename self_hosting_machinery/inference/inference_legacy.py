@@ -4,7 +4,6 @@ import torch
 import logging
 import time
 import traceback
-import json
 
 from collections import defaultdict
 
@@ -12,36 +11,29 @@ from refact_scratchpads import ScratchpadBase
 from refact_scratchpads import ScratchpadCompletion
 
 from refact_models import CodifyModel
-from refact_models import RefactModel
-from refact_models import HFModel
-
-from self_hosting_machinery.scripts import best_lora
-from refact_models.checkpoint_loader import load_finetune_checkpoint
-from refact_models.checkpoint_loader import load_finetune_checkpoint_only
-from refact_models.checkpoint_loader import load_checkpoint_embeddings
-from known_models_db.refact_known_models import models_mini_db
+from self_hosting_machinery.inference.lora_loader_mixin import LoraLoaderMixin
 
 from self_hosting_machinery.inference import modload
 from self_hosting_machinery.inference import InferenceBase
 from refact_scratchpads_no_gpu.stream_results import UploadProxy
-from refact_data_pipeline.finetune.finetune_utils import get_active_loras
 
 from self_hosting_machinery import env
 
 from typing import Optional, Dict, Any, List
 
-
 log = logging.getLogger("MODEL").info
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
 
-class InferenceLegacy(InferenceBase):
+class InferenceLegacy(InferenceBase, LoraLoaderMixin):
 
     def __init__(self,
                  model_name: str,
                  model_dict: Dict[str, Any],
                  force_cpu: bool = False,
-                 load_lora: Optional[str] = None):
+                 load_lora: Optional[str] = None,
+                 **kwargs):
+        LoraLoaderMixin.__init__(self, load_lora)
         self._model_name = model_name
         self._model_dict = model_dict
         self._device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
@@ -52,10 +44,13 @@ class InferenceLegacy(InferenceBase):
         except Exception as e:
             raise RuntimeError(f"model {model_name} loading failed: {e}")
 
-        self._lora_on = False
-        self._lora_checkpoint_dir = ""
-        if load_lora is not None:
-            self.lora_switch(on=True, lora_checkpoint_dir=load_lora)
+    @property
+    def model(self) -> torch.nn.Module:
+        return self._model
+
+    @property
+    def model_name(self) -> str:
+        return self._model_name
 
     @staticmethod
     def _model_setup(model_dict: Dict, device: str):
@@ -65,18 +60,6 @@ class InferenceLegacy(InferenceBase):
                 path=env.DIR_WEIGHTS,
                 device=device)
             model.T = model.config.T
-        elif model_dict["model_class"].endswith("RefactModel"):
-            model = RefactModel.from_pretrained(
-                repo_id=None,
-                path=model_dict["model_path"],
-                device=device)
-            model.T = model.config.T
-        elif model_dict["model_class"].endswith("HFModel"):
-            model = HFModel.from_pretrained(
-                path=model_dict["model_path"],
-                cache_dir=env.DIR_WEIGHTS,
-                device=device)
-            model.T = model_dict["T"]
         else:
             raise RuntimeError(f"unknown model class {model_dict['model_class']}")
         return model.eval(), model.encoding
@@ -171,9 +154,9 @@ class InferenceLegacy(InferenceBase):
         )
 
     def _generate_using_scratchpad(self,
-                             sequence: torch.Tensor,
-                             scratchpad: ScratchpadBase,
-                             max_length: int) -> torch.Tensor:
+                                   sequence: torch.Tensor,
+                                   scratchpad: ScratchpadBase,
+                                   max_length: int) -> torch.Tensor:
         past_key_values = None
         sequence = sequence.unsqueeze(0)
         output_tokens = torch.empty((1, 1), dtype=torch.int64, device=self._model.device)
@@ -215,7 +198,7 @@ class InferenceLegacy(InferenceBase):
                 **before_kwargs
             )
             if DEBUG and "top3" in select_kwargs:
-                sys.stderr.write("%6.1fms %s" % ((1000*(time.time() - t0)), select_kwargs["top3"][0]) + "\n")
+                sys.stderr.write("%6.1fms %s" % ((1000 * (time.time() - t0)), select_kwargs["top3"][0]) + "\n")
                 sys.stderr.flush()
 
             sequence = torch.cat([sequence, output_tokens], dim=-1)
@@ -278,65 +261,3 @@ class InferenceLegacy(InferenceBase):
         except Exception as e:
             logging.error(e)
             logging.error(traceback.format_exc())
-
-    def lora_switch(self, *, lora_checkpoint_dir: str):
-        on = not not lora_checkpoint_dir
-        if self._lora_on and not on:
-            log("deactivating lora")
-            self._model = self._model.exclude_lora(self._model)
-            self._model = load_checkpoint_embeddings(self._model, self._model.cache_dir, self._model.model_name)
-            self._lora_on = False
-        elif not self._lora_on and on:
-            log("activating lora %s" % lora_checkpoint_dir)
-            self._model = load_finetune_checkpoint(self._model, lora_checkpoint_dir)
-            self._lora_checkpoint_dir = lora_checkpoint_dir
-            self._lora_on = True
-        elif self._lora_on and self._lora_checkpoint_dir != lora_checkpoint_dir:
-            try:
-                self._model = load_finetune_checkpoint_only(self._model, lora_checkpoint_dir)
-            except RuntimeError as e:
-                log("failed to quick load lora checkpoint: %s" % e)
-                log("will try to remove lora and add again")
-                self._model = self._model.exclude_lora(self._model)
-                self._lora_checkpoint_dir = ""
-                self._lora_on = False
-                self._model = load_finetune_checkpoint(self._model, lora_checkpoint_dir)
-                self._lora_checkpoint_dir = lora_checkpoint_dir
-                self._lora_on = True
-        if lora_checkpoint_dir:
-            log("using lora %s" % lora_checkpoint_dir)
-
-    def lora_switch_according_to_config(self):
-        if self._model_name not in models_mini_db:
-            raise RuntimeError(f"Unknown model {self._model_name}, try to update repo")
-        model_info = models_mini_db[self._model_name]
-        if "finetune" not in model_info.get("filter_caps", []):
-            log(f"Model {self._model_name} does not support finetune")
-            self.lora_switch(lora_checkpoint_dir="")
-            return
-
-        active_loras = get_active_loras()
-        assert self._model_name in active_loras
-        cfg = active_loras[self._model_name]
-        # {
-        #     "lora_mode": "specific",
-        #     "specific_lora_run_id": "lora-20230614-164840",
-        #     "specific_checkpoint": "iter0666"
-        # }
-
-        if cfg["lora_mode"] not in ["specific", "latest-best"]:
-            self.lora_switch(lora_checkpoint_dir="")
-            return
-        lora_checkpoint_dir = ""
-        some_problem_with_explicit = False
-        if cfg["lora_mode"] == "specific":
-            t = os.path.join(env.DIR_LORAS, cfg["specific_lora_run_id"], "checkpoints", cfg["specific_checkpoint"])
-            if os.path.isdir(t):
-                lora_checkpoint_dir = t
-            else:
-                log("lora cannot find \"%s\", switching to latest-best" % t)
-                some_problem_with_explicit = True
-        if cfg["lora_mode"] == "latest-best" or some_problem_with_explicit:
-            tmp = best_lora.find_best_lora(self._model_name)
-            lora_checkpoint_dir = tmp["path"]
-        self.lora_switch(lora_checkpoint_dir=lora_checkpoint_dir)

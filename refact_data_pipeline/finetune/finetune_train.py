@@ -148,11 +148,13 @@ def loop(
         model,
         optimizer,
         loss_function: Callable,
+        model_name: str,
         *,
         status_dict,
         train_ds,
         test_ds: Optional[Any]
 ):
+    model_config = MODELS_CONFIGS[model_name]
     save_path = os.path.join(traces.context().path, "checkpoints")
     model.train()
     test_ds_fn = partial(BatchIterator, dataopts=dict(
@@ -169,6 +171,8 @@ def loop(
     assert cfg['save_every'] % cfg['test_every'] == 0
     plot_process: Optional[subprocess.Popen] = None
     save_status_json(status_dict, "starting")
+    low_gpu_mem_mode = cfg['low_gpu_mem_mode'] or model_config['force_enable_checkpointing']
+    forward = partial(model_forward, model=model, low_gpu_mem_mode=low_gpu_mem_mode, backend=backend)
     for iter_n in range(cfg['train_iters'] + 1):  # +1 so we can save 100 (not 99)
         t0_iter = time.time()
         traces.progress("iteration", iter_n)
@@ -188,7 +192,7 @@ def loop(
 
         for b0 in range(0, cfg.get("train_batch_size"), cfg.get("micro_batch_size")):
             input = batch['input'][b0:b0 + micro_bs].contiguous()
-            logits = model_forward(model, input, low_gpu_mem_mode=cfg['low_gpu_mem_mode'], backend=backend)
+            logits = forward(input=input)
             loss = loss_function(
                 logits=logits,
                 labels=batch['labels'][b0:b0 + micro_bs].contiguous(),
@@ -207,8 +211,7 @@ def loop(
             model.eval()
             with th.inference_mode():
                 for batch, _ in test_ds_fn(test_ds):
-                    logits = model_forward(model, batch['input'],
-                                           low_gpu_mem_mode=cfg['low_gpu_mem_mode'], backend=backend)
+                    logits = forward(input=batch['input'])
                     loss = loss_function(
                         logits=logits,
                         labels=batch['labels'],
@@ -302,6 +305,7 @@ def finetune(status_dict):
             masked_loss, average_elements=cfg['model_info']['loss_average_elements'],
             enc=model.encoding
         ),
+        model_name=cfg['model_name'],
         train_ds=train_ds,
         test_ds=test_ds,
         status_dict=status_dict

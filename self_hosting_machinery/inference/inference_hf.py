@@ -22,6 +22,7 @@ from self_hosting_machinery import env
 
 from typing import Dict, Any, Union, Optional
 
+from self_hosting_machinery.inference.lora_loader_mixin import LoraLoaderMixin
 
 quit_flag = False
 DEBUG = int(os.environ.get("DEBUG", "0"))
@@ -55,6 +56,7 @@ class FeedScratchoadCriteria(StoppingCriteria):
         if DEBUG:
             def _format(t: str, color: str):
                 return "\"%s\"" % termcolor.colored(t.replace("\n", "\\n").replace("\r", "\\r"), color)
+
             text = _format(self.tokenizer.decode([token.item()]), "green")
             text = text.ljust(40)
             # for tok, logprob in sorted(logprobs.items(), key=lambda x: -x[-1]):
@@ -123,12 +125,15 @@ class CustomAutoGPTQForCausalLM(AutoGPTQForCausalLM):
             **kwargs)
 
 
-class InferenceHF(InferenceBase):
+class InferenceHF(InferenceBase, LoraLoaderMixin):
 
     def __init__(self,
                  model_name: str,
                  model_dict: Dict[str, Any],
+                 load_lora: Optional[str] = None,
                  **kwargs):
+        LoraLoaderMixin.__init__(self, load_lora)
+
         self._model_name = model_name
         self._model_dict = model_dict
 
@@ -149,6 +154,14 @@ class InferenceHF(InferenceBase):
                 trust_remote_code=True, **self._model_dict["model_class_kwargs"])
         else:
             raise RuntimeError(f"unknown model backend {model_dict['backend']}")
+
+    @property
+    def model(self) -> torch.nn.Module:
+        return self._model
+
+    @property
+    def model_name(self) -> str:
+        return self._model_name
 
     def _prepare_scratchpad(self, request: Dict[str, Any]):
         def logger(*args):
@@ -197,6 +210,7 @@ class InferenceHF(InferenceBase):
                                          streamer=streamer,
                                          max_new_tokens=request["max_tokens"],
                                          stopping_criteria=stopping_criteria,
+                                         do_sample=True,
                                          return_dict_in_generate=True,
                                          output_scores=True,
                                          top_p=request.get('top_p', 1.0),
@@ -217,6 +231,3 @@ class InferenceHF(InferenceBase):
         except Exception as e:
             logging.getLogger("MODEL").error(e)
             logging.getLogger("MODEL").error(traceback.format_exc())
-
-    def lora_switch_according_to_config(self):
-        pass

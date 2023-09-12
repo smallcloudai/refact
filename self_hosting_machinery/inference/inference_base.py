@@ -18,6 +18,3 @@ class InferenceBase:
 
     def infer(self, request: Dict[str, Any], upload_proxy: UploadProxy, upload_proxy_args: Dict):
         raise NotImplementedError()
-
-    def lora_switch_according_to_config(self):
-        raise NotImplementedError()
