@@ -8,16 +8,17 @@ import numpy as np
 from tqdm import tqdm
 from pynndescent import NNDescent
 
-from refact_vecdb.search_api.context import CONTEXT as C
+from refact_vecdb.common.profiles import PROFILES as P
+from refact_vecdb.common.context import CONTEXT as C
 
 
 __all__ = ['load_vecdb', 'VecDB']
 
 
-def load_vecdb(keyspace: str):
-    print(f'Loading vecdb for {keyspace}')
-    vdb_save = C.c_sessions[keyspace]['workdir'] / 'nn_index.pkl'
-    file_chunks_embedding = C.c_sessions[keyspace]['models']['file_chunks_embedding']
+def load_vecdb(account: str):
+    print(f'Loading vecdb for {account}')
+    vdb_save = P[account]['workdir'] / 'nn_index.pkl'
+    file_chunks_embedding = C.c_models['file_chunks_embedding']
     vecdb = VecDB()
 
     def fill_vecdb_from_disk():
@@ -45,7 +46,7 @@ def load_vecdb(keyspace: str):
 
         vecdb.from_disk(vdb_save)
     fill_vecdb_from_disk()
-    C.c_sessions[keyspace]['vecdb'] = vecdb
+    C.vecdb[account] = vecdb
 
 
 class VecDB:

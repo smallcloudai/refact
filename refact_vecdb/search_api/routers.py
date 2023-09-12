@@ -9,7 +9,9 @@ from pydantic import BaseModel
 from fastapi import APIRouter
 from fastapi import Response, Request
 
-from refact_vecdb.search_api.context import CONTEXT as C
+from refact_vecdb.common.crud import get_account_data, update_account_data
+from refact_vecdb.common.profiles import PROFILES as P
+from refact_vecdb.common.context import CONTEXT as C
 from refact_vecdb import VDBEmbeddingsAPI
 
 
@@ -17,13 +19,19 @@ __all__ = ['MainRouter']
 
 
 class StatusQuery(BaseModel):
-    keyspace: str
+    account: str
 
 
 class SearchQuery(BaseModel):
     texts: List[str]
-    keyspace: str
+    account: str
     top_k: int = 3
+
+
+def account_exists(account: str) -> bool:
+    if get_account_data(account):
+        return True
+    return False
 
 
 class MainRouter(APIRouter):
@@ -34,33 +42,45 @@ class MainRouter(APIRouter):
         super(MainRouter, self).add_api_route("/v1/search", self._search, methods=["POST"])
 
     async def _status(self, data: StatusQuery, request: Request):
-        if data.keyspace not in C.c_sessions:
-            return Response(content=json.dumps({"error": f"Unknown keyspace: {data.keyspace}"}))
+        account = data.account
+        if not account_exists(account):
+            update_account_data({'account': account})
 
-        provider = C.c_sessions[data.keyspace]['provider']
+        provider = get_account_data(account).get('provider', 'gte')
         return Response(content=json.dumps(
             {"provider": provider})
         )
 
     async def _files_stats(self, data: StatusQuery, request: Request):
-        if data.keyspace not in C.c_sessions:
-            return Response(content=json.dumps({"error": f"Unknown keyspace: {data.keyspace}"}))
+        account = data.account
+        if not account_exists(account):
+            update_account_data({'account': account})
 
-        session = C.c_sessions[data.keyspace]['session']
+        session = C.c_session
 
-        files_cnt = session.execute('SELECT COUNT(*) FROM files_full_text;').one()['count']
-        chunks_cnt = session.execute('SELECT COUNT(*) FROM file_chunks_text;').one()['count']
+        files_cnt = session.execute(
+            session.prepare('SELECT COUNT(*) FROM files_full_text where account = ? ALLOW FILTERING'),
+            [account]
+        ).one()['count']
+
+        chunks_cnt = session.execute(
+            session.prepare('SELECT COUNT(*) FROM file_chunks_text where account =? ALLOW FILTERING'),
+            [account]
+        ).one()['count']
 
         return Response(content=json.dumps(
             {"files_cnt": files_cnt, "chunks_cnt": chunks_cnt}
         ))
 
     async def _search(self, data: SearchQuery, request: Request):
-        if data.keyspace not in C.c_sessions:
-            return Response(content=json.dumps({"error": f"Unknown keyspace: {data.keyspace}"}))
+        account = data.account
+        if not account_exists(account):
+            return Response(status_code=200, content=f"Account {account} not found")
 
+        account_data = get_account_data(account)
         vdb_api = VDBEmbeddingsAPI()
-        provider = C.c_sessions[data.keyspace]['provider']
+        provider = account_data.get('provider', 'gte')
+
         embeddings = []
         async for result in vdb_api.a_create(
             texts=[{'name': str(uuid.uuid4())[:12], 'text': text} for text in data.texts],
@@ -68,9 +88,9 @@ class MainRouter(APIRouter):
             is_index='False'
         ):
             embeddings.append(result['embedding'])
-        ids, scores = C.c_sessions[data.keyspace]['vecdb'].search(embeddings, data.top_k)
+        ids, scores = C.vecdb[account].search(embeddings, data.top_k)
 
-        file_chunks_text = C.c_sessions[data.keyspace]['models']['file_chunks_text']
+        file_chunks_text = C.c_models['file_chunks_text']
         query: Dict = {
             q.id: q for q in file_chunks_text.filter(id__in=list(set(itertools.chain(*ids))))
         }

@@ -1,12 +1,11 @@
-from pathlib import Path
-from typing import List, Union, Any, Dict
+from typing import List, Union
 
 from refact_vecdb.common.profiles import PROFILES
-from refact_vecdb.search_api.context import CONTEXT as C
+from refact_vecdb.common.context import CONTEXT as C
 from refact_vecdb.common.db_models import bootstrap_keyspace
 from refact_vecdb.search_api.vecdb import load_vecdb
 
-__all__ = ['bootstrap', 'setup_keyspace']
+__all__ = ['bootstrap', 'setup_account']
 
 
 def bootstrap(
@@ -18,10 +17,10 @@ def bootstrap(
         'hosts': hosts,
         'port': port,
     }
-    for profile in PROFILES:
-        setup_keyspace(profile['name'])
+    bootstrap_keyspace(keyspace='vecdb')
+    for account in PROFILES:
+        setup_account(account)
 
 
-def setup_keyspace(keyspace: str) -> None:
-    bootstrap_keyspace(keyspace=keyspace, workdir=Path('/home/user/.refact/tmp/unpacked-files'), context=C)
-    load_vecdb(keyspace)
+def setup_account(account: str) -> None:
+    load_vecdb(account)

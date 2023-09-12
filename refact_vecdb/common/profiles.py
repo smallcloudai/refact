@@ -2,12 +2,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-PROFILES = [
-    {
-        'name': 'main',
+PROFILES = {
+    'smc': {
         'workdir': Path('/home/user/.refact/tmp/unpacked-files')
     }
-]
+}
 
 
 @dataclass

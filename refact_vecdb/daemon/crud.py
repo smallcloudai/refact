@@ -5,8 +5,9 @@ from hashlib import sha1
 from datetime import datetime
 from typing import Iterable, List
 
-from refact_vecdb.common.profiles import VDBFiles
-from refact_vecdb.daemon.context import CONTEXT as C
+from refact_vecdb.common.profiles import VDBFiles, PROFILES as P
+from refact_vecdb.common.context import CONTEXT as C
+from refact_vecdb.common.crud import get_account_data
 from refact_vecdb.daemon.params import File2Upload
 from refact_vecdb import VDBEmbeddingsAPI
 
@@ -15,18 +16,14 @@ def hash_string(string: str) -> str:
     return sha1(string.encode()).hexdigest()[:12]
 
 
-def get_all_file_names(keyspace: str) -> Iterable[str]:
-    session = C.c_sessions[keyspace]['session']
-
-    for row in session.execute("""
-        select name from files_full_text;
-    """):
-        name = row['name']
-        yield name
+def get_all_file_names(account: str) -> Iterable[str]:
+    session = C.c_session
+    for row in session.execute(session.prepare('select name from files_full_text where account =? ALLOW FILTERING;'), [account]):
+        yield row['name']
 
 
-def delete_files_by_name(names_db_drop: Iterable[str], keyspace: str) -> None:
-    session = C.c_sessions[keyspace]['session']
+def delete_files_by_name(names_db_drop: Iterable[str], account: str) -> None:
+    session = C.c_session
 
     def bulk_candidates_str(names: Iterable[str]) -> str:
         return "(" + ", ".join(f"'{n}'" for n in names) + ")"
@@ -37,8 +34,8 @@ def delete_files_by_name(names_db_drop: Iterable[str], keyspace: str) -> None:
     tables_drop_ids = {}
     for t in tables:
         for row in session.execute(
-                f"""
-            select id from {t} where name in {delete_names_str} ALLOW FILTERING;
+            f"""
+            select id from {t} where name in {delete_names_str} and account = '{account}' ALLOW FILTERING;
             """
         ):
             tables_drop_ids.setdefault(t, []).append(row['id'])
@@ -48,9 +45,9 @@ def delete_files_by_name(names_db_drop: Iterable[str], keyspace: str) -> None:
         session.execute(q)
 
 
-def create_and_insert_chunks(files: List[File2Upload], keyspace: str) -> None:
-    provider = C.c_sessions[keyspace]['provider']
-    index_files_state = C.c_sessions[keyspace]['workdir'] / VDBFiles.index_files_state
+def create_and_insert_chunks(files: List[File2Upload], account: str) -> None:
+    provider = get_account_data(account).get('provider', 'gte')
+    index_files_state = P[account]['workdir'] / VDBFiles.index_files_state
 
     def write_index_state(file_n: int, total: int):
         print(f'writing index state: {file_n}/{total}')
@@ -62,7 +59,7 @@ def create_and_insert_chunks(files: List[File2Upload], keyspace: str) -> None:
 
     emb_api = VDBEmbeddingsAPI()
 
-    models = C.c_sessions[keyspace]['models']
+    models = C.c_models
     file_chunks_text = models['file_chunks_text']
     file_chunks_embedding = models['file_chunks_embedding']
     files_full_text = models['files_full_text']
@@ -76,6 +73,7 @@ def create_and_insert_chunks(files: List[File2Upload], keyspace: str) -> None:
         ), 1):
             file_chunks_text_mapping = {
                 'id': str(uuid.uuid4())[:12],
+                "account": account,
                 'provider': provider,
                 "chunk_idx": res['chunk_idx'],
                 'text': res['chunk'],
@@ -87,6 +85,7 @@ def create_and_insert_chunks(files: List[File2Upload], keyspace: str) -> None:
 
             file_chunks_embedding_mapping = {
                 'id': file_chunks_text_mapping['id'],
+                "account": account,
                 'provider': file_chunks_text_mapping['provider'],
                 "chunk_idx": file_chunks_text_mapping['chunk_idx'],
                 'embedding': res['embedding'],
@@ -98,6 +97,7 @@ def create_and_insert_chunks(files: List[File2Upload], keyspace: str) -> None:
 
         files_full_text_mapping = {
             'id': hash_string(file.text),
+            "account": account,
             'chunks_cnt': res_idx,
             'text': file.text,
             'name': file.name,
@@ -108,8 +108,8 @@ def create_and_insert_chunks(files: List[File2Upload], keyspace: str) -> None:
         write_index_state(idx, len(files))
 
 
-def insert_files(files: Iterable[File2Upload], keyspace: str) -> None:
-    session = C.c_sessions[keyspace]['session']
+def insert_files(files: Iterable[File2Upload], account: str) -> None:
+    session = C.c_session
 
     files = list(files)
     file_names = {f.name for f in files}
@@ -117,9 +117,9 @@ def insert_files(files: Iterable[File2Upload], keyspace: str) -> None:
     names_db_drop = set()
     names_rejected = set()
     for row in session.execute(
-            """
-            select id, name from files_full_text;
-            """):
+            session.prepare('select id, name from files_full_text where account =? ALLOW FILTERING;'),
+            [account]
+    ):
         idx = row['id']
         name = row['name']
 
@@ -131,7 +131,7 @@ def insert_files(files: Iterable[File2Upload], keyspace: str) -> None:
             names_db_drop.add(name)
 
     if names_db_drop:
-        delete_files_by_name(names_db_drop, keyspace)
+        delete_files_by_name(names_db_drop, account)
 
     files_init_len = files.__len__()
     files = [f for f in files if f.name not in names_rejected]
@@ -140,24 +140,38 @@ def insert_files(files: Iterable[File2Upload], keyspace: str) -> None:
     if not files:
         return
 
-    create_and_insert_chunks(files, keyspace)
+    create_and_insert_chunks(files, account)
 
 
-def on_model_change_update_embeddings(keyspace: str) -> None:
+def on_model_change_update_embeddings(account: str) -> None:
     files = []
-    session = C.c_sessions[keyspace]['session']
+    session = C.c_session
 
     for row in session.execute(
-        """
-        select name, text from files_full_text;
-        """
+            session.prepare('select name, text from files_full_text where account =? ALLOW FILTERING;'),
+            [account]
     ):
         files.append(File2Upload(name=row['name'], text=row['text']))
     if not files:
         return
-    # TODO: create temp table while inserting to not interrupt search
-    session.execute('TRUNCATE file_chunks_embedding;')
-    session.execute('TRUNCATE file_chunks_text;')
-    session.execute('TRUNCATE files_full_text;')
 
-    create_and_insert_chunks(files, keyspace)
+    def delete_from_file_chunks_embedding(account: str) -> None:
+        ids = session.execute(session.prepare('select id from file_chunks_embedding where account =? ALLOW FILTERING;'), [account])
+        for row in ids:
+            session.execute(session.prepare('delete from file_chunks_embedding where id =?;'), [row['id']])
+
+    def delete_from_file_chunks_text(account: str) -> None:
+        ids = session.execute(session.prepare('select id from file_chunks_text where account =? ALLOW FILTERING;'), [account])
+        for row in ids:
+            session.execute(session.prepare('delete from file_chunks_text where id =?;'), [row['id']])
+
+    def delete_from_files_full_text(account: str) -> None:
+        ids = session.execute(session.prepare('select id from files_full_text where account =? ALLOW FILTERING;'), [account])
+        for row in ids:
+            session.execute(session.prepare('delete from files_full_text where id =?;'), [row['id']])
+
+    delete_from_file_chunks_embedding(account)
+    delete_from_file_chunks_text(account)
+    delete_from_files_full_text(account)
+
+    create_and_insert_chunks(files, account)

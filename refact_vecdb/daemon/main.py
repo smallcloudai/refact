@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from refact_vecdb.daemon.context import CONTEXT as C
+from refact_vecdb.common.context import CONTEXT as C
 from refact_vecdb.daemon.daemon import VDBDaemon
 
 

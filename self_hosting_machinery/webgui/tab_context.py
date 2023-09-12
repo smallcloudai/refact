@@ -27,7 +27,7 @@ class TabContextRouter(APIRouter):
         super().__init__(*args, **kwargs)
         self._cfg_file = Path(env.CONFIG_VECDB)
         self._workdir = Path(env.DIR_UNPACKED)
-        self._profile_name = 'main'
+        self._profile_name = 'smc'
 
         self.add_api_route("/tab-vecdb-files-stats", self._files_stats, methods=["GET"])
         self.add_api_route("/tab-vecdb-status", self._status, methods=["GET"])

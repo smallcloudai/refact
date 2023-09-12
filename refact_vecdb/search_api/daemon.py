@@ -1,6 +1,6 @@
 from watchdog.observers import Observer
 
-from refact_vecdb.common.profiles import PROFILES, VDBFiles
+from refact_vecdb.common.profiles import PROFILES
 from refact_vecdb.search_api.file_events import WorkDirEventsHandler
 
 
@@ -9,11 +9,11 @@ class VDBSearchDaemon:
         self._observer = Observer()
 
     def spin_up(self):
-        for profile in PROFILES:
-            profile_name, workdir = profile['name'], profile['workdir']
+        for account, data in PROFILES.items():
+            workdir = data['workdir']
 
             self._observer.schedule(
-                WorkDirEventsHandler(workdir, profile_name),
+                WorkDirEventsHandler(account),
                 workdir
             )
         self._observer.start()
