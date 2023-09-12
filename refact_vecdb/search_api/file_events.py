@@ -6,8 +6,7 @@ from watchdog.events import FileSystemEventHandler
 
 from refact_vecdb.common.profiles import VDBFiles, PROFILES as P
 from refact_vecdb.common.crud import get_account_data, update_account_data
-from refact_vecdb.common.context import CONTEXT as C
-from refact_vecdb.search_api.vecdb import load_vecdb
+from refact_vecdb.common.vecdb import load_vecdb
 
 
 __all__ = ['WorkDirEventsHandler']

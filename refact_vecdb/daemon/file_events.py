@@ -93,4 +93,3 @@ class WorkDirEventsHandler(FileSystemEventHandler):
                 change_provider_file.unlink()
         except Exception as e:
             traceback.print_exc()
-

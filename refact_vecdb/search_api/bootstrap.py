@@ -3,7 +3,7 @@ from typing import List, Union
 from refact_vecdb.common.profiles import PROFILES
 from refact_vecdb.common.context import CONTEXT as C
 from refact_vecdb.common.db_models import bootstrap_keyspace
-from refact_vecdb.search_api.vecdb import load_vecdb
+from refact_vecdb.common.vecdb import load_vecdb
 
 __all__ = ['bootstrap', 'setup_account']
 

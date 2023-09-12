@@ -10,7 +10,6 @@ from fastapi import APIRouter
 from fastapi import Response, Request
 
 from refact_vecdb.common.crud import get_account_data, update_account_data
-from refact_vecdb.common.profiles import PROFILES as P
 from refact_vecdb.common.context import CONTEXT as C
 from refact_vecdb import VDBEmbeddingsAPI
 
