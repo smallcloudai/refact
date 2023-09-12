@@ -5,7 +5,9 @@ import torch as th
 import triton
 import triton.language as tl
 
-from typing import Optional
+from typing import Optional, Tuple
+
+from einops import einops
 
 
 @functools.lru_cache(maxsize=1)
@@ -561,3 +563,60 @@ class FlashAttnFunc(th.autograd.Function):
 
 
 flash_attn_func = FlashAttnFunc.apply
+
+
+def apply_flash_mha_to_codify_model(model):
+    def _forward(
+            self,
+            x: th.Tensor,
+            attention_mask: Optional[th.Tensor],
+            layer_past: Optional[Tuple[th.Tensor, th.Tensor]],
+            use_cache: bool = False
+    ):
+        q, k, v = self.qkv(x).chunk(3, dim=-1)
+        q = einops.rearrange(q, "b t (h d) -> b t h d", h=self.num_heads)
+        k = einops.rearrange(k, "b t (h d) -> b t h d", h=self.num_heads)
+        v = einops.rearrange(v, "b t (h d) -> b t h d", h=self.num_heads)
+
+        attn_output = flash_attn_func(
+            q, k, v, self.scale, True, True
+        )
+        attn_output = einops.rearrange(attn_output, "b t h d -> b t (h d)")
+
+        attn_output = self.out(attn_output)
+        return attn_output, None
+
+    if th.cuda.get_device_capability() < (8, 0):
+        return
+
+    for block in model.blocks:
+        block.sa.forward = _forward.__get__(block.sa, type(block.sa))
+
+
+def apply_flash_mha_to_refact_model(model):
+    def _forward(
+            self,
+            x: th.Tensor,
+            layer_past: Optional[th.Tensor] = None,
+            attention_mask: Optional[th.Tensor] = None,
+            alibi: Optional[th.Tensor] = None,
+            use_cache: Optional[bool] = False,
+            output_attentions: Optional[bool] = False
+    ):
+        q = einops.rearrange(self.q(x), "b t (h d) -> b t h d", h=self.num_heads)
+        k = einops.rearrange(self.k(x), "b t (h d) -> b t h d", h=1)
+        v = einops.rearrange(self.v(x), "b t (h d) -> b t h d", h=1)
+
+        attn_output = flash_attn_func(
+            q, k, v, self.scale_factor, True, True
+        )
+        attn_output = einops.rearrange(attn_output, "b t h d -> b t (h d)")
+
+        attn_output = self.c_proj(attn_output)
+        return attn_output, None
+
+    if th.cuda.get_device_capability() < (8, 0):
+        return
+
+    for block in model.transformer.h:
+        block.attn.forward = _forward.__get__(block.attn, type(block.attn))

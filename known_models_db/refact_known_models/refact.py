@@ -5,7 +5,7 @@ refact_mini_db = {
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadSPM",
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceRefact",
         "model_class_kwargs": {},
-        "T": 1024,
+        "T": 4096,
         "required_memory_mb": 6000,
         "filter_caps": ["Refact", "completion", "finetune"],
     },
