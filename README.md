@@ -1,4 +1,9 @@
-# Refact AI
+<p align='center'>
+  <picture>
+   <source width='300px' alt='White Refact Logo' media="(prefers-color-scheme: dark)" srcset="white-refact-logo.svg">
+   <img width='300px' alt="Black Refact Logo" src="refact-logo.svg">
+  </picture>
+</p>
 
 Refact is an open-source Copilot alternative available as a self-hosted or cloud option.
 
