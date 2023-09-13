@@ -234,9 +234,9 @@ def make_model(
     elif backend == "transformers":
         model = AutoModelForCausalLM.from_pretrained(
             repo_id, cache_dir=weights_path,
-            device_map="auto", torch_dtype="auto",
+            device_map=init_device, torch_dtype=dtype,
             trust_remote_code=True
-        ).to(dtype)
+        )
         model.encoding = encoding
         _apply_model_modifiers(model, MODELS_CONFIGS[model_name]['train_model_modifiers'])
     else:
