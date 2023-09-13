@@ -7,7 +7,6 @@ from refact_models.config import Config
 from typing import Optional
 
 from refact_models.lora import LoraMixin
-from self_hosting_machinery.inference.inference_base import find_param_by_name
 
 
 def _load_gs_file(root_path: str, filename: str):
