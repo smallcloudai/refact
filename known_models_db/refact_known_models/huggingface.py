@@ -55,8 +55,8 @@ huggingface_mini_db = {
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadPSM",
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
-        "required_memory_mb": 15000,
-        "T": 4096,
+        "required_memory_mb": 18000,
+        "T": 2048,
         "filter_caps": ["completion", "finetune"],
     },
     "wizardcoder/15b": {

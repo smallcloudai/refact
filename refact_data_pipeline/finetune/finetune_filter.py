@@ -91,6 +91,7 @@ def loss_based_filter(
     logging.info("STATUS filtering")
     status_dict['total_steps'] = len(train_files)
     is_force_included, is_force_excluded = get_force_included_excluded_matchers()
+    forward = partial(model_forward, model=model, low_gpu_mem_mode=False, backend=cfg['model_info']['backend'])
     for iter_n, file in enumerate(train_files):
         t0_iter = time.time()
         status_dict = _update_and_dump_status(status_dict, "filtering")
@@ -107,7 +108,7 @@ def loss_based_filter(
             continue
 
         for batch, stats in batch_iter_fn(finetune_datasource.local_plain([file], dataopts)):
-            logits = model_forward(model, batch, low_gpu_mem_mode=False, backend=cfg['model_info']['backend'])
+            logits = forward(input=batch['input'])
             loss = float(loss_function(
                 logits=logits.to(th.bfloat16),  # more stable than float16 and takes much less memory than float32
                 labels=batch['labels'],

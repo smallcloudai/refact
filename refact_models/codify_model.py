@@ -47,7 +47,7 @@ class CodifyModel(nn.Module, LoraMixin):
     def from_pretrained(cls, path: str, device: str = "cuda", repo_id: Optional[str] = None):
         config = load_config(path, repo_id)
         model = cls(config, device)
-        model = load_checkpoint(model, path, repo_id)
+        load_checkpoint(model, path, repo_id)
         return model
 
     def generate(self, *args, **kwargs):

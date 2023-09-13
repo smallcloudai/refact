@@ -20,6 +20,14 @@ MODELS_CONFIGS = {
             "lm_head": "lm_head",
             "lora": "lora"
         },
+        "tokenizer": {
+            "eot_idx": 50256,
+            "padding_idx": 48049,
+            "fim_prefix": None,
+            "fim_middle": None,
+            "fim_suffix": None,
+            "escape": 47171
+        },
         "train_ds_pipeline": {
             "ds_opts": "n_ctx={n_ctx},pack_at_most=10,shuffle_depth=3000",
             "pipeline_name": "local_mix_plain_infill"
@@ -44,6 +52,14 @@ MODELS_CONFIGS = {
             "wte": "wte",
             "lm_head": "lm_head",
             "lora": "lora"
+        },
+        "tokenizer": {
+            "eot_idx": 50256,
+            "padding_idx": 48049,
+            "fim_prefix": None,
+            "fim_middle": None,
+            "fim_suffix": None,
+            "escape": 47171
         },
         "train_ds_pipeline": {
             "ds_opts": "n_ctx={n_ctx},pack_at_most=10,shuffle_depth=3000",
