@@ -40,7 +40,8 @@ class InferenceLegacy(InferenceBase, LoraLoaderMixin):
 
         try:
             self._model, self._encoding = self._model_setup(
-                self._model_dict, self._device)
+                self._model_dict, self.cache_dir, self._device
+            )
         except Exception as e:
             raise RuntimeError(f"model {model_name} loading failed: {e}")
 
@@ -52,12 +53,22 @@ class InferenceLegacy(InferenceBase, LoraLoaderMixin):
     def model_name(self) -> str:
         return self._model_name
 
+    @property
+    def cache_dir(self) -> str:
+        return env.DIR_WEIGHTS
+
+    def load_embeddings(self):
+        from refact_models.checkpoint_loader import _load_filename
+
+        self._model.wte.weight.data[:] = _load_filename(self.cache_dir, 'emb', self._model_name)
+        self._model.lm_head.weight.data[:] = _load_filename(self.cache_dir, 'unemb', self._model_name)
+
     @staticmethod
-    def _model_setup(model_dict: Dict, device: str):
+    def _model_setup(model_dict: Dict, cache_dir: str, device: str):
         if model_dict["model_class"].endswith("CodifyModel"):
             model = CodifyModel.from_pretrained(
                 repo_id=model_dict["model_path"],
-                path=env.DIR_WEIGHTS,
+                path=cache_dir,
                 device=device)
             model.T = model.config.T
         else:

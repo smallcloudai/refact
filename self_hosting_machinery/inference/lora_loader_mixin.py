@@ -7,7 +7,6 @@ from refact_models.lora import LoraMixin
 from self_hosting_machinery.scripts import best_lora
 from refact_models.checkpoint_loader import load_finetune_checkpoint
 from refact_models.checkpoint_loader import load_finetune_checkpoint_only
-from refact_models.checkpoint_loader import load_checkpoint_embeddings
 from known_models_db.refact_known_models import models_mini_db
 
 from refact_data_pipeline.finetune.finetune_utils import get_active_loras
@@ -33,6 +32,9 @@ class LoraLoaderMixin:
     def cache_dir(self) -> str:
         raise NotImplementedError()
 
+    def load_embeddings(self):
+        raise NotImplementedError()
+
     def __init__(self, load_lora: Optional[str]):
         self._lora_on = False
         self._lora_checkpoint_dir = ""
@@ -44,11 +46,11 @@ class LoraLoaderMixin:
         if self._lora_on and not on:
             log("deactivating lora")
             LoraMixin.exclude_lora(self.model)
-            # load_checkpoint_embeddings(self.model, self.cache_dir, self.model.model_name)
+            self.load_embeddings()
             self._lora_on = False
         elif not self._lora_on and on:
             log("activating lora %s" % lora_checkpoint_dir)
-            load_finetune_checkpoint(self.model, lora_checkpoint_dir)
+            load_finetune_checkpoint(self.model, self.model_name, lora_checkpoint_dir)
             self._lora_checkpoint_dir = lora_checkpoint_dir
             self._lora_on = True
         elif self._lora_on and self._lora_checkpoint_dir != lora_checkpoint_dir:
@@ -60,7 +62,7 @@ class LoraLoaderMixin:
                 LoraMixin.exclude_lora(self.model)
                 self._lora_checkpoint_dir = ""
                 self._lora_on = False
-                load_finetune_checkpoint(self.model, lora_checkpoint_dir)
+                load_finetune_checkpoint(self.model, self.model_name, lora_checkpoint_dir)
                 self._lora_checkpoint_dir = lora_checkpoint_dir
                 self._lora_on = True
         if lora_checkpoint_dir:

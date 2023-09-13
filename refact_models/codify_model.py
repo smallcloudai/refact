@@ -30,9 +30,6 @@ class CodifyModel(nn.Module, LoraMixin):
         self.bidir_2logits_ln = self.to_device(nn.LayerNorm(config.E))
         self.bidir_2logits = self.to_device(nn.Linear(config.E, 3))
 
-        self.cache_dir: Optional[str] = None
-        self.model_name: Optional[str] = None
-
     def to_device(self, module: nn.Module):
         module = module.to(self.device)
         if self.device.startswith("cuda"):
