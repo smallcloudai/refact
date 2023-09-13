@@ -182,20 +182,17 @@ def _lora_state_dict(model, *args, destination=None, prefix='', keep_vars=False,
     }
 
 
-def _setup_model_specific_params(
+def setup_model_specific_params(
         model_name: str,
-        weights_path: str,
-        repo_id: str,
         freeze_exceptions: List[str],
         lora_target_modules: List[str]
-) -> Tuple[Optional[AutoTokenizer], List[str], List[str]]:
+) -> Tuple[List[str], List[str]]:
     assert model_name in MODELS_CONFIGS
     model_config = MODELS_CONFIGS[model_name]
-    encoding = setup_encoding(model_name, weights_path, repo_id)
     freeze_exceptions = [model_config["freeze_exceptions_mapping"][e] for e in freeze_exceptions]
     lora_target_modules_mapping = [m for modules in lora_target_modules
                                    for m in model_config["lora_target_modules_mapping"][modules]]
-    return encoding, list(set(freeze_exceptions)), list(set(lora_target_modules_mapping))
+    return list(set(freeze_exceptions)), list(set(lora_target_modules_mapping))
 
 
 def _apply_model_modifiers(model: th.nn.Module, modifiers: List[str]):
@@ -223,8 +220,9 @@ def make_model(
         device: str = "cuda",
 ) -> th.nn.Module:
     # init_device CPU is to save memory
-    encoding, freeze_exceptions, lora_target_modules = _setup_model_specific_params(
-        model_name, weights_path, repo_id, freeze_exceptions, lora_target_modules
+    encoding = setup_encoding(model_name, weights_path, repo_id)
+    freeze_exceptions, lora_target_modules = setup_model_specific_params(
+        model_name, freeze_exceptions, lora_target_modules
     )
     if backend == "legacy":
         model = CodifyModel.from_pretrained(

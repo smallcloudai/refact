@@ -22,6 +22,7 @@ from self_hosting_machinery import env
 
 from typing import Dict, Any, Union, Optional
 
+from self_hosting_machinery.inference.inference_base import find_param_by_name
 from self_hosting_machinery.inference.lora_loader_mixin import LoraLoaderMixin
 
 quit_flag = False
@@ -136,24 +137,26 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
 
         self._model_name = model_name
         self._model_dict = model_dict
+        self._model_dir = f"models--{self._model_dict['model_path'].replace('/', '--')}"
 
         assert torch.cuda.is_available(), "model is only supported on GPU"
 
         self._device = "cuda:0"
         self._tokenizer = AutoTokenizer.from_pretrained(
-            self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, trust_remote_code=True)
+            self._model_dict["model_path"], cache_dir=self.cache_dir, trust_remote_code=True)
 
         if model_dict["backend"] == "transformers":
             self._model = AutoModelForCausalLM.from_pretrained(
-                self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS,
+                self._model_dict["model_path"], cache_dir=self.cache_dir,
                 device_map="auto", torch_dtype="auto", trust_remote_code=True,
                 **self._model_dict["model_class_kwargs"])
         elif model_dict["backend"] == "autogptq":
             self._model = CustomAutoGPTQForCausalLM.from_quantized(
-                self._model_dict["model_path"], cache_dir=env.DIR_WEIGHTS, device=self._device,
+                self._model_dict["model_path"], cache_dir=self.cache_dir, device=self._device,
                 trust_remote_code=True, **self._model_dict["model_class_kwargs"])
         else:
             raise RuntimeError(f"unknown model backend {model_dict['backend']}")
+        self._dump_embeddings()
 
     @property
     def model(self) -> torch.nn.Module:
@@ -162,6 +165,40 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
     @property
     def model_name(self) -> str:
         return self._model_name
+
+    @property
+    def cache_dir(self) -> str:
+        return env.DIR_WEIGHTS
+
+    def _dump_embeddings(self):
+        try:
+            from refact_data_pipeline.finetune.finetune_config import MODELS_CONFIGS
+        except ImportError:
+            raise ImportError("please install refact_data_pipeline")
+        if self._model_name not in MODELS_CONFIGS:
+            logging.getLogger("MODEL").error(f"Skipping embeddings dumping for the model {self._model_name}")
+            return
+        model_cfg = MODELS_CONFIGS[self._model_name]
+        emb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["wte"])
+        unemb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["lm_head"])
+        torch.save(emb, f"{self.cache_dir}/{self._model_dir}/emb")
+        torch.save(unemb, f"{self.cache_dir}/{self._model_dir}/unemb")
+
+    def load_embeddings(self):
+        try:
+            from refact_data_pipeline.finetune.finetune_config import MODELS_CONFIGS
+        except ImportError:
+            raise ImportError("please install refact_data_pipeline")
+
+        model_cfg = MODELS_CONFIGS[self._model_name]
+        emb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["wte"])
+        unemb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["lm_head"])
+
+        emb_w = torch.load(f"{self.cache_dir}/{self._model_dir}/emb", map_location=self._device)
+        unemb_w = torch.load(f"{self.cache_dir}/{self._model_dir}/unemb", map_location=self._device)
+
+        emb.data.copy_(emb_w)
+        unemb.data.copy_(unemb_w)
 
     def _prepare_scratchpad(self, request: Dict[str, Any]):
         def logger(*args):
