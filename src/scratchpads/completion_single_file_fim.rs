@@ -158,7 +158,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         let tmp = choices.iter()
             .map(|x| {
                 serde_json::json!({
-                    "code_completion": cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline).0,
+                    "code_completion": cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline).0.trim_end(),
                 })
             }).collect::<Vec<_>>();
         return Ok(serde_json::json!(tmp));
@@ -171,7 +171,10 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         info!("delta: {}", delta);
         // let mut finished = false;
         let ans: serde_json::Value;
-        let (s, finished) = cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
+        let (mut s, finished) = cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
+        if finished {
+            s = s.trim_end().to_string();
+        }
         ans = serde_json::json!({
             "code_completion_delta": s
         });

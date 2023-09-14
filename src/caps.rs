@@ -98,7 +98,7 @@ pub async fn load_recommendations(
     if cmdline.address_url == "HF" {
         buffer = HF_DEFAULT_CAPS.to_string();
         report_url = "<compiled-in-caps-hf>".to_string();
-    } else if cmdline.address_url == "SMC" {
+    } else if cmdline.address_url == "Refact" {
         buffer = SMC_DEFAULT_CAPS.to_string();
         report_url = "<compiled-in-caps-smc>".to_string();
     } else if not_http {
