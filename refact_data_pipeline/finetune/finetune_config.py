@@ -79,7 +79,8 @@ MODELS_CONFIGS = {
         "lora_target_modules_mapping": {
             "qkv": ["attn.q", "attn.k", "attn.v"],
             "out": ["attn.c_proj"],
-            "backproj": ["attn.c_proj"]
+            "backproj": ["attn.c_proj"],
+            "mlp": ["mlp.linear_1", "mlp.c_proj", "mlp.linear_3"],
         },
         "freeze_exceptions_mapping": {
             "wte": "wte",
@@ -396,18 +397,14 @@ class ConfigBuilder:
         }
 
         scores_per_loraconfigs = {
-            (0, 6): dict(lora_target_modules=[
-                "qkv", "out",
-            ], lora_r=32, lora_alpha=64, lora_dropout=0.01, lora_init_scale=0.01,
-                freeze_exceptions=["lora"]),
-            (6, 8): dict(lora_target_modules=[
-                "qkv", "out",
+            (0, 8): dict(lora_target_modules=[
+                "qkv", "out", "mlp"
             ], lora_r=32, lora_alpha=64, lora_dropout=0.01, lora_init_scale=0.01,
                 freeze_exceptions=[
                     "wte", "lm_head", "lora"
                 ]),
             (8, 1000): dict(lora_target_modules=[
-                "qkv", "out",
+                "qkv", "out", "mlp",
             ], lora_r=64, lora_alpha=128, lora_dropout=0.01, lora_init_scale=0.01,
                 freeze_exceptions=[
                     "wte", "lm_head", "lora"
