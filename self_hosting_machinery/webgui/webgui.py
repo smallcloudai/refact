@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 from self_hosting_machinery.webgui.selfhost_plugins import PluginsRouter
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_fastapi_completions import CompletionsRouter
@@ -28,12 +29,12 @@ from typing import Dict
 
 class WebGUI(FastAPI):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         inference_queue = InferenceQueue()
         id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
-        for router in self._routers_list(id2ticket, inference_queue):
+        for router in self._routers_list(id2ticket, inference_queue, model_assigner):
             self.include_router(router)
 
         class NoCacheMiddleware(BaseHTTPMiddleware):
@@ -54,7 +55,10 @@ class WebGUI(FastAPI):
         self.add_event_handler("startup", self._startup_event)
 
     @staticmethod
-    def _routers_list(id2ticket: Dict[str, Ticket], inference_queue: InferenceQueue):
+    def _routers_list(
+            id2ticket: Dict[str, Ticket],
+            inference_queue: InferenceQueue,
+            model_assigner: ModelAssigner):
         return [
             PluginsRouter(),
             CompletionsRouter(prefix="/v1", id2ticket=id2ticket, inference_queue=inference_queue),
@@ -62,8 +66,8 @@ class WebGUI(FastAPI):
             TabServerLogRouter(),
             TabUploadRouter(),
             TabFinetuneRouter(),
-            TabHostRouter(),
-            TabSettingsRouter(),
+            TabHostRouter(model_assigner),
+            TabSettingsRouter(model_assigner),
             StaticRouter(),
         ]
 
@@ -90,7 +94,8 @@ if __name__ == "__main__":
         datefmt='%Y%m%d %H:%M:%S',
         handlers=[logging.StreamHandler(stream=sys.stderr)])
 
-    app = WebGUI(docs_url=None, redoc_url=None)
+    model_assigner = ModelAssigner()
+    app = WebGUI(model_assigner, docs_url=None, redoc_url=None)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     uvicorn.run(

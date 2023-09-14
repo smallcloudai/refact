@@ -1,17 +1,17 @@
 import os
 
-from self_hosting_machinery.webgui import tab_models_host
+from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 from self_hosting_machinery.scripts import enum_gpus
 from self_hosting_machinery import env
 
 
-def copy_watchdog_configs_if_first_run_detected():
+def copy_watchdog_configs_if_first_run_detected(model_assigner: ModelAssigner):
     if not os.path.exists(env.CONFIG_ENUM_GPUS):
         enum_gpus.enum_gpus()
-        tab_models_host.first_run()
+        model_assigner.first_run()
 
 
-def convert_old_configs():
+def convert_old_configs(model_assigner: ModelAssigner):
     # longthink.cfg is an old version of openai_api_worker.cfg
     force_models_cfg_update = False
     old_longthink = os.path.join(env.DIR_WATCHDOG_D, "longthink.cfg")
@@ -28,10 +28,10 @@ def convert_old_configs():
             force_models_cfg_update = True
 
     if force_models_cfg_update:
-        tab_models_host.models_to_watchdog_configs()
-
+        model_assigner.models_to_watchdog_configs()
 
 
 if __name__ == '__main__':
-    convert_old_configs()
-    copy_watchdog_configs_if_first_run_detected()
+    model_assigner = ModelAssigner()
+    convert_old_configs(model_assigner)
+    copy_watchdog_configs_if_first_run_detected(model_assigner)
