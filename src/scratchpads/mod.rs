@@ -5,7 +5,6 @@ use crate::scratchpad_abstract::CodeCompletionScratchpad;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 
-
 fn verify_has_send<T: Send>(_x: &T) {}
 
 

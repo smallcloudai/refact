@@ -1,5 +1,6 @@
 use crate::scratchpad_abstract::CodeCompletionScratchpad;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
+// use crate::scratchpad_abstract::CodeCompletionStream;
 use crate::call_validation::CodeCompletionPost;
 use crate::call_validation::SamplingParameters;
 use std::sync::Arc;
@@ -157,7 +158,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         let tmp = choices.iter()
             .map(|x| {
                 serde_json::json!({
-                    "code_completion": cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline),
+                    "code_completion": cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline).0,
                 })
             }).collect::<Vec<_>>();
         return Ok(serde_json::json!(tmp));
@@ -167,24 +168,19 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         &self,
         delta: String,
     ) -> Result<(serde_json::Value, bool), String> {
-        let mut finished = false;
+        info!("delta: {}", delta);
+        // let mut finished = false;
         let ans: serde_json::Value;
-        if delta.contains("\n\n") || (delta.contains("\n") && !self.post.inputs.multiline) {
-            ans = serde_json::json!({
-                "code_completion_delta": cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline)
-            });
-            finished = true;
-        } else {
-            ans = serde_json::json!({
-                "code_completion_delta": delta
-            });
-        }
+        let (s, finished) = cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
+        ans = serde_json::json!({
+            "code_completion_delta": s
+        });
         Ok((ans, finished))
     }
 }
 
 
-fn cut_result(text: &str, eot_token: &str, multiline: bool) -> String {
+fn cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
     let mut cut_at = vec![];
     if let Some(x) = text.find(eot_token) {
         cut_at.push(x);
@@ -198,9 +194,10 @@ fn cut_result(text: &str, eot_token: &str, multiline: bool) -> String {
         }
     }
     if cut_at.is_empty() {
-        return text.to_string();
+        return (text.to_string().replace("\r", ""), false);
     }
     let cut_at = cut_at.into_iter().min().unwrap_or(text.len());
     let ans = text.split_at(cut_at).0.to_string();
-    ans.replace("\r", "")
+    return (ans.replace("\r", ""), true);
 }
+
