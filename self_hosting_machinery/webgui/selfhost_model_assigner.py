@@ -9,7 +9,7 @@ from self_hosting_machinery.webgui.selfhost_webutils import log
 from known_models_db.refact_known_models import models_mini_db
 from known_models_db.refact_toolbox_db import modelcap_records
 
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Any
 
 
 __all__ = ["ModelAssigner"]
@@ -54,6 +54,14 @@ class ModelAssigner:
     def models_to_watchdog_configs(self, inference_config=None):
         if inference_config is None:
             inference_config = self.model_assignment
+
+        inference_config = self._model_inference_setup(inference_config)
+        inference_config = self._integrations_inference_setup(inference_config)
+
+        with open(env.CONFIG_INFERENCE, "w") as f:
+            json.dump(inference_config, f, indent=4)
+
+    def _model_inference_setup(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
         gpus = self.gpus()["gpus"]
         model_groups = self._model_assign_to_groups(inference_config["model_assign"])
         # This must work or installation is bad
@@ -95,7 +103,13 @@ class ModelAssigner:
                 except FileNotFoundError:
                     pass
 
-        # Integrations
+        return {
+            **inference_config,
+            "required_memory_exceed_available": required_memory_exceed_available,
+            "more_models_than_gpus": more_models_than_gpus,
+        }
+
+    def _integrations_inference_setup(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
         integrations = {}
         if os.path.exists(env.CONFIG_INTEGRATIONS):
             integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
@@ -117,12 +131,7 @@ class ModelAssigner:
             except FileNotFoundError:
                 pass
 
-        with open(env.CONFIG_INFERENCE, "w") as f:
-            json.dump({
-                "required_memory_exceed_available": required_memory_exceed_available,
-                "more_models_than_gpus": more_models_than_gpus,
-                **inference_config,
-            }, f, indent=4)
+        return inference_config
 
     def first_run(self):
         default_config = {
