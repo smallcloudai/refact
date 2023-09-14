@@ -15,9 +15,14 @@ use tokenizers::Tokenizer;
 use crate::cached_tokenizers;
 use crate::recommendations;
 use crate::scratchpads;
+use crate::scratchpad_abstract::CodeCompletionScratchpad;
 use crate::forward_to_hf_endpoint;
 use crate::forward_to_openai_endpoint;
-use crate::call_validation::CodeCompletionPost;
+use reqwest_eventsource::Event;
+use futures::StreamExt;
+
+
+use crate::call_validation::{CodeCompletionPost, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::recommendations::CodeAssistantRecommendations;
 
@@ -57,6 +62,29 @@ async fn lookup_code_completion_scratchpad(
     Ok((model_name, sname.clone(), patch.clone()))
 }
 
+async fn _get_caps_and_tokenizer(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    bearer: Option<String>,
+    model_name: String,
+) -> Result<(Arc<StdRwLock<CodeAssistantRecommendations>>, Arc<StdRwLock<Tokenizer>>, reqwest::Client), String> {
+    let tokenizer_arc: Arc<StdRwLock<Tokenizer>>;
+    let caps: Arc<StdRwLock<CodeAssistantRecommendations>>;
+    let client1: reqwest::Client;
+    let mut cx_locked = global_context.write().await;
+    client1 = cx_locked.http_client.clone();
+    let client2 = cx_locked.http_client.clone();
+    caps = cx_locked.caps.clone();
+    let cache_dir = cx_locked.cache_dir.clone();
+    tokenizer_arc = cached_tokenizers::get_tokenizer(
+        &mut cx_locked.tokenizer_map,
+        &model_name,
+        client2,
+        &cache_dir,
+        bearer.clone(),
+    ).await?;
+    Ok((caps, tokenizer_arc, client1))
+}
+
 async fn handle_v1_code_completion(
     global_context: Arc<ARwLock<GlobalContext>>,
     bearer: Option<String>,
@@ -74,26 +102,13 @@ async fn handle_v1_code_completion(
     if code_completion_post.parameters.max_new_tokens == 0 {
         code_completion_post.parameters.max_new_tokens = 50;
     }
-    let tokenizer_arc: Arc<StdRwLock<Tokenizer>>;
-    let client1: reqwest::Client;
-    let client2: reqwest::Client;
-    let caps: Arc<StdRwLock<CodeAssistantRecommendations>>;
-    {
-        let mut cx_locked = global_context.write().await;
-        client1 = cx_locked.http_client.clone();
-        client2 = cx_locked.http_client.clone();
-        caps = cx_locked.caps.clone();
-        let cache_dir = cx_locked.cache_dir.clone();
-        tokenizer_arc = cached_tokenizers::get_tokenizer(
-            &mut cx_locked.tokenizer_map,
-            &model_name,
-            client2,
-            &cache_dir,
-            bearer.clone(),
-        ).await.map_err(|e|
-            explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
-        )?;
-    }
+    let (caps, tokenizer_arc, client1) = _get_caps_and_tokenizer(
+        global_context.clone(),
+        bearer.clone(),
+        model_name.clone(),
+    ).await.map_err(|e|
+        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
+    )?;
 
     let scratchpad = scratchpads::create_code_completion_scratchpad(
         code_completion_post.clone(),
@@ -112,36 +127,48 @@ async fn handle_v1_code_completion(
     )?;
     // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
     info!("prompt {:?}", t1.elapsed());
+    return _scratchpad_interaction(caps, scratchpad, &prompt, model_name, client1, bearer, &code_completion_post.parameters, code_completion_post.stream).await;
+}
 
+async fn _scratchpad_interaction(
+    caps: Arc<StdRwLock<CodeAssistantRecommendations>>,
+    scratchpad: Box<dyn CodeCompletionScratchpad>,
+    prompt: &str,
+    model_name: String,
+    client: reqwest::Client,
+    bearer: Option<String>,
+    parameters: &SamplingParameters,
+    streaming: bool
+) -> Result<Response<Body>, Response<Body>> {
     let t2 = std::time::Instant::now();
     let (endpoint_style, endpoint_template) = {
         let caps_locked = caps.read().unwrap();
         (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone())
     };
-    let streaming = false;
     if !streaming {
         let model_says = if endpoint_style == "hf" {
             forward_to_hf_endpoint::forward_to_hf_style_endpoint(
                 bearer.clone(),
                 &model_name,
                 &prompt,
-                &client1,
+                &client,
                 &endpoint_template,
-                &code_completion_post.parameters,
+                &parameters,
             ).await
         } else {
             forward_to_openai_endpoint::forward_to_openai_style_endpoint(
                 bearer.clone(),
                 &model_name,
                 &prompt,
-                &client1,
+                &client,
                 &endpoint_template,
-                &code_completion_post.parameters,
+                &parameters,
             ).await
         }.map_err(|e|
             explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_hf_endpoint: {}", e))
         )?;
-        info!("forward_to_hf_endpoint {:?}", t2.elapsed());
+        info!("forward to endpoint {:?}", t2.elapsed());
+
         let scratchpad_result: Result<serde_json::Value, String>;
         if let Some(hf_arr) = model_says.as_array() {
             let choices = hf_arr.iter()
@@ -168,11 +195,13 @@ async fn handle_v1_code_completion(
                 format!("unrecognized response: {:?}", model_says))
             );
         }
+
         if let Err(scratchpad_result_str) = scratchpad_result {
             return Ok(explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,
                 format!("scratchpad: {}", scratchpad_result_str))
             );
         }
+
         let txt = serde_json::to_string(&scratchpad_result.unwrap()).unwrap();
         info!("handle_v1_code_completion return {}", txt);
         let response = Response::builder()
@@ -180,13 +209,38 @@ async fn handle_v1_code_completion(
             .body(Body::from(txt))
             .unwrap();
         return Ok(response);
+
+    } else {
+        let mut event_source = forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
+            bearer.clone(),
+            &model_name,
+            &prompt,
+            &client,
+            &endpoint_template,
+            &parameters,
+        ).await.map_err(|e|
+            explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_hf_endpoint: {}", e))
+        )?;
+        while let Some(event) = event_source.next().await {
+            match event {
+                Ok(Event::Open) => println!("Connection Open!"),
+                Ok(Event::Message(message)) => println!("Message: {:#?}", message),
+                Err(err) => {
+                    println!("Error: {}", err);
+                    event_source.close();
+                }
+            }
+        }
+        // fn response_streaming(   // Only 1 choice, but streaming. Returns delta the user should see, and finished flag
+        //     &self,
+        //     delta: String,
+        // ) -> Result<(serde_json::Value, bool), String>;
+        let response = Response::builder()
+            .header("Content-Type", "application/json")
+            .body(Body::from("hello world"))
+            .unwrap();
+        return Ok(response);
     }
-    return Ok(
-        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, "streaming not yet implemented".to_string())
-    );
-    // let tuple_json_finished = scratchpad.re_stream_response(hf_endpoint_result).map_err(|e|
-    //     explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("re_stream_response: {}", e))
-    // )?;
 }
 
 async fn handle_v1_caps(
@@ -231,7 +285,6 @@ async fn handle_request(
     info!("{} completed in {:?}", path, t0.elapsed());
     return Ok(result.unwrap());
 }
-
 
 pub async fn start_server(
     global_context: Arc<ARwLock<GlobalContext>>,

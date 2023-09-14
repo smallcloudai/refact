@@ -6,23 +6,31 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-home = "0.5"
-ropey = "1.6"
+hyper = { version = "0.14", features = ["server"] }
+reqwest = { version = "0.11", features = ["json", "stream"] }
+tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal"] }
+reqwest-eventsource = "0.4.0"
+url = "2.4.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.11", features = ["json"] }
-tokenizers = "0.13"
-tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal"] }
+tower = "0.4"
 tower-lsp = "0.20"
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-hyper = { version = "0.14", features = ["server"] }
-tower = "0.4"
-use = "0.0.0"
-async-trait = "0.1.73"
-route-recognizer = "0.3.1"
-bytes = "0.5"
+tokenizers = "0.13"
+ropey = "1.6"
+home = "0.5"
 structopt = "0.3"
-url = "2.4.1"
+futures = "0.3.28"
+
+#use = "0.0.0"
+#async-trait = "0.1.73"
+#route-recognizer = "0.3.1"
+#bytes = "0.5"
+#eventsource-client = "0.11.0"
+#reqwest-streams = { version = "0.3.0", features = ["json"] }
+#tokio-stream = "0.1.14"
+#futures-core = "0.3.28"
+#eventsource-stream = "0.2.3"
 

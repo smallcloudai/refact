@@ -157,28 +157,30 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         let tmp = choices.iter()
             .map(|x| {
                 serde_json::json!({
-                    "code_completion": cut_result(&x, "<|endoftext|>", self.post.inputs.multiline),
+                    "code_completion": cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline),
                 })
             }).collect::<Vec<_>>();
         return Ok(serde_json::json!(tmp));
     }
 
-    //     if let Some(token) = model_says.get("token") {
-    //         // streaming branch
-    //         let mut token_text = "".to_string();
-    //         if let Some(t) = token.get("text") {
-    //             token_text = t.as_str().unwrap().to_string();
-    //         }
-    //         if token_text.contains("\n\n") || (token_text.contains("\n") && !self.post.inputs.multiline) {
-    //             ans = serde_json::json!({
-    //                 "code_completion_delta": cut_result(&token_text, "\n\n", self.post.inputs.multiline)
-    //             });
-    //             finish = true;
-    //         } else {
-    //             ans = serde_json::json!({
-    //                 "code_completion_delta": token_text
-    //             });
-    //         }
+    fn response_streaming(
+        &self,
+        delta: String,
+    ) -> Result<(serde_json::Value, bool), String> {
+        let mut finished = false;
+        let ans: serde_json::Value;
+        if delta.contains("\n\n") || (delta.contains("\n") && !self.post.inputs.multiline) {
+            ans = serde_json::json!({
+                "code_completion_delta": cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline)
+            });
+            finished = true;
+        } else {
+            ans = serde_json::json!({
+                "code_completion_delta": delta
+            });
+        }
+        Ok((ans, finished))
+    }
 }
 
 

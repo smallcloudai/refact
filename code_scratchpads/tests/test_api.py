@@ -51,7 +51,10 @@ def call_completion(
         accum = ""
         for line in r.iter_lines():
             txt = line.decode("utf-8").strip()
+            if not txt:
+                continue
             if not txt.startswith("data:"):
+                print("not stream data:", txt)
                 continue
             txt = txt[5:].strip()
             if txt == "[DONE]":
@@ -96,4 +99,4 @@ def test_battery(model, stream):
 
 
 if __name__ == "__main__":
-    test_battery("bigcode/starcoder", stream=False)
+    test_battery("bigcode/starcoder", stream=True)

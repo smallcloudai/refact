@@ -22,10 +22,10 @@ pub trait CodeCompletionScratchpad: Send {
         choices: Vec<String>,
     ) -> Result<serde_json::Value, String>;
 
-    // fn response_streaming(   // Only 1 choice, but streaming. Returns delta the user should see, and finished flag
-    //     &self,
-    //     delta: String,
-    // ) -> Result<(serde_json::Value, bool), String>;
+    fn response_streaming(   // Only 1 choice, but streaming. Returns delta the user should see, and finished flag
+        &self,
+        delta: String,
+    ) -> Result<(serde_json::Value, bool), String>;
 }
 
 

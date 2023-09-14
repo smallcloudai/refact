@@ -5,7 +5,6 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::io::Read;
-use std::io::Write;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use url::Url;
