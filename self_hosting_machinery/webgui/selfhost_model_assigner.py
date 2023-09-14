@@ -136,12 +136,12 @@ class ModelAssigner:
     def first_run(self):
         default_config = {
             "model_assign": {
-                "CONTRASTcode/3b/multi": {
+                "Refact/1.6B": {
                     'gpus_shard': 1,
                     'share_gpu': False,
                 }
             },
-            "completion": "CONTRASTcode/3b/multi",
+            "completion": "Refact/1.6B",
             "openai_api_enable": False,
         }
         self.models_to_watchdog_configs(default_config)
