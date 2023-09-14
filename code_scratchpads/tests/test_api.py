@@ -99,4 +99,4 @@ def test_battery(model, stream):
 
 
 if __name__ == "__main__":
-    test_battery("bigcode/starcoder", stream=True)
+    test_battery("bigcode/starcoder", stream=False)

@@ -6,7 +6,7 @@ use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock as ARwLock;
 use tokenizers::Tokenizer;
 use structopt::StructOpt;
-use crate::recommendations::CodeAssistantRecommendations;
+use crate::caps::CodeAssistantCaps;
 
 
 #[derive(Debug, StructOpt, Clone)]
@@ -22,7 +22,7 @@ pub struct GlobalContext {
     pub http_client: reqwest::Client,
     pub cache_dir: PathBuf,
     pub tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
-    pub caps: Arc<StdRwLock<CodeAssistantRecommendations>>,
+    pub caps: Arc<StdRwLock<CodeAssistantCaps>>,
     pub cmdline: CommandLine,
 }
 
@@ -30,7 +30,7 @@ pub async fn create_global_context(
     home_dir: PathBuf,
 ) -> Result<Arc<ARwLock<GlobalContext>>, String> {
     let cmdline = CommandLine::from_args();
-    let caps = crate::recommendations::load_recommendations(
+    let caps = crate::caps::load_recommendations(
         cmdline.clone()
     ).await?;
     let cache_dir = home_dir.join(".cache/refact");

@@ -24,7 +24,7 @@ pub struct ModelRecord {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct CodeAssistantRecommendations {
+pub struct CodeAssistantCaps {
     pub cloud_name: String,
     pub endpoint_template: String,
     pub endpoint_style: String,
@@ -83,6 +83,7 @@ const SMC_DEFAULT_CAPS: &str = r#"
             "default_scratchpad": "FIM-PSM"
         }
     },
+    "telemetry_basic": "https://www.smallcloud.ai/v1/usage-stats",
     "code_chat_models": {},
     "code_chat_default_model": ""
 }
@@ -90,7 +91,7 @@ const SMC_DEFAULT_CAPS: &str = r#"
 
 pub async fn load_recommendations(
     cmdline: crate::global_context::CommandLine,
-) -> Result<Arc<StdRwLock<CodeAssistantRecommendations>>, String> {
+) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let mut buffer = String::new();
     let not_http = !cmdline.address_url.starts_with("http");
     let report_url: String;
@@ -119,7 +120,7 @@ pub async fn load_recommendations(
         }
     }
     info!("reading caps from {}", report_url);
-    let mut r: CodeAssistantRecommendations = serde_json::from_str(&buffer).map_err(|e|
+    let mut r: CodeAssistantCaps = serde_json::from_str(&buffer).map_err(|e|
         format!("failed to parse {}: {}", report_url, e)
     )?;
     let model_keys_copy = r.code_completion_models.keys().cloned().collect::<Vec<String>>();

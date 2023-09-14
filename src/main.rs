@@ -7,7 +7,7 @@ mod global_context;
 mod http_server;
 mod call_validation;
 mod scratchpad_abstract;
-mod recommendations;
+mod caps;
 use std::io::Write;
 
 

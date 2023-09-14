@@ -13,7 +13,7 @@ use serde_json::json;
 use tokenizers::Tokenizer;
 
 use crate::cached_tokenizers;
-use crate::recommendations;
+use crate::caps;
 use crate::scratchpads;
 use crate::scratchpad_abstract::CodeCompletionScratchpad;
 use crate::forward_to_hf_endpoint;
@@ -25,7 +25,7 @@ use async_stream::stream;
 
 use crate::call_validation::{CodeCompletionPost, SamplingParameters};
 use crate::global_context::GlobalContext;
-use crate::recommendations::CodeAssistantRecommendations;
+use crate::caps::CodeAssistantCaps;
 
 
 // https://blog.logrocket.com/a-minimal-web-service-in-rust-using-hyper/
@@ -50,12 +50,12 @@ async fn lookup_code_completion_scratchpad(
     let cx = global_context.read().await;
     let rec = cx.caps.read().unwrap();
     let (model_name, recommended_model_record) =
-        recommendations::which_model_to_use(
+        caps::which_model_to_use(
             &rec.code_completion_models,
             &code_completion_post.model,
             &rec.code_completion_default_model,
         )?;
-    let (sname, patch) = recommendations::which_scratchpad_to_use(
+    let (sname, patch) = caps::which_scratchpad_to_use(
         &recommended_model_record.supports_scratchpads,
         &code_completion_post.scratchpad,
         &recommended_model_record.default_scratchpad,
@@ -67,9 +67,9 @@ async fn _get_caps_and_tokenizer(
     global_context: Arc<ARwLock<GlobalContext>>,
     bearer: Option<String>,
     model_name: String,
-) -> Result<(Arc<StdRwLock<CodeAssistantRecommendations>>, Arc<StdRwLock<Tokenizer>>, reqwest::Client), String> {
+) -> Result<(Arc<StdRwLock<CodeAssistantCaps>>, Arc<StdRwLock<Tokenizer>>, reqwest::Client), String> {
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>>;
-    let caps: Arc<StdRwLock<CodeAssistantRecommendations>>;
+    let caps: Arc<StdRwLock<CodeAssistantCaps>>;
     let client1: reqwest::Client;
     let mut cx_locked = global_context.write().await;
     client1 = cx_locked.http_client.clone();
@@ -136,7 +136,7 @@ async fn handle_v1_code_completion(
 }
 
 async fn _scratchpad_interaction_not_stream(
-    caps: Arc<StdRwLock<CodeAssistantRecommendations>>,
+    caps: Arc<StdRwLock<CodeAssistantCaps>>,
     scratchpad: Box<dyn CodeCompletionScratchpad>,
     prompt: &str,
     model_name: String,
@@ -215,7 +215,7 @@ async fn _scratchpad_interaction_not_stream(
 }
 
 async fn _scratchpad_interaction_stream(
-    caps: Arc<StdRwLock<CodeAssistantRecommendations>>,
+    caps: Arc<StdRwLock<CodeAssistantCaps>>,
     mut scratchpad: Box<dyn CodeCompletionScratchpad>,
     prompt: &str,
     model_name: String,
