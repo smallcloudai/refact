@@ -32,7 +32,7 @@ class TabHostRouter(APIRouter):
         self.add_api_route("/tab-host-models-assign", self._tab_host_models_assign, methods=["POST"])
 
     async def _tab_host_have_gpus(self):
-        return Response(json.dumps(self._model_assigner.gpus(include_busy=True), indent=4) + "\n")
+        return Response(json.dumps(self._model_assigner.gpus, indent=4) + "\n")
 
     async def _tab_host_models_get(self):
         return Response(json.dumps({

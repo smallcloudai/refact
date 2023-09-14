@@ -62,7 +62,7 @@ class ModelAssigner:
             json.dump(inference_config, f, indent=4)
 
     def _model_inference_setup(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
-        gpus = self.gpus()["gpus"]
+        gpus = self.gpus["gpus"]
         model_groups = self._model_assign_to_groups(inference_config["model_assign"])
         # This must work or installation is bad
         model_cfg_template = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model.cfg")))
@@ -146,12 +146,13 @@ class ModelAssigner:
         }
         self.models_to_watchdog_configs(default_config)
 
-    def gpus(self, include_busy: bool = False):
+    @property
+    def gpus(self):
         if os.path.exists(env.CONFIG_ENUM_GPUS):
             result = json.load(open(env.CONFIG_ENUM_GPUS, "r"))
         else:
             result = {"gpus": []}
-        if include_busy and os.path.exists(env.CONFIG_BUSY_GPUS):
+        if os.path.exists(env.CONFIG_BUSY_GPUS):
             statuses = json.load(open(env.CONFIG_BUSY_GPUS, "r"))
             if isinstance(statuses["gpus"], list):  # convert old format to new
                 statuses["gpus"] = {
@@ -198,4 +199,8 @@ class ModelAssigner:
             j = json.load(open(env.CONFIG_INFERENCE, "r"))
         else:
             j = {"model_assign": {}}
+        j["model_assign"] = {
+            model: v for model, v in j["model_assign"].items()
+            if model in models_mini_db
+        }
         return j

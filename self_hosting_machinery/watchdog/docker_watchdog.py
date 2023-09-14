@@ -1,4 +1,3 @@
-import uuid
 import json
 import os
 import signal
@@ -11,6 +10,7 @@ from pathlib import Path
 
 from typing import Dict, Optional, List
 
+from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 from self_hosting_machinery import env
 
 
@@ -293,9 +293,10 @@ def inform_about_gpu_status():
         _inform_about_gpu_status = s
 
 
-def main_loop():
+def main_loop(model_assigner: ModelAssigner):
     global quit_flag
     while 1:
+        model_assigner.models_to_watchdog_configs()
         create_tracked_jobs_from_configs()
         for fn, job in tracked.items():
             job.maybe_can_start()
@@ -316,4 +317,5 @@ if __name__ == '__main__':
     # this allows inference_worker to authorize on the local web server (both use
     # this variable), and work safely even if we expose http port to the world.
     os.environ["SMALLCLOUD_API_KEY"] = str(uuid.uuid4())
-    main_loop()
+    model_assigner = ModelAssigner()
+    main_loop(model_assigner)
