@@ -13,7 +13,8 @@ MODELS_CONFIGS = {
         "lora_target_modules_mapping": {
             "qkv": ["qkv"],
             "out": ["out"],
-            "backproj": ["out"]
+            "backproj": ["out"],
+            "mlp": ["mlp.ln_1", "mlp.ln_2"],
         },
         "freeze_exceptions_mapping": {
             "wte": "wte",
@@ -46,7 +47,8 @@ MODELS_CONFIGS = {
         "lora_target_modules_mapping": {
             "qkv": ["qkv"],
             "out": ["out"],
-            "backproj": ["out"]
+            "backproj": ["out"],
+            "mlp": ["mlp.ln_1", "mlp.ln_2"],
         },
         "freeze_exceptions_mapping": {
             "wte": "wte",
@@ -119,7 +121,8 @@ MODELS_CONFIGS = {
         "lora_target_modules_mapping": {
             "qkv": ["attn.q_attn", "attn.c_attn"],
             "out": ["attn.c_proj"],
-            "backproj": ["attn.c_proj"]
+            "backproj": ["attn.c_proj"],
+            "mlp": ["mlp.c_fc", "mlp.c_proj"],
         },
         "freeze_exceptions_mapping": {
             "wte": "wte",
@@ -156,7 +159,8 @@ MODELS_CONFIGS = {
         "lora_target_modules_mapping": {
             "qkv": ["attn.q_attn", "attn.c_attn"],
             "out": ["attn.c_proj"],
-            "backproj": ["attn.c_proj"]
+            "backproj": ["attn.c_proj"],
+            "mlp": ["mlp.c_fc", "mlp.c_proj"],
         },
         "freeze_exceptions_mapping": {
             "wte": "wte",
@@ -174,7 +178,7 @@ MODELS_CONFIGS = {
         "train_ds_pipeline": {
             "ds_opts": "n_ctx={n_ctx},fim_probability=0.9,fim_drop_residual=1,"
                        "tkr_stochastic_tokens=3,shuffle_depth=3000,debug=0,"
-                       "random_trim_context_prob=0.01,fim_random_seed=42",
+                       "random_trim_context_prob=0.01,fim_random_seed=42,seed=42",
             "pipeline_name": "local_fim"
         },
         "test_ds_pipeline": {
@@ -193,7 +197,8 @@ MODELS_CONFIGS = {
         "lora_target_modules_mapping": {
             "qkv": ["attn.q_attn", "attn.c_attn"],
             "out": ["attn.c_proj"],
-            "backproj": ["attn.c_proj"]
+            "backproj": ["attn.c_proj"],
+            "mlp": ["mlp.c_fc", "mlp.c_proj"],
         },
         "freeze_exceptions_mapping": {
             "wte": "wte",
@@ -397,13 +402,7 @@ class ConfigBuilder:
         }
 
         scores_per_loraconfigs = {
-            (0, 8): dict(lora_target_modules=[
-                "qkv", "out", "mlp"
-            ], lora_r=32, lora_alpha=64, lora_dropout=0.01, lora_init_scale=0.01,
-                freeze_exceptions=[
-                    "wte", "lm_head", "lora"
-                ]),
-            (8, 1000): dict(lora_target_modules=[
+            (0, 1000): dict(lora_target_modules=[
                 "qkv", "out", "mlp",
             ], lora_r=64, lora_alpha=128, lora_dropout=0.01, lora_init_scale=0.01,
                 freeze_exceptions=[
@@ -428,7 +427,9 @@ class ConfigBuilder:
                 break
 
         traces.log(
-            f'Lora parameters heuristic avg_loss={initial_loss:.2f}, ds_len={ds_len} => complexity score={score_acc}')
+            f'Lora parameters heuristic avg_loss={initial_loss:.2f}, '
+            f'ds_len={ds_len} => complexity score={score_acc}'
+        )
 
         return self
 
@@ -436,15 +437,15 @@ class ConfigBuilder:
             self,
             ds_len: int
     ) -> 'ConfigBuilder':
-        min_iterations = 100
+        min_iterations = 50
         round_to_iter = 50
         dslen_per_epochs = {
-            (0, 500): 50,
-            (500, 1000): 40,
-            (1000, 5000): 25,
-            (5000, 15000): 15,
-            (15000, 30000): 5,
-            (30000, 100000000): 2
+            (0, 500): 60,
+            (500, 1000): 60,
+            (1000, 5000): 45,
+            (5000, 15000): 25,
+            (15000, 30000): 15,
+            (30000, 100000000): 5
         }
         epochs = 1
         for (lhs_dslen, rhs_dslen), e in dslen_per_epochs.items():

@@ -220,8 +220,7 @@ class DensePacker:
             assert idx is not None, f'No item with length={length}'
             return self.buffer.pop(idx)
 
-        assert len(self.buffer) > 0
-        if budget == 0:
+        if len(self.buffer) == 0 or budget == 0:
             return []
 
         if force_random_get or not self.pack_complete:

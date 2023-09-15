@@ -37,6 +37,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 6000,
         "T": 4096,
+        "hidden": True,
         "filter_caps": ["completion", "finetune"],
     },
     "starcoder/3b/base": {
@@ -47,6 +48,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 9000,
         "T": 4096,
+        "hidden": True,
         "filter_caps": ["completion", "finetune"],
     },
     "starcoder/7b/base": {
@@ -57,6 +59,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 18000,
         "T": 2048,
+        "hidden": True,
         "filter_caps": ["completion", "finetune"],
     },
     "wizardcoder/15b": {
