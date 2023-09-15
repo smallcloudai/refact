@@ -54,4 +54,5 @@ pub struct ChatPost {
     pub model: String,
     #[serde(default)]
     pub scratchpad: String,
+    pub stream: Option<bool>,
 }
