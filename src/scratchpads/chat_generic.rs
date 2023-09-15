@@ -90,7 +90,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     }
 
     fn response_n_choices(
-        &self,
+        &mut self,
         choices: Vec<String>,
     ) -> Result<serde_json::Value, String> {
         info!("choices: {:?}", choices);
@@ -138,7 +138,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     }
 
     fn response_streaming(
-        &self,
+        &mut self,
         delta: String,
     ) -> Result<(serde_json::Value, bool), String> {
         unimplemented!();

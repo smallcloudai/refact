@@ -18,12 +18,12 @@ pub trait ScratchpadAbstract: Send {
     ) -> Result<String, String>;
 
     fn response_n_choices(   // Not streaming, convert what model says (choices) to final result
-        &self,
+        &mut self,
         choices: Vec<String>,
     ) -> Result<serde_json::Value, String>;
 
     fn response_streaming(   // Only 1 choice, but streaming. Returns delta the user should see, and finished flag
-        &self,
+        &mut self,
         delta: String,
     ) -> Result<(serde_json::Value, bool), String>;
 }

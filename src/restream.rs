@@ -28,7 +28,7 @@ pub fn explain_whats_wrong(status_code: StatusCode, msg: String) -> Response<Bod
 
 pub async fn scratchpad_interaction_not_stream(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
-    scratchpad: Box<dyn ScratchpadAbstract>,
+    mut scratchpad: Box<dyn ScratchpadAbstract>,
     prompt: &str,
     model_name: String,
     client: reqwest::Client,

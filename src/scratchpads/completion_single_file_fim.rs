@@ -151,7 +151,7 @@ impl ScratchpadAbstract for SingleFileFIM {
     }
 
     fn response_n_choices(
-        &self,
+        &mut self,
         choices: Vec<String>,
     ) -> Result<serde_json::Value, String> {
         let tmp = choices.iter()
@@ -164,7 +164,7 @@ impl ScratchpadAbstract for SingleFileFIM {
     }
 
     fn response_streaming(
-        &self,
+        &mut self,
         delta: String,
     ) -> Result<(serde_json::Value, bool), String> {
         info!("delta: {}", delta);
