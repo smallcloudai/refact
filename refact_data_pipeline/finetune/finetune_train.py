@@ -30,6 +30,24 @@ filtered_train = "train_set_filtered.jsonl"
 filtered_test = "test_set_filtered.jsonl"
 
 
+class EarlyStopper:
+    def __init__(self, patience=1, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = float('inf')
+
+    def __call__(self, validation_loss):
+        if validation_loss < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > (self.min_validation_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
+
+
 def save_status_json(status_dict, status_string):
     # FIXME: rank == 0
     rank = 0
@@ -66,7 +84,7 @@ def load_finetune_config() -> Dict[str, Any]:
             for _ in ds:
                 ds_len += 1
             return ds_len
-        except:
+        except Exception as e:
             return ds_len
 
     with open(env.CONFIG_FINETUNE_FILTER_STATS, 'r') as f:
@@ -154,6 +172,15 @@ def loop(
         train_ds,
         test_ds: Optional[Any]
 ):
+    def _save_checkpoint(force: bool = False):
+        if force or (iter_n != 0 and iter_n % cfg['save_every'] == 0):
+            if "test_loss" in progress:
+                tag = "iter%04d-testloss%0.3f" % (iter_n, progress["test_loss"])
+            else:
+                tag = "iter%04d-trainloss%0.3f" % (iter_n, progress["loss"])
+            traces.log("saving checkpoint %s" % tag)
+            save_model_state(model, save_path=save_path, tag=tag)
+
     model_config = MODELS_CONFIGS[model_name]
     save_path = os.path.join(traces.context().path, "checkpoints")
     model.train()
@@ -172,7 +199,8 @@ def loop(
     plot_process: Optional[subprocess.Popen] = None
     save_status_json(status_dict, "starting")
     low_gpu_mem_mode = cfg['low_gpu_mem_mode'] or model_config['force_enable_checkpointing']
-    forward = partial(model_forward, model=model, low_gpu_mem_mode=low_gpu_mem_mode, backend=backend)
+    forward = partial(model_forward, model=model, backend=backend)
+    early_stop = EarlyStopper(patience=20)
     for iter_n in range(cfg['train_iters'] + 1):  # +1 so we can save 100 (not 99)
         t0_iter = time.time()
         traces.progress("iteration", iter_n)
@@ -191,14 +219,25 @@ def loop(
         )
 
         for b0 in range(0, cfg.get("train_batch_size"), cfg.get("micro_batch_size")):
-            input = batch['input'][b0:b0 + micro_bs].contiguous()
-            logits = forward(input=input)
-            loss = loss_function(
-                logits=logits,
-                labels=batch['labels'][b0:b0 + micro_bs].contiguous(),
-                mask=batch['mask'][b0:b0 + micro_bs].contiguous(),
-            )
-            model.backward(loss)
+            try:
+                input = batch['input'][b0:b0 + micro_bs].contiguous()
+                logits = forward(input=input, low_gpu_mem_mode=low_gpu_mem_mode)
+                loss = loss_function(
+                    logits=logits,
+                    labels=batch['labels'][b0:b0 + micro_bs].contiguous(),
+                    mask=batch['mask'][b0:b0 + micro_bs].contiguous(),
+                )
+                model.backward(loss)
+            except th.cuda.OutOfMemoryError as e:
+                if low_gpu_mem_mode:
+                    raise e
+                else:
+                    model.optimizer.zero_grad()
+                    th.cuda.empty_cache()
+                    low_gpu_mem_mode = True
+                    traces.log("switching to low GPU memory mode")
+                    continue
+
             model.step()
             tokens_n += input.shape[0] * input.shape[1]
             traces.progress('loss', loss)
@@ -210,14 +249,20 @@ def loop(
         if test_ds is not None and cfg["test_every"] > 0 and iter_n % cfg["test_every"] == 0:
             model.eval()
             with th.inference_mode():
+                test_loss = None
                 for batch, _ in test_ds_fn(test_ds):
-                    logits = forward(input=batch['input'])
-                    loss = loss_function(
+                    logits = forward(input=batch['input'], low_gpu_mem_mode=low_gpu_mem_mode)
+                    test_loss = loss_function(
                         logits=logits,
                         labels=batch['labels'],
                         mask=batch['mask'],
                     )
-                    traces.progress('test_loss', loss)
+                    traces.progress('test_loss', test_loss)
+                if test_loss is not None and early_stop(test_loss):
+                    traces.log(f"Stopping the training due to "
+                               f"test loss was above minimum {early_stop.counter} times")
+                    _save_checkpoint(force=True)
+                    break
             model.train()
 
         for k, v in ds_stats.items():
@@ -246,13 +291,7 @@ def loop(
             "progress.jsonl",
             "%d" % (cfg['train_iters'] + 50),
         ], cwd=traces.context().path)
-        if iter_n != 0 and iter_n % cfg['save_every'] == 0:
-            if "test_loss" in progress:
-                tag = "iter%04d-testloss%0.3f" % (iter_n, progress["test_loss"])
-            else:
-                tag = "iter%04d-trainloss%0.3f" % (iter_n, progress["loss"])
-            traces.log("saving checkpoint %s" % tag)
-            save_model_state(model, save_path=save_path, tag=tag)
+        _save_checkpoint(force=False)
         status_dict["worked_steps"] = iter_n
         status_dict["worked_minutes"] = int((time.time() - t0) / 60)
         status_dict["eta_minutes"] = int(round(eta / 60))
