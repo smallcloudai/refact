@@ -23,6 +23,7 @@ pub struct GenericChatScratchpad {
     pub local_stop_list: Vec<String>,
     pub role: String,
     pub reply_so_far: Vec<String>,
+    pub finished_so_far: Vec<bool>,
 }
 
 impl GenericChatScratchpad {
@@ -30,7 +31,7 @@ impl GenericChatScratchpad {
         tokenizer: Arc<RwLock<Tokenizer>>,
         post: ChatPost,
     ) -> Self {
-        GenericChatScratchpad { t: HasTokenizerAndEot::new(tokenizer), post, token_esc: "".to_string(), keyword_syst: "".to_string(), keyword_user: "".to_string(), keyword_asst: "".to_string(), default_system_message: "".to_string(), local_stop_list: vec![], role: "".to_string(), reply_so_far: vec![] }
+        GenericChatScratchpad { t: HasTokenizerAndEot::new(tokenizer), post, token_esc: "".to_string(), keyword_syst: "".to_string(), keyword_user: "".to_string(), keyword_asst: "".to_string(), default_system_message: "".to_string(), local_stop_list: vec![], role: "".to_string(), reply_so_far: vec![], finished_so_far: vec![] }
     }
 }
 
@@ -118,12 +119,13 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         //   }
         // data: {"object": "text_completion", "choices": [{"index": 0, "finish_reason": "", "role": "assistant", "delta": " be located in the same directory as the Dockerfile"}]}
 
-        // self.reply_so_far.resize(choices.len(), "".to_string());
-        // for (i, x) in choices.iter().enumerate() {
-        //     let (s, finished) = cut_result(&x, &self.local_stop_list);
-        //     self.reply_so_far[i] = x.clone();
-        // }
-
+        self.reply_so_far.resize(choices.len(), "".to_string());
+        self.finished_so_far.resize(choices.len(), false);
+        for (i, x) in choices.iter().enumerate() {
+            let (s, finished) = cut_result(&x, &self.local_stop_list);
+            self.reply_so_far[i] = s.clone();
+            self.finished_so_far[i] = finished;
+        }
         let tmp = self.reply_so_far.iter().enumerate()
             .map(|(i, x)| {
                 serde_json::json!({
@@ -131,7 +133,8 @@ impl ScratchpadAbstract for GenericChatScratchpad {
                     "message": {
                         "role": self.role.clone(),
                         "content": x.clone()
-                    }
+                    },
+                    "finish_reason": (if self.finished_so_far[i] { "stop" } else { "length" }).to_string(),
                 })
             }).collect::<Vec<_>>();
         return Ok(serde_json::json!(tmp));
@@ -141,19 +144,25 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         &mut self,
         delta: String,
     ) -> Result<(serde_json::Value, bool), String> {
-        unimplemented!();
-        // self.reply_so_far.resize(choices.len(), "".to_string())
-        // info!("delta: {}", delta);
-        // // let mut finished = false;
-        // let ans: serde_json::Value;
-        // let (mut s, finished) = cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
-        // if finished {
-        //     s = s.trim_end().to_string();
-        // }
-        // ans = serde_json::json!({
-        //     "code_completion_delta": s
-        // });
-        // Ok((ans, finished))
+        self.reply_so_far.resize(1, "".to_string());
+        if self.finished_so_far[0] {
+            return Err("chat already finished".to_string());
+        }
+        self.finished_so_far.resize(1, false);
+        self.reply_so_far[0].push_str(delta.as_str());
+
+        let (reply, finished) = cut_result(&delta, &self.local_stop_list);
+        self.reply_so_far[0] = reply.clone();
+        self.finished_so_far[0] = finished;
+
+        let ans = serde_json::json!({
+            "message": {
+                "role": self.role.clone(),
+                "content": self.reply_so_far[0].clone(),
+            },
+            "finish_reason": (if self.finished_so_far[0] { "stop" } else { "length" }).to_string(),
+        });
+        Ok((ans, finished))
     }
 }
 
@@ -162,24 +171,17 @@ fn cut_result(
     text: &str,
     local_stop_list: &Vec<String>,
 ) -> (String, bool) {
-    // let mut cut_at = vec![];
-    // if let Some(x) = text.find(eot_token) {
-    //     cut_at.push(x);
-    // }
-    // if let Some(x) = text.find("\n\n") {
-    //     cut_at.push(x);
-    // }
-    // if !multiline {
-    //     if let Some(x) = text.find("\n") {
-    //         cut_at.push(x);
-    //     }
-    // }
-    // if cut_at.is_empty() {
-    //     return (text.to_string().replace("\r", ""), false);
-    // }
-    // let cut_at = cut_at.into_iter().min().unwrap_or(text.len());
-    // let ans = text.split_at(cut_at).0.to_string();
-    // return (ans.replace("\r", ""), true);
-    return (text.to_string(), false);
+    let mut cut_at = vec![];
+    for t in local_stop_list {
+        if let Some(x) = text.find(t) {
+            cut_at.push(x);
+        }
+    }
+    if cut_at.is_empty() {
+        return (text.to_string().replace("\r", ""), false);
+    }
+    let cut_at = cut_at.into_iter().min().unwrap_or(text.len());
+    let ans = text.split_at(cut_at).0.to_string();
+    return (ans.replace("\r", ""), true);
 }
 
