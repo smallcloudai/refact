@@ -18,7 +18,7 @@ def call_completion(
 ):
     headers = {
         "Content-Type": "application/json",
-        "Authorization": "Bearer %s" % os.environ.get("HF_TOKEN"),
+        "Authorization": "Bearer %s" % (os.environ.get("HF_TOKEN") or os.environ.get("REFACT_TOKEN")),
         }
     r = requests.post(
         "http://127.0.0.1:8001/v1/code-completion",
@@ -99,4 +99,5 @@ def test_battery(model, stream):
 
 
 if __name__ == "__main__":
-    test_battery("bigcode/starcoder", stream=False)
+    test_battery("", stream=False)
+    # test_battery("bigcode/starcoder", stream=False)

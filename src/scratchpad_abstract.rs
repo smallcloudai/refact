@@ -12,7 +12,7 @@ pub trait ScratchpadAbstract: Send {
     ) -> Result<(), String>;
 
     fn prompt(
-        &self,
+        &mut self,
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String>;

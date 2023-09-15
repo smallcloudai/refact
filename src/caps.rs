@@ -85,8 +85,16 @@ const SMC_DEFAULT_CAPS: &str = r#"
             "default_scratchpad": "FIM-PSM"
         }
     },
-    "code_chat_models": {},
-    "code_chat_default_model": ""
+    "code_chat_models": {
+        "smallcloudai/Refact-1_6B-fim": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {"token_esc": "<empty_output>", "keyword_system": "SYSTEM", "keyword_user": "USER", "keyword_assistant": "ASSISTANT", "default_system_message": "You are a programming assistant."}
+            },
+            "default_scratchpad": "CHAT-GENERIC"
+        }
+    },
+    "code_chat_default_model": "smallcloudai/Refact-1_6B-fim"
 }
 "#;
 

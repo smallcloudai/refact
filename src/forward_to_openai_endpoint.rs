@@ -1,3 +1,4 @@
+use tracing::info;
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
@@ -13,7 +14,6 @@ pub async fn forward_to_openai_style_endpoint(
     client: &reqwest::Client,
     endpoint_template: &String,
     sampling_parameters: &SamplingParameters,
-    // stream: bool,
 ) -> Result<serde_json::Value, String> {
     let url = endpoint_template.replace("$MODEL", model_name);
     let mut headers = HeaderMap::new();
@@ -33,6 +33,7 @@ pub async fn forward_to_openai_style_endpoint(
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
     });
+    info!("sending data {:?}", data);
     let req = client.post(&url)
        .headers(headers)
        .body(data.to_string())

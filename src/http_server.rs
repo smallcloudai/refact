@@ -21,10 +21,6 @@ use crate::caps::CodeAssistantCaps;
 use crate::restream::explain_whats_wrong;
 
 
-// https://blog.logrocket.com/a-minimal-web-service-in-rust-using-hyper/
-// use route_recognizer::{Match, Params, Router};
-
-
 async fn _get_caps_and_tokenizer(
     global_context: Arc<ARwLock<GlobalContext>>,
     bearer: Option<String>,
@@ -102,9 +98,11 @@ async fn handle_v1_code_completion(
     ).await.map_err(|e| {
         explain_whats_wrong(StatusCode::BAD_REQUEST, format!("{}", e))
     })?;
+    // TODO: take from caps
     if code_completion_post.parameters.max_new_tokens == 0 {
         code_completion_post.parameters.max_new_tokens = 50;
     }
+    code_completion_post.parameters.temperature = Some(code_completion_post.parameters.temperature.unwrap_or(0.2));
     let (caps, tokenizer_arc, client1) = _get_caps_and_tokenizer(
         global_context.clone(),
         bearer.clone(),
@@ -113,7 +111,7 @@ async fn handle_v1_code_completion(
         explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
     )?;
 
-    let scratchpad = scratchpads::create_code_completion_scratchpad(
+    let mut scratchpad = scratchpads::create_code_completion_scratchpad(
         code_completion_post.clone(),
         &scratchpad_name,
         &scratchpad_patch,
@@ -155,6 +153,7 @@ async fn handle_v1_chat(
     if chat_post.parameters.max_new_tokens == 0 {
         chat_post.parameters.max_new_tokens = 2048;
     }
+    chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(0.2));
     let (caps, tokenizer_arc, client1) = _get_caps_and_tokenizer(
         global_context.clone(),
         bearer.clone(),
@@ -163,7 +162,7 @@ async fn handle_v1_chat(
         explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
     )?;
 
-    let scratchpad = scratchpads::create_chat_scratchpad(
+    let mut scratchpad = scratchpads::create_chat_scratchpad(
         chat_post.clone(),
         &scratchpad_name,
         &scratchpad_patch,
@@ -180,10 +179,12 @@ async fn handle_v1_chat(
     )?;
     // info!("chat prompt {:?}\n{}", t1.elapsed(), prompt);
     info!("chat prompt {:?}", t1.elapsed());
-    if let Some(true) = chat_post.stream {
-        crate::restream::scratchpad_interaction_not_stream(caps, scratchpad, &prompt, model_name, client1, bearer, &chat_post.parameters).await
-    } else {
+    let streaming = chat_post.stream.unwrap_or(false);
+    info!("streaming={}", streaming);
+    if streaming {
         crate::restream::scratchpad_interaction_stream(caps, scratchpad, &prompt, model_name, client1, bearer, &chat_post.parameters).await
+    } else {
+        crate::restream::scratchpad_interaction_not_stream(caps, scratchpad, &prompt, model_name, client1, bearer, &chat_post.parameters).await
     }
 }
 
