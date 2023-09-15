@@ -58,8 +58,9 @@ class ModelAssigner:
         inference_config = self._model_inference_setup(inference_config)
         inference_config = self._integrations_inference_setup(inference_config)
 
-        with open(env.CONFIG_INFERENCE, "w") as f:
+        with open(env.CONFIG_INFERENCE + ".tmp", "w") as f:
             json.dump(inference_config, f, indent=4)
+        os.rename(env.CONFIG_INFERENCE + ".tmp", env.CONFIG_INFERENCE)
 
     def _model_inference_setup(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
         gpus = self.gpus["gpus"]
