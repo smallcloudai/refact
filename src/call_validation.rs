@@ -28,19 +28,30 @@ pub struct SamplingParameters {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct CodeCompletionPost {
+    pub inputs: CodeCompletionInputs,
+    #[serde(default)]
+    pub parameters: SamplingParameters,
     #[serde(default)]
     pub model: String,
     #[serde(default)]
     pub scratchpad: String,
     #[serde(default)]
     pub stream: bool,
-    pub inputs: CodeCompletionInputs,
-    #[serde(default)]
-    pub parameters: SamplingParameters
 }
 
-// class SamplingParameters(BaseModel):
-//     max_new_tokens: int = Query(default=50, ge=0, le=4096)
-//     temperature: Optional[float] = Query(default=None, ge=0.0, le=2.0)
-//     top_p: Optional[float] = Query(default=None, ge=0.5, le=1.0)
-//     stop: Optional[List[str]] = Query(default=None, min_items=0, max_items=10)
+#[derive(Debug, Deserialize, Clone)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ChatPost {
+    pub messages: Vec<ChatMessage>,
+    #[serde(default)]
+    pub parameters: SamplingParameters,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub scratchpad: String,
+}

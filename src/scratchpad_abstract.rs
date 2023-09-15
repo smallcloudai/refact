@@ -5,7 +5,7 @@ use tokenizers::Tokenizer;
 use crate::call_validation::SamplingParameters;
 
 
-pub trait CodeCompletionScratchpad: Send {
+pub trait ScratchpadAbstract: Send {
     fn apply_model_adaptation_patch(
         &mut self,
         patch: &serde_json::Value,

@@ -15,7 +15,7 @@ use tokenizers::Tokenizer;
 use crate::cached_tokenizers;
 use crate::caps;
 use crate::scratchpads;
-use crate::scratchpad_abstract::CodeCompletionScratchpad;
+use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::forward_to_hf_endpoint;
 use crate::forward_to_openai_endpoint;
 
@@ -137,7 +137,7 @@ async fn handle_v1_code_completion(
 
 async fn _scratchpad_interaction_not_stream(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
-    scratchpad: Box<dyn CodeCompletionScratchpad>,
+    scratchpad: Box<dyn ScratchpadAbstract>,
     prompt: &str,
     model_name: String,
     client: reqwest::Client,
@@ -216,7 +216,7 @@ async fn _scratchpad_interaction_not_stream(
 
 async fn _scratchpad_interaction_stream(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
-    mut scratchpad: Box<dyn CodeCompletionScratchpad>,
+    mut scratchpad: Box<dyn ScratchpadAbstract>,
     prompt: &str,
     model_name: String,
     client: reqwest::Client,

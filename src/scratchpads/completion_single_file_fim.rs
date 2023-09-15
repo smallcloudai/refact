@@ -1,6 +1,5 @@
-use crate::scratchpad_abstract::CodeCompletionScratchpad;
+use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
-// use crate::scratchpad_abstract::CodeCompletionStream;
 use crate::call_validation::CodeCompletionPost;
 use crate::call_validation::SamplingParameters;
 use std::sync::Arc;
@@ -35,7 +34,7 @@ impl SingleFileFIM {
 }
 
 
-impl CodeCompletionScratchpad for SingleFileFIM {
+impl ScratchpadAbstract for SingleFileFIM {
     fn apply_model_adaptation_patch(
         &mut self,
         patch: &serde_json::Value,
@@ -60,7 +59,7 @@ impl CodeCompletionScratchpad for SingleFileFIM {
         let limit = context_size - self.post.parameters.max_new_tokens;
         let supports_stop = true; // TODO: take from model caps
         if supports_stop {
-            let mut stop_list = vec!["<|endoftext|>".to_string(), "\n\n".to_string()];
+            let mut stop_list = vec![self.t.eot.clone(), "\n\n".to_string()];
             if !self.post.inputs.multiline {
                 stop_list.push("\n".to_string());  // This doesn't stop hf inference, only whole tokens do
             }

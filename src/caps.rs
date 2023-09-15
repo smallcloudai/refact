@@ -62,7 +62,9 @@ const HF_DEFAULT_CAPS: &str = r#"
         }
     },
     "code_chat_models": {},
-    "code_chat_default_model": ""
+    "code_chat_default_model": "",
+    "telemetry_basic_dest": "https://www.smallcloud.ai/v1/usage-stats",
+    "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback"
 }
 "#;
 
@@ -83,7 +85,6 @@ const SMC_DEFAULT_CAPS: &str = r#"
             "default_scratchpad": "FIM-PSM"
         }
     },
-    "telemetry_basic": "https://www.smallcloud.ai/v1/usage-stats",
     "code_chat_models": {},
     "code_chat_default_model": ""
 }
