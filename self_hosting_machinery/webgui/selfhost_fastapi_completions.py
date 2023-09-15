@@ -103,6 +103,19 @@ class ChatContext(NlpSamplingParams):
     function: str = Query(default="chat", regex="^([a-z0-9\.\-]+)$")
 
 
+class Embeddings(BaseModel):
+    model: str
+    files: List[Dict[str, str]]
+    is_index: bool = False
+
+    def clamp(self):
+        return {
+            "model": self.model,
+            "files": self.files,
+            "is_index": self.is_index,
+        }
+
+
 async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts):
     try:
         packets_cnt = 0
@@ -239,6 +252,33 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
         ticket.done()
 
 
+async def embeddings_streamer(ticket: Ticket, timeout, created_ts):
+    try:
+        while 1:
+            try:
+                msg: Dict = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
+                msg['choices'] = msg['choices'][0]
+                msg["files"] = [json.loads(v) for v in msg['choices']['files'].values()]
+                del msg['choices']
+            except asyncio.TimeoutError:
+                log("TIMEOUT %s" % ticket.id())
+                msg = {"status": "error", "human_readable_message": "timeout"}
+
+            tmp = json.dumps(msg)
+            yield tmp
+            log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
+            if msg.get("status", "") != "in_progress":
+                break
+
+        log(red_time(created_ts) + " /finished call %s" % ticket.id())
+        ticket.done()
+    finally:
+        if ticket.id() is not None:
+            log("   ***  CANCEL  ***  cancelling %s" % ticket.id() + red_time(created_ts))
+        ticket.cancelled = True
+        ticket.done()
+
+
 async def error_string_streamer(ticket_id, static_message, account, created_ts):
     yield "data: " + json.dumps(
         {"object": "smc.chat.chunk", "role": "assistant", "delta": static_message, "finish_reason": "END"}) + "\n\n"
@@ -260,6 +300,7 @@ class CompletionsRouter(APIRouter):
         self.add_api_route("/completions", self._completions, methods=["POST"])
         self.add_api_route("/contrast", self._contrast, methods=["POST"])
         self.add_api_route("/chat", self._chat, methods=["POST"])
+        self.add_api_route("/embeddings", self._embeddings, methods=["POST"])
         self._inference_queue = inference_queue
         self._id2ticket = id2ticket
         self._model_assigner = model_assigner
@@ -421,3 +462,27 @@ class CompletionsRouter(APIRouter):
         self._id2ticket[ticket.id()] = ticket
         await q.put(ticket)
         return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))
+
+    async def _embeddings(self, post: Embeddings, request: Request):
+        account = "XXX"
+        ticket = Ticket("embed-")
+        post.model = post.model if not post.is_index else f"{post.model}_index"
+        model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
+        if err_msg:
+            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
+            raise HTTPException(status_code=400, detail=err_msg)
+        log("%s chat model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
+
+        req = post.clamp()
+        req.update({
+            "id": ticket.id(),
+            "object": "embeddings_req",
+            "model": model_name,
+            "stream": True,
+            "created": time.time()
+        })
+        ticket.call.update(req)
+        q = self._inference_queue.model_name_to_queue(ticket, model_name, no_checks=True)
+        self._id2ticket[ticket.id()] = ticket
+        await q.put(ticket)
+        return StreamingResponse(embeddings_streamer(ticket, 240, req["created"]))

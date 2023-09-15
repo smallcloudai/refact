@@ -1,4 +1,4 @@
-from typing import Union, List, Any
+from typing import Union, List
 
 import torch.nn.functional as F
 from torch import Tensor
@@ -42,9 +42,17 @@ class GTEEmbeddingSpad:
         embeddings = F.normalize(embeddings, p=2, dim=1)
         return embeddings.tolist()
 
+    def count_tokens(self, text: str) -> int:
+        batch_dict = self._tokenizer(
+            text,
+            max_length=32_000,
+            padding=False,
+            truncation=False,
+            return_tensors='pt'
+        )
+        return batch_dict['input_ids'].shape[1]
+
 
 if __name__ == '__main__':
     gte = GTEEmbeddingSpad()
     import IPython; IPython.embed(); quit()
-
-

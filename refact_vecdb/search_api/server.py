@@ -4,7 +4,6 @@ import uvicorn
 
 from fastapi import FastAPI
 
-from refact_vecdb.search_api.daemon import VDBSearchDaemon
 from refact_vecdb.search_api.bootstrap import bootstrap
 from refact_vecdb.search_api.routers import MainRouter
 
@@ -27,10 +26,7 @@ def main():
     app.include_router(MainRouter())
 
     bootstrap(args.cassandra_host, args.cassandra_port)
-    d = VDBSearchDaemon()
-    d.spin_up()
     uvicorn.run(app, host=args.host, port=args.port, loop="uvloop", timeout_keep_alive=600)
-    d.stop()
 
 
 if __name__ == "__main__":

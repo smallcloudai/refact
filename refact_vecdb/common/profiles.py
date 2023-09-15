@@ -11,6 +11,8 @@ PROFILES = {
 
 @dataclass
 class VDBFiles:
+    train_set = "train_set.jsonl"
+    test_set = "test_set.jsonl"
     database_set = "database_set.jsonl"
     index_files_state = "index_files_state.json"
     change_provider = "change_provider.json"

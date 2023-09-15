@@ -12,7 +12,6 @@ from refact_vecdb.common.context import CONTEXT as C
 
 __all__ = ["bootstrap_keyspace"]
 
-
 os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
 
 
@@ -42,34 +41,38 @@ def create_model_class(keyspace, model_name, cols):
 models_template = {
     "file_chunks_text": {
         'id': columns.Text(primary_key=True),
-        "account": columns.Text(),
+        "account": columns.Text(partition_key=True),
         "provider": columns.Text(),
         "chunk_idx": columns.Integer(),
         "text": columns.Text(),
         "name": columns.Text(),
+        "active": columns.Boolean(default=True),
         "created_ts": columns.DateTime(default=datetime.now),
     },
     "file_chunks_embedding": {
         'id': columns.Text(primary_key=True),
-        "account": columns.Text(),
+        "account": columns.Text(partition_key=True),
         "provider": columns.Text(),
         "chunk_idx": columns.Integer(),
         "embedding": columns.List(value_type=columns.Float),
         "name": columns.Text(),
+        "active": columns.Boolean(default=True),
         "created_ts": columns.DateTime(default=datetime.now),
     },
     "files_full_text": {
         'id': columns.Text(primary_key=True),
-        "account": columns.Text(),
+        "account": columns.Text(partition_key=True),
         "chunks_cnt": columns.Integer(),
         "text": columns.Text(),
         "name": columns.Text(),
+        "active": columns.Boolean(default=True),
         "created_ts": columns.DateTime(default=datetime.now),
     },
     "accounts": {
-        "account": columns.Text(primary_key=True),
+        "account": columns.Text(primary_key=True, partition_key=True),
         "team": columns.Text(default=None),
         "provider": columns.Text(default="gte"),
+        "active": columns.Boolean(default=True),
         "created_ts": columns.DateTime(default=datetime.now),
     }
 }

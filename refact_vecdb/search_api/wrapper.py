@@ -1,5 +1,5 @@
 
-from typing import Dict, Union, Iterable, AsyncIterator, Iterator
+from typing import Dict, Union, Iterable, AsyncIterator, Iterator, Optional
 
 import requests
 import aiohttp
@@ -20,6 +20,11 @@ class VDBSearchAPI:
         return {
             'Content-Type': 'application/json',
         }
+
+    async def a_update_indexes(self, account: str, provider: Optional[str] = None) -> None:
+        async with aiohttp.ClientSession(headers=self._headers()) as session:
+            async with session.post(f'{self._url}/v1/update-indexes', json={'account': account, 'provider': provider}) as resp:
+                assert resp.status == 200, f'Error: {resp.text}'
 
     async def status(self, account: str) -> Dict:
         async with aiohttp.ClientSession(headers=self._headers()) as session:
@@ -68,6 +73,14 @@ class VDBSearchAPI:
         for chunk in response.iter_content(chunk_size=None):
             if chunk:
                 yield json.loads(chunk)
+
+    def update_indexes(self, account: str, provider: Optional[str] = None) -> None:
+        response = requests.post(
+            f'{self._url}/v1/update-indexes',
+            headers=self._headers(),
+            json={'account': account, 'provider': provider}
+        )
+        assert response.status_code == 200, f'Error: {response.text}'
 
 
 if __name__ == '__main__':

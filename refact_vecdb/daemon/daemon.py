@@ -4,7 +4,7 @@ from watchdog.observers import Observer
 
 from refact_vecdb.common.profiles import PROFILES, VDBFiles
 from refact_vecdb.common.db_models import bootstrap_keyspace
-from refact_vecdb.daemon.file_events import DataBaseSetFileHandler, WorkDirEventsHandler
+from refact_vecdb.daemon.file_events import WorkDirEventsHandler
 
 
 class VDBDaemon:
@@ -15,11 +15,6 @@ class VDBDaemon:
         bootstrap_keyspace("vecdb")
         for account, data in PROFILES.items():
             workdir = data['workdir']
-            db_set_file = workdir / VDBFiles.database_set
-            self._observer.schedule(
-                DataBaseSetFileHandler(db_set_file, account),
-                db_set_file
-            )
 
             self._observer.schedule(
                 WorkDirEventsHandler(account),

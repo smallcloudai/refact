@@ -108,7 +108,7 @@ class TabUploadRouter(APIRouter):
 
         default = {
             "which_set": "train",
-            "to_db": True,
+            "to_db": False,
         }
         for fn in sorted(os.listdir(uploaded_path)):
             result["uploaded_files"][fn] = {

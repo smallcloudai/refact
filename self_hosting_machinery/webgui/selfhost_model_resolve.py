@@ -2,6 +2,7 @@ import json
 
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery import env
+from refact_vecdb.embeds_api.embed_spads import embed_providers
 
 from typing import Tuple, List
 
@@ -41,6 +42,9 @@ def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tu
     # CONTRASTcode is default model
     if model_name in ["CONTRASTcode"]:
         model_name = ""
+
+    if model_name.replace('_index', '') in embed_providers:
+        return model_name, ""
 
     def _family(model: str) -> str:
         return model.split("/")[0]

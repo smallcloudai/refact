@@ -1,5 +1,5 @@
 
-from typing import List, Dict, Union, Iterable, AsyncIterator, Iterator
+from typing import Dict, Union, Iterable, AsyncIterator, Iterator
 
 import requests
 import aiohttp
@@ -12,7 +12,7 @@ __all__ = ['VDBEmbeddingsAPI']
 class VDBEmbeddingsAPI:
     def __init__(
             self,
-            url: str = 'http://localhost:8882'
+            url: str = 'http://localhost:8008'
     ):
         self._url = url
 
@@ -21,54 +21,46 @@ class VDBEmbeddingsAPI:
             'Content-Type': 'application/json',
         }
 
-    async def providers(self) -> List[str]:
-        async with aiohttp.ClientSession(headers=self._headers()) as session:
-            async with session.get(f'{self._url}/v1/providers') as resp:
-                assert resp.status == 200, f'Error: {resp.text}'
-                body = await resp.json()
-                return body['providers']
-
     async def a_create(
             self,
             texts: Union[Dict, Iterable[Dict]],
             provider: str,
-            is_index: str = 'False'
+            is_index: bool = False
     ) -> AsyncIterator[Dict[str, str]]:
         texts = [texts] if isinstance(texts, Dict) else list(texts)
         async with aiohttp.ClientSession(headers=self._headers()) as session:
             async with session.post(
-                f'{self._url}/v1/embed',
-                params={'provider': provider, 'is_index': str(is_index)},
-                json=texts
+                f'{self._url}/v1/embeddings',
+                json={'model': provider, 'is_index': is_index, 'files': texts},
             ) as resp:
                 assert resp.status == 200, f'Error: {resp.text}'
                 async for chunk in resp.content.iter_any():
                     if chunk:
-                        yield json.loads(chunk)
+                        for file in json.loads(chunk)['files']:
+                            yield file
 
     def create(
             self,
             texts: Union[Dict, Iterable[Dict]],
             provider: str,
-            is_index: str = 'False'
+            is_index: bool = False
     ) -> Iterator[Dict[str, str]]:
         texts = [texts] if isinstance(texts, Dict) else list(texts)
 
         response = requests.post(
-            f'{self._url}/v1/embed',
+            f'{self._url}/v1/embeddings',
             headers=self._headers(),
-            params={'provider': provider, 'is_index': str(is_index)},
-            json=texts,
+            json={'model': provider, 'is_index': is_index, 'files': texts},
             stream=True
         )
         assert response.status_code == 200, f'Error: {response.text}'
         for chunk in response.iter_content(chunk_size=None):
             if chunk:
-                yield json.loads(chunk)
+                for file in json.loads(chunk)['files']:
+                    yield file
 
 
 if __name__ == '__main__':
     api = VDBEmbeddingsAPI()
     # import IPython; IPython.embed(); quit()
-    print(list(api.create({'name': 'example', 'text': 'hello world'}, 'gte', False)))
-
+    print(list(api.create({'name': 'example', 'text': 'hello world'}, 'gte', True)))

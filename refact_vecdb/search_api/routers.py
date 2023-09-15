@@ -1,16 +1,16 @@
-import json
 import uuid
 import itertools
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 from fastapi import Response, Request
 
 from refact_vecdb.common.crud import get_account_data, update_account_data
 from refact_vecdb.common.context import CONTEXT as C
+from refact_vecdb.common.vecdb import load_vecdb
 from refact_vecdb import VDBEmbeddingsAPI
 
 
@@ -27,18 +27,39 @@ class SearchQuery(BaseModel):
     top_k: int = 3
 
 
+class UpdateIndexes(BaseModel):
+    account: str
+    provider: Optional[str] = None
+
+
 def account_exists(account: str) -> bool:
     if get_account_data(account):
         return True
     return False
 
 
+async def update_indexes(data: UpdateIndexes):
+    account = data.account
+    if data.provider:
+        account_data = get_account_data(account)
+        account_data['provider'] = data.provider
+        update_account_data(account_data)
+    load_vecdb(account)
+
+
 class MainRouter(APIRouter):
     def __init__(self, *args, **kwargs):
         super(MainRouter, self).__init__(*args, **kwargs)
+        self.add_api_route("/v1/update-indexes", self._update_indexes, methods=["POST"])
         super(MainRouter, self).add_api_route("/v1/status", self._status, methods=["POST"])
         super(MainRouter, self).add_api_route("/v1/files-stats", self._files_stats, methods=["POST"])
         super(MainRouter, self).add_api_route("/v1/search", self._search, methods=["POST"])
+
+    async def _update_indexes(self, data: UpdateIndexes, request: Request, background_tasks: BackgroundTasks):
+        account = data.account
+        if not account_exists(account):
+            return Response(status_code=200, content=f"Account {account} not found")
+        background_tasks.add_task(update_indexes, data)
 
     async def _status(self, data: StatusQuery, request: Request):
         account = data.account
@@ -46,9 +67,7 @@ class MainRouter(APIRouter):
             update_account_data({'account': account})
 
         provider = get_account_data(account).get('provider', 'gte')
-        return Response(content=json.dumps(
-            {"provider": provider})
-        )
+        return {"provider": provider}
 
     async def _files_stats(self, data: StatusQuery, request: Request):
         account = data.account
@@ -58,18 +77,16 @@ class MainRouter(APIRouter):
         session = C.c_session
 
         files_cnt = session.execute(
-            session.prepare('SELECT COUNT(*) FROM files_full_text where account = ? ALLOW FILTERING'),
+            session.prepare('SELECT COUNT(*) FROM files_full_text where account = ?'),
             [account]
         ).one()['count']
 
         chunks_cnt = session.execute(
-            session.prepare('SELECT COUNT(*) FROM file_chunks_text where account =? ALLOW FILTERING'),
+            session.prepare('SELECT COUNT(*) FROM file_chunks_text where account =?'),
             [account]
         ).one()['count']
 
-        return Response(content=json.dumps(
-            {"files_cnt": files_cnt, "chunks_cnt": chunks_cnt}
-        ))
+        return {"files_cnt": files_cnt, "chunks_cnt": chunks_cnt}
 
     async def _search(self, data: SearchQuery, request: Request):
         account = data.account
@@ -84,7 +101,7 @@ class MainRouter(APIRouter):
         async for result in vdb_api.a_create(
             texts=[{'name': str(uuid.uuid4())[:12], 'text': text} for text in data.texts],
             provider=provider,
-            is_index='False'
+            is_index=False
         ):
             embeddings.append(result['embedding'])
         ids, scores = C.vecdb[account].search(embeddings, data.top_k)
@@ -104,5 +121,4 @@ class MainRouter(APIRouter):
             for uid_batch, scores_batch in zip(ids, scores)
             for uid, score in zip(uid_batch, scores_batch)
         ]
-
-        return Response(content=json.dumps({"results": results}))
+        return {'results': results}

@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from self_hosting_machinery import env
 from refact_vecdb.common.profiles import VDBFiles
 from refact_vecdb import VDBEmbeddingsAPI, VDBSearchAPI
+from refact_vecdb.embeds_api.embed_spads import embed_providers
 
 __all__ = ['TabContextRouter']
 
@@ -41,9 +42,8 @@ class TabContextRouter(APIRouter):
         content = {}
         try:
             vdb_search_api = VDBSearchAPI()
-            vdb_embeddings_api = VDBEmbeddingsAPI()
             search_api_status = await vdb_search_api.status(self._profile_name)
-            providers = await vdb_embeddings_api.providers()
+            providers = list(embed_providers.keys())
 
             content = {
                 "status": "ok",
@@ -62,6 +62,12 @@ class TabContextRouter(APIRouter):
                 progress_text = f'{state["file_n"]}/{state["total"]}'
                 progress_val = round((state['file_n'] / state['total']) * 100)
                 content["ongoing"] = {'indexing': {'status': status, 'progress_text': progress_text, "progress_val": progress_val}}
+
+            if self._workdir.joinpath(VDBFiles.change_provider).exists():
+                if content['ongoing'].get('indexing'):
+                    if content['ongoing']['indexing'].get('status') != 'in progress':
+                        content['ongoing']['indexing']['status'] = 'scheduled'
+
         except Exception as e:
             content["status"] = str(e)
         print(f'status out: {content}')
