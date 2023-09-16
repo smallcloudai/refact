@@ -48,6 +48,15 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         self.default_system_message = patch.get("default_system_message").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
         self.t.assert_one_token(&self.t.eot.as_str())?;
+        self.local_stop_list.clear();
+        self.local_stop_list.push(self.t.eot.clone());
+        if self.token_esc.len() > 0 {
+            self.local_stop_list.push(self.token_esc.clone());
+        } else {
+            self.local_stop_list.push(self.keyword_syst.clone());
+            self.local_stop_list.push(self.keyword_user.clone());
+            self.local_stop_list.push(self.keyword_asst.clone());
+        }
         Ok(())
     }
 
@@ -65,22 +74,12 @@ impl ScratchpadAbstract for GenericChatScratchpad {
             }
             sampling_parameters_to_patch.stop = Some(stop_list);
         }
-        self.local_stop_list.clear();
-        self.local_stop_list.push(self.t.eot.clone());
-        if self.token_esc.len() > 0 {
-            self.local_stop_list.push(self.token_esc.clone());
-        } else {
-            self.local_stop_list.push(self.keyword_syst.clone());
-            self.local_stop_list.push(self.keyword_user.clone());
-            self.local_stop_list.push(self.keyword_asst.clone());
-        }
-
         let mut prompt = "".to_string();
         let mut message_token_count: Vec<usize> = vec![0; self.post.messages.len()];
         for (i, msg) in self.post.messages.iter().enumerate() {
             let cnt = 3 + self.t.count_tokens(msg.content.as_str())?;  // 3 for "\n\nASSISTANT:" kind of thing
         }
-        prompt = "USER: pygame example\n\nASSISTANT:".to_string();
+        prompt = "<empty_output>USER pygame example\n\n<empty_output>ASSISTANT".to_string();
         self.role = "assistant".to_string();
         // default_system_message
         if DEBUG {
@@ -94,31 +93,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         &mut self,
         choices: Vec<String>,
     ) -> Result<serde_json::Value, String> {
-        info!("choices: {:?}", choices);
-        // Should return:
-        //   {
-        //     "id": "chatcmpl-7yxWTrDK6x82DoFS7eVWeWmq8aXUp",
-        //     "object": "chat.completion",
-        //     "created": 1694762841,
-        //     "model": "gpt-3.5-turbo-0613",
-        //     "choices": [
-        //       {
-        //         "index": 0,
-        //         "message": {
-        //           "role": "assistant",
-        //           "content": "Hello! Sure, here's a simple test program"
-        //         },
-        //         "finish_reason": "length"
-        //       }
-        //     ],
-        //     "usage": {
-        //       "prompt_tokens": 43,
-        //       "completion_tokens": 10,
-        //       "total_tokens": 53
-        //     }
-        //   }
-        // data: {"object": "text_completion", "choices": [{"index": 0, "finish_reason": "", "role": "assistant", "delta": " be located in the same directory as the Dockerfile"}]}
-
+        // info!("choices: {:?}", choices);
         self.reply_so_far.resize(choices.len(), "".to_string());
         self.finished_so_far.resize(choices.len(), false);
         for (i, x) in choices.iter().enumerate() {
@@ -126,7 +101,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
             self.reply_so_far[i] = s.clone();
             self.finished_so_far[i] = finished;
         }
-        let tmp = self.reply_so_far.iter().enumerate()
+        let json_choices = self.reply_so_far.iter().enumerate()
             .map(|(i, x)| {
                 serde_json::json!({
                     "index": i,
@@ -137,7 +112,14 @@ impl ScratchpadAbstract for GenericChatScratchpad {
                     "finish_reason": (if self.finished_so_far[i] { "stop" } else { "length" }).to_string(),
                 })
             }).collect::<Vec<_>>();
-        return Ok(serde_json::json!(tmp));
+        return Ok(serde_json::json!(
+            {
+                "choices": json_choices,
+                "model": self.post.model.clone(),
+                // "usage": {}
+                // good format doc here: https://docs.litellm.ai/docs/completion/output
+            }
+        ));
     }
 
     fn response_streaming(
@@ -184,4 +166,3 @@ fn cut_result(
     let ans = text.split_at(cut_at).0.to_string();
     return (ans.replace("\r", ""), true);
 }
-

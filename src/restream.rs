@@ -35,7 +35,7 @@ pub async fn scratchpad_interaction_not_stream(
     bearer: Option<String>,
     parameters: &SamplingParameters,
 ) -> Result<Response<Body>, Response<Body>> {
-    let t2 = std::time::Instant::now();
+    let t2 = std::time::SystemTime::now();
     let (endpoint_style, endpoint_template) = {
         let caps_locked = caps.read().unwrap();
         (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone())
@@ -59,7 +59,7 @@ pub async fn scratchpad_interaction_not_stream(
             &parameters,
         ).await
     }.map_err(|e|
-        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_hf_endpoint: {}", e))
+        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
     )?;
     info!("forward to endpoint {:?}", t2.elapsed());
 
@@ -77,7 +77,6 @@ pub async fn scratchpad_interaction_not_stream(
                 x.get("text").unwrap().as_str().unwrap().to_string()
             }).collect::<Vec<_>>();
         scratchpad_result = scratchpad.response_n_choices(choices);
-        // TODO: "model", "finish_reason"?
 
     } else if let Some(err) = model_says.get("error") {
         return Ok(explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,
@@ -95,8 +94,10 @@ pub async fn scratchpad_interaction_not_stream(
             format!("scratchpad: {}", scratchpad_result_str))
         );
     }
+    let mut scratchpad_response_json = scratchpad_result.unwrap();
+    scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
 
-    let txt = serde_json::to_string(&scratchpad_result.unwrap()).unwrap();
+    let txt = serde_json::to_string_pretty(&scratchpad_response_json).unwrap();
     info!("handle_v1_code_completion return {}", txt);
     let response = Response::builder()
         .header("Content-Type", "application/json")
@@ -119,20 +120,31 @@ pub async fn scratchpad_interaction_stream(
         let caps_locked = caps.read().unwrap();
         (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone())
     };
-    let mut event_source = forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
-        bearer.clone(),
-        &model_name,
-        &prompt,
-        &client,
-        &endpoint_template,
-        &parameters,
-    ).await.map_err(|e|
-        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_hf_endpoint: {}", e))
+    let mut event_source = if endpoint_style == "hf" {
+        forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
+            bearer.clone(),
+            &model_name,
+            &prompt,
+            &client,
+            &endpoint_template,
+            &parameters,
+        ).await
+    } else {
+        forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(
+            bearer.clone(),
+            &model_name,
+            &prompt,
+            &client,
+            &endpoint_template,
+            &parameters,
+        ).await
+    }.map_err(|e|
+        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
     )?;
 
     let stream3 = stream! {
         let scratch = &mut scratchpad;
-        // let my_event_source = &mut event_source;
+        let mut value_str: String;
         while let Some(event) = event_source.next().await {
             match event {
                 Ok(Event::Open) => {},
@@ -145,23 +157,25 @@ pub async fn scratchpad_interaction_stream(
                         let text = token.get("text").unwrap().as_str().unwrap().to_string();
                         // info!("text: {:?}", text);
                         let (value, finished) = scratch.response_streaming(text).unwrap();
-                        let value_str = serde_json::to_string(&value).unwrap();
+                        value_str = serde_json::to_string(&value).unwrap();
                         info!("yield: {:?}", value_str);
-                        yield Result::<_, String>::Ok(format!("data: {}\n\n", value_str));
                         if finished {
                             break;
                         }
+                        yield Result::<_, String>::Ok(format!("data: {}\n\n", value_str));
                     } else {
                         info!("unrecognized response: {:?}", json);
                     }
                 },
                 Err(err) => {
-                    println!("Error: {}", err);
+                    println!("restream error: {}\n{:?}", err, err);
                     event_source.close();
                 },
             }
         }
-        info!("yield: DONE");
+        // let mut scratchpad_response_json = scratchpad_result.unwrap();
+        // scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
+        info!("yield: [DONE]");
         yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
     };
     // pin_mut!(stream3); // needed for iteration

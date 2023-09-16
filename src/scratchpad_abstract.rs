@@ -24,7 +24,7 @@ pub trait ScratchpadAbstract: Send {
 
     fn response_streaming(   // Only 1 choice, but streaming. Returns delta the user should see, and finished flag
         &mut self,
-        delta: String,
+        delta: String,       // if delta is empty, there is no more input, add final fields if needed
     ) -> Result<(serde_json::Value, bool), String>;
 }
 

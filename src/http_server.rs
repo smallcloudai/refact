@@ -154,6 +154,7 @@ async fn handle_v1_chat(
         chat_post.parameters.max_new_tokens = 2048;
     }
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(0.2));
+    chat_post.model = model_name.clone();
     let (caps, tokenizer_arc, client1) = _get_caps_and_tokenizer(
         global_context.clone(),
         bearer.clone(),

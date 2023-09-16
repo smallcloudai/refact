@@ -154,13 +154,21 @@ impl ScratchpadAbstract for SingleFileFIM {
         &mut self,
         choices: Vec<String>,
     ) -> Result<serde_json::Value, String> {
-        let tmp = choices.iter()
-            .map(|x| {
+        let json_choices = choices.iter().enumerate()
+            .map(|(i, x)| {
+                let (cc, finished) = cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
                 serde_json::json!({
-                    "code_completion": cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline).0.trim_end(),
+                    "index": i,
+                    "code_completion": cc,
+                    "finish_reason": (if finished { "stop" } else { "length" }).to_string(),
                 })
             }).collect::<Vec<_>>();
-        return Ok(serde_json::json!(tmp));
+        return Ok(serde_json::json!(
+            {
+                "choices": json_choices,
+                "model": self.post.model.clone(),
+            }
+        ));
     }
 
     fn response_streaming(
@@ -168,14 +176,32 @@ impl ScratchpadAbstract for SingleFileFIM {
         delta: String,
     ) -> Result<(serde_json::Value, bool), String> {
         info!("delta: {}", delta);
-        // let mut finished = false;
+        let mut finished = false;
         let ans: serde_json::Value;
-        let (mut s, finished) = cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
-        if finished {
-            s = s.trim_end().to_string();
+        let json_choices;
+        let no_more_input = delta.is_empty();
+        if !no_more_input {
+            let mut s: String;
+            (s, finished) = cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
+            if finished {
+                // can stay consistent with trim() only if that's the final iteration
+                s = s.trim_end().to_string();
+            }
+            json_choices = serde_json::json!([{
+                "index": 0,
+                "code_completion_delta": s,
+                "finish_reason": if finished { serde_json::Value::String("stop".to_string()) } else { serde_json::Value::Null },
+            }]);
+        } else {
+            json_choices = serde_json::json!([{
+                "index": 0,
+                "code_completion_delta": "",
+                "finish_reason": "length"
+            }]);
         }
         ans = serde_json::json!({
-            "code_completion_delta": s
+            "choices": json_choices,
+            "model": self.post.model.clone(),
         });
         Ok((ans, finished))
     }
