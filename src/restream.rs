@@ -115,7 +115,7 @@ pub async fn scratchpad_interaction_stream(
     bearer: Option<String>,
     parameters: &SamplingParameters,
 ) -> Result<Response<Body>, Response<Body>> {
-    let t1 = std::time::Instant::now();
+    let t1 = std::time::SystemTime::now();
     let (endpoint_style, endpoint_template) = {
         let caps_locked = caps.read().unwrap();
         (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone())
@@ -144,41 +144,63 @@ pub async fn scratchpad_interaction_stream(
 
     let stream3 = stream! {
         let scratch = &mut scratchpad;
-        let mut value_str: String;
+        let mut finished: bool = false;
+        let mut problem_str: String = String::new();
         while let Some(event) = event_source.next().await {
             match event {
                 Ok(Event::Open) => {},
                 Ok(Event::Message(message)) => {
                     println!("Message: {:#?}", message);
                     let json = serde_json::from_str::<serde_json::Value>(&message.data).unwrap();
-                    // info!("json: {:?}", json);
-                    if let Some(token) = json.get("token") {
-                        // info!("got token: {:?}", token);
+                    let value_str;
+                    if let Some(token) = json.get("token") { // hf style produces this
                         let text = token.get("text").unwrap().as_str().unwrap().to_string();
-                        // info!("text: {:?}", text);
-                        let (value, finished) = scratch.response_streaming(text).unwrap();
-                        value_str = serde_json::to_string(&value).unwrap();
-                        info!("yield: {:?}", value_str);
-                        if finished {
-                            break;
-                        }
-                        yield Result::<_, String>::Ok(format!("data: {}\n\n", value_str));
+                        let mut value: serde_json::Value;
+                        (value, finished) = scratch.response_streaming(text).unwrap();
+                        value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
+                        value["model"] = json!(model_name.clone());
+                        value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
+                    } else if let Some(choices) = json.get("choices") { // openai style produces this
+                        // {"finish_reason": String("eot"), "index": Number(0), "logprobs": Null, "text": String("\n  ")}], "created": Number(1694865305.199135), "model": String("smallcloudai/Refact-1_6B-fim"), }
+                        let choice0 = &choices[0];
+                        let text = choice0.get("text").unwrap().as_str().unwrap().to_string();
+                        let mut value: serde_json::Value;
+                        (value, finished) = scratch.response_streaming(text).unwrap();
+                        value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
+                        value["model"] = json!(json["model"].as_str().unwrap().to_string());
+                        value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
                     } else {
-                        info!("unrecognized response: {:?}", json);
+                        value_str = serde_json::to_string(&json!({"detail": format!("unrecognized response: {:?}", json)})).unwrap();
                     }
-                },
+                    info!("yield: {:?}", value_str);
+                    yield Result::<_, String>::Ok(format!("data: {}\n\n", value_str));
+                    if finished {
+                        break;
+                    }
+            },
                 Err(err) => {
-                    println!("restream error: {}\n{:?}", err, err);
+                    info!("restream error: {}\n{:?}", err, err);
+                    problem_str = format!("restream error: {}", err);
                     event_source.close();
                 },
             }
         }
-        // let mut scratchpad_response_json = scratchpad_result.unwrap();
-        // scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
-        info!("yield: [DONE]");
-        yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
+        if !finished && problem_str.is_empty() {
+            let mut value: serde_json::Value;
+            (value, _) = scratch.response_streaming("".to_string()).unwrap();
+            value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
+            value["model"] = json!(model_name.clone());
+            let value_str = serde_json::to_string(&value).unwrap();
+            info!("because finished yield: {:?}", value_str);
+            yield Result::<_, String>::Ok(format!("data: {}\n\n", value_str));
+        }
+        if !problem_str.is_empty() {
+            yield Result::<_, String>::Ok(serde_json::to_string(&json!({"detail": problem_str})).unwrap());
+        } else {
+            info!("yield: [DONE]\n\n");
+            yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
+        }
     };
-    // pin_mut!(stream3); // needed for iteration
 
     let response = Response::builder()
         .header("Content-Type", "application/json")
@@ -186,4 +208,3 @@ pub async fn scratchpad_interaction_stream(
         .unwrap();
     return Ok(response);
 }
-
