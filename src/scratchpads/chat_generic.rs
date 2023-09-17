@@ -152,15 +152,17 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     fn response_n_choices(
         &mut self,
         choices: Vec<String>,
+        stopped: Vec<bool>,
     ) -> Result<serde_json::Value, String> {
-        self.dd.response_n_choices(choices)
+        self.dd.response_n_choices(choices, stopped)
     }
 
     fn response_streaming(
         &mut self,
         delta: String,
+        stopped: bool,
     ) -> Result<(serde_json::Value, bool), String> {
-        self.dd.response_streaming(delta)
+        self.dd.response_streaming(delta, stopped)
     }
 }
 

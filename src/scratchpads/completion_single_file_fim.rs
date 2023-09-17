@@ -153,6 +153,7 @@ impl ScratchpadAbstract for SingleFileFIM {
     fn response_n_choices(
         &mut self,
         choices: Vec<String>,
+        stopped: Vec<bool>
     ) -> Result<serde_json::Value, String> {
         let json_choices = choices.iter().enumerate()
             .map(|(i, x)| {
@@ -174,12 +175,14 @@ impl ScratchpadAbstract for SingleFileFIM {
     fn response_streaming(
         &mut self,
         delta: String,
+        stopped: bool,
     ) -> Result<(serde_json::Value, bool), String> {
         let mut finished = false;
         let json_choices;
         if !delta.is_empty() {
             let mut s: String;
             (s, finished) = cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
+            finished |= stopped;
             if finished {
                 // can stay consistent with trim() only if that's the final iteration
                 s = s.trim_end().to_string();

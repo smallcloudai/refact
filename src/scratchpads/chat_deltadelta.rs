@@ -1,12 +1,3 @@
-use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::scratchpad_abstract::HasTokenizerAndEot;
-use crate::call_validation::ChatPost;
-use crate::call_validation::ChatMessage;
-use crate::call_validation::SamplingParameters;
-use std::sync::Arc;
-use std::sync::RwLock;
-
-use tokenizers::Tokenizer;
 use tracing::info;
 
 
@@ -35,12 +26,13 @@ impl DeltaDeltaChatStreamer {
     pub fn response_n_choices(
         &mut self,
         choices: Vec<String>,
+        stopped: Vec<bool>,
     ) -> Result<serde_json::Value, String> {
         assert!(!self.finished, "already finished");
-        info!("response_n_choices: {:?}", choices);
         let mut json_choices = Vec::<serde_json::Value>::new();
         for (i, x) in choices.iter().enumerate() {
-            let (s, finished) = cut_result(&x, &self.stop_list);
+            let (s, mut finished) = cut_result(&x, &self.stop_list);
+            finished |= stopped[i];
             json_choices.push(serde_json::json!({
                 "index": i,
                 "message": {
@@ -60,18 +52,19 @@ impl DeltaDeltaChatStreamer {
     pub fn response_streaming(
         &mut self,
         delta: String,
+        stopped: bool,
     ) -> Result<(serde_json::Value, bool), String> {
-        assert!(!self.finished, "already finished");
         // let prev_delta = self.delta2;
         self.delta2 = self.delta1.clone();
         self.delta1 = delta.clone();
-        info!("delta2 {:?} delta1 {:?}", self.delta2, self.delta1);
-        let finished;
+        let mut finished;
         let json_choices;
         if !delta.is_empty() {
-            let big_delta = self.delta1.clone() + self.delta2.as_str();
+            assert!(!self.finished, "already finished");
+            let big_delta = self.delta2.clone() + self.delta1.as_str();
             let s: String;
             (s, finished) = cut_result(&big_delta, &self.stop_list);
+            finished |= stopped;
             if finished {
                 json_choices = serde_json::json!([{
                     "index": 0,
@@ -91,6 +84,7 @@ impl DeltaDeltaChatStreamer {
                     "finish_reason": serde_json::Value::Null
                 }]);
             }
+            self.finished = finished;
         } else {
             let leftovers = self.delta2.clone();
             let s: String;

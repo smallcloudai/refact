@@ -1,3 +1,4 @@
+// use tracing::info;
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
@@ -39,6 +40,7 @@ pub async fn forward_to_openai_style_endpoint(
     let response_txt = resp.text().await.map_err(|e|
         format!("reading from socket {}: {}", url, e)
     )?;
+    // info!("forward_to_openai_style_endpoint: {} {}\n{}", url, status_code, response_txt);
     if status_code != 200 {
         return Err(format!("{} status={} text {}", url, status_code, response_txt));
     }
