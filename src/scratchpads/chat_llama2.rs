@@ -63,16 +63,7 @@ impl ScratchpadAbstract for ChatLlama2 {
     ) -> Result<String, String> {
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post, context_size, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
-        // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
-        // texts = [f'<s>[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n']
-        // # The first user input is _not_ stripped
-        // do_strip = False
-        // for user_input, response in chat_history:
-        //     user_input = user_input.strip() if do_strip else user_input
-        //     do_strip = True
-        //     texts.append(f'{user_input} [/INST] {response.strip()} </s><s>[INST] ')
-        // message = message.strip() if do_strip else message
-        // texts.append(f'{message} [/INST]')
+        // loosely adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();
         prompt.push_str(self.keyword_s.as_str());
         prompt.push_str("[INST] ");
@@ -90,7 +81,7 @@ impl ScratchpadAbstract for ChatLlama2 {
             if msg.role == "user" {
                 let user_input = if do_strip { msg.content.trim().to_string() } else { msg.content.clone() };
                 prompt.push_str(user_input.as_str());
-                prompt.push_str(" [/INST] ");
+                prompt.push_str(" [/INST]");
                 do_strip = true;
             }
             if msg.role == "assistant" {
@@ -101,6 +92,8 @@ impl ScratchpadAbstract for ChatLlama2 {
                 prompt.push_str("[INST]");
             }
         }
+        // This only supports assistant, not suggestions for user
+        self.dd.role = "assistant".to_string();
         if DEBUG {
             info!("llama2 chat prompt\n{}", prompt);
             info!("llama2 chat re-encode whole prompt again gives {} tokes", self.t.count_tokens(prompt.as_str())?);
