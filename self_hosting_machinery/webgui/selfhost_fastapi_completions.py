@@ -254,16 +254,18 @@ class CompletionsRouter(APIRouter):
             "cloud_name": "Refact Self-Hosted",
             "endpoint_template": "v1/completions",
             "endpoint_style": "openai",
-            "telemetry_basic_dest": "",
-            "running_models": self._inference_queue.models_available(),
-            "code_completion_default_model": code_completion_default_model,
-            "code_chat_default_model": "",
             "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
             "tokenizer_rewrite_path": {
                 model: self._model_assigner.models_db[model]["model_path"]
                 for model in self._inference_queue.models_available()
                 if model in self._model_assigner.models_db
             },
+            "telemetry_basic_dest": "http://localhost:8008/v1/telemetry-basic",
+            "telemetry_corrected_snippets_dest": "http://localhost:8008/v1/telemetry-snippets",
+            "code_completion_default_model": "smallcloudai/Refact-1_6B-fim",
+            "code_chat_default_model": "llama2/7b",
+            "running_models": ["smallcloudai/Refact-1_6B-fim", "llama2/7b"],
+            "endpoint_chat_passthrough": ""
         }
 
     async def _login(self):

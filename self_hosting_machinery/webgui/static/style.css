@@ -764,3 +764,36 @@ h3 {
         transform: translateX(100%);
     }
 }
+
+/* DASHBOARD */
+.dash-main-div {
+    display: grid;
+    place-items: center;
+    margin-top: 70px;
+    margin-bottom: 100px;
+}
+
+.dash-nav-item:active {
+    color: #0d6efd;
+    font-weight: bold;
+}
+
+.dusers-teams-table-col {
+}
+
+#dusers-teams-tables {
+}
+
+.dusers-teams-table td, .dusers-teams-table th {
+    padding: 5px;
+}
+
+.dash-plot-md {
+    height: 400px;
+    width: 1000px;
+}
+
+.dash-plot-sm {
+    height: 400px;
+    width: 800px;
+}
