@@ -1,6 +1,8 @@
 pub mod completion_single_file_fim;
 pub mod chat_generic;
-pub mod chat_deltadelta;
+pub mod chat_llama2;
+pub mod chat_utils_deltadelta;
+pub mod chat_utils_limit_history;
 use tokenizers::Tokenizer;
 use crate::call_validation::CodeCompletionPost;
 use crate::call_validation::ChatPost;
@@ -39,6 +41,8 @@ pub fn create_chat_scratchpad(
     let mut result: Box<dyn ScratchpadAbstract>;
     if scratchpad_name == "CHAT-GENERIC" {
         result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc, post));
+    } else if scratchpad_name == "CHAT-LLAMA2" {
+        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post));
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }

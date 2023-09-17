@@ -1,9 +1,10 @@
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
-use crate::scratchpads::chat_deltadelta::DeltaDeltaChatStreamer;
+use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::call_validation::ChatPost;
 use crate::call_validation::ChatMessage;
 use crate::call_validation::SamplingParameters;
+use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -23,9 +24,6 @@ pub struct GenericChatScratchpad {
     pub keyword_user: String,
     pub keyword_asst: String,
     pub default_system_message: String,
-    pub role: String,
-    pub reply_so_far: Vec<String>,
-    pub finished_so_far: Vec<bool>,
 }
 
 impl GenericChatScratchpad {
@@ -42,65 +40,9 @@ impl GenericChatScratchpad {
             keyword_user: "".to_string(),
             keyword_asst: "".to_string(),
             default_system_message: "".to_string(),
-            role: "".to_string(),
-            reply_so_far: vec![],
-            finished_so_far: vec![]
         }
     }
 }
-
-// PLAN 1 HOUR:
-// + 1. History with tokens calc (function)
-//   2. Streamer delta-delta class
-//   3. Two classes with prompt() and glue
-// => working llama2 chat AND refact chat
-// 12:40
-
-
-pub fn limit_messages_history(
-    t: &HasTokenizerAndEot,
-    post: &ChatPost,
-    context_size: usize,
-    default_system_mesage: String,
-) -> Result<Vec<ChatMessage>, String>
-{
-    let tokens_limit: i32 = context_size as i32 - post.parameters.max_new_tokens as i32;
-    let mut tokens_used: i32 = 0;
-    let mut message_token_count: Vec<i32> = vec![0; post.messages.len()];
-    let mut message_take: Vec<bool> = vec![false; post.messages.len()];
-    let mut have_system = false;
-    for (i, msg) in post.messages.iter().enumerate() {
-        let tcnt = (3 + t.count_tokens(msg.content.as_str())?) as i32;  // 3 for role "\n\nASSISTANT:" kind of thing
-        message_token_count[i] = tcnt;
-        if i==0 && msg.role == "system" {
-            message_take[i] = true;
-            tokens_used += tcnt;
-            have_system = true;
-        }
-    }
-    if !have_system {
-        let tcnt = default_system_mesage.len() as i32;
-        tokens_used += tcnt;
-    }
-    for i in (0..post.messages.len()).rev() {
-        let tcnt = message_token_count[i];
-        if !message_take[i] {
-            if tokens_used + tcnt < tokens_limit {
-                message_take[i] = true;
-                tokens_used += tcnt;
-            }
-        }
-    }
-    let mut messages_out: Vec<ChatMessage> = post.messages.iter().enumerate().filter(|(i, x)| message_take[*i]).map(|(_, x)| x.clone()).collect();
-    if !have_system {
-        messages_out.insert(0, ChatMessage {
-            role: "system".to_string(),
-            content: default_system_mesage.clone(),
-        });
-    }
-    Ok(messages_out)
-}
-
 
 impl ScratchpadAbstract for GenericChatScratchpad {
     fn apply_model_adaptation_patch(
@@ -131,21 +73,40 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let limit = context_size - self.post.parameters.max_new_tokens;
-        let mut stop_list = vec![self.t.eot.clone()];
-        if self.token_esc.len() > 0 {
-            stop_list.push(self.token_esc.clone());
-        }
-        sampling_parameters_to_patch.stop = Some(stop_list);
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post, context_size, &self.default_system_message)?;
+        sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
+        // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();
-        prompt = "<empty_output>USER pygame example\n\n<empty_output>ASSISTANT".to_string();
-        self.role = "assistant".to_string();
-        // default_system_message
+        let mut last_role = "assistant".to_string();
+        for msg in limited_msgs {
+            if self.token_esc.len() > 0 {
+                prompt.push_str(self.token_esc.as_str());
+                if msg.role == "system" {
+                    prompt.push_str(self.keyword_syst.as_str());
+                } else if msg.role == "user" {
+                    prompt.push_str(self.keyword_user.as_str());
+                } else if msg.role == "assistant" {
+                    prompt.push_str(self.keyword_asst.as_str());
+                } else {
+                    return Err(format!("role \"{}\"not recognized", msg.role));
+                }
+                last_role = msg.role.clone();
+            }
+            prompt.push_str(" ");
+            prompt.push_str(msg.content.as_str());
+            prompt.push_str("\n\n");
+        }
+        if last_role == "assistant" || last_role == "system" {
+            self.dd.role = "user".to_string();
+            prompt.push_str(self.keyword_user.as_str());
+        } else if last_role == "user" {
+            self.dd.role = "assistant".to_string();
+            prompt.push_str(self.keyword_asst.as_str());
+        }
         if DEBUG {
             info!("chat prompt\n{}", prompt);
             info!("chat re-encode whole prompt again gives {} tokes", self.t.count_tokens(prompt.as_str())?);
         }
-        self.dd.role = self.role.clone();
         Ok(prompt)
     }
 

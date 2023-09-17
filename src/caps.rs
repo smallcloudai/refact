@@ -93,19 +93,11 @@ const KNOWN_MODELS: &str = r#"
         "llama2/7b": {
             "n_ctx": 4096,
             "supports_scratchpads": {
-                "CHAT-GENERIC": {
-                    "system_pref": "<<SYS>>\n",
-                    "system_suff": "\n<</SYS>>\n\n",
-                    "user_pref": "[INST]\n",
-                    "user_suff": "\n[/INST]\n\n",
-                    "assistant_pref": "",
-                    "assistant_suff": "\n\n",
-                    "stop_list": ["[/INST", "</s>"],
-                    "eot": "",
+                "CHAT-LLAMA2": {
                     "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
                 }
             },
-            "default_scratchpad": "CHAT-GENERIC",
+            "default_scratchpad": "CHAT-LLAMA2",
             "similar_models": ["llama2/13b"]
         }
     }
@@ -251,7 +243,7 @@ pub fn which_scratchpad_to_use<'a>(
         return Ok((take_this_one.to_string(), scratchpad_patch));
     } else {
         return Err(format!(
-            "Scratchpad '{}' not found. This rust binary supports these scratchpads: {:?}",
+            "Scratchpad '{}' not found. The model supports these scratchpads: {:?}",
             take_this_one,
             scratchpads.keys()
         ));

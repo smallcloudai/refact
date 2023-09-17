@@ -160,7 +160,7 @@ pub async fn scratchpad_interaction_stream(
             match event {
                 Ok(Event::Open) => {},
                 Ok(Event::Message(message)) => {
-                    // info!("Message: {:#?}", message);
+                    info!("Message: {:#?}", message);
                     if message.data.starts_with("[DONE]") {
                         break;
                     }
