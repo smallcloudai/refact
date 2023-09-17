@@ -1,5 +1,6 @@
 pub mod completion_single_file_fim;
 pub mod chat_generic;
+pub mod chat_deltadelta;
 use tokenizers::Tokenizer;
 use crate::call_validation::CodeCompletionPost;
 use crate::call_validation::ChatPost;

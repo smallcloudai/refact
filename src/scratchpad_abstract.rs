@@ -44,12 +44,12 @@ impl HasTokenizerAndEot {
     pub fn count_tokens(
         &self,
         text: &str,
-    ) -> Result<usize, String> {
+    ) -> Result<i32, String> {
         let tokenizer = self.tokenizer.write().unwrap();
         let tokens = tokenizer.encode(text, false).map_err(|err| {
             return format!("Encoding error: {}", err);
         })?;
-        Ok(tokens.len())
+        Ok(tokens.len() as i32)
     }
 
     pub fn assert_one_token(

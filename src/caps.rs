@@ -81,12 +81,9 @@ const KNOWN_MODELS: &str = r#"
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
                     "token_esc": "<empty_output>",
-                    "system_pref": "SYSTEM",
-                    "system_suff": "\n\n",
-                    "user_pref": "USER",
-                    "user_suff": "\n\n",
-                    "assistant_pref": "ASSISTANT",
-                    "assistant_suff": "\n\n",
+                    "keyword_system": "SYSTEM",
+                    "keyword_user": "USER",
+                    "keyword_assistant": "ASSISTANT",
                     "stop_list": ["<empty_output>"],
                     "default_system_message": "You are a programming assistant."
                 }
@@ -103,7 +100,8 @@ const KNOWN_MODELS: &str = r#"
                     "user_suff": "\n[/INST]\n\n",
                     "assistant_pref": "",
                     "assistant_suff": "\n\n",
-                    "stop_list": ["[/INST"],
+                    "stop_list": ["[/INST", "</s>"],
+                    "eot": "",
                     "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
                 }
             },

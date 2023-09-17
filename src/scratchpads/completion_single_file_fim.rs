@@ -56,7 +56,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let limit = context_size - self.post.parameters.max_new_tokens;
+        let limit: i32 = context_size as i32 - self.post.parameters.max_new_tokens as i32;
         let supports_stop = true; // TODO: take from model caps
         if supports_stop {
             let mut stop_list = vec![self.t.eot.clone(), "\n\n".to_string()];

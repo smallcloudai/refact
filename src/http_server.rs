@@ -46,7 +46,7 @@ async fn _get_caps_and_tokenizer(
             {
                 // To avoid deadlocks, in all other places locks must be in the same order
                 let caps_locked = cx_locked.caps.read().unwrap();
-                let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).ok_or_else(|| { model_name.clone() }).unwrap();
+                let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).unwrap_or(&model_name);
                 http_path = caps_locked.tokenizer_path_template.replace("$MODEL", rewritten_model_name);();
             }
             cached_tokenizers::download_tokenizer_file(&client2, http_path.as_str(), bearer.clone(), &path).await?;
