@@ -1,5 +1,5 @@
+import logging
 import traceback
-import traces
 from typing import Dict, List
 
 import numpy as np
@@ -7,7 +7,6 @@ import numpy as np
 from code_contrast.format_2023q2 import format, packing
 from code_contrast.format_2023q2.el_msg import MsgElement
 from code_contrast.format_2023q2.element import Format2023q2
-from code_contrast.format_2023q2.from_orig_dest_message import from_odm_dict
 from refact_data_pipeline import DatasetOpts
 from refact_encoding.encoding import RefactEncoding
 
@@ -46,8 +45,8 @@ class Chat2023Q2:
             for key, val in odm.items():
                 msg += f"    {repr(key)}: {repr(val)},\n"
             msg += "}"
-            traces.log(msg)
-            traces.log(traceback.format_exc())
+            logging.error(msg)
+            logging.error(traceback.format_exc())
             stats["chatskip_failed"] += 1
             return None
         first = [1] + [0] * (len(pack.r) - 1)

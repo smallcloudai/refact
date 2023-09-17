@@ -224,12 +224,12 @@ def models_to_watchdog_configs(inference_config=None):
 def first_run():
     default_config = {
         "model_assign": {
-            "CONTRASTcode/3b/multi":  {
+            "Refact/1.6B":  {
                 'gpus_shard': 1,
                 'share_gpu': False,
             }
         },
-        "completion": "CONTRASTcode/3b/multi",
+        "completion": "Refact/1.6B",
         "openai_api_enable": False,
     }
     models_to_watchdog_configs(default_config)

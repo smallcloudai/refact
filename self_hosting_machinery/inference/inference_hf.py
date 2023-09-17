@@ -172,13 +172,13 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
 
     def _dump_embeddings(self):
         try:
-            from refact_data_pipeline.finetune.finetune_config import MODELS_CONFIGS
+            from refact_data_pipeline.finetune import supported_models
         except ImportError:
             raise ImportError("please install refact_data_pipeline")
-        if self._model_name not in MODELS_CONFIGS:
+        if self._model_name not in supported_models.config:
             logging.getLogger("MODEL").error(f"Skipping embeddings dumping for the model {self._model_name}")
             return
-        model_cfg = MODELS_CONFIGS[self._model_name]
+        model_cfg = supported_models.config[self._model_name]
         emb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["wte"])
         unemb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["lm_head"])
         torch.save(emb, f"{self.cache_dir}/{self._model_dir}/emb")
@@ -186,11 +186,11 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
 
     def load_embeddings(self):
         try:
-            from refact_data_pipeline.finetune.finetune_config import MODELS_CONFIGS
+            from refact_data_pipeline.finetune import supported_models
         except ImportError:
             raise ImportError("please install refact_data_pipeline")
 
-        model_cfg = MODELS_CONFIGS[self._model_name]
+        model_cfg = supported_models.config[self._model_name]
         emb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["wte"])
         unemb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["lm_head"])
 

@@ -14,10 +14,10 @@ from pathlib import Path
 from jsonlines import jsonlines
 from torchinfo import summary
 
-from refact_data_pipeline.finetune import traces
+from refact_data_pipeline.finetune import traces, supported_models
 from refact_data_pipeline import DatasetOpts, finetune_datasource
 from refact_data_pipeline.datautils import BatchIterator
-from refact_data_pipeline.finetune.finetune_config import base_config, ConfigBuilder, MODELS_CONFIGS
+from refact_data_pipeline.finetune.finetune_config import base_config, ConfigBuilder
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
 from refact_data_pipeline.finetune.model_handling import make_model, masked_loss, save_model_state, model_forward, \
     setup_encoding
@@ -68,7 +68,7 @@ def save_status_json(status_dict, status_string):
 
 def load_finetune_config() -> Dict[str, Any]:
     def _get_ds_len_per_epoch(model_name, cfg_builder):
-        model_config = MODELS_CONFIGS[model_name]
+        model_config = supported_models.config[model_name]
         ds_opts = DatasetOpts(model_config["train_ds_pipeline"]["ds_opts"].format(
             n_ctx=cfg_builder.cfg['model_info']['ctx_size'] + 1
         ) + ",quit_on_epoch=1")
@@ -127,7 +127,7 @@ def load_finetune_config() -> Dict[str, Any]:
 
 
 def create_data(model_name, cfg, enc) -> Tuple[Any, Optional[Any]]:
-    model_config = MODELS_CONFIGS[model_name]
+    model_config = supported_models.config[model_name]
     train_dataopts = DatasetOpts(model_config["train_ds_pipeline"]["ds_opts"].format(
         n_ctx=cfg['model_info']['ctx_size'] + 1
     ))
@@ -181,7 +181,7 @@ def loop(
             traces.log("saving checkpoint %s" % tag)
             save_model_state(model, save_path=save_path, tag=tag)
 
-    model_config = MODELS_CONFIGS[model_name]
+    model_config = supported_models.config[model_name]
     save_path = os.path.join(traces.context().path, "checkpoints")
     model.train()
     test_ds_fn = partial(BatchIterator, dataopts=dict(
@@ -200,7 +200,7 @@ def loop(
     save_status_json(status_dict, "starting")
     low_gpu_mem_mode = cfg['low_gpu_mem_mode'] or model_config['force_enable_checkpointing']
     forward = partial(model_forward, model=model, backend=backend)
-    early_stop = EarlyStopper(patience=20)
+    early_stop = EarlyStopper(patience=int(cfg['train_iters'] * 0.2))
     for iter_n in range(cfg['train_iters'] + 1):  # +1 so we can save 100 (not 99)
         t0_iter = time.time()
         traces.progress("iteration", iter_n)
@@ -249,7 +249,7 @@ def loop(
         if test_ds is not None and cfg["test_every"] > 0 and iter_n % cfg["test_every"] == 0:
             model.eval()
             with th.inference_mode():
-                test_loss = None
+                test_losses = []
                 for batch, _ in test_ds_fn(test_ds):
                     logits = forward(input=batch['input'], low_gpu_mem_mode=low_gpu_mem_mode)
                     test_loss = loss_function(
@@ -258,7 +258,8 @@ def loop(
                         mask=batch['mask'],
                     )
                     traces.progress('test_loss', test_loss)
-                if test_loss is not None and early_stop(test_loss):
+                    test_losses.append(test_loss)
+                if len(test_losses) > 0 and early_stop(sum(test_losses) / len(test_losses)):
                     traces.log(f"Stopping the training due to "
                                f"test loss was above minimum {early_stop.counter} times")
                     _save_checkpoint(force=True)

@@ -37,7 +37,7 @@ def _random_trim_context(
     if len(lines) < min_rows:
         return text
 
-    p1 = _softmax([np.log(len(lines) - i) ** 2  for i in range(len(lines))])
+    p1 = _softmax([np.log(len(lines) - i) ** 2 for i in range(len(lines))])
     p2 = list(reversed(p1))
     lines_indexes = list(range(len(lines)))
     cursor_1 = random.choice(lines_indexes, p=p1)
@@ -203,7 +203,7 @@ class EmptyMiddle:
         return prefix, middle, suffix
 
 
-class NewFIM:
+class FIMv2:
     def __init__(
             self,
             inner_filter,

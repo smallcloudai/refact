@@ -5,7 +5,7 @@ from pathlib import Path
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from refact_data_pipeline.finetune.finetune_config import MODELS_CONFIGS
+from refact_data_pipeline.finetune import supported_models
 from refact_encoding import RefactEncoding
 
 import torch as th
@@ -123,7 +123,7 @@ def setup_encoding(
         weights_path: str,
         repo_id: str
 ):
-    model_config = MODELS_CONFIGS[model_name]
+    model_config = supported_models.config[model_name]
     if "tokenizer" in model_config:
         encoding = AutoTokenizer.from_pretrained(
             repo_id, cache_dir=weights_path,
@@ -187,8 +187,8 @@ def setup_model_specific_params(
         freeze_exceptions: List[str],
         lora_target_modules: List[str]
 ) -> Tuple[List[str], List[str]]:
-    assert model_name in MODELS_CONFIGS
-    model_config = MODELS_CONFIGS[model_name]
+    assert model_name in supported_models.config
+    model_config = supported_models.config[model_name]
     freeze_exceptions = [model_config["freeze_exceptions_mapping"][e] for e in freeze_exceptions]
     lora_target_modules_mapping = [m for modules in lora_target_modules
                                    for m in model_config["lora_target_modules_mapping"][modules]]
@@ -228,7 +228,7 @@ def make_model(
         model = CodifyModel.from_pretrained(
             weights_path, device=init_device, repo_id=repo_id
         ).to(dtype)
-        _apply_model_modifiers(model, MODELS_CONFIGS[model_name]['train_model_modifiers'])
+        _apply_model_modifiers(model, supported_models.config[model_name]['train_model_modifiers'])
     elif backend == "transformers":
         model = AutoModelForCausalLM.from_pretrained(
             repo_id, cache_dir=weights_path,
@@ -236,7 +236,7 @@ def make_model(
             trust_remote_code=True
         )
         model.encoding = encoding
-        _apply_model_modifiers(model, MODELS_CONFIGS[model_name]['train_model_modifiers'])
+        _apply_model_modifiers(model, supported_models.config[model_name]['train_model_modifiers'])
     else:
         raise ValueError("Unknown backend")
 

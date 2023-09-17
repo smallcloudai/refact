@@ -2,7 +2,7 @@ import os
 import jsonlines
 import random
 
-from refact_data_pipeline.filters_new_fim import NewFIM
+from refact_data_pipeline.filters_fim_v2 import FIMv2
 from refact_encoding import RefactEncoding
 from refact_encoding import hlprint
 from refact_data_pipeline import filters_synthetic
@@ -117,7 +117,7 @@ def local_fim(fn_set_jsonl, dataopts):
     fixed_seed_random.shuffle(js)
     ds = ReadFileByFile(js, dataopts)
     ds = pp.SplitRanks(ds, dataopts, commrank=rank, commsize=size)   # this drops some of the data {"code": ...} at each rank
-    ds = NewFIM(ds, dataopts)
+    ds = FIMv2(ds, dataopts)
     ds = pp.DensePacker(ds, dataopts)
     ds = pp.Shuffle(ds, dataopts)
     return iter(ds)
