@@ -26,7 +26,6 @@ async fn _get_caps_and_tokenizer(
     bearer: Option<String>,
     model_name: String,
 ) -> Result<(Arc<StdRwLock<CodeAssistantCaps>>, Arc<StdRwLock<Tokenizer>>, reqwest::Client), String> {
-    let tokenizer_arc: Arc<StdRwLock<Tokenizer>>;
     let caps: Arc<StdRwLock<CodeAssistantCaps>>;
     let client1: reqwest::Client;
     let mut cx_locked = global_context.write().await;
@@ -34,13 +33,29 @@ async fn _get_caps_and_tokenizer(
     let client2 = cx_locked.http_client.clone();
     caps = cx_locked.caps.clone();
     let cache_dir = cx_locked.cache_dir.clone();
-    tokenizer_arc = cached_tokenizers::get_tokenizer(
-        &mut cx_locked.tokenizer_map,
-        &model_name,
-        client2,
-        &cache_dir,
-        bearer.clone(),
-    ).await?;
+    let tokenizer_arc = match cx_locked.tokenizer_map.get(&model_name) {
+        Some(arc) => arc.clone(),
+        None => {
+            let tokenizer_cache_dir = std::path::PathBuf::from(cache_dir); //.join("tokenizers");
+            tokio::fs::create_dir_all(&tokenizer_cache_dir)
+                .await
+                .expect("failed to create cache dir");
+            let path = tokenizer_cache_dir.join(model_name.clone()).join("tokenizer.json");
+            // Download it while it's locked, so another download won't start.
+            let http_path;
+            {
+                // To avoid deadlocks, in all other places locks must be in the same order
+                let caps_locked = cx_locked.caps.read().unwrap();
+                let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).ok_or_else(|| { model_name.clone() }).unwrap();
+                http_path = caps_locked.tokenizer_path_template.replace("$MODEL", rewritten_model_name);();
+            }
+            cached_tokenizers::download_tokenizer_file(&client2, http_path.as_str(), bearer.clone(), &path).await?;
+            let tokenizer = Tokenizer::from_file(path).map_err(|e| format!("failed to load tokenizer: {}", e))?;
+            let arc = Arc::new(StdRwLock::new(tokenizer));
+            cx_locked.tokenizer_map.insert(model_name.clone(), arc.clone());
+            arc
+        }
+    };
     Ok((caps, tokenizer_arc, client1))
 }
 

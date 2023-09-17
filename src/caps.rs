@@ -28,8 +28,12 @@ pub struct CodeAssistantCaps {
     pub cloud_name: String,
     pub endpoint_template: String,
     pub endpoint_style: String,
+    pub tokenizer_path_template: String,
+    pub tokenizer_rewrite_path: HashMap<String, String>,
+    #[serde(default)]
     pub code_completion_models: HashMap<String, ModelRecord>,
     pub code_completion_default_model: String,
+    #[serde(default)]
     pub code_chat_models: HashMap<String, ModelRecord>,
     pub code_chat_default_model: String,
 }
@@ -89,7 +93,7 @@ const KNOWN_MODELS: &str = r#"
             },
             "default_scratchpad": "CHAT-GENERIC"
         },
-        "Llama2": {
+        "llama2/7b": {
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
@@ -103,7 +107,8 @@ const KNOWN_MODELS: &str = r#"
                     "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
                 }
             },
-            "default_scratchpad": "CHAT-GENERIC"
+            "default_scratchpad": "CHAT-GENERIC",
+            "similar_models": ["llama2/13b"]
         }
     }
 }
@@ -117,7 +122,9 @@ const HF_DEFAULT_CAPS: &str = r#"
     "code_completion_default_model": "bigcode/starcoder",
     "code_chat_default_model": "",
     "telemetry_basic_dest": "https://www.smallcloud.ai/v1/usage-stats",
-    "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback"
+    "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback",
+    "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json"
+    "tokenizer_rewrite_path": {}
 }
 "#;
 
@@ -128,6 +135,8 @@ const SMC_DEFAULT_CAPS: &str = r#"
     "endpoint_style": "openai",
     "code_completion_default_model": "smallcloudai/Refact-1_6B-fim",
     "code_chat_default_model": "smallcloudai/Refact-1_6B-fim"
+    "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
+    "tokenizer_rewrite_path": {}
 }
 "#;
 
@@ -176,14 +185,27 @@ pub async fn load_recommendations(
             r1.code_completion_models.insert(k.to_string(), r0.code_completion_models[k].clone());
         }
     }
+    for k in r0.code_chat_models.keys() {
+        if !r1.code_chat_models.contains_key(k) {
+            r1.code_chat_models.insert(k.to_string(), r0.code_chat_models[k].clone());
+        }
+    }
     // clone "similar_models"
-    let model_keys_copy = r1.code_completion_models.keys().cloned().collect::<Vec<String>>();
-    for model_key in model_keys_copy {
-        let model_rec = r1.code_completion_models[&model_key].clone();
+    let ccmodel_keys_copy = r1.code_completion_models.keys().cloned().collect::<Vec<String>>();
+    for k in ccmodel_keys_copy {
+        let model_rec = r1.code_completion_models[&k].clone();
         for similar_model in model_rec.similar_models.iter() {
             r1.code_completion_models.insert(similar_model.to_string(), model_rec.clone());
         }
     }
+    let chatmodel_keys_copy = r1.code_chat_models.keys().cloned().collect::<Vec<String>>();
+    for k in chatmodel_keys_copy {
+        let model_rec = r1.code_chat_models[&k].clone();
+        for similar_model in model_rec.similar_models.iter() {
+            r1.code_chat_models.insert(similar_model.to_string(), model_rec.clone());
+        }
+    }
+    // endpoint_template
     if !r1.endpoint_template.starts_with("http") {
         let joined_url = Url::parse(&cmdline.address_url.clone())
             .and_then(|base_url| base_url.join(&r1.endpoint_template))
@@ -192,9 +214,9 @@ pub async fn load_recommendations(
         info!("endpoint_template relative path: {}", &r1.endpoint_template);
     }
     info!("caps {} completion models", r1.code_completion_models.len());
-    info!("caps default completion model: {}", r1.code_completion_default_model);
+    info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
     info!("caps {} chat models", r1.code_chat_models.len());
-    info!("caps default chat model: {}", r1.code_chat_default_model);
+    info!("caps default chat model: \"{}\"", r1.code_chat_default_model);
     Ok(Arc::new(StdRwLock::new(r1)))
 }
 
