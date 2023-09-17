@@ -10,7 +10,7 @@ from self_hosting_machinery import env
 from typing import Any, Dict, Optional, Callable
 
 
-default_finetune_model = "CONTRASTcode/3b/multi"
+default_finetune_model = "Refact/1.6B"
 
 
 def get_run_model_name(run_dir: str) -> str:

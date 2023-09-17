@@ -40,7 +40,7 @@ all_refact_packages = {
                   "cdifflib", "ujson", "zstandard", "scipy", "deepspeed==0.9.2",
                   "peft", "einops", "mpi4py", "matplotlib", "transformers",
                   "triton==2.0.0.post1", "torchinfo", "giturlparse", "jsonlines",
-                  "binpacking", "filelock", "tables"],
+                  "binpacking", "filelock", "tables", "pygments", "kshingle"],
         requires_packages=["refact_encoding", "code_contrast", "self_hosting_machinery",
                            "refact_models"],
         data=["git_command.exp"],

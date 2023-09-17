@@ -1,6 +1,5 @@
 import re
 from collections import Counter
-from string import ascii_letters
 from typing import Optional, List
 
 from kshingle import shingleseqs_list
@@ -16,6 +15,7 @@ class TheStackFilter:
     ):
         self.inner_filter = inner_filter
         self.dataopts = dataopts
+        self.use_comments_filter = bool(dataopts.get("use_comments_filter", 0))
         self.word_splitter = re.compile(r'[\s,;!.\\/=:?\-><]+')
         self.excluded_languages = {'Text', 'Jupyter Notebook', 'TeX'}
 
@@ -73,12 +73,13 @@ class TheStackFilter:
         if '<?xml version=' in text[:100]:
             return "xml_tag"
 
-        # try:
-        #     comments_ratio = get_nl_ratio(text, language.lower())
-        #     if comments_ratio > 0.9:
-        #         return "too_high_comments_ratio"
-        # except Exception as e:
-        #     print(e)
+        if self.use_comments_filter:
+            try:
+                comments_ratio = get_nl_ratio(text, language.lower())
+                if comments_ratio > 0.9:
+                    return "too_high_comments_ratio"
+            except Exception as e:
+                print(e)
 
         return None
 
