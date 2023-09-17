@@ -1,4 +1,3 @@
-use tracing::info;
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
@@ -30,7 +29,6 @@ pub async fn forward_to_openai_style_endpoint(
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
     });
-    info!("sending data {:?}", data);
     let req = client.post(&url)
        .headers(headers)
        .body(data.to_string())
@@ -61,7 +59,6 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     if let Some(t) = bearer {
         headers.insert(AUTHORIZATION, HeaderValue::from_str(t.as_str()).unwrap());
     }
-    info!("Headers: {:?}", headers);
     let data = json!({
         "model": model_name,
         "prompt": prompt,

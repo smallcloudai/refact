@@ -181,7 +181,6 @@ async fn handle_v1_chat(
     // info!("chat prompt {:?}\n{}", t1.elapsed(), prompt);
     info!("chat prompt {:?}", t1.elapsed());
     let streaming = chat_post.stream.unwrap_or(false);
-    info!("streaming={}", streaming);
     if streaming {
         crate::restream::scratchpad_interaction_stream(caps, scratchpad, &prompt, model_name, client1, bearer, &chat_post.parameters).await
     } else {

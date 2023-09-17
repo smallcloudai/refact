@@ -175,12 +175,9 @@ impl ScratchpadAbstract for SingleFileFIM {
         &mut self,
         delta: String,
     ) -> Result<(serde_json::Value, bool), String> {
-        info!("delta: {}", delta);
         let mut finished = false;
-        let ans: serde_json::Value;
         let json_choices;
-        let no_more_input = delta.is_empty();
-        if !no_more_input {
+        if !delta.is_empty() {
             let mut s: String;
             (s, finished) = cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
             if finished {
@@ -199,9 +196,8 @@ impl ScratchpadAbstract for SingleFileFIM {
                 "finish_reason": "length"
             }]);
         }
-        ans = serde_json::json!({
+        let ans = serde_json::json!({
             "choices": json_choices,
-            "model": self.post.model.clone(),
         });
         Ok((ans, finished))
     }

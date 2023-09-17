@@ -34,12 +34,14 @@ pub struct CodeAssistantCaps {
     pub code_chat_default_model: String,
 }
 
-const HF_DEFAULT_CAPS: &str = r#"
+#[derive(Debug, Deserialize)]
+pub struct ModelsOnly {
+    pub code_completion_models: HashMap<String, ModelRecord>,
+    pub code_chat_models: HashMap<String, ModelRecord>,
+}
+
+const KNOWN_MODELS: &str = r#"
 {
-    "cloud_name": "Hugging Face",
-    "endpoint_template": "https://api-inference.huggingface.co/models/$MODEL",
-    "endpoint_style": "hf",
-    "code_completion_default_model": "bigcode/starcoder",
     "code_completion_models": {
         "bigcode/starcoder": {
             "n_ctx": 4096,
@@ -49,7 +51,16 @@ const HF_DEFAULT_CAPS: &str = r#"
                 "FIM-SPM": {}
             },
             "default_scratchpad": "FIM-PSM",
-            "similar_models": ["bigcode/starcoderbase", "smallcloudai/Refact-1_6B-fim"]
+            "similar_models": ["bigcode/starcoderbase"]
+        },
+        "smallcloudai/Refact-1_6B-fim": {
+            "n_ctx": 4096,
+            "supports_stop": true,
+            "supports_scratchpads": {
+                "FIM-PSM": {},
+                "FIM-SPM": {}
+            },
+            "default_scratchpad": "FIM-PSM"
         },
         "codellama/CodeLlama-13b-hf": {
             "n_ctx": 4096,
@@ -57,11 +68,53 @@ const HF_DEFAULT_CAPS: &str = r#"
             "supports_scratchpads": {
                 "FIM-PSM": {"prefix_token": "<PRE>", "suffix_token": "<SUF>", "middle_token": "<MID>", "eot_token": "<EOT>"}
             },
-            "default_scratchpad": "FIM-PSM",
-            "similar_models": []
+            "default_scratchpad": "FIM-PSM"
         }
     },
-    "code_chat_models": {},
+    "code_chat_models": {
+        "smallcloudai/Refact-1_6B-fim": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {
+                    "token_esc": "<empty_output>",
+                    "system_pref": "SYSTEM",
+                    "system_suff": "\n\n",
+                    "user_pref": "USER",
+                    "user_suff": "\n\n",
+                    "assistant_pref": "ASSISTANT",
+                    "assistant_suff": "\n\n",
+                    "stop_list": ["<empty_output>"],
+                    "default_system_message": "You are a programming assistant."
+                }
+            },
+            "default_scratchpad": "CHAT-GENERIC"
+        },
+        "Llama2": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {
+                    "system_pref": "<<SYS>>\n",
+                    "system_suff": "\n<</SYS>>\n\n",
+                    "user_pref": "[INST]\n",
+                    "user_suff": "\n[/INST]\n\n",
+                    "assistant_pref": "",
+                    "assistant_suff": "\n\n",
+                    "stop_list": ["[/INST"],
+                    "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
+                }
+            },
+            "default_scratchpad": "CHAT-GENERIC"
+        }
+    }
+}
+"#;
+
+const HF_DEFAULT_CAPS: &str = r#"
+{
+    "cloud_name": "Hugging Face",
+    "endpoint_template": "https://api-inference.huggingface.co/models/$MODEL",
+    "endpoint_style": "hf",
+    "code_completion_default_model": "bigcode/starcoder",
     "code_chat_default_model": "",
     "telemetry_basic_dest": "https://www.smallcloud.ai/v1/usage-stats",
     "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback"
@@ -74,26 +127,6 @@ const SMC_DEFAULT_CAPS: &str = r#"
     "endpoint_template": "https://inference.smallcloud.ai/v1/completions",
     "endpoint_style": "openai",
     "code_completion_default_model": "smallcloudai/Refact-1_6B-fim",
-    "code_completion_models": {
-        "smallcloudai/Refact-1_6B-fim": {
-            "n_ctx": 4096,
-            "supports_stop": true,
-            "supports_scratchpads": {
-                "FIM-PSM": {},
-                "FIM-SPM": {}
-            },
-            "default_scratchpad": "FIM-PSM"
-        }
-    },
-    "code_chat_models": {
-        "smallcloudai/Refact-1_6B-fim": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-GENERIC": {"token_esc": "<empty_output>", "keyword_system": "SYSTEM", "keyword_user": "USER", "keyword_assistant": "ASSISTANT", "default_system_message": "You are a programming assistant."}
-            },
-            "default_scratchpad": "CHAT-GENERIC"
-        }
-    },
     "code_chat_default_model": "smallcloudai/Refact-1_6B-fim"
 }
 "#;
@@ -129,26 +162,40 @@ pub async fn load_recommendations(
         }
     }
     info!("reading caps from {}", report_url);
-    let mut r: CodeAssistantCaps = serde_json::from_str(&buffer).map_err(|e|
-        format!("failed to parse {}: {}", report_url, e)
-    )?;
-    let model_keys_copy = r.code_completion_models.keys().cloned().collect::<Vec<String>>();
-    for model_key in model_keys_copy {
-        let model_rec = r.code_completion_models[&model_key].clone();
-        for similar_model in model_rec.similar_models.iter() {
-            r.code_completion_models.insert(similar_model.to_string(), model_rec.clone());
+    let r0: ModelsOnly = serde_json::from_str(&KNOWN_MODELS).map_err(|e| {
+        let up_to_line = KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
+        format!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e)
+    })?;
+    let mut r1: CodeAssistantCaps = serde_json::from_str(&buffer).map_err(|e| {
+        let up_to_line = buffer.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
+        format!("{}\nfailed to parse {}: {}", up_to_line, report_url, e)
+    })?;
+    // inherit models from r0, only if not already present in r1
+    for k in r0.code_completion_models.keys() {
+        if !r1.code_completion_models.contains_key(k) {
+            r1.code_completion_models.insert(k.to_string(), r0.code_completion_models[k].clone());
         }
     }
-    if !r.endpoint_template.starts_with("http") {
-        let joined_url = Url::parse(&cmdline.address_url.clone())
-            .and_then(|base_url| base_url.join(&r.endpoint_template))
-            .map_err(|_| format!("failed to join URL \"{}\" and possibly relative \"{}\"", &cmdline.address_url, &r.endpoint_template))?;
-        r.endpoint_template = joined_url.to_string();
-        info!("endpoint_template relative path: {}", &r.endpoint_template);
+    // clone "similar_models"
+    let model_keys_copy = r1.code_completion_models.keys().cloned().collect::<Vec<String>>();
+    for model_key in model_keys_copy {
+        let model_rec = r1.code_completion_models[&model_key].clone();
+        for similar_model in model_rec.similar_models.iter() {
+            r1.code_completion_models.insert(similar_model.to_string(), model_rec.clone());
+        }
     }
-    info!("caps completion models: {:?}", r.code_completion_models.keys().collect::<Vec<_>>());
-    info!("caps chat models: {:?}", r.code_chat_models.keys().collect::<Vec<_>>());
-    Ok(Arc::new(StdRwLock::new(r)))
+    if !r1.endpoint_template.starts_with("http") {
+        let joined_url = Url::parse(&cmdline.address_url.clone())
+            .and_then(|base_url| base_url.join(&r1.endpoint_template))
+            .map_err(|_| format!("failed to join URL \"{}\" and possibly relative \"{}\"", &cmdline.address_url, &r1.endpoint_template))?;
+        r1.endpoint_template = joined_url.to_string();
+        info!("endpoint_template relative path: {}", &r1.endpoint_template);
+    }
+    info!("caps {} completion models", r1.code_completion_models.len());
+    info!("caps default completion model: {}", r1.code_completion_default_model);
+    info!("caps {} chat models", r1.code_chat_models.len());
+    info!("caps default chat model: {}", r1.code_chat_default_model);
+    Ok(Arc::new(StdRwLock::new(r1)))
 }
 
 pub fn which_model_to_use<'a>(
@@ -164,7 +211,7 @@ pub fn which_model_to_use<'a>(
         return Ok((take_this_one.to_string(), model_rec));
     } else {
         return Err(format!(
-            "Model '{}' not found. This rust binary supports these models: {:?}",
+            "Model '{}' not found. Server has these models: {:?}",
             take_this_one,
             models.keys()
         ));

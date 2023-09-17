@@ -80,7 +80,12 @@ pub async fn scratchpad_interaction_not_stream(
 
     } else if let Some(err) = model_says.get("error") {
         return Ok(explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,
-            format!("model says: {:?}", err)
+            format!("model says: {}", err)
+        ));
+
+    } else if let Some(msg) = model_says.get("human_readable_message") {
+        return Ok(explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,
+            format!("model says: {}", msg)
         ));
 
     } else {
@@ -142,7 +147,7 @@ pub async fn scratchpad_interaction_stream(
         explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
     )?;
 
-    let stream3 = stream! {
+    let evstream = stream! {
         let scratch = &mut scratchpad;
         let mut finished: bool = false;
         let mut problem_str: String = String::new();
@@ -175,16 +180,17 @@ pub async fn scratchpad_interaction_stream(
                     } else {
                         value_str = serde_json::to_string(&json!({"detail": format!("unrecognized response: {:?}", json)})).unwrap();
                     }
-                    info!("yield: {:?}", value_str);
+                    // info!("yield: {:?}", value_str);
                     yield Result::<_, String>::Ok(value_str);
                     if finished {
                         break;
                     }
-            },
+                },
                 Err(err) => {
                     info!("restream error: {}\n{:?}", err, err);
                     problem_str = format!("restream error: {}", err);
                     event_source.close();
+                    break;
                 },
             }
         }
@@ -197,16 +203,15 @@ pub async fn scratchpad_interaction_stream(
             value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
             value["model"] = json!(model_name.clone());
             let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
-            info!("final yield: {:?}", value_str);
+            // info!("final yield: {:?}", value_str);
             yield Result::<_, String>::Ok(value_str);
         }
-        info!("yield: [DONE]\n\n");
         yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
     };
 
     let response = Response::builder()
         .header("Content-Type", "application/json")
-        .body(Body::wrap_stream(stream3))
+        .body(Body::wrap_stream(evstream))
         .unwrap();
     return Ok(response);
 }
