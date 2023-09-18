@@ -34,11 +34,9 @@ const CAPS_BACKGROUND_RELOAD: u64 = 3600;  // seconds
 pub async fn caps_background_reload(
     global_context: Arc<ARwLock<GlobalContext>>,
 ) -> () {
-    let cmdline = CommandLine::from_args();
     loop {
-        tokio::time::sleep(std::time::Duration::from_secs(CAPS_BACKGROUND_RELOAD)).await;
         let caps_result = crate::caps::load_recommendations(
-            cmdline.clone()
+            CommandLine::from_args()
         ).await;
         match caps_result {
             Ok(caps) => {
@@ -50,6 +48,7 @@ pub async fn caps_background_reload(
                 error!("failed to load caps: {}", e);
             }
         }
+        tokio::time::sleep(std::time::Duration::from_secs(CAPS_BACKGROUND_RELOAD)).await;
     }
 }
 
@@ -91,10 +90,6 @@ pub async fn create_global_context(
     home_dir: PathBuf,
 ) -> Result<Arc<ARwLock<GlobalContext>>, String> {
     let cmdline = CommandLine::from_args();
-    // let caps_result = crate::caps::load_recommendations(
-    //     cmdline.clone()
-    // ).await;
-    // let caps_option = caps_result.ok().map_or(None, |x| Some(x));
     let cache_dir = home_dir.join(".cache/refact");
     info!("cache dir: {}", cache_dir.display());
     let cx = GlobalContext {
