@@ -1,10 +1,8 @@
-use tracing::info;
-
-
 #[derive(Debug)]
 pub struct DeltaDeltaChatStreamer {
     // This class helps chat implementations to stop at two-token phrases (at most) when streaming,
     // by delaying output by 1 token.
+    // (the problem is the naive approach would have already sent the first token to the user, instead of stopping)
     pub delta1: String,
     pub delta2: String,
     pub finished: bool,

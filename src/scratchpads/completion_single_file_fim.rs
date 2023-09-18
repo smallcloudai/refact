@@ -157,7 +157,8 @@ impl ScratchpadAbstract for SingleFileFIM {
     ) -> Result<serde_json::Value, String> {
         let json_choices = choices.iter().enumerate()
             .map(|(i, x)| {
-                let (cc, finished) = cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
+                let (cc, mut finished) = cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
+                finished |= stopped[i];
                 serde_json::json!({
                     "index": i,
                     "code_completion": cc,
