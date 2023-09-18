@@ -1,4 +1,4 @@
-use tracing::info;
+use tracing::{info, error};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -24,6 +24,31 @@ pub struct GlobalContext {
     pub tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
     pub caps: Arc<StdRwLock<CodeAssistantCaps>>,
     pub cmdline: CommandLine,
+}
+
+
+const CAPS_RELOAD_EACH: u64 = 3600;  // seconds
+
+pub async fn reload_caps(
+    global_context: Arc<ARwLock<GlobalContext>>,
+) -> () {
+    let cmdline = CommandLine::from_args();
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(CAPS_RELOAD_EACH)).await;
+        let caps_result = crate::caps::load_recommendations(
+            cmdline.clone()
+        ).await;
+        match caps_result {
+            Ok(caps) => {
+                let mut global_context_locked = global_context.write().await;
+                global_context_locked.caps = caps;
+                info!("reload caps successful");
+            },
+            Err(e) => {
+                error!("failed to load caps: {}", e);
+            }
+        }
+    }
 }
 
 pub async fn create_global_context(
