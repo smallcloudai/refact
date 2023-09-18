@@ -19,9 +19,9 @@ __all__ = ["ModelAssigner"]
 class ModelGroup:
     model_assign: Dict[str, Dict] = field(default_factory=dict)
 
-    def required_memory_mb(self) -> int:
+    def required_memory_mb(self, models_db: Dict[str, Any]) -> int:
         return sum(
-            models_mini_db[model_name].get("required_memory_mb", 0)
+            models_db[model_name].get("required_memory_mb", 0)
             for model_name in self.model_assign.keys()
         )
 
@@ -33,11 +33,19 @@ class ModelGroup:
 
 class ModelAssigner:
 
+    @property
+    def models_db(self) -> Dict[str, Any]:
+        return models_mini_db
+
+    @property
+    def models_caps_db(self) -> List:
+        return modelcap_records.db
+
     def _model_assign_to_groups(self, model_assign: Dict[str, Dict]) -> List[ModelGroup]:
         model_groups: List[ModelGroup] = []
         shared_group = ModelGroup()
         for model_name, assignment in model_assign.items():
-            if model_name not in models_mini_db.keys():
+            if model_name not in self.models_db.keys():
                 log(f"unknown model '{model_name}', skipping")
                 continue
             if assignment["gpus_shard"] not in [1, 2, 4]:
@@ -90,7 +98,7 @@ class ModelAssigner:
                         del model_cfg_j["unfinished"]
                         json.dump(model_cfg_j, f, indent=4)
             for _ in range(model_group.gpus_shard()):
-                if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb():
+                if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb(self.models_db):
                     required_memory_exceed_available = True
                 cursor += 1
         log("required_memory_exceed_available %d" % required_memory_exceed_available)
@@ -175,14 +183,14 @@ class ModelAssigner:
         def _capabilities(func_type: str) -> Set:
             return {
                 capability
-                for func in modelcap_records.db
+                for func in self.models_caps_db
                 for capability in func.model
                 if func.type == func_type
             }
 
         chat_caps = _capabilities("chat")
         toolbox_caps = _capabilities("toolbox")
-        for k, rec in models_mini_db.items():
+        for k, rec in self.models_db.items():
             if rec.get("hidden", False):
                 continue
             info.append({
@@ -202,6 +210,6 @@ class ModelAssigner:
             j = {"model_assign": {}}
         j["model_assign"] = {
             model: v for model, v in j["model_assign"].items()
-            if model in models_mini_db
+            if model in self.models_db
         }
         return j

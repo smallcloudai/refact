@@ -4,7 +4,6 @@ import time
 import signal
 import socket
 
-from known_models_db.refact_known_models import models_mini_db
 from refact_scratchpads_no_gpu.stream_results import infserver_session
 from refact_scratchpads_no_gpu.stream_results import validate_description_dict
 from refact_scratchpads_no_gpu.stream_results import UploadProxy
@@ -13,13 +12,15 @@ from refact_scratchpads_no_gpu.stream_results import completions_wait_batch
 from self_hosting_machinery.inference import InferenceLegacy
 from self_hosting_machinery.inference import InferenceHF
 
+from typing import Dict, Any
+
 
 quit_flag = False
 log = logging.getLogger("MODEL").info
 
 
-def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
-    if model_name not in models_mini_db:
+def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
+    if model_name not in models_db:
         log(f"STATUS model \"{model_name}\" not found")
         if compile:
             return
@@ -30,13 +31,11 @@ def worker_loop(model_name: str, cpu: bool, load_lora: str, compile: bool):
         raise RuntimeError(f"unknown model \"{model_name}\"")
     log("STATUS loading model")
 
-    model_dict = models_mini_db[model_name]
+    model_dict = models_db[model_name]
     if "backend" not in model_dict:
         inference_model = InferenceLegacy(
             model_name=model_name,
-            model_dict=model_dict,
-            force_cpu=cpu,
-            load_lora=load_lora)
+            model_dict=model_dict)
     else:
         inference_model = InferenceHF(
             model_name=model_name,
@@ -113,11 +112,10 @@ def catch_sigkill(signum, frame):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
+    from known_models_db.refact_known_models import models_mini_db
 
     parser = ArgumentParser()
     parser.add_argument("--model", type=str)
-    parser.add_argument("--cpu", action="store_true")
-    parser.add_argument("--load-lora")
     parser.add_argument("--compile", action="store_true", help="download and compile triton kernels, quit")
     args = parser.parse_args()
 
@@ -129,4 +127,4 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGUSR1, catch_sigkill)
 
-    worker_loop(args.model, args.cpu, args.load_lora, compile=args.compile)
+    worker_loop(args.model, models_mini_db, compile=args.compile)

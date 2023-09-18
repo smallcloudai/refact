@@ -49,7 +49,7 @@ def save_status_json(status_dict, status_string):
         traces.log("(no big deal, will try again next iteration)")
 
 
-def load_finetune_config() -> Dict[str, Any]:
+def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
     def _get_ds_len_per_epoch(cfg_builder):
         ds_opts = DatasetOpts(f"n_ctx={cfg_builder.cfg['model_info']['ctx_size'] + 1},"
                               f"pack_at_most=1,quit_on_epoch=1,seed=42")
@@ -69,7 +69,7 @@ def load_finetune_config() -> Dict[str, Any]:
         initial_loss = json.load(f)["avg_loss"]
 
     user_cfg = get_finetune_config(logger=traces.log)
-    cfg_builder = ConfigBuilder(base_config(user_cfg['model_name']))
+    cfg_builder = ConfigBuilder(base_config(user_cfg['model_name'], models_db))
     if user_cfg['use_heuristics']:
         traces.log("Retrieving dataset length per epoch, it may take a while...")
         ds_len = _get_ds_len_per_epoch(cfg_builder)
@@ -251,10 +251,10 @@ def loop(
             logging.info("finished iteration %d, train_loss=%0.3f" % (iter_n, progress["loss"]))
 
 
-def finetune(status_dict):
+def finetune(status_dict, models_db: Dict[str, Any]):
     logging.info("starting finetune at %s" % traces.context().path)
     logging.info("STATUS finetune init")
-    cfg = load_finetune_config()
+    cfg = load_finetune_config(models_db)
     traces.log("creating model...")
     t0 = time.time()
     model = make_model(
@@ -297,7 +297,7 @@ def finetune(status_dict):
     logging.info("finished finetune at %s" % traces.context().path)
 
 
-def main():
+def main(models_db: Dict[str, Any]):
     status_dict = {
         "started_ts": time.time(),
         "worked_steps": 0,
@@ -316,7 +316,7 @@ def main():
     signal.signal(signal.SIGUSR1, catch_sigusr1)
     try:
         save_status_json(status_dict, "working")
-        finetune(status_dict)
+        finetune(status_dict, models_db)
         save_status_json(status_dict, "finished")
     except BaseException as e:  # BaseException includes KeyboardInterrupt
         if "error" not in status_dict:  # if there is, a more detailed error is already in place
@@ -330,6 +330,8 @@ def main():
 
 
 if __name__ == "__main__":
+    from known_models_db.refact_known_models import models_mini_db
+
     YMD_hms = os.environ.get("LORA_LOGDIR", "") or time.strftime("lora-%Y%m%d-%H%M%S")
     traces.configure(task_dir="loras", task_name=YMD_hms, work_dir=env.PERMDIR)
-    main()
+    main(models_mini_db)

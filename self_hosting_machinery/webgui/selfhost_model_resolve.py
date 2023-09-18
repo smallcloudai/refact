@@ -1,6 +1,5 @@
 import json
 
-from known_models_db.refact_known_models import models_mini_db
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery import env
 
@@ -13,11 +12,8 @@ def completion_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]
     with open(env.CONFIG_INFERENCE, 'r') as f:
         completion_model = json.load(f).get("completion", None)
 
-    # NOTE: if user nave old config, we resolve first available completion model
     if completion_model is None:
-        for model in have_models:
-            if model in models_mini_db and "completion" in models_mini_db[model]["filter_caps"]:
-                return model, ""
+        return "", f"completion model is not setted"
 
     if completion_model not in have_models:
         return "", f"model is not loaded (1)"

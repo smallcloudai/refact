@@ -2,7 +2,6 @@ import os
 import json
 import time
 
-from known_models_db.refact_known_models import models_mini_db
 from refact_data_pipeline.finetune.finetune_train_defaults import finetune_train_defaults
 
 from self_hosting_machinery import env
@@ -63,7 +62,7 @@ def get_finetune_runs():
     return res, anyone_works
 
 
-def get_active_loras() -> Dict[str, Dict[str, Any]]:
+def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     active_loras = {}
     if os.path.exists(env.CONFIG_ACTIVE_LORA):
         active_loras = json.load(open(env.CONFIG_ACTIVE_LORA))
@@ -76,7 +75,7 @@ def get_active_loras() -> Dict[str, Dict[str, Any]]:
             "lora_mode": "latest-best",
             **active_loras.get(model_name, {}),
         }
-        for model_name, model_info in models_mini_db.items()
+        for model_name, model_info in models_db.items()
         if "finetune" in model_info["filter_caps"]
     }
 

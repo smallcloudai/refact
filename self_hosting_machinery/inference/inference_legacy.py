@@ -4,7 +4,6 @@ import torch
 import logging
 import time
 import traceback
-import json
 
 from collections import defaultdict
 
@@ -19,7 +18,6 @@ from self_hosting_machinery.scripts import best_lora
 from refact_models.checkpoint_loader import load_finetune_checkpoint
 from refact_models.checkpoint_loader import load_finetune_checkpoint_only
 from refact_models.checkpoint_loader import load_checkpoint_embeddings
-from known_models_db.refact_known_models import models_mini_db
 
 from self_hosting_machinery.inference import modload
 from self_hosting_machinery.inference import InferenceBase
@@ -307,17 +305,14 @@ class InferenceLegacy(InferenceBase):
             log("using lora %s" % lora_checkpoint_dir)
 
     def lora_switch_according_to_config(self):
-        if self._model_name not in models_mini_db:
-            raise RuntimeError(f"Unknown model {self._model_name}, try to update repo")
-        model_info = models_mini_db[self._model_name]
-        if "finetune" not in model_info.get("filter_caps", []):
+        if "finetune" not in self._model_dict.get("filter_caps", []):
             log(f"Model {self._model_name} does not support finetune")
             self.lora_switch(lora_checkpoint_dir="")
             return
 
-        active_loras = get_active_loras()
-        assert self._model_name in active_loras
-        cfg = active_loras[self._model_name]
+        cfg = get_active_loras({
+            self._model_name: self._model_dict
+        })[self._model_name]
         # {
         #     "lora_mode": "specific",
         #     "specific_lora_run_id": "lora-20230614-164840",

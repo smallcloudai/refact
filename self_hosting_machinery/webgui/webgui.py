@@ -61,11 +61,19 @@ class WebGUI(FastAPI):
             model_assigner: ModelAssigner):
         return [
             PluginsRouter(),
-            CompletionsRouter(prefix="/v1", id2ticket=id2ticket, inference_queue=inference_queue),
-            GPURouter(prefix="/infengine-v1", id2ticket=id2ticket, inference_queue=inference_queue),
+            CompletionsRouter(
+                prefix="/v1",
+                id2ticket=id2ticket,
+                inference_queue=inference_queue,
+                model_assigner=model_assigner),
+            GPURouter(
+                prefix="/infengine-v1",
+                id2ticket=id2ticket,
+                inference_queue=inference_queue),
             TabServerLogRouter(),
             TabUploadRouter(),
-            TabFinetuneRouter(),
+            TabFinetuneRouter(
+                models_db=model_assigner.models_db),
             TabHostRouter(model_assigner),
             TabSettingsRouter(model_assigner),
             StaticRouter(),

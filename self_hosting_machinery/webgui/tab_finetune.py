@@ -5,7 +5,6 @@ import json
 import os
 import re
 import asyncio
-from typing import Optional
 
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response, StreamingResponse, JSONResponse
@@ -21,6 +20,8 @@ from refact_data_pipeline.finetune.finetune_train_defaults import finetune_train
 from self_hosting_machinery import env
 
 from pydantic import BaseModel
+
+from typing import Optional, Dict, Any
 
 
 __all__ = ["TabFinetuneRouter"]
@@ -93,7 +94,7 @@ class TabFinetuneTrainingSetup(BaseModel):
 
 class TabFinetuneRouter(APIRouter):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, models_db: Dict[str, Any], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
@@ -109,6 +110,7 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-smart-filter-get", self._tab_finetune_smart_filter_get, methods=["GET"])
         self.add_api_route("/tab-finetune-training-setup", self._tab_finetune_training_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
+        self._models_db = models_db
 
     async def _tab_finetune_get(self):
         finetune_step = get_finetune_step()
@@ -134,7 +136,7 @@ class TabFinetuneRouter(APIRouter):
             },
             "filter_working_now": finetune_step == "filter",
             "finetune_working_now": finetune_step == "finetune",
-            "active": get_active_loras(),
+            "active": get_active_loras(self._models_db),
             "finetune_latest_best": best_lora.find_best_lora(config["model_name"]),
         }
         return Response(json.dumps(result, indent=4) + "\n")
@@ -238,7 +240,7 @@ class TabFinetuneRouter(APIRouter):
         return JSONResponse("OK")
 
     async def _tab_finetune_activate(self, activate: TabFinetuneActivate):
-        active_loras = get_active_loras()
+        active_loras = get_active_loras(self._models_db)
         active_loras[activate.model] = activate.dict()
         with open(env.CONFIG_ACTIVE_LORA, "w") as f:
             json.dump(active_loras, f, indent=4)
