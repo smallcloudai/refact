@@ -28,7 +28,7 @@ async fn main() {
         return;
     };
     let global_context = global_context_maybe.unwrap();
-    tokio::spawn(global_context::reload_caps(global_context.clone()));
+    tokio::spawn(global_context::caps_background_reload(global_context.clone()));
 
     let server = http_server::start_server(global_context);
     let server_result = server.await;

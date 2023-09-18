@@ -199,6 +199,9 @@ pub async fn scratchpad_interaction_stream(
                         // "restream error: Stream ended"
                         break;
                     }
+                    // UGLY: with status 400 Bad Request that goes here, there is no way to access response text that might explain
+                    // what's wrong, for example {\"detail\":\"model is not loaded (3)\"}"
+                    // Or is there?
                     info!("restream error: {}\n{:?}", err, err);
                     problem_str = format!("restream error: {}", err);
                     event_source.close();

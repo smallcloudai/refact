@@ -1,4 +1,4 @@
-use tracing::info;
+use tracing::{info, error};
 use serde::Deserialize;
 use serde::Serialize;
 use std::fs::File;
@@ -36,6 +36,7 @@ pub struct CodeAssistantCaps {
     #[serde(default)]
     pub code_chat_models: HashMap<String, ModelRecord>,
     pub code_chat_default_model: String,
+    pub running_models: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -118,14 +119,15 @@ const HF_DEFAULT_CAPS: &str = r#"
     "cloud_name": "Hugging Face",
     "endpoint_template": "https://api-inference.huggingface.co/models/$MODEL",
     "endpoint_style": "hf",
+    "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
+    "tokenizer_rewrite_path": {
+        "meta-llama/Llama-2-70b-chat-hf": "TheBloke/Llama-2-70B-fp16"
+    },
     "code_completion_default_model": "bigcode/starcoder",
     "code_chat_default_model": "",
     "telemetry_basic_dest": "https://www.smallcloud.ai/v1/usage-stats",
     "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback",
-    "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
-    "tokenizer_rewrite_path": {
-        "meta-llama/Llama-2-70b-chat-hf": "TheBloke/Llama-2-70B-fp16"
-    }
+    "running_models": ["bigcode/starcoder", "meta-llama/Llama-2-70b-chat-hf"]
 }
 "#;
 
@@ -135,9 +137,10 @@ const SMC_DEFAULT_CAPS: &str = r#"
     "endpoint_template": "https://inference.smallcloud.ai/v1/completions",
     "endpoint_style": "openai",
     "code_completion_default_model": "smallcloudai/Refact-1_6B-fim",
-    "code_chat_default_model": "smallcloudai/Refact-1_6B-fim"
+    "code_chat_default_model": "smallcloudai/Refact-1_6B-fim",
     "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
-    "tokenizer_rewrite_path": {}
+    "tokenizer_rewrite_path": {},
+    "running_models": ["smallcloudai/Refact-1_6B-fim"]
 }
 "#;
 
@@ -164,7 +167,7 @@ pub async fn load_recommendations(
         let joined_url = base_url.join(&CAPS_FILENAME).map_err(|_| "failed to parse address url (2)".to_string())?;
         report_url = joined_url.to_string();
         let http_client = reqwest::Client::new();
-        let response = http_client.get(joined_url).send().await.map_err(|e| format!("Failed to send request: {}", e))?;
+        let response = http_client.get(joined_url).send().await.map_err(|e| format!("{}", e))?;
         let status = response.status().as_u16();
         buffer = response.text().await.map_err(|e| format!("failed to read response: {}", e))?;
         if status != 200 {
@@ -174,20 +177,22 @@ pub async fn load_recommendations(
     info!("reading caps from {}", report_url);
     let r0: ModelsOnly = serde_json::from_str(&KNOWN_MODELS).map_err(|e| {
         let up_to_line = KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
-        format!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e)
+        error!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e);
+        format!("failed to parse KNOWN_MODELS: {}", e)
     })?;
     let mut r1: CodeAssistantCaps = serde_json::from_str(&buffer).map_err(|e| {
         let up_to_line = buffer.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
-        format!("{}\nfailed to parse {}: {}", up_to_line, report_url, e)
+        error!("{}\nfailed to parse {}: {}", up_to_line, report_url, e);
+        format!("failed to parse {}: {}", report_url, e)
     })?;
     // inherit models from r0, only if not already present in r1
     for k in r0.code_completion_models.keys() {
-        if !r1.code_completion_models.contains_key(k) {
+        if !r1.code_completion_models.contains_key(k) && r1.running_models.contains(k) {
             r1.code_completion_models.insert(k.to_string(), r0.code_completion_models[k].clone());
         }
     }
     for k in r0.code_chat_models.keys() {
-        if !r1.code_chat_models.contains_key(k) {
+        if !r1.code_chat_models.contains_key(k) && r1.running_models.contains(k) {
             r1.code_chat_models.insert(k.to_string(), r0.code_chat_models[k].clone());
         }
     }

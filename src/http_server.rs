@@ -26,12 +26,11 @@ async fn _get_caps_and_tokenizer(
     bearer: Option<String>,
     model_name: String,
 ) -> Result<(Arc<StdRwLock<CodeAssistantCaps>>, Arc<StdRwLock<Tokenizer>>, reqwest::Client), String> {
-    let caps: Arc<StdRwLock<CodeAssistantCaps>>;
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
     let client1: reqwest::Client;
     let mut cx_locked = global_context.write().await;
     client1 = cx_locked.http_client.clone();
     let client2 = cx_locked.http_client.clone();
-    caps = cx_locked.caps.clone();
     let cache_dir = cx_locked.cache_dir.clone();
     let tokenizer_arc = match cx_locked.tokenizer_map.get(&model_name) {
         Some(arc) => arc.clone(),
@@ -45,7 +44,7 @@ async fn _get_caps_and_tokenizer(
             let http_path;
             {
                 // To avoid deadlocks, in all other places locks must be in the same order
-                let caps_locked = cx_locked.caps.read().unwrap();
+                let caps_locked = caps.read().unwrap();
                 let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).unwrap_or(&model_name);
                 http_path = caps_locked.tokenizer_path_template.replace("$MODEL", rewritten_model_name);();
             }
@@ -63,13 +62,13 @@ async fn _lookup_code_completion_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     code_completion_post: &CodeCompletionPost,
 ) -> Result<(String, String, serde_json::Value), String> {
-    let cx = global_context.read().await;
-    let rec = cx.caps.read().unwrap();
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
+    let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
         caps::which_model_to_use(
-            &rec.code_completion_models,
+            &caps_locked.code_completion_models,
             &code_completion_post.model,
-            &rec.code_completion_default_model,
+            &caps_locked.code_completion_default_model,
         )?;
     let (sname, patch) = caps::which_scratchpad_to_use(
         &recommended_model_record.supports_scratchpads,
@@ -83,13 +82,13 @@ async fn _lookup_chat_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     chat_post: &ChatPost,
 ) -> Result<(String, String, serde_json::Value), String> {
-    let cx = global_context.read().await;
-    let rec = cx.caps.read().unwrap();
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
+    let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
         caps::which_model_to_use(
-            &rec.code_chat_models,
+            &caps_locked.code_chat_models,
             &chat_post.model,
-            &rec.code_chat_default_model,
+            &caps_locked.code_chat_default_model,
         )?;
     let (sname, patch) = caps::which_scratchpad_to_use(
         &recommended_model_record.supports_scratchpads,
@@ -206,9 +205,15 @@ async fn handle_v1_chat(
 async fn handle_v1_caps(
     global_context: Arc<ARwLock<GlobalContext>>,
 ) -> Response<Body> {
-    let cx = global_context.read().await;
-    let caps = cx.caps.read().unwrap();
-    let body = json!(*caps).to_string();
+    let caps_result = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await;
+    let caps = match caps_result {
+        Ok(x) => x,
+        Err(e) => {
+            return explain_whats_wrong(StatusCode::SERVICE_UNAVAILABLE, format!("{}", e));
+        }
+    };
+    let caps_locked = caps.read().unwrap();
+    let body = json!(*caps_locked).to_string();
     let response = Response::builder()
         .header("Content-Type", "application/json")
         .body(Body::from(body))
