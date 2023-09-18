@@ -99,6 +99,15 @@ const KNOWN_MODELS: &str = r#"
             },
             "default_scratchpad": "CHAT-LLAMA2",
             "similar_models": ["llama2/13b"]
+        },
+        "meta-llama/Llama-2-70b-chat-hf": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "CHAT-LLAMA2": {
+                    "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
+                }
+            },
+            "default_scratchpad": "CHAT-LLAMA2"
         }
     }
 }
@@ -113,8 +122,10 @@ const HF_DEFAULT_CAPS: &str = r#"
     "code_chat_default_model": "",
     "telemetry_basic_dest": "https://www.smallcloud.ai/v1/usage-stats",
     "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback",
-    "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json"
-    "tokenizer_rewrite_path": {}
+    "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
+    "tokenizer_rewrite_path": {
+        "meta-llama/Llama-2-70b-chat-hf": "TheBloke/Llama-2-70B-fp16"
+    }
 }
 "#;
 

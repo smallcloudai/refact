@@ -53,6 +53,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         self.t.assert_one_token(&self.t.eot.as_str())?;
         self.dd.stop_list.clear();
         self.dd.stop_list.push(self.t.eot.clone());
+        self.dd.stop_list.push(self.keyword_slash_s.clone());
         Ok(())
     }
 

@@ -156,6 +156,7 @@ pub async fn scratchpad_interaction_stream(
         let scratch = &mut scratchpad;
         let mut finished: bool = false;
         let mut problem_str: String = String::new();
+        let mut was_correct_output_even_if_error = false;
         while let Some(event) = event_source.next().await {
             match event {
                 Ok(Event::Open) => {},
@@ -173,6 +174,7 @@ pub async fn scratchpad_interaction_stream(
                         value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
                         value["model"] = json!(model_name.clone());
                         value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
+                        was_correct_output_even_if_error |= json.get("generated_text").is_some();
                     } else if let Some(choices) = json.get("choices") { // openai style
                         let choice0 = &choices[0];
                         let text = choice0.get("text").unwrap().as_str().unwrap().to_string();
@@ -193,6 +195,10 @@ pub async fn scratchpad_interaction_stream(
                     }
                 },
                 Err(err) => {
+                    if was_correct_output_even_if_error {
+                        // "restream error: Stream ended"
+                        break;
+                    }
                     info!("restream error: {}\n{:?}", err, err);
                     problem_str = format!("restream error: {}", err);
                     event_source.close();
