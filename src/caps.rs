@@ -187,12 +187,12 @@ pub async fn load_recommendations(
     })?;
     // inherit models from r0, only if not already present in r1
     for k in r0.code_completion_models.keys() {
-        if !r1.code_completion_models.contains_key(k) && r1.running_models.contains(k) {
+        if !r1.code_completion_models.contains_key(k) {
             r1.code_completion_models.insert(k.to_string(), r0.code_completion_models[k].clone());
         }
     }
     for k in r0.code_chat_models.keys() {
-        if !r1.code_chat_models.contains_key(k) && r1.running_models.contains(k) {
+        if !r1.code_chat_models.contains_key(k) {
             r1.code_chat_models.insert(k.to_string(), r0.code_chat_models[k].clone());
         }
     }
@@ -211,6 +211,8 @@ pub async fn load_recommendations(
             r1.code_chat_models.insert(similar_model.to_string(), model_rec.clone());
         }
     }
+    r1.code_completion_models = r1.code_completion_models.into_iter().filter(|(k, _)| r1.running_models.contains(&k)).collect();
+    r1.code_chat_models = r1.code_chat_models.into_iter().filter(|(k, _)| r1.running_models.contains(&k)).collect();
     // endpoint_template
     if !r1.endpoint_template.starts_with("http") {
         let joined_url = Url::parse(&cmdline.address_url.clone())
