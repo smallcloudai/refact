@@ -54,6 +54,10 @@ class InferenceLegacy(InferenceBase, LoraLoaderMixin):
         return self._model_name
 
     @property
+    def model_dict(self) -> Dict[str, Any]:
+        return self._model_dict
+
+    @property
     def cache_dir(self) -> str:
         return env.DIR_WEIGHTS
 

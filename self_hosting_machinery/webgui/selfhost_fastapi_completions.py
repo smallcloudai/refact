@@ -4,19 +4,18 @@ import copy
 import asyncio
 import termcolor
 
-from fastapi import APIRouter, Request, HTTPException, Query, Header
+from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-from known_models_db.refact_toolbox_db import modelcap_records
-from known_models_db.refact_known_models import models_mini_db
 from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
 from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
+from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 
 from pydantic import BaseModel, Required
-from typing import List, Dict, Union, Set
+from typing import List, Dict, Union
 
 
 __all__ = ["CompletionsRouter"]
@@ -229,6 +228,7 @@ class CompletionsRouter(APIRouter):
     def __init__(self,
                  inference_queue: InferenceQueue,
                  id2ticket: Dict[str, Ticket],
+                 model_assigner: ModelAssigner,
                  timeout: int = 30,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -239,6 +239,7 @@ class CompletionsRouter(APIRouter):
         self.add_api_route("/chat", self._chat, methods=["POST"])
         self._inference_queue = inference_queue
         self._id2ticket = id2ticket
+        self._model_assigner = model_assigner
         self._timeout = timeout
 
     async def _login(self):
@@ -248,14 +249,14 @@ class CompletionsRouter(APIRouter):
             "longthink/stable": {
                 "filter_caps": ["gpt3.5", "gpt4"],
             },
-            **models_mini_db,
+            **self._model_assigner.models_db,
         }
         filter_caps = set([
             capability
             for model in self._inference_queue.models_available()
             for capability in models_mini_db_extended.get(model, {}).get("filter_caps", [])
         ])
-        for rec in modelcap_records.db:
+        for rec in self._model_assigner.models_caps_db:
             rec_modelcaps = rec.model if isinstance(rec.model, list) else [rec.model]
             rec_third_parties = rec.third_party if isinstance(rec.third_party, list) else [rec.third_party]
             for rec_modelcap, rec_third_party in zip(rec_modelcaps, rec_third_parties):

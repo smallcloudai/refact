@@ -151,7 +151,7 @@ def loss_based_filter(
     return rejected
 
 
-def pre_filtering(status_dict):
+def pre_filtering(status_dict, models_db: Dict[str, Any]):
     finetune_cfg = get_finetune_config(logger=traces.log)
 
     fcfg = {**finetune_filtering_defaults}
@@ -168,7 +168,7 @@ def pre_filtering(status_dict):
     logging.info("Train set filtering, loading model...")
     traces.log("Train set filtering, loading model...")
     t0 = time.time()
-    cfg = base_config(finetune_cfg["model_name"])
+    cfg = base_config(finetune_cfg["model_name"], models_db)
     model = make_model(
         model_name=finetune_cfg["model_name"],
         weights_path=cfg['model_info']['weight_path'],
@@ -254,7 +254,16 @@ def needs_any_work():
     return any(has_updates)
 
 
-def main(status_dict):
+def main(models_db: Dict[str, Any]):
+    status_dict = get_finetune_filter_stats()
+
+    def catch_sigusr1(signum, frame):
+        status_dict["error"] = "interrupted"
+        _update_and_dump_status(status_dict, "interrupted")
+        sys.exit(1)
+
+    signal.signal(signal.SIGUSR1, catch_sigusr1)
+
     if not needs_any_work():
         _update_and_dump_status(status_dict, "finished")
         logging.info("Train set filtering: nothing changed since last time, quit")
@@ -266,7 +275,7 @@ def main(status_dict):
     with open(env.LOG_FILES_REJECTED_FTF, "w") as f:
         f.write("")
     try:
-        pre_filtering(status_dict)
+        pre_filtering(status_dict, models_db)
         _update_and_dump_status(status_dict, "finished")
     except BaseException as e:  # BaseException includes KeyboardInterrupt
         if traces.context():
@@ -281,14 +290,9 @@ def main(status_dict):
 
 
 if __name__ == "__main__":
+    from known_models_db.refact_known_models import models_mini_db
+
     YMD_hms = os.environ.get("LORA_LOGDIR", "") or time.strftime("lora-%Y%m%d-%H%M%S")
     traces.configure(task_dir="loras", task_name=YMD_hms, work_dir=env.PERMDIR)
-    status_dict = get_finetune_filter_stats()
 
-    def catch_sigusr1(signum, frame):
-        status_dict["error"] = "interrupted"
-        _update_and_dump_status(status_dict, "interrupted")
-        sys.exit(1)
-
-    signal.signal(signal.SIGUSR1, catch_sigusr1)
-    main(status_dict)
+    main(models_mini_db)
