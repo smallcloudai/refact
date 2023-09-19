@@ -13,7 +13,7 @@ use crate::global_context;
 // use chrono::Utc;
 
 
-const TELEMETRY_COMPRESSION_SECONDS: u64 = 10;
+const TELEMETRY_COMPRESSION_SECONDS: u64 = 600;
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -132,7 +132,7 @@ pub async fn compress_basic_telemetry_to_file(
 
 pub async fn cleanup_old_files(
     dir: PathBuf,
-    how_much_to_keep: usize,
+    how_much_to_keep: i32,
 ) {
     let files = {
         if let Ok(mut entries) = tokio::fs::read_dir(dir).await {
@@ -157,7 +157,7 @@ pub async fn cleanup_old_files(
     for path in files {
         leave_alone -= 1;
         if leave_alone > 0 {
-            info!("leave_alone telemetry file: {}", path.to_str().unwrap());
+            // info!("leave_alone telemetry file: {}", path.to_str().unwrap());
             continue;
         }
         info!("removing old telemetry file: {}", path.to_str().unwrap());
@@ -178,36 +178,43 @@ pub async fn send_telemetry_files_to_mothership(
     unimplemented!();
 }
 
+pub async fn telemetry_full_compression_cycle(
+    global_context: Arc<ARwLock<global_context::GlobalContext>>,
+    skip_sending_part: bool,
+) -> () {
+    info!("basic telemetry compression starts");
+    let caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>;
+    let api_key: String;
+    let enduser_client_version: String;
+    let mothership_enabled: bool;
+    let mut telemetry_basic_dest: String = String::new();
+    let cache_dir: PathBuf;
+    {
+        let cx = global_context.write().await;
+        caps = cx.caps.clone();
+        cache_dir = cx.cache_dir.clone();
+        api_key = cx.cmdline.api_key.clone();
+        enduser_client_version = cx.cmdline.enduser_client_version.clone();
+        mothership_enabled = cx.cmdline.basic_telemetry;
+    }
+    if caps.is_some() {
+        telemetry_basic_dest = caps.unwrap().read().unwrap().telemetry_basic_dest.clone();
+    }
+    compress_basic_telemetry_to_file(global_context.clone()).await;
+    let dir_compressed = cache_dir.join("telemetry").join("compressed");
+    let dir_sent = cache_dir.join("telemetry").join("sent");
+    if mothership_enabled && !telemetry_basic_dest.is_empty() && !skip_sending_part {
+        send_telemetry_files_to_mothership(dir_compressed.clone(), dir_sent.clone(), telemetry_basic_dest, api_key, enduser_client_version).await;
+    }
+    cleanup_old_files(dir_compressed, 10).await;
+    cleanup_old_files(dir_sent, 10).await;
+}
+
 pub async fn telemetry_background_task(
     global_context: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> () {
     loop {
         tokio::time::sleep(std::time::Duration::from_secs(TELEMETRY_COMPRESSION_SECONDS)).await;
-        info!("basic telemetry compression starts");
-        let caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>;
-        let api_key: String;
-        let enduser_client_version: String;
-        let mothership_enabled: bool;
-        let mut telemetry_basic_dest: String = String::new();
-        let cache_dir: PathBuf;
-        {
-            let cx = global_context.write().await;
-            caps = cx.caps.clone();
-            cache_dir = cx.cache_dir.clone();
-            api_key = cx.cmdline.api_key.clone();
-            enduser_client_version = cx.cmdline.enduser_client_version.clone();
-            mothership_enabled = cx.cmdline.basic_telemetry;
-        }
-        if caps.is_some() {
-            telemetry_basic_dest = caps.unwrap().read().unwrap().telemetry_basic_dest.clone();
-        }
-        compress_basic_telemetry_to_file(global_context.clone()).await;
-        let dir_compressed = cache_dir.join("telemetry").join("compressed");
-        let dir_sent = cache_dir.join("telemetry").join("sent");
-        if mothership_enabled && !telemetry_basic_dest.is_empty() {
-            send_telemetry_files_to_mothership(dir_compressed.clone(), dir_sent.clone(), telemetry_basic_dest, api_key, enduser_client_version).await;
-        }
-        cleanup_old_files(dir_compressed, 10).await;
-        cleanup_old_files(dir_sent, 10).await;
+        telemetry_full_compression_cycle(global_context.clone(), false).await;
     }
 }

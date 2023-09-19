@@ -173,7 +173,7 @@ pub async fn load_recommendations(
         let status = response.status().as_u16();
         buffer = response.text().await.map_err(|e| format!("failed to read response: {}", e))?;
         if status != 200 {
-            return Err(format!("server responded with: {:?}", buffer));
+            return Err(format!("server responded with: {}", buffer));
         }
     }
     info!("reading caps from {}", report_url);
