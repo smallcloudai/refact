@@ -14,7 +14,11 @@ from refact_vecdb.daemon.params import File2Upload
 from refact_vecdb.daemon.crud import \
     get_all_file_names, delete_files_by_name, insert_files, \
     on_model_change_update_embeddings, change_files_active_by_name, set_all_files_active
+
+from refact_vecdb.embeds_api.spinup import spinup_models
+
 from refact_vecdb.common.vecdb import prepare_vecdb_indexes
+
 from refact_vecdb import VDBSearchAPI
 
 
@@ -60,7 +64,6 @@ class WorkDirEventsHandler(FileSystemEventHandler):
         self._change_provider_file: Path = self._workdir.joinpath(VDBFiles.change_provider)
         self._change_provider_file.unlink(missing_ok=True)
 
-        self._database_set_last_modified = -1
         self._db_set_file = self._workdir.joinpath(VDBFiles.database_set)
         self._db_set_file_modified()
 
@@ -69,14 +72,14 @@ class WorkDirEventsHandler(FileSystemEventHandler):
         account_data['provider'] = json.loads(self._change_provider_file.read_text())['provider']
         print(f'change providers file detected; new provider: {account_data["provider"]}')
         update_account_data(account_data)
+        spinup_models()
         on_model_change_update_embeddings(self._account)
+        on_db_set_file_modified(self._account)
         prepare_vecdb_indexes(self._account)
         VDBSearchAPI().update_indexes(self._account, account_data['provider'])
         self._change_provider_file.unlink()
 
     def _db_set_file_modified(self):
-        if os.path.getmtime(self._db_set_file) == self._database_set_last_modified:
-            return
         on_db_set_file_modified(self._account)
         prepare_vecdb_indexes(self._account)
         VDBSearchAPI().update_indexes(self._account)
@@ -87,7 +90,7 @@ class WorkDirEventsHandler(FileSystemEventHandler):
             if event.src_path.endswith(str(VDBFiles.change_provider)):
                 self._provider_file_changed()
 
-            if event.src_path.endswith(str(VDBFiles.database_set)):
+            if event.src_path.endswith(str(VDBFiles.train_set)) or event.src_path.endswith(str(VDBFiles.test_set)):
                 self._db_set_file_modified()
 
         except Exception:  # noqa

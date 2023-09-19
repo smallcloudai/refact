@@ -27,6 +27,8 @@ def prepare_vecdb_indexes(account: str):
         ids.append(row['id'])
 
     print(f'{len(embeddings)} embeddings')
+    if not embeddings:
+        return
     index = NNDescent(np.stack(embeddings, axis=0), low_memory=False)
     index.prepare()
 
@@ -36,6 +38,7 @@ def prepare_vecdb_indexes(account: str):
             'ids': ids
         }))
     print(f'vdb_idx prepared for {account}')
+    del index
 
 
 def load_vecdb(account: str):

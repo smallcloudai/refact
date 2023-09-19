@@ -24,8 +24,8 @@ def main():
     )
 
     app.include_router(MainRouter())
-
     bootstrap(args.cassandra_host, args.cassandra_port)
+
     uvicorn.run(app, host=args.host, port=args.port, loop="uvloop", timeout_keep_alive=600)
 
 

@@ -20,7 +20,7 @@ log = logging.getLogger("MODEL").info
 def worker_loop(
         model_name: str,
         index: bool,
-        compile_only: bool,
+        compile_only: bool = False,
 ):
     if model_name not in embed_providers:
         log(f"STATUS model \"{model_name}\" not found")
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s MODEL %(message)s',
-        datefmt='%Y%m%d %H:%M:%S',
+        datefmt='%H:%M:%S',
         handlers=[logging.StreamHandler(stream=sys.stderr)]
     )
 

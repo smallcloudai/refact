@@ -51,7 +51,8 @@ class VDBEmbeddingsAPI:
             f'{self._url}/v1/embeddings',
             headers=self._headers(),
             json={'model': provider, 'is_index': is_index, 'files': texts},
-            stream=True
+            stream=True,
+            timeout=5
         )
         assert response.status_code == 200, f'Error: {response.text}'
         for chunk in response.iter_content(chunk_size=None):

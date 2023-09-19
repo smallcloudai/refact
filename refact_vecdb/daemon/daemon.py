@@ -2,8 +2,7 @@ import time
 
 from watchdog.observers import Observer
 
-from refact_vecdb.common.profiles import PROFILES, VDBFiles
-from refact_vecdb.common.db_models import bootstrap_keyspace
+from refact_vecdb.common.profiles import PROFILES
 from refact_vecdb.daemon.file_events import WorkDirEventsHandler
 
 
@@ -12,7 +11,6 @@ class VDBDaemon:
         self._observer = Observer()
 
     def _spin_up(self):
-        bootstrap_keyspace("vecdb")
         for account, data in PROFILES.items():
             workdir = data['workdir']
 

@@ -26,6 +26,13 @@ class SearchQuery(BaseModel):
     account: str
     top_k: int = 3
 
+    def clamp(self):
+        return {
+            'texts': self.texts,
+            'account': self.account,
+            'top_k': self.top_k
+        }
+
 
 class UpdateIndexes(BaseModel):
     account: str
@@ -108,7 +115,7 @@ class MainRouter(APIRouter):
 
         file_chunks_text = C.c_models['file_chunks_text']
         query: Dict = {
-            q.id: q for q in file_chunks_text.filter(id__in=list(set(itertools.chain(*ids))))
+            q.id: q for q in file_chunks_text.filter(id__in=list(set(itertools.chain(*ids))), account=account)
         }
 
         results = [

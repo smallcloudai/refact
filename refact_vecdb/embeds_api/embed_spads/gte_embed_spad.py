@@ -1,3 +1,5 @@
+import os
+
 from typing import Union, List
 
 import torch.nn.functional as F
@@ -6,6 +8,7 @@ from transformers import AutoTokenizer, AutoModel
 
 
 __all__ = ['GTEEmbeddingSpad']
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
 
 def average_pool(

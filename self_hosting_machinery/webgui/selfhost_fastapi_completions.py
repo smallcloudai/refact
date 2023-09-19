@@ -2,10 +2,12 @@ import time
 import json
 import copy
 import asyncio
+from urllib.parse import urlencode
+
 import termcolor
 
 from fastapi import APIRouter, Request, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 
 from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
 from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
@@ -14,8 +16,12 @@ from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 
+from refact_vecdb.search_api.routers import SearchQuery
+from refact_vecdb import VDBSearchAPI
+
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union
+
 
 
 __all__ = ["CompletionsRouter"]
@@ -301,6 +307,7 @@ class CompletionsRouter(APIRouter):
         self.add_api_route("/contrast", self._contrast, methods=["POST"])
         self.add_api_route("/chat", self._chat, methods=["POST"])
         self.add_api_route("/embeddings", self._embeddings, methods=["POST"])
+        self.add_api_route("/vdb-search", self._vdb_search, methods=["POST"])
         self._inference_queue = inference_queue
         self._id2ticket = id2ticket
         self._model_assigner = model_assigner
@@ -486,3 +493,15 @@ class CompletionsRouter(APIRouter):
         self._id2ticket[ticket.id()] = ticket
         await q.put(ticket)
         return StreamingResponse(embeddings_streamer(ticket, 240, req["created"]))
+
+    async def _vdb_search(self, post: SearchQuery, request: Request):
+        api = VDBSearchAPI()
+        async def stream_results():
+            results = []
+            async for result in api.a_search(post.texts, post.account, post.top_k):
+                results.append(result)
+            return results
+
+        results = await stream_results()
+
+        return {'results': results}

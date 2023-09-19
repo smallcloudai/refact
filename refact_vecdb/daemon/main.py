@@ -3,6 +3,9 @@ from argparse import ArgumentParser
 from refact_vecdb.common.context import CONTEXT as C
 from refact_vecdb.daemon.daemon import VDBDaemon
 
+from refact_vecdb.embeds_api.spinup import spinup_models
+from refact_vecdb.common.db_models import bootstrap_keyspace
+
 
 __all__ = ["main"]
 
@@ -22,6 +25,8 @@ def main():
         'port': port,
     }
 
+    bootstrap_keyspace("vecdb")
+    spinup_models()
     VDBDaemon()()
 
 

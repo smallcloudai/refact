@@ -8,8 +8,6 @@ from more_itertools import chunked
 
 from refact_vecdb.embeds_api.embed_spads import embed_providers, ChunkifyFiles
 
-from refact_scratchpads_no_gpu.stream_results import UploadProxy
-
 
 __all__ = ['VecDBEncoder']
 
@@ -70,7 +68,7 @@ class VecDBEncoder:
         ]
         return {idx: json.dumps(r) for idx, r in enumerate(res)}
 
-    def infer(self, request: Dict[str, Any], upload_proxy: Union[UploadProxy, Any], upload_proxy_args: Dict, log=print):
+    def infer(self, request: Dict[str, Any], upload_proxy: Any, upload_proxy_args: Dict, log=print):
         request_id = request["id"]
         try:
             upload_proxy_args["ts_prompt"] = time.time()
