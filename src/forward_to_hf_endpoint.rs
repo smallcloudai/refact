@@ -38,7 +38,7 @@ pub async fn forward_to_hf_style_endpoint(
         .body(data.to_string())
         .send()
         .await;
-    let resp = req.map_err(|e| format!("when making request {}: {}", url, e))?;
+    let resp = req.map_err(|e| format!("{}", e))?;
     let status_code = resp.status().as_u16();
     let response_txt = resp.text().await.map_err(|e|
         format!("reading from socket {}: {}", url, e)

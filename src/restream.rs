@@ -15,19 +15,53 @@ use crate::call_validation::SamplingParameters;
 // use crate::caps::CodeAssistantCaps;
 use crate::telemetry_basic;
 use crate::global_context::GlobalContext;
+use std::fmt;
 
 
-
-pub fn explain_whats_wrong(status_code: StatusCode, msg: String) -> Response<Body> {
-    let body = json!({"detail": msg}).to_string();
-    error!("client will see {}", body);
-    let response = Response::builder()
-       .status(status_code)
-       .header("Content-Type", "application/json")
-       .body(Body::from(body))
-       .unwrap();
-    response
+#[derive(Debug)]
+pub struct ScratchError {
+    pub status_code: StatusCode,
+    pub message: String,
+    pub telemetry_skip: bool    // because already posted a better description directly
 }
+
+impl std::error::Error for ScratchError {}
+
+impl fmt::Display for ScratchError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.status_code, self.message)
+    }
+}
+
+impl ScratchError {
+    pub fn new(status_code: StatusCode, message: String) -> Self {
+        ScratchError {
+            status_code,
+            message,
+            telemetry_skip: false,
+        }
+    }
+
+    pub fn new_but_skip_telemetry(status_code: StatusCode, message: String) -> Self {
+        ScratchError {
+            status_code,
+            message,
+            telemetry_skip: true,
+        }
+    }
+
+    pub fn to_response(&self) -> Response<Body> {
+        let body = json!({"detail": self.message}).to_string();
+        error!("client will see {}", body);
+        let response = Response::builder()
+            .status(self.status_code)
+            .header("Content-Type", "application/json")
+            .body(Body::from(body))
+            .unwrap();
+        response
+    }
+}
+
 
 pub async fn scratchpad_interaction_not_stream(
     global_context: Arc<ARwLock<GlobalContext>>,
@@ -38,7 +72,7 @@ pub async fn scratchpad_interaction_not_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: &SamplingParameters,
-) -> Result<Response<Body>, Response<Body>> {
+) -> Result<Response<Body>, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let (endpoint_style, endpoint_template, tele_storage) = {
         let cx = global_context.write().await;
@@ -74,7 +108,7 @@ pub async fn scratchpad_interaction_not_stream(
                 false,
                 e.to_string(),
             ));
-        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
+        ScratchError::new_but_skip_telemetry(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
     })?;
     tele_storage.write().unwrap().tele_net.push(telemetry_basic::TelemetryNetwork::new(
         save_url.clone(),
@@ -105,23 +139,23 @@ pub async fn scratchpad_interaction_not_stream(
         scratchpad_result = scratchpad.response_n_choices(choices, stopped);
 
     } else if let Some(err) = model_says.get("error") {
-        return Ok(explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,
+        return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
             format!("model says: {}", err)
         ));
 
     } else if let Some(msg) = model_says.get("human_readable_message") {
-        return Ok(explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,
+        return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
             format!("model says: {}", msg)
         ));
 
     } else {
-        return Ok(explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,
+        return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
             format!("unrecognized response: {:?}", model_says))
         );
     }
 
     if let Err(scratchpad_result_str) = scratchpad_result {
-        return Ok(explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,
+        return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
             format!("scratchpad: {}", scratchpad_result_str))
         );
     }
@@ -146,7 +180,7 @@ pub async fn scratchpad_interaction_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: &SamplingParameters,
-) -> Result<Response<Body>, Response<Body>> {
+) -> Result<Response<Body>, ScratchError> {
     let t1 = std::time::SystemTime::now();
     let (endpoint_style, endpoint_template, tele_storage) = {
         let cx = global_context.write().await;
@@ -182,19 +216,13 @@ pub async fn scratchpad_interaction_stream(
                 false,
                 e.to_string(),
             ));
-        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
+        ScratchError::new_but_skip_telemetry(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
     })?;
-    tele_storage.write().unwrap().tele_net.push(telemetry_basic::TelemetryNetwork::new(
-        save_url.clone(),
-        scope.clone(),
-        true,
-        "".to_string(),
-    ));
 
     let evstream = stream! {
         let scratch = &mut scratchpad;
         let mut finished: bool = false;
-        let mut problem_str: String = String::new();
+        let mut problem_reported = false;
         let mut was_correct_output_even_if_error = false;
         while let Some(event) = event_source.next().await {
             match event {
@@ -238,20 +266,26 @@ pub async fn scratchpad_interaction_stream(
                         // "restream error: Stream ended"
                         break;
                     }
-                    // UGLY: with status 400 Bad Request that goes here, there is no way to access response text that might explain
-                    // what's wrong, for example {\"detail\":\"model is not loaded (3)\"}"
-                    // Or is there?
-                    info!("restream error: {}\n{:?}", err, err);
-                    problem_str = format!("restream error: {}", err);
+                    error!("restream error: {}\n{:?}", err, err);
+                    let problem_str = format!("restream error: {}", err);
+                    {
+                        tele_storage.write().unwrap().tele_net.push(telemetry_basic::TelemetryNetwork::new(
+                            save_url.clone(),
+                            scope.clone(),
+                            false,
+                            problem_str.clone(),
+                        ));
+                    }
+                    yield Result::<_, String>::Ok(serde_json::to_string(&json!({"detail": problem_str})).unwrap());
+                    problem_reported = true;
                     event_source.close();
                     break;
                 },
             }
         }
-        if !problem_str.is_empty() {
-            yield Result::<_, String>::Ok(serde_json::to_string(&json!({"detail": problem_str})).unwrap());
+        if problem_reported {
             return;
-        } else if !finished && problem_str.is_empty() {
+        } else if !finished {
             let mut value: serde_json::Value;
             (value, _) = scratch.response_streaming("".to_string(), false).unwrap();
             value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
@@ -262,6 +296,12 @@ pub async fn scratchpad_interaction_stream(
         }
         info!("yield: [DONE]");
         yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
+        tele_storage.write().unwrap().tele_net.push(telemetry_basic::TelemetryNetwork::new(
+            save_url.clone(),
+            scope.clone(),
+            true,
+            "".to_string(),
+        ));
     };
 
     let response = Response::builder()

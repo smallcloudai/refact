@@ -18,7 +18,7 @@ use crate::scratchpads;
 use crate::call_validation::{CodeCompletionPost, ChatPost};
 use crate::global_context::GlobalContext;
 use crate::caps::CodeAssistantCaps;
-use crate::restream::explain_whats_wrong;
+use crate::restream::ScratchError;
 use crate::telemetry_basic;
 
 
@@ -101,15 +101,15 @@ async fn _lookup_chat_scratchpad(
 async fn handle_v1_code_completion(
     global_context: Arc<ARwLock<GlobalContext>>,
     body_bytes: hyper::body::Bytes
-) -> Result<Response<Body>, Response<Body>> {
+) -> Result<Response<Body>, ScratchError> {
     let mut code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
-        explain_whats_wrong(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     )?;
     let (model_name, scratchpad_name, scratchpad_patch) = _lookup_code_completion_scratchpad(
         global_context.clone(),
         &code_completion_post,
     ).await.map_err(|e| {
-        explain_whats_wrong(StatusCode::BAD_REQUEST, format!("{}", e))
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", e))
     })?;
     // TODO: take from caps
     if code_completion_post.parameters.max_new_tokens == 0 {
@@ -120,7 +120,7 @@ async fn handle_v1_code_completion(
         global_context.clone(),
         model_name.clone(),
     ).await.map_err(|e|
-        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
     )?;
 
     let mut scratchpad = scratchpads::create_code_completion_scratchpad(
@@ -129,14 +129,14 @@ async fn handle_v1_code_completion(
         &scratchpad_patch,
         tokenizer_arc.clone(),
     ).map_err(|e|
-        explain_whats_wrong(StatusCode::BAD_REQUEST, e)
+        ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
     let t1 = std::time::Instant::now();
     let prompt = scratchpad.prompt(
         2048,
         &mut code_completion_post.parameters,
     ).map_err(|e|
-        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
     // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
     info!("prompt {:?}", t1.elapsed());
@@ -151,15 +151,15 @@ async fn handle_v1_code_completion(
 async fn handle_v1_chat(
     global_context: Arc<ARwLock<GlobalContext>>,
     body_bytes: hyper::body::Bytes
-) -> Result<Response<Body>, Response<Body>> {
+) -> Result<Response<Body>, ScratchError> {
     let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e|
-        explain_whats_wrong(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     )?;
     let (model_name, scratchpad_name, scratchpad_patch) = _lookup_chat_scratchpad(
         global_context.clone(),
         &chat_post,
     ).await.map_err(|e| {
-        explain_whats_wrong(StatusCode::BAD_REQUEST, format!("{}", e))
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", e))
     })?;
     if chat_post.parameters.max_new_tokens == 0 {
         chat_post.parameters.max_new_tokens = 2048;
@@ -170,7 +170,7 @@ async fn handle_v1_chat(
         global_context.clone(),
         model_name.clone(),
     ).await.map_err(|e|
-        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
     )?;
 
     let mut scratchpad = scratchpads::create_chat_scratchpad(
@@ -179,14 +179,14 @@ async fn handle_v1_chat(
         &scratchpad_patch,
         tokenizer_arc.clone(),
     ).map_err(|e|
-        explain_whats_wrong(StatusCode::BAD_REQUEST, e)
+        ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
     let t1 = std::time::Instant::now();
     let prompt = scratchpad.prompt(
         2048,
         &mut chat_post.parameters,
     ).map_err(|e|
-        explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
     // info!("chat prompt {:?}\n{}", t1.elapsed(), prompt);
     info!("chat prompt {:?}", t1.elapsed());
@@ -202,9 +202,9 @@ async fn handle_v1_chat(
 async fn handle_v1_telemetry_network(
     global_context: Arc<ARwLock<GlobalContext>>,
     body_bytes: hyper::body::Bytes
-) -> Result<Response<Body>, Response<Body>> {
+) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<telemetry_basic::TelemetryNetwork>(&body_bytes).map_err(|e| {
-        explain_whats_wrong(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     global_context.write().await.telemetry.write().unwrap().tele_net.push(post);
     Ok(Response::builder()
@@ -215,12 +215,12 @@ async fn handle_v1_telemetry_network(
 
 async fn handle_v1_caps(
     global_context: Arc<ARwLock<GlobalContext>>,
-) -> Response<Body> {
+) -> Result<Response<Body>, ScratchError> {
     let caps_result = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await;
     let caps = match caps_result {
         Ok(x) => x,
         Err(e) => {
-            return explain_whats_wrong(StatusCode::SERVICE_UNAVAILABLE, format!("{}", e));
+            return Err(ScratchError::new(StatusCode::SERVICE_UNAVAILABLE, format!("{}", e)));
         }
     };
     let caps_locked = caps.read().unwrap();
@@ -229,7 +229,7 @@ async fn handle_v1_caps(
         .header("Content-Type", "application/json")
         .body(Body::from(body))
         .unwrap();
-    response
+    Ok(response)
 }
 
 
@@ -243,20 +243,30 @@ async fn handle_request(
     let t0 = std::time::Instant::now();
     let body_bytes = hyper::body::to_bytes(req.into_body()).await?;
     info!("{} {} {} body_bytes={}", remote_addr, method, path, body_bytes.len());
-    let result: Result<Response<Body>, Response<Body>>;
+    let result: Result<Response<Body>, ScratchError>;
     if method == Method::POST && path == "/v1/code-completion" {
-        result = handle_v1_code_completion(global_context, body_bytes).await;
+        result = handle_v1_code_completion(global_context.clone(), body_bytes).await;
     } else if method == Method::POST && path == "/v1/chat" {
-        result = handle_v1_chat(global_context, body_bytes).await;
+        result = handle_v1_chat(global_context.clone(), body_bytes).await;
     } else if method == Method::POST && path == "/v1/telemetry-network" {
-        result = handle_v1_telemetry_network(global_context, body_bytes).await;
+        result = handle_v1_telemetry_network(global_context.clone(), body_bytes).await;
     } else if method == Method::GET && path == "/v1/caps" {
-        result = Ok(handle_v1_caps(global_context).await);
+        result = handle_v1_caps(global_context.clone()).await;
     } else {
-        result = Ok(explain_whats_wrong(StatusCode::NOT_FOUND, format!("no handler for {}", path)));
+        result = Err(ScratchError::new(StatusCode::NOT_FOUND, format!("no handler for {}", path)));
     }
     if let Err(e) = result {
-        return Ok(e);
+        if !e.telemetry_skip {
+            let tele_storage = &global_context.read().await.telemetry;
+            let mut tele_storage_locked = tele_storage.write().unwrap();
+            tele_storage_locked.tele_net.push(telemetry_basic::TelemetryNetwork::new(
+                path.clone(),
+                format!("{}", method),
+                false,
+                format!("{}", e.message),
+            ));
+        }
+        return Ok(e.to_response());
     }
     info!("{} completed in {:?}", path, t0.elapsed());
     return Ok(result.unwrap());
