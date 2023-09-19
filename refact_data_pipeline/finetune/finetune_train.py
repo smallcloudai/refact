@@ -66,7 +66,7 @@ def save_status_json(status_dict, status_string):
         traces.log("(no big deal, will try again next iteration)")
 
 
-defdef load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
+def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
     def _get_ds_len_per_epoch(model_name, cfg_builder):
         model_config = supported_models.config[model_name]
         ds_opts = DatasetOpts(model_config["train_ds_pipeline"]["ds_opts"].format(
