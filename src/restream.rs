@@ -1,6 +1,6 @@
 use tracing::{error, info};
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
+use tokio::sync::RwLock as ARwLock;
 use hyper::{Body, Response, StatusCode};
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::forward_to_hf_endpoint;
@@ -12,7 +12,10 @@ use async_stream::stream;
 use serde_json::json;
 
 use crate::call_validation::SamplingParameters;
-use crate::caps::CodeAssistantCaps;
+// use crate::caps::CodeAssistantCaps;
+use crate::telemetry_basic;
+use crate::global_context::GlobalContext;
+
 
 
 pub fn explain_whats_wrong(status_code: StatusCode, msg: String) -> Response<Body> {
@@ -27,8 +30,9 @@ pub fn explain_whats_wrong(status_code: StatusCode, msg: String) -> Response<Bod
 }
 
 pub async fn scratchpad_interaction_not_stream(
-    caps: Arc<StdRwLock<CodeAssistantCaps>>,
+    global_context: Arc<ARwLock<GlobalContext>>,
     mut scratchpad: Box<dyn ScratchpadAbstract>,
+    scope: String,
     prompt: &str,
     model_name: String,
     client: reqwest::Client,
@@ -36,12 +40,16 @@ pub async fn scratchpad_interaction_not_stream(
     parameters: &SamplingParameters,
 ) -> Result<Response<Body>, Response<Body>> {
     let t2 = std::time::SystemTime::now();
-    let (endpoint_style, endpoint_template) = {
+    let (endpoint_style, endpoint_template, tele_storage) = {
+        let cx = global_context.write().await;
+        let caps = cx.caps.clone().unwrap();
         let caps_locked = caps.read().unwrap();
-        (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone())
+        (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), cx.telemetry.clone())
     };
+    let mut save_url: String = String::new();
     let model_says = if endpoint_style == "hf" {
         forward_to_hf_endpoint::forward_to_hf_style_endpoint(
+            &mut save_url,
             bearer.clone(),
             &model_name,
             &prompt,
@@ -51,6 +59,7 @@ pub async fn scratchpad_interaction_not_stream(
         ).await
     } else {
         forward_to_openai_endpoint::forward_to_openai_style_endpoint(
+            &mut save_url,
             bearer.clone(),
             &model_name,
             &prompt,
@@ -58,9 +67,21 @@ pub async fn scratchpad_interaction_not_stream(
             &endpoint_template,
             &parameters,
         ).await
-    }.map_err(|e|
+    }.map_err(|e| {
+        tele_storage.write().unwrap().tele_net.push(telemetry_basic::TelemetryNetwork::new(
+                save_url.clone(),
+                scope.clone(),
+                false,
+                e.to_string(),
+            ));
         explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
-    )?;
+    })?;
+    tele_storage.write().unwrap().tele_net.push(telemetry_basic::TelemetryNetwork::new(
+        save_url.clone(),
+        scope.clone(),
+        true,
+        "".to_string(),
+    ));
     info!("forward to endpoint {:?}", t2.elapsed());
 
     let scratchpad_result: Result<serde_json::Value, String>;
@@ -117,8 +138,9 @@ pub async fn scratchpad_interaction_not_stream(
 }
 
 pub async fn scratchpad_interaction_stream(
-    caps: Arc<StdRwLock<CodeAssistantCaps>>,
+    global_context: Arc<ARwLock<GlobalContext>>,
     mut scratchpad: Box<dyn ScratchpadAbstract>,
+    scope: String,
     prompt: &str,
     mut model_name: String,
     client: reqwest::Client,
@@ -126,12 +148,16 @@ pub async fn scratchpad_interaction_stream(
     parameters: &SamplingParameters,
 ) -> Result<Response<Body>, Response<Body>> {
     let t1 = std::time::SystemTime::now();
-    let (endpoint_style, endpoint_template) = {
+    let (endpoint_style, endpoint_template, tele_storage) = {
+        let cx = global_context.write().await;
+        let caps = cx.caps.clone().unwrap();
         let caps_locked = caps.read().unwrap();
-        (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone())
+        (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), cx.telemetry.clone())
     };
+    let mut save_url: String = String::new();
     let mut event_source = if endpoint_style == "hf" {
         forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
+            &mut save_url,
             bearer.clone(),
             &model_name,
             &prompt,
@@ -141,6 +167,7 @@ pub async fn scratchpad_interaction_stream(
         ).await
     } else {
         forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(
+            &mut save_url,
             bearer.clone(),
             &model_name,
             &prompt,
@@ -148,9 +175,21 @@ pub async fn scratchpad_interaction_stream(
             &endpoint_template,
             &parameters,
         ).await
-    }.map_err(|e|
+    }.map_err(|e| {
+        tele_storage.write().unwrap().tele_net.push(telemetry_basic::TelemetryNetwork::new(
+                save_url.clone(),
+                scope.clone(),
+                false,
+                e.to_string(),
+            ));
         explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
-    )?;
+    })?;
+    tele_storage.write().unwrap().tele_net.push(telemetry_basic::TelemetryNetwork::new(
+        save_url.clone(),
+        scope.clone(),
+        true,
+        "".to_string(),
+    ));
 
     let evstream = stream! {
         let scratch = &mut scratchpad;

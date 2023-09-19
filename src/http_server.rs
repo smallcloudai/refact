@@ -116,7 +116,7 @@ async fn handle_v1_code_completion(
         code_completion_post.parameters.max_new_tokens = 50;
     }
     code_completion_post.parameters.temperature = Some(code_completion_post.parameters.temperature.unwrap_or(0.2));
-    let (caps, tokenizer_arc, client1, api_key) = _get_caps_and_tokenizer(
+    let (_caps, tokenizer_arc, client1, api_key) = _get_caps_and_tokenizer(
         global_context.clone(),
         model_name.clone(),
     ).await.map_err(|e|
@@ -141,9 +141,9 @@ async fn handle_v1_code_completion(
     // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
     info!("prompt {:?}", t1.elapsed());
     if !code_completion_post.stream {
-        crate::restream::scratchpad_interaction_not_stream(caps, scratchpad, &prompt, model_name, client1, api_key, &code_completion_post.parameters).await
+        crate::restream::scratchpad_interaction_not_stream(global_context.clone(), scratchpad, "completion".to_string(), &prompt, model_name, client1, api_key, &code_completion_post.parameters).await
     } else {
-        crate::restream::scratchpad_interaction_stream(caps, scratchpad, &prompt, model_name, client1, api_key, &code_completion_post.parameters).await
+        crate::restream::scratchpad_interaction_stream(global_context.clone(), scratchpad, "completion-stream".to_string(), &prompt, model_name, client1, api_key, &code_completion_post.parameters).await
     }
 }
 
@@ -166,7 +166,7 @@ async fn handle_v1_chat(
     }
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(0.2));
     chat_post.model = model_name.clone();
-    let (caps, tokenizer_arc, client1, api_key) = _get_caps_and_tokenizer(
+    let (_caps, tokenizer_arc, client1, api_key) = _get_caps_and_tokenizer(
         global_context.clone(),
         model_name.clone(),
     ).await.map_err(|e|
@@ -192,9 +192,9 @@ async fn handle_v1_chat(
     info!("chat prompt {:?}", t1.elapsed());
     let streaming = chat_post.stream.unwrap_or(false);
     if streaming {
-        crate::restream::scratchpad_interaction_stream(caps, scratchpad, &prompt, model_name, client1, api_key, &chat_post.parameters).await
+        crate::restream::scratchpad_interaction_stream(global_context.clone(), scratchpad, "chat-stream".to_string(), &prompt, model_name, client1, api_key, &chat_post.parameters).await
     } else {
-        crate::restream::scratchpad_interaction_not_stream(caps, scratchpad, &prompt, model_name, client1, api_key, &chat_post.parameters).await
+        crate::restream::scratchpad_interaction_not_stream(global_context.clone(), scratchpad, "chat".to_string(), &prompt, model_name, client1, api_key, &chat_post.parameters).await
     }
 }
 

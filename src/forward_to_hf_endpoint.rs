@@ -9,6 +9,7 @@ use tracing::info;
 
 
 pub async fn forward_to_hf_style_endpoint(
+    save_url: &mut String,
     bearer: String,
     model_name: &str,
     prompt: &str,
@@ -17,6 +18,7 @@ pub async fn forward_to_hf_style_endpoint(
     sampling_parameters: &SamplingParameters,
 ) -> Result<serde_json::Value, String> {
     let url = endpoint_template.replace("$MODEL", model_name);
+    save_url.clone_from(&&url);
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
     if !bearer.is_empty() {
@@ -49,6 +51,7 @@ pub async fn forward_to_hf_style_endpoint(
 
 
 pub async fn forward_to_hf_style_endpoint_streaming(
+    save_url: &mut String,
     bearer: String,
     model_name: &str,
     prompt: &str,
@@ -57,6 +60,7 @@ pub async fn forward_to_hf_style_endpoint_streaming(
     sampling_parameters: &SamplingParameters,
 ) -> Result<EventSource, String> {
     let url = endpoint_template.replace("$MODEL", model_name);
+    save_url.clone_from(&&url);
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
     if !bearer.is_empty() {

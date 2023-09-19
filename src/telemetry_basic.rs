@@ -24,6 +24,17 @@ pub struct TelemetryNetwork {
     pub error_message: String, // empty if no error
 }
 
+impl TelemetryNetwork {
+    pub fn new(url: String, scope: String, success: bool, error_message: String) -> Self {
+        Self {
+            url,
+            scope,
+            success,
+            error_message,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct TelemetryCompletion {
     pub language: String,
