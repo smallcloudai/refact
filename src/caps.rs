@@ -137,10 +137,11 @@ const SMC_DEFAULT_CAPS: &str = r#"
     "cloud_name": "Refact",
     "endpoint_template": "https://inference.smallcloud.ai/v1/completions",
     "endpoint_style": "openai",
-    "code_completion_default_model": "smallcloudai/Refact-1_6B-fim",
-    "code_chat_default_model": "smallcloudai/Refact-1_6B-fim",
     "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
     "tokenizer_rewrite_path": {},
+    "code_completion_default_model": "smallcloudai/Refact-1_6B-fim",
+    "code_chat_default_model": "smallcloudai/Refact-1_6B-fim",
+    "telemetry_basic_dest": "",
     "running_models": ["smallcloudai/Refact-1_6B-fim"]
 }
 "#;
