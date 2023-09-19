@@ -6,6 +6,7 @@ huggingface_mini_db = {
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "required_memory_mb": 18000,
+        "T": 4096,
         "filter_caps": ["completion"],
     },
     "starcoder/15b/plus": {
@@ -15,6 +16,7 @@ huggingface_mini_db = {
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "required_memory_mb": 18000,
+        "T": 4096,
         "filter_caps": ["completion"],
     },
     "starchat/15b/beta": {
@@ -24,7 +26,41 @@ huggingface_mini_db = {
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceStarChat",
         "model_class_kwargs": {},
         "required_memory_mb": 18000,
+        "T": 4096,
         "filter_caps": ["starchat"],
+    },
+    "starcoder/1b/base": {
+        "backend": "transformers",
+        "model_path": "bigcode/starcoderbase-1b",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadPSM",
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {},
+        "required_memory_mb": 6000,
+        "T": 4096,
+        "hidden": True,
+        "filter_caps": ["completion", "finetune"],
+    },
+    "starcoder/3b/base": {
+        "backend": "transformers",
+        "model_path": "bigcode/starcoderbase-3b",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadPSM",
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {},
+        "required_memory_mb": 9000,
+        "T": 4096,
+        "hidden": True,
+        "filter_caps": ["completion", "finetune"],
+    },
+    "starcoder/7b/base": {
+        "backend": "transformers",
+        "model_path": "bigcode/starcoderbase-7b",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadPSM",
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {},
+        "required_memory_mb": 18000,
+        "T": 2048,
+        "hidden": True,
+        "filter_caps": ["completion", "finetune"],
     },
     "wizardcoder/15b": {
         "backend": "autogptq",
@@ -33,6 +69,7 @@ huggingface_mini_db = {
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "required_memory_mb": 18000,
+        "T": 4096,
         "filter_caps": ["completion"],
     },
     "wizardlm/7b": {
@@ -42,6 +79,7 @@ huggingface_mini_db = {
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceWizard",
         "model_class_kwargs": {},
         "required_memory_mb": 8000,
+        "T": 2048,
         "filter_caps": ["wizardlm"],
     },
     "wizardlm/13b": {
@@ -51,6 +89,7 @@ huggingface_mini_db = {
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceWizard",
         "model_class_kwargs": {},
         "required_memory_mb": 14000,
+        "T": 2048,
         "filter_caps": ["wizardlm"],
     },
     "llama2/7b": {
@@ -60,6 +99,7 @@ huggingface_mini_db = {
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",
         "model_class_kwargs": {},
         "required_memory_mb": 8000,
+        "T": 2048,
         "filter_caps": ["llama2"],
     },
     "llama2/13b": {
@@ -69,6 +109,7 @@ huggingface_mini_db = {
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",
         "model_class_kwargs": {},
         "required_memory_mb": 14000,
+        "T": 2048,
         "filter_caps": ["llama2"],
     },
     "codellama/7b": {
@@ -80,6 +121,7 @@ huggingface_mini_db = {
             "load_in_8bit": True,
         },
         "required_memory_mb": 14000,
+        "T": 2048,
         "filter_caps": ["completion"],
     },
     "wizardlm/30b/4bit": {
@@ -90,6 +132,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {
             "load_in_4bit": True,
         },
+        "T": 2048,
         "filter_caps": ["wizardlm"],
         "hidden": True,   # only for debugging because wip on sharding
      },

@@ -18,6 +18,7 @@ def base_config(model_name: str, models_db: Dict[str, Any]):
         model_info=dict(
             weight_path=env.DIR_WEIGHTS,
             repo_id=model_info['model_path'],
+            backend=model_info['backend'],
             ctx_size=model_info['T'],
             lora={
                 "lora_target_modules": [
@@ -175,18 +176,8 @@ class ConfigBuilder:
         }
 
         scores_per_loraconfigs = {
-            (0, 6): dict(lora_target_modules=[
-                "qkv", "out",
-            ], lora_r=32, lora_alpha=64, lora_dropout=0.01, lora_init_scale=0.01,
-                freeze_exceptions=["lora"]),
-            (6, 8): dict(lora_target_modules=[
-                "qkv", "out",
-            ], lora_r=32, lora_alpha=64, lora_dropout=0.01, lora_init_scale=0.01,
-                freeze_exceptions=[
-                    "wte", "lm_head", "lora"
-                ]),
-            (8, 1000): dict(lora_target_modules=[
-                "qkv", "out",
+            (0, 1000): dict(lora_target_modules=[
+                "qkv", "out", "mlp",
             ], lora_r=64, lora_alpha=128, lora_dropout=0.01, lora_init_scale=0.01,
                 freeze_exceptions=[
                     "wte", "lm_head", "lora"
@@ -209,7 +200,10 @@ class ConfigBuilder:
                 self.cfg['model_info']['lora'] = lora_cfg
                 break
 
-        traces.log(f'Lora parameters heuristic avg_loss={initial_loss:.2f}, ds_len={ds_len} => complexity score={score_acc}')
+        traces.log(
+            f'Lora parameters heuristic avg_loss={initial_loss:.2f}, '
+            f'ds_len={ds_len} => complexity score={score_acc}'
+        )
 
         return self
 
@@ -217,15 +211,15 @@ class ConfigBuilder:
             self,
             ds_len: int
     ) -> 'ConfigBuilder':
-        min_iterations = 100
+        min_iterations = 50
         round_to_iter = 50
         dslen_per_epochs = {
-            (0, 500): 50,
-            (500, 1000): 40,
-            (1000, 5000): 25,
-            (5000, 15000): 15,
-            (15000, 30000): 5,
-            (30000, 100000000): 2
+            (0, 500): 60,
+            (500, 1000): 60,
+            (1000, 5000): 45,
+            (5000, 15000): 25,
+            (15000, 30000): 15,
+            (30000, 100000000): 5
         }
         epochs = 1
         for (lhs_dslen, rhs_dslen), e in dslen_per_epochs.items():

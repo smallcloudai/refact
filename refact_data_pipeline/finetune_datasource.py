@@ -2,6 +2,7 @@ import os
 import jsonlines
 import random
 
+from refact_data_pipeline.filters_fim_v2 import FIMv2
 from refact_encoding import RefactEncoding
 from refact_encoding import hlprint
 from refact_data_pipeline import filters_synthetic
@@ -43,6 +44,7 @@ class ReadFileByFile:
                 yield {
                     "path": cut_zip_name(j),
                     "code": code,
+                    "text": code,
                     "size": len(code),
                     "stats": {
                         "file_num": file_num,
@@ -102,6 +104,23 @@ def local_plain(fn_set_jsonl: Union[str, List[str]], dataopts):
     ds = pp.Packer(ds, dataopts, keys=["tokens", "mask", "first"])
     ds = pp.Shuffle(ds, dataopts)
     return ds
+
+
+def local_fim(fn_set_jsonl, dataopts):
+    rank = 0
+    size = 1
+    if isinstance(fn_set_jsonl, str):
+        js = list(jsonlines.open(os.path.join(env.DIR_UNPACKED, fn_set_jsonl)))
+    else:
+        js = fn_set_jsonl
+    fixed_seed_random = random.Random(43)
+    fixed_seed_random.shuffle(js)
+    ds = ReadFileByFile(js, dataopts)
+    ds = pp.SplitRanks(ds, dataopts, commrank=rank, commsize=size)   # this drops some of the data {"code": ...} at each rank
+    ds = FIMv2(ds, dataopts)
+    ds = pp.DensePacker(ds, dataopts)
+    ds = pp.Shuffle(ds, dataopts)
+    return iter(ds)
 
 
 def local_mix_plain_infill(fn_set_jsonl, dataopts):

@@ -21,7 +21,7 @@ from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stats
 from refact_data_pipeline.finetune.finetune_filtering_defaults import finetune_filtering_defaults
 from refact_data_pipeline.finetune.finetune_config import base_config
-from refact_data_pipeline.finetune.model_handling import make_model, masked_loss
+from refact_data_pipeline.finetune.model_handling import make_model, masked_loss, model_forward
 from refact_data_pipeline.finetune.process_uploaded_files import make_matcher
 from self_hosting_machinery import env
 
@@ -81,6 +81,7 @@ def loss_based_filter(
         *,
         fcfg,
         status_dict,
+        cfg,
 ):
     t0 = time.time()
     iter_times = []
@@ -90,6 +91,7 @@ def loss_based_filter(
     logging.info("STATUS filtering")
     status_dict['total_steps'] = len(train_files)
     is_force_included, is_force_excluded = get_force_included_excluded_matchers()
+    forward = partial(model_forward, model=model, low_gpu_mem_mode=False, backend=cfg['model_info']['backend'])
     for iter_n, file in enumerate(train_files):
         t0_iter = time.time()
         status_dict = _update_and_dump_status(status_dict, "filtering")
@@ -106,7 +108,7 @@ def loss_based_filter(
             continue
 
         for batch, stats in batch_iter_fn(finetune_datasource.local_plain([file], dataopts)):
-            logits = model.lm_forward(model(batch['input'].contiguous(), attention_mask=None)[0])
+            logits = forward(input=batch['input'])
             loss = float(loss_function(
                 logits=logits.to(th.bfloat16),  # more stable than float16 and takes much less memory than float32
                 labels=batch['labels'],
@@ -168,8 +170,10 @@ def pre_filtering(status_dict, models_db: Dict[str, Any]):
     t0 = time.time()
     cfg = base_config(finetune_cfg["model_name"], models_db)
     model = make_model(
+        model_name=finetune_cfg["model_name"],
         weights_path=cfg['model_info']['weight_path'],
         repo_id=cfg['model_info']['repo_id'],
+        backend=cfg['model_info']['backend'],
         freeze_exceptions=cfg['model_info']['freeze_exceptions'],
         lora_target_modules=cfg['model_info']['lora']['lora_target_modules'],
         lora_r=cfg['model_info']['lora']['lora_r'],
@@ -208,6 +212,7 @@ def pre_filtering(status_dict, models_db: Dict[str, Any]):
 
     filtered = loss_based_filter(
         train_files, model, loss_function, dataopts, fcfg=fcfg, status_dict=status_dict,
+        cfg=cfg
     )
 
     test_filenames = set()

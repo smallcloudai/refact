@@ -14,14 +14,13 @@ from pathlib import Path
 from jsonlines import jsonlines
 from torchinfo import summary
 
-from refact_encoding import RefactEncoding
-from refact_models.checkpoint_loader import load_config
-from refact_data_pipeline.finetune import traces
+from refact_data_pipeline.finetune import traces, supported_models
 from refact_data_pipeline import DatasetOpts, finetune_datasource
 from refact_data_pipeline.datautils import BatchIterator
 from refact_data_pipeline.finetune.finetune_config import base_config, ConfigBuilder
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
-from refact_data_pipeline.finetune.model_handling import make_model, masked_loss, save_model_state
+from refact_data_pipeline.finetune.model_handling import make_model, masked_loss, save_model_state, model_forward, \
+    setup_encoding
 from self_hosting_machinery import env
 
 from typing import Optional, Callable, Dict, Any, Tuple
@@ -29,6 +28,24 @@ from typing import Optional, Callable, Dict, Any, Tuple
 
 filtered_train = "train_set_filtered.jsonl"
 filtered_test = "test_set_filtered.jsonl"
+
+
+class EarlyStopper:
+    def __init__(self, patience=1, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = float('inf')
+
+    def __call__(self, validation_loss):
+        if validation_loss < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > (self.min_validation_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
 
 
 def save_status_json(status_dict, status_string):
@@ -49,20 +66,25 @@ def save_status_json(status_dict, status_string):
         traces.log("(no big deal, will try again next iteration)")
 
 
-def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
-    def _get_ds_len_per_epoch(cfg_builder):
-        ds_opts = DatasetOpts(f"n_ctx={cfg_builder.cfg['model_info']['ctx_size'] + 1},"
-                              f"pack_at_most=1,quit_on_epoch=1,seed=42")
-        ds_opts.set_encoding(RefactEncoding(
-            load_config(root_path=cfg_builder.cfg['model_info']['weight_path'],
-                        repo_id=cfg_builder.cfg['model_info']['repo_id']).enc_name))
-        ds = finetune_datasource.local_mix_plain_infill(filtered_train, ds_opts)
+defdef load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
+    def _get_ds_len_per_epoch(model_name, cfg_builder):
+        model_config = supported_models.config[model_name]
+        ds_opts = DatasetOpts(model_config["train_ds_pipeline"]["ds_opts"].format(
+            n_ctx=cfg_builder.cfg['model_info']['ctx_size'] + 1
+        ) + ",quit_on_epoch=1")
+        ds_opts.set_encoding(setup_encoding(
+            model_name=model_name,
+            weights_path=cfg_builder.cfg['model_info']['weight_path'],
+            repo_id=cfg_builder.cfg['model_info']['repo_id']
+        ))
+        pipe = getattr(finetune_datasource, model_config["train_ds_pipeline"]["pipeline_name"])
+        ds = pipe(filtered_train, ds_opts)
         ds_len = 0
         try:
             for _ in ds:
                 ds_len += 1
             return ds_len
-        except:
+        except Exception as e:
             return ds_len
 
     with open(env.CONFIG_FINETUNE_FILTER_STATS, 'r') as f:
@@ -72,7 +94,7 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
     cfg_builder = ConfigBuilder(base_config(user_cfg['model_name'], models_db))
     if user_cfg['use_heuristics']:
         traces.log("Retrieving dataset length per epoch, it may take a while...")
-        ds_len = _get_ds_len_per_epoch(cfg_builder)
+        ds_len = _get_ds_len_per_epoch(user_cfg['model_name'], cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
         (cfg_builder
          .set_lora_quality_by_heuristics(ds_len=ds_len, initial_loss=initial_loss)
@@ -104,12 +126,21 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
     return cfg_builder.cfg
 
 
-def create_data(cfg, enc) -> Tuple[Any, Optional[Any]]:
-    train_dataopts = DatasetOpts("n_ctx=%d,pack_at_most=10,shuffle_depth=3000" % (cfg['model_info']['ctx_size'] + 1))
+def create_data(model_name, cfg, enc) -> Tuple[Any, Optional[Any]]:
+    model_config = supported_models.config[model_name]
+    train_dataopts = DatasetOpts(model_config["train_ds_pipeline"]["ds_opts"].format(
+        n_ctx=cfg['model_info']['ctx_size'] + 1
+    ))
     train_dataopts.set_encoding(enc)
-    test_dataopts = DatasetOpts("n_ctx=%d,pack_at_most=1,quit_on_epoch=1,seed=42" % (cfg['model_info']['ctx_size'] + 1))
+    test_dataopts = DatasetOpts(model_config["test_ds_pipeline"]["ds_opts"].format(
+        n_ctx=cfg['model_info']['ctx_size'] + 1
+    ))
     test_dataopts.set_encoding(enc)
-    train_ds = finetune_datasource.local_mix_plain_infill(filtered_train, train_dataopts)
+
+    train_pipe = getattr(finetune_datasource, model_config["train_ds_pipeline"]["pipeline_name"])
+    test_pipe = getattr(finetune_datasource, model_config["test_ds_pipeline"]["pipeline_name"])
+
+    train_ds = train_pipe(filtered_train, train_dataopts)
     train_ds = BatchIterator(train_ds, dataopts=dict(
         batch_size=cfg['train_batch_size'],
         drop_last=True
@@ -122,7 +153,7 @@ def create_data(cfg, enc) -> Tuple[Any, Optional[Any]]:
     has_test_files = os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_test)) \
                      and len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_test)))) > 0
     if has_test_files:
-        test_ds = finetune_datasource.local_sequence_plain_infill(filtered_test, test_dataopts)
+        test_ds = test_pipe(filtered_test, test_dataopts)
         test_ds = list(test_ds)
     else:
         traces.log("Warning: no test set has been provided")
@@ -135,11 +166,22 @@ def loop(
         model,
         optimizer,
         loss_function: Callable,
+        model_name: str,
         *,
         status_dict,
         train_ds,
         test_ds: Optional[Any]
 ):
+    def _save_checkpoint(force: bool = False):
+        if force or (iter_n != 0 and iter_n % cfg['save_every'] == 0):
+            if "test_loss" in progress:
+                tag = "iter%04d-testloss%0.3f" % (iter_n, progress["test_loss"])
+            else:
+                tag = "iter%04d-trainloss%0.3f" % (iter_n, progress["loss"])
+            traces.log("saving checkpoint %s" % tag)
+            save_model_state(model, save_path=save_path, tag=tag)
+
+    model_config = supported_models.config[model_name]
     save_path = os.path.join(traces.context().path, "checkpoints")
     model.train()
     test_ds_fn = partial(BatchIterator, dataopts=dict(
@@ -147,6 +189,7 @@ def loop(
         drop_last=False
     ))
     micro_bs = cfg['micro_batch_size']
+    backend = cfg['model_info']['backend']
     tokens_n = 0
     iter_time_last = None
     t0 = time.time()
@@ -155,6 +198,9 @@ def loop(
     assert cfg['save_every'] % cfg['test_every'] == 0
     plot_process: Optional[subprocess.Popen] = None
     save_status_json(status_dict, "starting")
+    low_gpu_mem_mode = cfg['low_gpu_mem_mode'] or model_config['force_enable_checkpointing']
+    forward = partial(model_forward, model=model, backend=backend)
+    early_stop = EarlyStopper(patience=int(cfg['train_iters'] * 0.2))
     for iter_n in range(cfg['train_iters'] + 1):  # +1 so we can save 100 (not 99)
         t0_iter = time.time()
         traces.progress("iteration", iter_n)
@@ -167,25 +213,31 @@ def loop(
             data_path = Path(traces.context().path) / ('debug_data/iter%04d' % iter_n)
             data_path.mkdir(exist_ok=True, parents=True)
         traces.log(
-            "iter %i/%i  tokens %0.3fG  input=%s  mask=%s (%i/%i)" % (
-                iter_n, cfg['train_iters'], tokens_n / 1e9, traces.p(batch['input']), traces.p(batch["mask"]),
-                batch["mask"].sum(), batch["mask"].numel()
-            )
+            f"iter {iter_n}/{cfg['train_iters']}  tokens {tokens_n / 1e9:0.3f} "
+            f"input={traces.p(batch['input'])}  mask={traces.p(batch['mask'])} "
+            f"({batch['mask'].sum()}/{batch['mask'].numel()})"
         )
 
         for b0 in range(0, cfg.get("train_batch_size"), cfg.get("micro_batch_size")):
-            input = batch['input'][b0:b0 + micro_bs].contiguous()
-            if cfg['low_gpu_mem_mode']:
-                logits = model.forward_train_cp(input)
-            else:
-                logits = model.lm_forward(model(input, attention_mask=None)[0])
+            try:
+                input = batch['input'][b0:b0 + micro_bs].contiguous()
+                logits = forward(input=input, low_gpu_mem_mode=low_gpu_mem_mode)
+                loss = loss_function(
+                    logits=logits,
+                    labels=batch['labels'][b0:b0 + micro_bs].contiguous(),
+                    mask=batch['mask'][b0:b0 + micro_bs].contiguous(),
+                )
+                model.backward(loss)
+            except th.cuda.OutOfMemoryError as e:
+                if low_gpu_mem_mode:
+                    raise e
+                else:
+                    model.optimizer.zero_grad()
+                    th.cuda.empty_cache()
+                    low_gpu_mem_mode = True
+                    traces.log("switching to low GPU memory mode")
+                    continue
 
-            loss = loss_function(
-                logits=logits,
-                labels=batch['labels'][b0:b0 + micro_bs].contiguous(),
-                mask=batch['mask'][b0:b0 + micro_bs].contiguous(),
-            )
-            model.backward(loss)
             model.step()
             tokens_n += input.shape[0] * input.shape[1]
             traces.progress('loss', loss)
@@ -197,14 +249,21 @@ def loop(
         if test_ds is not None and cfg["test_every"] > 0 and iter_n % cfg["test_every"] == 0:
             model.eval()
             with th.inference_mode():
+                test_losses = []
                 for batch, _ in test_ds_fn(test_ds):
-                    logits = model.lm_forward(model(batch['input'], attention_mask=None)[0])
-                    loss = loss_function(
+                    logits = forward(input=batch['input'], low_gpu_mem_mode=low_gpu_mem_mode)
+                    test_loss = loss_function(
                         logits=logits,
                         labels=batch['labels'],
                         mask=batch['mask'],
                     )
-                    traces.progress('test_loss', loss)
+                    traces.progress('test_loss', test_loss)
+                    test_losses.append(test_loss)
+                if len(test_losses) > 0 and early_stop(sum(test_losses) / len(test_losses)):
+                    traces.log(f"Stopping the training due to "
+                               f"test loss was above minimum {early_stop.counter} times")
+                    _save_checkpoint(force=True)
+                    break
             model.train()
 
         for k, v in ds_stats.items():
@@ -233,13 +292,7 @@ def loop(
             "progress.jsonl",
             "%d" % (cfg['train_iters'] + 50),
         ], cwd=traces.context().path)
-        if iter_n != 0 and iter_n % cfg['save_every'] == 0:
-            if "test_loss" in progress:
-                tag = "iter%04d-testloss%0.3f" % (iter_n, progress["test_loss"])
-            else:
-                tag = "iter%04d-trainloss%0.3f" % (iter_n, progress["loss"])
-            traces.log("saving checkpoint %s" % tag)
-            save_model_state(model, save_path=save_path, tag=tag)
+        _save_checkpoint(force=False)
         status_dict["worked_steps"] = iter_n
         status_dict["worked_minutes"] = int((time.time() - t0) / 60)
         status_dict["eta_minutes"] = int(round(eta / 60))
@@ -258,8 +311,10 @@ def finetune(status_dict, models_db: Dict[str, Any]):
     traces.log("creating model...")
     t0 = time.time()
     model = make_model(
+        model_name=cfg['model_name'],
         weights_path=cfg['model_info']['weight_path'],
         repo_id=cfg['model_info']['repo_id'],
+        backend=cfg['model_info']['backend'],
         freeze_exceptions=cfg['model_info']['freeze_exceptions'],
         lora_target_modules=cfg['model_info']['lora']['lora_target_modules'],
         lora_r=cfg['model_info']['lora']['lora_r'],
@@ -280,7 +335,7 @@ def finetune(status_dict, models_db: Dict[str, Any]):
         model_parameters=[p for p in model.parameters() if p.requires_grad],
         dist_init_required=True
     )
-    train_ds, test_ds = create_data(cfg, model.encoding)
+    train_ds, test_ds = create_data(cfg['model_name'], cfg, model.encoding)
     logging.info("STATUS finetune working")
     loop(
         cfg=cfg,
@@ -290,6 +345,7 @@ def finetune(status_dict, models_db: Dict[str, Any]):
             masked_loss, average_elements=cfg['model_info']['loss_average_elements'],
             enc=model.encoding
         ),
+        model_name=cfg['model_name'],
         train_ds=train_ds,
         test_ds=test_ds,
         status_dict=status_dict

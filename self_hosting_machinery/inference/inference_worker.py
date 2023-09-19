@@ -32,7 +32,7 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
     log("STATUS loading model")
 
     model_dict = models_db[model_name]
-    if "backend" not in model_dict:
+    if model_dict.get("backend", "legacy") == "legacy":
         inference_model = InferenceLegacy(
             model_name=model_name,
             model_dict=model_dict)
@@ -48,7 +48,11 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
             return set()
     dummy_calls = [
         {
-            'temperature': 0.8, 'top_p': 0.95, 'max_tokens': 40, 'id': 'comp-wkCX57Le8giP-1337', 'object': 'text_completion_req',
+            'temperature': 0.8,
+            'top_p': 0.95,
+            'max_tokens': 40,
+            'id': 'comp-wkCX57Le8giP-1337',
+            'object': 'text_completion_req',
             'function': 'completion',
             'echo': False,
             'stop_tokens': [],

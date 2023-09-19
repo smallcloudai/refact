@@ -105,7 +105,7 @@ class LoraMixin:
             lora_dropout: float,
             lora_init_scale: float = 0.01,
             **unused
-    ) -> th.nn.Module:
+    ):
         # TODO: compat fix, remove in the next iteration of changes
         lora_target_modules = ['out' if m == 'backproj' else m for m in lora_target_modules]
         for name, module in model.named_modules():
@@ -120,12 +120,9 @@ class LoraMixin:
                     injecting_module=new_module,
                     inject_path=name
                 )
-        return model
 
     @staticmethod
-    def exclude_lora(
-            model: th.nn.Module,
-    ) -> th.nn.Module:
+    def exclude_lora(model: th.nn.Module):
         for name, module in model.named_modules():
             if not isinstance(module, LoraLinear):
                 continue
@@ -134,4 +131,3 @@ class LoraMixin:
                 injecting_module=module.layer,
                 inject_path=name
             )
-        return model

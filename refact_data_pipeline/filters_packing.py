@@ -220,8 +220,7 @@ class DensePacker:
             assert idx is not None, f'No item with length={length}'
             return self.buffer.pop(idx)
 
-        assert len(self.buffer) > 0
-        if budget == 0:
+        if len(self.buffer) == 0 or budget == 0:
             return []
 
         if force_random_get or not self.pack_complete:
@@ -294,7 +293,7 @@ class DensePacker:
         while True:
             self.__fill_buffer()
             if len(self.buffer) == 0:
-                raise StopIteration()
+                break
 
             items_acc = []
             _pack_iteration(acc=items_acc, force_random_get=True)

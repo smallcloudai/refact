@@ -1,11 +1,12 @@
 import os
 import logging
-import torch
 from pathlib import Path
 
 from refact_models.config import Config
 
 from typing import Optional
+
+from refact_models.lora import LoraMixin
 
 
 def _load_gs_file(root_path: str, filename: str):
@@ -73,14 +74,9 @@ def load_config(root_path: str, repo_id: Optional[str] = None):
     return Config.from_dict(config)
 
 
-def load_checkpoint_embeddings(model, root_path: str, repo_id: Optional[str] = None) -> torch.nn.Module:
+def load_checkpoint(model, root_path: str, repo_id: Optional[str] = None):
     model.wte.weight.data[:] = _load_filename(root_path, 'emb', repo_id)
     model.lm_head.weight.data[:] = _load_filename(root_path, 'unemb', repo_id)
-    return model
-
-
-def load_checkpoint(model, root_path: str, repo_id: Optional[str] = None) -> torch.nn.Module:
-    load_checkpoint_embeddings(model, root_path, repo_id)
     model.ln_f.weight.data[:] = _load_filename(root_path, 'bounce.ln_final.weight', repo_id)
     model.ln_f.bias.data[:] = _load_filename(root_path, 'bounce.ln_final.bias', repo_id)
 
@@ -113,23 +109,28 @@ def load_checkpoint(model, root_path: str, repo_id: Optional[str] = None) -> tor
         model.blocks[i - 1].sa.out.weight.data[:] = _load_filename(root_path, f'{f_prefix}.sa.backproj', repo_id)
         model.blocks[i - 1].sa.out.bias.data[:] = _load_filename(root_path, f'{f_prefix}.sa.backproj_bias', repo_id)
 
-    for param in model.parameters():
-        param.requires_grad = False
 
-    model.cache_dir = root_path
-    model.model_name = repo_id
+def load_finetune_checkpoint(model, model_name: str, root_path: str, repo_id: Optional[str] = None):
+    from refact_data_pipeline.finetune.model_handling import setup_model_specific_params
 
-    return model
-
-
-def load_finetune_checkpoint(model, root_path: str, repo_id: Optional[str] = None) -> torch.nn.Module:
     finetune_cp = _load_filename(root_path, 'mp_rank_00_model_states.pt', repo_id)
-    model = model.apply_lora(model=model, **finetune_cp['ds_config']['model_info']['lora'])
-    model.load_state_dict(finetune_cp['module'], strict=False)
-    return model
+    lora_cfg = finetune_cp['ds_config']['model_info']['lora']
+    _, lora_target_modules = setup_model_specific_params(
+        model_name, lora_target_modules=lora_cfg.pop('lora_target_modules'), freeze_exceptions=[]
+    )
+    LoraMixin.apply_lora(
+        model,
+        lora_target_modules=lora_target_modules,
+        **lora_cfg
+    )
+    missing, unexpected = model.load_state_dict(finetune_cp['module'], strict=False)
+    if len(unexpected) > 0:
+        raise RuntimeError(f"Unexpected keys in finetune checkpoint: {unexpected}")
 
 
-def load_finetune_checkpoint_only(model, root_path: str) -> torch.nn.Module:
+def load_finetune_checkpoint_only(model, root_path: str):
     finetune_cp = _load_filename(root_path, 'mp_rank_00_model_states.pt', None)
-    model.load_state_dict(finetune_cp['module'], strict=False)
-    return model
+    missing, unexpected = model.load_state_dict(finetune_cp['module'], strict=False)
+    if len(unexpected) > 0:
+        raise RuntimeError(f"Unexpected keys in finetune checkpoint: {unexpected}")
+
