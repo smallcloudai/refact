@@ -14,11 +14,10 @@ use tokenizers::Tokenizer;
 use crate::cached_tokenizers;
 use crate::caps;
 use crate::scratchpads;
-
 use crate::call_validation::{CodeCompletionPost, ChatPost};
 use crate::global_context::GlobalContext;
 use crate::caps::CodeAssistantCaps;
-use crate::restream::ScratchError;
+use crate::custom_error::ScratchError;
 use crate::telemetry_basic;
 
 

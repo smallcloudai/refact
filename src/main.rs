@@ -1,4 +1,6 @@
 use tracing::{error, info};
+use std::io::Write;
+
 mod global_context;
 mod caps;
 mod call_validation;
@@ -9,8 +11,8 @@ mod forward_to_openai_endpoint;
 mod cached_tokenizers;
 mod http_server;
 mod restream;
+mod custom_error;
 mod telemetry_basic;
-use std::io::Write;
 
 
 #[tokio::main]

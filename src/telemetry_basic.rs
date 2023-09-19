@@ -1,16 +1,15 @@
 use tracing::{error, info};
 use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
-use tokio::sync::RwLock as ARwLock;
 use std::sync::RwLock as StdRwLock;
 use std::path::PathBuf;
 use std::collections::HashMap;
+use tokio::io::AsyncWriteExt;
+use tokio::sync::RwLock as ARwLock;
 use serde_json::json;
+use serde::{Deserialize, Serialize};
+
 use crate::caps::CodeAssistantCaps;
-use serde::Deserialize;
-use serde::Serialize;
 use crate::global_context;
-// use chrono::Utc;
 
 
 const TELEMETRY_COMPRESSION_SECONDS: u64 = 600;
