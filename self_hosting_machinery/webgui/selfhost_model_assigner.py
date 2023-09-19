@@ -63,12 +63,21 @@ class ModelAssigner:
         if inference_config is None:
             inference_config = self.model_assignment
 
+        inference_config = self._model_assign_filter(inference_config)
         inference_config = self._model_inference_setup(inference_config)
         inference_config = self._integrations_inference_setup(inference_config)
 
         with open(env.CONFIG_INFERENCE + ".tmp", "w") as f:
             json.dump(inference_config, f, indent=4)
         os.rename(env.CONFIG_INFERENCE + ".tmp", env.CONFIG_INFERENCE)
+
+    def _model_assign_filter(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
+        inference_config["model_assign"] = {
+            model_name: model_cfg
+            for model_name, model_cfg in inference_config["model_assign"].items()
+            if model_name in self.models_db and not self.models_db[model_name].get("hidden")
+        }
+        return inference_config
 
     def _model_inference_setup(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
         gpus = self.gpus["gpus"]
