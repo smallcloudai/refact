@@ -45,8 +45,7 @@ def call_completion(
         raise ValueError("Unexpected response\n%s" % r.text)
     if not stream:
         resp = r.json()
-        if isinstance(resp, list):
-            return resp[0]["code_completion"]
+        return resp["choices"][0]["code_completion"]
     else:
         accum = ""
         for line in r.iter_lines():

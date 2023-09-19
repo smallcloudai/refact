@@ -19,13 +19,13 @@ use crate::call_validation::{CodeCompletionPost, ChatPost};
 use crate::global_context::GlobalContext;
 use crate::caps::CodeAssistantCaps;
 use crate::restream::explain_whats_wrong;
+use crate::telemetry_basic;
 
 
 async fn _get_caps_and_tokenizer(
     global_context: Arc<ARwLock<GlobalContext>>,
-    bearer: Option<String>,
     model_name: String,
-) -> Result<(Arc<StdRwLock<CodeAssistantCaps>>, Arc<StdRwLock<Tokenizer>>, reqwest::Client), String> {
+) -> Result<(Arc<StdRwLock<CodeAssistantCaps>>, Arc<StdRwLock<Tokenizer>>, reqwest::Client, String), String> {
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
     let client1: reqwest::Client;
     let mut cx_locked = global_context.write().await;
@@ -48,14 +48,14 @@ async fn _get_caps_and_tokenizer(
                 let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).unwrap_or(&model_name);
                 http_path = caps_locked.tokenizer_path_template.replace("$MODEL", rewritten_model_name);();
             }
-            cached_tokenizers::download_tokenizer_file(&client2, http_path.as_str(), bearer.clone(), &path).await?;
+            cached_tokenizers::download_tokenizer_file(&client2, http_path.as_str(), cx_locked.cmdline.api_key.clone(), &path).await?;
             let tokenizer = Tokenizer::from_file(path).map_err(|e| format!("failed to load tokenizer: {}", e))?;
             let arc = Arc::new(StdRwLock::new(tokenizer));
             cx_locked.tokenizer_map.insert(model_name.clone(), arc.clone());
             arc
         }
     };
-    Ok((caps, tokenizer_arc, client1))
+    Ok((caps, tokenizer_arc, client1, cx_locked.cmdline.api_key.clone()))
 }
 
 async fn _lookup_code_completion_scratchpad(
@@ -100,7 +100,6 @@ async fn _lookup_chat_scratchpad(
 
 async fn handle_v1_code_completion(
     global_context: Arc<ARwLock<GlobalContext>>,
-    bearer: Option<String>,
     body_bytes: hyper::body::Bytes
 ) -> Result<Response<Body>, Response<Body>> {
     let mut code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
@@ -117,9 +116,8 @@ async fn handle_v1_code_completion(
         code_completion_post.parameters.max_new_tokens = 50;
     }
     code_completion_post.parameters.temperature = Some(code_completion_post.parameters.temperature.unwrap_or(0.2));
-    let (caps, tokenizer_arc, client1) = _get_caps_and_tokenizer(
+    let (caps, tokenizer_arc, client1, api_key) = _get_caps_and_tokenizer(
         global_context.clone(),
-        bearer.clone(),
         model_name.clone(),
     ).await.map_err(|e|
         explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
@@ -143,16 +141,15 @@ async fn handle_v1_code_completion(
     // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
     info!("prompt {:?}", t1.elapsed());
     if !code_completion_post.stream {
-        crate::restream::scratchpad_interaction_not_stream(caps, scratchpad, &prompt, model_name, client1, bearer, &code_completion_post.parameters).await
+        crate::restream::scratchpad_interaction_not_stream(caps, scratchpad, &prompt, model_name, client1, api_key, &code_completion_post.parameters).await
     } else {
-        crate::restream::scratchpad_interaction_stream(caps, scratchpad, &prompt, model_name, client1, bearer, &code_completion_post.parameters).await
+        crate::restream::scratchpad_interaction_stream(caps, scratchpad, &prompt, model_name, client1, api_key, &code_completion_post.parameters).await
     }
 }
 
 
 async fn handle_v1_chat(
     global_context: Arc<ARwLock<GlobalContext>>,
-    bearer: Option<String>,
     body_bytes: hyper::body::Bytes
 ) -> Result<Response<Body>, Response<Body>> {
     let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e|
@@ -169,9 +166,8 @@ async fn handle_v1_chat(
     }
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(0.2));
     chat_post.model = model_name.clone();
-    let (caps, tokenizer_arc, client1) = _get_caps_and_tokenizer(
+    let (caps, tokenizer_arc, client1, api_key) = _get_caps_and_tokenizer(
         global_context.clone(),
-        bearer.clone(),
         model_name.clone(),
     ).await.map_err(|e|
         explain_whats_wrong(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
@@ -196,10 +192,25 @@ async fn handle_v1_chat(
     info!("chat prompt {:?}", t1.elapsed());
     let streaming = chat_post.stream.unwrap_or(false);
     if streaming {
-        crate::restream::scratchpad_interaction_stream(caps, scratchpad, &prompt, model_name, client1, bearer, &chat_post.parameters).await
+        crate::restream::scratchpad_interaction_stream(caps, scratchpad, &prompt, model_name, client1, api_key, &chat_post.parameters).await
     } else {
-        crate::restream::scratchpad_interaction_not_stream(caps, scratchpad, &prompt, model_name, client1, bearer, &chat_post.parameters).await
+        crate::restream::scratchpad_interaction_not_stream(caps, scratchpad, &prompt, model_name, client1, api_key, &chat_post.parameters).await
     }
+}
+
+
+async fn handle_v1_telemetry_network(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    body_bytes: hyper::body::Bytes
+) -> Result<Response<Body>, Response<Body>> {
+    let post = serde_json::from_slice::<telemetry_basic::TelemetryNetwork>(&body_bytes).map_err(|e| {
+        explain_whats_wrong(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    global_context.write().await.telemetry.write().unwrap().tele_net.push(post);
+    Ok(Response::builder()
+       .status(StatusCode::OK)
+       .body(Body::from(json!({"success": 1}).to_string()))
+       .unwrap())
 }
 
 async fn handle_v1_caps(
@@ -225,23 +236,20 @@ async fn handle_v1_caps(
 async fn handle_request(
     global_context: Arc<ARwLock<GlobalContext>>,
     remote_addr: SocketAddr,
-    bearer: Option<String>,
     path: String,
     method: Method,
     req: Request<Body>,
 ) -> Result<Response<Body>, hyper::Error> {
     let t0 = std::time::Instant::now();
     let body_bytes = hyper::body::to_bytes(req.into_body()).await?;
-    let mut bearer4log = "none".to_string();
-    if let Some(x) = bearer.clone() {
-        bearer4log = x.chars().skip(7).take(7).collect::<String>() + "…";
-    }
-    info!("{} {} {} body_bytes={} bearer={}", remote_addr, method, path, body_bytes.len(), bearer4log);
+    info!("{} {} {} body_bytes={}", remote_addr, method, path, body_bytes.len());
     let result: Result<Response<Body>, Response<Body>>;
     if method == Method::POST && path == "/v1/code-completion" {
-        result = handle_v1_code_completion(global_context, bearer, body_bytes).await;
+        result = handle_v1_code_completion(global_context, body_bytes).await;
     } else if method == Method::POST && path == "/v1/chat" {
-        result = handle_v1_chat(global_context, bearer, body_bytes).await;
+        result = handle_v1_chat(global_context, body_bytes).await;
+    } else if method == Method::POST && path == "/v1/telemetry-network" {
+        result = handle_v1_telemetry_network(global_context, body_bytes).await;
     } else if method == Method::GET && path == "/v1/caps" {
         result = Ok(handle_v1_caps(global_context).await);
     } else {
@@ -266,12 +274,7 @@ pub async fn start_server(
                 let path = req.uri().path().to_string();
                 let method = req.method().clone();
                 let context_ptr2 = context_ptr.clone();
-                let bearer = req.headers()
-                    .get("Authorization")
-                    .and_then(|x| x.to_str()
-                    .ok()
-                    .map(|s| s.to_owned()));
-                handle_request(context_ptr2, remote_addr, bearer, path, method, req)
+                handle_request(context_ptr2, remote_addr, path, method, req)
             }))
         }
     });

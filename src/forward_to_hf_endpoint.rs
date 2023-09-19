@@ -5,10 +5,11 @@ use reqwest::header::HeaderValue;
 use reqwest_eventsource::EventSource;
 use serde_json::json;
 use crate::call_validation::SamplingParameters;
+use tracing::info;
 
 
 pub async fn forward_to_hf_style_endpoint(
-    bearer: Option<String>,
+    bearer: String,
     model_name: &str,
     prompt: &str,
     client: &reqwest::Client,
@@ -18,9 +19,10 @@ pub async fn forward_to_hf_style_endpoint(
     let url = endpoint_template.replace("$MODEL", model_name);
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
-    if let Some(t) = bearer {
-        headers.insert(AUTHORIZATION, HeaderValue::from_str(t.as_str()).unwrap());
+    if !bearer.is_empty() {
+        headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
     }
+    info!("headers: {:?}", headers);
     let params_string = serde_json::to_string(sampling_parameters).unwrap();
     let mut params_json = serde_json::from_str::<serde_json::Value>(&params_string).unwrap();
     params_json["return_full_text"] = serde_json::Value::Bool(false);
@@ -47,7 +49,7 @@ pub async fn forward_to_hf_style_endpoint(
 
 
 pub async fn forward_to_hf_style_endpoint_streaming(
-    bearer: Option<String>,
+    bearer: String,
     model_name: &str,
     prompt: &str,
     client: &reqwest::Client,
@@ -57,8 +59,8 @@ pub async fn forward_to_hf_style_endpoint_streaming(
     let url = endpoint_template.replace("$MODEL", model_name);
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
-    if let Some(t) = bearer {
-        headers.insert(AUTHORIZATION, HeaderValue::from_str(t.as_str()).unwrap());
+    if !bearer.is_empty() {
+        headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
     }
     let params_string = serde_json::to_string(sampling_parameters).unwrap();
     let mut params_json = serde_json::from_str::<serde_json::Value>(&params_string).unwrap();

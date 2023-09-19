@@ -32,7 +32,7 @@ pub async fn scratchpad_interaction_not_stream(
     prompt: &str,
     model_name: String,
     client: reqwest::Client,
-    bearer: Option<String>,
+    bearer: String,
     parameters: &SamplingParameters,
 ) -> Result<Response<Body>, Response<Body>> {
     let t2 = std::time::SystemTime::now();
@@ -122,7 +122,7 @@ pub async fn scratchpad_interaction_stream(
     prompt: &str,
     mut model_name: String,
     client: reqwest::Client,
-    bearer: Option<String>,
+    bearer: String,
     parameters: &SamplingParameters,
 ) -> Result<Response<Body>, Response<Body>> {
     let t1 = std::time::SystemTime::now();

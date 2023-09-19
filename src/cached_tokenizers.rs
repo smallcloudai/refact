@@ -13,7 +13,7 @@ pub struct Error {
 pub async fn download_tokenizer_file(
     http_client: &reqwest::Client,
     http_path: &str,
-    api_token: Option<String>,
+    api_token: String,
     to: impl AsRef<Path>,
 ) -> Result<(), String> {
     if to.as_ref().exists() {
@@ -26,7 +26,7 @@ pub async fn download_tokenizer_file(
         .await
         .map_err(|e| format!("failed to create parent dir: {}", e))?;
     let mut req = http_client.get(http_path);
-    if let Some(api_token) = api_token {
+    if !api_token.is_empty() {
         req = req.header(AUTHORIZATION, format!("Bearer {api_token}"))
     }
     let res = req

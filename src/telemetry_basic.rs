@@ -5,7 +5,6 @@ use tokio::sync::RwLock as ARwLock;
 use std::sync::RwLock as StdRwLock;
 use std::path::PathBuf;
 use std::collections::HashMap;
-// use reqwest_eventsource::Event;
 use serde_json::json;
 use crate::caps::CodeAssistantCaps;
 use serde::Deserialize;
@@ -74,13 +73,13 @@ fn _compress_telemetry_network(
             key2cnt.insert(key.clone(), key2cnt[&key] + 1);
         }
     }
-    let mut big_json_net = serde_json::json!({});
+    let mut records = serde_json::json!([]);
     for (key, cnt) in key2cnt.iter() {
         let mut json_dict = key2dict[key.as_str()].clone();
         json_dict["counter"] = json!(cnt);
-        big_json_net.as_object_mut().unwrap().insert(key.clone(), json_dict);
+        records.as_array_mut().unwrap().push(json_dict);
     }
-    big_json_net
+    records
 }
 
 fn _key_telemetry_completion(rec: &TelemetryCompletion) -> String {
@@ -90,6 +89,7 @@ fn _key_telemetry_completion(rec: &TelemetryCompletion) -> String {
 pub async fn compress_basic_telemetry_to_file(
     cx: Arc<ARwLock<global_context::GlobalContext>>,
 ) {
+    let now = chrono::Local::now();
     let cache_dir: PathBuf;
     let storage: Arc<StdRwLock<Storage>>;
     {
@@ -97,13 +97,12 @@ pub async fn compress_basic_telemetry_to_file(
         storage = cx_locked.telemetry.clone();
         cache_dir = cx_locked.cache_dir.clone();
     }
-    let mut big_json_net = _compress_telemetry_network(storage.clone());
     let dir = cache_dir.join("telemetry").join("compressed");
     tokio::fs::create_dir_all(dir.clone()).await.unwrap_or_else(|_| {});
-    let now = chrono::Local::now();
+
+    let records = _compress_telemetry_network(storage.clone());
     let fn_net = dir.join(format!("{}-net.json", now.format("%Y%m%d-%H%M%S")));
-    big_json_net.as_object_mut().unwrap().insert("teletype".to_string(), json!("network"));
-    big_json_net.as_object_mut().unwrap().insert("ts_end".to_string(), json!(now.timestamp()));
+    let mut big_json_net = json!({});
     {
         let mut storage_locked = storage.write().unwrap();
         storage_locked.tele_net.clear();
@@ -111,10 +110,13 @@ pub async fn compress_basic_telemetry_to_file(
         big_json_net.as_object_mut().unwrap().insert("ts_begin".to_string(), json!(storage_locked.last_flushed_ts));
         storage_locked.last_flushed_ts = now.timestamp();
     }
+    big_json_net.as_object_mut().unwrap().insert("teletype".to_string(), json!("network"));
+    big_json_net.as_object_mut().unwrap().insert("ts_end".to_string(), json!(now.timestamp()));
+    big_json_net.as_object_mut().unwrap().insert("records".to_string(), records);
     // even if there's an error with i/o, storage is now clear, preventing infinite memory growth
     info!("basic telemetry saving \"{}\"", fn_net.to_str().unwrap());
     let mut f_net = tokio::fs::File::create(fn_net).await.unwrap();
-    f_net.write_all(serde_json::to_string(&big_json_net).unwrap().as_bytes()).await.unwrap();
+    f_net.write_all(serde_json::to_string_pretty(&big_json_net).unwrap().as_bytes()).await.unwrap();
 }
 
 pub async fn cleanup_old_files(
@@ -156,7 +158,9 @@ pub async fn cleanup_old_files(
 }
 
 pub async fn send_telemetry_files_to_mothership(
-    cx: Arc<ARwLock<global_context::GlobalContext>>,
+    dir_compressed: PathBuf,
+    dir_sent: PathBuf,
+    telemetry_basic_dest: String,
     api_key: String,
     enduser_client_version: String,
 ) {
@@ -186,14 +190,12 @@ pub async fn telemetry_background_task(
         if caps.is_some() {
             telemetry_basic_dest = caps.unwrap().read().unwrap().telemetry_basic_dest.clone();
         }
-        if !telemetry_basic_dest.is_empty() {
-        }
         compress_basic_telemetry_to_file(global_context.clone()).await;
-        if mothership_enabled {
-            send_telemetry_files_to_mothership(global_context.clone(), api_key, enduser_client_version).await;
-        }
         let dir_compressed = cache_dir.join("telemetry").join("compressed");
         let dir_sent = cache_dir.join("telemetry").join("sent");
+        if mothership_enabled && !telemetry_basic_dest.is_empty() {
+            send_telemetry_files_to_mothership(dir_compressed.clone(), dir_sent.clone(), telemetry_basic_dest, api_key, enduser_client_version).await;
+        }
         cleanup_old_files(dir_compressed, 10).await;
         cleanup_old_files(dir_sent, 10).await;
     }
