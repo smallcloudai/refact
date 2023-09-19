@@ -8,14 +8,21 @@ use tokenizers::Tokenizer;
 use structopt::StructOpt;
 use std::io::Write;
 use crate::caps::CodeAssistantCaps;
+use crate::telemetry_basic;
 
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CommandLine {
     #[structopt(long, short="u", help="URL to start working. The first step is to fetch coding_assistant_caps.json.")]
     pub address_url: String,
-    #[structopt(long, short="p", default_value="8000", help="Bind 127.0.0.1:<port> to listen for requests.")]
+    #[structopt(long, short="k", default_value="", help="API key used to authenticate your requests, will appear in HTTP requests this binary makes.")]
+    pub api_key: String,
+    #[structopt(long, short="p", default_value="8001", help="Bind 127.0.0.1:<port> to listen for requests, such as /v1/code-completion, /v1/chat, /v1/caps.")]
     pub port: u16,
+    #[structopt(long, short="v", default_value="", help="End-user client version, such as version of VS Code plugin.")]
+    pub enduser_client_version: String,
+    #[structopt(long, short="b", help="Send basic telemetry (counters and errors)")]
+    pub basic_telemetry: bool,
 }
 
 
@@ -26,6 +33,7 @@ pub struct GlobalContext {
     pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
     pub caps_last_attempted_ts: u64,
     pub cmdline: CommandLine,
+    pub telemetry: Arc<StdRwLock<telemetry_basic::Storage>>,
 }
 
 
@@ -102,6 +110,7 @@ pub async fn create_global_context(
         caps: None,
         caps_last_attempted_ts: 0,
         cmdline,
+        telemetry: Arc::new(StdRwLock::new(telemetry_basic::Storage::new())),
     };
     Ok(Arc::new(ARwLock::new(cx)))
 }

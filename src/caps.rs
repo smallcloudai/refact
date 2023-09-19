@@ -30,6 +30,7 @@ pub struct CodeAssistantCaps {
     pub endpoint_style: String,
     pub tokenizer_path_template: String,
     pub tokenizer_rewrite_path: HashMap<String, String>,
+    pub telemetry_basic_dest: String,
     #[serde(default)]
     pub code_completion_models: HashMap<String, ModelRecord>,
     pub code_completion_default_model: String,

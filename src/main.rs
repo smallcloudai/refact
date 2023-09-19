@@ -9,6 +9,7 @@ mod forward_to_openai_endpoint;
 mod cached_tokenizers;
 mod http_server;
 mod restream;
+mod telemetry_basic;
 use std::io::Write;
 
 
@@ -29,6 +30,7 @@ async fn main() {
     };
     let global_context = global_context_maybe.unwrap();
     tokio::spawn(global_context::caps_background_reload(global_context.clone()));
+    tokio::spawn(telemetry_basic::telemetry_background_task(global_context.clone()));
 
     let server = http_server::start_server(global_context);
     let server_result = server.await;

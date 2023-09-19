@@ -3,14 +3,14 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CursorPosition {
     pub file: String,
     pub line: i32,
     pub character: i32,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeCompletionInputs {
     pub sources: HashMap<String, String>,
     pub cursor: CursorPosition,
