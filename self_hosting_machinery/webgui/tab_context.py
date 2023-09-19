@@ -1,4 +1,5 @@
 import json
+import traceback
 
 from pathlib import Path
 
@@ -8,7 +9,7 @@ from fastapi.responses import Response
 
 from self_hosting_machinery import env
 from refact_vecdb.common.profiles import VDBFiles
-from refact_vecdb import VDBEmbeddingsAPI, VDBSearchAPI
+from refact_vecdb import VDBSearchAPI
 from refact_vecdb.embeds_api.embed_spads import embed_providers
 
 __all__ = ['TabContextRouter']
@@ -81,6 +82,7 @@ class TabContextRouter(APIRouter):
             content['files_cnt'] = files_stats['files_cnt']
             content['chunks_cnt'] = files_stats['chunks_cnt']
         except Exception as e:
+            traceback.format_exc()
             content["error"] = str(e)
         print(f'files_stats out: {content}')
         return Response(content=json.dumps(content))

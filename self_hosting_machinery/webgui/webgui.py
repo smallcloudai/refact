@@ -62,6 +62,7 @@ class WebGUI(FastAPI):
             inference_queue: InferenceQueue,
             model_assigner: ModelAssigner):
         return [
+            TabContextRouter(),
             PluginsRouter(),
             CompletionsRouter(
                 prefix="/v1",
@@ -79,7 +80,6 @@ class WebGUI(FastAPI):
             TabHostRouter(model_assigner),
             TabSettingsRouter(model_assigner),
             StaticRouter(),
-            TabVecDBRouter()
         ]
 
     async def _startup_event(self):
