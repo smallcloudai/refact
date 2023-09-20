@@ -13,7 +13,7 @@ def completion_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]
         completion_model = json.load(f).get("completion", None)
 
     if completion_model is None:
-        return "", f"completion model is not setted"
+        return "", f"completion model is not set"
 
     if completion_model not in have_models:
         return "", f"model is not loaded (1)"
