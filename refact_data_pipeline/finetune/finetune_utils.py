@@ -9,6 +9,7 @@ from self_hosting_machinery import env
 from typing import Any, Dict, Optional, Callable
 
 
+legacy_finetune_model = "CONTRASTcode/3b/multi"
 default_finetune_model = "Refact/1.6B"
 
 
@@ -17,7 +18,7 @@ def get_run_model_name(run_dir: str) -> str:
     if not os.path.isfile(config_json_fn):
         raise RuntimeError("get run model name: no config.json found")
     with open(config_json_fn) as f:
-        return json.load(f).get("model_name", default_finetune_model)
+        return json.load(f).get("model_name", legacy_finetune_model)
 
 
 def get_finetune_runs():
@@ -66,9 +67,9 @@ def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     active_loras = {}
     if os.path.exists(env.CONFIG_ACTIVE_LORA):
         active_loras = json.load(open(env.CONFIG_ACTIVE_LORA))
-        if "lora_mode" in active_loras:  # NOTE: old config format
+        if "lora_mode" in active_loras:  # NOTE: legacy config format
             active_loras = {
-                default_finetune_model: active_loras,
+                legacy_finetune_model: active_loras,
             }
     return {
         model_name: {
