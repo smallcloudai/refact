@@ -100,7 +100,6 @@ function get_models()
     });
 }
 
-
 function save_model_assigned() {
     let openai_enable = document.querySelector('#enable_chat_gpt');
     const data = {

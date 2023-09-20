@@ -22,6 +22,7 @@ def red_time(base_ts):
     return termcolor.colored("%0.1fms" % (1000*(time.time() - base_ts)), "red")
 
 
+
 verify_api_key = os.environ.get("SMALLCLOUD_API_KEY", "EMPTY")
 
 
@@ -34,8 +35,8 @@ def verify_bearer(authorization: str):
     if len(bearer_hdr) != 2 or bearer_hdr[0] != "Bearer":
         raise HTTPException(status_code=401, detail="Invalid authorization header")
     api_key = bearer_hdr[1]
-    # if api_key != verify_api_key:
-    #     raise HTTPException(status_code=401, detail="API key mismatch")
+    if api_key != verify_api_key:
+        raise HTTPException(status_code=401, detail="API key mismatch")
 
 
 class EngineDescription(BaseModel):
@@ -58,7 +59,6 @@ class SubSingleNlpChoice(BaseModel):
     files_head_mid_tail: Optional[Dict[str, HeadMidTail]]
     role: Optional[str]
     content: Optional[str]
-    messages: Optional[List[Dict[str, str]]]
     logprobs: Optional[float]
     finish_reason: Optional[str]
 
@@ -174,8 +174,6 @@ class GPURouter(APIRouter):
                 if x.role is not None:
                     choice["role"] = x.role
                     choice["content"] = x.content
-                if x.messages is not None:
-                    choice["messages"] = x.messages
                 msgj["choices"].append(choice)
             if resp.status == "completed":
                 created = resp.created

@@ -16,50 +16,48 @@ from refact_scratchpads_no_gpu import stream_results_async
 
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
-gpt_toolbox_path = 'refact_scratchpads_no_gpu.gpt_toolbox'
+
 gpt_functions = {
-    "free-chat": f"{gpt_toolbox_path}:GptChat",
-    # ATTENTION! Chat with Functions is on by default
-    "free-chat-gpt3.5": f"{gpt_toolbox_path}:GptChatWithFunctions",
-    "free-chat-gpt4": f"{gpt_toolbox_path}:GptChat",
+    "free-chat":                 "refact_scratchpads_no_gpu.gpt_toolbox:GptChat",
+    "free-chat-gpt3.5":          "refact_scratchpads_no_gpu.gpt_toolbox:GptChat",
+    "free-chat-gpt4":            "refact_scratchpads_no_gpu.gpt_toolbox:GptChat",
 
-    "make-code-shorter": f"{gpt_toolbox_path}:GptMakeCodeShorter",
-    "make-code-shorter-gpt3.5": f"{gpt_toolbox_path}:GptMakeCodeShorter",
-    "make-code-shorter-gpt4": f"{gpt_toolbox_path}:GptMakeCodeShorterGPT4",
+    "make-code-shorter":         "refact_scratchpads_no_gpu.gpt_toolbox:GptMakeCodeShorter",
+    "make-code-shorter-gpt3.5":  "refact_scratchpads_no_gpu.gpt_toolbox:GptMakeCodeShorter",
+    "make-code-shorter-gpt4":    "refact_scratchpads_no_gpu.gpt_toolbox:GptMakeCodeShorterGPT4",
 
-    "fix-bug": f"{gpt_toolbox_path}:GptFixBug",
-    "fix-bug-gpt3.5": f"{gpt_toolbox_path}:GptFixBug",
-    "fix-bug-gpt4": f"{gpt_toolbox_path}:GptFixBugGPT4",
+    "fix-bug":                   "refact_scratchpads_no_gpu.gpt_toolbox:GptFixBug",
+    "fix-bug-gpt3.5":            "refact_scratchpads_no_gpu.gpt_toolbox:GptFixBug",
+    "fix-bug-gpt4":              "refact_scratchpads_no_gpu.gpt_toolbox:GptFixBugGPT4",
 
-    "explain-code-block": f"{gpt_toolbox_path}:GptExplainCodeBlock",
-    "explain-code-block-gpt3.5": f"{gpt_toolbox_path}:GptExplainCodeBlock",
-    "explain-code-block-gpt4": f"{gpt_toolbox_path}:GptExplainCodeBlockGPT4",
+    "explain-code-block":        "refact_scratchpads_no_gpu.gpt_toolbox:GptExplainCodeBlock",
+    "explain-code-block-gpt3.5": "refact_scratchpads_no_gpu.gpt_toolbox:GptExplainCodeBlock",
+    "explain-code-block-gpt4":   "refact_scratchpads_no_gpu.gpt_toolbox:GptExplainCodeBlockGPT4",
 
-    "comment-each-line": f"{gpt_toolbox_path}:GptCommentEachLine",
-    "comment-each-line-gpt3.5": f"{gpt_toolbox_path}:GptCommentEachLine",
+    "comment-each-line":         "refact_scratchpads_no_gpu.gpt_toolbox:GptCommentEachLine",
+    "comment-each-line-gpt3.5":  "refact_scratchpads_no_gpu.gpt_toolbox:GptCommentEachLine",
 
-    "precise-naming": f"{gpt_toolbox_path}:GptPreciseNaming",
-    "precise-naming-gpt3.5": f"{gpt_toolbox_path}:GptPreciseNaming",
+    "precise-naming":            "refact_scratchpads_no_gpu.gpt_toolbox:GptPreciseNaming",
+    "precise-naming-gpt3.5":     "refact_scratchpads_no_gpu.gpt_toolbox:GptPreciseNaming",
 
-    "add-console-logs": f"{gpt_toolbox_path}:GptAddConsoleLogs",
-    "add-console-logs-gpt3.5": f"{gpt_toolbox_path}:GptAddConsoleLogs",
+    "add-console-logs":          "refact_scratchpads_no_gpu.gpt_toolbox:GptAddConsoleLogs",
+    "add-console-logs-gpt3.5":   "refact_scratchpads_no_gpu.gpt_toolbox:GptAddConsoleLogs",
 
-    "completion-gpt3.5": f"{gpt_toolbox_path}:GptCompletion",
-    "completion-gpt4": f"{gpt_toolbox_path}:GptCompletionGPT4",
+    "completion-gpt3.5":         "refact_scratchpads_no_gpu.gpt_toolbox:GptCompletion",
+    "completion-gpt4":           "refact_scratchpads_no_gpu.gpt_toolbox:GptCompletionGPT4",
 }
 
 experimental_functions = {
-    "bugs-highlight-gpt3.5":             f"{gpt_toolbox_path}:GptBugsHighlight",
-    "bugs-highlight-gpt4":               f"{gpt_toolbox_path}:GptBugsHighlightGPT4",
-    "vulnerabilities-highlight-gpt4":    f"{gpt_toolbox_path}:GptDetectVulnerabilitiesHighlightGPT4",
+    "bugs-highlight-gpt3.5":             "refact_scratchpads_no_gpu.gpt_toolbox:GptBugsHighlight",
+    "bugs-highlight-gpt4":               "refact_scratchpads_no_gpu.gpt_toolbox:GptBugsHighlightGPT4",
+    "vulnerabilities-highlight-gpt4":    "refact_scratchpads_no_gpu.gpt_toolbox:GptDetectVulnerabilitiesHighlightGPT4",
 }
-
 
 supported_models = {
     "longthink/stable": {
         "functions": {
             **gpt_functions,
-            **experimental_functions
+            **experimental_functions,
         }
     },
 }
@@ -216,7 +214,7 @@ def main():
 
     parser = ArgumentParser()
     parser.add_argument("longthink_variant", type=str, default='longthink/stable')
-    parser.add_argument("--openai_key", type=str)
+    parser.add_argument("-k", "--openai_key", type=str)
     parser.add_argument("-w", "--workers", type=int, default=1)
     args = parser.parse_args()
 

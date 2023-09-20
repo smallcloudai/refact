@@ -2,19 +2,31 @@ import os
 import sys
 import asyncio
 import termcolor
+import functools
 import json
-from typing import List, Union, Callable, Dict, Iterator, Tuple, Any, Iterable
+from typing import List, Union, Callable, Dict, Iterator, Tuple
 
 import openai
+import tiktoken
 
+from refact_scratchpads_no_gpu.gpt_toolbox.scratchpad_utils import full_line_selection
 from refact_scratchpads_no_gpu.async_scratchpad import ascratch
 
 from refact_scratchpads_no_gpu.gpt_toolbox.gpt_chat_spad import gpt_prices, calculate_chat_tokens
-from refact_scratchpads_no_gpu.gpt_toolbox.gpt_utils import trim_context_tok, code_block_postprocess, full_line_selection
-from refact_scratchpads_no_gpu.gpt_toolbox.gpt_metering import engine_to_encoding
+from refact_scratchpads_no_gpu.gpt_toolbox.gpt_utils import trim_context_tok, code_block_postprocess
 
 
 DEBUG = int(os.environ.get("DEBUG", "0"))
+
+
+@functools.lru_cache(maxsize=10)
+def engine_to_encoding(engine: str) -> tiktoken.Encoding:
+    enc = tiktoken.encoding_for_model(engine)
+    return enc
+
+
+ACCUMULATE_N_STREAMING_CHUNKS = 5
+engine_to_encoding("text-davinci-003")  # this immediately tests if tiktoken works or not
 
 
 class ScratchpadToolboxGPT(ascratch.AsyncScratchpad):
@@ -58,7 +70,6 @@ class ScratchpadToolboxGPT(ascratch.AsyncScratchpad):
         self.metering_generated_tokens_n = 0
         self.metering_total_tokens_n = 0
         self.needs_upload = False
-        self._accumulate_n_streaming_chunks = 5
 
         self._model_n = model_n
         self.__model_name = None
@@ -94,22 +105,6 @@ class ScratchpadToolboxGPT(ascratch.AsyncScratchpad):
     def model_name(self, val: str):
         self.__model_name = val
 
-    def _create_chat_gen(self) -> Any:
-        return openai.ChatCompletion.acreate(
-            model=self.model_name,
-            messages=[
-                {
-                    "role": x["role"],
-                    "content": x["content"]
-                }
-                for x in self.messages
-            ],
-            max_tokens=self.max_tokens,
-            stream=self.stream,
-            temperature=self.temp,
-            stop=['<|end|>'],
-        )
-
     async def completion(self) -> Iterator[Dict[str, str]]:
         if self.max_tokens < 1: self.max_tokens = 256
         self.messages = self._messages()
@@ -124,7 +119,14 @@ class ScratchpadToolboxGPT(ascratch.AsyncScratchpad):
             return {self.cursor_file: modified}
 
         try:
-            gen = await self._create_chat_gen()
+            gen = await openai.ChatCompletion.acreate(
+                model=self.model_name,
+                messages=self.messages,
+                max_tokens=self.max_tokens,
+                stream=self.stream,
+                temperature=self.temp,
+                stop=['<|end|>'],
+            )
 
             if not self.stream:
                 resp = gen
@@ -156,7 +158,7 @@ class ScratchpadToolboxGPT(ascratch.AsyncScratchpad):
                         self.finish_reason = resp.choices[0]["finish_reason"]
                     if self.finish_reason:
                         break
-                    if tokens % self._accumulate_n_streaming_chunks == 0:
+                    if tokens % ACCUMULATE_N_STREAMING_CHUNKS == 0:
                         yield forward_streaming()
                     if self.finish_reason:
                         break

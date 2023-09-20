@@ -1,12 +1,49 @@
 import asyncio
+import functools
 import json
-
 from typing import List, Tuple, Dict, Union, Iterator
 
-import openai
-
 from refact_scratchpads_no_gpu.async_scratchpad import ascratch
-from refact_scratchpads_no_gpu.gpt_toolbox.gpt_metering import gpt_prices, calculate_chat_tokens
+
+import openai
+import tiktoken
+
+
+def gpt_prices(  # Apr 4 2023:
+    model_name: str,
+) -> Tuple[int, int]:
+    # GPT-4 8K prompt[$0.03 / 1K tokens] generated[$0.06 / 1K tokens]
+    if model_name.startswith("gpt-4") or model_name.startswith("gpt4"):
+        pp1000t_prompt = 30_000
+        pp1000t_generated = 60_000
+    # gpt-3.5-turbo $0.002 / 1K tokens
+    elif model_name.startswith("gpt-3.5-turbo"):
+        pp1000t_prompt = 2_000
+        pp1000t_generated = 2_000
+    else:
+        raise ValueError(f'get_prices: Unknown model: {model_name}')
+    return pp1000t_prompt, pp1000t_generated
+
+
+@functools.lru_cache(maxsize=10)
+def engine_to_encoding(engine: str) -> tiktoken.Encoding:
+    enc = tiktoken.encoding_for_model(engine)
+    return enc
+
+
+ACCUMULATE_N_STREAMING_CHUNKS = 5
+engine_to_encoding("text-davinci-003")  # this immediately tests if tiktoken works or not
+
+
+def calculate_chat_tokens(model_name, messages, completion):
+    enc = engine_to_encoding(model_name)
+    calc_prompt_tokens_n = 2   # warmup
+    for d in messages:
+        calc_prompt_tokens_n += len(enc.encode(d["content"], disallowed_special=()))
+        calc_prompt_tokens_n += len(enc.encode(d["role"], disallowed_special=()))
+        calc_prompt_tokens_n += 4    # to switch user/assistant
+    calc_generated_tokens_n = len(enc.encode(completion, disallowed_special=())) + 2   # one to switch, another EOF
+    return calc_prompt_tokens_n, calc_generated_tokens_n
 
 
 class GptChat(ascratch.AsyncScratchpad):
@@ -37,7 +74,6 @@ class GptChat(ascratch.AsyncScratchpad):
         if "gpt4" in self.function or "gpt-4" in self.function:
             self._model_name = "gpt-4"
         self._stream_timeout_sec = 15
-        self._accumulate_n_streaming_chunks = 5
 
         messages = messages or []
         if not messages or messages[0].get('role') != 'system':
@@ -92,7 +128,7 @@ class GptChat(ascratch.AsyncScratchpad):
                     self.finish_reason = resp.choices[0]["finish_reason"]
                 if self.finish_reason:
                     break
-                if tokens % self._accumulate_n_streaming_chunks == 0:
+                if tokens % ACCUMULATE_N_STREAMING_CHUNKS == 0:
                     yield forward_streaming()
                 if self.finish_reason:  # cancelled from main coroutine
                     break

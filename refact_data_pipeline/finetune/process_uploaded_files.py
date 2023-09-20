@@ -7,7 +7,6 @@ import time
 import jsonlines
 import logging
 
-from pathlib import Path
 from itertools import chain
 from collections import Counter
 from fnmatch import fnmatch
@@ -622,6 +621,7 @@ def save_jsonl_if_changed(fn, a_list):
     log("Writing '%s'" % fn)
     with open(fn, "w") as f:
         f.write(new_text)
+
 
 # "filter/file.py": {
 #     "lines": 163,
