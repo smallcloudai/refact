@@ -22,7 +22,6 @@ CONFIG_HOW_TO_FILETYPES = os.path.join(DIR_CONFIG, "sources_filetypes.cfg")
 CONFIG_PROCESSING_STATS = os.path.join(DIR_CONFIG, "sources_stats.out")
 CONFIG_FINETUNE = os.path.join(DIR_CONFIG, "finetune.cfg")
 CONFIG_FINETUNE_FILTER_STATS = os.path.join(DIR_CONFIG, "finetune_filter_stats.out")
-CONFIG_VECDB = os.path.join(DIR_CONFIG, "vecdb.cfg")
 CONFIG_HOW_TO_FILTER = os.path.join(DIR_CONFIG, "finetune_filter.cfg")
 CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
 
