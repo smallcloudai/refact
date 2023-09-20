@@ -57,7 +57,7 @@ pub struct Storage {
 impl Storage {
     pub fn new() -> Self {
         Self {
-            last_flushed_ts: 0,
+            last_flushed_ts: chrono::Local::now().timestamp(),
             tele_net: Vec::new(),
             tele_comp: Vec::new(),
         }
@@ -126,10 +126,11 @@ pub async fn compress_basic_telemetry_to_file(
         let mut storage_locked = storage.write().unwrap();
         storage_locked.tele_net.clear();
         storage_locked.tele_comp.clear();
+        big_json_net.as_object_mut().unwrap().insert("ts_start".to_string(), json!(storage_locked.last_flushed_ts));
         storage_locked.last_flushed_ts = now.timestamp();
     }
     big_json_net.as_object_mut().unwrap().insert("records".to_string(), records);
-    big_json_net.as_object_mut().unwrap().insert("ts_saved".to_string(), json!(now.timestamp()));
+    big_json_net.as_object_mut().unwrap().insert("ts_end".to_string(), json!(now.timestamp()));
     big_json_net.as_object_mut().unwrap().insert("teletype".to_string(), json!("network"));
     big_json_net.as_object_mut().unwrap().insert("enduser_client_version".to_string(), json!(enduser_client_version));
     // even if there's an error with i/o, storage is now clear, preventing infinite memory growth
