@@ -100,7 +100,7 @@ class ChatContext(NlpSamplingParams):
     messages: List[ChatMessage]
     n: int = 1
     model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
-    function: str = Query(default="chat", regex="^([a-z0-9\.\-]+)$")
+    function: str = Query(default="chat", regex="^[a-zA-Z0-9_\.\-]+$")
 
 
 async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts):
@@ -265,13 +265,12 @@ class CompletionsRouter(APIRouter):
                 rec_modelcap = rec_modelcap.replace("/", "-")
                 if rec_third_party:
                     rec_model = rec_modelcap
-                    rec_function_name = f"{rec.function_name}-{rec_modelcap}"
                 else:
                     if rec_modelcap == "CONTRASTcode":
                         continue
                     rec_model, err_msg = static_resolve_model(rec_modelcap, self._inference_queue)
                     assert err_msg == "", err_msg
-                    rec_function_name = rec.function_name
+                rec_function_name = f"{rec.function_name}-{rec_modelcap}"
                 longthink_functions[rec_function_name] = {
                     **rec.to_dict(),
                     "function_name": rec_function_name,
