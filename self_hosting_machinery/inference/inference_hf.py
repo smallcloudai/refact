@@ -146,9 +146,16 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
             self._model_dict["model_path"], cache_dir=self.cache_dir, trust_remote_code=True)
 
         if model_dict["backend"] == "transformers":
+            torch_dtype_mapping = {
+                "auto": "auto",
+                "fp16": torch.float16,
+                "bf16": torch.bfloat16,
+            }
+            torch_dtype = self._model_dict["model_class_kwargs"].pop("torch_dtype", "auto")
+            torch_dtype = torch_dtype_mapping[torch_dtype]
             self._model = AutoModelForCausalLM.from_pretrained(
                 self._model_dict["model_path"], cache_dir=self.cache_dir,
-                device_map="auto", torch_dtype="auto", trust_remote_code=True,
+                device_map="auto", torch_dtype=torch_dtype, trust_remote_code=True,
                 **self._model_dict["model_class_kwargs"])
         elif model_dict["backend"] == "autogptq":
             self._model = CustomAutoGPTQForCausalLM.from_quantized(
