@@ -118,6 +118,8 @@ pub async fn compress_basic_telemetry_to_file(
     }
     let dir = cache_dir.join("telemetry").join("compressed");
     tokio::fs::create_dir_all(dir.clone()).await.unwrap_or_else(|_| {});
+    let dir2 = cache_dir.join("telemetry").join("sent");  // while we're at it ...
+    tokio::fs::create_dir_all(dir2.clone()).await.unwrap_or_else(|_| {});
 
     let records = _compress_telemetry_network(storage.clone());
     let fn_net = dir.join(format!("{}-net.json", now.format("%Y%m%d-%H%M%S")));
@@ -203,19 +205,37 @@ pub async fn send_telemetry_files_to_mothership(
             break;
         }
         let contents = contents_maybe.unwrap();
-        info!("sending telemetry file: {}", path.to_str().unwrap());
-        let resp = http_client.post(telemetry_basic_dest.clone())
+        info!("sending telemetry file\n{}\nto url\n{}", path.to_str().unwrap(), telemetry_basic_dest);
+        let resp_maybe = http_client.post(telemetry_basic_dest.clone())
            .body(contents)
            .header(reqwest::header::AUTHORIZATION, format!("Bearer {}", api_key))
            .header(reqwest::header::CONTENT_TYPE, format!("application/json"))
-           .send().await.unwrap();
+           .send().await;
+        if resp_maybe.is_err() {
+            error!("telemetry send failed: {}\ndest url was\n{}", resp_maybe.err().unwrap(), telemetry_basic_dest);
+            break;
+        }
+        let resp = resp_maybe.unwrap();
         if resp.status()!= reqwest::StatusCode::OK {
-            error!("telemetry send failed: {}\ndest url was: {}", resp.status(), telemetry_basic_dest);
+            error!("telemetry send failed: {}\ndest url was\n{}", resp.status(), telemetry_basic_dest);
+            break;
+        }
+        let resp_body = resp.text().await.unwrap_or_else(|_| "-empty-".to_string());
+        info!("telemetry send success, response:\n{}", resp_body);
+        let resp_json = serde_json::from_str::<serde_json::Value>(&resp_body).unwrap_or_else(|_| json!({}));
+        let retcode = resp_json["retcode"].as_str().unwrap_or("").to_string();
+        if retcode != "OK" {
+            error!("retcode is not OK");
             break;
         }
         let new_path = dir_sent.join(path.file_name().unwrap());
-        info!("success, moving telemetry file: {} to {}", path.to_str().unwrap(), new_path.to_str().unwrap());
-        tokio::fs::rename(path, new_path).await.unwrap();
+        info!("success, moving file to {}", new_path.to_str().unwrap());
+        let res = tokio::fs::rename(path, new_path).await;
+        if res.is_err() {
+            error!("telemetry send success, but cannot move file: {}", res.err().unwrap());
+            error!("pretty bad, because this can lead to infinite sending of the same file");
+            break;
+        }
     }
 }
 

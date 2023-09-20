@@ -126,7 +126,7 @@ const HF_DEFAULT_CAPS: &str = r#"
     },
     "code_completion_default_model": "bigcode/starcoder",
     "code_chat_default_model": "",
-    "telemetry_basic_dest": "https://www.smallcloud.ai/v1/telemetry-basic",
+    "telemetry_basic_dest": "https://staging.smallcloud.ai/v1/telemetry-basic",
     "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback",
     "running_models": ["bigcode/starcoder", "meta-llama/Llama-2-70b-chat-hf"]
 }
