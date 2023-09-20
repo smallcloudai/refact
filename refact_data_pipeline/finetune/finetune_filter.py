@@ -18,7 +18,7 @@ import refact_data_pipeline.finetune.traces as traces
 from refact_data_pipeline import DatasetOpts, finetune_datasource
 from refact_data_pipeline.datautils import BatchIterator
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
-from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stats
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stat
 from refact_data_pipeline.finetune.finetune_filtering_defaults import finetune_filtering_defaults
 from refact_data_pipeline.finetune.finetune_config import base_config
 from refact_data_pipeline.finetune.model_handling import make_model, masked_loss, model_forward
@@ -35,15 +35,14 @@ filtered_train = os.path.join(env.DIR_UNPACKED, "train_set_filtered.jsonl")
 filtered_test = os.path.join(env.DIR_UNPACKED, "test_set_filtered.jsonl")
 
 
-def _update_and_dump_status(status_dict: Dict[str, Any], status_string: str):
-    if status_string in ["starting"]:
-        status_dict = get_finetune_filter_stats(default=True)
-        status_dict["started_ts"] = time.time()
-    status_dict["status"] = status_string
-    with open(env.CONFIG_FINETUNE_FILTER_STATS + ".tmp", "w") as f:
-        json.dump(status_dict, f, indent=4)
-    os.rename(env.CONFIG_FINETUNE_FILTER_STATS + ".tmp", env.CONFIG_FINETUNE_FILTER_STATS)
-    return status_dict
+def _update_and_dump_status(stats_dict: Dict[str, Any], status_string: str):
+    with open(env.CONFIG_FINETUNE_FILTER_STATUS + ".tmp", "w") as f:
+        json.dump({"status": status_string}, f, indent=4)
+    os.rename(env.CONFIG_FINETUNE_FILTER_STATUS + ".tmp", env.CONFIG_FINETUNE_FILTER_STATUS)
+    with open(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", "w") as f:
+        json.dump(stats_dict, f, indent=4)
+    os.rename(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", env.CONFIG_FINETUNE_FILTER_STAT)
+    return stats_dict
 
 
 def _file_accepted(reason, path):
@@ -80,7 +79,7 @@ def loss_based_filter(
         dataopts,
         *,
         fcfg,
-        status_dict,
+        stats_dict,
         cfg,
 ):
     t0 = time.time()
@@ -89,22 +88,22 @@ def loss_based_filter(
     batch_iter_fn = partial(BatchIterator, dataopts=dict(batch_size=1, drop_last=False))
     all_losses, rejected = [], set()
     logging.info("STATUS filtering")
-    status_dict['total_steps'] = len(train_files)
+    stats_dict['total_steps'] = len(train_files)
     is_force_included, is_force_excluded = get_force_included_excluded_matchers()
     forward = partial(model_forward, model=model, low_gpu_mem_mode=False, backend=cfg['model_info']['backend'])
     for iter_n, file in enumerate(train_files):
         t0_iter = time.time()
-        status_dict = _update_and_dump_status(status_dict, "filtering")
+        stats_dict = _update_and_dump_status(stats_dict, "filtering")
         file_losses = []
         if is_force_included(file['path']):
             _file_accepted("FILTER1 INCLUDED_BY_MASK", file["path"])
-            status_dict["accepted"] += 1
+            stats_dict["accepted"] += 1
             continue
         elif is_force_excluded(file['path']):
             traces.log("REJECTED FILTER %-100s EXCLUDED_BY_MASK" % file["path"])
             rejected.add(file["path"])
             _file_rejected("FILTER1 EXCLUDED_BY_MASK", file["path"])
-            status_dict["rejected"] += 1
+            stats_dict["rejected"] += 1
             continue
 
         for batch, stats in batch_iter_fn(finetune_datasource.local_plain([file], dataopts)):
@@ -123,7 +122,7 @@ def loss_based_filter(
             traces.log("REJECTED FILTER %-100s empty" % file["path"])
             rejected.add(file["path"])
             _file_rejected("FILTER1 EMPTY", file["path"])
-            status_dict["rejected"] += 1
+            stats_dict["rejected"] += 1
             continue
 
         file_loss = sum(file_losses) / len(file_losses)
@@ -132,26 +131,26 @@ def loss_based_filter(
             traces.log("REJECTED FILTER %-100s loss %0.3f" % (file["path"], file_loss))
             rejected.add(file["path"])
             _file_rejected("FILTER1 %0.3f" % file_loss, file["path"])
-            status_dict["rejected"] += 1
+            stats_dict["rejected"] += 1
         else:
             _file_accepted("LOSS %0.3f" % file_loss, file["path"])
-            status_dict["accepted"] += 1
+            stats_dict["accepted"] += 1
             all_losses.append(file_loss)
-            status_dict['avg_loss'] = sum(all_losses) / len(all_losses)
+            stats_dict['avg_loss'] = sum(all_losses) / len(all_losses)
 
         iter_times.append(time.time() - t0_iter)
         eta = (len(train_files) - iter_n) * (sum(iter_times) / len(iter_times))
-        status_dict["eta_minutes"] = int(round(eta / 60))
-        status_dict["worked_steps"] = iter_n
-        status_dict["worked_minutes"] = int((time.time() - t0) / 60)
+        stats_dict["eta_minutes"] = int(round(eta / 60))
+        stats_dict["worked_steps"] = iter_n
+        stats_dict["worked_minutes"] = int((time.time() - t0) / 60)
 
     traces.log("calculated frames %i " % len(train_files))
-    traces.log("avg loss %0.4f" % status_dict['avg_loss'])
+    traces.log("avg loss %0.4f" % stats_dict['avg_loss'])
 
     return rejected
 
 
-def pre_filtering(status_dict, models_db: Dict[str, Any]):
+def pre_filtering(stats_dict, models_db: Dict[str, Any]):
     finetune_cfg = get_finetune_config(logger=traces.log)
 
     fcfg = {**finetune_filtering_defaults}
@@ -211,7 +210,7 @@ def pre_filtering(status_dict, models_db: Dict[str, Any]):
     traces.log(textwrap.fill(text, width=100))
 
     filtered = loss_based_filter(
-        train_files, model, loss_function, dataopts, fcfg=fcfg, status_dict=status_dict,
+        train_files, model, loss_function, dataopts, fcfg=fcfg, stats_dict=stats_dict,
         cfg=cfg
     )
 
@@ -255,36 +254,36 @@ def needs_any_work():
 
 
 def main(models_db: Dict[str, Any]):
-    status_dict = get_finetune_filter_stats()
+    stats_dict = get_finetune_filter_stat(default=True)
 
     def catch_sigusr1(signum, frame):
-        status_dict["error"] = "interrupted"
-        _update_and_dump_status(status_dict, "interrupted")
+        stats_dict["error"] = "interrupted"
+        _update_and_dump_status(stats_dict, "interrupted")
         sys.exit(1)
 
     signal.signal(signal.SIGUSR1, catch_sigusr1)
 
     if not needs_any_work():
-        _update_and_dump_status(status_dict, "finished")
+        _update_and_dump_status(stats_dict, "finished")
         logging.info("Train set filtering: nothing changed since last time, quit")
         return
 
-    status_dict = _update_and_dump_status(status_dict, "starting")
+    stats_dict = _update_and_dump_status(stats_dict, "starting")
     with open(env.LOG_FILES_ACCEPTED_FTF, "w") as f:
         f.write("")
     with open(env.LOG_FILES_REJECTED_FTF, "w") as f:
         f.write("")
     try:
-        pre_filtering(status_dict, models_db)
-        _update_and_dump_status(status_dict, "finished")
+        pre_filtering(stats_dict, models_db)
+        _update_and_dump_status(stats_dict, "finished")
     except BaseException as e:  # BaseException includes KeyboardInterrupt
         if traces.context():
             logging.error("FAILED finetune filter at %s" % traces.context().path)
-        if "error" not in status_dict:  # if there is, a more detailed error is already in place
+        if "error" not in stats_dict:  # if there is, a more detailed error is already in place
             t = str(e) or str(type(e))
-            status_dict["error"] = t
+            stats_dict["error"] = t
             logging.error(t)
-            _update_and_dump_status(status_dict, "failed")
+            _update_and_dump_status(stats_dict, "failed")
         if not isinstance(e, ValueError):  # don't print stack for ValueError which is used for mundane data problems
             raise e
 
