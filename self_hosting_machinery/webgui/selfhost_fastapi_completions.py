@@ -2,12 +2,10 @@ import time
 import json
 import copy
 import asyncio
-from urllib.parse import urlencode
-
 import termcolor
 
 from fastapi import APIRouter, Request, HTTPException, Query
-from fastapi.responses import StreamingResponse, RedirectResponse
+from fastapi.responses import StreamingResponse
 
 from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
 from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
@@ -21,7 +19,6 @@ from refact_vecdb import VDBSearchAPI
 
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union
-
 
 
 __all__ = ["CompletionsRouter"]
@@ -122,48 +119,36 @@ class Embeddings(BaseModel):
         }
 
 
-async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts):
+async def chat_streamer(ticket: Ticket, timeout, created_ts):
+    seen: Dict[int, str] = dict()
     try:
-        packets_cnt = 0
         while 1:
             try:
-                msg = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
+                msg: Dict = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
             except asyncio.TimeoutError:
                 log("TIMEOUT %s" % ticket.id())
                 msg = {"status": "error", "human_readable_message": "timeout"}
-            not_seen_resp = copy.deepcopy(msg)
-            if "choices" in not_seen_resp:
-                for i in range(post.n):
-                    newtext = not_seen_resp["choices"][i]["text"]
-                    if newtext.startswith(seen[i]):
-                        l = len(seen[i])
-                        tmp = not_seen_resp["choices"][i]["text"]
-                        not_seen_resp["choices"][i]["text"] = tmp[l:]
-                        if post.stream:
-                            seen[i] = tmp
-                    else:
-                        log("ooops seen doesn't work, might be infserver's fault")
-            if not post.stream:
-                if msg.get("status", "") == "in_progress":
-                    continue
-                yield json.dumps(not_seen_resp)
-                break
-            yield "data: " + json.dumps(not_seen_resp) + "\n\n"
-            packets_cnt += 1
+            if "choices" in msg:
+                for ch in msg["choices"]:
+                    idx = ch["index"]
+                    seen_here = seen.get(idx, "")
+                    content = ch.get("content", "")
+                    ch["delta"] = content[len(seen_here):]
+                    seen[idx] = content
+                    if "content" in ch:
+                        del ch["content"]
+            tmp = json.dumps(msg)
+            yield "data: " + tmp + "\n\n"
+            log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
             if msg.get("status", "") != "in_progress":
                 break
-        if post.stream:
-            yield "data: [DONE]" + "\n\n"
-        log(red_time(created_ts) + " /finished %s, streamed %i packets" % (ticket.id(), packets_cnt))
+        await asyncio.sleep(0.5)   # a workaround for VS Code plugin bug, remove July 20, 2023 when plugin should be fixed
+        yield "data: [DONE]" + "\n\n"
+        log(red_time(created_ts) + " /finished call %s" % ticket.id())
         ticket.done()
-        # fastapi_stats.stats_accum[kt] += msg.get("generated_tokens_n", 0)
-        # fastapi_stats.stats_accum[kcomp] += 1
-        # fastapi_stats.stats_lists_accum["stat_latency_" + post.model].append(time.time() - created_ts)
     finally:
         if ticket.id() is not None:
-            log("   ***  CANCEL  ***  cancelling %s " % ticket.id() + red_time(created_ts))
-            # fastapi_stats.stats_accum["stat_api_cancelled"] += 1
-            # fastapi_stats.stats_accum["stat_m_" + post.model + "_cancelled"] += 1
+            log("   ***  CANCEL  ***  cancelling %s" % ticket.id() + red_time(created_ts))
         ticket.cancelled = True
         ticket.done()
 

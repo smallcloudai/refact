@@ -12,6 +12,7 @@ from refact_vecdb.common.profiles import VDBFiles
 from refact_vecdb import VDBSearchAPI
 from refact_vecdb.embeds_api.embed_spads import embed_providers
 
+
 __all__ = ['TabContextRouter']
 
 
@@ -27,7 +28,6 @@ class TabContextRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._cfg_file = Path(env.CONFIG_VECDB)
         self._workdir = Path(env.DIR_UNPACKED)
         self._profile_name = 'smc'
 

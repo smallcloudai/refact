@@ -14,7 +14,7 @@ from refact_vecdb.common.vecdb import load_vecdb
 from refact_vecdb import VDBEmbeddingsAPI
 
 
-__all__ = ['MainRouter']
+__all__ = ['MainRouter', 'SearchQuery']
 
 
 class StatusQuery(BaseModel):
