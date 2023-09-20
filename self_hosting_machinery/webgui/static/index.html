@@ -60,10 +60,7 @@
       {{#each items}}
       {{#unless hamburger}}
       <li class="nav-item" role="presentation">
-        <button class="
-        nav-link main-tab-button
-        {{#if active}}main-active{{/if}}
-        " id="{{id}}" data-tab="{{tab}}" {{#if disabled}}disabled{{/if}}>{{label}}</button>
+        <button class="nav-link main-tab-button {{#if active}}main-active{{/if}}" id="{{id}}" data-tab="{{tab}}" {{#if disabled}}disabled{{/if}}>{{label}}</button>
       </li>
       {{/unless}}
       {{/each}}
