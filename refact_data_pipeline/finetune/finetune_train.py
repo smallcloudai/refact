@@ -87,7 +87,7 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             return ds_len
 
-    with open(env.CONFIG_FINETUNE_FILTER_STATS, 'r') as f:
+    with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
         initial_loss = json.load(f)["avg_loss"]
 
     user_cfg = get_finetune_config(logger=traces.log)

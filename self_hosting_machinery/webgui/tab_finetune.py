@@ -12,7 +12,7 @@ from fastapi.responses import Response, StreamingResponse, JSONResponse
 from self_hosting_machinery.scripts import best_lora
 from refact_data_pipeline.finetune.finetune_utils import get_active_loras
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
-from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stats
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stat, get_finetune_filter_status
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_step
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_runs
 from refact_data_pipeline.finetune.finetune_filtering_defaults import finetune_filtering_defaults
@@ -117,7 +117,10 @@ class TabFinetuneRouter(APIRouter):
         result = {
             "filter_working_now": finetune_step == "filter",
             "finetune_working_now": finetune_step == "finetune",
-            "finetune_filter_stats": get_finetune_filter_stats(),
+            "finetune_filter_stats": {
+                "status": get_finetune_filter_status(),
+                **get_finetune_filter_stat(),
+            }
         }
         return Response(json.dumps(result, indent=4) + "\n")
 
@@ -193,8 +196,8 @@ class TabFinetuneRouter(APIRouter):
         else:
             fn = env.LOG_FILES_REJECTED_FTF
         if os.path.isfile(fn):
-            return StreamingResponse(
-                stream_text_file(fn),
+            return Response(
+                open(fn, "r").read(),
                 media_type="text/plain"
             )
         else:
@@ -224,6 +227,12 @@ class TabFinetuneRouter(APIRouter):
         flag = env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY if filter_only else env.FLAG_LAUNCH_FINETUNE
         with open(flag, "w") as f:
             f.write("")
+        try:
+            with open(env.CONFIG_FINETUNE_FILTER_STATUS + ".tmp", "w") as f:
+                json.dump({"status": "starting"}, f, indent=4)
+            os.rename(env.CONFIG_FINETUNE_FILTER_STATUS + ".tmp", env.CONFIG_FINETUNE_FILTER_STATUS)
+        except:
+            pass
         return JSONResponse("OK")
 
     async def _tab_finetune_stop_now(self):

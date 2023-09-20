@@ -640,10 +640,6 @@ def main():
     stats_json["scan_status"] = "working"
     stats_save()  # saves CONFIG_PROCESSING_STATS
     try:
-        os.unlink(env.CONFIG_FINETUNE_FILTER_STATS)
-    except:
-        pass
-    try:
         huge_list = prepare_and_copy(stats_json, env.DIR_UPLOADS, env.DIR_UNPACKED)
         stats_json["filtering_progress"] = 100
         stats_save()

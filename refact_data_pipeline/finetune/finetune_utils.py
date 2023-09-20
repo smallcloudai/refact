@@ -93,7 +93,7 @@ def get_finetune_config(logger: Optional[Callable] = None) -> Dict[str, Any]:
     return cfg
 
 
-def get_finetune_filter_stats(default: bool = False) -> Dict[str, Any]:
+def get_finetune_filter_stat(default: bool = False) -> Dict[str, Any]:
     filter_stats = {
         "started_ts": 0,
         "total_steps": 0,
@@ -103,11 +103,19 @@ def get_finetune_filter_stats(default: bool = False) -> Dict[str, Any]:
         "accepted": 0,
         "rejected": 0,
         "avg_loss": 0.0,
-        "status": "idle",
     }
-    if not default and os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATS):
-        filter_stats.update(**json.load(open(env.CONFIG_FINETUNE_FILTER_STATS)))
+    if not default and os.path.isfile(env.CONFIG_FINETUNE_FILTER_STAT):
+        filter_stats.update(**json.load(open(env.CONFIG_FINETUNE_FILTER_STAT)))
     return filter_stats
+
+
+def get_finetune_filter_status() -> str:
+    if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATUS):
+        mtime = os.path.getmtime(env.CONFIG_FINETUNE_FILTER_STATUS)
+        if mtime + 300 > time.time():
+            d = json.load(open(env.CONFIG_FINETUNE_FILTER_STATUS))
+            return d["status"]
+    return "idle"
 
 
 def get_finetune_step() -> Optional[str]:
@@ -125,7 +133,7 @@ def get_finetune_step() -> Optional[str]:
         return "sources"
 
     if os.path.exists(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY) or \
-            get_finetune_filter_stats()["status"] in ["starting", "filtering"]:
+            get_finetune_filter_status() in ["starting", "filtering"]:
         return "filter"
 
     if os.path.exists(env.FLAG_LAUNCH_FINETUNE) or \
