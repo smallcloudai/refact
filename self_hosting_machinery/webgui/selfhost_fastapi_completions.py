@@ -119,38 +119,49 @@ class Embeddings(BaseModel):
         }
 
 
-async def chat_streamer(ticket: Ticket, timeout, created_ts):
-    seen: Dict[int, str] = dict()
+async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts):
     try:
+        packets_cnt = 0
         while 1:
             try:
-                msg: Dict = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
+                msg = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
             except asyncio.TimeoutError:
                 log("TIMEOUT %s" % ticket.id())
                 msg = {"status": "error", "human_readable_message": "timeout"}
-            if "choices" in msg:
-                for ch in msg["choices"]:
-                    idx = ch["index"]
-                    seen_here = seen.get(idx, "")
-                    content = ch.get("content", "")
-                    ch["delta"] = content[len(seen_here):]
-                    seen[idx] = content
-                    if "content" in ch:
-                        del ch["content"]
-            tmp = json.dumps(msg)
-            yield "data: " + tmp + "\n\n"
-            log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
+            not_seen_resp = copy.deepcopy(msg)
+            if "choices" in not_seen_resp:
+                for i in range(post.n):
+                    newtext = not_seen_resp["choices"][i]["text"]
+                    if newtext.startswith(seen[i]):
+                        l = len(seen[i])
+                        tmp = not_seen_resp["choices"][i]["text"]
+                        not_seen_resp["choices"][i]["text"] = tmp[l:]
+                        if post.stream:
+                            seen[i] = tmp
+                    else:
+                        log("ooops seen doesn't work, might be infserver's fault")
+            if not post.stream:
+                if msg.get("status", "") == "in_progress":
+                    continue
+                yield json.dumps(not_seen_resp)
+                break
+            yield "data: " + json.dumps(not_seen_resp) + "\n\n"
+            packets_cnt += 1
             if msg.get("status", "") != "in_progress":
                 break
-        await asyncio.sleep(0.5)   # a workaround for VS Code plugin bug, remove July 20, 2023 when plugin should be fixed
-        yield "data: [DONE]" + "\n\n"
-        log(red_time(created_ts) + " /finished call %s" % ticket.id())
+        if post.stream:
+            yield "data: [DONE]" + "\n\n"
+        log(red_time(created_ts) + " /finished %s, streamed %i packets" % (ticket.id(), packets_cnt))
         ticket.done()
+        # fastapi_stats.stats_accum[kt] += msg.get("generated_tokens_n", 0)
+        # fastapi_stats.stats_accum[kcomp] += 1
+        # fastapi_stats.stats_lists_accum["stat_latency_" + post.model].append(time.time() - created_ts)
     finally:
         if ticket.id() is not None:
-            log("   ***  CANCEL  ***  cancelling %s" % ticket.id() + red_time(created_ts))
+            log("   ***  CANCEL  ***  cancelling %s " % ticket.id() + red_time(created_ts))
+            # fastapi_stats.stats_accum["stat_api_cancelled"] += 1
+            # fastapi_stats.stats_accum["stat_m_" + post.model + "_cancelled"] += 1
         ticket.cancelled = True
-        ticket.done()
 
 
 async def diff_streamer(ticket: Ticket, post: DiffCompletion, timeout, created_ts):
@@ -188,7 +199,7 @@ async def diff_streamer(ticket: Ticket, post: DiffCompletion, timeout, created_t
 
 
 async def chat_streamer(ticket: Ticket, timeout, created_ts):
-    seen: Dict[str, str] = dict()
+    seen: Dict[int, str] = dict()
     try:
         while 1:
             try:
@@ -197,36 +208,14 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
                 log("TIMEOUT %s" % ticket.id())
                 msg = {"status": "error", "human_readable_message": "timeout"}
             if "choices" in msg:
-                print('msg before', msg)
                 for ch in msg["choices"]:
                     idx = ch["index"]
+                    seen_here = seen.get(idx, "")
+                    content = ch.get("content", "")
+                    ch["delta"] = content[len(seen_here):]
+                    seen[idx] = content
                     if "content" in ch:
-                        seen_key = "simple_%02d" % idx
-                        seen_here = seen.get(seen_key, "")
-                        content = ch.get("content", "")
-                        ch["delta"] = content[len(seen_here):]
-                        seen[seen_key] = content
-                        if "content" in ch:
-                            del ch["content"]
-                    if "messages" in ch:
-                        message_index_has_delta = 0
-                        for mi, m in enumerate(ch["messages"]):
-                            seen_key = "msg_%02d_%02d" % (idx, mi)
-                            seen_here = seen.get(seen_key, "")
-                            if len(seen_here) < len(m["content"]):
-                                message_index_has_delta = mi
-                            m["delta"] = m["content"][len(seen_here):]
-                            seen[seen_key] = m["content"]
-                            if "content" in m:
-                                del m["content"]
-                        for mi in range(0, message_index_has_delta):
-                            ch["messages"][mi] = {}
-                        ch['messages'] = ch['messages'][-1]
-                    elif "messages" not in ch: ...
-                        # GPU chats support
-                        # ch['messages'] = {'role': ch['role'], 'delta': ch['delta']}
-                        # del ch['role'], ch['delta']
-            print('msg', msg)
+                        del ch["content"]
             tmp = json.dumps(msg)
             yield "data: " + tmp + "\n\n"
             log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
