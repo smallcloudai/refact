@@ -54,7 +54,7 @@ async fn main() {
     tele_backgr_task.abort();
     let _ = tele_backgr_task.await;
     info!("saving telemetry without sending, so should be quick");
-    telemetry_basic::telemetry_full_compression_cycle(gcx2.clone(), true).await;
+    telemetry_basic::telemetry_full_cycle(gcx2.clone(), true).await;
     info!("bb");
 
 

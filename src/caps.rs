@@ -126,7 +126,7 @@ const HF_DEFAULT_CAPS: &str = r#"
     },
     "code_completion_default_model": "bigcode/starcoder",
     "code_chat_default_model": "",
-    "telemetry_basic_dest": "https://www.smallcloud.ai/v1/usage-stats",
+    "telemetry_basic_dest": "https://www.smallcloud.ai/v1/telemetry-basic",
     "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback",
     "running_models": ["bigcode/starcoder", "meta-llama/Llama-2-70b-chat-hf"]
 }
@@ -141,7 +141,7 @@ const SMC_DEFAULT_CAPS: &str = r#"
     "tokenizer_rewrite_path": {},
     "code_completion_default_model": "smallcloudai/Refact-1_6B-fim",
     "code_chat_default_model": "smallcloudai/Refact-1_6B-fim",
-    "telemetry_basic_dest": "",
+    "telemetry_basic_dest": "https://www.smallcloud.ai/v1/telemetry-basic",
     "running_models": ["smallcloudai/Refact-1_6B-fim"]
 }
 "#;
