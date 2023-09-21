@@ -120,10 +120,6 @@ def ls_with_linguist(start_dir):
                 p = os.path.join(root, file)
                 p = os.path.abspath(p)
                 assert p.startswith(env.DIR_UNPACKED), "\"%s\" does not start with \"%s\"" % (p, env.DIR_UNPACKED)
-                if p.startswith(CWD):
-                    p = p[len(CWD):]
-                    if p.startswith("/"):
-                        p = p[1:]
                 yield p
 
     num_processes = max(1, multiprocessing.cpu_count() // 2)
