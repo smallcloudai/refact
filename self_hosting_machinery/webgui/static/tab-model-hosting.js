@@ -234,7 +234,9 @@ function render_models_assigned(models) {
 function render_models(models) {
     const models_table = document.querySelector('.table-models tbody');
     models_table.innerHTML = '';
+    models.models.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     for(let index in models.models) {
+        console.log('xxxx',models.models);
         const row = document.createElement('tr');
         row.setAttribute('data-model',models.models[index].name);
         const model_name = document.createElement("td");
