@@ -7,13 +7,13 @@ from typing import Dict, Any, List
 from refact_vecdb.common.context import CONTEXT as C
 
 
-def get_account_data(account: str):
+def get_account_data(account: str) -> Dict[str, Any]:
     session = C.c_session
     try:
         return session.execute(
             session.prepare("SELECT * FROM accounts WHERE account = ?"),
             [account]
-        ).one()
+        ).one() or {}
     except Exception:
         traceback.print_exc()
         return {}
@@ -35,7 +35,7 @@ def update_account_data(data: Dict[str, Any]) -> None:
     )
 
 
-def create_account(account: str):
+def create_account(account: str) -> None:
     session = C.c_session
 
     prep = session.prepare("INSERT INTO accounts (account, team, provider, created_ts) VALUES (?,?,?,?)")

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import ujson as json
 
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 from refact_vecdb.common.profiles import VDBFiles
 from refact_vecdb.common.profiles import PROFILES as P
@@ -16,9 +16,7 @@ from refact_vecdb.daemon.crud import \
     on_model_change_update_embeddings, change_files_active_by_name, set_all_files_active
 
 from refact_vecdb.embeds_api.spinup import spinup_models
-
 from refact_vecdb.common.vecdb import prepare_vecdb_indexes
-
 from refact_vecdb import VDBSearchAPI
 
 
@@ -65,9 +63,9 @@ class WorkDirEventsHandler(FileSystemEventHandler):
         self._change_provider_file.unlink(missing_ok=True)
 
         self._db_set_file = self._workdir.joinpath(VDBFiles.database_set)
-        self._db_set_file_modified()
+        self.on_modified(FileSystemEvent(str(self._db_set_file)))
 
-    def _provider_file_changed(self):
+    def _provider_file_changed(self) -> None:
         account_data = get_account_data(self._account)
         account_data['provider'] = json.loads(self._change_provider_file.read_text())['provider']
         print(f'change providers file detected; new provider: {account_data["provider"]}')
@@ -79,13 +77,14 @@ class WorkDirEventsHandler(FileSystemEventHandler):
         VDBSearchAPI().update_indexes(self._account, account_data['provider'])
         self._change_provider_file.unlink()
 
-    def _db_set_file_modified(self):
+    def _db_set_file_modified(self) -> None:
+        spinup_models()
         on_db_set_file_modified(self._account)
         prepare_vecdb_indexes(self._account)
         VDBSearchAPI().update_indexes(self._account)
         self._database_set_last_modified = os.path.getmtime(self._db_set_file)
 
-    def on_modified(self, event):
+    def on_modified(self, event: FileSystemEvent) -> None:
         try:
             if event.src_path.endswith(str(VDBFiles.change_provider)):
                 self._provider_file_changed()

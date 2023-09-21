@@ -25,11 +25,12 @@ def kill_process(process):
 def spinup_models():
     C.processes.setdefault('models', {})
     print(f'models: {list(C.processes["models"].keys())}')
-    processes = _spinup_models(
-        models=get_all_providers(),
-        processes=C.processes['models'],
-    )
-    C.processes['models'].update(processes)
+    if providers := get_all_providers():
+        processes = _spinup_models(
+            models=providers,
+            processes=C.processes['models'],
+        )
+        C.processes['models'].update(processes)
 
 
 def _spinup_models(
