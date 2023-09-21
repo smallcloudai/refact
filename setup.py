@@ -34,6 +34,10 @@ all_refact_packages = {
         requires_packages=["refact_encoding", "code_contrast", "refact_scratchpads_no_gpu"]),
     "refact_scratchpads_no_gpu": PyPackage(
         requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson", "setproctitle"]),
+    "refact_vecdb": PyPackage(
+        requires=["dataclasses", "cassandra-driver", "numpy", "pynndescent",
+                  "watchdog", "ujson", "torch", "transformers", "openai", "more-itertools",
+                  "requests", "aiohttp", "fastapi", "uvicorn"]),
     "refact_data_pipeline": PyPackage(
         requires=["numpy", "tokenizers==0.13.3", "torch", "requests", "cloudpickle",
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools',
@@ -50,7 +54,7 @@ all_refact_packages = {
                   "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2",
                   "torch", "transformers", "termcolor", "accelerate", "bitsandbytes"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu", "refact_models",
-                           "known_models_db", "refact_data_pipeline"],
+                           "known_models_db", "refact_data_pipeline", "refact_vecdb"],
         data=["webgui/static/*", "webgui/static/js/*", "watchdog/watchdog.d/*"]),
 }
 
