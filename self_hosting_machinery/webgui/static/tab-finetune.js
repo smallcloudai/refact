@@ -1,7 +1,9 @@
 let logstream_reader = null;
 let logstream_runid = null;
 let downloaded_data = null;
+let reference_downloaded_data = null;
 let downloaded_stats = null;
+let reference_downloaded_stats = null;
 let blue_lora = "";
 let loras_switch_off = null;
 let loras_switch_latest = null;
@@ -15,6 +17,7 @@ let fine_filter_settings = null;
 let fine_filter_status = null;
 let fine_filter_error = null;
 let tab_files_data = null;
+let reference_tab_files_data = null;
 let show_scan_error = false;
 
 let fine_tuning_pane = null;
@@ -26,14 +29,13 @@ let use_model_pane = null;
 let select_model_pane = null;
 
 
-function finetine_status() {
+function finetune_get() {
     fetch("tab-finetune-get")
     .then(function (response) {
         return response.json();
     })
     .then(function (data) {
         downloaded_stats = data;
-        finetune_status();
         console.log('tab-finetune-get',data);
     });
 }
@@ -584,6 +586,11 @@ function revert_to_default(input_id) {
 }
 
 function finetune_status() {
+    if(!reference_downloaded_data) { reference_downloaded_data = downloaded_data; }
+    if(!reference_downloaded_stats) { reference_downloaded_stats = downloaded_stats; }
+    if(!reference_tab_files_data) { reference_tab_files_data = tab_files_data; }
+    if(reference_downloaded_data === downloaded_data && reference_downloaded_stats === downloaded_stats && reference_tab_files_data === tab_files_data) { return; }
+
     if(!downloaded_stats) { return; }
     if(downloaded_stats.finetune_filter_stats.status) {
         document.querySelector('.ftf-status').classList.remove('d-none');
@@ -663,6 +670,7 @@ function finetune_status() {
         select_model_pane.classList.remove('pane-disabled');
     }
 }
+
 
 function filtering_button() {
     if(!downloaded_stats) { return; }
@@ -792,16 +800,16 @@ function get_tab_files() {
                     show_scan_error = true;
                 }
             }
-            if(downloaded_stats && !downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
-                if(data.hasOwnProperty('scan_finished') && data.scan_finished) {
-                    fine_tuning_pane.classList.remove('pane-disabled');
-                    fine_filter_pane.classList.remove('pane-disabled');
-                }
-                else {
-                    fine_tuning_pane.classList.add('pane-disabled');
-                    fine_filter_pane.classList.add('pane-disabled');
-                }
-            }
+            // if(downloaded_stats && !downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
+            //     if(data.hasOwnProperty('scan_finished') && data.scan_finished) {
+            //         fine_tuning_pane.classList.remove('pane-disabled');
+            //         fine_filter_pane.classList.remove('pane-disabled');
+            //     }
+            //     else {
+            //         fine_tuning_pane.classList.add('pane-disabled');
+            //         fine_filter_pane.classList.add('pane-disabled');
+            //     }
+            // }
         });
 }
 
@@ -928,17 +936,18 @@ export async function init() {
 }
 
 export function tab_switched_here() {
-    finetine_status();
     get_tab_files();
     render_schedule_dialog();
     finetune_data();
+    finetune_status();
 }
 
 export function tab_switched_away() {
 }
 
 export function tab_update_each_couple_of_seconds() {
-    finetine_status();
     get_tab_files();
+    finetune_get();
     finetune_data();
+    finetune_status();
 }
