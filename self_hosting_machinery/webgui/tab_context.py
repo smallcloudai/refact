@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
 from self_hosting_machinery import env
-from refact_vecdb.common.profiles import VDBFiles
+from refact_vecdb.common.context import VDBFiles
 from refact_vecdb import VDBSearchAPI
 from refact_vecdb.embeds_api.embed_spads import embed_providers
 
@@ -36,8 +36,10 @@ class TabContextRouter(APIRouter):
         self.add_api_route('/tab-vecdb-update-provider', self._update_provider, methods=["POST"])
 
     async def _update_provider(self, data: VecDBUpdateProvider, request: Request):
-        with self._workdir.joinpath(VDBFiles.change_provider).open('w') as f:
+        with VDBFiles.config.open('w') as f:
             f.write(json.dumps({'provider': data.provider}))
+        with VDBFiles.change_provider.open('w') as f:
+            f.write()
 
     async def _status(self):
         content = {}
@@ -52,9 +54,12 @@ class TabContextRouter(APIRouter):
                 "available_providers": providers,
                 "ongoing": {},
             }
+            if VDBFiles.status.exists():
+                status = json.loads(VDBFiles.status.read_text())['status']
+                content['status'] = status
 
-            if self._workdir.joinpath(VDBFiles.index_files_state).exists():
-                state = json.loads(self._workdir.joinpath(VDBFiles.index_files_state).read_text())
+            if VDBFiles.file_stats.exists():
+                state = json.loads(VDBFiles.file_stats.read_text())
                 status = ''
                 if state['file_n'] != state['total']:
                     status = 'in progress'
@@ -64,12 +69,13 @@ class TabContextRouter(APIRouter):
                 progress_val = round((state['file_n'] / state['total']) * 100)
                 content["ongoing"] = {'indexing': {'status': status, 'progress_text': progress_text, "progress_val": progress_val}}
 
-            if self._workdir.joinpath(VDBFiles.change_provider).exists():
+            if VDBFiles.change_provider.exists():
                 if content['ongoing'].get('indexing'):
                     if content['ongoing']['indexing'].get('status') != 'in progress':
                         content['ongoing']['indexing']['status'] = 'scheduled'
 
         except Exception as e:
+            traceback.print_exc()
             content["status"] = str(e)
         print(f'status out: {content}')
         return Response(content=json.dumps(content), status_code=200)

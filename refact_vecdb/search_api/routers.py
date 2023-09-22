@@ -46,12 +46,7 @@ def account_exists(account: str) -> bool:
 
 
 async def update_indexes(data: UpdateIndexes):
-    account = data.account
-    if data.provider:
-        account_data = get_account_data(account)
-        account_data['provider'] = data.provider
-        update_account_data(account_data)
-    load_vecdb(account)
+    load_vecdb(data.account)
 
 
 class MainRouter(APIRouter):

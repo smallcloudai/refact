@@ -7,7 +7,8 @@ __all__ = [
     'OpenAIEmbeddingSpad',
     'GTEEmbeddingSpad',
     'ChunkifyFiles',
-    'embed_providers'
+    'embed_providers',
+    'models'
 ]
 
 
@@ -16,3 +17,5 @@ embed_providers = {
     'gte': GTEEmbeddingSpad
 }
 
+
+models = list(embed_providers.keys())

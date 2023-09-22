@@ -46,7 +46,6 @@ models_template = {
         "chunk_idx": columns.Integer(),
         "text": columns.Text(),
         "name": columns.Text(),
-        "active": columns.Boolean(default=True),
         "created_ts": columns.DateTime(default=datetime.now),
     },
     "file_chunks_embedding": {
@@ -56,7 +55,6 @@ models_template = {
         "chunk_idx": columns.Integer(),
         "embedding": columns.List(value_type=columns.Float),
         "name": columns.Text(),
-        "active": columns.Boolean(default=True),
         "created_ts": columns.DateTime(default=datetime.now),
     },
     "files_full_text": {
@@ -65,14 +63,12 @@ models_template = {
         "chunks_cnt": columns.Integer(),
         "text": columns.Text(),
         "name": columns.Text(),
-        "active": columns.Boolean(default=True),
         "created_ts": columns.DateTime(default=datetime.now),
     },
     "accounts": {
         "account": columns.Text(primary_key=True, partition_key=True),
         "team": columns.Text(default=None),
         "provider": columns.Text(default="gte"),
-        "active": columns.Boolean(default=True),
         "created_ts": columns.DateTime(default=datetime.now),
     }
 }

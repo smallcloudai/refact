@@ -19,6 +19,7 @@ class VDBEmbeddingsAPI:
     def _headers(self) -> Dict:
         return {
             'Content-Type': 'application/json',
+
         }
 
     async def a_create(

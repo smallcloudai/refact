@@ -74,11 +74,11 @@ class VDBSearchAPI:
             if chunk:
                 yield json.loads(chunk)
 
-    def update_indexes(self, account: str, provider: Optional[str] = None) -> None:
+    def update_indexes(self, account: str) -> None:
         response = requests.post(
             f'{self._url}/v1/update-indexes',
             headers=self._headers(),
-            json={'account': account, 'provider': provider}
+            json={'account': account}
         )
         assert response.status_code == 200, f'Error: {response.text}'
 

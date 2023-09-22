@@ -2,7 +2,7 @@ import time
 
 from watchdog.observers import Observer
 
-from refact_vecdb.common.profiles import PROFILES
+from refact_vecdb.common.context import VDBFiles
 from refact_vecdb.daemon.file_events import WorkDirEventsHandler
 
 
@@ -11,7 +11,7 @@ class VDBDaemon:
         self._observer = Observer()
 
     def _spin_up(self):
-        for account, data in PROFILES.items():
+        for account, data in {'smc': {'workdir': VDBFiles.workdir}}.items():
             workdir = data['workdir']
 
             self._observer.schedule(

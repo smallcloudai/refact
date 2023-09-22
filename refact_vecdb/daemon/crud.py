@@ -1,95 +1,91 @@
+import os
 import time
 import json
 import uuid
 
 from hashlib import sha1
+from pathlib import Path
 from datetime import datetime
-from typing import Iterable, List, Dict
+from typing import Iterable, List, Dict, Optional, Any
 
-from refact_vecdb.common.profiles import VDBFiles, PROFILES as P
-from refact_vecdb.common.context import CONTEXT as C
+from more_itertools import chunked
+
+from refact_vecdb.common.context import VDBFiles, CONTEXT as C, upd_file_stats
 from refact_vecdb.common.crud import get_account_data
-from refact_vecdb.daemon.params import File2Upload
 from refact_vecdb import VDBEmbeddingsAPI
+
+
+class RaiseIfChanged:
+    def __init__(self):
+        self._data = {}
+
+    def add(self, file: Path, exc: Any):
+        if not file.exists():
+            print(f'RaiseIfChanged: File {file} does not exist')
+            return
+        last_mod = os.path.getmtime(file)
+        self._data[file] = {'last_mod': last_mod, 'exc': exc}
+
+    def __call__(self):
+        for k, v in self._data.items():
+            if v['last_mod'] != os.path.getmtime(k):
+                raise v['exc']
+
+
+class DBSetChangedException(Exception):
+    pass
+
+
+class ConfigChangedException(Exception):
+    pass
 
 
 def hash_string(string: str) -> str:
     return sha1(string.encode()).hexdigest()[:12]
 
 
-def get_all_file_names(account: str) -> Iterable[str]:
-    session = C.c_session
-    for row in session.execute(session.prepare('select name from files_full_text where account =?;'), [account]):
-        yield row['name']
+def read_and_compare_files(account: str):
+    def retrieve_all_file_names() -> Iterable[str]:
+        for row in C.c_session.execute(
+                C.c_session.prepare('select name from files_full_text where account =?;'),
+                [account]
+        ):
+            yield row['name']
 
+    file_paths = []
+    for line_raw in VDBFiles.database_set.read_text().splitlines():
+        if not line_raw:
+            continue
+        line = json.loads(line_raw)
+        file_paths.append(VDBFiles.workdir / line['path'])
 
-def bulk_candidates_str(names: Iterable[str]) -> str:
-    return "(" + ", ".join(f"'{n}'" for n in names) + ")"
+    # if file exists in DB but does not exist in database_set_file -> delete it from DB
+    file_names_db = set(retrieve_all_file_names())
+    if diff_file_names := file_names_db - set(str(p) for p in file_paths):
+        delete_files_by_name(diff_file_names, account)
 
+    print(f'Found {len(file_paths)} files to insert')
 
-def get_all_active_embeddings(account: str) -> Iterable[Dict]:
-    session = C.c_session
+    if not file_paths:
+        return
 
-    for row in session.execute(
-        f"""
-        select id, embedding from file_chunks_embedding where account = '{account}' and active = True ALLOW FILTERING;
-        """
-    ):
-        yield row
+    read_files_gen = ({'path': str(p), 'text': p.read_text()} for p in file_paths)
+    insert_files(read_files_gen, account)
 
 
 def delete_files_by_name(names_db_drop: Iterable[str], account: str) -> None:
     session = C.c_session
 
-    delete_names_str = bulk_candidates_str(names_db_drop)
-
     tables = ['file_chunks_embedding', 'file_chunks_text', 'files_full_text']
-    tables_drop_ids = {}
     for t in tables:
-        for row in session.execute(
-            f"""
-            select id from {t} where name in {delete_names_str} and account = '{account}' ALLOW FILTERING;
-            """
-        ):
-            tables_drop_ids.setdefault(t, []).append(row['id'])
-
-    for t, ids in tables_drop_ids.items():
-        q = f"delete from {t} where id in {bulk_candidates_str(ids)} and account='{account}';"
-        session.execute(q)
-
-
-def change_files_active_by_name(names: Iterable[str], account: str, active: bool) -> None:
-    session = C.c_session
-
-    alter_names_str = bulk_candidates_str(names)
-    tables = ['file_chunks_embedding', 'file_chunks_text', 'files_full_text']
-    tables_alter_ids = {}
-    for t in tables:
-        for row in session.execute(
-            f"""
-            select id from {t} where name in {alter_names_str} and account = '{account}' ALLOW FILTERING;
-            """
-        ):
-            tables_alter_ids.setdefault(t, []).append(row['id'])
-
-    for t, ids in tables_alter_ids.items():
-        q = f"update {t} set active = {active} where id in {bulk_candidates_str(ids)} and account='{account}';"
-        session.execute(q)
-
-
-def set_all_files_active(account: str) -> None:
-    session = C.c_session
-    tables = ['file_chunks_embedding', 'file_chunks_text', 'files_full_text']
-
-    tables_mod_id = {}
-    for t in tables:
-        for row in session.execute(f"select id, active from {t} where account = '{account}';"):
-            if not row['active']:
-                tables_mod_id.setdefault(t, []).append(row['id'])
-
-    for t, ids in tables_mod_id.items():
-        q = f"update {t} set active = True where id in {bulk_candidates_str(ids)} and account='{account}';"
-        session.execute(q)
+        for d_name in names_db_drop:
+            print(f'DROPPING {t} with name {d_name}')
+            for row in session.execute(
+                f"""
+                select id from {t} where name = '{d_name}' and account = '{account}' ALLOW FILTERING;
+                """
+            ):
+                session.execute(f"delete from {t} where id = '{row['id']}' and account = '{account}';")
 
 
 def retry_mech(func, *args, **kwargs):
@@ -105,31 +101,28 @@ def retry_mech(func, *args, **kwargs):
                 raise e
 
 
-def create_and_insert_chunks(files: List[File2Upload], account: str) -> None:
-    provider = get_account_data(account).get('provider', 'gte')
-    index_files_state = P[account]['workdir'] / VDBFiles.index_files_state
+def create_and_insert_chunks(files: List[Dict], account: str, provider: Optional[str] = None) -> None:
+    r = RaiseIfChanged()
+    r.add(VDBFiles.database_set, DBSetChangedException)
+    r.add(VDBFiles.config, ConfigChangedException)
 
-    def write_index_state(file_n: int, total: int):
-        print(f'writing index state: {file_n}/{total}')
-        with index_files_state.open('w') as f:
-            f.write(json.dumps({
-                'file_n': file_n,
-                'total': total,
-            }))
-
+    files_cnt = len(files)
+    provider = provider or get_account_data(account).get('provider', 'gte')
     emb_api = VDBEmbeddingsAPI()
 
     models = C.c_models
-    file_chunks_text = models['file_chunks_text']
-    file_chunks_embedding = models['file_chunks_embedding']
-    files_full_text = models['files_full_text']
+    file_chunks_text_tbl = models['file_chunks_text']
+    file_chunks_embedding_tbl = models['file_chunks_embedding']
+    files_full_text_tbl = models['files_full_text']
 
-    for idx, file in enumerate(files, 1):
+    for file_idx, file in enumerate(files, 1):
         res_idx = 0
+        r()
+        # request to embeds api
+        print(f'FILE: {file["path"]}')
         for res_idx, res in enumerate(emb_api.create(
-                {'name': file.name, 'text': file.text},
+                {'name': file['path'], 'text': file['text']},
                 provider,
-                is_index=True
         ), 1):
             file_chunks_text_mapping = {
                 'id': str(uuid.uuid4())[:12],
@@ -141,7 +134,7 @@ def create_and_insert_chunks(files: List[File2Upload], account: str) -> None:
                 'created_ts': datetime.now()
             }
 
-            retry_mech(file_chunks_text.create, **file_chunks_text_mapping)
+            retry_mech(file_chunks_text_tbl.create, **file_chunks_text_mapping)
 
             file_chunks_embedding_mapping = {
                 'id': file_chunks_text_mapping['id'],
@@ -153,67 +146,53 @@ def create_and_insert_chunks(files: List[File2Upload], account: str) -> None:
                 'created_ts': file_chunks_text_mapping['created_ts']
             }
 
-            retry_mech(file_chunks_embedding.create, **file_chunks_embedding_mapping)
+            retry_mech(file_chunks_embedding_tbl.create, **file_chunks_embedding_mapping)
 
         files_full_text_mapping = {
-            'id': hash_string(file.text),
+            'id': file['id'],
             "account": account,
             'chunks_cnt': res_idx,
-            'text': file.text,
-            'name': file.name,
+            'text': file['text'],
+            'name': file['path'],
             'created_ts': datetime.now()
         }
 
-        retry_mech(files_full_text.create, **files_full_text_mapping)
-        write_index_state(idx, len(files))
+        retry_mech(files_full_text_tbl.create, **files_full_text_mapping)
+        upd_file_stats({'file_n': file_idx, 'total': files_cnt})
 
 
-def insert_files(files: Iterable[File2Upload], account: str) -> None:
+def insert_files(files: Iterable[Dict[str, str]], account: str) -> None:
     session = C.c_session
 
-    files = list(files)
-    file_names = {f.name for f in files}
+    def retrieve_files_id():
+        for row in session.execute(
+                session.prepare('select id from files_full_text where account =?;'),
+                [account]
+        ):
+            yield row['id']
 
-    names_db_drop = set()
-    names_rejected = set()
-    for row in session.execute(
-            session.prepare('select id, name from files_full_text where account =?;'),
-            [account]
-    ):
-        idx = row['id']
-        name = row['name']
-
-        if name in file_names:
-            file = [f for f in files if f.name == name][0]
-            if hash_string(file.text) == idx:
-                names_rejected.add(name)
-                continue
-            names_db_drop.add(name)
-
-    if names_db_drop:
-        delete_files_by_name(names_db_drop, account)
-
-    files_init_len = files.__len__()
-    files = [f for f in files if f.name not in names_rejected]
-    print(f'Files passed dup check: {files.__len__()}/{files_init_len}')
-    print(f'Names to drop cnt: {names_db_drop.__len__()}')
-    if not files:
-        return
-
-    create_and_insert_chunks(files, account)
+    ids_present = set(retrieve_files_id())
+    batch_size = 1_000
+    for ch_idx, files_batch in enumerate(chunked(files, batch_size)):
+        print(f'inserting batch {ch_idx}')
+        files_batch_dict = {hash_string(f['text']): f for f in files_batch}
+        files_batch_ids = set(files_batch_dict.keys())
+        if dups := ids_present.intersection(files_batch_ids):
+            files_batch_dict = {k: v for k, v in files_batch_dict.items() if k not in dups}
+        if not files_batch_dict:
+            continue
+        files_batch_dicts = [{'id': k, **v} for k, v in files_batch_dict.items()]
+        create_and_insert_chunks(files_batch_dicts, account)
 
 
-def on_model_change_update_embeddings(account: str) -> None:
-    files = []
+def on_model_change_update_embeddings(account: str, provider: str) -> None:
+    r = RaiseIfChanged()
+    r.add(VDBFiles.database_set, DBSetChangedException)
+    r.add(VDBFiles.config, ConfigChangedException)
+    time.sleep(5)
+    r()
+
     session = C.c_session
-
-    for row in session.execute(
-            session.prepare('select name, text from files_full_text where account =?;'),
-            [account]
-    ):
-        files.append(File2Upload(name=row['name'], text=row['text']))
-    if not files:
-        return
 
     def delete_from_file_chunks_embedding(account: str) -> None:
         ids = session.execute(session.prepare('select id, account from file_chunks_embedding where account =?;'), [account])
@@ -234,4 +213,13 @@ def on_model_change_update_embeddings(account: str) -> None:
     delete_from_file_chunks_text(account)
     delete_from_files_full_text(account)
 
-    create_and_insert_chunks(files, account)
+    def retrieve_files_name_text():
+        for row in session.execute(
+                session.prepare('select name, text from files_full_text where account =?;'),
+                [account]
+        ):
+            yield {'path': row['name'], 'text': row['text']}
+
+    batch_size = 1_000
+    for files_batch in chunked(retrieve_files_name_text(), batch_size):
+        create_and_insert_chunks(files_batch, account, provider)

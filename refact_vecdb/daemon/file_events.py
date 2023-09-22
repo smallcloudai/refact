@@ -1,54 +1,20 @@
-import os
 import traceback
 
-from pathlib import Path
+from typing import Dict
 
 import ujson as json
 
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
-from refact_vecdb.common.profiles import VDBFiles
-from refact_vecdb.common.profiles import PROFILES as P
+from refact_vecdb.common.context import VDBFiles, upd_status
 from refact_vecdb.common.crud import get_account_data, update_account_data
-from refact_vecdb.daemon.params import File2Upload
-from refact_vecdb.daemon.crud import \
-    get_all_file_names, delete_files_by_name, insert_files, \
-    on_model_change_update_embeddings, change_files_active_by_name, set_all_files_active
+from refact_vecdb.daemon.crud import on_model_change_update_embeddings, read_and_compare_files
+from refact_vecdb.daemon.crud import DBSetChangedException, ConfigChangedException
 
 from refact_vecdb.common.vecdb import prepare_vecdb_indexes
-from refact_vecdb import VDBSearchAPI
 
 
 __all__ = ['WorkDirEventsHandler']
-
-
-def on_db_set_file_modified(account: str):
-    workdir = P[account]['workdir']
-    train_set = workdir.joinpath(VDBFiles.train_set)
-    test_set = workdir.joinpath(VDBFiles.test_set)
-
-    files_active = []
-    files_inactive = []
-    for line in [l for l in [*train_set.read_text().splitlines(), *test_set.read_text().splitlines()] if l]:
-        line = json.loads(line)
-        line = {'path': line['path'], 'to_db': line['to_db']}
-        path = P[account]["workdir"].joinpath(line['path'])
-        files_active.append(path) if line['to_db'] else files_inactive.append(path)
-
-    files = [*files_active, *files_inactive]
-    file_names_db = get_all_file_names(account)
-    diff_file_names = set(file_names_db).difference(set(str(p) for p in files))
-    if diff_file_names:
-        delete_files_by_name(diff_file_names, account)
-
-    if not files:
-        return
-
-    insert_files((File2Upload(str(p), p.read_text()) for p in files), account)
-
-    set_all_files_active(account)
-    if files_inactive:
-        change_files_active_by_name((str(f) for f in files_inactive), account, active=False)
 
 
 class WorkDirEventsHandler(FileSystemEventHandler):
@@ -56,38 +22,44 @@ class WorkDirEventsHandler(FileSystemEventHandler):
             self,
             account: str
     ):
-        self._workdir = P[account]['workdir']
         self._account = account
-        self._change_provider_file: Path = self._workdir.joinpath(VDBFiles.change_provider)
-        self._change_provider_file.unlink(missing_ok=True)
+        self.on_modified(FileSystemEvent(str(VDBFiles.database_set)))
 
-        self._db_set_file = self._workdir.joinpath(VDBFiles.database_set)
-        self.on_modified(FileSystemEvent(str(self._db_set_file)))
-
-    def _provider_file_changed(self) -> None:
-        account_data = get_account_data(self._account)
-        account_data['provider'] = json.loads(self._change_provider_file.read_text())['provider']
-        print(f'change providers file detected; new provider: {account_data["provider"]}')
+    def _on_provider_file_changed(self, account_data: Dict) -> None:
+        upd_status('OK: changing model')
+        on_model_change_update_embeddings(self._account, account_data['provider'])
         update_account_data(account_data)
-        on_model_change_update_embeddings(self._account)
-        on_db_set_file_modified(self._account)
+        upd_status('OK: preparing indexes')
         prepare_vecdb_indexes(self._account)
-        VDBSearchAPI().update_indexes(self._account, account_data['provider'])
-        self._change_provider_file.unlink()
+        upd_status('OK: indexes prepared')
 
-    def _db_set_file_modified(self) -> None:
-        on_db_set_file_modified(self._account)
+    def _on_db_set_file_modified(self) -> None:
+        read_and_compare_files(self._account)
+        upd_status('OK: preparing indexes')
         prepare_vecdb_indexes(self._account)
-        VDBSearchAPI().update_indexes(self._account)
-        self._database_set_last_modified = os.path.getmtime(self._db_set_file)
+        upd_status('OK: indexes prepared')
 
     def on_modified(self, event: FileSystemEvent) -> None:
         try:
-            if event.src_path.endswith(str(VDBFiles.change_provider)):
-                self._provider_file_changed()
+            if event.src_path == str(VDBFiles.config):
+                data = json.loads(VDBFiles.config.read_text())
+                account_data = get_account_data(self._account)
+                if data['provider'] != account_data['provider']:
+                    account_data['provider'] = data['provider']
+                    self._on_provider_file_changed(account_data)
+                    VDBFiles.change_provider.unlink()
 
-            if event.src_path.endswith(str(VDBFiles.train_set)) or event.src_path.endswith(str(VDBFiles.test_set)):
-                self._db_set_file_modified()
+            if event.src_path == str(VDBFiles.database_set):
+                self._on_db_set_file_modified()
 
-        except Exception:  # noqa
+        except DBSetChangedException:
+            upd_status('I: sources changed')
+            self.on_modified(FileSystemEvent(str(VDBFiles.database_set)))
+
+        except ConfigChangedException:
+            upd_status(f'I: config changed')
+            self.on_modified(FileSystemEvent(str(VDBFiles.config)))
+
+        except Exception as e:  # noqa
+            upd_status(f'E: {e}')
             traceback.print_exc()

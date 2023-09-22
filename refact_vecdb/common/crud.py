@@ -1,7 +1,4 @@
-import traceback
-
 from datetime import datetime
-
 from typing import Dict, Any, List
 
 from refact_vecdb.common.context import CONTEXT as C
@@ -9,14 +6,10 @@ from refact_vecdb.common.context import CONTEXT as C
 
 def get_account_data(account: str) -> Dict[str, Any]:
     session = C.c_session
-    try:
-        return session.execute(
-            session.prepare("SELECT * FROM accounts WHERE account = ?"),
-            [account]
-        ).one() or {}
-    except Exception:
-        traceback.print_exc()
-        return {}
+    return session.execute(
+        session.prepare("SELECT * FROM accounts WHERE account = ?"),
+        [account]
+    ).one() or {}
 
 
 def update_account_data(data: Dict[str, Any]) -> None:

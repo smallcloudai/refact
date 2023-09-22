@@ -442,7 +442,7 @@ class CompletionsRouter(APIRouter):
         await q.put(ticket)
         return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))
 
-    async def _embeddings(self, post: Embeddings, request: Request):
+    async def _embeddings(self, post: Embeddings, request: Request, account: str = "XXX"):
         account = "XXX"
         ticket = Ticket("embed-")
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
@@ -454,6 +454,7 @@ class CompletionsRouter(APIRouter):
         req = post.clamp()
         req.update({
             "id": ticket.id(),
+            "account": account,
             "object": "embeddings_req",
             "model": model_name,
             "stream": True,
