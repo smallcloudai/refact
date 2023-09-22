@@ -62,7 +62,7 @@ class NlpSamplingParams(BaseModel):
 
 
 class NlpCompletion(NlpSamplingParams):
-    model: str = Query(default="", regex="^[a-z/A-Z0-9_\.]+$")
+    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
     prompt: str
     n: int = 1
     echo: bool = False

@@ -37,6 +37,7 @@ class ScratchpadHuggingfaceBase:
 
         self._stop_lf = False
         self._stop_lf_lf = False
+        self._prev_token: Optional[int] = None
         self._stop_tokens: Set[int] = set()
         if isinstance(stop_tokens, str):
             stop_tokens = [stop_tokens]
@@ -80,10 +81,11 @@ class ScratchpadHuggingfaceBase:
         if t in self._stop_tokens:
             self.finish_reason = "stoptoken"
 
-        t_str = self._tokenizer.decode([t])
-        if self._stop_lf and t_str.startswith("\n"):
+        couple_of_tokens_decoded = self._tokenizer.decode(([self._prev_token] if self._prev_token is not None else []) + [t])
+        self._prev_token = t
+        if self._stop_lf and ("\n" in couple_of_tokens_decoded):
             self.finish_reason = "stop-lf"
-        if self._stop_lf_lf and t_str.startswith("\n\n"):
+        if self._stop_lf_lf and ("\n\n" in couple_of_tokens_decoded):
             self.finish_reason = "stop-lflf"
 
         self._tokens_produced += 1

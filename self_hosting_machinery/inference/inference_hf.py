@@ -78,6 +78,8 @@ class SMCStream(TextStreamer):
         self.upload_proxy_args = upload_proxy_args
 
     def put(self, value):
+        if self.upload_proxy_args.get("ts_first_token", 0) == 0:
+            self.upload_proxy_args["ts_first_token"] = time.time()
         super().put(value)
 
     def on_finalized_text(self, text: str, stream_end: bool = False):
