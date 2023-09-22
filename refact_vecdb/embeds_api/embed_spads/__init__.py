@@ -13,7 +13,7 @@ __all__ = [
 
 
 embed_providers = {
-    'ada': OpenAIEmbeddingSpad,
+    # 'ada': OpenAIEmbeddingSpad,
     'gte': GTEEmbeddingSpad
 }
 
