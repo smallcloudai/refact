@@ -586,12 +586,16 @@ function revert_to_default(input_id) {
 }
 
 function finetune_status() {
+    if(!downloaded_stats) { return; }
     if(!reference_downloaded_data) { reference_downloaded_data = downloaded_data; }
     if(!reference_downloaded_stats) { reference_downloaded_stats = downloaded_stats; }
     if(!reference_tab_files_data) { reference_tab_files_data = tab_files_data; }
     if(reference_downloaded_data === downloaded_data && reference_downloaded_stats === downloaded_stats && reference_tab_files_data === tab_files_data) { return; }
 
-    if(!downloaded_stats) { return; }
+    reference_downloaded_data = downloaded_data;
+    reference_downloaded_stats = downloaded_stats;
+    reference_tab_files_data = tab_files_data;
+
     if(downloaded_stats.finetune_filter_stats.status) {
         document.querySelector('.ftf-status').classList.remove('d-none');
         document.querySelector('.start-funetune-stats').classList.remove('d-none');
@@ -800,16 +804,16 @@ function get_tab_files() {
                     show_scan_error = true;
                 }
             }
-            // if(downloaded_stats && !downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
-            //     if(data.hasOwnProperty('scan_finished') && data.scan_finished) {
-            //         fine_tuning_pane.classList.remove('pane-disabled');
-            //         fine_filter_pane.classList.remove('pane-disabled');
-            //     }
-            //     else {
-            //         fine_tuning_pane.classList.add('pane-disabled');
-            //         fine_filter_pane.classList.add('pane-disabled');
-            //     }
-            // }
+            if(downloaded_stats && !downloaded_stats.filter_working_now && !downloaded_stats.finetune_working_now) {
+                if(data.hasOwnProperty('scan_finished') && data.scan_finished) {
+                    fine_tuning_pane.classList.remove('pane-disabled');
+                    fine_filter_pane.classList.remove('pane-disabled');
+                }
+                else {
+                    fine_tuning_pane.classList.add('pane-disabled');
+                    fine_filter_pane.classList.add('pane-disabled');
+                }
+            }
         });
 }
 
