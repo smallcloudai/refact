@@ -77,7 +77,7 @@ class POI(BaseModel):
 
 
 class DiffCompletion(NlpSamplingParams):
-    model: str = Query(default="", regex="^[a-z/A-Z0-9_\.]+$")
+    model: str = Query(default="", regex="^[a-z/A-Z0-9_\.\-]+$")
     intent: str
     sources: Dict[str, str]
     cursor_file: str
