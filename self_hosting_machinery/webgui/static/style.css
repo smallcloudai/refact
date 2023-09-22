@@ -661,3 +661,15 @@ h3 {
     border-radius: 0.25rem;
     border-left-color: #5bc0de;
 }
+.form-control::-webkit-input-placeholder {
+    color: #dddddd !important;
+}
+.form-control::placeholder {
+    color: #dddddd !important;
+}
+.form-control:-ms-input-placeholder {
+    color: #dddddd !important;
+}
+.form-control::-ms-input-placeholder {
+    color: #dddddd !important;
+}

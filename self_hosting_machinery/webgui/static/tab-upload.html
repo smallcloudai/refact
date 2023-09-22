@@ -134,19 +134,18 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Repository URL</label>
-            <input placeholder="https://github.com/my_repo/my.git" type="url" id="tab-upload-git-input"
-              class="form-control">
-          </div>
           <div class="mb-3 form-text ssh-info">
             For public repositories, a https link works best:
             <code>https://github.com/my_company/my_repo</code>
           </div>
           <div class="mb-3 form-text ssh-info">
-            For private repositories, <span class="ssh-link main-tab-button fake-link" data-tab="settings">add SSH Key</span> and add a link like this:
-            <code>user@github.com:my_company/my_repo.git</code>
-            <code>git@github.com:smallcloudai/refact.git</code>
+            For private repositories, <span class="ssh-link main-tab-button fake-link" data-tab="settings">add SSH Key</span> and use a link like this:
+            <code>git@github.com:my_company/my_repo.git</code>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Repository URL</label>
+            <input placeholder="https://github.com/my_company/my_repo" type="url" id="tab-upload-git-input"
+              class="form-control">
           </div>
           <div class="mb-3 ssh-selector d-none">
             <label class="form-label">SSH Key</label>
