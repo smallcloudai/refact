@@ -108,7 +108,6 @@ class MainRouter(APIRouter):
         async for result in vdb_api.a_create(
             texts=[{'name': str(uuid.uuid4())[:12], 'text': text} for text in data.texts],
             provider=provider,
-            is_index=False
         ):
             embeddings.append(result['embedding'])
         ids, scores = C.vecdb[account].search(embeddings, data.top_k)

@@ -19,7 +19,6 @@ log = logging.getLogger("MODEL").info
 
 def worker_loop(
         model_name: str,
-        index: bool,
         compile_only: bool = False,
 ):
     if model_name not in embed_providers:
@@ -55,13 +54,12 @@ def worker_loop(
     if compile_only:
         return
 
-    model = model_name if not index else f'{model_name}_index'
-    log("STATUS serving %s" % model)
+    log("STATUS serving %s" % model_name)
     req_session = infserver_session()
     description_dict = validate_description_dict(
-        f'{model}_{socket.getfqdn()}',
+        f'{model_name}_{socket.getfqdn()}',
         "account_name",
-        model=model, B=1, max_thinking_time=10,
+        model=model_name, B=1, max_thinking_time=10,
     )
     upload_proxy = UploadProxy(upload_q=None, cancelled_q=None)
     upload_proxy.start_upload_result_daemon()
@@ -107,7 +105,6 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("--model", type=str)
-    parser.add_argument("--index", action="store_true")
     parser.add_argument("--compile", action="store_true")
     args = parser.parse_args()
 
@@ -120,4 +117,4 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGUSR1, catch_sigkill)
 
-    worker_loop(args.model, args.index, args.compile)
+    worker_loop(args.model, args.compile)

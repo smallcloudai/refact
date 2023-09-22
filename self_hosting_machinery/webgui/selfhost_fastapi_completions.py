@@ -109,13 +109,11 @@ class ChatContext(NlpSamplingParams):
 class Embeddings(BaseModel):
     model: str
     files: List[Dict[str, str]]
-    is_index: bool = False
 
     def clamp(self):
         return {
             "model": self.model,
             "files": self.files,
-            "is_index": self.is_index,
         }
 
 
@@ -447,7 +445,6 @@ class CompletionsRouter(APIRouter):
     async def _embeddings(self, post: Embeddings, request: Request):
         account = "XXX"
         ticket = Ticket("embed-")
-        post.model = post.model if not post.is_index else f"{post.model}_index"
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
         if err_msg:
             log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
@@ -470,6 +467,7 @@ class CompletionsRouter(APIRouter):
 
     async def _vdb_search(self, post: SearchQuery, request: Request):
         api = VDBSearchAPI()
+
         async def stream_results():
             results = []
             async for result in api.a_search(post.texts, post.account, post.top_k):

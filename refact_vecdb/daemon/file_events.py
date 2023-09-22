@@ -15,7 +15,6 @@ from refact_vecdb.daemon.crud import \
     get_all_file_names, delete_files_by_name, insert_files, \
     on_model_change_update_embeddings, change_files_active_by_name, set_all_files_active
 
-from refact_vecdb.embeds_api.spinup import spinup_models
 from refact_vecdb.common.vecdb import prepare_vecdb_indexes
 from refact_vecdb import VDBSearchAPI
 
@@ -70,7 +69,6 @@ class WorkDirEventsHandler(FileSystemEventHandler):
         account_data['provider'] = json.loads(self._change_provider_file.read_text())['provider']
         print(f'change providers file detected; new provider: {account_data["provider"]}')
         update_account_data(account_data)
-        spinup_models()
         on_model_change_update_embeddings(self._account)
         on_db_set_file_modified(self._account)
         prepare_vecdb_indexes(self._account)
@@ -78,7 +76,6 @@ class WorkDirEventsHandler(FileSystemEventHandler):
         self._change_provider_file.unlink()
 
     def _db_set_file_modified(self) -> None:
-        spinup_models()
         on_db_set_file_modified(self._account)
         prepare_vecdb_indexes(self._account)
         VDBSearchAPI().update_indexes(self._account)
