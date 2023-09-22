@@ -98,7 +98,8 @@ class ModelAssigner:
                 for idx, model_cursor in enumerate(range(cursor, cursor + assignment["gpus_shard"])):
                     cfg_out = f"model-{model_name.lower().replace('/', '-')}-{idx}.cfg"
                     allowed_to_exist.append(cfg_out)
-                    with open(os.path.join(env.DIR_WATCHDOG_D, cfg_out), "w") as f:
+                    fn = os.path.join(env.DIR_WATCHDOG_D, cfg_out)
+                    with open(fn + ".tmp", "w") as f:
                         model_cfg_j = copy.deepcopy(model_cfg_template)
                         model_cfg_j["command_line"].append("--model")
                         model_cfg_j["command_line"].append(model_name)
@@ -106,6 +107,7 @@ class ModelAssigner:
                         model_cfg_j["share_gpu"] = assignment.get("share_gpu", False)
                         del model_cfg_j["unfinished"]
                         json.dump(model_cfg_j, f, indent=4)
+                    os.rename(fn + ".tmp", fn)
             for _ in range(model_group.gpus_shard()):
                 if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb(self.models_db):
                     required_memory_exceed_available = True
