@@ -72,7 +72,7 @@ function plugins_to_top_nav_bar(plugins)
             const target_tab = tab_button.dataset.tab;
 
             tab_buttons.forEach(btn => {
-            btn.classList.remove('main-active');
+                btn.classList.remove('main-active');
             });
 
             tab_panes.forEach(pane => {
