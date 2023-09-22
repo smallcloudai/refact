@@ -628,7 +628,14 @@ export async function init() {
         event.preventDefault()
         const ssh_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-git-modal'));
         ssh_modal.hide();
+
+        document.querySelector('#upload').classList.remove('main-active');
+        document.querySelector('#settings').classList.add('main-active');
+        document.querySelectorAll('.nav-link').forEach(function(link) {
+            link.classList.remove('main-active');
+        });
     });
+
     let delete_modal_button = document.querySelector('.delete-modal-submit');
     delete_modal_button.addEventListener('click', function() {
         if(this.dataset.file && this.dataset.file !== '') {

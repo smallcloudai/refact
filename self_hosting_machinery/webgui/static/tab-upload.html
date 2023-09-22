@@ -17,12 +17,12 @@
         </tbody>
       </table>
       <div class="sources-buttons">
-        <button id="upload-tab-file-button" data-bs-toggle="modal" data-bs-target="#upload-tab-files-modal"
-          type="button" class="btn btn-primary">Upload files…</button>
-        <button id="upload-tab-url-button" data-bs-toggle="modal" data-bs-target="#upload-tab-url-modal"
-          type="button" class="btn btn-primary">Add file from URL</button>
         <button id="upload-tab-git-button" data-bs-toggle="modal" data-bs-target="#upload-tab-git-modal"
-          type="button" class="btn btn-primary">Add git repo...</button>
+          type="button" class="btn btn-primary btn-lg">Add git repo&mldr;</button>
+        <button id="upload-tab-file-button" data-bs-toggle="modal" data-bs-target="#upload-tab-files-modal"
+          type="button" class="btn btn-primary">Upload files&mldr;</button>
+        <button id="upload-tab-url-button" data-bs-toggle="modal" data-bs-target="#upload-tab-url-modal"
+          type="button" class="btn btn-primary">Add file from URL&mldr;</button>
         <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Scan
           sources</button>
       </div>
@@ -88,6 +88,9 @@
           <div class="mb-3">
             <input type="file" id="tab-upload-file-input" class="form-control">
           </div>
+          <div class="mb-3 form-text ssh-info">
+            You can upload .zip, .tar.gz, .tar.bz2 archives, or an individual file such as "my_program.py".
+          </div>
           <div class="progress d-none">
             <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
           </div>
@@ -137,7 +140,13 @@
               class="form-control">
           </div>
           <div class="mb-3 form-text ssh-info">
-            Please <span class="ssh-link main-tab-button fake-link" data-tab="settings">add SSH Key</span> if you use private repository.
+            For public repositories, a https link works best:
+            <code>https://github.com/my_company/my_repo</code>
+          </div>
+          <div class="mb-3 form-text ssh-info">
+            For private repositories, <span class="ssh-link main-tab-button fake-link" data-tab="settings">add SSH Key</span> and add a link like this:
+            <code>user@github.com:my_company/my_repo.git</code>
+            <code>git@github.com:smallcloudai/refact.git</code>
           </div>
           <div class="mb-3 ssh-selector d-none">
             <label class="form-label">SSH Key</label>

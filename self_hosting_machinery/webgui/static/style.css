@@ -413,6 +413,7 @@ h3 {
 }
 .sources-buttons {
     display: flex;
+    align-items: center;
 }
 .sources-buttons .btn:not(:last-child) {
     margin-right: 5px;
