@@ -10,44 +10,19 @@ from typing import Iterable, List, Dict, Optional, Any
 
 from more_itertools import chunked
 
-from refact_vecdb.common.context import VDBFiles, CONTEXT as C, upd_file_stats
+from refact_vecdb.common.context import VDBFiles, CONTEXT as C
 from refact_vecdb.common.crud import get_account_data
 from refact_vecdb import VDBEmbeddingsAPI
-
-
-class RaiseIfChanged:
-    def __init__(self):
-        self._data = {}
-
-    def add(self, file: Path, exc: Any):
-        if not file.exists():
-            print(f'RaiseIfChanged: File {file} does not exist')
-            return
-        last_mod = os.path.getmtime(file)
-        self._data[file] = {'last_mod': last_mod, 'exc': exc}
-
-    def __call__(self):
-        for k, v in self._data.items():
-            if v['last_mod'] != os.path.getmtime(k):
-                raise v['exc']
-
-
-class DBSetChangedException(Exception):
-    pass
-
-
-class ConfigChangedException(Exception):
-    pass
 
 
 def hash_string(string: str) -> str:
     return sha1(string.encode()).hexdigest()[:12]
 
 
-def read_and_compare_files(account: str):
+def read_and_compare_files(cfg_tracker, account: str):
     def retrieve_all_file_names() -> Iterable[str]:
         for row in C.c_session.execute(
-                C.c_session.prepare('select name from files_full_text where account =?;'),
+                C.c_session.prepare('SELECT filepath FROM files_full_text WHERE account =?;'),
                 [account]
         ):
             yield row['name']
@@ -61,24 +36,23 @@ def read_and_compare_files(account: str):
 
     # if file exists in DB but does not exist in database_set_file -> delete it from DB
     file_names_db = set(retrieve_all_file_names())
-    if diff_file_names := file_names_db - set(str(p) for p in file_paths):
-        delete_files_by_name(diff_file_names, account)
-
-    print(f'Found {len(file_paths)} files to insert')
+    if to_delete := file_names_db - set(str(p) for p in file_paths):
+        delete_files_by_name(cfg_tracker, to_delete, account)
 
     if not file_paths:
         return
 
-    read_files_gen = ({'path': str(p), 'text': p.read_text()} for p in file_paths)
-    insert_files(read_files_gen, account)
+    add_or_update_generator = ({'path': str(p), 'text': p.read_text()} for p in file_paths)
+    insert_files(cfg_tracker, add_or_update_generator, len(file_paths), account)
 
 
-def delete_files_by_name(names_db_drop: Iterable[str], account: str) -> None:
+def delete_files_by_name(cfg_tracker, names_to_drop: Iterable[str], account: str) -> None:
     session = C.c_session
 
     tables = ['file_chunks_embedding', 'file_chunks_text', 'files_full_text']
-    for t in tables:
-        for d_name in names_db_drop:
+    for d_name in names_to_drop:
+        cfg_tracker.throw_if_changed()
+        for t in tables:
             print(f'DROPPING {t} with name {d_name}')
             for row in session.execute(
                 f"""
@@ -101,13 +75,7 @@ def retry_mech(func, *args, **kwargs):
                 raise e
 
 
-def create_and_insert_chunks(files: List[Dict], account: str, provider: Optional[str] = None) -> None:
-    r = RaiseIfChanged()
-    r.add(VDBFiles.database_set, DBSetChangedException)
-    r.add(VDBFiles.config, ConfigChangedException)
-
-    files_cnt = len(files)
-    provider = provider or get_account_data(account).get('provider', 'gte')
+def create_and_insert_chunks(cfg_tracker, files: List[Dict], file0_n, files_total, account: str, provider: str) -> None:
     emb_api = VDBEmbeddingsAPI()
 
     models = C.c_models
@@ -116,8 +84,9 @@ def create_and_insert_chunks(files: List[Dict], account: str, provider: Optional
     files_full_text_tbl = models['files_full_text']
 
     for file_idx, file in enumerate(files, 1):
+        cfg_tracker.throw_if_changed()
+        cfg_tracker.upd_stats(file_idx + file0_n, files_total)
         res_idx = 0
-        r()
         # request to embeds api
         print(f'FILE: {file["path"]}')
         for res_idx, res in enumerate(emb_api.create(
@@ -158,10 +127,9 @@ def create_and_insert_chunks(files: List[Dict], account: str, provider: Optional
         }
 
         retry_mech(files_full_text_tbl.create, **files_full_text_mapping)
-        upd_file_stats({'file_n': file_idx, 'total': files_cnt})
 
 
-def insert_files(files: Iterable[Dict[str, str]], account: str) -> None:
+def insert_files(cfg_tracker, files_generator: Iterable[Dict[str, str]], files_total: int, account: str, provider: str) -> None:
     session = C.c_session
 
     def retrieve_files_id():
@@ -172,54 +140,14 @@ def insert_files(files: Iterable[Dict[str, str]], account: str) -> None:
             yield row['id']
 
     ids_present = set(retrieve_files_id())
-    batch_size = 1_000
-    for ch_idx, files_batch in enumerate(chunked(files, batch_size)):
-        print(f'inserting batch {ch_idx}')
-        files_batch_dict = {hash_string(f['text']): f for f in files_batch}
-        files_batch_ids = set(files_batch_dict.keys())
+    batch_size = 10
+    for chunk_n, files_batch in enumerate(chunked(files_generator, batch_size)):
+        file0_n = chunk_n * batch_size
+        hash2filedict = {hash_string(f['text']): f for f in files_batch}
+        files_batch_ids = set(hash2filedict.keys())
         if dups := ids_present.intersection(files_batch_ids):
-            files_batch_dict = {k: v for k, v in files_batch_dict.items() if k not in dups}
-        if not files_batch_dict:
+            hash2filedict = {k: v for k, v in hash2filedict.items() if k not in dups}
+        if not hash2filedict:
             continue
-        files_batch_dicts = [{'id': k, **v} for k, v in files_batch_dict.items()]
-        create_and_insert_chunks(files_batch_dicts, account)
-
-
-def on_model_change_update_embeddings(account: str, provider: str) -> None:
-    r = RaiseIfChanged()
-    r.add(VDBFiles.database_set, DBSetChangedException)
-    r.add(VDBFiles.config, ConfigChangedException)
-    time.sleep(5)
-    r()
-
-    session = C.c_session
-
-    def delete_from_file_chunks_embedding(account: str) -> None:
-        ids = session.execute(session.prepare('select id, account from file_chunks_embedding where account =?;'), [account])
-        for row in ids:
-            session.execute(session.prepare('delete from file_chunks_embedding where id =? and account = ?;'), [row['id'], row['account']])
-
-    def delete_from_file_chunks_text(account: str) -> None:
-        ids = session.execute(session.prepare('select id, account from file_chunks_text where account =?;'), [account])
-        for row in ids:
-            session.execute(session.prepare('delete from file_chunks_text where id =? and account =?;'), [row['id'], row['account']])
-
-    def delete_from_files_full_text(account: str) -> None:
-        ids = session.execute(session.prepare('select id, account from files_full_text where account =?;'), [account])
-        for row in ids:
-            session.execute(session.prepare('delete from files_full_text where id =? and account =?;'), [row['id'], row['account']])
-
-    delete_from_file_chunks_embedding(account)
-    delete_from_file_chunks_text(account)
-    delete_from_files_full_text(account)
-
-    def retrieve_files_name_text():
-        for row in session.execute(
-                session.prepare('select name, text from files_full_text where account =?;'),
-                [account]
-        ):
-            yield {'path': row['name'], 'text': row['text']}
-
-    batch_size = 1_000
-    for files_batch in chunked(retrieve_files_name_text(), batch_size):
-        create_and_insert_chunks(files_batch, account, provider)
+        unique_files = [{'id': k, **v} for k, v in hash2filedict.items()]
+        create_and_insert_chunks(cfg_tracker, unique_files, file0_n, files_total, account, provider)

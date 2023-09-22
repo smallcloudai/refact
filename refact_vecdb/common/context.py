@@ -23,7 +23,6 @@ class VDBFiles:
     database_set = workdir / "database_set.jsonl"
     file_stats = Path(env.CONFIG_VECDB_FILE_STATS)
     file_stats_tmp = file_stats.with_suffix(".tmp")
-    change_provider = Path(env.FLAG_VECDB_CHANGE_PROVIDER)  # GUI only
     config = Path(env.CONFIG_VECDB)
     status = Path(env.CONFIG_VECDB_STATUS)
 

@@ -1,4 +1,4 @@
-import json
+import json, os
 import traceback
 
 from pathlib import Path
@@ -33,13 +33,24 @@ class TabContextRouter(APIRouter):
 
         self.add_api_route("/tab-vecdb-files-stats", self._files_stats, methods=["GET"])
         self.add_api_route("/tab-vecdb-status", self._status, methods=["GET"])
-        self.add_api_route('/tab-vecdb-update-provider', self._update_provider, methods=["POST"])
+        self.add_api_route("/tab-vecdb-update-provider", self._update_provider, methods=["POST"])
 
     async def _update_provider(self, data: VecDBUpdateProvider, request: Request):
-        with VDBFiles.config.open('w') as f:
-            f.write(json.dumps({'provider': data.provider}))
-        with VDBFiles.change_provider.open('w') as f:
-            f.write()
+        with open(env.CONFIG_VECDB + ".tmp", "w") as f:
+            f.write(json.dumps({"provider": data.provider}))
+        os.rename(env.CONFIG_VECDB + ".tmp", env.CONFIG_VECDB)
+        gte_cfg_fn = os.path.join(env.DIR_WATCHDOG_D, "model_gte.cfg")
+        if data.provider == 'gte':
+            gte_cfg_template = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model_gte.cfg")))
+            with open(gte_cfg_fn, "w") as f:
+                j = model_cfg_template
+                del j["unfinished"]
+                json.dump(j, f, indent=4)
+        else:
+            try:
+                os.unlink(gte_cfg_fn)
+            except:
+                pass
 
     async def _status(self):
         content = {}
