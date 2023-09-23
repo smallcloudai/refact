@@ -829,9 +829,7 @@ export async function init() {
     fine_filter_status = document.querySelector('.ftf-status span');
     fine_filter_error = document.querySelector('.ftf-error');
     fine_filter_button = document.querySelector('.sources-run-button');
-    fine_filter_button.disabled = true;
     fine_tuning_button = document.querySelector('.tab-finetune-run-now');
-    fine_tuning_button.disabled = true;
     fine_tuning_settings = document.querySelector('.tab-finetune-fine-settings');
 
     use_model_pane = document.querySelector('.use-model-pane');
