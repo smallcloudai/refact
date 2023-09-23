@@ -26,9 +26,8 @@ async fn _get_caps_and_tokenizer(
     model_name: String,
 ) -> Result<(Arc<StdRwLock<CodeAssistantCaps>>, Arc<StdRwLock<Tokenizer>>, reqwest::Client, String), String> {
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
-    let client1: reqwest::Client;
     let mut cx_locked = global_context.write().await;
-    client1 = cx_locked.http_client.clone();
+    let client1 = cx_locked.http_client.clone();
     let client2 = cx_locked.http_client.clone();
     let cache_dir = cx_locked.cache_dir.clone();
     let tokenizer_arc = match cx_locked.tokenizer_map.get(&model_name) {
