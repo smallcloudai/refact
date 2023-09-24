@@ -9,7 +9,7 @@ use structopt::StructOpt;
 use std::io::Write;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
-use crate::telemetry_basic;
+use crate::telemetry_storage;
 
 
 #[derive(Debug, StructOpt, Clone)]
@@ -35,7 +35,7 @@ pub struct GlobalContext {
     pub caps_last_attempted_ts: u64,
     pub cmdline: CommandLine,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
-    pub telemetry: Arc<StdRwLock<telemetry_basic::Storage>>,
+    pub telemetry: Arc<StdRwLock<telemetry_storage::Storage>>,
 }
 
 
@@ -113,7 +113,7 @@ pub async fn create_global_context(
         caps_last_attempted_ts: 0,
         cmdline,
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
-        telemetry: Arc::new(StdRwLock::new(telemetry_basic::Storage::new())),
+        telemetry: Arc::new(StdRwLock::new(telemetry_storage::Storage::new())),
     };
     Ok(Arc::new(ARwLock::new(cx)))
 }

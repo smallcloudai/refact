@@ -20,6 +20,7 @@ mod custom_error;
 mod completion_cache;
 mod telemetry_basic;
 mod telemetry_correction;
+mod telemetry_storage;
 mod lsp;
 
 
@@ -42,7 +43,7 @@ async fn main() {
     let gcx = gcx_maybe.unwrap();
     let gcx2 = gcx.clone();
     let caps_reload_task = tokio::spawn(global_context::caps_background_reload(gcx.clone()));
-    let tele_backgr_task = tokio::spawn(telemetry_basic::telemetry_background_task(gcx.clone()));
+    let tele_backgr_task = tokio::spawn(telemetry_storage::telemetry_background_task(gcx.clone()));
     let server_task = tokio::spawn(async move {
         let gcx_clone = gcx.clone();
         let server = http_server::start_server(gcx_clone);
@@ -105,7 +106,7 @@ async fn main() {
     lsp_task.abort();
     let _ = lsp_task.await;
     info!("saving telemetry without sending, so should be quick");
-    telemetry_basic::telemetry_full_cycle(gcx2.clone(), true).await;
+    telemetry_storage::telemetry_full_cycle(gcx2.clone(), true).await;
     info!("bb");
 
 
