@@ -52,7 +52,7 @@ pub async fn caps_background_reload(
                 let mut global_context_locked = global_context.write().await;
                 global_context_locked.caps = Some(caps);
                 info!("background reload caps successful");
-                write!(std::io::stdout(), "CAPS\n").unwrap();
+                write!(std::io::stderr(), "CAPS\n").unwrap();
             },
             Err(e) => {
                 error!("failed to load caps: {}", e);
@@ -87,7 +87,7 @@ pub async fn try_load_caps_quickly_if_not_present(
             Ok(caps) => {
                 global_context_locked.caps = Some(caps.clone());
                 info!("quick load caps successful");
-                write!(std::io::stdout(), "CAPS\n").unwrap();
+                write!(std::io::stderr(), "CAPS\n").unwrap();
                 Ok(caps)
             },
             Err(e) => {
