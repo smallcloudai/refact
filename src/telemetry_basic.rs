@@ -123,22 +123,31 @@ pub async fn compress_basic_telemetry_to_file(
 
     let records = _compress_telemetry_network(storage.clone());
     let fn_net = dir.join(format!("{}-net.json", now.format("%Y%m%d-%H%M%S")));
-    let mut big_json_net = json!({});
-    {
+    let mut big_json_net = json!({
+        "records": records,
+        "ts_end": now.timestamp(),
+        "teletype": "network",
+        "enduser_client_version": enduser_client_version,
+    });
+    { // clear
         let mut storage_locked = storage.write().unwrap();
         storage_locked.tele_net.clear();
         storage_locked.tele_comp.clear();
         big_json_net.as_object_mut().unwrap().insert("ts_start".to_string(), json!(storage_locked.last_flushed_ts));
         storage_locked.last_flushed_ts = now.timestamp();
     }
-    big_json_net.as_object_mut().unwrap().insert("records".to_string(), records);
-    big_json_net.as_object_mut().unwrap().insert("ts_end".to_string(), json!(now.timestamp()));
-    big_json_net.as_object_mut().unwrap().insert("teletype".to_string(), json!("network"));
-    big_json_net.as_object_mut().unwrap().insert("enduser_client_version".to_string(), json!(enduser_client_version));
     // even if there's an error with i/o, storage is now clear, preventing infinite memory growth
     info!("basic telemetry save \"{}\"", fn_net.to_str().unwrap());
-    let mut f_net = tokio::fs::File::create(fn_net).await.unwrap();
-    f_net.write_all(serde_json::to_string_pretty(&big_json_net).unwrap().as_bytes()).await.unwrap();
+    let io_result = _file_save(fn_net.clone(), big_json_net).await;
+    if io_result.is_err() {
+        error!("error: {}", io_result.err().unwrap());
+    }
+}
+
+async fn _file_save(path: PathBuf, json: serde_json::Value) -> Result<(), String> {
+    let mut f = tokio::fs::File::create(path).await.map_err(|e| format!("{:?}", e))?;
+    f.write_all(serde_json::to_string_pretty(&json).unwrap().as_bytes()).await.map_err(|e| format!("{}", e))?;
+    Ok(())
 }
 
 async fn _sorted_files(dir: PathBuf) -> Vec<PathBuf> {

@@ -85,7 +85,7 @@ pub fn post_to_cache_key(
         }
     }
     linesvec.reverse();
-    let mut key = format!("/{}/{}/", &post.model, &post.scratchpad);
+    let mut key = "".to_string();
     key.push_str(&linesvec.join(""));
     key.push_str(&cursor_line.to_string());
     if key.len() > CACHE_KEY_CHARS {
