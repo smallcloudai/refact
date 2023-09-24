@@ -1,17 +1,39 @@
-use crate::call_validation::CodeCompletionInputs;
 use crate::call_validation::CodeCompletionPost;
-use crate::call_validation::SamplingParameters;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::collections::HashMap;
 
-// use ropey::RopeSlice;
 use ropey::Rope;
 use tracing::info;
 
 const CACHE_ENTRIES: usize = 500;
-const CACHE_KEY_CHARS: usize = 5000;
-// max memory CACHE_KEY_CHARS * CACHE_ENTRIES = 2500000 = 2.5M
+const CACHE_KEY_CHARS: usize = 5000;  // max memory CACHE_KEY_CHARS * CACHE_ENTRIES = 2500000 = 2.5M
+
+
+// aggregate this struct in scratchpad to save cache
+#[derive(Debug, Clone)]
+pub struct CompletionSaveToCache {
+    pub cache_arc: Arc<StdRwLock<CompletionCache>>,
+    pub cache_key: String,
+    pub completion0_text: String,
+    pub completion0_finish_reason: String,
+    pub model: String,
+}
+
+impl CompletionSaveToCache {
+    pub fn new(
+        cache_arc: Arc<StdRwLock<CompletionCache>>,
+        post: &CodeCompletionPost
+    ) -> Self {
+        CompletionSaveToCache {
+            cache_arc: cache_arc.clone(),
+            cache_key: post_to_cache_key(post),
+            completion0_text: String::new(),
+            completion0_finish_reason: String::new(),
+            model: post.model.clone(),
+        }
+    }
+}
 
 
 #[derive(Debug)]
@@ -20,7 +42,14 @@ pub struct CompletionCache {
     pub in_added_order: Vec<String>,
 }
 
-pub fn cache_key(
+impl CompletionCache {
+    pub fn new(
+    ) -> Self {
+        Self { map: HashMap::new(), in_added_order: Vec::new() }
+    }
+}
+
+pub fn post_to_cache_key(
     post: &CodeCompletionPost,
 ) -> String {
     let text_maybe = post.inputs.sources.get(&post.inputs.cursor.file);
@@ -100,13 +129,37 @@ pub fn cache_put(
     cache_locked.in_added_order.push(new_key_copy.clone());
 }
 
-impl CompletionCache {
-    pub fn new(
-    ) -> Self {
-        Self {
-            map: HashMap::new(),
-            in_added_order: Vec::new(),
+// flush to cache on destruction
+
+impl Drop for CompletionSaveToCache {
+    fn drop(&mut self) {
+        if self.completion0_text.is_empty() {
+            return;
+        }
+        info!("code_completion: {}", self.completion0_text);
+        let mut believe_chars = self.completion0_text.len();
+        if self.completion0_finish_reason == "length" {
+            // Model stopped because of max tokens, there is a continuation, so it's good for cache in the beginning, but don't believe it to the end.
+            // For example CODECODECODECOMPLETION| with empty completion is obviously junk as cache.
+            // And it's not junk for "stop", it actually saves one model call after accepting each completion.
+            believe_chars = believe_chars.checked_sub(10).unwrap_or(0);
+        } else {
+            believe_chars += 1;
+        }
+        for char_num in 0..believe_chars {
+            let cache_key_ahead = self.cache_key.clone() + &self.completion0_text[..char_num];
+            let code_completion_ahead = self.completion0_text[char_num..].to_string();
+            cache_put(self.cache_arc.clone(), cache_key_ahead, serde_json::json!(
+                {
+                    "choices": {
+                        "index": 0,
+                        "code_completion": code_completion_ahead,
+                        "finish_reason": self.completion0_finish_reason,
+                    },
+                    "model": self.model,
+                    "cached": true,
+                }
+            ));
         }
     }
 }
-

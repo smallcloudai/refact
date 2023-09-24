@@ -128,7 +128,7 @@ async fn handle_v1_code_completion(
     )?;
 
     let cache_arc = global_context.write().await.completions_cache.clone();
-    let cache_key = completion_cache::cache_key(&code_completion_post);
+    let cache_key = completion_cache::post_to_cache_key(&code_completion_post);
     info!("cache key {:?}", cache_key);
     let cached_maybe = completion_cache::cache_get(cache_arc.clone(), cache_key);
     if let Some(cached_json_value) = cached_maybe {
