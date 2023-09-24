@@ -19,6 +19,7 @@ mod restream;
 mod custom_error;
 mod completion_cache;
 mod telemetry_basic;
+mod telemetry_correction;
 mod lsp;
 
 

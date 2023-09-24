@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::caps::CodeAssistantCaps;
 use crate::global_context;
+use crate::telemetry_correction;
 
 
 const TELEMETRY_COMPRESSION_SECONDS: u64 = 3600;
@@ -37,14 +38,30 @@ impl TelemetryNetwork {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct TelemetryCompletion {
+    pub model: String,
     pub language: String,
     pub multiline: bool,
     pub accepted: bool,
-    pub user_pondered_600ms: bool,
-    pub user_pondered_1200ms: bool,
-    // -- key above, calculate average below --
-    pub generated_chars: usize,
-    pub remaining_percent: f64,
+    // -- key above, calculate below --
+    pub counter: usize,
+    pub generated_chars: usize,  // becomes float
+    // sum(after_walkaway_*) == counter
+    // "walkaway" means user has edited other code in a different spot
+    pub after_walkaway_remaining00: usize,
+    pub after_walkaway_remaining00to50: usize,
+    pub after_walkaway_remaining50to95: usize,
+    pub after_walkaway_remaining95to99: usize,
+    pub after_walkaway_remaining100: usize,
+    pub after_30s_remaining00: usize,    // 30s point is independent of user walked away or not
+    pub after_30s_remaining00to50: usize,
+    pub after_30s_remaining50to95: usize,
+    pub after_30s_remaining95to99: usize,
+    pub after_30s_remaining100: usize,
+    pub after_300s_remaining00: usize,
+    pub after_300s_remaining00to50: usize,
+    pub after_300s_remaining50to95: usize,
+    pub after_300s_remaining95to99: usize,
+    pub after_300s_remaining100: usize,
 }
 
 
@@ -52,6 +69,7 @@ pub struct Storage {
     pub last_flushed_ts: i64,
     pub tele_net: Vec<TelemetryNetwork>,
     pub tele_comp: Vec<TelemetryCompletion>,
+    pub tele_correction: Vec<telemetry_correction::Correction>,
 }
 
 impl Storage {
@@ -60,6 +78,7 @@ impl Storage {
             last_flushed_ts: chrono::Local::now().timestamp(),
             tele_net: Vec::new(),
             tele_comp: Vec::new(),
+            tele_correction: Vec::new(),
         }
     }
 }
@@ -93,9 +112,9 @@ fn _compress_telemetry_network(
     records
 }
 
-fn _key_telemetry_completion(rec: &TelemetryCompletion) -> String {
-    format!("{}/{}/{}/{}/{}", rec.language, rec.multiline, rec.accepted, rec.user_pondered_600ms, rec.user_pondered_1200ms)
-}
+// fn _key_telemetry_completion(rec: &TelemetryCompletion) -> String {
+//     format!("{}/{}/{}/{}/{}", rec.language, rec.multiline, rec.accepted, rec.user_pondered_600ms, rec.user_pondered_1200ms)
+// }
 
 fn _compress_telemetry_completion(
     _storage: Arc<StdRwLock<Storage>>,

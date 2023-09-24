@@ -14,60 +14,20 @@ use serde::Serialize;
 use crate::global_context;
 
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct TelemetryNetwork {
-    pub url: String,           // communication with url
-    pub scope: String,         // in relation to what
-    pub success: bool,
-    pub error_message: String, // empty if no error
-}
+// How it works:
+// 1. Rust returns {"snippet_telemetry_id":101,"choices":[{"code_completion":"\n    return \"Hello World!\"\n"}] ...}
+// ?. IDE detects accept, sends /v1/completion-accepted with {"snippet_telemetry_id":101}
+// 3. LSP looks at file changes (LSP can be replaced with reaction to a next completion?)
+// 4. Changes are translated to "after_walkaway_remaining50to95" etc
 
-pub fn key_telemetry_network(rec: &TelemetryNetwork) -> String {
-    format!("{} {} {} {}", rec.url, rec.scope, rec.success, rec.error_message)
-}
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct TelemetryCompletion {
-    pub language: String,
-    pub multiline: bool,
-    pub generated_chars: usize,
-    pub status: String,    // "accepted", "rejected", "corrected"
-    pub remaining_percent: f64,
-}
-
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct TelemetryCorrection {
+pub struct Correction {
     pub inputs: call_validation::CodeCompletionInputs,
     pub grey_text: String,
     pub corrected_by_user: String,
     pub remaining_percent: f64,
-}
-
-
-pub struct Storage {
-    pub last_flushed_ts: u64,
-    pub tele_net: Vec<TelemetryNetwork>,
-    pub tele_comp: Vec<TelemetryCompletion>,
-}
-
-impl Storage {
-    pub fn new() -> Self {
-        Self {
-            last_flushed_ts: 0,
-            tele_net: Vec::new(),
-            tele_comp: Vec::new(),
-        }
-    }
-}
-
-
-pub fn flush_telemetry(
-    cx: Arc<ARwLock<global_context::GlobalContext>>,
-) {
-    unimplemented!();
-    // telemetry_basic_dest
 }
 
 

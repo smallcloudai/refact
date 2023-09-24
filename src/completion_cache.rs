@@ -151,11 +151,11 @@ impl Drop for CompletionSaveToCache {
             let code_completion_ahead = self.completion0_text[char_num..].to_string();
             cache_put(self.cache_arc.clone(), cache_key_ahead, serde_json::json!(
                 {
-                    "choices": {
+                    "choices": [{
                         "index": 0,
                         "code_completion": code_completion_ahead,
                         "finish_reason": self.completion0_finish_reason,
-                    },
+                    }],
                     "model": self.model,
                     "cached": true,
                 }
