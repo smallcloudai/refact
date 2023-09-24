@@ -17,6 +17,7 @@ pub struct CompletionSaveToCache {
     pub cache_key: String,
     pub completion0_text: String,
     pub completion0_finish_reason: String,
+    pub completion0_snippet_telemetry_id: Option<u64>,
     pub model: String,
 }
 
@@ -30,6 +31,7 @@ impl CompletionSaveToCache {
             cache_key: post_to_cache_key(post),
             completion0_text: String::new(),
             completion0_finish_reason: String::new(),
+            completion0_snippet_telemetry_id: None,
             model: post.model.clone(),
         }
     }
@@ -136,7 +138,6 @@ impl Drop for CompletionSaveToCache {
         if self.completion0_text.is_empty() {
             return;
         }
-        info!("code_completion: {}", self.completion0_text);
         let mut believe_chars = self.completion0_text.len();
         if self.completion0_finish_reason == "length" {
             // Model stopped because of max tokens, there is a continuation, so it's good for cache in the beginning, but don't believe it to the end.
@@ -158,6 +159,7 @@ impl Drop for CompletionSaveToCache {
                     }],
                     "model": self.model,
                     "cached": true,
+                    "snippet_telemetry_id": self.completion0_snippet_telemetry_id,
                 }
             ));
         }

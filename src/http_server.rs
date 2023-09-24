@@ -127,7 +127,8 @@ async fn handle_v1_code_completion(
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
     )?;
 
-    let cache_arc = global_context.write().await.completions_cache.clone();
+    let cache_arc = global_context.read().await.completions_cache.clone();
+    let tele_storage = global_context.read().await.telemetry.clone();
     let cache_key = completion_cache::post_to_cache_key(&code_completion_post);
     info!("cache key {:?}", cache_key);
     let cached_maybe = completion_cache::cache_get(cache_arc.clone(), cache_key);
@@ -145,6 +146,7 @@ async fn handle_v1_code_completion(
         &scratchpad_patch,
         tokenizer_arc.clone(),
         cache_arc.clone(),
+        tele_storage.clone(),
     ).map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;

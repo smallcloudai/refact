@@ -9,16 +9,18 @@ use serde_json::json;
 use crate::caps::CodeAssistantCaps;
 use crate::global_context;
 use crate::telemetry_basic;
-use crate::telemetry_correction;
+use crate::telemetry_snippets;
 
 const TELEMETRY_COMPRESSION_SECONDS: u64 = 3600;
 
 
+#[derive(Debug)]
 pub struct Storage {
     pub last_flushed_ts: i64,
     pub tele_net: Vec<telemetry_basic::TelemetryNetwork>,
     pub tele_completion: Vec<telemetry_basic::TelemetryCompletion>,
-    pub tele_snippets: Vec<telemetry_correction::SnippetTelemetry>,
+    pub tele_snippets: Vec<telemetry_snippets::SnippetTelemetry>,
+    pub tele_snippet_next_id: u64,
 }
 
 impl Storage {
@@ -28,6 +30,7 @@ impl Storage {
             tele_net: Vec::new(),
             tele_completion: Vec::new(),
             tele_snippets: Vec::new(),
+            tele_snippet_next_id: 100,
         }
     }
 }

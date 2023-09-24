@@ -9,6 +9,8 @@ use tokenizers::Tokenizer;
 use ropey::Rope;
 use tracing::info;
 use crate::completion_cache;
+use crate::telemetry_storage;
+use crate::telemetry_snippets;
 
 const DEBUG: bool = false;
 
@@ -22,6 +24,7 @@ pub struct SingleFileFIM {
     pub fim_suffix: String,
     pub fim_middle: String,
     pub data4cache: completion_cache::CompletionSaveToCache,
+    pub data4snippet: telemetry_snippets::SaveSnippet,
 }
 
 impl SingleFileFIM {
@@ -30,9 +33,11 @@ impl SingleFileFIM {
         post: CodeCompletionPost,
         order: String,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
+        tele_storage: Arc<StdRwLock<telemetry_storage::Storage>>,
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
-        SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(), fim_suffix: String::new(), fim_middle: String::new(), data4cache }
+        let data4snippet = telemetry_snippets::SaveSnippet::new(tele_storage, &post);
+        SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(), fim_suffix: String::new(), fim_middle: String::new(), data4cache, data4snippet }
     }
 }
 
@@ -172,9 +177,11 @@ impl ScratchpadAbstract for SingleFileFIM {
                     "finish_reason": finish_reason.clone(),
                 })
         }).collect::<Vec<_>>();
+        telemetry_snippets::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
         return Ok(serde_json::json!(
             {
                 "choices": json_choices,
+                "snippet_telemetry_id": self.data4cache.completion0_snippet_telemetry_id,
                 "model": self.post.model.clone(),
             }
         ));
@@ -205,6 +212,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                 "finish_reason": if finished { serde_json::Value::String("stop".to_string()) } else { serde_json::Value::Null },
             }]);
         } else {
+            assert!(stopped);
             json_choices = serde_json::json!([{
                 "index": 0,
                 "code_completion": "",
@@ -212,8 +220,10 @@ impl ScratchpadAbstract for SingleFileFIM {
             }]);
             self.data4cache.completion0_finish_reason = "length".to_string();
         }
+        telemetry_snippets::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
         let ans = serde_json::json!({
             "choices": json_choices,
+            "snippet_telemetry_id": self.data4cache.completion0_snippet_telemetry_id,
         });
         Ok((ans, finished))
     }
