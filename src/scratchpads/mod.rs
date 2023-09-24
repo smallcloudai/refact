@@ -9,6 +9,8 @@ use crate::call_validation::ChatPost;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use crate::completion_cache;
+
 
 fn verify_has_send<T: Send>(_x: &T) {}
 
@@ -18,12 +20,13 @@ pub fn create_code_completion_scratchpad(
     scratchpad_name: &str,
     scratchpad_patch: &serde_json::Value,
     tokenizer_arc: Arc<StdRwLock<Tokenizer>>,
+    cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
     if scratchpad_name == "FIM-PSM" {
-        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "PSM".to_string()));
+        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "PSM".to_string(), cache_arc));
     } else if scratchpad_name == "FIM-SPM" {
-        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "SPM".to_string()));
+        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "SPM".to_string(), cache_arc));
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }

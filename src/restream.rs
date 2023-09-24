@@ -263,3 +263,30 @@ pub async fn scratchpad_interaction_stream(
         .unwrap();
     return Ok(response);
 }
+
+pub async fn cached_not_stream(
+    cached_json_value: &serde_json::Value,
+) -> Result<Response<Body>, ScratchError> {
+    let txt = serde_json::to_string_pretty(&cached_json_value).unwrap();
+    let response = Response::builder()
+       .header("Content-Type", "application/json")
+      .body(Body::from(txt))
+      .unwrap();
+    return Ok(response);
+}
+
+pub async fn cached_stream(
+    cached_json_value: &serde_json::Value,
+) -> Result<Response<Body>, ScratchError> {
+    info!("cached_stream");
+    let txt = serde_json::to_string(&cached_json_value).unwrap();
+    let evstream = stream! {
+        yield Result::<_, String>::Ok(format!("data: {}\n\n", txt));
+        yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
+    };
+    let response = Response::builder()
+       .header("Content-Type", "application/json")
+       .body(Body::wrap_stream(evstream))
+       .unwrap();
+    return Ok(response);
+}

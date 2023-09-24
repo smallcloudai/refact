@@ -19,6 +19,7 @@ use crate::global_context::GlobalContext;
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::telemetry_basic;
+use crate::completion_cache;
 
 
 async fn _get_caps_and_tokenizer(
@@ -109,9 +110,14 @@ async fn handle_v1_code_completion(
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", e))
     })?;
-    // TODO: take from caps
     if code_completion_post.parameters.max_new_tokens == 0 {
         code_completion_post.parameters.max_new_tokens = 50;
+    }
+    if code_completion_post.model == "" {
+        code_completion_post.model = model_name.clone();
+    }
+    if code_completion_post.scratchpad == "" {
+        code_completion_post.scratchpad = scratchpad_name.clone();
     }
     code_completion_post.parameters.temperature = Some(code_completion_post.parameters.temperature.unwrap_or(0.2));
     let (_caps, tokenizer_arc, client1, api_key) = _get_caps_and_tokenizer(
@@ -121,11 +127,24 @@ async fn handle_v1_code_completion(
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
     )?;
 
+    let cache_arc = global_context.write().await.completions_cache.clone();
+    let cache_key = completion_cache::cache_key(&code_completion_post);
+    info!("cache key {:?}", cache_key);
+    let cached_maybe = completion_cache::cache_get(cache_arc.clone(), cache_key);
+    if let Some(cached_json_value) = cached_maybe {
+        if !code_completion_post.stream {
+            return crate::restream::cached_not_stream(&cached_json_value).await;
+        } else {
+            return crate::restream::cached_stream(&cached_json_value).await;
+        }
+    }
+
     let mut scratchpad = scratchpads::create_code_completion_scratchpad(
         code_completion_post.clone(),
         &scratchpad_name,
         &scratchpad_patch,
         tokenizer_arc.clone(),
+        cache_arc.clone(),
     ).map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;

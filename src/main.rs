@@ -17,6 +17,7 @@ mod cached_tokenizers;
 mod http_server;
 mod restream;
 mod custom_error;
+mod completion_cache;
 mod telemetry_basic;
 mod lsp;
 

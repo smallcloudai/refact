@@ -8,6 +8,7 @@ use tokenizers::Tokenizer;
 use structopt::StructOpt;
 use std::io::Write;
 use crate::caps::CodeAssistantCaps;
+use crate::completion_cache::CompletionCache;
 use crate::telemetry_basic;
 
 
@@ -33,6 +34,7 @@ pub struct GlobalContext {
     pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
     pub caps_last_attempted_ts: u64,
     pub cmdline: CommandLine,
+    pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_basic::Storage>>,
 }
 
@@ -110,6 +112,7 @@ pub async fn create_global_context(
         caps: None,
         caps_last_attempted_ts: 0,
         cmdline,
+        completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_basic::Storage::new())),
     };
     Ok(Arc::new(ARwLock::new(cx)))

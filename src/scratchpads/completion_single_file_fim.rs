@@ -3,12 +3,12 @@ use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::call_validation::CodeCompletionPost;
 use crate::call_validation::SamplingParameters;
 use std::sync::Arc;
-use std::sync::RwLock;
-
+use std::sync::RwLock as StdRwLock;
 // use ropey::RopeSlice;
 use tokenizers::Tokenizer;
 use ropey::Rope;
 use tracing::info;
+use crate::completion_cache;
 
 const DEBUG: bool = false;
 
@@ -18,18 +18,23 @@ pub struct SingleFileFIM {
     pub t: HasTokenizerAndEot,
     pub post: CodeCompletionPost,
     pub order: String,
+    pub cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
     pub fim_prefix: String,
     pub fim_suffix: String,
     pub fim_middle: String,
+    // Cache is mapping from self.post to json, flushed to cache on destruction
+    pub completion0_text: String,
+    pub completion0_finish_reason: String,
 }
 
 impl SingleFileFIM {
     pub fn new(
-        tokenizer: Arc<RwLock<Tokenizer>>,
+        tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: CodeCompletionPost,
         order: String,
+        cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
     ) -> Self {
-        SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(), fim_suffix: String::new(), fim_middle: String::new() }
+        SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, cache_arc, fim_prefix: String::new(), fim_suffix: String::new(), fim_middle: String::new(), completion0_text: String::new(), completion0_finish_reason: String::new() }
     }
 }
 
@@ -155,16 +160,20 @@ impl ScratchpadAbstract for SingleFileFIM {
         choices: Vec<String>,
         stopped: Vec<bool>
     ) -> Result<serde_json::Value, String> {
-        let json_choices = choices.iter().enumerate()
-            .map(|(i, x)| {
+        let json_choices = choices.iter().enumerate().map(|(i, x)| {
                 let (cc, mut finished) = cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
                 finished |= stopped[i];
+                let finish_reason = (if finished { "stop" } else { "length" }).to_string();
+                if i==0 {
+                    self.completion0_text = cc.clone();
+                    self.completion0_finish_reason = finish_reason.clone();
+                }
                 serde_json::json!({
                     "index": i,
                     "code_completion": cc,
-                    "finish_reason": (if finished { "stop" } else { "length" }).to_string(),
+                    "finish_reason": finish_reason.clone(),
                 })
-            }).collect::<Vec<_>>();
+        }).collect::<Vec<_>>();
         return Ok(serde_json::json!(
             {
                 "choices": json_choices,
@@ -183,22 +192,27 @@ impl ScratchpadAbstract for SingleFileFIM {
         if !delta.is_empty() {
             let mut s: String;
             (s, finished) = cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
+            if finished {
+                self.completion0_finish_reason = "stop".to_string();
+            }
             finished |= stopped;
             if finished {
                 // can stay consistent with trim() only if that's the final iteration
                 s = s.trim_end().to_string();
             }
+            self.completion0_text.push_str(&s);
             json_choices = serde_json::json!([{
                 "index": 0,
-                "code_completion_delta": s,
+                "code_completion": s,
                 "finish_reason": if finished { serde_json::Value::String("stop".to_string()) } else { serde_json::Value::Null },
             }]);
         } else {
             json_choices = serde_json::json!([{
                 "index": 0,
-                "code_completion_delta": "",
+                "code_completion": "",
                 "finish_reason": "length"
             }]);
+            self.completion0_finish_reason = "length".to_string();
         }
         let ans = serde_json::json!({
             "choices": json_choices,
@@ -229,3 +243,41 @@ fn cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
     return (ans.replace("\r", ""), true);
 }
 
+
+
+// flush to cache on destruction
+
+impl Drop for SingleFileFIM {
+    fn drop(&mut self) {
+        if self.completion0_text.is_empty() {
+            return;
+        }
+        let cache_key = completion_cache::cache_key(&self.post);
+        info!("code_completion: {}", self.completion0_text);
+        let mut believe_chars = self.completion0_text.len();
+        if self.completion0_finish_reason == "length" {
+            // Model stopped because of max tokens, there is a continuation, so it's good for cache in the beginning, but don't believe it to the end.
+            // For example CODECODECODECOMPLETION| with empty completion is obviously junk as cache.
+            // And it's not junk for "stop", it actually saves one model call after accepting each completion.
+            believe_chars = believe_chars.checked_sub(10).unwrap_or(0);
+        } else {
+            believe_chars += 1;
+        }
+        for char_num in 0..believe_chars {
+            let cache_key_ahead = cache_key.clone() + &self.completion0_text[..char_num];
+            let code_completion_ahead = self.completion0_text[char_num..].to_string();
+            completion_cache::cache_put(self.cache_arc.clone(), cache_key_ahead, serde_json::json!(
+                {
+                    "choices": {
+                        "index": 0,
+                        "code_completion": code_completion_ahead,
+                        "finish_reason": self.completion0_finish_reason,
+                    },
+                    "model": self.post.model.clone(),
+                    "cached": true,
+                }
+            ));
+        }
+
+    }
+}
