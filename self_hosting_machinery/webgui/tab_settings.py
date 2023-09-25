@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -27,6 +28,7 @@ class TabSettingsRouter(APIRouter):
         self.add_api_route("/tab-settings-create-ssh-key", self._tab_settings_create_ssh_key, methods=["POST"])
         self.add_api_route("/tab-settings-delete-ssh-key", self._tab_settings_delete_ssh_key, methods=["POST"])
         self.add_api_route("/tab-settings-get-all-ssh-keys", self._tab_settings_get_all_ssh_keys, methods=["GET"])
+        self.add_api_route("/tab-settings-hard-reset", self._tab_settings_hard_reset, methods=["GET"])
 
     async def _tab_settings_integrations_get(self):
         if os.path.exists(env.CONFIG_INTEGRATIONS):
@@ -111,4 +113,14 @@ class TabSettingsRouter(APIRouter):
             key_filepath.unlink(missing_ok=False)
         if fingerprint_filepath.exists():
             fingerprint_filepath.unlink(missing_ok=False)
+        return JSONResponse("OK")
+
+    async def _tab_settings_hard_reset(self):
+        storage_dir = Path(os.path.expanduser("~/.refact/perm-storage"))
+        if storage_dir.exists():
+            try:
+                shutil.rmtree(storage_dir)
+            except Exception as e:
+                response_data = {"message": f"Error: {e}"}
+                return JSONResponse(response_data, status_code=500)
         return JSONResponse("OK")
