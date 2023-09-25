@@ -89,7 +89,12 @@ jobs:
         if: matrix.target == 'arm-unknown-linux-gnueabihf'
         run: sudo apt-get install gcc-multilib-arm-linux-gnueabihf
 
-      - name: Dist
+      - name: Build artifact
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo build --release --target-dir dist/
+      
+      - name: Build artifact
+        if: matrix.target != 'x86_64-unknown-linux-gnu'
         run: cargo build --release --target-dir dist/
 
       - name: Upload artifacts
