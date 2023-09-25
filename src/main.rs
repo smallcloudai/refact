@@ -1,5 +1,4 @@
 use tracing::{error, info};
-use std::io::Write;
 use tower_lsp::{LspService, Server};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -34,14 +33,9 @@ async fn main() {
         .compact()
         .init();
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
-    let gcx_maybe = global_context::create_global_context(home_dir).await;
-    if let Err(e) = gcx_maybe {
-        write!(std::io::stderr(), "URL_NOT_WORKING {}\n", e).unwrap();
-        std::io::stderr().flush().unwrap();
-        return;
-    };
-    let gcx = gcx_maybe.unwrap();
+    let gcx = global_context::create_global_context(home_dir).await;
     let gcx2 = gcx.clone();
+    let gcx3 = gcx.clone();
     let caps_reload_task = tokio::spawn(global_context::caps_background_reload(gcx.clone()));
     let tele_backgr_task = tokio::spawn(telemetry_storage::telemetry_background_task(gcx.clone()));
     let server_task = tokio::spawn(async move {
@@ -70,6 +64,7 @@ async fn main() {
                         // #[cfg(feature = "runtime-agnostic")]
                         // let (read, write) = (read.compat(), write.compat_write());
                         let (lsp_service, socket) = LspService::new(|client| lsp::Backend {
+                            gcx: gcx2.clone(),
                             client,
                             document_map: Arc::new(ARwLock::new(HashMap::new())),
                             workspace_folders: Arc::new(ARwLock::new(None)),
@@ -83,6 +78,7 @@ async fn main() {
             }
         } else {
             let (service, socket) = LspService::build(|client| lsp::Backend {
+                gcx: gcx2.clone(),
                 client,
                 document_map: Arc::new(ARwLock::new(HashMap::new())),
                 workspace_folders: Arc::new(ARwLock::new(None)),
@@ -106,7 +102,7 @@ async fn main() {
     lsp_task.abort();
     let _ = lsp_task.await;
     info!("saving telemetry without sending, so should be quick");
-    telemetry_storage::telemetry_full_cycle(gcx2.clone(), true).await;
+    telemetry_storage::telemetry_full_cycle(gcx3.clone(), true).await;
     info!("bb");
 
 

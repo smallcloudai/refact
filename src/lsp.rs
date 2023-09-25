@@ -3,13 +3,16 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
-// use std::time::Instant;
+use std::time::Instant;
 // use tokio::io::AsyncWriteExt;
-use tokio::sync::RwLock;
+use tokio::sync::RwLock as ARwLock;
 use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 use tracing::{debug, error, info};
+
+use crate::telemetry_snippets;
+use crate::global_context;
 
 
 // const NAME: &str = "llm-ls";
@@ -61,13 +64,10 @@ impl Document {
 
 #[derive(Debug)]
 pub struct Backend {
-    // cache_dir: PathBuf,
+    pub gcx: Arc<ARwLock<global_context::GlobalContext>>,
     pub client: Client,
-    pub document_map: Arc<RwLock<HashMap<String, Document>>>,
-    // http_client: reqwest::Client,
-    // unsafe_http_client: reqwest::Client,
-    pub workspace_folders: Arc<RwLock<Option<Vec<WorkspaceFolder>>>>,
-    // tokenizer_map: Arc<RwLock<HashMap<String, Arc<Tokenizer>>>>,
+    pub document_map: Arc<ARwLock<HashMap<String, Document>>>,
+    pub workspace_folders: Arc<ARwLock<Option<Vec<WorkspaceFolder>>>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -258,6 +258,9 @@ impl Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         *self.workspace_folders.write().await = params.workspace_folders;
+        info!("LSP client_info {:?}", params.client_info);
+        info!("LSP workspace_folders {:?}", self.workspace_folders);
+
         let completion_options: CompletionOptions;
         completion_options = CompletionOptions {
             resolve_provider: Some(false),
@@ -308,6 +311,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        let t0 = Instant::now();
         self.client
             .log_message(MessageType::INFO, "{llm-ls} file changed")
             .await;
@@ -318,7 +322,14 @@ impl LanguageServer for Backend {
             .entry(uri.clone())
             .or_insert(Document::new("unknown".to_owned(), Rope::new()));
         doc.text = rope;
-        info!("{uri} changed");
+        info!("{} changed, save time: {:?}", uri, t0.elapsed());
+        let t1 = Instant::now();
+        telemetry_snippets::sources_changed(
+            self.gcx.clone(),
+            &uri,
+            &params.content_changes[0].text
+        ).await;
+        info!("{} changed, telemetry time: {:?}", uri, t1.elapsed());
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
@@ -405,11 +416,11 @@ impl LanguageServer for Backend {
 //     let (service, socket) = LspService::build(|client| Backend {
 //         cache_dir,
 //         client,
-//         document_map: Arc::new(RwLock::new(HashMap::new())),
+//         document_map: Arc::new(ARwLock::new(HashMap::new())),
 //         http_client,
 //         unsafe_http_client,
-//         workspace_folders: Arc::new(RwLock::new(None)),
-//         tokenizer_map: Arc::new(RwLock::new(HashMap::new())),
+//         workspace_folders: Arc::new(ARwLock::new(None)),
+//         tokenizer_map: Arc::new(ARwLock::new(HashMap::new())),
 //     })
 //     .custom_method("llm-ls/getCompletions", Backend::get_completions)
 //     .finish();

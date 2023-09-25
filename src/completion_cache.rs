@@ -4,7 +4,7 @@ use std::sync::RwLock as StdRwLock;
 use std::collections::HashMap;
 
 use ropey::Rope;
-use tracing::info;
+// use tracing::info;
 
 const CACHE_ENTRIES: usize = 500;
 const CACHE_KEY_CHARS: usize = 5000;  // max memory CACHE_KEY_CHARS * CACHE_ENTRIES = 2500000 = 2.5M
@@ -78,7 +78,7 @@ pub fn post_to_cache_key(
             break;
         }
         let line = line_maybe.unwrap();
-        info!("cache key line prev: {:?}", line);
+        // info!("cache key line prev: {:?}", line);
         let line_str = line.to_string();
         bytes += line_str.len();
         linesvec.push(line_str.replace("\r", ""));
@@ -113,16 +113,11 @@ pub fn cache_put(
     value: serde_json::Value,
 ) {
     let mut cache_locked = cache.write().unwrap();
-    // let mut map = &mut cache_locked.map;
-    // if let Some(value) = map.get(&new_key) {
-    //     map.remove(&new_key).unwrap();
-    //     map.insert(new_key.clone(), value.clone());
-    // }
     while cache_locked.in_added_order.len() > CACHE_ENTRIES {
         let old_key = cache_locked.in_added_order.remove(0);
-        cache_locked.map.remove(&old_key).unwrap();  // will crash if not present, works as an assert
+        cache_locked.map.remove(&old_key);
     }
-    info!("cache put: {:?} = {:?}", new_key, value);
+    // info!("cache put: {:?} = {:?}", new_key, value);
     let mut new_key_copy = new_key.clone();
     if new_key_copy.len() > CACHE_KEY_CHARS {
         new_key_copy = new_key_copy[..CACHE_KEY_CHARS].to_string();

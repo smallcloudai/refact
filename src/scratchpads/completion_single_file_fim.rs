@@ -164,9 +164,14 @@ impl ScratchpadAbstract for SingleFileFIM {
         stopped: Vec<bool>
     ) -> Result<serde_json::Value, String> {
         let json_choices = choices.iter().enumerate().map(|(i, x)| {
-                let (cc, mut finished) = cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
+                let (mut cc, mut finished) = cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
                 finished |= stopped[i];
-                let finish_reason = (if finished { "stop" } else { "length" }).to_string();
+                let finish_reason = if finished {
+                    cc = cc.trim_end().to_string();
+                    "stop"
+                } else {
+                    "length"
+                }.to_string();
                 if i==0 {
                     self.data4cache.completion0_text = cc.clone();
                     self.data4cache.completion0_finish_reason = finish_reason.clone();
@@ -236,6 +241,9 @@ fn cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
         cut_at.push(x);
     }
     if let Some(x) = text.find("\n\n") {
+        cut_at.push(x);
+    }
+    if let Some(x) = text.find("\r\n\r\n") {
         cut_at.push(x);
     }
     if !multiline {

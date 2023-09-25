@@ -69,7 +69,7 @@ pub async fn scratchpad_interaction_not_stream(
         true,
         "".to_string(),
     ));
-    info!("forward to endpoint {:?}", t2.elapsed());
+    info!("forward to endpoint {:.2}ms", t2.elapsed().unwrap().as_millis() as f64);
 
     let scratchpad_result: Result<serde_json::Value, String>;
     if let Some(hf_arr) = model_says.as_array() {

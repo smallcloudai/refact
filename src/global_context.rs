@@ -27,6 +27,7 @@ pub struct CommandLine {
 }
 
 
+#[derive(Debug)]
 pub struct GlobalContext {
     pub http_client: reqwest::Client,
     pub cache_dir: PathBuf,
@@ -101,7 +102,7 @@ pub async fn try_load_caps_quickly_if_not_present(
 
 pub async fn create_global_context(
     home_dir: PathBuf,
-) -> Result<Arc<ARwLock<GlobalContext>>, String> {
+) -> Arc<ARwLock<GlobalContext>> {
     let cmdline = CommandLine::from_args();
     let cache_dir = home_dir.join(".cache/refact");
     info!("cache dir: {}", cache_dir.display());
@@ -115,5 +116,5 @@ pub async fn create_global_context(
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_storage::Storage::new())),
     };
-    Ok(Arc::new(ARwLock::new(cx)))
+    Arc::new(ARwLock::new(cx))
 }

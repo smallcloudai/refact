@@ -5,7 +5,6 @@ use reqwest::header::HeaderValue;
 use reqwest_eventsource::EventSource;
 use serde_json::json;
 use crate::call_validation::SamplingParameters;
-use tracing::info;
 
 
 pub async fn forward_to_hf_style_endpoint(
@@ -24,7 +23,6 @@ pub async fn forward_to_hf_style_endpoint(
     if !bearer.is_empty() {
         headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
     }
-    info!("headers: {:?}", headers);
     let params_string = serde_json::to_string(sampling_parameters).unwrap();
     let mut params_json = serde_json::from_str::<serde_json::Value>(&params_string).unwrap();
     params_json["return_full_text"] = serde_json::Value::Bool(false);
