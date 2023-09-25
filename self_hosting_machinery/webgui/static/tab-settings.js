@@ -1,4 +1,5 @@
 // let chat_gpt_api_key_focused = false;
+let show_toast = false;
 
 function get_ssh_keys() {
     fetch("/tab-settings-get-all-ssh-keys")
@@ -116,23 +117,6 @@ export async function init() {
             document.querySelector('#status-ssh').innerHTML = error.message;
         });
     });
-
-    const save_button = document.getElementById('integrations-save');
-    save_button.addEventListener('click', function () {
-        const openai_api_key = document.getElementById('openai_api_key');
-        fetch("/tab-settings-integrations-save", {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                openai_api_key: openai_api_key.getAttribute('data-value'),
-            })
-        })
-        .then(function(response) {
-            console.log(response);
-        });
-    })
 }
 
 function mask_integrations_input(el) {
@@ -155,6 +139,40 @@ function unmask_integrations_input(el) {
     }
 }
 
+
+function throw_int_saved_success_toast(msg) {
+    let int_saved_success_toast_div = document.querySelector('.int-saved-success-toast');
+    const success_toast = bootstrap.Toast.getOrCreateInstance(int_saved_success_toast_div);
+    if (!show_toast) {
+        console.log('not show toast')
+        show_toast = true;
+        document.querySelector('.int-saved-success-toast .toast-body').innerHTML = msg;
+        success_toast.show();
+        setTimeout(function () {
+            success_toast.hide();
+            show_toast = false;
+        }, 2000);
+    }
+}
+
+function save_openai_api_key() {
+    const openai_api_key = document.getElementById('openai_api_key');
+    fetch("/tab-settings-integrations-save", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            openai_api_key: openai_api_key.getAttribute('data-value'),
+        })
+    })
+    .then(function(response) {
+        console.log(response);
+        throw_int_saved_success_toast('OpenAI API Key saved')
+    });
+}
+
+
 export function tab_settings_integrations_get() {
     fetch("/tab-settings-integrations-get")
         .then(function(response) {
@@ -170,7 +188,10 @@ export function tab_settings_integrations_get() {
                 'focus', () => unmask_integrations_input(openai_api_key)
             )
             openai_api_key.addEventListener(
-                'blur', () => mask_integrations_input(openai_api_key)
+                'blur', () => {
+                    mask_integrations_input(openai_api_key)
+                    save_openai_api_key();
+                }
             )
         });
 }
