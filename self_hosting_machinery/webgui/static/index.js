@@ -162,3 +162,18 @@ inputs_for_validate.forEach((input) => {
       }, 750);
     });
 });
+
+const dropdown_menu = document.querySelector('.dropdown-menu');
+const reset_button_wrapper = document.createElement('li');
+const reset_button = document.createElement('button');
+reset_button.classList.add('nav-link','main-tab-button');
+reset_button.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Hard Reset';
+reset_button_wrapper.appendChild(reset_button);
+dropdown_menu.appendChild(reset_button_wrapper);
+
+reset_button.addEventListener('click', () => {
+    fetch("/tab-settings-hard-reset")
+        .then(function(response) {
+            window.location.reload();
+        });
+});
