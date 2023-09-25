@@ -288,6 +288,10 @@ export async function init() {
     add_model_modal.addEventListener('show.bs.modal', function () {
         render_models(models_data);
     });
+    const redirect2credentials = document.getElementById('redirect2credentials');
+    redirect2credentials.addEventListener('click', function() {
+        document.querySelector(`[data-tab=${redirect2credentials.getAttribute('data-tab')}]`).click();
+    });
     // const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
 }
 
