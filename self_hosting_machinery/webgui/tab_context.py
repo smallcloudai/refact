@@ -38,12 +38,13 @@ class TabContextRouter(APIRouter):
     async def _update_provider(self, data: VecDBUpdateProvider, request: Request):
         with open(env.CONFIG_VECDB + ".tmp", "w") as f:
             f.write(json.dumps({"provider": data.provider}))
+        VDBFiles.change_provider.touch()
         os.rename(env.CONFIG_VECDB + ".tmp", env.CONFIG_VECDB)
         gte_cfg_fn = os.path.join(env.DIR_WATCHDOG_D, "model_gte.cfg")
         if data.provider == 'gte':
             gte_cfg_template = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model_gte.cfg")))
             with open(gte_cfg_fn, "w") as f:
-                j = model_cfg_template
+                j = gte_cfg_template
                 del j["unfinished"]
                 json.dump(j, f, indent=4)
         else:

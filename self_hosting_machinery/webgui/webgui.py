@@ -106,7 +106,7 @@ if __name__ == "__main__":
         handlers=[logging.StreamHandler(stream=sys.stderr)])
 
     model_assigner = ModelAssigner()
-    app = WebGUI(model_assigner, docs_url=None, redoc_url=None)
+    app = WebGUI(model_assigner)  #, docs_url=None, redoc_url=None)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     uvicorn.run(

@@ -1,8 +1,6 @@
 from typing import Any, Dict
 from pathlib import Path
 
-import ujson as json
-
 from dataclasses import dataclass, field
 
 from self_hosting_machinery import env
@@ -25,22 +23,7 @@ class VDBFiles:
     file_stats_tmp = file_stats.with_suffix(".tmp")
     config = Path(env.CONFIG_VECDB)
     status = Path(env.CONFIG_VECDB_STATUS)
-
-
-def upd_file_stats(data: Dict):
-    tmp = VDBFiles.file_stats.with_suffix('.tmp')
-    with tmp.open('w') as f:
-        json.dump(data, f)
-    VDBFiles.file_stats.unlink(missing_ok=True)
-    tmp.rename(VDBFiles.file_stats)
-
-
-def upd_status(status: str):
-    tmp = VDBFiles.status.with_suffix('.tmp')
-    with tmp.open('w') as f:
-        json.dump({'status': status}, f)
-    VDBFiles.status.unlink(missing_ok=True)
-    tmp.rename(VDBFiles.status)
+    change_provider = Path(env.FLAG_VECDB_CHANGE_PROVIDER)
 
 
 CONTEXT = Context()
