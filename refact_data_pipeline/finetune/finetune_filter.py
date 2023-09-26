@@ -277,6 +277,9 @@ def main(models_db: Dict[str, Any]):
     try:
         pre_filtering(stats_dict, models_db)
         _update_and_dump_status(stats_dict, "finished")
+    except SystemExit:
+        # NOTE: catched sigusr1
+        pass
     except BaseException as e:  # BaseException includes KeyboardInterrupt
         if traces.context():
             logging.error("FAILED finetune filter at %s" % traces.context().path)

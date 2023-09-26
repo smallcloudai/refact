@@ -374,6 +374,9 @@ def main(models_db: Dict[str, Any]):
         save_status_json(status_dict, "working")
         finetune(status_dict, models_db)
         save_status_json(status_dict, "finished")
+    except SystemExit:
+        # NOTE: catched sigusr1
+        pass
     except BaseException as e:  # BaseException includes KeyboardInterrupt
         if "error" not in status_dict:  # if there is, a more detailed error is already in place
             t = str(e) or str(type(e))
