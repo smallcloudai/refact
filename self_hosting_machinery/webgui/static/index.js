@@ -25,6 +25,16 @@ navbar.addEventListener('click', () => {
     start_tab_timer();
 })
 
+
+window.addEventListener('popstate', (event) =>{
+    first_page_load = true;
+    localStorage.setItem('active_tab_storage', event.state.page);
+    start_tab_timer();
+    setTimeout(() => {
+        active_tab_switched();
+    }, 500);
+});
+
 function active_tab_switched() {
     const active_tab = document.querySelector('.main-tab-pane.main-active');
     for (const plugin of plugins) {
@@ -35,6 +45,7 @@ function active_tab_switched() {
     for (const plugin of plugins) {
         if (active_tab.id === plugin.tab) {
             localStorage.setItem('active_tab_storage', plugin.tab);
+            history.pushState({'page': plugin.tab}, '', '')
             plugin.mod.tab_switched_here();
             break;
         }
