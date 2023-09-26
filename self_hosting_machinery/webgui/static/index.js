@@ -168,8 +168,8 @@ const reset_button_wrapper = document.createElement('li');
 const reset_button = document.createElement('button');
 reset_button.classList.add('nav-link','main-tab-button');
 reset_button.setAttribute('data-bs-toggle', 'modal');
-reset_button.setAttribute('data-bs-target', '#settings-tab-factoryreset-modal');
-reset_button.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Hard Reset';
+reset_button.setAttribute('data-bs-target', '#settings-tab-reset-modal');
+reset_button.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Hard Reset';
 reset_button_wrapper.appendChild(reset_button);
 dropdown_menu.appendChild(reset_button_wrapper);
 
