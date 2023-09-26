@@ -58,6 +58,8 @@ class TrackedJob:
         self.status_from_stderr = newstatus
         save_status = self.cfg.get("save_status", "")
         if save_status:
+            save_status = replace_variable_names_from_env(save_status)
+            log("overwrite %s with %s" % (save_status, newstatus))
             with open(save_status + ".tmp", "w") as f:
                 f.write(json.dumps({"status": newstatus}))
             os.rename(save_status + ".tmp", save_status)
@@ -252,6 +254,7 @@ def create_tracked_jobs_from_configs():
         else:
             tracked[fn] = TrackedJob(cfg)
             log("%s adding job %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
+            tracked[fn].set_status("idle")
         now_missing.discard(fn)
     for fn in now_missing:
         tracked[fn].please_shutdown = True
