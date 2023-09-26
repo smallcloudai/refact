@@ -122,7 +122,7 @@ export async function init() {
 function mask_integrations_input(el) {
     function mask_string(string) {
         if (string.length > 6 ) {
-            return string.substring(0, 6) + '*'.repeat(string.length - 4);
+            return string.substring(0, 6) + '*'.repeat(string.length - 6);
         } else {
             return '*'.repeat(string.length)
         }
