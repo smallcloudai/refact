@@ -1,7 +1,7 @@
-
+const default_tab = 'model-hosting'
+let first_page_load = true;
 const req = await fetch('list-plugins');
 const plugins = await req.json();
-
 // show navigation bar immediately, import later
 plugins_to_top_nav_bar(plugins);
 
@@ -18,6 +18,13 @@ for (const p of inits_working) {
     await p;
 }
 
+const navbar = document.querySelector('.navbar-brand')
+navbar.addEventListener('click', () => {
+    first_page_load = true;
+    localStorage.setItem('active_tab_storage', default_tab);
+    start_tab_timer();
+})
+
 function active_tab_switched() {
     const active_tab = document.querySelector('.main-tab-pane.main-active');
     for (const plugin of plugins) {
@@ -27,6 +34,7 @@ function active_tab_switched() {
     }
     for (const plugin of plugins) {
         if (active_tab.id === plugin.tab) {
+            localStorage.setItem('active_tab_storage', plugin.tab);
             plugin.mod.tab_switched_here();
             break;
         }
@@ -45,7 +53,42 @@ function every_couple_of_seconds() {
 
 let refresh_interval = null;
 
+
+function on_first_page_load() {
+    if (!first_page_load) {
+        return;
+    }
+    if (first_page_load) {
+        let done = false;
+        const active_tab_storage = localStorage.getItem('active_tab_storage') || default_tab;
+        document.querySelectorAll('.main-tab-pane').forEach(tab => {
+            tab.classList.remove('main-active');
+            if (tab.getAttribute('id') === active_tab_storage) {
+                tab.classList.add('main-active');
+                done = true;
+            }
+        });
+        if (!done) {
+            document.getElementById(default_tab).classList.add('main-active');
+        }
+        done = false;
+        document.querySelectorAll('.nav-link.main-tab-button').forEach(btn => {
+            btn.classList.remove('main-active');
+            if (btn.getAttribute('data-tab') === active_tab_storage) {
+                btn.classList.add('main-active');
+                done = true;
+            }
+        });
+        if (!done) {
+            document.querySelector(`button[data-tab=${default_tab}]`).classList.add('main-active');
+        }
+        first_page_load = false;
+    }
+}
+
+
 function start_tab_timer() {
+    on_first_page_load();
     active_tab_switched();
     if (refresh_interval) {
         clearInterval(refresh_interval);
