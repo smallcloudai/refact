@@ -14,6 +14,8 @@ from typing import Dict, Optional, List
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 from self_hosting_machinery import env
 
+FIRST_RUN_CMDLINE = [sys.executable, "-m", "self_hosting_machinery.scripts.first_run"]
+
 
 def replace_variable_names_from_env(s):
     s = s.replace("%PYTHON%", sys.executable)
@@ -341,10 +343,10 @@ def factory_reset():
 
 
 def first_run():
-    subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.scripts.first_run"])
+    subprocess.check_call(FIRST_RUN_CMDLINE)
 
 
-if __name__ == '__main__':
+def main_loop():
     # Generate a random SMALLCLOUD_API_KEY, it will be inherited by subprocesses,
     # this allows inference_worker to authorize on the local web server (both use
     # this variable), and work safely even if we expose http port to the world.
@@ -360,3 +362,7 @@ if __name__ == '__main__':
             os.unlink(env.FLAG_FACTORY_RESET)   # if we can't delete it, that's an infinite loop, better to crash
             factory_reset()
             first_run()
+
+
+if __name__ == '__main__':
+    main_loop()
