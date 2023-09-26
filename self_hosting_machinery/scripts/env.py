@@ -2,6 +2,7 @@ import os
 
 PERMDIR = os.environ.get("REFACT_PERM_DIR", "") or os.path.expanduser("~/.refact/perm-storage")
 TMPDIR = os.environ.get("REFACT_TMP_DIR", "") or os.path.expanduser("~/.refact/tmp")
+FLAG_FACTORY_RESET = os.path.join(PERMDIR, "_factory_reset.flag")
 
 DIR_CONFIG     = os.path.join(PERMDIR, "cfg")
 DIR_WATCHDOG_D = os.path.join(PERMDIR, "cfg", "watchdog.d")
@@ -36,14 +37,16 @@ FLAG_LAUNCH_FINETUNE_FILTER_ONLY = os.path.join(DIR_WATCHDOG_D, "_launch_finetun
 FLAG_LAUNCH_FINETUNE = os.path.join(DIR_WATCHDOG_D, "_launch_finetune.flag")
 FLAG_STOP_FINETUNE = os.path.join(DIR_WATCHDOG_D, "_stop_finetune.flag")
 
-os.makedirs(DIR_WATCHDOG_D, exist_ok=True)
-os.makedirs(DIR_WEIGHTS, exist_ok=True)
-os.makedirs(DIR_LORAS, exist_ok=True)
-os.makedirs(DIR_LOGS, exist_ok=True)
-os.makedirs(DIR_UPLOADS, exist_ok=True)
-os.makedirs(DIR_SSH_KEYS, exist_ok=True)
+def create_dirs():
+    os.makedirs(DIR_WATCHDOG_D, exist_ok=True)
+    os.makedirs(DIR_WEIGHTS, exist_ok=True)
+    os.makedirs(DIR_LORAS, exist_ok=True)
+    os.makedirs(DIR_LOGS, exist_ok=True)
+    os.makedirs(DIR_UPLOADS, exist_ok=True)
+    os.makedirs(DIR_SSH_KEYS, exist_ok=True)
+    os.makedirs(DIR_UNPACKED, exist_ok=True)
 
-os.makedirs(DIR_UNPACKED, exist_ok=True)
+create_dirs()
 
 DIR_WATCHDOG_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "watchdog", "watchdog.d")
 

@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -159,14 +160,14 @@ class TrackedJob:
                 self.please_shutdown = True
                 os.unlink(p)
 
-    def maybe_send_usr1(self):
+    def maybe_send_usr1(self, sigkill_timeout=30):
         if not self.p:
             self.please_shutdown = False  # this overrides True from "preempt" that sometimes happens (because of the task order)
             return
         if self.please_shutdown and self.sent_sigusr1_ts == 0:
             self.p.send_signal(signal.SIGUSR1)
             self.sent_sigusr1_ts = time.time()
-        if self.please_shutdown and self.sent_sigusr1_ts > time.time() + 30:
+        if self.please_shutdown and self.sent_sigusr1_ts + sigkill_timeout < time.time():
             log("%s SIGUSR1 timed out, sending kill %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid))
             self.p.kill()
 
@@ -293,29 +294,69 @@ def inform_about_gpu_status():
         _inform_about_gpu_status = s
 
 
-def main_loop(model_assigner: ModelAssigner):
-    global quit_flag
-    while 1:
-        model_assigner.models_to_watchdog_configs()
-        create_tracked_jobs_from_configs()
+def main_loop_body():
+    create_tracked_jobs_from_configs()
+    for fn, job in tracked.items():
+        job.maybe_can_start()
+        job.maybe_needs_stop()
+        job.maybe_send_usr1()
+        dead = job._poll_logs()
+        if dead and job.remove_this:
+            log("%s cleanup %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
+            del tracked[fn]
+            break
+    inform_about_gpu_status()
+
+
+def shutdown_all():
+    while len(tracked):
         for fn, job in tracked.items():
-            job.maybe_can_start()
-            job.maybe_needs_stop()
-            job.maybe_send_usr1()
+            job.please_shutdown = True
+            job.maybe_send_usr1(sigkill_timeout=1)
             dead = job._poll_logs()
-            if dead and job.remove_this:
+            if dead:
                 log("%s cleanup %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
                 del tracked[fn]
                 break
-        inform_about_gpu_status()
+            else:
+                log("%s still not dead %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
         time.sleep(1)
 
 
-if __name__ == '__main__':
+def factory_reset():
+    for todel in [
+        env.DIR_LOGS,
+        env.DIR_CONFIG,
+        env.DIR_LORAS,
+        env.DIR_SSH_KEYS,
+        env.DIR_UPLOADS,
+        env.DIR_WEIGHTS,
+        env.DIR_UNPACKED
+    ]:
+        try:
+            shutil.rmtree(todel)
+        except Exception as e:
+            # not log, because no logs dir
+            print("didn't delete %s: %s" % (todel, e))
+
+
+def first_run():
     subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.scripts.first_run"])
+
+
+if __name__ == '__main__':
     # Generate a random SMALLCLOUD_API_KEY, it will be inherited by subprocesses,
     # this allows inference_worker to authorize on the local web server (both use
     # this variable), and work safely even if we expose http port to the world.
     os.environ["SMALLCLOUD_API_KEY"] = str(uuid.uuid4())
-    model_assigner = ModelAssigner()
-    main_loop(model_assigner)
+
+    first_run()
+    while 1:
+        main_loop_body()
+        time.sleep(1)
+        if os.path.exists(env.FLAG_FACTORY_RESET):
+            shutdown_all()
+            log("\n * * * FACTORY RESET * * *\n")
+            os.unlink(env.FLAG_FACTORY_RESET)   # if we can't delete it, that's an infinite loop, better to crash
+            factory_reset()
+            first_run()
