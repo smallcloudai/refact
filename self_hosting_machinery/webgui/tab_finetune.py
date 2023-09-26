@@ -242,9 +242,13 @@ class TabFinetuneRouter(APIRouter):
         with open(flag, "w") as f:
             f.write("")
         try:
-            with open(env.CONFIG_FINETUNE_FILTER_STATUS + ".tmp", "w") as f:
+            # That's bit of a hack, we're not allowed to set someone else's status here,
+            # but user will get more immediate reaction.
+            # And the flag guarantees that some time later (hopefully soon) the status will
+            # be overwritten.
+            with open(env.CONFIG_FINETUNE_STATUS + ".tmp", "w") as f:
                 json.dump({"status": "starting"}, f, indent=4)
-            os.rename(env.CONFIG_FINETUNE_FILTER_STATUS + ".tmp", env.CONFIG_FINETUNE_FILTER_STATUS)
+            os.rename(env.CONFIG_FINETUNE_STATUS + ".tmp", env.CONFIG_FINETUNE_STATUS)
         except:
             pass
         return JSONResponse("OK")

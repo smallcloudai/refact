@@ -54,6 +54,14 @@ class TrackedJob:
         self.sent_sigusr1_ts = 0
         self.status_from_stderr = ""
 
+    def set_status(self, newstatus):
+        self.status_from_stderr = newstatus
+        save_status = self.cfg.get("save_status", "")
+        if save_status:
+            with open(save_status + ".tmp", "w") as f:
+                f.write(json.dumps({"status": newstatus}))
+            os.rename(save_status + ".tmp", save_status)
+
     def _start(self):
         if self.p is not None:
             return
@@ -119,13 +127,18 @@ class TrackedJob:
                 log("-- %s -- %s" % (self.p.pid, line))
             if " STATUS " in line:
                 cut_here = line.index(" STATUS ") + len(" STATUS ")
-                self.status_from_stderr = line[cut_here:].strip()
+                self.set_status(line[cut_here:].strip())
         if self.p.poll() is not None:
             retcode = self.p.returncode
             log("%s %s finished %s, retcode %i" % (
                 time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, self.cmdline_str, retcode
             ))
-            self.status_from_stderr = "finished" if retcode == 0 else "crashed"
+            if retcode == 0:
+                self.set_status("finished")
+            elif retcode == 99:
+                self.set_status("interrupted")
+            else:
+                self.set_status("crashed")
             # retcode -10 is SIGUSR1
             if self.cmdline_str == compiling_now:
                 compiling_now = None
