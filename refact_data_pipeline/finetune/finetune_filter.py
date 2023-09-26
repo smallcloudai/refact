@@ -36,9 +36,7 @@ filtered_test = os.path.join(env.DIR_UNPACKED, "test_set_filtered.jsonl")
 
 
 def _update_and_dump_status(stats_dict: Dict[str, Any], status_string: str):
-    with open(env.CONFIG_FINETUNE_FILTER_STATUS + ".tmp", "w") as f:
-        json.dump({"status": status_string}, f, indent=4)
-    os.rename(env.CONFIG_FINETUNE_FILTER_STATUS + ".tmp", env.CONFIG_FINETUNE_FILTER_STATUS)
+    logging.info("STATUS %s" % status_string)
     with open(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", "w") as f:
         json.dump(stats_dict, f, indent=4)
     os.rename(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", env.CONFIG_FINETUNE_FILTER_STAT)
@@ -87,7 +85,6 @@ def loss_based_filter(
     model.eval()
     batch_iter_fn = partial(BatchIterator, dataopts=dict(batch_size=1, drop_last=False))
     all_losses, rejected = [], set()
-    logging.info("STATUS filtering")
     stats_dict['total_steps'] = len(train_files)
     is_force_included, is_force_excluded = get_force_included_excluded_matchers()
     forward = partial(model_forward, model=model, low_gpu_mem_mode=False, backend=cfg['model_info']['backend'])
@@ -259,7 +256,7 @@ def main(models_db: Dict[str, Any]):
     def catch_sigusr1(signum, frame):
         stats_dict["error"] = "interrupted"
         _update_and_dump_status(stats_dict, "interrupted")
-        sys.exit(1)
+        sys.exit(99)
 
     signal.signal(signal.SIGUSR1, catch_sigusr1)
 
@@ -288,6 +285,7 @@ def main(models_db: Dict[str, Any]):
             stats_dict["error"] = t
             logging.error(t)
             _update_and_dump_status(stats_dict, "failed")
+            exit(1)
         if not isinstance(e, ValueError):  # don't print stack for ValueError which is used for mundane data problems
             raise e
 
