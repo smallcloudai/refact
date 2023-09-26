@@ -120,9 +120,23 @@ class TabFinetuneRouter(APIRouter):
             "finetune_filter_stats": {
                 "status": get_finetune_filter_status(),
                 **get_finetune_filter_stat(),
-            }
+            },
+            "sources_ready": await self._tab_finetune_get_sources_status(),
         }
         return Response(json.dumps(result, indent=4) + "\n")
+
+    async def _tab_finetune_get_sources_status(self):
+        try:
+            with open(env.CONFIG_PROCESSING_STATS, "r") as file:
+                scan_stats = json.load(file)
+                scan_stats_status = scan_stats.get("scan_finished")
+                return scan_stats_status
+        except FileNotFoundError:
+            return False
+        except json.JSONDecodeError:
+            return False
+        except Exception as e:
+            return f"Error: {str(e)}"
 
     async def _tab_finetune_config_and_runs(self):
         finetune_step = get_finetune_step()
