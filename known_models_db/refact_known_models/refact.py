@@ -3,7 +3,8 @@ refact_mini_db = {
         "backend": "transformers",
         "model_path": "smallcloudai/Refact-1_6B-fim",
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadSPM",
-        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceRefact",
+        # "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceRefact",
+        "chat_scratchpad_class": None,  # chat is temporarily disabled
         "model_class_kwargs": {
             "torch_dtype": "fp16",
         },
