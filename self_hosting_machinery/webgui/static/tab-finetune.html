@@ -1,11 +1,6 @@
 <div class="row">
 
   <div class="col-5">
-    <div class="pane select-model-pane">
-      <h3>Select Model</h3>
-      <select id="finetune-model" class="form-select">
-      </select>
-    </div>
     <div class="pane use-model-pane">
       <h3>Use Finetuned Model</h3>
       <div class="lora-group">
@@ -44,7 +39,12 @@
       </div>
     </div>
     <div class="pane">
-      <h3>Start New Finetune<span></span></h3>
+      <div class="start-funetune-select-model">
+        <h3 style="margin-bottom: 15px;">Start New Finetune<span></span></h3>
+        <h6>Select Model<span></span></h6>
+        <select id="finetune-model" class="form-select" style="margin-bottom: 20px;">
+        </select>
+      </div>
       <div class="start-funetune-step1">
         <h6>Step 1: Filtering<span></span></h6>
         <div class="start-funetune__inline">
