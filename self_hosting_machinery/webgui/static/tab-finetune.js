@@ -1,3 +1,6 @@
+let stop_streaming = false;
+let fetchController = new AbortController();
+
 let finetune_state,
     reference_finetune_state,
     finetune_configs_and_runs,
@@ -176,7 +179,12 @@ function render_runs() {
             const gfx = document.querySelector('.fine-gfx');
             gfx.src = `/tab-finetune-progress-svg/${run.run_id}?t=${timestamp}`;
             // TODO: FIX
-            start_log_stream(run.run_id);
+            // start_log_stream(run.run_id);
+            
+            if(!stop_streaming) {
+                startStream(run.run_id);
+            }
+
             const log_link = document.querySelector('.log-link');
             if(log_link && log_link.classList.contains('d-none')) {
                 log_link.classList.remove('d-none');
@@ -185,22 +193,21 @@ function render_runs() {
                 log_link.href = `/tab-finetune-log/${run.run_id}`;
             }
         }
-        const runs_table_rows = runs_table.querySelectorAll('tr');
-        runs_table_rows.forEach(function (row) {
-            row.addEventListener('click', function (event) {
-                event.stopPropagation();
-                const run_id = this.dataset.run;
-                selected_lora = run_id;
-                render_runs();
-                render_checkpoints(find_checkpoints_by_run(run_id));
-            });
-        });
         // if(is_working) {
-        //     start_finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
-        // } else {
-        //     start_finetune_button.innerHTML = '<i class="bi bi-gpu-card"></i> Run Now';
-        // }
-        // start_finetune_button.setAttribute("need_to_stop", is_working)
+            //     start_finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
+            // } else {
+                //     start_finetune_button.innerHTML = '<i class="bi bi-gpu-card"></i> Run Now';
+                // }
+                // start_finetune_button.setAttribute("need_to_stop", is_working)
+            });
+    const runs_table_rows = runs_table.querySelectorAll('tr');
+    runs_table_rows.forEach(function (row) {
+        row.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const run_id = this.dataset.run;
+            selected_lora = run_id;
+            render_checkpoints(find_checkpoints_by_run(run_id));
+        });
     });
 }
 
@@ -732,58 +739,98 @@ function finetune_controls_state() {
         }
     }
 }
-
-function start_log_stream(run_id) {
-    if (run_id === logstream_runid) {
-        console.log('step 1');
-        return;
-    }
-
-    const log_div = document.querySelector('.tab-upload-finetune-logs');
-    log_div.textContent = '';
-    console.log('step 2');
-
-    const streamTextFile = async () => {
-        console.log('step 3');
-        const decoder = new TextDecoder();
-        const response = await fetch(`/tab-finetune-log/${run_id}`);
-        const reader = response.body.getReader();
-
-        if (logstream_reader) {
-            logstream_reader.cancel();
+function startStream(run_id) {
+    let last_chunk = null;
+    const streamUrl = `/tab-finetune-log/${run_id}`;
+    const fetchData = async () => {
+      try {
+        const response = await fetch(streamUrl, { signal: fetchController.signal });
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
         }
-        logstream_reader = reader;
-        logstream_runid = run_id;
-
-        const processResult = ({ done, value }) => {
-            if (done) {
-                console.log('Streaming complete');
-                return;
-            }
-            console.log('step 4');
-
-            const chunk = decoder.decode(value);
-            const isAtBottom = log_div.scrollTop >= (log_div.scrollHeight - log_div.offsetHeight);
-
-            log_div.textContent += chunk;
-
+        const reader = response.body.getReader();
+        while (true) {
+          if (stop_streaming) {
+            reader.cancel();
+            return;
+          }
+  
+          const { done, value } = await reader.read();
+          const uniqueLines = new Set();
+  
+          if (done) {
+            break;
+          }
+  
+          const newData = new TextDecoder('utf-8').decode(value);
+          if(last_chunk === newData) { return }
+          if (!uniqueLines.has(newData)) {
+            const streamDiv = document.querySelector('.tab-upload-finetune-logs');
+            const isAtBottom = streamDiv.scrollTop >= (streamDiv.scrollHeight - streamDiv.offsetHeight);
+            streamDiv.textContent += newData;
+            uniqueLines.add(newData); // Add the line to the set of unique lines
             if (isAtBottom) {
-                log_div.scrollTop = log_div.scrollHeight;
+              streamDiv.scrollTop = streamDiv.scrollHeight;
             }
-            const timestamp = new Date().getTime();
-            const gfx = document.querySelector('.fine-gfx');
-            gfx.src = `/tab-finetune-progress-svg/${run_id}?t=${timestamp}`;
-            return reader.read().then(processResult);
-        };
-
-        return reader.read().then(processResult);
+          }
+          last_chunk = newData;
+          console.log('xxxxx SREAM RECEVIED xxxxx');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
     };
-
-    streamTextFile()
-    .catch(error => {
-        console.log('Error:', error);
-    });
+  
+    fetchData();
 }
+
+// function start_log_stream(run_id) {
+//     // if (run_id === logstream_runid) {
+//     //     console.log('step 1');
+//     //     return;
+//     // }
+
+//     const log_div = document.querySelector('.tab-upload-finetune-logs');
+//     log_div.textContent = '';
+//     console.log('step 2');
+
+//     const streamTextFile = async () => {
+//         console.log('step 3');
+//         const decoder = new TextDecoder();
+//         const response = await fetch(`/tab-finetune-log/${run_id}`);
+//         const reader = response.body.getReader();
+
+//         if (logstream_reader) {
+//             logstream_reader.cancel();
+//         }
+//         logstream_reader = reader;
+//         logstream_runid = run_id;
+
+//         const processResult = ({ done, value }) => {
+//             if (done) {
+//                 console.log('Streaming complete');
+//                 return;
+//             }
+//             console.log('step 4');
+
+//             const chunk = decoder.decode(value);
+//             const isAtBottom = log_div.scrollTop >= (log_div.scrollHeight - log_div.offsetHeight);
+
+//             log_div.textContent += chunk;
+
+//             if (isAtBottom) {
+//                 log_div.scrollTop = log_div.scrollHeight;
+//             }
+//             return reader.read().then(processResult);
+//         };
+
+//         return reader.read().then(processResult);
+//     };
+
+//     streamTextFile().catch(error => {
+//         console.log('Error:', error);
+//     });
+// }
 
 export async function init() {
     let req = await fetch('/tab-finetune.html');
