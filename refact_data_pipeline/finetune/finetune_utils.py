@@ -110,10 +110,10 @@ def get_finetune_filter_stat(default: bool = False) -> Dict[str, Any]:
 
 
 def get_finetune_filter_status() -> str:
-    if os.path.isfile(env.CONFIG_FINETUNE_FILTER_STATUS):
-        mtime = os.path.getmtime(env.CONFIG_FINETUNE_FILTER_STATUS)
-        if mtime + 300 > time.time():
-            d = json.load(open(env.CONFIG_FINETUNE_FILTER_STATUS))
+    if os.path.isfile(env.CONFIG_FINETUNE_TATUS):
+        mtime = os.path.getmtime(env.CONFIG_FINETUNE_STATUS)
+        if mtime + 600 > time.time():
+            d = json.load(open(env.CONFIG_FINETUNE_STATUS))
             return d["status"]
     return "idle"
 

@@ -53,6 +53,7 @@ def save_status_json(status_dict, status_string):
     rank = 0
     if rank != 0:
         return
+    logging.info("STATUS %s" % status_string)
     status_dict["status"] = status_string
     if not traces.context():
         return
@@ -367,7 +368,7 @@ def main(models_db: Dict[str, Any]):
         logging.error("Interrupted: caught SIGUSR1")
         traces.log("Interrupted")
         save_status_json(status_dict, "interrupted")
-        sys.exit(1)
+        sys.exit(99)
 
     signal.signal(signal.SIGUSR1, catch_sigusr1)
     try:
