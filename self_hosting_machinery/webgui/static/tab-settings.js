@@ -123,6 +123,8 @@ function mask_integrations_input(el) {
     function mask_string(string) {
         if (string.length > 6 ) {
             return string.substring(0, 6) + '*'.repeat(string.length - 4);
+        } else {
+            return '*'.repeat(string.length)
         }
     }
     if (!el.getAttribute('data-masked')) {
@@ -169,6 +171,7 @@ function save_openai_api_key() {
     .then(function(response) {
         console.log(response);
         throw_int_saved_success_toast('OpenAI API Key saved')
+        openai_api_key.setAttribute('data-saved-value', openai_api_key.getAttribute('data-value'))
     });
 }
 
@@ -184,13 +187,16 @@ export function tab_settings_integrations_get() {
                 openai_api_key.value = data['openai_api_key']
             }
             mask_integrations_input(openai_api_key);
+            openai_api_key.setAttribute('data-saved-value', openai_api_key.getAttribute('data-value'))
             openai_api_key.addEventListener(
                 'focus', () => unmask_integrations_input(openai_api_key)
             )
             openai_api_key.addEventListener(
                 'blur', () => {
                     mask_integrations_input(openai_api_key)
-                    save_openai_api_key();
+                    if (openai_api_key.getAttribute('data-value') !== openai_api_key.getAttribute('data-saved-value')) {
+                        save_openai_api_key();
+                    }
                 }
             )
         });
