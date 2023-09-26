@@ -648,6 +648,7 @@ h3 {
 .start-funetune-step2 {
     margin-top: 25px;
 }
+.start-funetune-select-model h6,
 .start-funetune-step1 h6,
 .start-funetune-step2 h6 {
     font-weight: bold;
