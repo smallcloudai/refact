@@ -7,7 +7,7 @@ class PluginsRouter(APIRouter):
     def __init__(self):
         super().__init__()
         self.plugins = [
-            {"label": "Model Hosting", "tab": "model-hosting", "active": True},
+            {"label": "Model Hosting", "tab": "model-hosting"},
             {"label": "Sources", "tab": "upload"},
             {"label": "Finetune", "tab": "finetune"},
             {"label": "Server Logs", "tab": "server-logs"},
