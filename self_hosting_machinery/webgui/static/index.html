@@ -133,7 +133,7 @@
     </div>
   </div>
 
-  <div class="modal fade" id="settings-tab-reset-modal" tabindex="-1" aria-labelledby="settings-tab-hard-reset-modal" aria-hidden="true">
+  <div class="modal fade" id="settings-tab-factoryreset-modal" tabindex="-1" aria-labelledby="settings-tab-factory-reset-modal" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -142,12 +142,13 @@
         </div>
         <div class="modal-body">
           <div>
-            You're about to hard reset all your settings. This will remove all your sources, settings and runs without possibility to recover them.
+            You're about to erase all settings, uploaded source code archives and links,
+            finetune runs, logs, added ssh keys, and there no way to recover!
           </div>
           <div id="status-ssh" class="uploaded-status"></div>
           <div class="modal-footer">
-            <button type="button" class="btn settings-tab-reset-close btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button class="settings-tab-reset-submit btn btn-danger">Delete all data</button>
+            <button type="button" class="btn settings-tab-factoryreset-close btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button class="settings-tab-factoryreset-submit btn btn-danger">Delete all data</button>
           </div>
         </div>
       </div>
