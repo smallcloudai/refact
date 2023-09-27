@@ -41,8 +41,7 @@ async def stream_text_file(ft_path):
             cnt += 1
             line = f.readline()
             if not line:
-                print("sleep", f.fileno())
-                if anything_new_ts + 120 < time.time():
+                if anything_new_ts + 600 < time.time():
                     break
                 await asyncio.sleep(1)
                 continue
