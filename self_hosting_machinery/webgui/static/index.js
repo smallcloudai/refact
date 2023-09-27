@@ -32,6 +32,12 @@ window.addEventListener('popstate', () => {
     if (!history_state.length) {
         return;
     }
+    // hide all active modals
+    document.querySelectorAll('.modal').forEach(modal => {
+      let currentModal = bootstrap.Modal.getInstance(modal)
+      if (currentModal) currentModal.hide()
+    })
+
     const page = history_state.at(-2);
     history_state.pop();
     first_page_load = true;
