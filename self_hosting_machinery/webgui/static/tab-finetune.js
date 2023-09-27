@@ -1,4 +1,4 @@
-let logs_streaming_run_id = "";
+let logs_streamer_run_id = "";
 let gfx_showing_run_id = "";
 
 let finetune_state,
@@ -735,32 +735,37 @@ function finetune_controls_state() {
     }
 }
 
+let logs_streamer_to_stop = undefined;
+
 function start_log_stream(run_id) {
-    if (logs_streaming_run_id == run_id || run_id === "") {
+    if (logs_streamer_run_id == run_id || run_id === "") {
         console.log(`already streaming "${run_id}"`);
         return;
     }
-    logs_streaming_run_id = run_id;
     const streamUrl = `/tab-finetune-log/${run_id}`;
     const streamDiv = document.querySelector('.tab-upload-finetune-logs');
+    streamDiv.textContent = "";
     const gfx = document.querySelector('.fine-gfx');
     let gfx_updated_ts = new Date().getTime();
     const fetchData = async () => {
+        const response = await fetch(streamUrl);
+        if (!response.ok) {
+            throw new Error(`start_log_stream (1): ${response.status}`);
+        }
+        const reader = response.body.getReader();
+        if (logs_streamer_to_stop !== undefined) {
+            // it's stuck on read() most likely, we need to get it out of that call
+            await logs_streamer_to_stop.cancel();
+        }
+        logs_streamer_to_stop = reader;
+        logs_streamer_run_id = run_id;
         try {
-            const response = await fetch(streamUrl);
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            const reader = response.body.getReader();
             while (1) {
-                if (logs_streaming_run_id != run_id) {
-                    reader.cancel();
-                    return;
-                }
                 const { done, value } = await reader.read();
                 if (done) {
-                    run_id = "stop";
-                    break;
+                    logs_streamer_run_id = "";
+                    reader.cancel();
+                    return;
                 }
                 let now = new Date().getTime();
                 if (gfx_updated_ts + 1000 < now && gfx_showing_run_id == run_id) {
@@ -775,8 +780,11 @@ function start_log_stream(run_id) {
                 }
             }
         } catch (error) {
-            console.error('Logs streaming error:', error);
-            run_id = "stop";
+            console.error(`start_log_stream (2): ${error}`);
+        } finally {
+            await reader.cancel();
+            logs_streamer_to_stop = undefined;
+            logs_streamer_run_id = "";
         }
     };
     fetchData();
@@ -908,7 +916,10 @@ export function tab_switched_here() {
 }
 
 export function tab_switched_away() {
-    logs_streaming_run_id = "";
+    if (logs_streamer_to_stop !== undefined) {
+        logs_streamer_to_stop.cancel();
+        logs_streamer_to_stop = undefined;
+    }
 }
 
 export function tab_update_each_couple_of_seconds() {
