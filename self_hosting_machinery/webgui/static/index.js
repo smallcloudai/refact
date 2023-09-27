@@ -2,6 +2,8 @@ const default_tab = 'model-hosting'
 let first_page_load = true;
 const req = await fetch('list-plugins');
 const plugins = await req.json();
+let history_state = [];
+let create_h_state = true;
 // show navigation bar immediately, import later
 plugins_to_top_nav_bar(plugins);
 
@@ -26,13 +28,18 @@ navbar.addEventListener('click', () => {
 })
 
 
-window.addEventListener('popstate', (event) =>{
+window.addEventListener('popstate', () => {
+    if (!history_state.length) {
+        return;
+    }
+    const page = history_state.at(-2);
+    history_state.pop();
     first_page_load = true;
-    localStorage.setItem('active_tab_storage', event.state.page);
-    start_tab_timer();
+    localStorage.setItem('active_tab_storage', page);
     setTimeout(() => {
-        active_tab_switched();
-    }, 500);
+        start_tab_timer();
+    }, 100);
+    create_h_state = false;
 });
 
 function active_tab_switched() {
@@ -45,7 +52,14 @@ function active_tab_switched() {
     for (const plugin of plugins) {
         if (active_tab.id === plugin.tab) {
             localStorage.setItem('active_tab_storage', plugin.tab);
-            history.pushState({'page': plugin.tab}, '', '')
+            history.pushState({'page': plugin.tab}, '', '');
+            if (create_h_state) {
+                history_state.push(plugin.tab);
+            }
+            if (history_state.length > 20) {
+                history_state.shift();
+            }
+            create_h_state = true;
             plugin.mod.tab_switched_here();
             break;
         }
