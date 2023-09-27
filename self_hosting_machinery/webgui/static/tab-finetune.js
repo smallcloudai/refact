@@ -740,6 +740,7 @@ function start_log_stream(run_id) {
         console.log(`already streaming "${run_id}"`);
         return;
     }
+    logs_streaming_run_id = run_id;
     const streamUrl = `/tab-finetune-log/${run_id}`;
     const streamDiv = document.querySelector('.tab-upload-finetune-logs');
     const gfx = document.querySelector('.fine-gfx');
@@ -758,12 +759,12 @@ function start_log_stream(run_id) {
                 }
                 const { done, value } = await reader.read();
                 if (done) {
-                    logs_streaming_run_id = "";
+                    run_id = "stop";
                     break;
                 }
                 let now = new Date().getTime();
                 if (gfx_updated_ts + 1000 < now && gfx_showing_run_id == run_id) {
-                    gfx.src = `/tab-finetune-progress-svg/${run.run_id}/?t=${timestamp}`;
+                    gfx.src = `/tab-finetune-progress-svg/${run_id}?t=${now}`;
                     gfx_updated_ts = now;
                 }
                 const data_decoded = new TextDecoder('utf-8').decode(value);
@@ -775,10 +776,9 @@ function start_log_stream(run_id) {
             }
         } catch (error) {
             console.error('Logs streaming error:', error);
-            logs_streaming_run_id = "";
+            run_id = "stop";
         }
     };
-    logs_streaming_run_id = run_id;
     fetchData();
 }
 
