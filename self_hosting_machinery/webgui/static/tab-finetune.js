@@ -539,6 +539,7 @@ function filtering_button_clicked() {
     }
     // filter working - stop
     if(finetune_state.filter_working_now && !finetune_state.finetune_working_now) {
+        finetune_button.innerHTML = `Stopping...`;
         stop_filtering();
     }
 }
@@ -645,7 +646,6 @@ function finetune_controls_state() {
     if(!reference_finetune_state) { reference_finetune_state = finetune_state; }
     if(!reference_finetune_configs_and_runs) { reference_finetune_configs_and_runs = finetune_configs_and_runs; }
     if(finetune_state === reference_finetune_state && finetune_configs_and_runs === reference_finetune_configs_and_runs) { return }
-
     if(finetune_state.finetune_filter_stats.status) {
         document.querySelector('.ftf-status').classList.remove('d-none');
         document.querySelector('.start-funetune-stats').classList.remove('d-none');
@@ -700,39 +700,47 @@ function finetune_controls_state() {
                 finetune_filter_panel.classList.remove('pane-disabled');
                 break;
         }
-        if(finetune_state.finetune_working_now && !finetune_state.filter_working_now) {
-            finetune_panel.classList.remove('pane-disabled');
-            finetune_filter_panel.classList.add('pane-disabled');
-            finetune_filter_button.disabled = true;
-            finetune_settings.disabled = true;
+    }
+    if(finetune_state.finetune_working_now && !finetune_state.filter_working_now) {
+        finetune_panel.classList.remove('pane-disabled');
+        finetune_filter_panel.classList.add('pane-disabled');
+        finetune_filter_button.disabled = true;
+        finetune_settings.disabled = true;
+        if(!finetune_button.querySelector('.spinner-border')) {
+            finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
         }
-        if(finetune_state.filter_working_now && !finetune_state.finetune_working_now) {
-            finetune_panel.classList.add('pane-disabled');
-            use_model_panel.classList.add('pane-disabled');
-            select_model_panel.classList.add('pane-disabled');
+        console.log('step 1');
+    }
+    if(finetune_state.filter_working_now && !finetune_state.finetune_working_now) {
+        finetune_panel.classList.add('pane-disabled');
+        use_model_panel.classList.add('pane-disabled');
+        select_model_panel.classList.add('pane-disabled');
+        finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop filtering`;
+        if(!finetune_filter_button.querySelector('.spinner-border')) {
             finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop filtering`;
-            if(!finetune_filter_button.querySelector('.spinner-border')) {
-                finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop filtering`;
-            }
-            // render_ftf_stats(finetune_state.finetune_filter_stats);
         }
-        // both not working
-        if(!finetune_state.filter_working_now && !finetune_state.finetune_working_now && finetune_state.sources_ready) {
-            finetune_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
-            finetune_panel.classList.remove('pane-disabled');
-            finetune_filter_panel.classList.remove('pane-disabled');
-            finetune_filter_button.disabled = false;
-            finetune_button.disabled = false;
-            finetune_settings.disabled = false;
-            use_model_panel.classList.remove('pane-disabled');
-            select_model_panel.classList.remove('pane-disabled');
-        }
-        if(!finetune_state.sources_ready) {
-            finetune_filter_panel.classList.add('pane-disabled');
-            finetune_filter_button.disabled = true;
-            finetune_panel.classList.add('pane-disabled');
-            finetune_button.disabled = true;
-        }
+        render_ftf_stats(finetune_state.finetune_filter_stats);
+        console.log('step 2');
+    }
+    // both not working
+    if(!finetune_state.filter_working_now && !finetune_state.finetune_working_now && finetune_state.sources_ready) {
+        finetune_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
+        finetune_panel.classList.remove('pane-disabled');
+        finetune_filter_panel.classList.remove('pane-disabled');
+        finetune_filter_button.disabled = false;
+        finetune_button.innerHTML = `<i class="bi bi-gpu-card"></i> Run Now`;
+        finetune_button.disabled = false;
+        finetune_settings.disabled = false;
+        use_model_panel.classList.remove('pane-disabled');
+        select_model_panel.classList.remove('pane-disabled');
+        console.log('step 3');
+    }
+    if(!finetune_state.sources_ready && !finetune_state.finetune_working_now && !finetune_state.filter_working_now) {
+        finetune_filter_panel.classList.add('pane-disabled');
+        finetune_filter_button.disabled = true;
+        finetune_panel.classList.add('pane-disabled');
+        finetune_button.disabled = true;
+        console.log('step 4');
     }
 }
 
