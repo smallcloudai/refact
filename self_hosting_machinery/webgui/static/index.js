@@ -143,6 +143,11 @@ reset_button.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Factory R
 reset_button_wrapper.appendChild(reset_button);
 dropdown_menu.appendChild(reset_button_wrapper);
 
+reset_button.addEventListener('click', () => {
+    let reset_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('settings-tab-factoryreset-modal'));
+    reset_modal.show();
+});
+
 let reset_submit_button  = document.querySelector('.settings-tab-factoryreset-submit');
 reset_submit_button.addEventListener('click', () => {
     fetch("/tab-settings-factory-reset")
