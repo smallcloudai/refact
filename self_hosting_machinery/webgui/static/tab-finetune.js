@@ -27,6 +27,9 @@ let finetune_panel,
 let select_model_panel,
     use_model_panel;
 
+let current_accepted,
+    current_rejected;
+
 function tab_finetune_get() {
     fetch("tab-finetune-get")
     .then(function (response) {
@@ -567,6 +570,8 @@ function stop_filtering() {
 function render_ftf_stats(data) {
     const ftf_wrapper = document.querySelector('.ftf-stats');
     if(Object.keys(data).length > 0 && data.accepted !== undefined && data.rejected !== undefined && data.worked_steps > 0) {
+        current_accepted = data.accepted;
+        current_rejected = data.rejected;
         ftf_wrapper.innerHTML = '';
         const content = `<h6>GPU Filtering stats</h6><div style="display:flex;"><div class="margin-right: 20px;">Accepted: ${data.accepted} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=rejected">Full list</a></div></div>`;
         ftf_wrapper.innerHTML = content;
@@ -719,8 +724,10 @@ function finetune_controls_state() {
         if(!finetune_filter_button.querySelector('.spinner-border')) {
             finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop filtering`;
         }
-        render_ftf_stats(finetune_state.finetune_filter_stats);
         console.log('step 2');
+    }
+    if(finetune_state.finetune_filter_stats.accepted !== current_accepted || finetune_state.finetune_filter_stats.rejected !== current_rejected) {
+        render_ftf_stats(finetune_state.finetune_filter_stats);
     }
     // both not working
     if(!finetune_state.filter_working_now && !finetune_state.finetune_working_now && finetune_state.sources_ready) {
