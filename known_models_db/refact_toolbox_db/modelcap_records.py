@@ -9,10 +9,10 @@ db = [
         supports_selection=True,
         selected_lines_min=1,
         selected_lines_max=15,
-        third_party=[True, True, False, False, False, False],
+        third_party=[True, True, False, False, False],
         supports_languages="*.*",
         mini_html=load_mini_html("free-chat"),
-        model=["gpt3.5", "gpt4", "starchat", "wizardlm", "llama2", "Refact"],
+        model=["gpt3.5", "gpt4", "starchat", "wizardlm", "llama2"],
         catch_question_mark=True,
     ),
 
