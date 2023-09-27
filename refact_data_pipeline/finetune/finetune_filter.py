@@ -254,7 +254,7 @@ def needs_any_work():
 
 
 def main(models_db: Dict[str, Any]):
-    stats_dict = get_finetune_filter_stat(default=True)
+    stats_dict = get_finetune_filter_stat()
 
     def catch_sigusr1(signum, frame):
         stats_dict["error"] = "interrupted"
@@ -268,6 +268,7 @@ def main(models_db: Dict[str, Any]):
         logging.info("Train set filtering: nothing changed since last time, quit")
         return
 
+    stats_dict = get_finetune_filter_stat(default=True)
     stats_dict = _update_and_dump_status(stats_dict, "starting")
     with open(env.LOG_FILES_ACCEPTED_FTF, "w") as f:
         f.write("")
@@ -276,6 +277,9 @@ def main(models_db: Dict[str, Any]):
     try:
         pre_filtering(stats_dict, models_db)
         _update_and_dump_status(stats_dict, "finished")
+    except SystemExit:
+        # NOTE: catched sigusr1
+        pass
     except BaseException as e:  # BaseException includes KeyboardInterrupt
         if traces.context():
             logging.error("FAILED finetune filter at %s" % traces.context().path)
