@@ -179,6 +179,7 @@ function render_runs() {
                 gfx.src = `/tab-finetune-progress-svg/${run.run_id}?t=${timestamp}`;
             }
             start_log_stream(run.run_id);
+            render_checkpoints(find_checkpoints_by_run(run.run_id));
 
             const log_link = document.querySelector('.log-link');
             if(log_link && log_link.classList.contains('d-none')) {
@@ -809,7 +810,7 @@ export async function init() {
     finetune_settings = document.querySelector('.tab-finetune-fine-settings');
 
     use_model_panel = document.querySelector('.use-model-pane');
-    select_model_panel = document.querySelector('.select-model-pane');
+    select_model_panel = document.querySelector('.start-funetune-select-model');
 
     const log_container = document.querySelector('.log-container');
     function handle_auto_scroll() {
