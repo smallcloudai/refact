@@ -145,8 +145,8 @@ function render_runs() {
         } else {
             run_status.innerHTML = `<span class="badge rounded-pill ${run_status_color}">${run.status}</span>`;
         }
-        if (run.status === 'working' && run.eta_minutes ) {
-            run_minutes.innerHTML = run.eta_minutes;
+        if (run.time_elapsed ) {
+            run_minutes.innerHTML = run.time_elapsed;
         }
         run_steps.innerHTML = run.worked_steps;
 

@@ -78,7 +78,6 @@ function plugins_to_top_nav_bar(plugins)
             tab_panes.forEach(pane => {
             if (pane.id === target_tab) {
                 pane.classList.add('main-active');
-                comming_soon_resize();
             } else {
                 pane.classList.remove('main-active');
             }
@@ -89,35 +88,6 @@ function plugins_to_top_nav_bar(plugins)
         });
     });
 }
-
-
-let comming_soon;
-
-function display_comming_soon() {
-    comming_soon = document.querySelectorAll(".temp-disabled");
-    comming_soon_render();
-    window.addEventListener("resize", function () {
-        comming_soon_resize();
-    });
-}
-function comming_soon_render() {
-    comming_soon.forEach(function (element) {
-        const info = element.parentNode.insertBefore(document.createElement("div"), element.nextSibling);
-        info.classList.add("temp-info");
-        info.innerHTML = "Coming soon";
-        info.style.marginLeft = ((element.getBoundingClientRect().width / 2) - (info.getBoundingClientRect().width / 2)) + "px";
-        info.style.marginTop = ((element.getBoundingClientRect().height / 2) * -1 - (info.getBoundingClientRect().height / 2)) + "px";
-    });
-}
-function comming_soon_resize() {
-    comming_soon.forEach(function (element) {
-        const info = element.nextSibling;
-        info.style.marginLeft = ((element.getBoundingClientRect().width / 2) - (info.getBoundingClientRect().width / 2)) + "px";
-        info.style.marginTop = ((element.getBoundingClientRect().height / 2) * -1 - (info.getBoundingClientRect().height / 2)) + "px";
-    });
-}
-display_comming_soon();
-
 
 // remove when schedule will be implemented
 const schedule_modal = document.getElementById('finetune-tab-autorun-settings-modal');
