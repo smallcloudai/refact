@@ -829,9 +829,10 @@ export async function init() {
     start_finetune_button.addEventListener('click', function () {
         let url = "/tab-finetune-run-now";
         start_finetune_button.disabled = true;
-        start_finetune_button.innerHTML = `<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>Starting...`;
         if (start_finetune_button.getAttribute("need_to_stop") === 'true') {
             url = "/tab-finetune-stop-now";
+        } else {
+            start_finetune_button.innerHTML = `<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>Starting...`;
         }
         fetch(url)
             .then(function (response) {
