@@ -1,4 +1,6 @@
 import { general_error } from './error.js';
+import { init as init_upload_files_modal } from './components/modals/modal-upload-files.js'
+
 let logs_streamer_run_id = "";
 let gfx_showing_run_id = "";
 
@@ -991,12 +993,21 @@ export async function init() {
     model_select_dropdown.addEventListener('change', function() {
         change_finetune_model();
     });
+
 }
 
 export function tab_switched_here() {
     tab_finetune_get();
     tab_finetune_config_and_runs();
     render_schedule_dialog();
+    init_upload_files_modal(
+        document.querySelector('#lora-upload-files-modal'),
+        document.querySelector('#finetune-upload-lora-open-modal'),
+        'Upload Lora',
+        'link',
+        '/lora-upload-url', '/lora-upload',
+        "Loading lora. This may take a few more minutes..."
+    );
 }
 
 export function tab_switched_away() {
@@ -1004,6 +1015,7 @@ export function tab_switched_away() {
         logs_streamer_to_stop.cancel();
         logs_streamer_to_stop = undefined;
     }
+    document.querySelector('#lora-upload-files-modal').innerHTML = "";
 }
 
 export function tab_update_each_couple_of_seconds() {

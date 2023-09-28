@@ -1,4 +1,7 @@
 import { general_error } from './error.js';
+import { init as init_upload_files_modal } from './components/modals/modal-upload-files.js'
+
+
 let tab_files_data = null;
 let show_scan_error = false;
 let sort_type = 'filetype';
@@ -345,56 +348,6 @@ function render_stats() {
     }
 }
 
-function upload_url() {
-    const fileInput = document.querySelector('#tab-upload-url-input');
-    if (!fileInput || fileInput.value === '') {
-        return;
-    }
-
-    const url_regex = /^(ftp|http|https):\/\/[^ "]+$/;
-    const is_url = url_regex.test(fileInput.value);
-    if (!is_url) {
-        handle_invalid_url();
-        return;
-    }
-
-    const formData = {
-        'url': fileInput.value
-    };
-
-    fetch('/tab-files-upload-url', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-    })
-        .then(response => {
-            if (!response.ok) {
-                return response.json()
-                    .then(error => {
-                        throw new Error(error.message);
-                    });
-            }
-            return response.json();
-        })
-        .then(data => {
-            process_now_update_until_finished()
-            fileInput.value = '';
-            document.querySelector('#status-url').innerHTML = '';
-            let url_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-url-modal'));
-            url_modal.hide();
-        })
-        .catch(error => {
-            document.querySelector('#status-url').innerHTML = error.message;
-        });
-}
-
-function handle_invalid_url() {
-    const error = new Error('Invalid URL');
-    document.querySelector('#status-url').innerHTML = error.message;
-}
-
 
 function upload_repo() {
     const gitUrl = document.querySelector('#tab-upload-git-input');
@@ -435,60 +388,6 @@ function upload_repo() {
     .catch(error => {
         document.querySelector('#status-git').innerHTML = error.message;
     });
-}
-
-function upload_file() {
-    const fileInput = document.querySelector('#tab-upload-file-input');
-    if(fileInput.files.length === 0) {
-        return;
-    }
-    var formdata = new FormData();
-    formdata.append("file", fileInput.files[0]);
-    document.querySelector('.progress').classList.toggle('d-none');
-    document.querySelector('.tab-upload-file-submit').classList.toggle('d-none');
-    var ajax = new XMLHttpRequest();
-    ajax.upload.addEventListener("progress", progressHandler, false);
-    ajax.addEventListener("load", completeHandler, false);
-    ajax.addEventListener("error", errorHandler, false);
-    ajax.addEventListener("abort", abortHandler, false);
-    ajax.open("POST", "/tab-files-upload");
-    ajax.send(formdata);
-}
-
-function progressHandler(event) {
-    document.querySelector('#loaded_n_total').innerHTML = "Uploaded " + event.loaded + " bytes of " + event.total;
-    var percent = (event.loaded / event.total) * 100;
-    document.querySelector('.progress-bar').setAttribute('aria-valuenow', Math.round(percent));
-    document.querySelector('.progress-bar').style.width = Math.round(percent) + "%";
-    document.querySelector('#status').innerHTML = Math.round(percent) + "% uploaded... please wait";
-  }
-
-  function completeHandler(event) {
-    document.querySelector('#status').innerHTML = event.target.responseText;
-    if(event.target.status === 200) {
-        setTimeout(() => {
-            process_now_update_until_finished();
-            document.querySelector('#tab-upload-file-input').value = '';
-            let file_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-files-modal'));
-            file_modal.hide();
-        }, 500);
-    } else {
-        let error_msg = JSON.parse(event.target.responseText);
-        const file_modal = document.getElementById('upload-tab-files-modal');
-        file_modal.querySelector('.progress-bar').setAttribute('aria-valuenow', 0);
-        file_modal.querySelector('.progress').classList.add('d-none');
-        file_modal.querySelector('.tab-upload-file-submit').classList.remove('d-none');
-        file_modal.querySelector('#loaded_n_total').innerHTML = "";
-        file_modal.querySelector('#status').innerHTML = error_msg.message;
-    }
-  }
-
-  function errorHandler(event) {
-    document.querySelector('#status').innerHTML = event.target.responseText.message;
-  }
-
-  function abortHandler(event) {
-    document.querySelector('#status').innerHTML = "Upload Aborted";
 }
 
 function delete_file(file) {
@@ -581,18 +480,6 @@ export async function init(general_error) {
     document.querySelector('#upload').innerHTML = await req.text();
     sources_pane = document.querySelector('.sources-pane');
     filetypes_pane = document.querySelector('.filetypes-pane');
-    
-    const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
-    tab_upload_file_submit.removeEventListener('click', upload_file());
-    tab_upload_file_submit.addEventListener('click', function() {
-        upload_file();
-    });
-
-    const tab_upload_url_submit = document.querySelector('.tab-upload-url-submit');
-    tab_upload_url_submit.removeEventListener('click', upload_url());
-    tab_upload_url_submit.addEventListener('click', function() {
-        upload_url();
-    });
 
     const tab_upload_git_submit = document.querySelector('.tab-upload-git-submit');
     tab_upload_git_submit.removeEventListener('click', upload_repo());
@@ -606,22 +493,6 @@ export async function init(general_error) {
             .then(function(response) {
                 process_now_update_until_finished();
             });
-    });
-
-    const file_modal = document.getElementById('upload-tab-files-modal');
-    file_modal.addEventListener('show.bs.modal', function () {
-        file_modal.querySelector('#tab-upload-file-input').value = '';
-        file_modal.querySelector('.progress-bar').setAttribute('aria-valuenow', 0);
-        file_modal.querySelector('.progress').classList.add('d-none');
-        file_modal.querySelector('.tab-upload-file-submit').classList.remove('d-none');
-        file_modal.querySelector('#status').innerHTML = '';
-        file_modal.querySelector('#loaded_n_total').innerHTML = '';
-    });
-
-    const url_modal = document.getElementById('upload-tab-url-modal');
-    url_modal.addEventListener('show.bs.modal', function () {
-        url_modal.querySelector('#tab-upload-url-input').value = '';
-        url_modal.querySelector('#status-url').innerHTML = '';
     });
 
     const git_modal = document.getElementById('upload-tab-git-modal');
@@ -722,7 +593,7 @@ export async function init(general_error) {
         }
         save_filter_setup();
     });
-    
+
     const proceed_finetune_button = document.querySelector('.proceed-finetune');
     proceed_finetune_button.addEventListener('click', function() {
         document.querySelector('#upload').classList.remove('main-active');
@@ -737,10 +608,22 @@ export async function init(general_error) {
 
 export function tab_switched_here() {
     get_tab_files();
+    const files_modal = document.querySelector('#upload-files-modal');
+    init_upload_files_modal(
+        files_modal,
+        document.querySelector('#open-upload-files-modal'),
+        'Upload Files',
+        'input',
+        '/tab-files-upload-url', '/tab-files-upload',
+        "Wrapping up. Please wait...",
+        "https://yourserver.com/file.zip",
+        "You can upload .zip, .tar.gz, .tar.bz2 archives, or an individual file such as \"my_program.py\""
+    );
 }
 
 export function tab_switched_away() {
     dont_disable_file_types = false;
+    document.querySelector('#upload-files-modal').innerHTML = "";
 }
 
 export function tab_update_each_couple_of_seconds() {
