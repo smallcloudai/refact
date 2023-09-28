@@ -53,7 +53,7 @@ def save_status_json(status_dict, status_string):
     rank = 0
     if rank != 0:
         return
-    logging.info("STATUS %s" % status_string)
+    env.report_status("ftune", status_string)
     status_dict["status"] = status_string
     if not traces.context():
         return
@@ -198,7 +198,7 @@ def loop(
     assert cfg['train_iters'] % cfg['test_every'] == 0
     assert cfg['save_every'] % cfg['test_every'] == 0
     plot_process: Optional[subprocess.Popen] = None
-    save_status_json(status_dict, "starting")
+    save_status_json(status_dict, "working")
     low_gpu_mem_mode = cfg['low_gpu_mem_mode'] or model_config['force_enable_checkpointing']
     forward = partial(model_forward, model=model, backend=backend)
     early_stop = EarlyStopper(patience=int(cfg['train_iters'] * 0.2))
@@ -307,7 +307,6 @@ def loop(
 
 def finetune(status_dict, models_db: Dict[str, Any]):
     logging.info("starting finetune at %s" % traces.context().path)
-    logging.info("STATUS finetune init")
     cfg = load_finetune_config(models_db)
     traces.log("creating model...")
     t0 = time.time()
@@ -337,7 +336,6 @@ def finetune(status_dict, models_db: Dict[str, Any]):
         dist_init_required=True
     )
     train_ds, test_ds = create_data(cfg['model_name'], cfg, model.encoding)
-    logging.info("STATUS finetune working")
     loop(
         cfg=cfg,
         model=model,
@@ -362,7 +360,7 @@ def main(models_db: Dict[str, Any]):
         "status": "starting",
         "quality": "unknown"
     }
-    save_status_json(status_dict, "starting")
+    save_status_json(status_dict, "working")
 
     def catch_sigusr1(signum, frame):
         logging.error("Interrupted: caught SIGUSR1")
@@ -372,7 +370,6 @@ def main(models_db: Dict[str, Any]):
 
     signal.signal(signal.SIGUSR1, catch_sigusr1)
     try:
-        save_status_json(status_dict, "working")
         finetune(status_dict, models_db)
         save_status_json(status_dict, "finished")
     except SystemExit:

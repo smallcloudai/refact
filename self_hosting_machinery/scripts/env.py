@@ -1,4 +1,5 @@
 import os
+import logging
 
 PERMDIR = os.environ.get("REFACT_PERM_DIR", "") or os.path.expanduser("~/.refact/perm-storage")
 TMPDIR = os.environ.get("REFACT_TMP_DIR", "") or os.path.expanduser("~/.refact/tmp")
@@ -59,3 +60,16 @@ fingerprint_ext = 'fingerprint'
 def get_all_ssh_keys():
     import glob
     return glob.glob(f'{DIR_SSH_KEYS}/*.{private_key_ext}')
+
+def report_status(program, status):
+    assert program in ["linguist", "filter", "ftune"]
+    assert status in ["starting", "working", "finished", "failed", "interrupted"]
+    if status == "starting":  # reported only by watchdog
+        return
+    if status == "finished":  # reported only by watchdog
+        return
+    if status == "failed":  # reported only by watchdog
+        return
+    if status == "interrupted":  # reported only by watchdog
+        return
+    logging.info("STATUS %s" % (status))

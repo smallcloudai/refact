@@ -56,6 +56,7 @@ def log(*args):
 
 
 def stats_save():
+    env.report_status("linguist", stats_json["scan_status"])
     with open(env.CONFIG_PROCESSING_STATS + ".tmp", "w") as f:
         f.write(json.dumps(stats_json, indent=4))
     os.rename(env.CONFIG_PROCESSING_STATS + ".tmp", env.CONFIG_PROCESSING_STATS)
@@ -641,7 +642,7 @@ def main():
         stats_save()
         huge_list, dups = dedup(huge_list)
         save_into_sets(huge_list, dups)
-        stats_json["scan_status"] = "completed"
+        stats_json["scan_status"] = "finished"
         stats_json["scan_finished"] = True
         stats_json["scan_finished_ts"] = time.time()
         stats_save()

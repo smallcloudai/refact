@@ -12,8 +12,8 @@ from fastapi.responses import Response, StreamingResponse, JSONResponse
 from self_hosting_machinery.scripts import best_lora
 from refact_data_pipeline.finetune.finetune_utils import get_active_loras
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
-from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stat, get_finetune_filter_status
-from refact_data_pipeline.finetune.finetune_utils import get_finetune_step
+from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stat
+from refact_data_pipeline.finetune.finetune_utils import get_prog_and_status_for_ui
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_runs
 from refact_data_pipeline.finetune.finetune_filtering_defaults import finetune_filtering_defaults
 from refact_data_pipeline.finetune.finetune_train_defaults import finetune_train_defaults
@@ -112,12 +112,14 @@ class TabFinetuneRouter(APIRouter):
         self._models_db = models_db
 
     async def _tab_finetune_get(self):
-        finetune_step = get_finetune_step()
+        prog, status = get_prog_and_status_for_ui()
+        working = status in ["starting", "working"]
         result = {
-            "filter_working_now": finetune_step == "filter",
-            "finetune_working_now": finetune_step == "finetune",
+            "prog_name": prog,
+            "prog_status": status,
+            "filter_working_now": (prog == "prog_filter" and working),
+            "finetune_working_now": (prog == "prog_ftune" and working),
             "finetune_filter_stats": {
-                "status": get_finetune_filter_status(),
                 **get_finetune_filter_stat(),
             },
             "sources_ready": await self._tab_finetune_get_sources_status(),
@@ -138,7 +140,6 @@ class TabFinetuneRouter(APIRouter):
             return f"Error: {str(e)}"
 
     async def _tab_finetune_config_and_runs(self):
-        finetune_step = get_finetune_step()
         runs, _ = get_finetune_runs()
         config = get_finetune_config()
         result = {
@@ -150,8 +151,6 @@ class TabFinetuneRouter(APIRouter):
                 "auto_delete_n_runs": "5",
                 **config,  # TODO: why we mix finetune config for training and schedule?
             },
-            "filter_working_now": finetune_step == "filter",
-            "finetune_working_now": finetune_step == "finetune",
             "active": get_active_loras(self._models_db),
             "finetune_latest_best": best_lora.find_best_lora(config["model_name"]),
         }
@@ -240,16 +239,6 @@ class TabFinetuneRouter(APIRouter):
         flag = env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY if filter_only else env.FLAG_LAUNCH_FINETUNE
         with open(flag, "w") as f:
             f.write("")
-        try:
-            # That's bit of a hack, we're not allowed to set someone else's status here,
-            # but user will get more immediate reaction.
-            # And the flag guarantees that some time later (hopefully soon) the status will
-            # be overwritten.
-            with open(env.CONFIG_FINETUNE_STATUS + ".tmp", "w") as f:
-                json.dump({"status": "starting"}, f, indent=4)
-            os.rename(env.CONFIG_FINETUNE_STATUS + ".tmp", env.CONFIG_FINETUNE_STATUS)
-        except:
-            pass
         return JSONResponse("OK")
 
     async def _tab_finetune_stop_now(self):

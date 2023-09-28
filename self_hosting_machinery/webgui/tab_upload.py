@@ -7,7 +7,7 @@ import shutil
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 
-from refact_data_pipeline.finetune.finetune_utils import get_finetune_step
+from refact_data_pipeline.finetune.finetune_utils import get_prog_and_status_for_ui
 
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery import env
@@ -127,7 +127,10 @@ class TabUploadRouter(APIRouter):
         del scan_stats["uploaded_files"]
 
         result.update(scan_stats)
-        result["finetune_working_now"] = get_finetune_step() in ["filter", "finetune"]
+
+        prog, status = get_prog_and_status_for_ui()
+        working = status in ["starting", "working"]
+        result["finetune_working_now"] = ((prog in ["prog_filter", "prog_ftune"]) and working)
 
         # 0 new zip
         # 1 files done, pick file types
