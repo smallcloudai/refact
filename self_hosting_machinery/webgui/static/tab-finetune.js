@@ -104,11 +104,12 @@ function render_finetune_settings(data = {}) {
 }
 
 function render_runs() {
+    const runs_table = document.querySelector('.run-table');
     if(finetune_configs_and_runs.finetune_runs.length === 0) {
+        runs_table.innerHTML = '<tr><td>No runs yet.</td><td></td><td></td><td></td><td></td></tr>';
         return;
     }
     let finetune_is_working = false;
-    const runs_table = document.querySelector('.run-table');
 
     if(finetune_configs_and_runs.finetune_runs.length > 0) {
         runs_table.innerHTML = '';
@@ -223,8 +224,8 @@ function delete_run(run_id) {
             log_container.innerHTML = '';
         }
     })
-    .then(error => {
-        throw new Error(error.message);
+    .catch(error => {
+        throw new Error(error);
     });
 }
 
