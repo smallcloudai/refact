@@ -365,6 +365,7 @@ def main(models_db: Dict[str, Any]):
     def catch_sigusr1(signum, frame):
         logging.error("Interrupted: caught SIGUSR1")
         traces.log("Interrupted")
+        status_dict["error"] = "interrupted"
         save_status_json(status_dict, "interrupted")
         sys.exit(99)
 
