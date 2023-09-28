@@ -53,20 +53,27 @@ class TrackedJob:
         self.remove_this = False
         self.sent_sigusr1_ts = 0
         self.status_from_stderr = ""
+        self.status_nickname = ""
 
     def set_status(self, newstatus):
         self.status_from_stderr = newstatus
-        save_status = self.cfg.get("save_status", "")
-        if save_status:
-            save_status = replace_variable_names_from_env(save_status)
-            log("overwrite %s with %s" % (save_status, newstatus))
-            with open(save_status + ".tmp", "w") as f:
-                f.write(json.dumps({"status": newstatus}))
-            os.rename(save_status + ".tmp", save_status)
+        save_status_fn = self.cfg.get("save_status", "")
+        if save_status_fn:
+            status_nickname = self.cfg["save_status_nickname"]
+            self.status_nickname = status_nickname if not status_nickname.startswith("prog_") else status_nickname[5:]
+            save_status_fn = replace_variable_names_from_env(save_status_fn)
+            log("overwrite %s with prog=%s status=%s" % (save_status_fn, status_nickname, newstatus))
+            with open(save_status_fn + ".tmp", "w") as f:
+                f.write(json.dumps({
+                    "prog": status_nickname if newstatus != "idle" else "",
+                    "status": newstatus
+                }))
+            os.rename(save_status_fn + ".tmp", save_status_fn)
 
     def _start(self):
         if self.p is not None:
             return
+        self.set_status("starting")
         global compiling_now
         alt_env = os.environ.copy()
         cmdline = list(self.cfg["command_line"])
@@ -140,7 +147,7 @@ class TrackedJob:
             elif retcode == 99:
                 self.set_status("interrupted")
             else:
-                self.set_status("crashed")
+                self.set_status("failed")
             # retcode -10 is SIGUSR1
             if self.cmdline_str == compiling_now:
                 compiling_now = None
@@ -300,9 +307,12 @@ def inform_about_gpu_status():
                 t = job.cmdline_str
                 if t.startswith("python -m"):
                     t = t[len("python -m"):]
+                status = []
+                if job.status_nickname:
+                    status = [job.status_nickname]
                 gpu_status.setdefault(gpu, []).append({
                     "command": t.strip(),
-                    "status": job.status_from_stderr,
+                    "status": " ".join(status + [job.status_from_stderr]),
                 })
     s = json.dumps({"gpus": gpu_status}, indent=4) + "\n"
     if s != _inform_about_gpu_status:

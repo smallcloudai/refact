@@ -577,7 +577,7 @@ function render_ftf_stats(data) {
         ftf_wrapper.innerHTML = content;
         const total_steps = data.total_steps;
         const working_steps = data.worked_steps;
-        const percentage = (Number(working_steps) / Number(total_steps)) * 100;
+        const percentage = (Number(working_steps + 1) / Number(total_steps)) * 100;
         render_ftf_progress(percentage);
     } else {
         reset_ftf_progress();
@@ -646,109 +646,97 @@ function handle_auto_scroll() {
     }
 }
 
-function finetune_controls_state() {
+function finetune_controls_state()
+{
     if(!finetune_state) { return }
     if(!reference_finetune_state) { reference_finetune_state = finetune_state; }
     if(!reference_finetune_configs_and_runs) { reference_finetune_configs_and_runs = finetune_configs_and_runs; }
     if(finetune_state === reference_finetune_state && finetune_configs_and_runs === reference_finetune_configs_and_runs) { return }
-    if(finetune_state.finetune_filter_stats.status) {
-        document.querySelector('.ftf-status').classList.remove('d-none');
-        document.querySelector('.start-funetune-stats').classList.remove('d-none');
-        document.querySelector('.ftf-status span').innerHTML = finetune_state.finetune_filter_stats.status;
-    }
     const progress_container = document.querySelector('.ftf-progress');
     const eta_state = document.querySelector('.ftf-eta');
     const ftf_bar = document.querySelector('.ftf-bar');
-    if(!finetune_state.finetune_working_now) {
-        switch(finetune_state.finetune_filter_stats.status) {
-            case 'starting':
-                finetune_panel.classList.add('pane-disabled');
-                finetune_filter_panel.classList.add('pane-disabled');
-                use_model_panel.classList.add('pane-disabled');
-                select_model_panel.classList.add('pane-disabled');
-                console.log('..starting');
-                break;
-            case 'filtering':
-                finetune_filter_settings.disabled = true;
-                finetune_filter_panel.classList.remove('pane-disabled');
-                progress_container.classList.remove('d-none')
-                eta_state.innerHTML = 'ETA: ' + finetune_state.finetune_filter_stats.eta_minutes + ' minute(s)';
-                use_model_panel.classList.remove('pane-disabled');
-                select_model_panel.classList.remove('pane-disabled');
-                console.log('..filtering');
-                break;
 
-            case 'finished':
-                progress_container.classList.add('d-none');
-                eta_state.innerHTML = '';
-                ftf_bar.style.width = "100%";
-                finetune_filter_settings.disabled = false;
-                finetune_filter_button.disabled = false;
-                finetune_button.disabled = false;
-                finetune_panel.classList.remove('pane-disabled');
-                use_model_panel.classList.remove('pane-disabled');
-                select_model_panel.classList.remove('pane-disabled');
-                finetune_filter_panel.classList.remove('pane-disabled');
-                break;
-            case 'failed':
-                document.querySelector('.ftf-error').classList.remove('d-none');
-                let error_span = document.querySelector('.ftf-error span');
-                if(error_span) {
-                    error_span.innerHTML = finetune_state.finetune_filter_stats.error;
-                }
-                eta_state.innerHTML = '';
-                progress_container.classList.add('d-none');
-                ftf_bar.style.width = "0%";
-                finetune_filter_settings.disabled = false;
-                use_model_panel.classList.remove('pane-disabled');
-                select_model_panel.classList.remove('pane-disabled');
-                finetune_filter_panel.classList.remove('pane-disabled');
-                break;
-        }
-    }
-    if(finetune_state.finetune_working_now && !finetune_state.filter_working_now) {
-        finetune_panel.classList.remove('pane-disabled');
-        finetune_filter_panel.classList.add('pane-disabled');
-        finetune_filter_button.disabled = true;
-        finetune_settings.disabled = true;
-        if(!finetune_button.querySelector('.spinner-border')) {
-            finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
-        }
-        console.log('step 1');
-    }
-    if(finetune_state.filter_working_now && !finetune_state.finetune_working_now) {
+    // "prog_name": ["prog_linguist", "prog_filter", "prog_ftune"],
+    // "prog_status": ["starting", "working", "finished", "failed", "interrupted", "idle"]
+    let prog_status = finetune_state.prog_status;
+    let prog_name = finetune_state.prog_name;
+    const working_or_starting = prog_status === "starting" || prog_status === "working";
+    const show_stop = prog_status === "starting" || prog_status === "working";
+    const can_start = prog_status === "finished" || prog_status === "failed" || prog_status === "interrupted" || prog_status === "idle";
+    finetune_filter_settings.disabled = working_or_starting;
+    const linguist_working_or_starting = prog_name === "prog_linguist" && show_stop;
+
+    if (linguist_working_or_starting) {
         finetune_panel.classList.add('pane-disabled');
+        finetune_filter_panel.classList.add('pane-disabled');
         use_model_panel.classList.add('pane-disabled');
         select_model_panel.classList.add('pane-disabled');
-        finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop filtering`;
-        if(!finetune_filter_button.querySelector('.spinner-border')) {
-            finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop filtering`;
-        }
-        console.log('step 2');
-    }
-    if(finetune_state.finetune_filter_stats.accepted !== current_accepted || finetune_state.finetune_filter_stats.rejected !== current_rejected) {
-        render_ftf_stats(finetune_state.finetune_filter_stats);
-    }
-    // both not working
-    if(!finetune_state.filter_working_now && !finetune_state.finetune_working_now && finetune_state.sources_ready) {
-        finetune_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run filter`;
+    } else {
         finetune_panel.classList.remove('pane-disabled');
         finetune_filter_panel.classList.remove('pane-disabled');
-        finetune_filter_button.disabled = false;
-        finetune_button.innerHTML = `<i class="bi bi-gpu-card"></i> Run Now`;
-        finetune_button.disabled = false;
-        finetune_settings.disabled = false;
         use_model_panel.classList.remove('pane-disabled');
         select_model_panel.classList.remove('pane-disabled');
-        console.log('step 3');
     }
-    if(!finetune_state.sources_ready && !finetune_state.finetune_working_now && !finetune_state.filter_working_now) {
-        finetune_filter_panel.classList.add('pane-disabled');
-        finetune_filter_button.disabled = true;
-        finetune_panel.classList.add('pane-disabled');
-        finetune_button.disabled = true;
-        console.log('step 4');
+
+    if (prog_name === "prog_filter" && prog_status === "working") {
+        progress_container.classList.remove('d-none')
+        eta_state.innerHTML = 'ETA: ' + finetune_state.finetune_filter_stats.eta_minutes + ' minute(s)';
+    } else {
+        progress_container.classList.remove('d-none');
+        eta_state.innerHTML = '';
     }
+
+    let can_stop_filter = prog_name === "prog_filter" && show_stop;
+    if (can_stop_filter) {
+        finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop Filtering`;
+        finetune_filter_button.setAttribute("need_to_stop", true);
+    } else {
+        finetune_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run Filter`;
+        finetune_filter_button.setAttribute("need_to_stop", false);
+    }
+    finetune_filter_button.disabled = !(can_start || can_stop_filter);
+
+    let can_stop_ftune = prog_name === "prog_ftune" && show_stop;
+    if (can_stop_ftune) {
+        finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
+        finetune_button.setAttribute("need_to_stop", true);
+    } else {
+        finetune_button.innerHTML = `<i class="bi bi-gpu-card"></i> Run Finetune`;
+        finetune_button.setAttribute("need_to_stop", false);
+    }
+    finetune_button.disabled = !(can_start || can_stop_ftune);
+
+    render_ftf_stats(finetune_state.finetune_filter_stats);
+
+    if(finetune_state.finetune_filter_stats.status) {
+        document.querySelector('.ftf-status').classList.remove('d-none');
+        document.querySelector('.ftf-status span').innerHTML = finetune_state.finetune_filter_stats.status;
+    } else {
+        document.querySelector('.ftf-status').classList.add('d-none');
+    }
+
+    let error_span = document.querySelector('.ftf-error span');
+    let ftf_error = document.querySelector('.ftf-error');
+    if (finetune_state.finetune_filter_stats.status == "failed") {
+        ftf_error.classList.remove('d-none');
+        error_span.innerHTML = finetune_state.finetune_filter_stats.error;
+    } else {
+        ftf_error.classList.add('d-none');
+        error_span.innerHTML = '';
+    }
+
+    // example:
+    // "finetune_filter_stats": {
+    //     "filterting_status": "failed",
+    //     "total_steps": 116,
+    //     "worked_steps": 115,
+    //     "worked_minutes": 0,
+    //     "eta_minutes": 0,
+    //     "accepted": 111,
+    //     "rejected": 5,
+    //     "avg_loss": 1.1812065972222223,
+    //     "error": "_update_and_dump_status() missing 1 required positional argument: 'new_status'"
+    // },
 }
 
 let logs_streamer_to_stop = undefined;
@@ -928,7 +916,6 @@ export function tab_switched_here() {
     tab_finetune_get();
     tab_finetune_config_and_runs();
     render_schedule_dialog();
-    // finetune_status();
 }
 
 export function tab_switched_away() {
@@ -941,5 +928,4 @@ export function tab_switched_away() {
 export function tab_update_each_couple_of_seconds() {
     tab_finetune_get();
     tab_finetune_config_and_runs();
-    // finetune_status();
 }

@@ -35,8 +35,8 @@ filtered_train = os.path.join(env.DIR_UNPACKED, "train_set_filtered.jsonl")
 filtered_test = os.path.join(env.DIR_UNPACKED, "test_set_filtered.jsonl")
 
 
-def _update_and_dump_status(stats_dict: Dict[str, Any], status_string: str):
-    logging.info("STATUS %s" % status_string)
+def _update_and_dump_status(stats_dict: Dict[str, Any], new_status):
+    stats_dict["filterting_status"] = new_status
     with open(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", "w") as f:
         json.dump(stats_dict, f, indent=4)
     os.rename(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", env.CONFIG_FINETUNE_FILTER_STAT)
@@ -90,7 +90,7 @@ def loss_based_filter(
     forward = partial(model_forward, model=model, low_gpu_mem_mode=False, backend=cfg['model_info']['backend'])
     for iter_n, file in enumerate(train_files):
         t0_iter = time.time()
-        stats_dict = _update_and_dump_status(stats_dict, "filtering")
+        stats_dict = _update_and_dump_status(stats_dict, "working")
         file_losses = []
         if is_force_included(file['path']):
             _file_accepted("FILTER1 INCLUDED_BY_MASK", file["path"])
@@ -160,7 +160,6 @@ def pre_filtering(stats_dict, models_db: Dict[str, Any]):
     if not has_train_files:
         raise RuntimeError("No train files have been provided for filtering")
 
-    logging.info("STATUS smart filter init")
     logging.info("Train set filtering, loading model...")
     traces.log("Train set filtering, loading model...")
     t0 = time.time()
@@ -251,22 +250,20 @@ def needs_any_work():
 
 
 def main(models_db: Dict[str, Any]):
-    stats_dict = get_finetune_filter_stat()
+    stats_dict = get_finetune_filter_stat(default=True)
 
     def catch_sigusr1(signum, frame):
         stats_dict["error"] = "interrupted"
-        _update_and_dump_status(stats_dict, "interrupted")
+        _update_and_dump_status(stats_dict, "interrupted")  # saves whatever numbers reached so far
         sys.exit(99)
 
     signal.signal(signal.SIGUSR1, catch_sigusr1)
 
     if not needs_any_work():
-        _update_and_dump_status(stats_dict, "finished")
         logging.info("Train set filtering: nothing changed since last time, quit")
         return
 
-    stats_dict = get_finetune_filter_stat(default=True)
-    stats_dict = _update_and_dump_status(stats_dict, "starting")
+    stats_dict = _update_and_dump_status(stats_dict, "starting")  # writes zeros
     with open(env.LOG_FILES_ACCEPTED_FTF, "w") as f:
         f.write("")
     with open(env.LOG_FILES_REJECTED_FTF, "w") as f:

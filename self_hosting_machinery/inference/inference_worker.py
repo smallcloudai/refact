@@ -21,7 +21,7 @@ log = logging.getLogger("MODEL").info
 
 def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
     if model_name not in models_db:
-        log(f"STATUS model \"{model_name}\" not found")
+        log(f"STATUS not found {model_name}")
         if compile:
             return
         log("will sleep for 5 minutes and then exit, to slow down service restarts")

@@ -38,7 +38,7 @@ function get_tab_files() {
                 document.querySelector('.filetypes-pane').classList.add('pane-disabled');
             }
             // render_filter_progress(data.filtering_progress);
-            if(dont_disable_file_types || data.scan_status && data.scan_status === 'completed') {
+            if(dont_disable_file_types || data.scan_status && data.scan_status === 'finished') {
                 document.querySelector('.filetypes-pane').classList.remove('pane-disabled');
             } else {
                 document.querySelector('.filetypes-pane').classList.add('pane-disabled');

@@ -95,7 +95,8 @@ def get_finetune_config(logger: Optional[Callable] = None) -> Dict[str, Any]:
 
 def get_finetune_filter_stat(default: bool = False) -> Dict[str, Any]:
     filter_stats = {
-        "started_ts": 0,
+        "filterting_status": "",
+        "error": "",
         "total_steps": 0,
         "worked_steps": 0,
         "worked_minutes": 0,
@@ -109,35 +110,37 @@ def get_finetune_filter_stat(default: bool = False) -> Dict[str, Any]:
     return filter_stats
 
 
-def get_finetune_filter_status() -> str:
+def _get_status_by_watchdog() -> (str, str):
+    # this returns:
+    # "linguist", "starting"
+    # "filter", "interrupted"
+    # "ftune", "working"
     if os.path.isfile(env.CONFIG_FINETUNE_STATUS):
         mtime = os.path.getmtime(env.CONFIG_FINETUNE_STATUS)
         if mtime + 600 > time.time():
             d = json.load(open(env.CONFIG_FINETUNE_STATUS))
-            return d["status"]
-    return "idle"
+            return d["prog"], d["status"]
+    return "", "idle"
 
 
-def get_finetune_step() -> Optional[str]:
+def get_prog_and_status_for_ui() -> (str, str):
+    # def get_sources_stats():
+    #     scan_stats = {
+    #         "scan_status": "idle",
+    #     }
+    #     if os.path.isfile(env.CONFIG_PROCESSING_STATS):
+    #         scan_stats.update(**json.load(open(env.CONFIG_PROCESSING_STATS, "r")))
+    #     return scan_stats
 
-    def get_sources_stats():
-        scan_stats = {
-            "scan_status": "idle",
-        }
-        if os.path.isfile(env.CONFIG_PROCESSING_STATS):
-            scan_stats.update(**json.load(open(env.CONFIG_PROCESSING_STATS, "r")))
-        return scan_stats
+    prog, status = _get_status_by_watchdog()
 
-    if os.path.exists(env.FLAG_LAUNCH_PROCESS_UPLOADS) or \
-            get_sources_stats()["scan_status"] in ["working"]:
-        return "sources"
+    if os.path.exists(env.FLAG_LAUNCH_PROCESS_UPLOADS):
+        return "prog_linguist", "starting"
 
-    if os.path.exists(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY) or \
-            get_finetune_filter_status() in ["starting", "filtering"]:
-        return "filter"
+    if os.path.exists(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY):
+        return "prog_filter", "starting"
 
-    if os.path.exists(env.FLAG_LAUNCH_FINETUNE) or \
-            get_finetune_runs()[1]:
-        return "finetune"
+    if os.path.exists(env.FLAG_LAUNCH_FINETUNE):
+        return "prog_ftune", "starting"
 
-    return None
+    return prog, status
