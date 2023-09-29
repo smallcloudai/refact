@@ -85,12 +85,23 @@ pub fn snippet_register_from_data4cache(
     data4cache.completion0_snippet_telemetry_id = Some(snippet_register(&ss, data4cache.completion0_text.clone()));
 }
 
-pub fn snippet_accepted(
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SnippetAccepted {
+    pub snippet_telemetry_id: u64,
+}
+
+pub async fn snippet_accepted(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
     snippet_telemetry_id: u64,
-) {
-    // let storage_locked = storage_arc.write().unwrap();
-    unimplemented!();
+) -> bool {
+    let tele_storage_arc = gcx.read().await.telemetry.clone();
+    let mut storage_locked = tele_storage_arc.write().unwrap();
+    let snip = storage_locked.tele_snippets.iter_mut().find(|s| s.snippet_telemetry_id == snippet_telemetry_id);
+    if let Some(snip) = snip {
+        snip.accepted = true;
+        return true;
+    }
+    return false;
 }
 
 pub async fn sources_changed(
@@ -101,6 +112,16 @@ pub async fn sources_changed(
     info!("sources_changed: uri: {:?}, text: {:?}", uri, text);
     let tele_storage = gcx.read().await.telemetry.clone();
     let mut storage_locked = tele_storage.write().unwrap();
+    //     //  orig1    orig1    orig1
+    //     //  orig2    orig2    orig2
+    //     //  |        comp1    comp1
+    //     //  orig3    comp2    edit
+    //     //  orig4    comp3    comp3
+    //     //  orig5    orig3    orig3
+    //     //           orig4    orig4
+    //     // -------------------------------
+    //     // Goal: diff orig vs compl, orig vs uedit. If head and tail are the same, then user edit is valid and useful.
+    //     // Memorize the last valid user edit. At the point it becomes invalid, save feedback and forget.
     for snip in &mut storage_locked.tele_snippets {
         info!("does {:?} match {:?}", uri, snip.inputs.cursor.file);
         if !uri.ends_with(&snip.inputs.cursor.file) {
@@ -121,55 +142,6 @@ pub async fn sources_changed(
         info!("unchanged_percentage {:.2}", unchanged_percentage);
     }
 }
-
-
-// public async verify_completion_still_present_in_text()
-// {
-//     let text_orig = this.sources[this.cursor_file];
-//     let text_compl = this.results[this.cursor_file];  // completion applied
-//     let test_uedit = this.document.getText();         // user edited
-//     //  orig1    orig1    orig1
-//     //  orig2    orig2    orig2
-//     //  |        comp1    comp1
-//     //  orig3    comp2    edit
-//     //  orig4    comp3    comp3
-//     //  orig5    orig3    orig3
-//     //           orig4    orig4
-//     // -------------------------------
-//     // Goal: diff orig vs compl, orig vs uedit. If head and tail are the same, then user edit is valid and useful.
-//     // Memorize the last valid user edit. At the point it becomes invalid, save feedback and forget.
-//     let t1 = Date.now();
-//     let [valid1, gray_suggested] = completionMetrics.if_head_tail_equal_return_added_text(text_orig, text_compl);
-//     let [valid2, gray_edited] = completionMetrics.if_head_tail_equal_return_added_text(text_orig, test_uedit);
-//     let t2 = Date.now();
-//     let taking_too_long = (Date.now() - this.ts_presented) > 1000 * 60 * 2;  // 2 minutes
-//     console.log([this.serial_number, "valid1", valid1, "valid2", valid2, "taking_too_long", taking_too_long]);
-//     if (valid1 && valid2 && !taking_too_long) {
-//         let gray_suggested_split = gray_suggested.split(/\r?\n/);
-//         for (let i = 0; i < gray_suggested_split.length; i++) {
-//             console.log(["suggested", gray_suggested_split[i]]);
-//         }
-//         let gray_edited_split = gray_edited.split(/\r?\n/);
-//         for (let i = 0; i < gray_edited_split.length; i++) {
-//             console.log(["edited", gray_edited_split[i]]);
-//         }
-//         let gray_suggested_without_slash_r = gray_suggested.replace(/\r/g, "");
-//         if (gray_suggested_without_slash_r !== this.grey_text_explicitly) {
-//                 let gray_split = this.grey_text_explicitly.split(/\r?\n/);
-//                 for (let i = 0; i < gray_split.length; i++) {
-//                     console.log(["grey_text_explicitly", gray_split[i]]);
-//                 }
-//                 console.log(["WARNING: grey_text_explicitly doesn't match actual edit, will do nothing"]);
-//             return;
-//         }
-//         this.unchanged_percentage = completionMetrics.unchanged_percentage(gray_suggested, gray_edited);
-//         console.log(["unchanged_percentage", this.unchanged_percentage]);
-//         this.grey_text_edited = gray_edited;
-//     } else {
-//         // now becomes invalid, so
-//         this.transmit_as_accepted();
-//     }
-// }
 
 pub fn if_head_tail_equal_return_added_text(
     text_a: &String,

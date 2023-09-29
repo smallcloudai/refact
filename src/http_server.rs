@@ -19,6 +19,7 @@ use crate::global_context::GlobalContext;
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::telemetry_basic;
+use crate::telemetry_snippets;
 use crate::completion_cache;
 
 
@@ -232,6 +233,20 @@ async fn handle_v1_telemetry_network(
        .unwrap())
 }
 
+async fn handle_v1_snippet_accepted(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    body_bytes: hyper::body::Bytes
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<telemetry_snippets::SnippetAccepted>(&body_bytes).map_err(|e| {
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    let success = telemetry_snippets::snippet_accepted(global_context.clone(), post.snippet_telemetry_id).await;
+    Ok(Response::builder()
+      .status(StatusCode::OK)
+      .body(Body::from(json!({"success": success}).to_string()))
+      .unwrap())
+}
+
 async fn handle_v1_caps(
     global_context: Arc<ARwLock<GlobalContext>>,
 ) -> Result<Response<Body>, ScratchError> {
@@ -269,6 +284,8 @@ async fn handle_request(
         result = handle_v1_chat(global_context.clone(), body_bytes).await;
     } else if method == Method::POST && path == "/v1/telemetry-network" {
         result = handle_v1_telemetry_network(global_context.clone(), body_bytes).await;
+    } else if method == Method::POST && path == "/v1/snippet-accepted" {
+        result = handle_v1_snippet_accepted(global_context.clone(), body_bytes).await;
     } else if method == Method::GET && path == "/v1/caps" {
         result = handle_v1_caps(global_context.clone()).await;
     } else {
