@@ -45,12 +45,12 @@ def _update_and_dump_status(stats_dict: Dict[str, Any], new_status):
 
 
 def _file_accepted(reason, path):
-    with open(env.LOG_FILES_ACCEPTED_FTF, "a") as f:
+    with open(env.LOG_FILES_ACCEPTED_FTF, "a", encoding="utf-8") as f:
         f.write("%s %s\n" % (reason, path))
 
 
 def _file_rejected(reason, path):
-    with open(env.LOG_FILES_REJECTED_FTF, "a") as f:
+    with open(env.LOG_FILES_REJECTED_FTF, "a", encoding="utf-8") as f:
         f.write("%s %s\n" % (reason, path))
 
 
@@ -107,7 +107,7 @@ def loss_based_filter(
         for batch, stats in batch_iter_fn(finetune_datasource.local_plain([file], dataopts)):
             logits = forward(input=batch['input'])
             loss = float(loss_function(
-                logits=logits.to(th.bfloat16),  # more stable than float16 and takes much less memory than float32
+                logits=logits.to(th.float32),
                 labels=batch['labels'],
                 mask=batch['mask'],
             ).item())
