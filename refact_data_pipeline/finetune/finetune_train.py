@@ -91,7 +91,7 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
     with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
         initial_loss = json.load(f)["avg_loss"]
 
-    user_cfg = get_finetune_config(logger=traces.log)
+    user_cfg = get_finetune_config(models_db, logger=traces.log)
     cfg_builder = ConfigBuilder(base_config(user_cfg['model_name'], models_db))
     if user_cfg['use_heuristics']:
         traces.log("Retrieving dataset length per epoch, it may take a while...")

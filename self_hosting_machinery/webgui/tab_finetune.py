@@ -141,7 +141,7 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_finetune_config_and_runs(self):
         runs, _ = get_finetune_runs()
-        config = get_finetune_config()
+        config = get_finetune_config(self._models_db)
         result = {
             "finetune_runs": runs,
             "config": {
@@ -181,14 +181,14 @@ class TabFinetuneRouter(APIRouter):
             if dkey in validated and (validated[dkey] == dval or validated[dkey] is None):
                 del validated[dkey]
         with open(env.CONFIG_FINETUNE + ".tmp", "w") as f:
-            json.dump(post.dict(), f, indent=4)
+            json.dump(validated, f, indent=4)
         os.rename(env.CONFIG_FINETUNE + ".tmp", env.CONFIG_FINETUNE)
         return JSONResponse("OK")
 
     async def _tab_finetune_training_get(self):
         result = {
             "defaults": finetune_train_defaults,
-            "user_config": get_finetune_config(),
+            "user_config": get_finetune_config(self._models_db),
         }
         return Response(json.dumps(result, indent=4) + "\n")
 
