@@ -141,7 +141,7 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_finetune_config_and_runs(self):
         runs, _ = get_finetune_runs()
-        config = get_finetune_config()
+        config = get_finetune_config(self._models_db)
         result = {
             "finetune_runs": runs,
             "config": {
@@ -188,7 +188,7 @@ class TabFinetuneRouter(APIRouter):
     async def _tab_finetune_training_get(self):
         result = {
             "defaults": finetune_train_defaults,
-            "user_config": get_finetune_config(),
+            "user_config": get_finetune_config(self._models_db),
         }
         return Response(json.dumps(result, indent=4) + "\n")
 

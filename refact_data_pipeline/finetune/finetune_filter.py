@@ -149,7 +149,7 @@ def loss_based_filter(
 
 
 def pre_filtering(stats_dict, models_db: Dict[str, Any]):
-    finetune_cfg = get_finetune_config(logger=traces.log)
+    finetune_cfg = get_finetune_config(models_db, logger=traces.log)
 
     fcfg = {**finetune_filtering_defaults}
     if os.path.exists(env.CONFIG_HOW_TO_FILTER):
