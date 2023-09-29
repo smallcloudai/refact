@@ -45,12 +45,12 @@ def _update_and_dump_status(stats_dict: Dict[str, Any], new_status):
 
 
 def _file_accepted(reason, path):
-    with open(env.LOG_FILES_ACCEPTED_FTF, "a") as f:
+    with open(env.LOG_FILES_ACCEPTED_FTF, "a", encoding="utf-8") as f:
         f.write("%s %s\n" % (reason, path))
 
 
 def _file_rejected(reason, path):
-    with open(env.LOG_FILES_REJECTED_FTF, "a") as f:
+    with open(env.LOG_FILES_REJECTED_FTF, "a", encoding="utf-8") as f:
         f.write("%s %s\n" % (reason, path))
 
 

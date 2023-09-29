@@ -37,10 +37,7 @@ class ReadFileByFile:
         while 1:
             for j in self.js:
                 # print("READING", j["path"])
-                try:
-                    code = open(os.path.join(env.DIR_UNPACKED, j["path"])).read()
-                except UnicodeError:  # TODO: just skip the file for now
-                    continue
+                code = open(os.path.join(env.DIR_UNPACKED, j["path"]), encoding="utf-8").read()
                 yield {
                     "path": cut_zip_name(j),
                     "code": code,
