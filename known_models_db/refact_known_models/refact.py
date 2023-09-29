@@ -12,28 +12,4 @@ refact_mini_db = {
         "required_memory_mb": 6000,
         "filter_caps": ["Refact", "completion", "finetune"],
     },
-
-    "CONTRASTcode/medium/multi": {
-        "backend": "legacy",
-        "model_path_type": "huggingface",
-        "model_path": "smallcloudai/codify_medium_multi",
-        "diff_scratchpad_class": "refact_scratchpads:ScratchpadDiff",
-        "chat_scratchpad_class": None,
-        "model_class": "refact_models:CodifyModel",
-        "T": 2048,
-        "required_memory_mb": 3500,
-        "filter_caps": ["CONTRASTcode", "completion", "finetune"],
-    },
-
-    "CONTRASTcode/3b/multi": {
-        "backend": "legacy",
-        "model_path_type": "huggingface",
-        "model_path": "smallcloudai/codify_3b_multi",
-        "diff_scratchpad_class": "refact_scratchpads:ScratchpadDiff",
-        "chat_scratchpad_class": None,
-        "model_class": "refact_models:CodifyModel",
-        "T": 2048,
-        "required_memory_mb": 8500,
-        "filter_caps": ["CONTRASTcode", "completion", "finetune"],
-    },
 }
