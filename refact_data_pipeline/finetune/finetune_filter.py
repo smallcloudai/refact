@@ -107,7 +107,7 @@ def loss_based_filter(
         for batch, stats in batch_iter_fn(finetune_datasource.local_plain([file], dataopts)):
             logits = forward(input=batch['input'])
             loss = float(loss_function(
-                logits=logits.to(th.bfloat16),  # more stable than float16 and takes much less memory than float32
+                logits=logits.to(th.float32),
                 labels=batch['labels'],
                 mask=batch['mask'],
             ).item())
