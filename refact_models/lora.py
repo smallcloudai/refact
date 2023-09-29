@@ -1,5 +1,5 @@
 import math
-from typing import Optional, List
+from typing import Optional, List, Union
 
 import torch as th
 from torch.nn.init import kaiming_uniform_
@@ -49,6 +49,7 @@ class LoraLinear(LoraLayerMixin, th.nn.Module):
             lora_alpha: int = 1,
             lora_dropout: float = 0.0,
             init_scale: float = 0.0,
+            dummy_output: bool = False,
             **unused
     ):
         th.nn.Module.__init__(self)
@@ -58,6 +59,7 @@ class LoraLinear(LoraLayerMixin, th.nn.Module):
         if self.layer.bias is not None:
             self.layer.bias.requires_grad = False
         self.init_scale = init_scale
+        self.dummy_output = dummy_output
 
         self.out_features, self.in_features = self.layer.weight.shape
 
@@ -86,11 +88,17 @@ class LoraLinear(LoraLayerMixin, th.nn.Module):
     def bias(self) -> Optional[th.nn.Parameter]:
         return self.layer.bias
 
-    def forward(self, x: th.Tensor) -> th.Tensor:
+    def forward(self, x: th.Tensor) -> Union[th.Tensor, List[th.Tensor]]:
         if self.r > 0:
-            result1 = self.layer(x)
+            if not self.dummy_output:
+                result1 = self.layer(x)
+            else:
+                result1, *other = self.layer(x)
             result2 = result1 + self.lora_B(self.lora_A(self.lora_dropout(x))) * self.scaling
-            return result2
+            if not self.dummy_output:
+                return result2
+            else:
+                return result2, *other
         else:
             return self.layer(x)
 

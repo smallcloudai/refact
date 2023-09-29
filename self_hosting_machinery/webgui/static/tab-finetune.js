@@ -70,7 +70,7 @@ function render_model_select(force = false) {
             console.log('tab-host-models-get',data);
             model_selector.innerHTML = '';
             data.models.forEach(model => {
-                if(model.has_finetune) {
+                if(model.has_finetune && model.backend != "vllm") {
                     const new_option = new Option(model.name, model.name);
                     if(finetune_configs_and_runs.config.model_name === model.name) {
                         new_option.selected = true;
