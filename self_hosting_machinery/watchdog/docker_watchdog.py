@@ -40,13 +40,25 @@ compiling_now = ""
 
 
 def cfg_to_cmdline(cfg):
+    """
+    This allows for tasks to move across GPUs, if gpu has changed, than command line changes for the purpose of
+    restarting.
+    """
     return " ".join(cfg["command_line"]) + " @"+ "".join(":gpu%02d" % x for x in cfg["gpus"])
+
+
+def cfg_to_compile_key(cfg):
+    """
+    But to compile (download weights and build cuda kernels) the key should be the same regardless of gpu.
+    """
+    return " ".join(cfg["command_line"])
 
 
 class TrackedJob:
     def __init__(self, cfg):
         self.p: Optional[subprocess.Popen] = None
         self.cmdline_str = cfg_to_cmdline(cfg)
+        self.compile_str = cfg_to_compile_key(cfg)
         self.start_ts = 0
         self.cfg = cfg
         self.please_shutdown = False
@@ -73,18 +85,18 @@ class TrackedJob:
     def _start(self):
         if self.p is not None:
             return
-        self.set_status("starting")
         global compiling_now
         alt_env = os.environ.copy()
         cmdline = list(self.cfg["command_line"])
         if self.cfg.get("needs_compile", False):
             if compiling_now:
                 return
-            if self.cmdline_str in compile_unsuccessful:
+            if self.compile_str in compile_unsuccessful:
                 return
-            if self.cmdline_str not in compile_successful:
-                compiling_now = self.cmdline_str
+            if self.compile_str not in compile_successful:
+                compiling_now = self.compile_str
                 cmdline.append("--compile")
+        self.set_status("starting")
         CUDA_VISIBLE_DEVICES = ",".join(["%d" % x for x in self.cfg["gpus"]])
         alt_env["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
         self.start_ts = time.time()
@@ -149,14 +161,14 @@ class TrackedJob:
             else:
                 self.set_status("failed")
             # retcode -10 is SIGUSR1
-            if self.cmdline_str == compiling_now:
+            if self.compile_str == compiling_now:
                 compiling_now = None
                 if retcode == 0:
                     log("/finished compiling as recognized by watchdog")
-                    compile_successful.add(self.cmdline_str)
+                    compile_successful.add(self.compile_str)
                 else:
                     log("/finished compiling -- failed, probably unrecoverable, will not retry")
-                    compile_unsuccessful.add(self.cmdline_str)
+                    compile_unsuccessful.add(self.compile_str)
             self.p.communicate()
             self.p = None
             self.sent_sigusr1_ts = 0
