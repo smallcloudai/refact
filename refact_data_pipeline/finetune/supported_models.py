@@ -69,10 +69,10 @@ config = {
 
     "Refact/1.6B": {
         "lora_target_modules_mapping": {
-            "qkv": ["attn.q", "attn.k", "attn.v"],
+            "qkv": ["attn.q", "attn.kv"],
             "out": ["attn.c_proj"],
             "backproj": ["attn.c_proj"],
-            "mlp": ["mlp.linear_1", "mlp.c_proj", "mlp.linear_3"],
+            "mlp": ["mlp.gate_up_proj", "mlp.c_proj"],
         },
         "freeze_exceptions_mapping": {
             "wte": "wte",
