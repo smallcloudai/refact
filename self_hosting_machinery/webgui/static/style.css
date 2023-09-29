@@ -674,3 +674,68 @@ h3 {
 .form-control::-ms-input-placeholder {
     color: #dddddd !important;
 }
+.btn-hover {
+    opacity: 0 !important;
+    pointer-events: none;
+}
+.run-table tr:hover .btn-hover {
+    opacity: 1 !important;
+    pointer-events: auto;
+    z-index: 44;
+}
+.run-table-name {
+    position: relative;
+}
+.run-table-name span {
+    opacity: 0.35;
+    font-size: 10px;
+    display: block;
+    position: absolute;
+    margin-top: -6px;
+    font-weight: bold;
+}
+.table-checkpoints tr:hover .btn-hover {
+    opacity: 1 !important;
+    pointer-events: auto;
+}
+.table-checkpoints tr td:first-of-type {
+    width: 30px;
+}
+
+.use-model-pane {
+    background-color: white;
+    transition: background-color 0.5s ease-in-out;
+  }
+  
+  .run-checkpoint {
+    background-image: linear-gradient(to right, #FFFFFF, #ffcd29ab);
+    background-size: 100% 100%;
+    animation: gradientBackground 1s linear infinite, fadeInOut 0.1s ease-out;
+  }
+  
+  @keyframes gradientBackground {
+    0% {
+      background-position: -50% 50%;
+    }
+    100% {
+      background-position: 100% 50%;
+    }
+  }
+  
+  @keyframes fadeInOut {
+    0%, 100% {
+      background-color: transparent;
+    }
+    50% {
+      background-color: white;
+    }
+  }
+  
+  .redact {
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;
+}
+  
