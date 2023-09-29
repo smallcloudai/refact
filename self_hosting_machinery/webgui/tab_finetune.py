@@ -181,7 +181,7 @@ class TabFinetuneRouter(APIRouter):
             if dkey in validated and (validated[dkey] == dval or validated[dkey] is None):
                 del validated[dkey]
         with open(env.CONFIG_FINETUNE + ".tmp", "w") as f:
-            json.dump(post.dict(), f, indent=4)
+            json.dump(validated, f, indent=4)
         os.rename(env.CONFIG_FINETUNE + ".tmp", env.CONFIG_FINETUNE)
         return JSONResponse("OK")
 
