@@ -266,8 +266,6 @@ class CompletionsRouter(APIRouter):
                 if rec_third_party:
                     rec_model = rec_modelcap
                 else:
-                    if rec_modelcap == "CONTRASTcode":
-                        continue
                     rec_model, err_msg = static_resolve_model(rec_modelcap, self._inference_queue)
                     assert err_msg == "", err_msg
                 rec_function_name = f"{rec.function_name}-{rec_modelcap}"
