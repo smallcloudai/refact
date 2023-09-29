@@ -604,8 +604,8 @@ def apply_flash_mha_to_refact_model(model):
             output_attentions: Optional[bool] = False
     ):
         q = einops.rearrange(self.q(x), "b t (h d) -> b t h d", h=self.num_heads)
-        k = einops.rearrange(self.k(x), "b t (h d) -> b t h d", h=1)
-        v = einops.rearrange(self.v(x), "b t (h d) -> b t h d", h=1)
+        kv = einops.rearrange(self.kv(x), "b t (h d) -> b t h d", h=2)
+        k, v = kv.chunk(2, dim=2)
 
         attn_output = flash_attn_func(
             q, k, v, self.scale_factor, True, True
