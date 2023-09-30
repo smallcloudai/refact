@@ -35,7 +35,7 @@ async fn _get_caps_and_tokenizer(
     let tokenizer_arc = match cx_locked.tokenizer_map.get(&model_name) {
         Some(arc) => arc.clone(),
         None => {
-            let tokenizer_cache_dir = std::path::PathBuf::from(cache_dir); //.join("tokenizers");
+            let tokenizer_cache_dir = std::path::PathBuf::from(cache_dir).join("tokenizers");
             tokio::fs::create_dir_all(&tokenizer_cache_dir)
                 .await
                 .expect("failed to create cache dir");
@@ -288,6 +288,13 @@ async fn handle_request(
         result = handle_v1_snippet_accepted(global_context.clone(), body_bytes).await;
     } else if method == Method::GET && path == "/v1/caps" {
         result = handle_v1_caps(global_context.clone()).await;
+    } else if method == Method::GET && path == "/v1/graceful-shutdown" {
+        let gcx_locked = global_context.read().await;
+        gcx_locked.ask_shutdown_sender.lock().unwrap().send(format!("going-down")).unwrap();
+        result = Ok(Response::builder()
+            .header("Content-Type", "application/json")
+            .body(Body::from(json!({"success": true}).to_string()))
+            .unwrap());
     } else {
         result = Err(ScratchError::new(StatusCode::NOT_FOUND, format!("no handler for {}", path)));
     }

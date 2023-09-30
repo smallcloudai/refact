@@ -1,7 +1,7 @@
 use tracing::{info, error};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock as ARwLock;
 use tokenizers::Tokenizer;
@@ -36,6 +36,7 @@ pub struct CommandLine {
 #[derive(Debug)]
 pub struct GlobalContext {
     pub http_client: reqwest::Client,
+    pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
     pub cache_dir: PathBuf,
     pub tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
     pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
@@ -108,10 +109,12 @@ pub async fn try_load_caps_quickly_if_not_present(
 
 pub async fn create_global_context(
     cache_dir: PathBuf,
-) -> (Arc<ARwLock<GlobalContext>>, CommandLine) {
+) -> (Arc<ARwLock<GlobalContext>>, std::sync::mpsc::Receiver<String>, CommandLine) {
     let cmdline = CommandLine::from_args();
+    let (ask_shutdown_sender, ask_shutdown_receiver) = std::sync::mpsc::channel::<String>();
     let cx = GlobalContext {
         http_client: reqwest::Client::new(),
+        ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
         cache_dir,
         tokenizer_map: HashMap::new(),
         caps: None,
@@ -120,5 +123,5 @@ pub async fn create_global_context(
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_storage::Storage::new())),
     };
-    (Arc::new(ARwLock::new(cx)), cmdline)
+    (Arc::new(ARwLock::new(cx)), ask_shutdown_receiver, cmdline)
 }

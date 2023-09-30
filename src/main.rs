@@ -29,7 +29,7 @@ mod lsp;
 async fn main() {
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
     let cache_dir = home_dir.join(".cache/refact");
-    let (gcx, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
+    let (gcx, ask_shutdown_receiver, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
     let (logs_writer, _guard) = if cmdline.logs_stderr {
         tracing_appender::non_blocking(std::io::stderr())
     } else {
@@ -104,7 +104,15 @@ async fn main() {
         }
     });
 
-    tokio::signal::ctrl_c().await.unwrap();  // most of the time is spent here
+    let ctrl_c = tokio::signal::ctrl_c();
+    tokio::select!{
+        _ = ctrl_c => {
+            info!("SIGINT signal received");
+        }
+        _ = tokio::task::spawn_blocking(move || ask_shutdown_receiver.recv()) => {
+            info!("graceful shutdown to store telemetry");
+        }
+    }
 
     info!("Ctrl+C");
     http_server_task.abort();
