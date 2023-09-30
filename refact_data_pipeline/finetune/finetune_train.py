@@ -149,7 +149,7 @@ def create_data(model_name, cfg, enc) -> Tuple[Any, Optional[Any]]:
     has_train_files = os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_train)) and \
                       len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_train)))) > 0
     if not has_train_files:
-        raise RuntimeError("No train files have been provided")
+        raise RuntimeError("No train files provided")
 
     has_test_files = os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_test)) \
                      and len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_test)))) > 0
@@ -157,7 +157,7 @@ def create_data(model_name, cfg, enc) -> Tuple[Any, Optional[Any]]:
         test_ds = test_pipe(filtered_test, test_dataopts)
         test_ds = list(test_ds)
     else:
-        traces.log("Warning: no test set has been provided")
+        traces.log("Warning: no test set provided, the number of files is zero")
         test_ds = None
     return train_ds, test_ds
 
@@ -363,19 +363,19 @@ def main(models_db: Dict[str, Any]):
     save_status_json(status_dict, "working")
 
     def catch_sigusr1(signum, frame):
-        logging.error("Interrupted: caught SIGUSR1")
+        logging.info("catched SIGUSR1, interrupted")
         traces.log("Interrupted")
         status_dict["error"] = "interrupted"
         save_status_json(status_dict, "interrupted")
-        sys.exit(99)
+        exit(99)
 
     signal.signal(signal.SIGUSR1, catch_sigusr1)
     try:
         finetune(status_dict, models_db)
         save_status_json(status_dict, "finished")
     except SystemExit:
-        # NOTE: catched sigusr1
-        pass
+        # catched sigusr1, interrupt by watchdog
+        exit(99)  # this has to be there, even if catch_sigusr1() already called exit with 99, otherwise exit code is zero
     except BaseException as e:  # BaseException includes KeyboardInterrupt
         if "error" not in status_dict:  # if there is, a more detailed error is already in place
             t = str(e) or str(type(e))

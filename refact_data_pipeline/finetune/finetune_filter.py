@@ -254,9 +254,10 @@ def main(models_db: Dict[str, Any]):
     stats_dict = get_finetune_filter_stat(default=True)
 
     def catch_sigusr1(signum, frame):
+        logging.info("catched SIGUSR1, interrupted")
         stats_dict["error"] = "interrupted"
         _update_and_dump_status(stats_dict, "interrupted")  # saves whatever numbers reached so far
-        sys.exit(99)
+        exit(99)
 
     signal.signal(signal.SIGUSR1, catch_sigusr1)
 
@@ -273,9 +274,13 @@ def main(models_db: Dict[str, Any]):
         pre_filtering(stats_dict, models_db)
         _update_and_dump_status(stats_dict, "finished")
     except SystemExit:
-        # NOTE: catched sigusr1
-        pass
-    except BaseException as e:  # BaseException includes KeyboardInterrupt
+        # catched sigusr1, interrupt by watchdog
+        exit(99)  # this has to be there, even if catch_sigusr1() already called exit with 99, otherwise exit code is zero
+    except KeyboardInterrupt:
+        # interrupt by user
+        # 99 is code for interrupted
+        exit(99)
+    except Exception as e:
         if traces.context():
             logging.error("FAILED finetune filter at %s" % traces.context().path)
         if "error" not in stats_dict:  # if there is, a more detailed error is already in place
@@ -284,8 +289,10 @@ def main(models_db: Dict[str, Any]):
             logging.error(t)
             _update_and_dump_status(stats_dict, "failed")
             exit(1)
-        if not isinstance(e, ValueError):  # don't print stack for ValueError which is used for mundane data problems
-            raise e
+        if isinstance(e, ValueError):  # don't print stack for ValueError which is used for mundane data problems
+            exit(1)
+        raise e
+    # finetune_sequence relies on exit code to continue or stop
 
 
 if __name__ == "__main__":
