@@ -1,8 +1,4 @@
 use tracing::{error, info};
-use tower_lsp::{LspService, Server};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock as ARwLock;
 use tokio::net::TcpListener;
 use std::io::Write;
 use tracing_appender;
@@ -46,6 +42,7 @@ async fn main() {
         .with_line_number(true)
         .compact()
         .init();
+    info!("started");
 
     let gcx2 = gcx.clone();
     let gcx3 = gcx.clone();
@@ -62,68 +59,33 @@ async fn main() {
         }
     });
 
-    let lsp_task = tokio::spawn(async move {
-        if cmdline.lsp_port > 0 {
-            let addr: std::net::SocketAddr = ([127, 0, 0, 1], cmdline.lsp_port).into();
-            let listener: TcpListener = TcpListener::bind(&addr).await.unwrap();
-            info!("LSP listening on {}", listener.local_addr().unwrap());
-            loop {
-                // possibly wrong code, look at
-                // tower-lsp-0.20.0/examples/tcp.rs
-                match listener.accept().await {
-                    Ok((s, addr)) => {
-                        info!("new client connection from {}", addr);
-                        let (read, write) = tokio::io::split(s);
-                        // #[cfg(feature = "runtime-agnostic")]
-                        // let (read, write) = (read.compat(), write.compat_write());
-                        let (lsp_service, socket) = LspService::new(|client| lsp::Backend {
-                            gcx: gcx2.clone(),
-                            client,
-                            document_map: Arc::new(ARwLock::new(HashMap::new())),
-                            workspace_folders: Arc::new(ARwLock::new(None)),
-                        });
-                        Server::new(read, write, socket).serve(lsp_service).await;
-                    }
-                    Err(e) => {
-                        error!("Error accepting client connection: {}", e);
-                    }
-                }
+    if cmdline.lsp_stdin_stdout != 0 {
+        let stdin = tokio::io::stdin();
+        let stdout = tokio::io::stdout();
+        let (lsp_service, socket) = lsp::build_lsp_service(gcx2.clone());
+        tower_lsp::Server::new(stdin, stdout, socket).serve(lsp_service).await;
+        info!("LSP loop exit");
+    } else {
+        let ctrl_c = tokio::signal::ctrl_c();
+        tokio::select!{
+            _ = ctrl_c => {
+                info!("SIGINT signal received");
             }
-        } else if cmdline.lsp_stdin_stdout != 0 {
-            let (service, socket) = LspService::build(|client| lsp::Backend {
-                gcx: gcx2.clone(),
-                client,
-                document_map: Arc::new(ARwLock::new(HashMap::new())),
-                workspace_folders: Arc::new(ARwLock::new(None)),
-            })
-            .custom_method("llm-ls/getCompletions", lsp::Backend::get_completions)
-            .finish();
-            let stdin = tokio::io::stdin();
-            let stdout = tokio::io::stdout();
-            Server::new(stdin, stdout, socket).serve(service).await;
-        }
-    });
-
-    let ctrl_c = tokio::signal::ctrl_c();
-    tokio::select!{
-        _ = ctrl_c => {
-            info!("SIGINT signal received");
-        }
-        _ = tokio::task::spawn_blocking(move || ask_shutdown_receiver.recv()) => {
-            info!("graceful shutdown to store telemetry");
+            _ = tokio::task::spawn_blocking(move || ask_shutdown_receiver.recv()) => {
+                info!("graceful shutdown to store telemetry");
+            }
         }
     }
 
-    info!("Ctrl+C");
     http_server_task.abort();
     let _ = http_server_task.await;  // typically is Err cancelled
     caps_reload_task.abort();
     let _ = caps_reload_task.await;
     tele_backgr_task.abort();
     let _ = tele_backgr_task.await;
-    lsp_task.abort();
-    let _ = lsp_task.await;
+    // lsp_task.abort();
+    // let _ = lsp_task.await;
     info!("saving telemetry without sending, so should be quick");
     telemetry_storage::telemetry_full_cycle(gcx3.clone(), true).await;
-    info!("bb");
+    info!("bb\n");
 }

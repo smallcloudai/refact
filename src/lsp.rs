@@ -1,15 +1,14 @@
 use ropey::Rope;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::time::Instant;
-// use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock as ARwLock;
 use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
-use tower_lsp::{Client, LanguageServer};
-use tracing::{debug, error, info};
+use tower_lsp::{ClientSocket, LanguageServer, LspService};
+use tracing::info;
 
 use crate::telemetry_snippets;
 use crate::global_context;
@@ -65,194 +64,44 @@ impl Document {
 #[derive(Debug)]
 pub struct Backend {
     pub gcx: Arc<ARwLock<global_context::GlobalContext>>,
-    pub client: Client,
+    pub client: tower_lsp::Client,
     pub document_map: Arc<ARwLock<HashMap<String, Document>>>,
     pub workspace_folders: Arc<ARwLock<Option<Vec<WorkspaceFolder>>>>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Completion {
-    pub generated_text: String,
-}
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Ide {
-    Neovim,
-    VSCode,
-    JetBrains,
-    Emacs,
-    Jupyter,
-    Sublime,
-    VisualStudio,
-    #[default]
-    Unknown,
-}
-
-impl Display for Ide {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.serialize(f)
-    }
-}
-
-fn parse_ide<'de, D>(d: D) -> std::result::Result<Ide, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Deserialize::deserialize(d).map(|b: Option<_>| b.unwrap_or(Ide::Unknown))
-}
-
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct RequestParams {
-    pub max_new_tokens: u32,
-    pub temperature: f32,
-    pub do_sample: bool,
-    pub top_p: f32,
-    pub stop_tokens: Option<Vec<String>>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct CompletionParams1 {
-    #[serde(flatten)]
-    pub text_document_position: TextDocumentPositionParams,
-    pub request_params: RequestParams,
-    #[serde(default)]
-    #[serde(deserialize_with = "parse_ide")]
-    pub ide: Ide,
-    // fim: FimParams,
-    pub api_token: Option<String>,
-    pub model: String,
-    pub tokens_to_clear: Vec<String>,
-    // tokenizer_config: Option<TokenizerConfig>,
-    pub context_window: usize,
-    pub tls_skip_verify_insecure: bool,
-}
-
-fn internal_error<E: Display>(err: E) -> Error {
-    let err_msg = err.to_string();
-    error!(err_msg);
-    Error {
-        code: tower_lsp::jsonrpc::ErrorCode::InternalError,
-        message: err_msg.into(),
-        data: None,
-    }
-}
-
-// async fn request_completion(
-//     http_client: &reqwest::Client,
-//     ide: Ide,
-//     model: &str,
-//     request_params: RequestParams,
-//     api_token: Option<&String>,
-//     prompt: String,
-// ) -> Result<Vec<Generation>> {
-//     let res = http_client
-//         .post(build_url(model))
-//         .json(&APIRequest {
-//             inputs: prompt,
-//             parameters: request_params.into(),
-//         })
-//         .headers(build_headers(api_token, ide)?)
-//         .send()
-//         .await
-//         .map_err(internal_error)?;
-
-//     match res.json().await.map_err(internal_error)? {
-//         APIResponse::Generation(gen) => Ok(vec![gen]),
-//         APIResponse::Generations(gens) => Ok(gens),
-//         APIResponse::Error(err) => Err(internal_error(err)),
-//     }
+// Maybe support llm-vscode nonstandard call?
+// #[derive(Clone, Debug, Deserialize, Serialize)]
+// pub struct RequestParams {
+//     pub max_new_tokens: u32,
+//     pub temperature: f32,
+//     pub do_sample: bool,
+//     pub top_p: f32,
+//     pub stop_tokens: Option<Vec<String>>,
+// }
+// #[derive(Debug, Deserialize, Serialize)]
+// pub struct CompletionParams1 {
+//     #[serde(flatten)]
+//     pub text_document_position: TextDocumentPositionParams,
+//     pub request_params: RequestParams,
+//     #[serde(default)]
+//     #[serde(deserialize_with = "parse_ide")]
+//     pub ide: Ide,
+//     // fim: FimParams,
+//     pub api_token: Option<String>,
+//     pub model: String,
+//     pub tokens_to_clear: Vec<String>,
+//     // tokenizer_config: Option<TokenizerConfig>,
+//     pub context_window: usize,
+//     pub tls_skip_verify_insecure: bool,
 // }
 
 impl Backend {
-    pub async fn get_completions(&self, params: CompletionParams1) -> Result<Vec<Completion>> {
-        info!("get_completions {params:?}");
-        let document_map = self.document_map.read().await;
-
-        let document = document_map
-            .get(params.text_document_position.text_document.uri.as_str())
-            .ok_or_else(|| internal_error("failed to find document"))?;
-        info!("document: {:?}", document);
-        // let tokenizer = get_tokenizer(
-        //     &params.model,
-        //     &mut *self.tokenizer_map.write().await,
-        //     params.tokenizer_config,
-        //     &self.http_client,
-        //     &self.cache_dir,
-        //     params.api_token.as_ref(),
-        //     params.ide,
-        // )
-        // .await?;
-        // let prompt = build_prompt(
-        //     params.text_document_position.position,
-        //     &document.text,
-        //     &params.fim,
-        //     tokenizer,
-        //     params.context_window,
-        // )?;
-
-        // let http_client = if params.tls_skip_verify_insecure {
-        //     info!("tls verification is disabled");
-        //     &self.unsafe_http_client
-        // } else {
-        //     &self.http_client
-        // };
-        // let result = request_completion(
-        //     http_client,
-        //     params.ide,
-        //     &params.model,
-        //     params.request_params,
-        //     params.api_token.as_ref(),
-        //     prompt,
-        // )
-        // .await?;
-
-        Ok(vec![Completion { generated_text: "hello".to_owned() }])
-    }
+    // pub async fn get_completions(&self, params: CompletionParams1) -> Result<Vec<Completion>> {
+    //     Ok(vec![Completion { generated_text: "hello".to_owned() }])
+    // }
 }
 
-
-// pub struct CompletionOptions {
-//     /// The server provides support to resolve additional information for a completion item.
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub resolve_provider: Option<bool>,
-
-//     /// Most tools trigger completion request automatically without explicitly
-//     /// requesting it using a keyboard shortcut (e.g. Ctrl+Space). Typically they
-//     /// do so when the user starts to type an identifier. For example if the user
-//     /// types `c` in a JavaScript file code complete will automatically pop up
-//     /// present `console` besides others as a completion item. Characters that
-//     /// make up identifiers don't need to be listed here.
-//     ///
-//     /// If code complete should automatically be trigger on characters not being
-//     /// valid inside an identifier (for example `.` in JavaScript) list them in
-//     /// `triggerCharacters`.
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub trigger_characters: Option<Vec<String>>,
-
-//     /// The list of all possible characters that commit a completion. This field
-//     /// can be used if clients don't support individual commit characters per
-//     /// completion item. See client capability
-//     /// `completion.completionItem.commitCharactersSupport`.
-//     ///
-//     /// If a server provides both `allCommitCharacters` and commit characters on
-//     /// an individual completion item the ones on the completion item win.
-//     ///
-//     /// @since 3.2.0
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub all_commit_characters: Option<Vec<String>>,
-
-//     #[serde(flatten)]
-//     pub work_done_progress_options: WorkDoneProgressOptions,
-
-//     /// The server supports the following `CompletionItem` specific
-//     /// capabilities.
-//     ///
-//     /// @since 3.17.0
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub completion_item: Option<CompletionOptionsCompletionItem>,
-// }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
@@ -349,7 +198,7 @@ impl LanguageServer for Backend {
     }
 
     async fn shutdown(&self) -> Result<()> {
-        let _ = debug!("shutdown");
+        let _ = info!("shutdown");
         Ok(())
     }
 
@@ -362,68 +211,16 @@ impl LanguageServer for Backend {
     }
 }
 
-// fn build_headers(api_token: Option<&String>, ide: Ide) -> Result<HeaderMap> {
-//     let mut headers = HeaderMap::new();
-//     let user_agent = format!("{NAME}/{VERSION}; rust/unknown; ide/{ide:?}");
-//     headers.insert(
-//         USER_AGENT,
-//         HeaderValue::from_str(&user_agent).map_err(internal_error)?,
-//     );
-
-//     if let Some(api_token) = api_token {
-//         headers.insert(
-//             AUTHORIZATION,
-//             HeaderValue::from_str(&format!("Bearer {api_token}")).map_err(internal_error)?,
-//         );
-//     }
-
-//     Ok(headers)
-// }
-
-// #[tokio::main]
-// async fn main() {
-//     let stdin = tokio::io::stdin();
-//     let stdout = tokio::io::stdout();
-
-//     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
-//     let cache_dir = home_dir.join(".cache/llm_ls");
-//     tokio::fs::create_dir_all(&cache_dir)
-//         .await
-//         .expect("failed to create cache dir");
-
-//     let log_file = rolling::never(&cache_dir, "llm-ls.log");
-//     let builder = tracing_subscriber::fmt()
-//         .with_writer(log_file)
-//         .with_target(true)
-//         .with_line_number(true)
-//         .with_env_filter(
-//             EnvFilter::try_from_env("LLM_LOG_LEVEL").unwrap_or_else(|_| EnvFilter::new("warn")),
-//         );
-
-//     builder
-//         .json()
-//         .flatten_event(true)
-//         .with_current_span(false)
-//         .with_span_list(true)
-//         .init();
-
-//     let http_client = reqwest::Client::new();
-//     let unsafe_http_client = reqwest::Client::builder()
-//         .danger_accept_invalid_certs(true)
-//         .build()
-//         .expect("failed to build reqwest unsafe client");
-
-//     let (service, socket) = LspService::build(|client| Backend {
-//         cache_dir,
-//         client,
-//         document_map: Arc::new(ARwLock::new(HashMap::new())),
-//         http_client,
-//         unsafe_http_client,
-//         workspace_folders: Arc::new(ARwLock::new(None)),
-//         tokenizer_map: Arc::new(ARwLock::new(HashMap::new())),
-//     })
-//     .custom_method("llm-ls/getCompletions", Backend::get_completions)
-//     .finish();
-
-//     Server::new(stdin, stdout, socket).serve(service).await;
-// }
+pub fn build_lsp_service(
+    gcx: Arc<ARwLock<global_context::GlobalContext>>,
+) -> (LspService::<Backend>, ClientSocket) {
+    let (lsp_service, socket) = LspService::build(|client| Backend {
+        gcx,
+        client,
+        document_map: Arc::new(ARwLock::new(HashMap::new())),
+        workspace_folders: Arc::new(ARwLock::new(None)),
+    })
+    // .custom_method("llm-ls/getCompletions", Backend::get_completions)
+    .finish();
+    (lsp_service, socket)
+}
