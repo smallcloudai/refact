@@ -324,15 +324,14 @@ pub async fn start_server(
             }))
         }
     });
-    let port = global_context.read().await.cmdline.port;
+    let port = global_context.read().await.cmdline.http_port;
     let addr = ([127, 0, 0, 1], port).into();
     let builder = Server::try_bind(&addr).map_err(|e| {
         write!(std::io::stderr(), "PORT_BUSY {}\n", e).unwrap();
         std::io::stderr().flush().unwrap();
         format!("port busy, address {}: {}", addr, e)
     })?;
-    write!(std::io::stderr(), "STARTED port={}\n", port).unwrap();
-    std::io::stderr().flush().unwrap();
+    info!("HTTP server listening on {}", addr);
     let server = builder.serve(make_svc);
     let resp = server.await.map_err(|e| format!("HTTP server error: {}", e));
     resp
