@@ -61,7 +61,7 @@ async fn main() {
     });
 
     let lsp_task = tokio::spawn(async move {
-        if cmdline.lsp_port > 0 {
+        if cmdline.lsp_stdin_stdout == 0 && cmdline.lsp_port > 0 {
             let addr: std::net::SocketAddr = ([127, 0, 0, 1], cmdline.lsp_port).into();
             let listener: TcpListener = TcpListener::bind(&addr).await.unwrap();
             info!("LSP listening on {}", listener.local_addr().unwrap());
