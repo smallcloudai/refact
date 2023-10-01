@@ -26,6 +26,8 @@ pub struct CommandLine {
     pub enduser_client_version: String,
     #[structopt(long, short="b", help="Send basic telemetry (counters and errors)")]
     pub basic_telemetry: bool,
+    #[structopt(long, default_value="8002", help="Bind 127.0.0.1:<port> and act as an LSP server. This is compatible with having an HTTP server at the same time.")]
+    pub lsp_port: u16,
     #[structopt(long, default_value="0", help="Act as an LSP server, use stdin stdout for communication. This is compatible with having an HTTP server at the same time. But it's not compatible with LSP port.")]
     pub lsp_stdin_stdout: u16,
 }

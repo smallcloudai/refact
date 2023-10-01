@@ -46,6 +46,7 @@ async fn main() {
 
     let gcx2 = gcx.clone();
     let gcx3 = gcx.clone();
+    let gcx4 = gcx.clone();
     let caps_reload_task = tokio::spawn(global_context::caps_background_reload(gcx.clone()));
     let tele_backgr_task = tokio::spawn(telemetry_storage::telemetry_background_task(gcx.clone()));
     let http_server_task = tokio::spawn(async move {
@@ -59,10 +60,33 @@ async fn main() {
         }
     });
 
-    if cmdline.lsp_stdin_stdout != 0 {
+    let lsp_task = tokio::spawn(async move {
+        if cmdline.lsp_port > 0 {
+            let addr: std::net::SocketAddr = ([127, 0, 0, 1], cmdline.lsp_port).into();
+            let listener: TcpListener = TcpListener::bind(&addr).await.unwrap();
+            info!("LSP listening on {}", listener.local_addr().unwrap());
+            loop {
+                // possibly wrong code, look at
+                // tower-lsp-0.20.0/examples/tcp.rs
+                match listener.accept().await {
+                    Ok((s, addr)) => {
+                        info!("new client connection from {}", addr);
+                        let (read, write) = tokio::io::split(s);
+                        let (lsp_service, socket) = lsp::build_lsp_service(gcx2.clone());
+                        tower_lsp::Server::new(read, write, socket).serve(lsp_service).await;
+                    }
+                    Err(e) => {
+                        error!("Error accepting client connection: {}", e);
+                    }
+                }
+            }
+        }
+    });
+
+    if cmdline.lsp_stdin_stdout != 0 && cmdline.lsp_port == 0 {
         let stdin = tokio::io::stdin();
         let stdout = tokio::io::stdout();
-        let (lsp_service, socket) = lsp::build_lsp_service(gcx2.clone());
+        let (lsp_service, socket) = lsp::build_lsp_service(gcx3.clone());
         tower_lsp::Server::new(stdin, stdout, socket).serve(lsp_service).await;
         info!("LSP loop exit");
     } else {
@@ -83,9 +107,9 @@ async fn main() {
     let _ = caps_reload_task.await;
     tele_backgr_task.abort();
     let _ = tele_backgr_task.await;
-    // lsp_task.abort();
-    // let _ = lsp_task.await;
+    lsp_task.abort();
+    let _ = lsp_task.await;
     info!("saving telemetry without sending, so should be quick");
-    telemetry_storage::telemetry_full_cycle(gcx3.clone(), true).await;
+    telemetry_storage::telemetry_full_cycle(gcx4.clone(), true).await;
     info!("bb\n");
 }

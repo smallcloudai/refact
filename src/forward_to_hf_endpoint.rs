@@ -6,6 +6,9 @@ use reqwest_eventsource::EventSource;
 use serde_json::json;
 use crate::call_validation::SamplingParameters;
 
+// Idea: use USER_AGENT
+// let user_agent = format!("{NAME}/{VERSION}; rust/unknown; ide/{ide:?}");
+
 
 pub async fn forward_to_hf_style_endpoint(
     save_url: &mut String,
