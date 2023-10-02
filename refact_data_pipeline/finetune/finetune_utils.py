@@ -46,12 +46,11 @@ def get_finetune_runs():
         if d["status"] not in ["finished", "interrupted", "failed"]:
             # NOTE: every time we write status of any stage of filtering progress, we touch LORA_LOGDIR
             mtime = os.path.getmtime(dir_path)
-            if mtime + 300 > time.time():
-                continue
-            if d["status"] in ["unknown"]:
-                d["status"] = "interrupted"
-            else:
-                d["status"] = "failed"
+            if mtime + 300 < time.time():
+                if d["status"] in ["unknown"]:
+                    d["status"] = "interrupted"
+                else:
+                    d["status"] = "failed"
         d["checkpoints"] = []
         checkpoints_dir = os.path.join(dir_path, "checkpoints")
         if os.path.isdir(checkpoints_dir):
