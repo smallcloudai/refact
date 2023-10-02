@@ -104,7 +104,16 @@ def loss_based_filter(
             stats_dict["rejected"] += 1
             continue
 
-        for batch, stats in batch_iter_fn(finetune_datasource.local_plain([file], dataopts)):
+        file_iter = iter(batch_iter_fn(finetune_datasource.local_plain([file], dataopts)))
+        exception = None
+        while True:
+            try:
+                batch, stats = next(file_iter)
+            except StopIteration:
+                break
+            except Exception as e:
+                exception = e
+                break
             logits = forward(input=batch['input'])
             loss = float(loss_function(
                 logits=logits.to(th.float32),
@@ -115,6 +124,13 @@ def loss_based_filter(
                 traces.log(f"Skipping invalid loss={loss:.2f} value in file {file['path']}")
             else:
                 file_losses.append(loss)
+
+        if exception is not None:
+            traces.log("REJECTED FILTER %-100s %s" % (file["path"], str(exception)))
+            rejected.add(file["path"])
+            _file_rejected(f"FILTER1 {exception}", file["path"])
+            stats_dict["rejected"] += 1
+            continue
 
         if len(file_losses) == 0:
             traces.log("REJECTED FILTER %-100s empty" % file["path"])
