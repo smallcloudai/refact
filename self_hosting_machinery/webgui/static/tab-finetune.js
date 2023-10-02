@@ -30,6 +30,8 @@ let select_model_panel,
 let current_accepted,
     current_rejected;
 
+let settings_error = false;
+
 function tab_finetune_get() {
     fetch("tab-finetune-get")
     .then(function (response) {
@@ -432,7 +434,6 @@ function get_finetune_settings(defaults = false) {
         check_heuristics();
     })
    .catch(error_data => {
-        get_finetune_settings(true);
         console.log('Error:', error_data);
     });
 }
@@ -472,6 +473,19 @@ function change_finetune_model() {
     })
     .catch(error_data => {
         console.log('Error:', error_data);
+        if(error_data && !settings_error) {
+            let scan_toast = document.querySelector('.finetune-tab-settings-error-toast');
+            const settings_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
+            document.querySelector('.finetune-tab-settings-error-toast .toast-body').innerHTML = error_data;
+            settings_error_toast.show();
+            settings_error = true;
+
+            const toast_close = document.querySelector('.finetune-tab-settings-error-toast-close');
+            toast_close.addEventListener('click', function() {
+                document.querySelector('.finetune-tab-settings-error-toast .toast-body').innerHTML = '';
+                settings_error = false;
+            });
+        }
     });
 }
 
