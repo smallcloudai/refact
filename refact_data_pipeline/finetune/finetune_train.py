@@ -53,6 +53,7 @@ def save_status_json(status_dict, status_string):
     rank = 0
     if rank != 0:
         return
+    traces.touch()
     env.report_status("ftune", status_string)
     status_dict["status"] = status_string
     if not traces.context():
