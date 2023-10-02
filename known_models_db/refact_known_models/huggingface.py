@@ -124,7 +124,7 @@ huggingface_mini_db = {
         "T": 2048,
         "filter_caps": ["completion"],
     },
-    "wizardlm/30b/4bit": {
+    "wizardlm/30b": {
         "backend": "transformers",
         "model_path": "TheBloke/WizardLM-30B-fp16",
         "diff_scratchpad_class": None,
@@ -134,6 +134,5 @@ huggingface_mini_db = {
         },
         "T": 2048,
         "filter_caps": ["wizardlm"],
-        "hidden": True,   # only for debugging because wip on sharding
      },
 }

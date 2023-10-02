@@ -132,14 +132,13 @@ function render_models_assigned(models) {
         const row = document.createElement('tr');
         row.setAttribute('data-model',index);
         const model_name = document.createElement("td");
+        const completion = document.createElement("td");
         const select_gpus = document.createElement("td");
-        const gpus = document.createElement("td");
-        const gpus_input = document.createElement("input");
+        const gpus_share = document.createElement("td");
         const del = document.createElement("td");
-        const del_button = document.createElement("button");
+
         model_name.textContent = index;
 
-        const completion = document.createElement("td");
         if (models_info[index].hasOwnProperty('has_completion') && models_info[index].has_completion) {
             const completion_input = document.createElement("input");
             completion_input.setAttribute('type','radio');
@@ -155,47 +154,42 @@ function render_models_assigned(models) {
             });
             completion.appendChild(completion_input);
         }
-        let checked_1 = '', checked_2 = '', checked_4 = '';
-        if(models_info[index].hasOwnProperty('gpus_shard')) {
-            switch(models[index].gpus_shard) {
-                case 1:
-                    checked_1 = 'checked';
-                    break;
-                case 2:
-                    checked_2 = 'checked';
-                    break;
-                case 4:
-                    checked_4 = 'checked';
-                    break;        
-                default:
-                    break;
-            }
+
+         if (models_info[index].hasOwnProperty('has_sharding') && models_info[index].has_sharding) {
+            const select_gpus_div = document.createElement("div");
+            select_gpus_div.setAttribute("class", "btn-group btn-group-sm");
+            select_gpus_div.setAttribute("role", "group");
+            select_gpus_div.setAttribute("aria-label", "basic radio toggle button group");
+
+            [1, 2, 4].forEach((gpus_shard_n) => {
+                const input_name = `gpu-${index}`;
+                const input_id = `${input_name}-${gpus_shard_n}`;
+
+                const input = document.createElement("input");
+                input.setAttribute("type", "radio");
+                input.setAttribute("class", "gpu-switch btn-check");
+                input.setAttribute("name", input_name);
+                input.setAttribute("id", input_id);
+                if (models_data.model_assign[index].gpus_shard === gpus_shard_n) {
+                    input.checked = true;
+                }
+
+                const label = document.createElement("label");
+                label.setAttribute("class", "btn btn-outline-primary");
+                label.setAttribute("for", input_id);
+                label.innerHTML = gpus_shard_n;
+
+                input.addEventListener('change', () => {
+                    models_data.model_assign[index].gpus_shard = gpus_shard_n;
+                    save_model_assigned();
+                });
+
+                select_gpus_div.appendChild(input);
+                select_gpus_div.appendChild(label);
+            });
+            select_gpus.appendChild(select_gpus_div);
         }
-        select_gpus.innerHTML = `<div class="btn-group btn-group-sm disabled-group" role="group" aria-label="basic radio toggle button group">
-        <input type="radio" class="gpu-switch btn-check" tabindex="-1" name="gpu-${index}" value="1" ${checked_1} id="gpu-${index}-1" autocomplete="off">
-        <label tabindex="-1" class="btn btn-outline-primary" for="gpu-${index}-1">1</label>
-        <input type="radio" class="gpu-switch btn-check" tabindex="-1" name="gpu-${index}" value="2" ${checked_2} id="gpu-${index}-2" autocomplete="off">
-        <label tabindex="-1" class="btn btn-outline-primary" for="gpu-${index}-2">2</label>
-        <input type="radio" class="gpu-switch btn-check" tabindex="-1" name="gpu-${index}" value="4" ${checked_4} id="gpu-${index}-3" autocomplete="off">
-        <label tabindex="-1" class="btn btn-outline-primary" for="gpu-${index}-3">4</label>
-        </div>`;
-        // gpus_input.classList.add('model-gpus','form-control');
-        // gpus_input.setAttribute('model', index);
-        // gpus_input.setAttribute('min', 1);
-        // gpus_input.setAttribute('max', 4);
-        // gpus_input.setAttribute('step', 1);
-        // gpus_input.setAttribute('type', 'number');
-        // gpus_input.value = models[index].gpus_shard;
-        // gpus_input.disabled = true;
-        // gpus_input.addEventListener('change', function() {
-        //     models_data.model_assign[index].gpus_shard = this.value;
-        //     save_model_assigned();
-        // });
-        // gpus_input.addEventListener('blur', function() {
-        //     // models_gpus_change = true;
-        // });
-        gpus.appendChild(gpus_input);
-        const gpus_share = document.createElement("td");
+
         const gpus_checkbox = document.createElement("input");
         gpus_checkbox.setAttribute('type','checkbox');
         gpus_checkbox.setAttribute('value',index);
@@ -213,6 +207,8 @@ function render_models_assigned(models) {
             save_model_assigned();
         });
         gpus_share.appendChild(gpus_checkbox);
+
+        const del_button = document.createElement("button");
         del_button.innerHTML = `<i class="bi bi-trash3-fill"></i>`;
         del_button.dataset.model = index;
         del_button.addEventListener('click', function() {
@@ -221,7 +217,7 @@ function render_models_assigned(models) {
         });
         del_button.classList.add('model-remove','btn','btn-danger');
         del.appendChild(del_button);
-        // del.innerHTML = `<button type="button" data-model="${index}" class="btn btn-danger model-remove"><i class="bi bi-trash3-fill"></i></button>`;
+
         row.appendChild(model_name);
         row.appendChild(completion);
         row.appendChild(select_gpus);
