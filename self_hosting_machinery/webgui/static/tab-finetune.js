@@ -139,10 +139,11 @@ function render_runs() {
 
         const run_is_working = !(['interrupted', 'failed', 'finished'].includes(run.status));
         if (run_is_working) {
-            if(!finetune_is_working) {
-                run_status.innerHTML = `<span class="badge rounded-pill ${run_status_color}"><div class="finetune-spinner spinner-border spinner-border-sm" role="status"></div>${run.status}</span>`;
-            }
-            finetune_is_working = true;
+            run_status.innerHTML = `
+                <span class="badge rounded-pill ${run_status_color}">
+                    <div class="finetune-spinner spinner-border spinner-border-sm" role="status"></div>
+                    ${run.status}
+                </span>`;
             if (!selected_lora) {
                 selected_lora = run.run_id;
             }
