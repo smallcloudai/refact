@@ -474,12 +474,13 @@ function change_finetune_model() {
     .catch(error_data => {
         console.log('Error:', error_data);
         if(error_data && !settings_error) {
-            let scan_toast = document.querySelector('.finetune-tab-settings-error-toast');
-            const settings_error_toast = bootstrap.Toast.getOrCreateInstance(scan_toast);
+            let settings_toast = document.querySelector('.finetune-tab-settings-error-toast');
+            console.log(settings_toast);
+            const settings_error_toast = bootstrap.Toast.getOrCreateInstance(settings_toast);
             document.querySelector('.finetune-tab-settings-error-toast .toast-body').innerHTML = error_data;
             settings_error_toast.show();
             settings_error = true;
-
+        
             const toast_close = document.querySelector('.finetune-tab-settings-error-toast-close');
             toast_close.addEventListener('click', function() {
                 document.querySelector('.finetune-tab-settings-error-toast .toast-body').innerHTML = '';
