@@ -326,24 +326,15 @@ function render_checkpoints(data = []) {
     }
 }
 
-function animate_meh() {
-    const pane = document.querySelector(".use-model-pane");
-    const runId = document.getElementById("lora-switch-run-id");
-    const checkpoint = document.getElementById("lora-switch-checkpoint");
-    pane.classList.add("run-checkpoint");
-    runId.classList.add("redact");
-    checkpoint.classList.add("redact");
+function animate_use_model() {
+    use_model_panel.classList.add('animate-pane');
     setTimeout(() => {
-        runId.classList.remove("redact");
-        checkpoint.classList.remove("redact");
+        use_model_panel.classList.remove('animate-pane');
     }, 1000);
-    setTimeout(() => {
-        pane.classList.remove("run-checkpoint");
-    }, 500);
 }
 
 function finetune_switch_activate(lora_mode, run_id, checkpoint) {
-    animate_meh();
+    animate_use_model();
     let send_this = {
         "model": document.querySelector('#finetune-model').value,
         "lora_mode": lora_mode,

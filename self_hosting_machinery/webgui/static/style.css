@@ -701,41 +701,57 @@ h3 {
 .table-checkpoints tr td:first-of-type {
     width: 30px;
 }
-
 .use-model-pane {
-    background-color: white;
-    transition: background-color 0.5s ease-in-out;
-  }
-  
-  .run-checkpoint {
-    background-image: linear-gradient(to right, #FFFFFF, #ffcd29ab);
-    background-size: 100% 100%;
-    animation: gradientBackground 1s linear infinite, fadeInOut 0.1s ease-out;
-  }
-  
-  @keyframes gradientBackground {
-    0% {
-      background-position: -50% 50%;
-    }
-    100% {
-      background-position: 100% 50%;
-    }
-  }
-  
-  @keyframes fadeInOut {
-    0%, 100% {
-      background-color: transparent;
-    }
-    50% {
-      background-color: white;
-    }
-  }
-  
-  .redact {
-    width: 100%;
-    height: 100%;
-    background-color: black;
-    opacity: 1;
-    transition: opacity 0.5s ease-in-out;
+    border: 1px solid rgba(0,0,0,0.15);
 }
-  
+.animate-pane {
+    animation: border_animate 1s ease-in;
+}
+
+@keyframes border_animate {
+    0%{
+        border: 1px solid rgba(0,0,0,0.15);
+        background-color: #fff;
+    }
+    20%{
+        border: 1px solid orangered;
+        background-color: rgb(253, 255, 226);
+    }
+    50%{
+        border: 1px solid orange;
+        background-color: rgb(253, 255, 226);
+    }
+    100%{
+        border: 1px solid rgba(0,0,0,0.15);
+        background-color: #fff;
+    }
+}
+.animate-pane .lora-row-fill {
+    animation: move_animate 1s ease-in;
+}
+.lora-row {
+    position: relative;
+    overflow: hidden;
+}
+.lora-row-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgb(253,255,226);
+    background: linear-gradient(90deg, rgba(253,255,226,1) 0%, rgba(220,230,160,1) 51%, rgba(253,255,226,1) 100%);
+    transform: translateX(-100%);
+}
+
+@keyframes move_animate {
+    0%{
+        transform: translateX(-100%);
+    }
+    50%{
+        transform: translateX(0);
+    }
+    100%{
+        transform: translateX(100%);
+    }
+}
