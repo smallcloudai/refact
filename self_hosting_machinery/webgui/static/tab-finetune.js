@@ -430,6 +430,10 @@ function get_finetune_settings(defaults = false) {
             document.querySelector('#finetune-tab-settings-modal #use_heuristics').checked = false;
         }
         check_heuristics();
+    })
+   .catch(error_data => {
+        get_finetune_settings(true);
+        console.log('Error:', error_data);
     });
 }
 
