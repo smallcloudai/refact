@@ -165,7 +165,6 @@ class UploadProxy:
     def stop(self):
         if self.proc:
             self.upload_q.put(dict(exit=1))
-            self.proc.join()
             self.proc = None
 
     def __del__(self):
