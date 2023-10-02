@@ -226,6 +226,8 @@ let reset_submit_button  = document.querySelector('.settings-tab-factoryreset-su
 reset_submit_button.addEventListener('click', () => {
     fetch("/tab-settings-factory-reset")
     .then(function(response) {
-        window.location.reload();
+        setTimeout(() => {
+            window.location.reload();
+        }, 20000);
     });
 });
