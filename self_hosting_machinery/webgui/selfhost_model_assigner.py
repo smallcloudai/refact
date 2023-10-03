@@ -51,6 +51,9 @@ class ModelAssigner:
             if assignment["gpus_shard"] not in [1, 2, 4]:
                 log(f"invalid shard count {assignment['gpus_shard']}, skipping '{model_name}'")
                 continue
+            if self.models_db[model_name]["backend"] not in ["transformers"] and assignment["gpus_shard"] > 1:
+                log(f"sharding not supported for '{self.models_db['backend']}' backend, skipping '{model_name}'")
+                continue
             if assignment.get("share_gpu", False):
                 if not shared_group.model_assign:
                     model_groups.append(shared_group)
@@ -91,11 +94,12 @@ class ModelAssigner:
         for model_group in model_groups:
             models_message = ' '.join([f"'{model_name}'" for model_name in model_group.model_assign.keys()])
             log(f"assign models {models_message}, cursor {cursor}, gpus_shard {model_group.gpus_shard()}")
+            next_cursor = cursor + model_group.gpus_shard()
             if cursor + model_group.gpus_shard() > len(gpus):
                 more_models_than_gpus = True
                 break
             for model_name, assignment in model_group.model_assign.items():
-                for idx, model_cursor in enumerate(range(cursor, cursor + assignment["gpus_shard"])):
+                for idx, model_cursor in enumerate(range(cursor, next_cursor, assignment["gpus_shard"])):
                     cfg_out = f"model-{model_name.lower().replace('/', '-')}-{idx}.cfg"
                     allowed_to_exist.append(cfg_out)
                     fn = os.path.join(env.DIR_WATCHDOG_D, cfg_out)
@@ -211,6 +215,7 @@ class ModelAssigner:
                 "has_finetune": bool("finetune" in rec["filter_caps"]),
                 "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),
                 "has_chat": bool(rec["chat_scratchpad_class"]) and bool(chat_caps.intersection(rec["filter_caps"])),
+                "has_sharding": rec["backend"] in ["transformers"],
             })
         return {"models": info}
 
