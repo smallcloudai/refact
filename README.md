@@ -115,7 +115,7 @@ At the moment, you can choose between the following models:
 
 | Model                                                                                | Completion | Chat | AI Toolbox | Fine-tuning |
 |--------------------------------------------------------------------------------------|------------|------|------------|-------------|
-| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                   | +          | +    |            |             |
+| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                   | +          | +    |            | +           |
 | [starcoder/15b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)                 | +          |      |            |             |
 | [starcoder/15b/plus](https://huggingface.co/TheBloke/starcoderplus-GPTQ)             | +          |      |            |             |
 | [wizardcoder/15b](https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GPTQ)          | +          |      |            |             |
