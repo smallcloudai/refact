@@ -674,3 +674,84 @@ h3 {
 .form-control::-ms-input-placeholder {
     color: #dddddd !important;
 }
+.btn-hover {
+    opacity: 0 !important;
+    pointer-events: none;
+}
+.run-table tr:hover .btn-hover {
+    opacity: 1 !important;
+    pointer-events: auto;
+    z-index: 44;
+}
+.run-table-name {
+    position: relative;
+}
+.run-table-name span {
+    opacity: 0.35;
+    font-size: 10px;
+    display: block;
+    position: absolute;
+    margin-top: -6px;
+    font-weight: bold;
+}
+.table-checkpoints tr:hover .btn-hover {
+    opacity: 1 !important;
+    pointer-events: auto;
+}
+.table-checkpoints tr td:first-of-type {
+    width: 30px;
+}
+.use-model-pane {
+    border: 1px solid rgba(0,0,0,0.15);
+}
+.animate-pane {
+    animation: border_animate 1s ease-in;
+}
+
+@keyframes border_animate {
+    0%{
+        border: 1px solid rgba(0,0,0,0.15);
+        background-color: #fff;
+    }
+    20%{
+        border: 1px solid orangered;
+        background-color: rgb(253, 255, 226);
+    }
+    50%{
+        border: 1px solid orange;
+        background-color: rgb(253, 255, 226);
+    }
+    100%{
+        border: 1px solid rgba(0,0,0,0.15);
+        background-color: #fff;
+    }
+}
+.animate-pane .lora-row-fill {
+    animation: move_animate 1s ease-in;
+}
+.lora-row {
+    position: relative;
+    overflow: hidden;
+}
+.lora-row-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgb(253,255,226);
+    background: linear-gradient(90deg, rgba(253,255,226,1) 0%, rgba(220,230,160,1) 51%, rgba(253,255,226,1) 100%);
+    transform: translateX(-100%);
+}
+
+@keyframes move_animate {
+    0%{
+        transform: translateX(-100%);
+    }
+    50%{
+        transform: translateX(0);
+    }
+    100%{
+        transform: translateX(100%);
+    }
+}

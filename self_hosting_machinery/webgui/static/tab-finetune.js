@@ -30,6 +30,8 @@ let select_model_panel,
 let current_accepted,
     current_rejected;
 
+let settings_error = false;
+
 function tab_finetune_get() {
     fetch("tab-finetune-get")
     .then(function (response) {
@@ -106,7 +108,7 @@ function render_finetune_settings(data = {}) {
 function render_runs() {
     const runs_table = document.querySelector('.run-table');
     if(finetune_configs_and_runs.finetune_runs.length === 0) {
-        runs_table.innerHTML = '<tr><td>No runs yet.</td><td></td><td></td><td></td><td></td></tr>';
+        runs_table.innerHTML = '<tr><td>No runs yet.</td><td></td><td></td><td></td><td></td><td></td></tr>';
         return;
     }
     let finetune_is_working = false;
@@ -121,9 +123,10 @@ function render_runs() {
         const run_status = document.createElement("td");
         const run_minutes = document.createElement("td");
         const run_steps = document.createElement("td");
+        const run_active = document.createElement("td");
         const run_delete = document.createElement("td");
 
-        run_name.innerText = run.run_id;
+        run_name.innerHTML = `<div class="run-table-name">${run.run_id}<span>${run.model_name}</span></div>`
 
         let status_colors = {
             'unknown': 'text-bg-warning',
@@ -156,10 +159,12 @@ function render_runs() {
 
         const item_disabled = run_is_working ? "disabled" : ""
         run_delete.innerHTML = `<button class="btn btn-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
+        run_active.innerHTML = `<button class="btn btn-hover btn-primary btn-sm" ${item_disabled}><i class="bi bi-play-fill"></i></button>`;
         run_table_row.appendChild(run_name);
         run_table_row.appendChild(run_status);
         run_table_row.appendChild(run_minutes);
         run_table_row.appendChild(run_steps);
+        run_table_row.appendChild(run_active);
         run_table_row.appendChild(run_delete);
 
         if (!run_is_working) {
@@ -170,6 +175,12 @@ function render_runs() {
                 delete_lora_modal_button.dataset.lora = lora_for_delete;
                 let delete_lora_modal_instance = bootstrap.Modal.getOrCreateInstance(delete_lora_modal);
                 delete_lora_modal_instance.show();
+            });
+            run_active.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const lora_for_start = run_table_row.dataset.run;
+                console.log('lora_for_start', lora_for_start);
+                finetune_switch_activate("latest-best", lora_for_start);
             });
         }
 
@@ -291,12 +302,16 @@ function render_checkpoints(data = []) {
     if (data.length > 0) {
         data.forEach(element => {
             const row = document.createElement('tr');
+            row.classList.add('align-middle');
             const cell = document.createElement('td');
             cell.textContent = `${element.checkpoint_name}`;
             cell.dataset.checkpoint = element.checkpoint_name;
             if(cell.dataset.checkpoint === finetune_configs_and_runs.active.specific_checkpoint) {
                 row.classList.add('table-success');
             }
+            const activate_cell = document.createElement('td');
+            activate_cell.innerHTML = `<button class="btn btn-hover btn-primary btn-sm"><i class="bi bi-play-fill"></i></button>`;
+            row.appendChild(activate_cell);
             row.appendChild(cell);
             checkpoints.appendChild(row);
             row.addEventListener('click', (event) => {
@@ -313,7 +328,15 @@ function render_checkpoints(data = []) {
     }
 }
 
+function animate_use_model() {
+    use_model_panel.classList.add('animate-pane');
+    setTimeout(() => {
+        use_model_panel.classList.remove('animate-pane');
+    }, 1000);
+}
+
 function finetune_switch_activate(lora_mode, run_id, checkpoint) {
+    animate_use_model();
     let send_this = {
         "model": document.querySelector('#finetune-model').value,
         "lora_mode": lora_mode,
@@ -409,6 +432,9 @@ function get_finetune_settings(defaults = false) {
             document.querySelector('#finetune-tab-settings-modal #use_heuristics').checked = false;
         }
         check_heuristics();
+    })
+   .catch(error_data => {
+        console.log('Error:', error_data);
     });
 }
 
@@ -447,6 +473,20 @@ function change_finetune_model() {
     })
     .catch(error_data => {
         console.log('Error:', error_data);
+        if(error_data && !settings_error) {
+            let settings_toast = document.querySelector('.finetune-tab-settings-error-toast');
+            console.log(settings_toast);
+            const settings_error_toast = bootstrap.Toast.getOrCreateInstance(settings_toast);
+            document.querySelector('.finetune-tab-settings-error-toast .toast-body').innerHTML = error_data;
+            settings_error_toast.show();
+            settings_error = true;
+        
+            const toast_close = document.querySelector('.finetune-tab-settings-error-toast-close');
+            toast_close.addEventListener('click', function() {
+                document.querySelector('.finetune-tab-settings-error-toast .toast-body').innerHTML = '';
+                settings_error = false;
+            });
+        }
     });
 }
 
