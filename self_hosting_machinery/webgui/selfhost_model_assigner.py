@@ -94,11 +94,12 @@ class ModelAssigner:
         for model_group in model_groups:
             models_message = ' '.join([f"'{model_name}'" for model_name in model_group.model_assign.keys()])
             log(f"assign models {models_message}, cursor {cursor}, gpus_shard {model_group.gpus_shard()}")
+            next_cursor = cursor + model_group.gpus_shard()
             if cursor + model_group.gpus_shard() > len(gpus):
                 more_models_than_gpus = True
                 break
             for model_name, assignment in model_group.model_assign.items():
-                for idx, model_cursor in enumerate(range(cursor, cursor + assignment["gpus_shard"])):
+                for idx, model_cursor in enumerate(range(cursor, next_cursor, assignment["gpus_shard"])):
                     cfg_out = f"model-{model_name.lower().replace('/', '-')}-{idx}.cfg"
                     allowed_to_exist.append(cfg_out)
                     fn = os.path.join(env.DIR_WATCHDOG_D, cfg_out)
