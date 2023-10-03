@@ -125,7 +125,7 @@ const HF_DEFAULT_CAPS: &str = r#"
         "meta-llama/Llama-2-70b-chat-hf": "TheBloke/Llama-2-70B-fp16"
     },
     "code_completion_default_model": "bigcode/starcoder",
-    "code_chat_default_model": "",
+    "code_chat_default_model": "meta-llama/Llama-2-70b-chat-hf",
     "telemetry_basic_dest": "https://staging.smallcloud.ai/v1/telemetry-basic",
     "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback",
     "running_models": ["bigcode/starcoder", "meta-llama/Llama-2-70b-chat-hf"]
