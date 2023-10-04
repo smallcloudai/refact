@@ -166,7 +166,7 @@ class TrackedJob:
                 if retcode == 0:
                     log("/finished compiling as recognized by watchdog")
                     compile_successful.add(self.compile_str)
-                else:
+                elif self.sent_sigusr1_ts == 0:   # failed, and watchdog didn't try to kill it
                     log("/finished compiling -- failed, probably unrecoverable, will not retry")
                     compile_unsuccessful.add(self.compile_str)
             self.p.communicate()
