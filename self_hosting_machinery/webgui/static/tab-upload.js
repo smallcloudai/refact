@@ -1,6 +1,5 @@
 let tab_files_data = null;
 let show_scan_error = false;
-let show_info_toast = false;
 let sort_type = 'filetype';
 let sort_order = 'asc';
 let sort_started = false;
@@ -314,16 +313,6 @@ function save_filter_setup() {
     .then(response => {
         if (!response.ok) {
             throw new Error(response.statusText);
-        }
-        let success_toast_div = document.querySelector('.upload-tab-scan-success-toast');
-        const success_toast = bootstrap.Toast.getOrCreateInstance(success_toast_div);
-        if(!show_info_toast && checked_types.length > 0) {
-            show_info_toast = true;
-            document.querySelector('.upload-tab-scan-success-toast .toast-body').innerHTML = 'Source files are ready, you can start GPU filtering now.';
-            setTimeout(function() {
-                success_toast.show();
-                show_info_toast = false;
-            }, 2000);
         }
     })
 }
