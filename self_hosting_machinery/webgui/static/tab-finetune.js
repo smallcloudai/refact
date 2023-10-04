@@ -324,7 +324,7 @@ function render_checkpoints(data = []) {
             row.appendChild(activate_cell);
             row.appendChild(cell);
             checkpoints.appendChild(row);
-            row.addEventListener('click', (event) => {
+            activate_cell.addEventListener('click', (event) => {
                 if(!row.classList.contains('table-success')) {
                     let prev = document.querySelector('.table-checkpoints .table-success');
                     if (prev) {
@@ -759,7 +759,7 @@ function finetune_controls_state()
 
     render_ftf_stats(finetune_state.finetune_filter_stats);
 
-    if(finetune_state.finetune_filter_stats.status) {
+    if(finetune_state.finetune_filter_stats.filterting_status) {
         document.querySelector('.ftf-status').classList.remove('d-none');
         document.querySelector('.ftf-status span').innerHTML = finetune_state.finetune_filter_stats.status;
     } else {
@@ -770,7 +770,9 @@ function finetune_controls_state()
     let ftf_error = document.querySelector('.ftf-error');
     if (finetune_state.finetune_filter_stats.status == "failed") {
         ftf_error.classList.remove('d-none');
-        error_span.innerHTML = finetune_state.finetune_filter_stats.error;
+        if(finetune_state.finetune_filter_stats.error && finetune_state.finetune_filter_stats.error !== '') {
+            error_span.innerHTML = finetune_state.finetune_filter_stats.error;
+        }
     } else {
         ftf_error.classList.add('d-none');
         error_span.innerHTML = '';

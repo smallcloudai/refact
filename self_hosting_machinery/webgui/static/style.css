@@ -395,7 +395,6 @@ h3 {
     content: close-quote;
 }
 .table-checkpoints tr {
-    cursor: pointer;
 }
 .tab-files-process-now {
     margin-left: auto;

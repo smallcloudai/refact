@@ -94,6 +94,8 @@ def loss_based_filter(
         t0_iter = time.time()
         stats_dict = _update_and_dump_status(stats_dict, "working")
         file_losses = []
+        if iter_n == 5:
+            bug()
         if is_force_included(file['path']):
             _file_accepted("FILTER1 INCLUDED_BY_MASK", file["path"])
             stats_dict["accepted"] += 1
