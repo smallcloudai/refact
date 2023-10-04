@@ -14,38 +14,19 @@ from pathlib import Path
 from jsonlines import jsonlines
 from torchinfo import summary
 
-from refact_data_pipeline.finetune import traces, supported_models
+from self_hosting_machinery.finetune.configuration import supported_models
+from self_hosting_machinery.finetune.modelling.loss import masked_loss
+from self_hosting_machinery.finetune.scripts.script_aux.early_stopper import EarlyStopper
+from self_hosting_machinery.finetune.utils import traces
 from refact_data_pipeline import DatasetOpts, finetune_datasource
 from refact_data_pipeline.datautils import BatchIterator
-from refact_data_pipeline.finetune.finetune_config import base_config, ConfigBuilder
-from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
-from refact_data_pipeline.finetune.model_handling import make_model, masked_loss, save_model_state, model_forward, \
+from self_hosting_machinery.finetune.configuration.finetune_config import base_config, ConfigBuilder
+from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_config
+from self_hosting_machinery.finetune.modelling.model_handling import make_model, save_model_state, model_forward, \
     setup_encoding
 from self_hosting_machinery import env
 
 from typing import Optional, Callable, Dict, Any, Tuple
-
-
-filtered_train = "train_set_filtered.jsonl"
-filtered_test = "test_set_filtered.jsonl"
-
-
-class EarlyStopper:
-    def __init__(self, patience=1, min_delta=0):
-        self.patience = patience
-        self.min_delta = min_delta
-        self.counter = 0
-        self.min_validation_loss = float('inf')
-
-    def __call__(self, validation_loss):
-        if validation_loss < self.min_validation_loss:
-            self.min_validation_loss = validation_loss
-            self.counter = 0
-        elif validation_loss > (self.min_validation_loss + self.min_delta):
-            self.counter += 1
-            if self.counter >= self.patience:
-                return True
-        return False
 
 
 def save_status_json(status_dict, status_string):
@@ -229,7 +210,7 @@ def loop(
 
         print("train batch size: %s" % cfg.get("train_batch_size"))
         for b0 in range(0, cfg.get("train_batch_size"), cfg.get("micro_batch_size")):
-            
+
             try:
                 input = batch['input'][b0:b0 + micro_bs].contiguous()
                 logits = forward(input=input, low_gpu_mem_mode=low_gpu_mem_mode)
@@ -299,7 +280,7 @@ def loop(
             plot_process.communicate()
         plot_process = subprocess.Popen([
             sys.executable,
-            os.path.join(os.path.dirname(__file__), "traces_plot.py"),
+            os.path.join(os.path.dirname(__file__), "../utils/traces_plot.py"),
             "progress.jsonl",
             "%d" % (cfg['train_iters'] + 50),
         ], cwd=traces.context().path)
@@ -324,7 +305,6 @@ def finetune(status_dict, models_db: Dict[str, Any]):
         model_name=cfg['model_name'],
         weights_path=cfg['model_info']['weight_path'],
         repo_id=cfg['model_info']['repo_id'],
-        backend=cfg['model_info']['backend'],
         freeze_exceptions=cfg['model_info']['freeze_exceptions'],
         lora_target_modules=cfg['model_info']['lora']['lora_target_modules'],
         lora_r=cfg['model_info']['lora']['lora_r'],

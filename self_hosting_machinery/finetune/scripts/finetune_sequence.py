@@ -22,10 +22,10 @@ if __name__ == "__main__":
     else:
         os.environ["LORA_LOGDIR"] = "NO_LOGS"
     try:
-        subprocess.check_call([sys.executable, "-m", "refact_data_pipeline.finetune.process_uploaded_files"])
-        subprocess.check_call([sys.executable, "-m", "refact_data_pipeline.finetune.finetune_filter"])
+        subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.finetune.scripts.process_uploaded_files"])
+        subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.finetune.scripts.finetune_filter"])
         if not filter_only:
-            subprocess.check_call([sys.executable, "-m", "refact_data_pipeline.finetune.finetune_train"])
+            subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.finetune.scripts.finetune_train"])
     except subprocess.CalledProcessError as e:
         print("finetune_sequence: %s" % e)
         sys.exit(1)

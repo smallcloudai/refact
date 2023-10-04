@@ -111,11 +111,11 @@ def load_checkpoint(model, root_path: str, repo_id: Optional[str] = None):
 
 
 def load_finetune_checkpoint(model, model_name: str, root_path: str, repo_id: Optional[str] = None):
-    from refact_data_pipeline.finetune.model_handling import setup_model_specific_params
+    from self_hosting_machinery.finetune.modelling.model_handling import map_model_specific_params
 
     finetune_cp = _load_filename(root_path, 'mp_rank_00_model_states.pt', repo_id)
     lora_cfg = finetune_cp['ds_config']['model_info']['lora']
-    _, lora_target_modules = setup_model_specific_params(
+    _, lora_target_modules = map_model_specific_params(
         model_name, lora_target_modules=lora_cfg.pop('lora_target_modules'), freeze_exceptions=[]
     )
     LoraMixin.apply_lora(

@@ -8,7 +8,7 @@ from self_hosting_machinery.scripts import best_lora
 from refact_models.checkpoint_loader import load_finetune_checkpoint
 from refact_models.checkpoint_loader import load_finetune_checkpoint_only
 
-from refact_data_pipeline.finetune.finetune_utils import get_active_loras
+from self_hosting_machinery.finetune.utils.finetune_utils import get_active_loras
 
 from self_hosting_machinery import env
 

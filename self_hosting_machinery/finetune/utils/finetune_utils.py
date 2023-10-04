@@ -1,14 +1,16 @@
 import copy
+import hashlib
 import os
 import json
 import time
+from pathlib import Path
 
-from refact_data_pipeline.finetune.finetune_train_defaults import finetune_train_defaults
+from self_hosting_machinery.finetune.configuration.finetune_filtering_defaults import finetune_filtering_defaults
+from self_hosting_machinery.finetune.configuration.finetune_train_defaults import finetune_train_defaults
 
 from self_hosting_machinery import env
 
-from typing import Any, Dict, Optional, Callable
-
+from typing import Any, Dict, Optional, Callable, Union
 
 legacy_finetune_model = "CONTRASTcode/3b/multi"
 default_finetune_model = "Refact/1.6B"
@@ -94,6 +96,14 @@ def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     }
 
 
+def get_finetune_filter_config(logger: Optional[Callable] = None):
+    cfg = {**finetune_filtering_defaults}
+    if os.path.exists(env.CONFIG_HOW_TO_FILTER):
+        logger("Reading %s" % env.CONFIG_HOW_TO_FILTER)
+        cfg.update(**json.load(open(env.CONFIG_HOW_TO_FILTER)))
+    return cfg
+
+
 def get_finetune_config(models_db: Dict[str, Any], logger: Optional[Callable] = None) -> Dict[str, Any]:
     cfg = copy.deepcopy(finetune_train_defaults)
     if os.path.exists(env.CONFIG_FINETUNE):
@@ -155,3 +165,17 @@ def get_prog_and_status_for_ui() -> (str, str):
         return "prog_ftune", "starting"
 
     return prog, status
+
+
+def get_file_digest(file_path: Union[Path, str]) -> str:
+    h = hashlib.sha256()
+
+    with open(file_path, 'rb') as file:
+        while True:
+            # Reading is buffered, so we can read smaller chunks.
+            chunk = file.read(h.block_size)
+            if not chunk:
+                break
+            h.update(chunk)
+
+    return h.hexdigest()

@@ -880,7 +880,7 @@ function finetune_controls_state()
 
     // example:
     // "finetune_filter_stats": {
-    //     "filterting_status": "failed",
+    //     "filtering_status": "failed",
     //     "total_steps": 116,
     //     "worked_steps": 115,
     //     "worked_minutes": 0,
