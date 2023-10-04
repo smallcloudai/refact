@@ -1,7 +1,7 @@
 import math
 import torch
 
-from refact_data_pipeline.finetune import traces
+from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery import env
 
 from typing import Any, Dict, List

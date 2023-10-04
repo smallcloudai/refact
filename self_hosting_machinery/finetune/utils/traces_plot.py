@@ -6,34 +6,32 @@ import os
 import jsonlines
 from typing import List, Dict
 
+import numpy as np
+import matplotlib
 
-def smooth(y, radius):
-    import numpy as np
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import io
+
+
+def smooth(y: np.array, radius: int, eps: float = 1e-20):
     kernel = np.zeros(2 * radius + 1)
     kernel[: radius + 1] = np.linspace(0, 1, radius + 2)[1:]
     assert kernel.size % 2 == 1
     radius = kernel.size // 2
-    EPS = 1e-20
-    return (
-        np.correlate(y, kernel, mode="full")
-        / (np.correlate(np.ones_like(y), kernel, mode="full") + EPS)
-    )[radius:-radius]
+    num = np.correlate(y, kernel, mode="full")
+    denom = np.correlate(np.ones_like(y), kernel, mode="full") + eps
+    return (num / denom)[radius:-radius]
 
 
 def plot(
-    xaxis: str,
-    x0: float,
-    x1: float,
-    yaxis: str,
-    jdict: Dict[str, List[Dict[str, float]]],
-    colors: List[str],
+        xaxis: str,
+        x0: float,
+        x1: float,
+        yaxis: str,
+        jdict: Dict[str, List[Dict[str, float]]],
+        colors: List[str],
 ):
-    import numpy as np
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    import io
-
     xs = collections.defaultdict(list)
     ys = collections.defaultdict(list)
     smoo = 0
@@ -130,7 +128,7 @@ if __name__ == "__main__":
         "iteration",
         0,
         int(sys.argv[2]),
-        "loss[0,2.6]",  #,smooth5
+        "loss[0,2.6]",  # ,smooth5
         jdict,
         ["#ff0000", "#880000"],
     )

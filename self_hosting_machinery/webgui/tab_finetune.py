@@ -11,13 +11,13 @@ from fastapi.responses import Response, StreamingResponse, JSONResponse
 
 from self_hosting_machinery.scripts import best_lora
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
-from refact_data_pipeline.finetune.finetune_utils import get_active_loras
-from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
-from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stat
-from refact_data_pipeline.finetune.finetune_utils import get_prog_and_status_for_ui
-from refact_data_pipeline.finetune.finetune_utils import get_finetune_runs
-from refact_data_pipeline.finetune.finetune_filtering_defaults import finetune_filtering_defaults
-from refact_data_pipeline.finetune.finetune_train_defaults import finetune_train_defaults
+from self_hosting_machinery.finetune.utils.finetune_utils import get_active_loras
+from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_config
+from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_filter_stat
+from self_hosting_machinery.finetune.utils.finetune_utils import get_prog_and_status_for_ui
+from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_runs
+from self_hosting_machinery.finetune.configuration.finetune_filtering_defaults import finetune_filtering_defaults
+from self_hosting_machinery.finetune.configuration.finetune_train_defaults import finetune_train_defaults
 from self_hosting_machinery import env
 
 from pydantic import BaseModel
@@ -66,13 +66,10 @@ class TabFinetuneActivate(BaseModel):
 
 
 class FilteringSetup(BaseModel):
-    filter_loss_threshold: Optional[float] = Query(default=None, gt=2, le=10)
-    # limit_train_files: Optional[int] = Query(default=None, gt=20, le=100000)
-    # limit_test_files: Optional[int] = Query(default=None, gt=1, le=5)
-    # filter_gradcosine_threshold: Optional[float] = Query(default=None, gt=-1.0, le=0.5)
-    # limit_time_seconds: Optional[int] = Query(default=None, gt=300, le=3600*12)
-    # use_gpus_n: Optional[int] = Query(default=False, gt=1, le=8)
-    # low_gpu_mem_mode: Optional[bool] = Query(default=True)
+    autoselect_test_files_num: Optional[int] = Query(default=3, gt=1, le=1000)
+    filter_loss_threshold: Optional[float] = Query(default=3.0, gt=1.0, le=10.0)
+    debug: bool = False
+    # use_gpus_n: Optional[int] = Query(default=1, gt=1, le=8)
 
 
 class TabFinetuneTrainingSetup(BaseModel):

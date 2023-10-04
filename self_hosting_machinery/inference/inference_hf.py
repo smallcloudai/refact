@@ -185,7 +185,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
 
     def _dump_embeddings(self):
         try:
-            from refact_data_pipeline.finetune import supported_models
+            from self_hosting_machinery.finetune.configuration import supported_models
         except ImportError:
             raise ImportError("please install refact_data_pipeline")
         if self._model_name not in supported_models.config:
@@ -199,7 +199,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
 
     def load_embeddings(self):
         try:
-            from refact_data_pipeline.finetune import supported_models
+            from self_hosting_machinery.finetune.configuration import supported_models
         except ImportError:
             raise ImportError("please install refact_data_pipeline")
 

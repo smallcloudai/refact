@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 
 from typing import Dict, Optional, TextIO, Any, List
 
-
 _cx: Optional['TraceContext'] = None
 
 
@@ -67,9 +66,9 @@ def configure(
         quit(1)
 
     sys.excepthook = _except_hook
-    # logging.basicConfig(level=logging.WARNING)
+    # More messages could be found in
+    # /home/user/.local/lib/python3.9/site-packages/deepspeed/ops/op_builder/builder.py:445 (verbose is True)
     logging.getLogger("DeepSpeed").setLevel(logging.WARNING)
-    # More messages in /home/user/.local/lib/python3.9/site-packages/deepspeed/ops/op_builder/builder.py:445 (verbose is True)
 
     if task_name == "NO_LOGS":
         return
