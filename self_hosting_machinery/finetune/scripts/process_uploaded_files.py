@@ -12,7 +12,7 @@ from collections import Counter
 from fnmatch import fnmatch
 
 from self_hosting_machinery import env
-import refact_data_pipeline.finetune.traces as traces
+import self_hosting_machinery.finetune.utils.traces as traces
 
 from typing import List, Dict, Any, Iterable, Tuple
 
@@ -22,7 +22,7 @@ if not os.path.exists(EXE):
     EXE = "smc-linguist"  # Rely on PATH
 CWD = os.getcwd()
 
-GIT_EXE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../git_command.exp')
+GIT_EXE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../refact_data_pipeline/git_command.exp')
 
 TRUSTED_LANGUAGES = {
     'Assembly', 'Batchfile', 'C', 'C#', 'C++', 'CMake', 'CSS', 'Cuda', 'Dockerfile', 'Fortran',
