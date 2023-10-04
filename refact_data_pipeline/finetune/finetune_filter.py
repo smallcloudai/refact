@@ -36,6 +36,7 @@ filtered_test = os.path.join(env.DIR_UNPACKED, "test_set_filtered.jsonl")
 
 
 def _update_and_dump_status(stats_dict: Dict[str, Any], new_status):
+    traces.touch()
     env.report_status("filter", new_status)
     stats_dict["filterting_status"] = new_status
     with open(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", "w") as f:

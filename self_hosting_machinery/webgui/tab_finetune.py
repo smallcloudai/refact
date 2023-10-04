@@ -140,7 +140,7 @@ class TabFinetuneRouter(APIRouter):
             return f"Error: {str(e)}"
 
     async def _tab_finetune_config_and_runs(self):
-        runs, _ = get_finetune_runs()
+        runs = get_finetune_runs()
         config = get_finetune_config(self._models_db)
         result = {
             "finetune_runs": runs,

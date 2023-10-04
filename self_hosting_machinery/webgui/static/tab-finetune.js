@@ -129,7 +129,7 @@ function render_runs() {
         run_name.innerHTML = `<div class="run-table-name">${run.run_id}<span>${run.model_name}</span></div>`
 
         let status_colors = {
-            'unknown': 'text-bg-warning',
+            'preparing': 'text-bg-warning',
             'starting': 'text-bg-secondary',
             'working': 'text-bg-secondary',
             'completed': 'text-bg-success',
@@ -142,10 +142,11 @@ function render_runs() {
 
         const run_is_working = !(['interrupted', 'failed', 'finished'].includes(run.status));
         if (run_is_working) {
-            if(!finetune_is_working) {
-                run_status.innerHTML = `<span class="badge rounded-pill ${run_status_color}"><div class="finetune-spinner spinner-border spinner-border-sm" role="status"></div>${run.status}</span>`;
-            }
-            finetune_is_working = true;
+            run_status.innerHTML = `
+                <span class="badge rounded-pill ${run_status_color}">
+                    <div class="finetune-spinner spinner-border spinner-border-sm" role="status"></div>
+                    ${run.status}
+                </span>`;
             if (!selected_lora) {
                 selected_lora = run.run_id;
             }

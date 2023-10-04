@@ -24,9 +24,8 @@ def get_run_model_name(run_dir: str) -> str:
 
 def get_finetune_runs():
     res = []
-    anyone_works = False
     if not os.path.isdir(env.DIR_LORAS):
-        return [], anyone_works
+        return []
     for dirname in sorted(os.listdir(env.DIR_LORAS)):
         dir_path = os.path.join(env.DIR_LORAS, dirname)
         if not os.path.isdir(dir_path):
@@ -35,21 +34,23 @@ def get_finetune_runs():
             "run_id": dirname,
             "worked_minutes": "0",
             "worked_steps": "0",
-            "status": "unknown",  # working, starting, completed, failed
+            "status": "preparing",  # working, starting, completed, failed
         }
         try:
             d["model_name"] = get_run_model_name(dir_path)
         except RuntimeError:
-            continue
+            d["model_name"] = ""
         status_fn = os.path.join(dir_path, "status.json")
         if os.path.exists(status_fn):
             d.update(json.load(open(status_fn, "r")))
-        if d["status"] in ["working", "starting"]:
-            mtime = os.path.getmtime(status_fn)
+        if d["status"] not in ["finished", "interrupted", "failed"]:
+            # NOTE: every time we write status of any stage of filtering progress, we touch LORA_LOGDIR
+            mtime = os.path.getmtime(dir_path)
             if mtime + 300 < time.time():
-                d["status"] = "failed"
-            else:
-                anyone_works = True
+                if d["status"] in ["preparing"]:
+                    d["status"] = "interrupted"
+                else:
+                    d["status"] = "failed"
         d["checkpoints"] = []
         checkpoints_dir = os.path.join(dir_path, "checkpoints")
         if os.path.isdir(checkpoints_dir):
@@ -61,7 +62,7 @@ def get_finetune_runs():
                     "checkpoint_name": checkpoint_dir,
                 })
         res.append(d)
-    return res, anyone_works
+    return res
 
 
 def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
