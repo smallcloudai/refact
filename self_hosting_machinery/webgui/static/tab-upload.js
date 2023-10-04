@@ -50,6 +50,10 @@ function get_tab_files() {
                 sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
             }
+        })
+        .catch(function(error) {
+            console.log('tab-files-get',error);
+            general_error(error);
         });
 }
 
@@ -187,6 +191,10 @@ function get_ssh_keys() {
         })
         .then(function(data) {
             console.log('get-all-ssh-keys',data);
+        })
+       .catch(function(error) {
+            console.log('get-all-ssh-keys',error);
+            general_error(error);
         });
 }
 
@@ -326,6 +334,10 @@ function save_filter_setup() {
             }, 2000);
         }
     })
+   .catch(error => {
+        console.log('tab-files-filetypes-setup',error);
+        general_error(error);
+    });
 }
 
 function render_stats() {
@@ -500,6 +512,10 @@ function delete_file(file) {
     .then(function(response) {
         process_now_update_until_finished();
         console.log(response);
+    })
+   .catch(function(error) {
+        console.log('tab-files-delete',error);
+        general_error(error);
     });
 }
 
@@ -538,6 +554,10 @@ function save_tab_files() {
         if(response.ok) {
             get_tab_files();
         }
+    })
+   .catch(function(error) {
+        console.log('tab-files-save-config',error);
+        general_error(error);
     });
 }
 

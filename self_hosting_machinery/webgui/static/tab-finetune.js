@@ -30,8 +30,6 @@ let select_model_panel,
 let current_accepted,
     current_rejected;
 
-let settings_error = false;
-
 function tab_finetune_get() {
     fetch("tab-finetune-get")
     .then(function (response) {
@@ -40,6 +38,10 @@ function tab_finetune_get() {
     .then(function (data) {
         console.log('tab-finetune-get',data);
         finetune_state = data;
+    })
+   .catch(function (error) {
+        console.log('tab-finetune-get',error);
+        general_error(error);
     });
 }
 
@@ -56,6 +58,10 @@ function tab_finetune_config_and_runs() {
             render_finetune_settings(data);
             render_lora_switch();
             finetune_controls_state();
+        })
+        .catch(function (error) {
+            console.log('tab-finetune-config-and-runs',error);
+            general_error(error);
         });
 }
 
@@ -79,8 +85,12 @@ function render_model_select(force = false) {
                     }
                     model_selector.appendChild(new_option);
                 }
-            });
-    });
+            })
+        })
+       .catch(function(error) {
+            console.log('tab-host-models-get',error);
+            general_error(error);
+        });
 }
 
 function render_finetune_settings(data = {}) {
@@ -246,7 +256,8 @@ function delete_run(run_id) {
         }
     })
     .catch(error => {
-        throw new Error(error);
+        console.log('tab-finetune-remove',error);
+        general_error(error);
     });
 }
 
@@ -362,6 +373,10 @@ function finetune_switch_activate(lora_mode, run_id, checkpoint) {
     })
     .then(function (response) {
         tab_finetune_get();
+    })
+    .catch(function (error) {
+        console.log('tab-finetune-activate',error);
+        general_error(error);
     });
 }
 
@@ -401,6 +416,10 @@ function save_finetune_schedule() {
     .then(function (response) {
         console.log(response);
         tab_finetune_get();
+    })
+   .catch(function (error) {
+        console.log('tab-finetune-config-save',error);
+        general_error(error);
     });
 }
 
@@ -443,8 +462,9 @@ function get_finetune_settings(defaults = false) {
         }
         check_heuristics();
     })
-   .catch(error_data => {
-        console.log('Error:', error_data);
+    .catch(error => {
+        console.log('tab-finetune-training-get', error);
+        general_error(error);
     });
 }
 
@@ -481,22 +501,9 @@ function change_finetune_model() {
         document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/none`;
         document.querySelector('.tab-upload-finetune-logs').textContent = '';
     })
-    .catch(error_data => {
-        console.log('Error:', error_data);
-        if(error_data && !settings_error) {
-            let settings_toast = document.querySelector('.finetune-tab-settings-error-toast');
-            console.log(settings_toast);
-            const settings_error_toast = bootstrap.Toast.getOrCreateInstance(settings_toast);
-            document.querySelector('.finetune-tab-settings-error-toast .toast-body').innerHTML = error_data;
-            settings_error_toast.show();
-            settings_error = true;
-        
-            const toast_close = document.querySelector('.finetune-tab-settings-error-toast-close');
-            toast_close.addEventListener('click', function() {
-                document.querySelector('.finetune-tab-settings-error-toast .toast-body').innerHTML = '';
-                settings_error = false;
-            });
-        }
+    .catch(error => {
+        console.log('tab-finetune-training-setup', error);
+        general_error(error);
     });
 }
 
@@ -605,6 +612,10 @@ function start_filtering() {
     })
     .then(function(data) {
         console.log('start_filtering');
+    })
+    .catch(error => {
+        console.log('tab-finetune-run-now?filter_only=1',error);
+        general_error(error);
     });
 }
 
@@ -615,6 +626,10 @@ function stop_filtering() {
     })
     .then(function(data) {
         console.log('stop_filtering');
+    })
+   .catch(error => {
+        console.log('tab-finetune-stop-now',error);
+        general_error(error);
     });
 }
 
@@ -671,6 +686,10 @@ function get_filters_settings(defaults = false) {
             settings_data = data.defaults;
         }
         document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value = settings_data.filter_loss_threshold;
+    })
+   .catch(error => {
+        console.log('tab-finetune-smart-filter-get',error);
+        general_error(error);
     });
 }
 
@@ -688,6 +707,10 @@ function save_filters_settings() {
         if(response.ok) {
             get_filters_settings();
         }
+    })
+   .catch(error => {
+        console.log('tab-finetune-smart-filter-setup',error);
+        general_error(error);
     });
 }
 

@@ -9,6 +9,10 @@ function get_ssh_keys() {
         .then(function(data) {
             console.log('get-all-ssh-keys',data);
             render_keys(data);
+        })
+       .catch(function(error) {
+            console.log('tab-settings-get-all-ssh-keys',error);
+            general_error(error);
         });
 }
 
