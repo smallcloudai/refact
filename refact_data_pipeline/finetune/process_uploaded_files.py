@@ -417,7 +417,7 @@ def dedup(huge_list):
     huge_filtered = []
     stats_json["files_before_dedup"] = len(huge_list)
     dups = []
-    for x in huge_list:
+    for n, x in enumerate(huge_list):
         if "error" in x:
             continue
         path = x["path"]
@@ -442,8 +442,10 @@ def dedup(huge_list):
             continue
         huge_filtered.append(x)
         stats_json["files_after_dedup"] = len(huge_filtered)
-        stats_save()
         unique_by_namesize[namesize] = x
+        if n % 100 == 0:
+            stats_save()
+    stats_save()
     log("after dedup %i files" % len(huge_filtered))
     return huge_filtered, dups
 
