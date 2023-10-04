@@ -56,6 +56,7 @@ def log(*args):
 
 
 def stats_save():
+    traces.touch()
     env.report_status("linguist", stats_json["scan_status"])
     with open(env.CONFIG_PROCESSING_STATS + ".tmp", "w") as f:
         f.write(json.dumps(stats_json, indent=4))

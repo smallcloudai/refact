@@ -146,3 +146,8 @@ def log(*args) -> None:
         _cx.console_logger.flush()
     with open(_cx.log_fn, "a") as f:
         f.write(s + "\n")
+
+
+def touch() -> None:
+    if _cx:
+        os.utime(_cx.path)
