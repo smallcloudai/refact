@@ -1,10 +1,10 @@
+import logging
 import random
 import traceback
 import copy
 
 from refact_encoding import RefactEncoding
 from refact_data_pipeline import DatasetOpts
-from refact_data_pipeline.finetune import traces
 from code_contrast.format_2022q3 import contrast
 
 from typing import Dict
@@ -73,8 +73,8 @@ class ContrastFromODM:
                 stats["diffskip_toobig"] += 1
                 continue
             except Exception as e:
-                traces.log(str(odm))
-                traces.log(traceback.format_exc())
+                logging.error(str(odm))
+                logging.error(traceback.format_exc())
                 stats["diffskip_failed"] += 1
                 continue
             edits_within_context = self.n_ctx - diff.offset_edits

@@ -34,7 +34,7 @@ config = {
             "pipeline_name": "local_fim"
         },
         "train_model_modifiers": [
-            "sa.apply_flash_mha_to_refact_model"
+            "triton_flash_sa.apply_flash_mha_to_refact_model"
         ],
         "force_enable_checkpointing": False
     },
