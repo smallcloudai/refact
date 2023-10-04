@@ -131,7 +131,7 @@ async fn handle_v1_code_completion(
     let cache_arc = global_context.read().await.completions_cache.clone();
     let tele_storage = global_context.read().await.telemetry.clone();
     let cache_key = completion_cache::post_to_cache_key(&code_completion_post);
-    info!("cache key {:?}", cache_key);
+    // info!("cache key {:?}", cache_key);
     let cached_maybe = completion_cache::cache_get(cache_arc.clone(), cache_key);
     if let Some(cached_json_value) = cached_maybe {
         if !code_completion_post.stream {
