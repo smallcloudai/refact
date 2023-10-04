@@ -432,8 +432,8 @@ h3 {
     align-items: stretch;
 }
 .sources-stats {
-    margin-top: auto;
-    margin-bottom: 10px;
+    margin-top: 20px;
+    margin-right: auto;
 }
 .source-force {
     display: flex;
