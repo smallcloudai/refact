@@ -126,7 +126,7 @@ function render_runs() {
         run_name.innerText = run.run_id;
 
         let status_colors = {
-            'unknown': 'text-bg-warning',
+            'preparing': 'text-bg-warning',
             'starting': 'text-bg-secondary',
             'working': 'text-bg-secondary',
             'completed': 'text-bg-success',

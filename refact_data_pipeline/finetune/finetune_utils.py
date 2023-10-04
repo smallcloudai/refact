@@ -34,12 +34,12 @@ def get_finetune_runs():
             "run_id": dirname,
             "worked_minutes": "0",
             "worked_steps": "0",
-            "status": "unknown",  # working, starting, completed, failed
+            "status": "preparing",  # working, starting, completed, failed
         }
         try:
             d["model_name"] = get_run_model_name(dir_path)
         except RuntimeError:
-            pass
+            d["model_name"] = ""
         status_fn = os.path.join(dir_path, "status.json")
         if os.path.exists(status_fn):
             d.update(json.load(open(status_fn, "r")))
@@ -47,7 +47,7 @@ def get_finetune_runs():
             # NOTE: every time we write status of any stage of filtering progress, we touch LORA_LOGDIR
             mtime = os.path.getmtime(dir_path)
             if mtime + 300 < time.time():
-                if d["status"] in ["unknown"]:
+                if d["status"] in ["preparing"]:
                     d["status"] = "interrupted"
                 else:
                     d["status"] = "failed"
