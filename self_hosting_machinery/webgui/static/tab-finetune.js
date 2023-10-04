@@ -338,11 +338,12 @@ function animate_use_model() {
 
 function finetune_switch_activate(lora_mode, run_id, checkpoint) {
     animate_use_model();
+    const model_name = document.querySelector('#finetune-model').value
     let send_this = {
-        "model": document.querySelector('#finetune-model').value,
+        "model": model_name,
         "lora_mode": lora_mode,
-        "specific_lora_run_id": run_id ? run_id : finetune_configs_and_runs.active.specific_lora_run_id,
-        "specific_checkpoint": checkpoint ? checkpoint : finetune_configs_and_runs.active.specific_checkpoint,
+        "specific_lora_run_id": run_id ? run_id : finetune_configs_and_runs.active[model_name].specific_lora_run_id,
+        "specific_checkpoint": checkpoint ? checkpoint : finetune_configs_and_runs.active[model_name].specific_checkpoint,
     }
     fetch("/tab-finetune-activate", {
         method: "POST",
