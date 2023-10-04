@@ -215,12 +215,20 @@ function render_runs() {
     const runs_table_rows = runs_table.querySelectorAll('tr');
     runs_table_rows.forEach(function (row) {
         row.addEventListener('click', function (event) {
+            remove_runs_table_sucess();
             row.classList.add('table-success');
             event.stopPropagation();
             const run_id = this.dataset.run;
             selected_lora = run_id;
             render_checkpoints(find_checkpoints_by_run(run_id));
         });
+    });
+}
+
+function remove_runs_table_sucess() {
+    const runs_table = document.querySelector('.run-table');
+    runs_table.querySelectorAll('tr').forEach(function (row) {
+        row.classList.remove('table-success');
     });
 }
 
