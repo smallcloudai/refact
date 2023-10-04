@@ -215,6 +215,7 @@ function render_runs() {
     const runs_table_rows = runs_table.querySelectorAll('tr');
     runs_table_rows.forEach(function (row) {
         row.addEventListener('click', function (event) {
+            row.classList.add('table-success');
             event.stopPropagation();
             const run_id = this.dataset.run;
             selected_lora = run_id;
