@@ -733,6 +733,17 @@ export async function init() {
         }
         save_filter_setup();
     });
+    
+    const proceed_finetune_button = document.querySelector('.proceed-finetune');
+    proceed_finetune_button.addEventListener('click', function() {
+        document.querySelector('#upload').classList.remove('main-active');
+        document.querySelector('#finetune').classList.add('main-active');
+        document.querySelectorAll('.nav-link').forEach(function(link) {
+            link.classList.remove('main-active');
+        });
+        let nav_link = document.querySelector('[data-tab="finetune"]');
+        nav_link.classList.add('main-active');
+    });
 }
 
 export function tab_switched_here() {

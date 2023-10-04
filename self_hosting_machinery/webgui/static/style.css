@@ -506,8 +506,6 @@ h3 {
 .sources-stats-finetune {
     display: none;
     flex-direction: column;
-    width: 170px;
-    align-items: flex-start;
     margin-left: auto;
 }
 .sources-stats-finetune a i {
