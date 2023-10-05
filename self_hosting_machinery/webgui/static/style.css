@@ -395,7 +395,6 @@ h3 {
     content: close-quote;
 }
 .table-checkpoints tr {
-    cursor: pointer;
 }
 .tab-files-process-now {
     margin-left: auto;
@@ -433,8 +432,8 @@ h3 {
     align-items: stretch;
 }
 .sources-stats {
-    margin-top: auto;
-    margin-bottom: 10px;
+    margin-top: 20px;
+    margin-right: auto;
 }
 .source-force {
     display: flex;
@@ -507,8 +506,6 @@ h3 {
 .sources-stats-finetune {
     display: none;
     flex-direction: column;
-    width: 170px;
-    align-items: flex-start;
     margin-left: auto;
 }
 .sources-stats-finetune a i {
