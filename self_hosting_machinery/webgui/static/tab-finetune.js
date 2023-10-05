@@ -792,7 +792,7 @@ function finetune_controls_state()
 
     let error_span = document.querySelector('.ftf-error span');
     let ftf_error = document.querySelector('.ftf-error');
-    if (finetune_state.finetune_filter_stats.status == "failed") {
+    if (finetune_state.finetune_filter_stats.filterting_status == "failed") {
         ftf_error.classList.remove('d-none');
         if(finetune_state.finetune_filter_stats.error && finetune_state.finetune_filter_stats.error !== '') {
             error_span.innerHTML = finetune_state.finetune_filter_stats.error;
