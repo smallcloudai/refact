@@ -303,7 +303,8 @@ def main(models_db: Dict[str, Any]):
         if "error" not in stats_dict:  # if there is, a more detailed error is already in place
             t = str(e) or str(type(e))
             stats_dict["error"] = t
-            logging.error(t)
+            logging.error("FAILED: %s" % t)
+            traces.log("FAILED: %s" % t)
             _update_and_dump_status(stats_dict, "failed")
             exit(1)
         if isinstance(e, ValueError):  # don't print stack for ValueError which is used for mundane data problems
