@@ -586,13 +586,12 @@ function file_status_color(status) {
     return status_color;
 }
 
-export async function init() {
+export async function init(general_error) {
     let req = await fetch('/tab-upload.html');
     document.querySelector('#upload').innerHTML = await req.text();
     sources_pane = document.querySelector('.sources-pane');
     filetypes_pane = document.querySelector('.filetypes-pane');
-
-
+    
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());
     tab_upload_file_submit.addEventListener('click', function() {

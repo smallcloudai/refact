@@ -287,7 +287,7 @@ function format_memory(memory_in_mb, decimalPlaces = 2) {
     return memory_in_gb;
 }
 
-export async function init() {
+export async function init(general_error) {
     let req = await fetch('/tab-model-hosting.html');
     document.querySelector('#model-hosting').innerHTML = await req.text();
     get_gpus();

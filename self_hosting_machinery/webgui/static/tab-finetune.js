@@ -784,7 +784,7 @@ function finetune_controls_state()
 
     if(finetune_state.finetune_filter_stats.filterting_status) {
         document.querySelector('.ftf-status').classList.remove('d-none');
-        document.querySelector('.ftf-status span').innerHTML = finetune_state.finetune_filter_stats.status;
+        document.querySelector('.ftf-status span').innerHTML = finetune_state.finetune_filter_stats.filterting_status;
     } else {
         document.querySelector('.ftf-status').classList.add('d-none');
     }
@@ -799,6 +799,9 @@ function finetune_controls_state()
     } else {
         ftf_error.classList.add('d-none');
         error_span.innerHTML = '';
+    }
+    if(finetune_state.prog_name === 'prog_filter' && finetune_state.prog_status === 'failed') {
+        document.querySelector('.ftf-status span').innerHTML = finetune_state.prog_status;
     }
 
     // example:
@@ -870,7 +873,7 @@ function start_log_stream(run_id) {
     fetchData();
 }
 
-export async function init() {
+export async function init(general_error) {
     let req = await fetch('/tab-finetune.html');
     document.querySelector('#finetune').innerHTML = await req.text();
 

@@ -1,11 +1,31 @@
 const default_tab = 'model-hosting'
 let first_page_load = true;
+let show_general_error = false;
 const req = await fetch('list-plugins');
 const plugins = await req.json();
 let history_state = [];
 let create_h_state = true;
 // show navigation bar immediately, import later
 plugins_to_top_nav_bar(plugins);
+
+const general_error = error => {
+    if(show_general_error) { return; }
+    const error_toast = document.querySelector('.global-error-toast');
+    const error_toast_content = error_toast.querySelector('.toast-body');
+    error_toast_content.innerHTML = error;
+    if(error.details && error.details.length > 0) {
+        error_toast_content.innerHTML = error.details;
+    }
+    const error_toast_box = bootstrap.Toast.getOrCreateInstance(error_toast);
+    error_toast_box.show();
+    show_general_error = true;
+
+    const toast_close = document.querySelector('.global-error-toast-close');
+    toast_close.addEventListener('click', function() {
+        error_toast_content.innerHTML = '';
+        show_general_error  = false;
+    });
+}
 
 // this might take some time: load all modules
 const imported_plugins = [];
@@ -14,7 +34,7 @@ for (const p of plugins) {
     const mod = await import("./tab-" + p.tab + ".js");
     imported_plugins.push(mod);
     p.mod = mod;
-    inits_working.push(mod.init());
+    inits_working.push(mod.init(general_error));
 }
 for (const p of inits_working) {
     await p;
@@ -239,23 +259,3 @@ reset_submit_button.addEventListener('click', () => {
 window.addEventListener("offline", function() {
     general_error("Connection problem. Seems your browser is offline.");
 })
-
-const show_general_error = false;
-function general_error(error) {
-    if(show_general_error) { return; }
-    const error_toast = document.querySelector('.global-error-toast');
-    const error_toast_content = error_toast.querySelector('.toast-body');
-    error_toast_content.innerHTML = error;
-    if(error.details && error.details.length > 0) {
-        error_toast_content.innerHTML = error.details;
-    }
-    const error_toast_box = bootstrap.Toast.getOrCreateInstance(error_toast);
-    error_toast_box.show();
-    show_general_error = true;
-
-    const toast_close = document.querySelector('.finetune-tab-settings-error-toast-close');
-    toast_close.addEventListener('click', function() {
-        error_toast_content.innerHTML = '';
-        show_general_error  = false;
-    });
-}
