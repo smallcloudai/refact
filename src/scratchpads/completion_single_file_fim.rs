@@ -65,7 +65,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         let limit: i32 = context_size as i32 - self.post.parameters.max_new_tokens as i32;
-        let supports_stop = true; // TODO: take from model caps
+        let supports_stop = true; // some hf models do not support stop, but it's a thing of the past?
         if supports_stop {
             let mut stop_list = vec![self.t.eot.clone(), "\n\n".to_string()];
             if !self.post.inputs.multiline {

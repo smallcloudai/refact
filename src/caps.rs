@@ -16,8 +16,8 @@ const CAPS_FILENAME: &str = "coding_assistant_caps.json";
 pub struct ModelRecord {
     pub n_ctx: usize,
     #[serde(default)]
-    pub supports_stop: bool,
     pub supports_scratchpads: HashMap<String, serde_json::Value>,
+    #[serde(default)]
     pub default_scratchpad: String,
     #[serde(default)]
     pub similar_models: Vec<String>,
@@ -51,7 +51,6 @@ const KNOWN_MODELS: &str = r#"
     "code_completion_models": {
         "bigcode/starcoder": {
             "n_ctx": 4096,
-            "supports_stop": true,
             "supports_scratchpads": {
                 "FIM-PSM": {},
                 "FIM-SPM": {}
@@ -61,7 +60,6 @@ const KNOWN_MODELS: &str = r#"
         },
         "smallcloudai/Refact-1_6B-fim": {
             "n_ctx": 4096,
-            "supports_stop": true,
             "supports_scratchpads": {
                 "FIM-PSM": {},
                 "FIM-SPM": {}
@@ -70,7 +68,6 @@ const KNOWN_MODELS: &str = r#"
         },
         "codellama/CodeLlama-13b-hf": {
             "n_ctx": 4096,
-            "supports_stop": true,
             "supports_scratchpads": {
                 "FIM-PSM": {"prefix_token": "<PRE>", "suffix_token": "<SUF>", "middle_token": "<MID>", "eot_token": "<EOT>"}
             },
@@ -89,8 +86,7 @@ const KNOWN_MODELS: &str = r#"
                     "stop_list": ["<empty_output>"],
                     "default_system_message": "You are a programming assistant."
                 }
-            },
-            "default_scratchpad": "CHAT-GENERIC"
+            }
         },
         "llama2/7b": {
             "n_ctx": 4096,
@@ -99,7 +95,6 @@ const KNOWN_MODELS: &str = r#"
                     "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
                 }
             },
-            "default_scratchpad": "CHAT-LLAMA2",
             "similar_models": ["llama2/13b"]
         },
         "meta-llama/Llama-2-70b-chat-hf": {
@@ -108,8 +103,15 @@ const KNOWN_MODELS: &str = r#"
                 "CHAT-LLAMA2": {
                     "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
                 }
-            },
-            "default_scratchpad": "CHAT-LLAMA2"
+            }
+        },
+        "gpt-3.5": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {"PASSTHROUGH": {}}
+        },
+        "gpt-4": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {"PASSTHROUGH": {}}
         }
     }
 }
@@ -258,6 +260,17 @@ pub fn which_scratchpad_to_use<'a>(
     let mut take_this_one = default_scratchpad;
     if user_wants_scratchpad != "" {
         take_this_one = user_wants_scratchpad;
+    }
+    if default_scratchpad == "" {
+        if scratchpads.len() == 1 {
+            let key = scratchpads.keys().next().unwrap();
+            return Ok((key.clone(), &scratchpads[key]));
+        } else {
+            return Err(format!(
+                "There is no default scratchpad defined, requested scratchpad is empty. The model supports these scratchpads: {:?}",
+                scratchpads.keys()
+            ));
+        }
     }
     if let Some(scratchpad_patch) = scratchpads.get(take_this_one) {
         return Ok((take_this_one.to_string(), scratchpad_patch));
