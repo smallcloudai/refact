@@ -1,3 +1,4 @@
+import { general_error } from './error.js';
 let tab_files_data = null;
 let show_scan_error = false;
 let sort_type = 'filetype';
