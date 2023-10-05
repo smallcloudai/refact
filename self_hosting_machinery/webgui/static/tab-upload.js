@@ -49,6 +49,10 @@ function get_tab_files() {
                 sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
             }
+        })
+        .catch(function(error) {
+            console.log('tab-files-get',error);
+            general_error(error);
         });
 }
 
@@ -186,6 +190,10 @@ function get_ssh_keys() {
         })
         .then(function(data) {
             console.log('get-all-ssh-keys',data);
+        })
+       .catch(function(error) {
+            console.log('get-all-ssh-keys',error);
+            general_error(error);
         });
 }
 
@@ -315,6 +323,10 @@ function save_filter_setup() {
             throw new Error(response.statusText);
         }
     })
+   .catch(error => {
+        console.log('tab-files-filetypes-setup',error);
+        general_error(error);
+    });
 }
 
 function render_stats() {
@@ -489,6 +501,10 @@ function delete_file(file) {
     .then(function(response) {
         process_now_update_until_finished();
         console.log(response);
+    })
+   .catch(function(error) {
+        console.log('tab-files-delete',error);
+        general_error(error);
     });
 }
 
@@ -527,6 +543,10 @@ function save_tab_files() {
         if(response.ok) {
             get_tab_files();
         }
+    })
+   .catch(function(error) {
+        console.log('tab-files-save-config',error);
+        general_error(error);
     });
 }
 
@@ -555,13 +575,12 @@ function file_status_color(status) {
     return status_color;
 }
 
-export async function init() {
+export async function init(general_error) {
     let req = await fetch('/tab-upload.html');
     document.querySelector('#upload').innerHTML = await req.text();
     sources_pane = document.querySelector('.sources-pane');
     filetypes_pane = document.querySelector('.filetypes-pane');
-
-
+    
     const tab_upload_file_submit = document.querySelector('.tab-upload-file-submit');
     tab_upload_file_submit.removeEventListener('click', upload_file());
     tab_upload_file_submit.addEventListener('click', function() {
@@ -701,6 +720,17 @@ export async function init() {
             file_inputs[i].checked = false;
         }
         save_filter_setup();
+    });
+    
+    const proceed_finetune_button = document.querySelector('.proceed-finetune');
+    proceed_finetune_button.addEventListener('click', function() {
+        document.querySelector('#upload').classList.remove('main-active');
+        document.querySelector('#finetune').classList.add('main-active');
+        document.querySelectorAll('.nav-link').forEach(function(link) {
+            link.classList.remove('main-active');
+        });
+        let nav_link = document.querySelector('[data-tab="finetune"]');
+        nav_link.classList.add('main-active');
     });
 }
 

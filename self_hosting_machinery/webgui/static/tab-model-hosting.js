@@ -8,6 +8,10 @@ function get_gpus() {
     })
     .then(function(data) {
         render_gpus(data);
+    })
+   .catch(function(error) {
+        console.log('tab-host-have-gpus',error);
+        general_error(error);
     });
 }
 
@@ -97,6 +101,10 @@ function get_models()
         } else {
             required_memory_exceed_available.classList.add('d-none');
         }
+    })
+    .catch(function(error) {
+        console.log('tab-host-models-get',error);
+        general_error(error);
     });
 }
 
@@ -118,6 +126,10 @@ function save_model_assigned() {
     })
     .then(function (response) {
         get_models();
+    })
+   .catch(function (error) {
+        console.log('tab-host-models-assign',error);
+        general_error(error);
     });
 }
 
@@ -275,7 +287,7 @@ function format_memory(memory_in_mb, decimalPlaces = 2) {
     return memory_in_gb;
 }
 
-export async function init() {
+export async function init(general_error) {
     let req = await fetch('/tab-model-hosting.html');
     document.querySelector('#model-hosting').innerHTML = await req.text();
     get_gpus();
