@@ -1,3 +1,4 @@
+import { general_error } from './error.js';
 let gpus_popup = false;
 let models_data = null;
 

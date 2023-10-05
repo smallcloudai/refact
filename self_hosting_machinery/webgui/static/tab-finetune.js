@@ -1,3 +1,4 @@
+import { general_error } from './error.js';
 let logs_streamer_run_id = "";
 let gfx_showing_run_id = "";
 
@@ -873,8 +874,7 @@ function start_log_stream(run_id) {
     };
     fetchData();
 }
-
-export async function init(general_error) {
+export async function init() {
     let req = await fetch('/tab-finetune.html');
     document.querySelector('#finetune').innerHTML = await req.text();
 
