@@ -97,7 +97,6 @@ def get_finetune_config(models_db: Dict[str, Any], logger: Optional[Callable] = 
 def get_finetune_filter_stat(default: bool = False) -> Dict[str, Any]:
     filter_stats = {
         "filterting_status": "",
-        "error": "",
         "total_steps": 0,
         "worked_steps": 0,
         "worked_minutes": 0,

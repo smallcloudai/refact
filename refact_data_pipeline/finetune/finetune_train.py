@@ -381,6 +381,7 @@ def main(models_db: Dict[str, Any]):
         if "error" not in status_dict:  # if there is, a more detailed error is already in place
             t = str(e) or str(type(e))
             status_dict["error"] = t
+            logging.error("FAILED: %s" % t)
             traces.log("FAILED: %s" % t)
             save_status_json(status_dict, "failed")
         logging.error("FAILED finetune at %s" % traces.context().path)
