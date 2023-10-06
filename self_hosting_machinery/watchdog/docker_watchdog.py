@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import glob
 import signal
 import subprocess
 import sys
@@ -25,11 +26,23 @@ def replace_variable_names_from_env(s):
     return s
 
 
+log_prevdate = ""
+
 def log(*args):
     msg = " ".join(map(str, args))
     sys.stderr.write(msg + "\n")
     sys.stderr.flush()
     date = time.strftime("%Y%m%d")
+    global log_prevdate
+    if log_prevdate != date:
+        log_prevdate = date
+        list_of_files = glob.glob(f'{env.DIR_LOGS}/watchdog_*.log')
+        list_of_files.sort()
+        while len(list_of_files) > 20:
+            try:
+                os.remove(list_of_files.pop())
+            except OSError:
+                pass
     with open(os.path.join(env.DIR_LOGS, "watchdog_%s.log" % date), "a") as f:
         f.write(msg + "\n")
 
