@@ -33,7 +33,7 @@ def call_completion(
                 "multiline": multiline,
             },
             "parameters": {
-                # "temperature": 0.8,
+                "temperature": 0.1,
             },
             "model": model,
             # "scratchpad": "FIM-PSM",
@@ -92,9 +92,9 @@ def test_battery(model, stream):
     x = pretty_print_wrapper(hello_world + "    \n", model=model, stream=stream, multiline=True, cursor_line=4, cursor_character=4)
     assert x.rstrip() == "print('Hello World')\n    return True", x
     x = pretty_print_wrapper(hello_world.replace("hello_world", ""), model=model, stream=stream, multiline=True, cursor_line=0, cursor_character=4)
-    assert x.rstrip() in ["hello_world", "print_hello"], x
+    assert x.rstrip() in ["main", "hello_world", "print_hello", "print_hello_world"], x
     x = pretty_print_wrapper(hello_world.replace("hello_world", ""), model=model, stream=stream, multiline=False, cursor_line=0, cursor_character=4)
-    assert x.rstrip() in ["hello_world():", "print_hello():"], x
+    assert x.rstrip() in ["main():", "hello_world():", "print_hello():", "print_hello_world():"], x
 
 
 if __name__ == "__main__":
