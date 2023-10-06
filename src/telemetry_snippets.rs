@@ -51,7 +51,11 @@ pub struct SnippetTelemetry {
     pub grey_text: String,
     pub accepted: bool,
     pub corrected_by_user: String,
-    pub remaining_percent: f64,
+    // add
+    pub remaining_percent_30s: f64,
+    // pub remaining_percent_300s: f64,
+    // pub remaining_percent_walkaway: f64,
+    // pub walkaway_ms: u64,
 }
 
 pub fn snippet_register(
@@ -66,7 +70,7 @@ pub fn snippet_register(
         grey_text: grey_text.clone(),
         accepted: false,
         corrected_by_user: "".to_string(),
-        remaining_percent: 0.0,
+        remaining_percent_30s: 0.0,
     };
     storage_locked.tele_snippet_next_id += 1;
     storage_locked.tele_snippets.push(snip);

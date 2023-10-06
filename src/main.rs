@@ -43,6 +43,7 @@ async fn main() {
         .compact()
         .init();
     info!("started");
+    info!("cache dir: {}", cache_dir.display());
 
     let gcx2 = gcx.clone();
     let gcx3 = gcx.clone();
@@ -70,7 +71,7 @@ async fn main() {
                 // tower-lsp-0.20.0/examples/tcp.rs
                 match listener.accept().await {
                     Ok((s, addr)) => {
-                        info!("new client connection from {}", addr);
+                        info!("LSP new client connection from {}", addr);
                         let (read, write) = tokio::io::split(s);
                         let (lsp_service, socket) = lsp::build_lsp_service(gcx2.clone());
                         tower_lsp::Server::new(read, write, socket).serve(lsp_service).await;
