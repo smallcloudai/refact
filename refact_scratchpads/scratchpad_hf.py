@@ -72,14 +72,14 @@ class ScratchpadHuggingfaceBase:
         t = chosen_token.item()
 
         if t in [self._tokenizer.eos_token_id]:
-            self.finish_reason = "eot"
+            self.finish_reason = "stop-eot"
         elif t in self._special_tokens:
-            self.finish_reason = "special-token"
+            self.finish_reason = "stop-special-token"
 
         if not self.finish_reason:
             self._completion.append(t)
         if t in self._stop_tokens:
-            self.finish_reason = "stoptoken"
+            self.finish_reason = "stop-token"
 
         couple_of_tokens_decoded = self._tokenizer.decode(([self._prev_token] if self._prev_token is not None else []) + [t])
         self._prev_token = t
