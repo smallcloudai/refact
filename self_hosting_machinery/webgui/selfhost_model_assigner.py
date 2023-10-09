@@ -212,14 +212,15 @@ class ModelAssigner:
             if rec.get("hidden", False):
                 continue
             finetune_info = None
-            if k in active_loras and active_loras[k]["lora_mode"] in ["specific", "latest-best"]:
+            if k in active_loras:
+                lora_mode = active_loras[k]["lora_mode"]
                 latest_best_lora_info = find_best_lora(k)
-                if active_loras[k] == "latest-best" and latest_best_lora_info["latest_run_id"]:
+                if lora_mode == "latest-best" and latest_best_lora_info["latest_run_id"]:
                     finetune_info = {
                         "run": latest_best_lora_info["latest_run_id"],
                         "checkpoint": latest_best_lora_info["best_checkpoint_id"],
                     }
-                elif active_loras[k] == "specific" and "specific_lora_run_id" in active_loras[k]:
+                elif lora_mode == "specific" and active_loras[k].get("specific_lora_run_id", ""):
                     finetune_info = {
                         "run": active_loras[k]["specific_lora_run_id"],
                         "checkpoint": active_loras[k]["specific_checkpoint"],

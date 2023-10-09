@@ -52,7 +52,6 @@ function tab_finetune_config_and_runs() {
             return response.json();
         })
         .then(function (data) {
-            console.log('tab-finetune-config-and-runs',data);
             finetune_configs_and_runs = data;
             render_runs();
             render_model_select();
@@ -272,6 +271,10 @@ const find_checkpoints_by_run = (run_id) => {
 };
 
 function render_lora_switch() {
+    let lora_switch_model = document.querySelector('#lora-switch-model');
+    lora_switch_model.innerHTML = `
+        <b>Model:</b> ${finetune_configs_and_runs.completion_model}
+    `;
     let mode = finetune_configs_and_runs.active[finetune_configs_and_runs.config.model_name] ? finetune_configs_and_runs.active[finetune_configs_and_runs.config.model_name].lora_mode : "latest-best";
     loras_switch_no_reaction = true; // avoid infinite loop when setting .checked
     if (mode === 'off') {

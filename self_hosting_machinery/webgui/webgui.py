@@ -73,7 +73,7 @@ class WebGUI(FastAPI):
             TabServerLogRouter(),
             TabUploadRouter(),
             TabFinetuneRouter(
-                models_db=model_assigner.models_db),
+                model_assigner=model_assigner),
             TabHostRouter(model_assigner),
             TabSettingsRouter(model_assigner),
             StaticRouter(),

@@ -170,14 +170,24 @@ function render_models_assigned(models) {
         }
 
         if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
-            const finetune_info_list = document.createElement("ul");
-            const run = document.createElement("li");
-            run.textContent = models_info[index].finetune_info.run;
-            const checkpoint = document.createElement("li");
-            checkpoint.textContent = models_info[index].finetune_info.checkpoint;
-            finetune_info_list.appendChild(run);
-            finetune_info_list.appendChild(checkpoint);
-            finetune_info.appendChild(finetune_info_list);
+            finetune_info.innerHTML = `
+            <style>
+              table {
+                border-collapse: separate;
+                border-spacing: 10px;
+              }
+            </style>
+            <table>
+                <tr>
+                    <td>Run: </td>
+                    <td>${models_info[index].finetune_info.run}</td>
+                </tr>
+                <tr>
+                    <td>Checkpoint: </td>
+                    <td>${models_info[index].finetune_info.checkpoint}</td>
+                </tr>
+            </table>
+            `;
         }
 
          if (models_info[index].hasOwnProperty('has_sharding') && models_info[index].has_sharding) {
