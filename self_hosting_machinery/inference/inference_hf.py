@@ -268,7 +268,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
 
                 self._model.generate(**generation_kwargs)
             if not scratchpad.finish_reason:
-                scratchpad.finish_reason = "maxlen"
+                scratchpad.finish_reason = "length"
             upload_proxy_args["ts_batch_finished"] = time.time()
             upload_proxy.upload_result(
                 **upload_proxy_args,
