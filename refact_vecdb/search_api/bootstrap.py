@@ -1,6 +1,5 @@
 from typing import List, Union
 
-from refact_vecdb.common.profiles import PROFILES
 from refact_vecdb.common.context import CONTEXT as C
 from refact_vecdb.common.db_models import bootstrap_keyspace
 from refact_vecdb.common.vecdb import load_vecdb
@@ -18,8 +17,7 @@ def bootstrap(
         'port': port,
     }
     bootstrap_keyspace(keyspace='vecdb')
-    for account in PROFILES:
-        setup_account(account)
+    setup_account('smc')
 
 
 def setup_account(account: str) -> None:
