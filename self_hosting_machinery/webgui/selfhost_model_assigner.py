@@ -8,6 +8,8 @@ from self_hosting_machinery import env
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from known_models_db.refact_known_models import models_mini_db
 from known_models_db.refact_toolbox_db import modelcap_records
+from self_hosting_machinery.scripts.best_lora import find_best_lora
+from refact_data_pipeline.finetune.finetune_utils import get_active_loras
 
 from typing import List, Dict, Set, Any
 
@@ -205,12 +207,27 @@ class ModelAssigner:
 
         chat_caps = _capabilities("chat")
         toolbox_caps = _capabilities("toolbox")
+        active_loras = get_active_loras(self.models_db)
         for k, rec in self.models_db.items():
             if rec.get("hidden", False):
                 continue
+            finetune_info = None
+            if k in active_loras and active_loras[k]["lora_mode"] in ["specific", "latest-best"]:
+                latest_best_lora_info = find_best_lora(k)
+                if active_loras[k] == "latest-best" and latest_best_lora_info["latest_run_id"]:
+                    finetune_info = {
+                        "run": latest_best_lora_info["latest_run_id"],
+                        "checkpoint": latest_best_lora_info["best_checkpoint_id"],
+                    }
+                elif active_loras[k] == "specific" and "specific_lora_run_id" in active_loras[k]:
+                    finetune_info = {
+                        "run": active_loras[k]["specific_lora_run_id"],
+                        "checkpoint": active_loras[k]["specific_checkpoint"],
+                    }
             info.append({
                 "name": k,
                 "backend": rec["backend"],
+                "finetune_info": finetune_info,
                 "has_completion": bool("completion" in rec["filter_caps"]),
                 "has_finetune": bool("finetune" in rec["filter_caps"]),
                 "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),

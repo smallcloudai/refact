@@ -146,6 +146,7 @@ function render_models_assigned(models) {
         row.setAttribute('data-model',index);
         const model_name = document.createElement("td");
         const completion = document.createElement("td");
+        const finetune_info = document.createElement("td");
         const select_gpus = document.createElement("td");
         const gpus_share = document.createElement("td");
         const del = document.createElement("td");
@@ -166,6 +167,17 @@ function render_models_assigned(models) {
                 save_model_assigned();
             });
             completion.appendChild(completion_input);
+        }
+
+        if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
+            const finetune_info_list = document.createElement("ul");
+            const run = document.createElement("li");
+            run.textContent = models_info[index].finetune_info.run;
+            const checkpoint = document.createElement("li");
+            checkpoint.textContent = models_info[index].finetune_info.checkpoint;
+            finetune_info_list.appendChild(run);
+            finetune_info_list.appendChild(checkpoint);
+            finetune_info.appendChild(finetune_info_list);
         }
 
          if (models_info[index].hasOwnProperty('has_sharding') && models_info[index].has_sharding) {
@@ -233,6 +245,7 @@ function render_models_assigned(models) {
 
         row.appendChild(model_name);
         row.appendChild(completion);
+        row.appendChild(finetune_info);
         row.appendChild(select_gpus);
         row.appendChild(gpus_share);
         row.appendChild(del);
