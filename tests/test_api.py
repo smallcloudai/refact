@@ -45,7 +45,7 @@ def call_completion(
         raise ValueError("Unexpected response\n%s" % r.text)
     if not stream:
         resp = r.json()
-        return resp["choices"][0]["code_completion"]
+        return resp["choices"][0]["code_completion"], resp["choices"][0]["finish_reason"]
     else:
         accum = ""
         for line in r.iter_lines():
@@ -59,8 +59,8 @@ def call_completion(
             if txt == "[DONE]":
                 break
             j = json.loads(txt)
-            accum += j["code_completion_delta"]
-        return accum
+            accum += j["choices"][0]["code_completion"]
+        return accum, j["choices"][0]["finish_reason"]
 
 
 def pretty_print_wrapper(
@@ -77,8 +77,8 @@ def pretty_print_wrapper(
             print("%s" % termcolor.colored(line[:cursor_character], "green") + "|" + termcolor.colored(line[cursor_character:], "green"))
         else:
             print("%s" % termcolor.colored(line, "green"))
-    ans = call_completion(code, multiline=multiline, cursor_line=cursor_line, cursor_character=cursor_character, **kwargs)
-    print("multiline=%s, completion \"%s\"" % (multiline, termcolor.colored(ans.replace("\n", "\\n"), "cyan")))
+    ans, fr = call_completion(code, multiline=multiline, cursor_line=cursor_line, cursor_character=cursor_character, **kwargs)
+    print("multiline=%s, completion \"%s\", finish_reason=%s" % (multiline, termcolor.colored(ans.replace("\n", "\\n"), "cyan"), fr))
     return ans
 
 
@@ -98,5 +98,5 @@ def test_battery(model, stream):
 
 
 if __name__ == "__main__":
-    test_battery("", stream=False)
+    test_battery("", stream=True)
     # test_battery("bigcode/starcoder", stream=False)
