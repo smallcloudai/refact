@@ -233,7 +233,7 @@ class InferenceLegacy(InferenceBase, LoraLoaderMixin):
                 break
 
         if not scratchpad.finish_reason:
-            scratchpad.finish_reason = "maxlen"
+            scratchpad.finish_reason = "length"
 
     def infer(self, request: Dict[str, Any], upload_proxy: UploadProxy, upload_proxy_args: Dict):
         request_id = request["id"]
