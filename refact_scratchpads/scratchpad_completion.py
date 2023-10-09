@@ -28,19 +28,19 @@ class ScratchpadCompletion(ScratchpadBase):
             self.needs_upload = True
         self._tokens.append(chosen_token.item())
         if chosen_token == self.enc.EOT:
-            self.finish_reason = "eot"
+            self.finish_reason = "stop-eot"
         if chosen_token in self.stop_tokens:
-            self.finish_reason = "stoptoken"
+            self.finish_reason = "stop-token"
         if len(self._tokens) > 3:
             if self.stop_lf_lf and self._tokens[-1] == self.enc.LF and self._tokens[-2] == self.enc.LF:
-                self.finish_reason = "ins-stop-lflf"
+                self.finish_reason = "stop-lflf"
             if self.stop_lf_lf_lf:
                 if self._tokens[-3] == self.enc.LF and self._tokens[-2] == self.enc.LF and self._tokens[-1] == self.enc.LF:
-                    self.finish_reason = "ins-stop-lflflf"
+                    self.finish_reason = "stop-lflflf"
                 elif self._tokens[-2] == self.enc.LFLF and self._tokens[-1] == self.enc.LF:
-                    self.finish_reason = "ins-stop-lflflf"
+                    self.finish_reason = "stop-lflflf"
                 elif self._tokens[-2] == self.enc.LFLF and self._tokens[-1] == self.enc.LFLF:
-                    self.finish_reason = "ins-stop-lflflf"
+                    self.finish_reason = "stop-lflflf"
         return dict()
 
     def prompt(self, T: int):
