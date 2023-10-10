@@ -1,5 +1,5 @@
 import { general_error } from './error.js';
-import { init as init_upload_files_modal } from './components/modals/modal-upload-files.js'
+import { init as init_upload_files_modal, switch_away as upload_files_modal_switch_away } from './components/modals/modal-upload-files.js'
 
 let logs_streamer_run_id = "";
 let gfx_showing_run_id = "";
@@ -1015,7 +1015,7 @@ export function tab_switched_away() {
         logs_streamer_to_stop.cancel();
         logs_streamer_to_stop = undefined;
     }
-    document.querySelector('#lora-upload-files-modal').innerHTML = "";
+    upload_files_modal_switch_away(document.querySelector('#lora-upload-files-modal'));
 }
 
 export function tab_update_each_couple_of_seconds() {

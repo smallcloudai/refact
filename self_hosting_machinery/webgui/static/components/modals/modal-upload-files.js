@@ -51,6 +51,7 @@ let modal_html = `
 </div>
 `
 
+let gl_insert_in_el;
 let gl_open_on_click_el;
 let gl_open_on_click_el_default_html;
 let gl_modal;
@@ -76,6 +77,7 @@ export async function init(
     link_placeholder,
     input_help_text
 ) {
+    gl_insert_in_el = insert_in_el;
     gl_open_on_click_el = open_on_click_el;
     gl_open_on_click_el_default_html = open_on_click_el.innerHTML;
     insert_in_el.innerHTML = modal_html;
@@ -107,6 +109,10 @@ export async function init(
     add_submit_handler(submit_link_endpoint, submit_input_endpoint, text_on_progress_done);
 }
 
+
+export function switch_away(el) {
+    el.innerHTML = '';
+}
 
 function add_nav_btn_click_handlers() {
     const file_modal = document.getElementById('updlg-modal');

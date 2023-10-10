@@ -1,5 +1,5 @@
 import { general_error } from './error.js';
-import { init as init_upload_files_modal } from './components/modals/modal-upload-files.js'
+import { init as init_upload_files_modal, switch_away as upload_files_modal_switch_away } from './components/modals/modal-upload-files.js'
 
 
 let tab_files_data = null;
@@ -623,7 +623,7 @@ export function tab_switched_here() {
 
 export function tab_switched_away() {
     dont_disable_file_types = false;
-    document.querySelector('#upload-files-modal').innerHTML = "";
+    upload_files_modal_switch_away(document.querySelector('#upload-files-modal'));
 }
 
 export function tab_update_each_couple_of_seconds() {
