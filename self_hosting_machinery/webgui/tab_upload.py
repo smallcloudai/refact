@@ -195,7 +195,7 @@ class TabUploadRouter(APIRouter):
     async def _upload_file_from_url(self, post: UploadViaURL):
         log("downloading \"%s\"" % post.url)
         try:
-            await download_file_from_url(post.url, env.DIR_UPLOADS, post.filename)
+            await download_file_from_url(post.url, env.DIR_UPLOADS)
         except Exception as e:
             return JSONResponse({"message": f"Cannot download: {e}"}, status_code=500)
         log("/download")

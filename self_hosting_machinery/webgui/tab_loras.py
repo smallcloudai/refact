@@ -88,7 +88,7 @@ class TabLorasRouter(APIRouter):
 
     async def _upload_lora_url(self, file: UploadViaURL):
         try:
-            file_path = await download_file_from_url(file.url, env.DIR_LORAS, file.filename)
+            file_path = await download_file_from_url(file.url, env.DIR_LORAS)
         except Exception as e:
             return JSONResponse({"detail": f"Cannot download: {e}"}, status_code=500)
 
