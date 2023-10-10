@@ -23,16 +23,16 @@ __all__ = ["TabUploadRouter", "download_file_from_url", "UploadViaURL"]
 async def download_file_from_url(url: str, download_dir: str, force_filename: Optional[str] = None) -> str:
     def extract_filename() -> str:
         try:
-            if not (content_disposition := response.headers.get("content-disposition")):
-                raise
-            print(f"content_disposition: {content_disposition}")
-            if not (match := re.search(r'\s+[^/\\\'\"]+\.\w+', content_disposition)):
-                raise
-            if not (fn := match.group()):
-                raise
+            if not (content_disposition := response.headers.get("Content-Disposition")):
+                raise Exception('No "content-disposition" header')
+            if not (match := re.search(r'filename\*="[^"]*\'([^"]+)"', content_disposition)):
+                raise Exception('Could not extract filename from "content-disposition" header')
+            if not (fn := match.group(1)):
+                raise Exception('No match in "content-disposition" header')
             return fn.strip()
-        except Exception:
-            return os.path.split(url)[1]
+        except Exception as e:
+            log(f'Could not extract filename from {url}: {e}; headers: {response.headers}')
+            return os.path.split(url)[1][-20:]
 
     file_path = None
     try:
@@ -50,11 +50,9 @@ async def download_file_from_url(url: str, download_dir: str, force_filename: Op
                     async for chunk in response.content.iter_chunked(1024 * 1024):
                         file.write(chunk)
     except Exception as e:
-        try:
-            if file_path and os.path.exists(file_path):
-                os.remove(file_path)
-        except Exception:
-            log(f"Cannot remove file {file_path}")
+        log(f"Error while downloading from {url}: {e}")
+        if file_path and os.path.exists(file_path):
+            shutil.rmtree(file_path, ignore_errors=True)
         raise e
     return file_path
 
@@ -181,7 +179,7 @@ class TabUploadRouter(APIRouter):
         try:
             with open(tmp_path, "wb") as f:
                 while True:
-                    contents = await file.read(int(1024 * 1024))
+                    contents = await file.read(1024 * 1024)
                     if not contents:
                         break
                     f.write(contents)
