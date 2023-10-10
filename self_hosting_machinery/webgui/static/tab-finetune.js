@@ -376,7 +376,7 @@ function animate_use_model() {
 
 function finetune_switch_activate(lora_mode, run_id, checkpoint) {
     animate_use_model();
-    const model_name = document.querySelector('#finetune-model').value
+    const model_name = finetune_configs_and_runs.completion_model;
     let send_this = {
         "model": model_name,
         "lora_mode": lora_mode,
