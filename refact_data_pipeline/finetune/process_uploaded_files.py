@@ -330,11 +330,10 @@ def prepare_and_copy(stats_json, upload_dir: str, unpack_dir: str):
     return huge_list
 
 
-def rm_and_unpack(upload_filename, unpack_filename, source_type, filename, rm_unpack_dir: bool = True):
-    if rm_unpack_dir:
-        cmd = ["rm", "-rf", unpack_filename]
-        log(" ".join(cmd))
-        subprocess.check_call(cmd)
+def rm_and_unpack(upload_filename, unpack_filename, source_type, filename):
+    cmd = ["rm", "-rf", unpack_filename]
+    log(" ".join(cmd))
+    subprocess.check_call(cmd)
 
     if source_type in ["archive", "singlefile"]:
         cmd = ["mkdir", "-p", unpack_filename]
