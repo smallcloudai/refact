@@ -271,11 +271,12 @@ const find_checkpoints_by_run = (run_id) => {
 };
 
 function render_lora_switch() {
+    const model_name = finetune_configs_and_runs.completion_model;
     let lora_switch_model = document.querySelector('#lora-switch-model');
     lora_switch_model.innerHTML = `
-        <b>Model:</b> ${finetune_configs_and_runs.completion_model}
+        <b>Model:</b> ${model_name}
     `;
-    let mode = finetune_configs_and_runs.active[finetune_configs_and_runs.config.model_name] ? finetune_configs_and_runs.active[finetune_configs_and_runs.config.model_name].lora_mode : "latest-best";
+    let mode = finetune_configs_and_runs.active[model_name] ? finetune_configs_and_runs.active[model_name].lora_mode : "latest-best";
     loras_switch_no_reaction = true; // avoid infinite loop when setting .checked
     if (mode === 'off') {
         loras_switch_off.checked = true;
@@ -292,8 +293,8 @@ function render_lora_switch() {
         lora_switch_checkpoint.style.display = 'block';
         lora_switch_run_id.style.opacity = 1;
         lora_switch_checkpoint.style.opacity = 1;
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.active[finetune_configs_and_runs.config.model_name].specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.active[finetune_configs_and_runs.config.model_name].specific_checkpoint}`;
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.active[model_name].specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.active[model_name].specific_checkpoint}`;
     } else if (mode == 'latest-best') {
         lora_switch_run_id.style.display = 'block';
         lora_switch_checkpoint.style.display = 'block';
@@ -304,8 +305,8 @@ function render_lora_switch() {
     } else {
         lora_switch_run_id.style.display = 'none';
         lora_switch_checkpoint.style.display = 'none';
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.active[finetune_configs_and_runs.config.model_name].specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.active[finetune_configs_and_runs.config.model_name].specific_checkpoint}`;
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.active[model_name].specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.active[model_name].specific_checkpoint}`;
     }
 }
 
@@ -347,7 +348,20 @@ function render_checkpoints(data = []) {
                     }
                     row.classList.add('table-success');
                 }
-                finetune_switch_activate("specific", selected_lora, cell.dataset.checkpoint);
+                const finetune_run = finetune_configs_and_runs.finetune_runs.find((run) => run.run_id === selected_lora);
+                if (finetune_run && finetune_run.model_name !== finetune_configs_and_runs.completion_model) {
+                    let modal = document.getElementById('finetune-tab-model-warning-modal');
+                    let modal_instance = bootstrap.Modal.getOrCreateInstance(modal);
+                    document.querySelector('#finetune-tab-model-warning-modal #model-warning-message').innerHTML = `
+                    <label>
+                        Checkpoint you're about to activate trained for <b>${finetune_run.model_name}</b> model.
+                        Use another checkpoint for <b>${finetune_configs_and_runs.completion_model}</b> model instead.
+                    </label>
+                    `;
+                    modal_instance.show();
+                } else {
+                    finetune_switch_activate("specific", selected_lora, cell.dataset.checkpoint);
+                }
             });
         });
     }
@@ -877,6 +891,8 @@ function start_log_stream(run_id) {
     };
     fetchData();
 }
+
+
 export async function init() {
     let req = await fetch('/tab-finetune.html');
     document.querySelector('#finetune').innerHTML = await req.text();
