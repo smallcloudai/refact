@@ -59,7 +59,6 @@ async def download_file_from_url(url: str, download_dir: str, force_filename: Op
 
 class UploadViaURL(BaseModel):
     url: str
-    filename: Optional[str] = None
 
 
 class CloneRepo(BaseModel):
