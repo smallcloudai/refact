@@ -190,7 +190,7 @@ pub async fn scratchpad_interaction_stream(
                     if let Some(token) = json.get("token") { // hf style produces this
                         let text = token.get("text").unwrap().as_str().unwrap().to_string();
                         let mut value: serde_json::Value;
-                        (value, finished) = scratch.response_streaming(text, false).unwrap();
+                        (value, finished) = scratch.response_streaming(text, false, false).unwrap();
                         value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
                         value["model"] = json!(model_name.clone());
                         value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
@@ -198,9 +198,11 @@ pub async fn scratchpad_interaction_stream(
                     } else if let Some(choices) = json.get("choices") { // openai style
                         let choice0 = &choices[0];
                         let text = choice0.get("text").unwrap().as_str().unwrap().to_string();
-                        let stopped = choice0.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap().to_string().starts_with("stop");
+                        let finish_reason = choice0.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap().to_string();
+                        let stop_toks = !finish_reason.is_empty() && finish_reason.starts_with("stop");
+                        let stop_length = !finish_reason.is_empty() && !finish_reason.starts_with("stop");
                         let mut value: serde_json::Value;
-                        (value, finished) = scratch.response_streaming(text, stopped).unwrap();
+                        (value, finished) = scratch.response_streaming(text, stop_toks, stop_length).unwrap();
                         value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
                         model_name = json["model"].as_str().unwrap().to_string();
                         value["model"] = json!(model_name.clone());
@@ -240,7 +242,7 @@ pub async fn scratchpad_interaction_stream(
             return;
         } else if !finished {
             let mut value: serde_json::Value;
-            (value, _) = scratch.response_streaming("".to_string(), true).unwrap();
+            (value, _) = scratch.response_streaming("".to_string(), false, true).unwrap();
             value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
             value["model"] = json!(model_name.clone());
             let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());

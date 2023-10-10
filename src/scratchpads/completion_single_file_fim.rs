@@ -195,20 +195,22 @@ impl ScratchpadAbstract for SingleFileFIM {
     fn response_streaming(
         &mut self,
         delta: String,
-        stopped: bool,
+        stop_toks: bool,
+        stop_length: bool,
     ) -> Result<(serde_json::Value, bool), String> {
-        let mut finished = false;
+        let mut finished;
         let json_choices;
-        if !delta.is_empty() {
+        // info!("XXXXX delta: {:?}", delta);
+        // info!("XXXXX stop_toks: {:?}", stop_toks);
+        // info!("XXXXX stop_length: {:?}", stop_length);
+        if !delta.is_empty() || stop_toks {
             let mut s: String;
             (s, finished) = cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
-            if finished {
-                self.data4cache.completion0_finish_reason = "stop".to_string();
-            }
-            finished |= stopped;
+            finished |= stop_toks;
             if finished {
                 // can stay consistent with trim() only if that's the final iteration
                 s = s.trim_end().to_string();
+                self.data4cache.completion0_finish_reason = if finished { "stop".to_string() } else { "".to_string() };
             }
             self.data4cache.completion0_text.push_str(&s);
             json_choices = serde_json::json!([{
@@ -217,13 +219,14 @@ impl ScratchpadAbstract for SingleFileFIM {
                 "finish_reason": if finished { serde_json::Value::String("stop".to_string()) } else { serde_json::Value::Null },
             }]);
         } else {
-            assert!(stopped);
+            assert!(stop_length);
             json_choices = serde_json::json!([{
                 "index": 0,
                 "code_completion": "",
                 "finish_reason": "length"
             }]);
             self.data4cache.completion0_finish_reason = "length".to_string();
+            finished = true;
         }
         telemetry_snippets::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
         let ans = serde_json::json!({
