@@ -1,35 +1,60 @@
-import json
+import re
 import os
-import aiohttp
+import json
 import time
 import shutil
 
+from typing import Dict, Optional
+
+import aiohttp
+
+from pydantic import BaseModel, Required
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 
 from refact_data_pipeline.finetune.finetune_utils import get_prog_and_status_for_ui
-
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery import env
 
-from pydantic import BaseModel, Required
-from typing import Dict, Optional
+
+__all__ = ["TabUploadRouter", "download_file_from_url", "UploadViaURL"]
 
 
-__all__ = ["TabUploadRouter"]
+async def download_file_from_url(url: str, download_dir: str, force_filename: Optional[str] = None) -> str:
+    def extract_filename() -> str:
+        try:
+            if not (content_disposition := response.headers.get("Content-Disposition")):
+                raise Exception('No "content-disposition" header')
+            if not (match := re.search(r'filename\*="[^"]*\'([^"]+)"', content_disposition)):
+                raise Exception('Could not extract filename from "content-disposition" header')
+            if not (fn := match.group(1)):
+                raise Exception('No match in "content-disposition" header')
+            return fn.strip()
+        except Exception as e:
+            log(f'Could not extract filename from {url}: {e}; headers: {response.headers}')
+            return os.path.split(url)[1][-20:]
 
+    file_path = None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Cannot download: {response.reason} {response.status}",
+                    )
+                filename = force_filename or extract_filename()
+                file_path = os.path.join(download_dir, filename)
 
-
-async def download_file_from_url(url: str):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Cannot download: {response.reason} {response.status}",
-                )
-            file = await response.read()
-            return file
+                with open(file_path, 'wb') as file:
+                    async for chunk in response.content.iter_chunked(1024 * 1024):
+                        file.write(chunk)
+    except Exception as e:
+        log(f"Error while downloading from {url}: {e}")
+        if file_path and os.path.exists(file_path):
+            shutil.rmtree(file_path, ignore_errors=True)
+        raise e
+    return file_path
 
 
 class UploadViaURL(BaseModel):
@@ -153,7 +178,7 @@ class TabUploadRouter(APIRouter):
         try:
             with open(tmp_path, "wb") as f:
                 while True:
-                    contents = await file.read(1024)
+                    contents = await file.read(1024 * 1024)
                     if not contents:
                         break
                     f.write(contents)
@@ -169,15 +194,11 @@ class TabUploadRouter(APIRouter):
 
     async def _upload_file_from_url(self, post: UploadViaURL):
         log("downloading \"%s\"" % post.url)
-        bin = await download_file_from_url(post.url)
-        log("/download")
-        last_path_element = os.path.split(post.url)[1]
-        file_path = os.path.join(env.DIR_UPLOADS, last_path_element)
         try:
-            with open(file_path, "wb") as f:
-                f.write(bin)
-        except OSError as e:
-            return JSONResponse({"message": f"Error: {e}"}, status_code=500)
+            await download_file_from_url(post.url, env.DIR_UPLOADS)
+        except Exception as e:
+            return JSONResponse({"message": f"Cannot download: {e}"}, status_code=500)
+        log("/download")
         _reset_process_stats()
         return JSONResponse("OK")
 
