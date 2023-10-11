@@ -171,13 +171,7 @@ function render_models_assigned(models) {
 
         if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
             finetune_info.innerHTML = `
-            <style>
-              table {
-                border-collapse: separate;
-                border-spacing: 10px;
-              }
-            </style>
-            <table>
+            <table cellpadding="5">
                 <tr>
                     <td>Run: </td>
                     <td>${models_info[index].finetune_info.run}</td>
