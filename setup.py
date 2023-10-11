@@ -51,7 +51,7 @@ all_refact_packages = {
                   "torch", "transformers", "termcolor", "accelerate", "bitsandbytes"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu", "refact_models",
                            "known_models_db", "refact_data_pipeline"],
-        data=["webgui/static/*", "webgui/static/js/*", "watchdog/watchdog.d/*"]),
+        data=["webgui/static/*", "webgui/static/js/*", "webgui/static/components/modals/*", "watchdog/watchdog.d/*"]),
 }
 
 

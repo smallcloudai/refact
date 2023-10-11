@@ -1,4 +1,6 @@
 <div class="row">
+  <div id="upload-files-modal"></div>
+
   <div class="col-12">
     <div class="pane sources-pane">
       <h3>Code and Text Sources</h3>
@@ -19,10 +21,7 @@
       <div class="sources-buttons">
         <button id="upload-tab-git-button" data-bs-toggle="modal" data-bs-target="#upload-tab-git-modal"
           type="button" class="btn btn-primary btn-lg">Add git repo&mldr;</button>
-        <button id="upload-tab-file-button" data-bs-toggle="modal" data-bs-target="#upload-tab-files-modal"
-          type="button" class="btn btn-primary">Upload files&mldr;</button>
-        <button id="upload-tab-url-button" data-bs-toggle="modal" data-bs-target="#upload-tab-url-modal"
-          type="button" class="btn btn-primary">Add file from URL&mldr;</button>
+        <button id="open-upload-files-modal" type="button" class="btn btn-primary">Upload files</button>
         <button id="tab_files_process_now" type="button" class="btn btn-success tab-files-process-now">Scan
           sources</button>
       </div>
@@ -71,56 +70,6 @@
             </div>
             <button class="mt-3 btn-primary btn proceed-finetune">Proceed to Finetune</button>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-
-  <div class="modal fade" id="upload-tab-files-modal" tabindex="-1" aria-labelledby="upload-tab-files-modal" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="uploadModalLabel">Upload File</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <input type="file" id="tab-upload-file-input" class="form-control">
-          </div>
-          <div class="mb-3 form-text ssh-info">
-            You can upload .zip, .tar.gz, .tar.bz2 archives, or an individual file such as "my_program.py".
-          </div>
-          <div class="progress d-none">
-            <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-          </div>
-          <div id="loaded_n_total" class="uploaded-total"></div>
-          <div id="status" class="uploaded-status"></div>
-          <button class="tab-upload-file-submit btn btn-primary">Submit</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal fade" id="upload-tab-url-modal" tabindex="-1" aria-labelledby="upload-tab-url-modal"
-    aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="urlModalLabel">Upload File from URL</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <input placeholder="https://yourserver.com/file.zip" type="url" id="tab-upload-url-input"
-              class="form-control">
-          </div>
-          <div id="status-url" class="uploaded-status"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="tab-upload-url-submit btn btn-primary">Submit</button>
         </div>
       </div>
     </div>
