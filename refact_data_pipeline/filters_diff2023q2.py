@@ -21,7 +21,7 @@ class Contrast2023Q2FromODM:
         self.inner_filter = inner_filter
         self.n_ctx = dataopts.get("n_ctx", 2048)
         self.selftest = dataopts.get("selftest", 0)
-        self.seed = dataopts.get("seed", 0)
+        self.seed = dataopts.get("seed", 42)
         self.py_random = random.Random(self.seed if self.seed else None)
         self.np_random = np.random.RandomState(self.seed if self.seed else None)
         self.enc: RefactEncoding = dataopts.encoding
@@ -59,9 +59,10 @@ class Contrast2023Q2FromODM:
                     self.fmt,
                     odm,
                     for_training=True,
-                    exact_cx_lines0 = -1,
-                    exact_cx_lines1 = -1,
+                    exact_cx_lines0=-1,
+                    exact_cx_lines1=-1,
                     want_cursor_token=True,
+                    random_state=self.np_random
                 )
                 if len(pack.plan) - 1 == msg_plan_n and not make_no_changes:
                     stats["diffskip_noedit"] += 1
@@ -72,8 +73,8 @@ class Contrast2023Q2FromODM:
                     limit_ctx_n=self.n_ctx,
                     limit_aux_n=0,
                     add_eot=True,
-                    for_training=True,
-                    )
+                    for_training=True
+                )
                 # edits_made = len(pack.plan) - 1 - msg_plan_n
                 # print("edits: %i" % edits_made)
                 # if edits_made == 1:

@@ -20,12 +20,11 @@ class Chat2023Q2:
         self.inner_filter = inner_filter
         self.n_ctx = dataopts.get("n_ctx", 2048)
         self.no_format_prob = dataopts.get("chat_no_format_prob", 0.0)
-        self.chat_random_seed = dataopts.get("chat_random_seed", 42)
         self.debug = bool(dataopts.get("debug", 0))
         self.tkr_stochastic_tokens = bool(dataopts.get("tkr_stochastic_tokens", 0.0))
         self.enc: RefactEncoding = dataopts.encoding
         self.fmt: Format2023q2 = format.format_2023q2_escape(self.enc)
-        self.random = np.random.RandomState(self.chat_random_seed)
+        self.random = np.random.RandomState(dataopts.get("seed", 42))
 
     def _pack_format(self, plan: List[MsgElement], odm: Dict, stats: Dict):
         try:

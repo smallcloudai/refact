@@ -9,9 +9,11 @@ from typing import Dict, Union
 class SymbolsMiddleSplit:
 
     def __init__(self,
+                 random_state,
                  min_symbols: int = 1,
                  max_symbols: int = 4000,   # 4k is one dense screen of text
         ):
+        self.random = random_state
         self._min_symbols = min_symbols
         self._max_symbols = max_symbols
 
@@ -22,9 +24,9 @@ class SymbolsMiddleSplit:
         ])
         if self._min_symbols > max_symbols:
             raise RuntimeError
-        mid_symbols = random.randint(self._min_symbols, max_symbols)
+        mid_symbols = self.random.randint(self._min_symbols, max_symbols)
         assert len(text) - mid_symbols - 1 >= 0
-        split_pos = random.randint(0, len(text) - mid_symbols - 1)
+        split_pos = self.random.randint(0, len(text) - mid_symbols - 1)
         middle = text[split_pos:split_pos + mid_symbols]
         assert len(middle) == mid_symbols
 
@@ -47,6 +49,7 @@ class FIM:
         self.fim_probability = dataopts.get("fim_probability", 0.5)
         self.tkr_stochastic_tokens = dataopts.get("tkr_stochastic_tokens", 3)
         self.enc: RefactEncoding = dataopts.encoding
+        self.enc.set_random_seed(dataopts.get("seed", 42))
         self.special_tokens = [
             self.enc.PREFIX,
             self.enc.SUFFIX,
@@ -54,7 +57,8 @@ class FIM:
             self.enc.EOT,
         ]
         assert len(set(self.special_tokens)) == len(self.special_tokens)
-        self.splitter = SymbolsMiddleSplit()
+        self.random = random.Random(dataopts.get("seed", 42))
+        self.splitter = SymbolsMiddleSplit(self.random)
 
     def __iter__(self):
         stats: Dict[str, Union[int, float]] = {
@@ -66,7 +70,7 @@ class FIM:
             tokens, _ = self.enc.encode_stochastic(sample["text"], [], 0.01*self.tkr_stochastic_tokens)
             cursor = 0
             while cursor < len(tokens):
-                if random.random() > self.fim_probability:
+                if self.random.random() > self.fim_probability:
                     # plain text branch
                     plain = tokens[cursor : cursor + self.n_ctx]
                     cursor += len(plain)
@@ -88,8 +92,8 @@ class FIM:
                     }
                 else:
                     # FIM
-                    wiggle_low = (self.n_ctx * 9 // 20) if random.randint(0, 2) == 0 else (self.n_ctx * 18 // 20)
-                    wiggle = random.randint(wiggle_low, self.n_ctx * 21 // 20)
+                    wiggle_low = (self.n_ctx * 9 // 20) if self.random.randint(0, 2) == 0 else (self.n_ctx * 18 // 20)
+                    wiggle = self.random.randint(wiggle_low, self.n_ctx * 21 // 20)
                     # n_ctx   *9//20  *18//20  *21//20
                     # 4096 -> 2048    3686     4300
                     # 2048 -> 1024    1843     2150
@@ -110,7 +114,7 @@ class FIM:
                         continue
                     prefix_toks, _ = self.enc.encode_stochastic(prefix, [], 0.01*self.tkr_stochastic_tokens)
                     suffix_toks, _ = self.enc.encode_stochastic(suffix, [], 0.01*self.tkr_stochastic_tokens)
-                    if random.random() < 0.5:
+                    if self.random.random() < 0.5:
                         tokens_context = [self.enc.PREFIX] + prefix_toks + [self.enc.SUFFIX] + suffix_toks
                         mask_context = [0] + [1] * len(prefix_toks) + [0] + [1] * len(suffix_toks)
                     else:

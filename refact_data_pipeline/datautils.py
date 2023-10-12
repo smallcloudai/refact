@@ -1,6 +1,10 @@
+import os
+
 import torch as th
 from collections import defaultdict
-from typing import Iterator, Tuple, Dict, Any, Callable, Sequence
+from typing import Iterator, Tuple, Dict, Any, Callable, Iterable, List
+
+from refact_data_pipeline import DatasetOpts
 
 
 def str2dtype(s: str) -> th.dtype:
@@ -12,6 +16,53 @@ def str2dtype(s: str) -> th.dtype:
         "torch.int64": th.int64,
         "torch.bool": th.bool,
     }[s]
+
+
+_prefer_dtypes = {
+    "logits": th.int64,
+    "first": th.bool,
+    "mask": th.bool
+}
+
+
+def collate_fn(records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    output = defaultdict(list)
+    last_stats = None
+    for idx, record in enumerate(records):
+        for k, v in record.items():
+            if k == "stats":
+                last_stats = v
+                continue
+            output[k].append(
+                th.tensor(record[k], dtype=_prefer_dtypes.get(k, th.int64))
+            )
+    return {
+        "stats": last_stats,
+        **{k: th.stack(v).contiguous() for k, v in output.items()}
+    }
+
+
+def data_parallel_split_and_collate_fn(records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    rank = os.environ.get('RANK', 0)
+    world_size = os.environ.get('WORLD_SIZE', 1)
+
+    output = defaultdict(list)
+    last_stats = None
+    for idx, record in enumerate(records):
+        for k, v in record.items():
+            if k == "stats":
+                last_stats = v
+                continue
+            output[k].append(
+                th.tensor(record[k], dtype=_prefer_dtypes.get(k, th.int64))
+            )
+    assert len(records) % world_size == 0, "effective batch size %s" % len(records)
+    effective_bs = len(records) // world_size
+    from_, to = rank * effective_bs, (rank + 1) * effective_bs
+    return {
+        "stats": last_stats,
+        **{k: th.stack(v)[from_:to].contiguous() for k, v in output.items()}
+    }
 
 
 def read_and_collate(
@@ -58,45 +109,44 @@ def read_and_collate(
 class BatchIterator:
     def __init__(
             self,
-            seq: Sequence,
-            dataopts: Dict[str, Any],
+            inner_filter: Iterable[Any],
+            dataopts: DatasetOpts
     ):
-        self.seq_iter = iter(seq)
+        self.inner_filter = inner_filter
         self.dataopts = dataopts
         self.batch_size = dataopts.get("batch_size", 1)
         self.device = dataopts.get("device", "cuda")
         self.drop_last = dataopts.get("drop_last", False)
 
-    def __next__(self):
-        data, datastats = read_and_collate(
-            data_iter=self.seq_iter,
-            prefer_dtypes=dict(mask='torch.bool', first='torch.bool'),
-            B=self.batch_size,
-            device=self.device,
-            cold_restart_dict=dict(),
-            log_stats=True,
-            progress_callback=lambda *args, **kwargs: None
-        )
-        if len(data) == 0:
-            raise StopIteration()
-
-        if self.drop_last and len(data['tokens']) < self.batch_size:
-            raise StopIteration()
-
-        extra = dict()
-        if 'first' in data:
-            extra['first'] = data.pop("first")[:, :-1]
-        if 'mask' in data:
-            extra['mask'] = data.pop("mask")[:, 1:]
-
-        tokens = data.pop("tokens")
-        batch = dict(
-            labels=tokens[:, 1:],
-            input=tokens[:, :-1],
-            **extra
-        )
-        batch.update({k: v for k, v in data.items() if k not in batch})
-        return batch, datastats
-
     def __iter__(self):
-        return self
+        seq_iter = iter(self.inner_filter)
+        while True:
+            data, datastats = read_and_collate(
+                data_iter=seq_iter,
+                prefer_dtypes=dict(mask='torch.bool', first='torch.bool'),
+                B=self.batch_size,
+                device=self.device,
+                cold_restart_dict=dict(),
+                log_stats=True,
+                progress_callback=lambda *args, **kwargs: None
+            )
+            if len(data) == 0:
+                break
+
+            if self.drop_last and len(data['tokens']) < self.batch_size:
+                break
+
+            extra = dict()
+            if 'first' in data:
+                extra['first'] = data.pop("first")[:, :-1]
+            if 'mask' in data:
+                extra['mask'] = data.pop("mask")[:, 1:]
+
+            tokens = data.pop("tokens")
+            batch = dict(
+                labels=tokens[:, 1:],
+                input=tokens[:, :-1],
+                **extra
+            )
+            batch.update({k: v for k, v in data.items() if k not in batch})
+            yield batch, datastats

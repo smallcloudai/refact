@@ -143,6 +143,8 @@ class DensePacker:
         self.inner_filter_iter = iter(inner_filter)
         self.enc = dataopts.encoding
         self.n_ctx: int = dataopts['n_ctx']
+        self.random = random.Random(dataopts.get('seed', 42))
+        self.np_random = np.random.RandomState(dataopts.get('seed', 42))
         self.pack_single: bool = dataopts.get('pack_single', 0) == 1
         self.pack_complete: bool = dataopts.get('pack_complete', 1) == 1
         self.drop_less_than_t: int = dataopts.get('pack_drop_less_than_t', 6)
@@ -224,7 +226,7 @@ class DensePacker:
             return []
 
         if force_random_get or not self.pack_complete:
-            item = self.buffer.pop(random.randint(0, len(self.buffer) - 1))
+            item = self.buffer.pop(self.random.randint(0, len(self.buffer) - 1))
             return [item]
         else:
             lengths = [self.__item_len(i) for i in self.buffer]
@@ -238,7 +240,7 @@ class DensePacker:
 
             # prioritize items with larger lengths
             p = softmax(np.exp(np.array([sum(b) for b in bins]) / budget * 2))
-            bin = bins[np.random.choice(list(range(len(bins))), p=p)]
+            bin = bins[self.np_random.choice(list(range(len(bins))), p=p)]
             items = [_pop_item_by_length(l) for l in bin]
             return items
 
@@ -250,7 +252,7 @@ class DensePacker:
         assert len(items_acc) > 0
 
         if random_order:
-            np.random.shuffle(items_acc)
+            self.random.shuffle(items_acc)
         last_item = items_acc[-1]
         if self.__items_len(items_acc) < self.n_ctx:
             items_acc.append(self.__make_padded_item(self.n_ctx - self.__items_len(items_acc)))

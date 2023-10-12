@@ -3,6 +3,8 @@ import random
 import traceback
 import copy
 
+import numpy as np
+
 from refact_encoding import RefactEncoding
 from refact_data_pipeline import DatasetOpts
 from code_contrast.format_2022q3 import contrast
@@ -18,6 +20,8 @@ class ContrastFromODM:
         self.enc: RefactEncoding = dataopts.encoding
         self.n_ctx = dataopts.get("n_ctx", 2048)
         self.selftest = dataopts.get("selftest", 0)
+        self.random = random.Random(dataopts.get("seed", 42))
+        self.np_random = np.random.RandomState(dataopts.get("seed", 42))
 
     def __iter__(self):
         stats: Dict[str, int] = {
@@ -33,7 +37,7 @@ class ContrastFromODM:
             if source_files_empty_cnt == len(odm["orig"]):
                 stats["diffskip_onlyadd"] += 1
                 continue
-            make_no_changes = random.random() < 0.05
+            make_no_changes = self.random.random() < 0.05
             if make_no_changes:
                 odm["orig"] = copy.deepcopy(odm["dest"])
             if self.selftest:
@@ -52,6 +56,7 @@ class ContrastFromODM:
                 diff.from_odm_dict(
                     odm,
                     n_ctx=self.n_ctx,
+                    np_random=self.np_random
                 )
                 if len(diff.edits) == 0 and not make_no_changes:
                     stats["diffskip_noedit"] += 1

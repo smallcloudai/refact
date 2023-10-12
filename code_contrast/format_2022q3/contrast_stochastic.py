@@ -89,7 +89,7 @@ def ops_stochastic_expand(
     for n in range(1, len(result)-1):
         lop, li1, li2, lj1, lj2 = result[n-1]
         mop, mi1, mi2, mj1, mj2 = result[n]
-        if lop == "equal" and mop != "equal" and random.random() < left_prob:
+        if lop == "equal" and mop != "equal" and np_random.random() < left_prob:
             assert li2 == mi1
             if exact_cx_lines0 >= 0:
                 move = exact_cx_lines0
@@ -104,7 +104,7 @@ def ops_stochastic_expand(
         mop, mi1, mi2, mj1, mj2 = result[n]
         rop, ri1, ri2, rj1, rj2 = result[n+1]
         # if mop != "equal" and rop == "equal" and (random.random() < right_prob or (mi1==mi2 and disable_insert)):
-        if mop != "equal" and rop == "equal" and random.random() < right_prob:
+        if mop != "equal" and rop == "equal" and np_random.random() < right_prob:
             assert ri1 == mi2
             if exact_cx_lines1 >= 0:
                 move = exact_cx_lines1

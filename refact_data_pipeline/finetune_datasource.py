@@ -1,26 +1,20 @@
 import os
+import random
 from pathlib import Path
+from typing import Iterable, Dict, Any, List
 
 import jsonlines
-import random
+import numpy as np
+import torch.utils.data
 
-from refact_data_pipeline.filters_fim_v2 import FIMv2
-from refact_encoding import RefactEncoding
-from refact_encoding import hlprint
-from refact_data_pipeline import filters_synthetic
 from refact_data_pipeline import DatasetOpts
 from refact_data_pipeline import pipeline_pieces as pp
+from refact_data_pipeline.filters_fim_v2 import FIMv2
 from self_hosting_machinery import env
 
-from typing import Union, List, Iterable, Dict, Any, Tuple
-
-
-def cut_zip_name(j):
-    p = j["path"]
-    slash_pos = p.find("/")
-    if slash_pos != -1:
-        p = p[slash_pos + 1:]
-    return p
+__all__ = [
+    'RefactPlainCodeDataset', 'RefactFIMCodeDataset'
+]
 
 
 class ReadFileByFile:
@@ -31,28 +25,27 @@ class ReadFileByFile:
     ):
         self.inner_filter = inner_filter
         self.dataopts = dataopts
-        self.quit_on_epoch = dataopts.get("quit_on_epoch", 0)
+
+    @staticmethod
+    def _cut_zip_name(j):
+        p = j["path"]
+        slash_pos = p.find("/")
+        if slash_pos != -1:
+            p = p[slash_pos + 1:]
+        return p
 
     def __iter__(self):
-        file_num = 0
-        epoch = 0
-        while 1:
-            for j in self.inner_filter:
-                code = open(os.path.join(env.DIR_UNPACKED, j["path"]), encoding="utf-8").read()
-                yield {
-                    "path": cut_zip_name(j),
-                    "code": code,
-                    "text": code,
-                    "size": len(code),
-                    "stats": {
-                        "file_num": file_num,
-                        "epoch": epoch,
-                    },
-                }
-                file_num += 1
-            epoch += 1
-            if epoch == self.quit_on_epoch:
-                break
+        for idx, info in enumerate(self.inner_filter):
+            code = open(os.path.join(env.DIR_UNPACKED, info["path"]), encoding="utf-8").read()
+            yield {
+                "path": ReadFileByFile._cut_zip_name(info),
+                "code": code,
+                "text": code,
+                "size": len(code),
+                "stats": {
+                    "file_num": idx,
+                },
+            }
 
 
 class CodeToPrefixCompletion:
@@ -73,14 +66,6 @@ class CodeToPrefixCompletion:
             }
 
 
-from typing import Callable
-
-import torch
-import torch.utils.data
-
-from refact_data_pipeline import DatasetOpts
-
-
 class RefactDataset(torch.utils.data.IterableDataset):
     def __init__(
             self,
@@ -93,40 +78,29 @@ class RefactDataset(torch.utils.data.IterableDataset):
         self._encoding = encoding
         self._ds_options.set_encoding(self._encoding)
 
-    def _get_rank_info(self) -> Tuple[int, int]:
-        return os.environ.get('RANK', 0), os.environ.get('WORLD_SIZE', 1)
-
-    def _get_files(self):
+    @property
+    def files_len(self) -> int:
         files = list(jsonlines.open(Path(env.DIR_UNPACKED) / self._file_path))
-        fixed_seed_random = random.Random(42)
-        fixed_seed_random.shuffle(files)
+        return len(files)
+
+    def _get_files_by_worker(self):
+        files = list(jsonlines.open(Path(env.DIR_UNPACKED) / self._file_path))
+        random.Random(self._ds_options.get("seed", 42)).shuffle(files)
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is not None:
+            files = np.array_split(files, worker_info.num_workers)[worker_info.id]
         return files
 
-    @property
-    def _pipeline(self):
+    def _build_pipeline(self, files: List[Dict[str, Any]]):
         raise NotImplementedError()
 
     def __iter__(self):
-        yield self._pipeline()
+        return iter(self._build_pipeline(self._get_files_by_worker()))
 
 
-class RefactPlainDataset(RefactDataset):
-    def __init__(
-            self,
-            dataset_options: str,
-            encoding: 'Encoding'
-    ):
-        super(RefactPlainDataset, self).__init__(dataset_options, encoding)
-        self._pipeline = self._build_pipeline()
-
-    def _pipeline(self):
-        return self._pipeline
-
-    def _build_pipeline(self):
-        rank, size = self._get_rank_info()
-
-        ds = ReadFileByFile(self._get_files(), self._ds_options)
-        ds = pp.SplitRanks(ds, self._ds_options, commrank=rank, commsize=size)
+class RefactPlainCodeDataset(RefactDataset):
+    def _build_pipeline(self, files: List[Dict[str, Any]]):
+        ds = ReadFileByFile(files, self._ds_options)
         ds = CodeToPrefixCompletion(ds, self._ds_options)
         ds = pp.Tokenizer(ds, self._ds_options)
         ds = pp.PromptCompletionToTokensMask(ds, self._ds_options)
@@ -135,39 +109,10 @@ class RefactPlainDataset(RefactDataset):
         return ds
 
 
-def local_plain(fn_set_jsonl: Union[str, List[str]], dataopts):
-    rank = 0
-    size = 1
-    if isinstance(fn_set_jsonl, str):
-        js = list(jsonlines.open(os.path.join(env.DIR_UNPACKED, fn_set_jsonl)))
-    else:
-        js = fn_set_jsonl
-    fixed_seed_random = random.Random(43)
-    fixed_seed_random.shuffle(js)
-    ds = ReadFileByFile(js, dataopts)
-    ds = pp.SplitRanks(ds, dataopts, commrank=rank,
-                       commsize=size)  # this drops some of the data {"code": ...} at each rank
-    ds = CodeToPrefixCompletion(ds, dataopts)
-    ds = pp.Tokenizer(ds, dataopts)
-    ds = pp.PromptCompletionToTokensMask(ds, dataopts)
-    ds = pp.Packer(ds, dataopts, keys=["tokens", "mask", "first"])
-    ds = pp.Shuffle(ds, dataopts)
-    return ds
-
-
-def local_fim(fn_set_jsonl, dataopts):
-    rank = 0
-    size = 1
-    if isinstance(fn_set_jsonl, str):
-        js = list(jsonlines.open(os.path.join(env.DIR_UNPACKED, fn_set_jsonl)))
-    else:
-        js = fn_set_jsonl
-    fixed_seed_random = random.Random(43)
-    fixed_seed_random.shuffle(js)
-    ds = ReadFileByFile(js, dataopts)
-    ds = pp.SplitRanks(ds, dataopts, commrank=rank,
-                       commsize=size)  # this drops some of the data {"code": ...} at each rank
-    ds = FIMv2(ds, dataopts)
-    ds = pp.DensePacker(ds, dataopts)
-    ds = pp.Shuffle(ds, dataopts)
-    return iter(ds)
+class RefactFIMCodeDataset(RefactDataset):
+    def _build_pipeline(self, files: List[Dict[str, Any]]):
+        ds = ReadFileByFile(files, self._ds_options)
+        ds = FIMv2(ds, self._ds_options)
+        ds = pp.DensePacker(ds, self._ds_options)
+        ds = pp.Shuffle(ds, self._ds_options)
+        return ds
