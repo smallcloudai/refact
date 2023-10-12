@@ -3,7 +3,7 @@ import os
 import json
 import time
 import shutil
-
+import subprocess
 from typing import Dict, Optional
 
 import aiohttp
@@ -25,7 +25,7 @@ async def download_file_from_url(url: str, download_dir: str, force_filename: Op
         try:
             if not (content_disposition := response.headers.get("Content-Disposition")):
                 raise Exception('No "content-disposition" header')
-            if not (match := re.search(r'filename\*="[^"]*\'([^"]+)"', content_disposition)):
+            if not (match := re.search(r'filename=["\']?([^"\';]+)["\']?', content_disposition)):
                 raise Exception('Could not extract filename from "content-disposition" header')
             if not (fn := match.group(1)):
                 raise Exception('No match in "content-disposition" header')
@@ -51,8 +51,11 @@ async def download_file_from_url(url: str, download_dir: str, force_filename: Op
                         file.write(chunk)
     except Exception as e:
         log(f"Error while downloading from {url}: {e}")
-        if file_path and os.path.exists(file_path):
-            shutil.rmtree(file_path, ignore_errors=True)
+        try:
+            if file_path and os.path.exists(file_path):
+                subprocess.check_call(['rm', '-rf', file_path])
+        except Exception:
+            log(f"Error while removing {file_path}")
         raise e
     return file_path
 

@@ -1,8 +1,7 @@
 import os
-import shutil
-import mimetypes
 import subprocess
 
+from typing import Union
 from pathlib import Path
 
 from fastapi import APIRouter, UploadFile
@@ -14,10 +13,17 @@ from self_hosting_machinery.webgui.tab_upload import download_file_from_url, Upl
 
 
 def rm(f):
-    shutil.rmtree(f, ignore_errors=True)
+    try:
+        subprocess.check_call(["rm", "-rf", f])
+    except Exception as e:
+        log(f"Error while removing file: {e}")
 
 
 async def unpack(file_path: Path) -> JSONResponse:
+    def get_mimetype(fp: Union[str, Path]) -> str:
+        m = subprocess.check_output(["file", "--mime-type", "-b", fp])
+        return m.decode("utf-8").strip()
+
     upload_filename = str(file_path)
     unpack_filename = str(file_path.parent)
 
@@ -25,14 +31,14 @@ async def unpack(file_path: Path) -> JSONResponse:
         return JSONResponse({"detail": f"Error while unpacking: File {file_path.name} does not exist"}, status_code=404)
 
     try:
-        mime_type = mimetypes.guess_type(str(file_path))[0]
-        if mime_type == 'application/x-tar':
+        mime_type = get_mimetype(upload_filename)
+        if 'application/x-tar' in mime_type:
             cmd = ["tar", "-xf", upload_filename, "-C", unpack_filename]
-        elif mime_type == 'application/x-bzip2':
+        elif 'application/x-bzip2' in mime_type:
             cmd = ["tar", "-xjf", upload_filename, "-C", unpack_filename]
-        elif mime_type == 'application/x-gzip':
+        elif 'application/x-gzip' in mime_type:
             cmd = ["tar", "-xzf", upload_filename, "-C", unpack_filename]
-        elif mime_type == 'application/zip':
+        elif 'application/zip' in mime_type:
             cmd = ["unzip", "-q", "-o", upload_filename, "-d", unpack_filename]
         else:
             return JSONResponse({"detail": f"Error while unpacking: Unknown archive type {mime_type}"}, status_code=400)
@@ -92,8 +98,8 @@ class TabLorasRouter(APIRouter):
         except Exception as e:
             return JSONResponse({"detail": f"Cannot download: {e}"}, status_code=500)
 
-        if (resp := await unpack(Path(file_path))).status_code != 200:
-            rm(file_path)
+        resp = await unpack(Path(file_path))
+        rm(file_path)
+        if resp.status_code != 200:
             return resp
-
         return JSONResponse("OK", status_code=200)
