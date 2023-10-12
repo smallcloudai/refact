@@ -93,6 +93,7 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
         initial_loss = json.load(f)["avg_loss"]
 
     user_cfg = get_finetune_config(models_db, logger=traces.log)
+    print("user config model %s" % user_cfg['model_name'])
     cfg_builder = ConfigBuilder(base_config(user_cfg['model_name'], models_db))
     if user_cfg['use_heuristics']:
         traces.log("Retrieving dataset length per epoch, it may take a while...")
@@ -143,6 +144,7 @@ def create_data(model_name, cfg, enc) -> Tuple[Any, Optional[Any]]:
     test_pipe = getattr(finetune_datasource, model_config["test_ds_pipeline"]["pipeline_name"])
 
     train_ds = train_pipe(filtered_train, train_dataopts)
+    print('train batch size: %s' % cfg['train_batch_size'])
     train_ds = BatchIterator(train_ds, dataopts=dict(
         batch_size=cfg['train_batch_size'],
         drop_last=True
@@ -220,7 +222,9 @@ def loop(
             f"({batch['mask'].sum()}/{batch['mask'].numel()})"
         )
 
+        print("train batch size: %s" % cfg.get("train_batch_size"))
         for b0 in range(0, cfg.get("train_batch_size"), cfg.get("micro_batch_size")):
+            
             try:
                 input = batch['input'][b0:b0 + micro_bs].contiguous()
                 logits = forward(input=input, low_gpu_mem_mode=low_gpu_mem_mode)
@@ -309,7 +313,15 @@ def loop(
 def finetune(status_dict, models_db: Dict[str, Any]):
     logging.info("starting finetune at %s" % traces.context().path)
     cfg = load_finetune_config(models_db)
-    traces.log("creating model...")
+    traces.log("creating model %s..." % cfg['model_name'])
+    th.cuda.empty_cache()
+    # max_split_size_mb = 128 # add to config
+    # th._C_._set_memory_manager_max_memory(max_split_size_mb * 1024 * 1024)
+    # # Get the current memory allocator state
+    # allocator = torch.cuda.memory._get_memory_allocator()
+
+    # # Update max_split_size_mb in the memory allocator
+    # allocator.set_max_split_size(max_split_size_mb * 1024 * 1024)
     t0 = time.time()
     model = make_model(
         model_name=cfg['model_name'],
@@ -328,12 +340,17 @@ def finetune(status_dict, models_db: Dict[str, Any]):
     )
     t1 = time.time()
     traces.log("/model %0.1fms" % ((t1 - t0) * 1000))
+    traces.log(cfg)
+    traces.log(model)
+    traces.log([p.requires_grad for p in model.parameters()])
+    traces.log([p for p in model.parameters() if p.requires_grad])
     if cfg['debug']:
         summary(model, depth=4, col_names=['num_params', 'params_percent', 'trainable'])
+
     model, optimizer, _, _ = deepspeed.initialize(
         config=cfg,
         model=model,
-        model_parameters=[p for p in model.parameters() if p.requires_grad],
+        model_parameters=[p for p in model.parameters()],# if p.requires_grad],
         dist_init_required=True
     )
     train_ds, test_ds = create_data(cfg['model_name'], cfg, model.encoding)
