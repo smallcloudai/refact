@@ -1,37 +1,37 @@
-import os
-import ujson
-import filelock
-import itertools
 import copy
-import psutil
-import random
 import datetime
+import gzip
+import itertools
+import os
+import random
 import traceback
+from typing import List, Union, Iterable
 
+import blobfile as bf
+import filelock
+import ujson
+import zstandard
 from mpi4py import MPI
 
-from refact_encoding import RefactEncoding
-from refact_data_pipeline.datadef import DatasetOpts
 from refact_data_pipeline.datadef import DatasetDef, DatasetDumpedDef
 from refact_data_pipeline.datadef import DatasetMix
+from refact_data_pipeline.datadef import DatasetOpts
 from refact_data_pipeline.filters_hdfs import Hdf5Dataset
 from refact_data_pipeline.filters_packing import Packer, SinglePacker, DensePacker
-
-from typing import Dict, List, Union, Iterable, Any
-
+from refact_encoding import RefactEncoding
 
 log = print
 
 
 class JsonlFilesReaderCached:
     def __init__(self,
-        dataopts: DatasetOpts,
-        cloud_path: str,
-        cloud_files: str,
-        datarank: int,
-        cold_restart_key: int,
-        cold_restart_skip: int,
-    ):
+                 dataopts: DatasetOpts,
+                 cloud_path: str,
+                 cloud_files: str,
+                 datarank: int,
+                 cold_restart_key: int,
+                 cold_restart_skip: int,
+                 ):
         self.cloud_path = cloud_path
         self.cloud_files = cloud_files
         self.datarank = datarank
@@ -40,9 +40,6 @@ class JsonlFilesReaderCached:
         self.cold_restart_skip = cold_restart_skip
 
     def __iter__(self):
-        import blobfile as bf
-        import zstandard
-        import gzip
         record_n = 0
         stats = {}
         short_path = "/".join(self.cloud_path.rstrip("/").split("/")[2:])
@@ -59,14 +56,14 @@ class JsonlFilesReaderCached:
                 stats["task_dir"] = cache_dir
                 stats["reading_fn"] = cached_fn
                 stats["file_fn"] = fn
-                position = epoch*len(self.cloud_files) + i
+                position = epoch * len(self.cloud_files) + i
                 stats["file_n"] = position
                 stats["file_N"] = len(self.cloud_files)
-                stats["file_n_over_N"] = (epoch*len(self.cloud_files) + i) / len(self.cloud_files)
+                stats["file_n_over_N"] = (epoch * len(self.cloud_files) + i) / len(self.cloud_files)
                 ymd_hms = datetime.datetime.now().strftime("%Y%m%d %H:%M:%S")
                 log(ymd_hms, "epoch %i reading %i/%i %s" % (epoch, i, len(self.cloud_files), cached_fn))
                 skipped += 1
-                if self.cold_restart_skip > 0 and skipped < self.cold_restart_skip + 2:   # one because it's the same we were reading, and another one for good measure
+                if self.cold_restart_skip > 0 and skipped < self.cold_restart_skip + 2:  # one because it's the same we were reading, and another one for good measure
                     log("skipped %i" % skipped)
                     continue
                 stats["restart%02d" % self.cold_restart_key] = position
@@ -76,7 +73,7 @@ class JsonlFilesReaderCached:
                     if os.path.exists(cached_fn):
                         pass
                         # This is useful to understand which files are being processed:
-                        #log("using cached '%s'" % cached_fn)
+                        # log("using cached '%s'" % cached_fn)
                     else:
                         log("downloading '%s' from '%s'" % (cached_fn, self.cloud_path + fn))
                         bf.copy(self.cloud_path + fn, cached_fn + ".tmp")
@@ -103,6 +100,7 @@ class JsonlFilesReaderCached:
                                             buffer = b""
                                         yield line.decode("utf8") + "\n"
                                     buffer += lines[-1]
+
                     it = bin2str(1 << 20)
                 else:
                     it = open(cached_fn)
@@ -125,11 +123,12 @@ class JsonlFilesReaderCached:
 
 
 class SplitRanks:
-    def __init__(self,
-        inner_filter,
-        dataopts: DatasetOpts,
-        commrank: int,
-        commsize: int,
+    def __init__(
+            self,
+            inner_filter,
+            dataopts: DatasetOpts,
+            commrank: int,
+            commsize: int,
     ):
         self.inner_filter = inner_filter
         self.commrank = commrank
@@ -141,31 +140,24 @@ class SplitRanks:
                 yield rec
 
 
-def predictable_files_shuffle(lst):
-    """
-    Seed rng to fixed value
-    """
-    fixed_seed_random = random.Random(42)
-    fixed_seed_random.shuffle(lst)
-    return lst
-
-
 class Tokenizer:
     def __init__(self,
-        inner_filter,
-        dataopts: DatasetOpts,
-    ):
+                 inner_filter,
+                 dataopts: DatasetOpts,
+                 ):
         self.inner_filter = inner_filter
         self.skip_prompt_len: int = dataopts.get("tkr_skip_long_prompt", 0)
         self.skip_completion_len: int = dataopts.get("tkr_skip_completion_len", 0)
         self.skip_total_len: int = dataopts.get("tkr_skip_total_len", -1)
         if self.skip_total_len == -1:
-            self.skip_total_len = 2**31
+            self.skip_total_len = 2 ** 31
         self.fatal_skip: bool = dataopts.get("tkr_fatal_skip", 0) == 1
         self.append_eot: bool = dataopts.get("tkr_append_eot", 1) == 1
         self.tkr_stochastic_tokens = dataopts.get("tkr_stochastic_tokens", 0)
         self.tkr_rm_bos_in_completion: int = dataopts.get("tkr_rm_bos_in_completion", 0)
+        self.random_seed: int = dataopts.get("seed", 42)
         self.enc = dataopts.encoding
+        self.enc.set_random_seed(self.random_seed)
         self.stats = {
             "tkr_skip_prompt_len": 0,
             "tkr_skip_completion_len": 0,
@@ -176,8 +168,9 @@ class Tokenizer:
     def __iter__(self):
         for ex in self.inner_filter:
             if self.tkr_stochastic_tokens > 0:
-                prompt_tokens, _ = self.enc.encode_stochastic(ex["prompt"], [], 0.01*self.tkr_stochastic_tokens)
-                completion_tokens, _ = self.enc.encode_stochastic(ex["completion"], [], 0.01*self.tkr_stochastic_tokens)
+                prompt_tokens, _ = self.enc.encode_stochastic(ex["prompt"], [], 0.01 * self.tkr_stochastic_tokens)
+                completion_tokens, _ = self.enc.encode_stochastic(ex["completion"], [],
+                                                                  0.01 * self.tkr_stochastic_tokens)
             else:
                 prompt_tokens = self.enc.encode(ex["prompt"])
                 completion_tokens = self.enc.encode(ex["completion"])
@@ -205,9 +198,9 @@ class Tokenizer:
 
 class PromptCompletionToTokensMask:
     def __init__(self,
-        inner_filter,
-        dataopts: DatasetOpts,
-    ):
+                 inner_filter,
+                 dataopts: DatasetOpts,
+                 ):
         self.inner_filter = inner_filter
 
     def __iter__(self):
@@ -215,23 +208,23 @@ class PromptCompletionToTokensMask:
             ln = len(rec["prompt_tokens"]) + len(rec["completion_tokens"])
             yield {
                 "tokens": rec["prompt_tokens"] + rec["completion_tokens"],
-                "mask": [0]*len(rec["prompt_tokens"]) + [1]*len(rec["completion_tokens"]),
-                "first": [1] + [0]*(ln - 1),
-                "diffhlpoint": [0]*ln,     # first position decision of a diff (no such thing for plain text)
-                "diffedits": [0]*ln,       # 0 don't learn (1 no edit, 2 edit)
+                "mask": [0] * len(rec["prompt_tokens"]) + [1] * len(rec["completion_tokens"]),
+                "first": [1] + [0] * (ln - 1),
+                "diffhlpoint": [0] * ln,  # first position decision of a diff (no such thing for plain text)
+                "diffedits": [0] * ln,  # 0 don't learn (1 no edit, 2 edit)
                 "stats": rec["stats"],
             }
 
 
 class Shuffle:
-    def __init__(self,
-        inner_filter,
-        dataopts: DatasetOpts,
+    def __init__(
+            self,
+            inner_filter,
+            dataopts: DatasetOpts,
     ):
         self.inner_filter = inner_filter
         self.shuffle_depth: int = dataopts.get("shuffle_depth", 1000)
-        self.seed = dataopts.get("seed", 0)
-        self.random_state = random.Random(self.seed if self.seed else None)
+        self.random_state = random.Random(dataopts.get("seed", 42))
 
     def __iter__(self):
         buf = []
@@ -246,12 +239,18 @@ class Shuffle:
 
 
 class Mix:
-    def __init__(self, src: List[Iterable], proportions: List[float], seed: int = 42, shuffle_depth : int =   1000):
+    def __init__(
+            self,
+            src: List[Iterable],
+            proportions: List[float],
+            seed: int,
+            shuffle_depth: int = 1000,
+    ):
         self.src = src
-        self.proportions = proportions if len(proportions) == len(src) else [1/len(src)]*len(src)
+        self.proportions = proportions if len(proportions) == len(src) else [1 / len(src)] * len(src)
         self.seed = seed
         self.shuffle_depth: int = shuffle_depth
-        self.random_state = random.Random(self.seed if self.seed else None)
+        self.random_state = random.Random(self.seed)
         assert abs(sum(self.proportions) - 1) < 0.0000001
 
     def __iter__(self):
@@ -275,26 +274,35 @@ class Mix:
 
 
 def build_filter_stack(
-    datadef: Union[DatasetDef, DatasetMix],
-    dataopts: DatasetOpts,
-    enc: RefactEncoding,
-    comm: MPI.Comm,
-    cold_restart: List[int] = [],
-    cold_restart_offset = 0,
-    skip_assert_flag: bool = False
+        datadef: Union[DatasetDef, DatasetMix],
+        dataopts: DatasetOpts,
+        enc: RefactEncoding,
+        comm: MPI.Comm,
+        cold_restart: List[int] = [],
+        cold_restart_offset: int = 0,
+        skip_assert_flag: bool = False
 ):
     dataopts.set_encoding(enc)
     if isinstance(datadef, DatasetMix):
         if len(cold_restart) == 0:
-            cold_restart = [0]*comm.size*len(datadef.dataset_defs)
+            cold_restart = [0] * comm.size * len(datadef.dataset_defs)
         sources = []
         for i, dsdef in enumerate(datadef.dataset_defs):
-            cold_restart_offset = i*comm.size
-            src = build_filter_stack(dsdef, dataopts, enc, comm, cold_restart, cold_restart_offset, skip_assert_flag=True)
+            cold_restart_offset = i * comm.size
+            src = build_filter_stack(
+                datadef=dsdef,
+                dataopts=dataopts,
+                enc=enc,
+                comm=comm,
+                cold_restart=cold_restart,
+                cold_restart_offset=cold_restart_offset,
+                skip_assert_flag=True
+            )
             sources.append(src)
-        return Mix(sources, datadef.proportions)
+        return Mix(sources, datadef.proportions, seed=dataopts.get("seed", 42))
+
     if len(cold_restart) == 0:
-        cold_restart = [0]*comm.size
+        cold_restart = [0] * comm.size
     path = datadef.cloud_path
     files_len = len(datadef.cloud_files)
 
@@ -313,14 +321,21 @@ def build_filter_stack(
     ds = None
     for filt in datadef.to_apply:
         if ds is None and filt == "jsonl":
-            ds = JsonlFilesReaderCached(dataopts, path, my_files, datarank=comm.rank,
+            ds = JsonlFilesReaderCached(
+                dataopts,
+                path,
+                my_files,
+                datarank=comm.rank,
                 cold_restart_key=cold_restart_offset + comm.rank,
                 cold_restart_skip=cold_restart[cold_restart_offset + comm.rank],
-                )
+            )
         elif ds is None and filt == 'hdfs':
-            ds = Hdf5Dataset(dataopts, my_files, comm=comm,
+            ds = Hdf5Dataset(
+                dataopts,
+                my_files,
+                comm=comm,
                 cold_restart_skip=cold_restart[cold_restart_offset + comm.rank],
-                )
+            )
         elif filt == "splitranks":
             ds = SplitRanks(ds, dataopts, commrank=comm.rank, commsize=comm.size)
         elif ds and filt == "tokenize":

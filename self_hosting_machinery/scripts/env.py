@@ -14,6 +14,10 @@ DIR_UPLOADS    = os.path.join(PERMDIR, "uploaded-files")
 DIR_SSH_KEYS   = os.path.join(PERMDIR, "ssh-keys")
 
 DIR_UNPACKED = os.path.join(TMPDIR, "unpacked-files")
+TRAIN_UNFILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "train_set.jsonl")
+TRAIN_FILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "train_set_filtered.jsonl")
+TEST_UNFILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "test_set.jsonl")
+TEST_FILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "test_set_filtered.jsonl")
 
 CONFIG_ENUM_GPUS = os.path.join(DIR_CONFIG, "gpus_enum_result.out")
 CONFIG_BUSY_GPUS = os.path.join(DIR_CONFIG, "gpus_busy_result.out")

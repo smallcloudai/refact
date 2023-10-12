@@ -19,7 +19,7 @@ from self_hosting_machinery.finetune.configuration.finetune_config import base_c
 from self_hosting_machinery.finetune.modelling.model_handling import model_forward
 from self_hosting_machinery.finetune.scripts.script_aux.file_sets_context import FileSetsContext
 from self_hosting_machinery.finetune.scripts.script_aux.file_status_context import FilesStatusContext
-from self_hosting_machinery.finetune.scripts.script_aux.global_stats_context import GlobalStatsContext
+from self_hosting_machinery.finetune.scripts.script_aux.global_stats_context import FinetuneFilterStatusTracker
 from self_hosting_machinery.finetune.scripts.script_aux.model_context import ModelContext
 from self_hosting_machinery.finetune.scripts.process_uploaded_files import make_matcher
 from self_hosting_machinery.finetune.utils.finetune_utils import (get_finetune_config, get_finetune_filter_config)
@@ -56,7 +56,7 @@ def force_include_exclude_filter(
 def loss_based_filter(
         model_context: ModelContext,
         files_status_context: FilesStatusContext,
-        global_stats: GlobalStatsContext,
+        status_tracker: FinetuneFilterStatusTracker,
         *,
         filter_loss_threshold
 ):
@@ -83,7 +83,7 @@ def loss_based_filter(
     forward = partial(model_forward, model=model, low_gpu_mem_mode=False)
     train_files = files_status_context.no_status_train_files()
     all_losses = []
-    with global_stats(total_steps=len(train_files)) as stats_tracker:
+    with status_tracker(total_steps=len(train_files)) as stats_tracker:
         for file in train_files:
             try:
                 file_loss = _get_file_loss()
@@ -98,11 +98,11 @@ def loss_based_filter(
                 all_losses.append(file_loss)
 
             stats_tracker.step()
-    global_stats.add_stats(avg_loss=sum(all_losses) / len(all_losses))
+    status_tracker.add_stats(avg_loss=sum(all_losses) / len(all_losses))
 
 
 def finetune_filter(
-        global_stats_context: GlobalStatsContext,
+        status_tracker: FinetuneFilterStatusTracker,
         dataset_context: FileSetsContext,
         finetune_cfg: Dict[str, Any],
         finetune_filter_cfg: Dict[str, Any],
@@ -112,7 +112,7 @@ def finetune_filter(
     file_status_context = FilesStatusContext(
         train_files=dataset_context.train_files,
         test_files=dataset_context.test_files,
-        global_stats=global_stats_context
+        status_tracker=status_tracker
     )
 
     _log_everywhere("Loading model...")
@@ -132,7 +132,7 @@ def finetune_filter(
     loss_based_filter(
         model_context=model_context,
         files_status_context=file_status_context,
-        global_stats=global_stats_context,
+        status_tracker=status_tracker,
         filter_loss_threshold=finetune_filter_cfg['filter_loss_threshold']
     )
 
@@ -143,12 +143,12 @@ def finetune_filter(
 
 
 def main(models_db: Dict[str, Any]):
-    _log_everywhere("Loading global stats...")
-    global_stats_context = GlobalStatsContext()
+    _log_everywhere("Loading status tracker...")
+    status_tracker = FinetuneFilterStatusTracker()
 
     def catch_sigusr1(signum, frame):
-        logging.info("catched SIGUSR1, interrupted")
-        global_stats_context.update_status("interrupted", error_message="catched SIGUSR1, interrupted")
+        _log_everywhere("catched SIGUSR1, interrupted")
+        status_tracker.update_status("interrupted", error_message="catched SIGUSR1, interrupted")
         exit(99)
 
     signal.signal(signal.SIGUSR1, catch_sigusr1)
@@ -172,15 +172,15 @@ def main(models_db: Dict[str, Any]):
         f"Those files likely don't have meaningful content to train on", width=100
     ))
     try:
-        global_stats_context.update_status("starting")
+        status_tracker.update_status("starting")
         finetune_filter(
-            global_stats_context=global_stats_context,
+            status_tracker=status_tracker,
             dataset_context=file_sets_context,
             finetune_cfg=finetune_cfg,
             finetune_filter_cfg=finetune_filter_cfg,
             model_cfg=model_cfg
         )
-        global_stats_context.update_status("finished")
+        status_tracker.update_status("finished")
 
     # finetune_sequence relies on exit code to continue or stop
     except (SystemExit, KeyboardInterrupt):
@@ -188,8 +188,8 @@ def main(models_db: Dict[str, Any]):
         # this has to be there, even if catch_sigusr1() already called exit with 99, otherwise exit code is zero
         exit(99)
     except Exception as e:
-        logging.error(f"Finetune gpu filter is failed\nException: {e}")
-        global_stats_context.update_status("failed", error_message=str(e) or str(type(e)))
+        _log_everywhere(f"Finetune gpu filter is failed\nException: {e}")
+        status_tracker.update_status("failed", error_message=str(e) or str(type(e)))
         exit(1)
 
 

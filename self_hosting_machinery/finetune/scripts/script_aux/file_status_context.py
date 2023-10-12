@@ -30,7 +30,7 @@ class FilesStatusContext:
             self,
             train_files: List[Dict[str, Any]],
             test_files: List[Dict[str, Any]],
-            global_stats: GlobalStatsContext
+            status_tracker: GlobalStatsContext
     ):
         self.file_statuses: Dict[str, FileStatus] = {
             info["path"]: FileStatus(path=Path(DIR_UNPACKED / info["path"]), info=info, is_train=True)
@@ -46,7 +46,7 @@ class FilesStatusContext:
             f.write("")
         with self.log_files_rejected_ftf.open('w') as f:
             f.write("")
-        self._global_stats = global_stats
+        self._global_stats = status_tracker
         self._check_prerequisites()
 
     def _check_prerequisites(self):

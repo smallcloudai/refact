@@ -1,4 +1,3 @@
-import random
 from pathlib import Path
 from typing import Tuple, Optional, Any, List, Dict
 
@@ -15,7 +14,6 @@ def _try_open(path: Path) -> Optional[Any]:
     except Exception as e:
         print(f'Cannot open the file {path}: {e}')
         return None
-
 
 
 class Hdf5Dataset:
@@ -41,12 +39,9 @@ class Hdf5Dataset:
         self.files = files
         self.tables = [file.root.data for file in self.files]
         self.keys = dataopts.get("keys", "tokens;mask").split(';')
-        self.manual_seed = dataopts.get("hdfs_seed", None)
+        self.seed = dataopts.get("seed", 42)
         self.comm = comm
         self.cold_restart_skip = cold_restart_skip
-        if self.cold_restart_skip is not None:
-            assert self.manual_seed is not None, \
-                "`cold_restart_skip` requires the manual seed, otherwise it doesn't make sence"
         self.tables_lengths = [len(t) for t in self.tables]
         self.tables_lengths_cumsum = np.cumsum(self.tables_lengths)
         self.overall_length = self.tables_lengths_cumsum[-1]
@@ -58,14 +53,7 @@ class Hdf5Dataset:
             file.close()
 
     def __reshuffle(self) -> np.ndarray:
-        if self.manual_seed is None:
-            seed = random.randint(0, 2 ** 32 - 1)
-            if self.comm is not None:
-                seed = self.comm.bcast(seed, root=0)
-        else:
-            seed = self.manual_seed
-
-        rng = np.random.default_rng(seed)
+        rng = np.random.default_rng(self.seed)
         index = rng.choice(self.overall_length, self.overall_length, replace=False)
 
         if self.comm is not None:

@@ -22,6 +22,7 @@ def from_odm_dict(
     exact_cx_lines1 = -1,
     external_poi_ranges: Optional[DefaultDict[str, List[Tuple[int, int]]]] = None,
     want_cursor_token: bool = False,
+    random_state: np.random.RandomState = np.random.RandomState(42)
 ) -> Tuple[Packer, int]:
     pack = Packer(fmt)
     files1 = list(odm["orig"].keys())
@@ -33,7 +34,7 @@ def from_odm_dict(
         # This moves it to the end, more visible to the model
         fns.reverse()
     else:
-        random.shuffle(fns)
+        random_state.shuffle(fns)
     files = []
     chunks: List[ChunkElement] = []
     for fn in fns:
@@ -53,7 +54,7 @@ def from_odm_dict(
         if fn not in odm["dest"]:
             continue
         chunks.extend(_run_diff_for_single_file(f, [(x + "\n") for x in odm["dest"][fn].splitlines()], exact_cx_lines0, exact_cx_lines1))
-    random.shuffle(chunks)
+    random_state.shuffle(chunks)
     for chunk in chunks:
         pack.add_to_plan(chunk)
     if want_cursor_token and len(chunks) == 1:
@@ -62,9 +63,9 @@ def from_odm_dict(
         thischunk_lines = set(range(chunks[0].line_n, chunks[0].line_n + len(chunks[0].to_del) + 1))
         thischunk_modlines = list(thischunk_lines & modlines)
         if len(thischunk_modlines) > 0:  # Can be zero for whatever reason, cursor appearance is random anyway
-            aim = random.choice(thischunk_modlines)
-            shift = np.random.poisson(2)
-            sign = np.random.choice([-1, 1])
+            aim = random_state.choice(thischunk_modlines)
+            shift = random_state.poisson(2)
+            sign = random_state.choice([-1, 1])
             file0._cursor_token_at_line = aim + shift * sign
     return pack, msg_plan_n
 
