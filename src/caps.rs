@@ -64,14 +64,26 @@ const KNOWN_MODELS: &str = r#"
                 "FIM-PSM": {},
                 "FIM-SPM": {}
             },
-            "default_scratchpad": "FIM-PSM"
+            "default_scratchpad": "FIM-PSM",
+            "similar_models": [
+                "Refact/1.6B",
+                "starcoder/15b/base",
+                "starcoder/15b/plus",
+                "starcoder/1b/base",
+                "starcoder/3b/base",
+                "starcoder/7b/base",
+                "wizardcoder/15b"
+            ]
         },
         "codellama/CodeLlama-13b-hf": {
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "FIM-PSM": {"prefix_token": "<PRE>", "suffix_token": "<SUF>", "middle_token": "<MID>", "eot_token": "<EOT>"}
             },
-            "default_scratchpad": "FIM-PSM"
+            "default_scratchpad": "FIM-PSM",
+            "similar_models": [
+                "codellama/7b"
+            ]
         }
     },
     "code_chat_models": {
@@ -86,16 +98,10 @@ const KNOWN_MODELS: &str = r#"
                     "stop_list": ["<empty_output>"],
                     "default_system_message": "You are a programming assistant."
                 }
-            }
-        },
-        "llama2/7b": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-LLAMA2": {
-                    "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
-                }
             },
-            "similar_models": ["llama2/13b"]
+            "similar_models": [
+                "Refact/1.6B"
+            ]
         },
         "meta-llama/Llama-2-70b-chat-hf": {
             "n_ctx": 4096,
@@ -107,11 +113,59 @@ const KNOWN_MODELS: &str = r#"
         },
         "gpt-3.5": {
             "n_ctx": 4096,
-            "supports_scratchpads": {"PASSTHROUGH": {}}
+            "supports_scratchpads": {"PASSTHROUGH": {}},
+            "similar_models": [
+                "gpt-4",
+                "gpt3.5",
+                "gpt4"
+            ]
         },
-        "gpt-4": {
+        "starchat/15b/beta": {
             "n_ctx": 4096,
-            "supports_scratchpads": {"PASSTHROUGH": {}}
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {
+                    "token_esc": "<|end|>\n",
+                    "keyword_system": "<|system|>\n",
+                    "keyword_user": "<|user|>\n",
+                    "keyword_assistant": "<|assistant|>\n",
+                    "stop_list": [
+                        "<|system|>",
+                        "<|user|>",
+                        "<|assistant|>",
+                        "<|end|>",
+                        "<empty_output>"
+                    ],
+                    "default_system_message": "You are a programming assistant."
+                }
+            }
+        },
+        "llama2/7b": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "CHAT-LLAMA2": {
+                    "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
+                }
+            },
+            "similar_models": [
+                "llama2/13b"
+            ]
+        },
+        "wizardlm/7b": {
+            "n_ctx": 2048,
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {
+                    "token_esc": "\n\n",
+                    "keyword_system": "",
+                    "keyword_user": "USER: ",
+                    "keyword_assistant": "ASSISTANT: ",
+                    "stop_list": [],
+                    "default_system_message": ""
+                }
+            },
+            "similar_models": [
+                "wizardlm/13b",
+                "wizardlm/30b"
+            ]
         }
     }
 }
