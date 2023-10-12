@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response, StreamingResponse, JSONResponse
 
 from self_hosting_machinery.scripts import best_lora
+from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 from refact_data_pipeline.finetune.finetune_utils import get_active_loras
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_config
 from refact_data_pipeline.finetune.finetune_utils import get_finetune_filter_stat
@@ -93,7 +94,7 @@ class TabFinetuneTrainingSetup(BaseModel):
 
 class TabFinetuneRouter(APIRouter):
 
-    def __init__(self, models_db: Dict[str, Any], *args, **kwargs):
+    def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
@@ -109,7 +110,7 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-smart-filter-get", self._tab_finetune_smart_filter_get, methods=["GET"])
         self.add_api_route("/tab-finetune-training-setup", self._tab_finetune_training_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
-        self._models_db = models_db
+        self._model_assigner = model_assigner
 
     async def _tab_finetune_get(self):
         prog, status = get_prog_and_status_for_ui()
@@ -140,9 +141,11 @@ class TabFinetuneRouter(APIRouter):
             return f"Error: {str(e)}"
 
     async def _tab_finetune_config_and_runs(self):
+        completion_model = self._model_assigner.model_assignment.get("completion", "")
         runs = get_finetune_runs()
-        config = get_finetune_config(self._models_db)
+        config = get_finetune_config(self._model_assigner.models_db)
         result = {
+            "completion_model": completion_model,
             "finetune_runs": runs,
             "config": {
                 "limit_training_time_minutes": "60",
@@ -151,8 +154,8 @@ class TabFinetuneRouter(APIRouter):
                 "auto_delete_n_runs": "5",
                 **config,  # TODO: why we mix finetune config for training and schedule?
             },
-            "active": get_active_loras(self._models_db),
-            "finetune_latest_best": best_lora.find_best_lora(config["model_name"]),
+            "active": get_active_loras(self._model_assigner.models_db),
+            "finetune_latest_best": best_lora.find_best_lora(completion_model),
         }
         return Response(json.dumps(result, indent=4) + "\n")
 
@@ -188,7 +191,7 @@ class TabFinetuneRouter(APIRouter):
     async def _tab_finetune_training_get(self):
         result = {
             "defaults": finetune_train_defaults,
-            "user_config": get_finetune_config(self._models_db),
+            "user_config": get_finetune_config(self._model_assigner.models_db),
         }
         return Response(json.dumps(result, indent=4) + "\n")
 
@@ -255,7 +258,7 @@ class TabFinetuneRouter(APIRouter):
         return JSONResponse("OK")
 
     async def _tab_finetune_activate(self, activate: TabFinetuneActivate):
-        active_loras = get_active_loras(self._models_db)
+        active_loras = get_active_loras(self._model_assigner.models_db)
         active_loras[activate.model] = activate.dict()
         with open(env.CONFIG_ACTIVE_LORA, "w") as f:
             json.dump(active_loras, f, indent=4)
