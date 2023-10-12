@@ -122,7 +122,7 @@ class ContrastDiff:
         if tight_shrink:
             files.reverse()
         else:
-            random.shuffle(files)
+            np_random.shuffle(files)
         file_poi = defaultdict(set)
         file_deltokens = defaultdict(list)
         file_dellines = defaultdict(list)
@@ -135,7 +135,7 @@ class ContrastDiff:
             # dest_lines = odm["dest"][fn].replace('\r\n', '\n').replace('\r', '\n').splitlines()
             orig_lines = [x+"\n" for x in odm["orig"][fn].splitlines()]
             dest_lines = [x+"\n" for x in odm["dest"][fn].splitlines()]
-            if len(orig_lines)==0:
+            if len(orig_lines) == 0:
                 orig_lines.append("\n")
             if orig_lines[-1][-1] != "\n":
                 orig_lines[-1] += "\n"
@@ -228,7 +228,7 @@ class ContrastDiff:
                 opblocks.append(opblock)
             self.orig_tokens[fn] = orig_all_tokens
             self.dest_tokens[fn] = dest_all_tokens
-        random.shuffle(opblocks)
+        np_random.shuffle(opblocks)
         raw_ops: List[Tuple[str, str, int, int, int, int]] = list()
         for opblock in opblocks:
             raw_ops.extend(opblock)
@@ -359,7 +359,7 @@ class ContrastDiff:
             self.fn2tstart = dict()
             self.fn2cut = dict()
             tpos_unused = list(self.enc.tpos)
-            random.shuffle(tpos_unused)
+            np_random.shuffle(tpos_unused)
             tpos_unused *= 2
             need_to_cut_main = 0
             need_to_cut_supp = 0
@@ -403,9 +403,9 @@ class ContrastDiff:
                     else:
                         move_r2 = min(cut_step, cut_more, relax2[fn])
                 else:
-                    if random.random() < 0.5 and relax1[fn] > 1:
+                    if np_random.random() < 0.5 and relax1[fn] > 1:
                         move_r1 = random.randint(0, min(cut_more, relax1[fn]))
-                    if random.random() < 0.5 and relax2[fn] > 1:
+                    if np_random.random() < 0.5 and relax2[fn] > 1:
                         move_r2 = random.randint(0, min(cut_more, relax2[fn]))
                 assert move_r1 >= 0 and move_r2 >= 0, f"i1={i1} i2={i2} r1={r1} r2={r2}"
                 if SHRINK_DUMP:

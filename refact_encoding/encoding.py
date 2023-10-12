@@ -13,7 +13,7 @@ __all__ = ["RefactEncoding"]
 
 
 class RefactEncoding:
-    def __init__(self, name: str):
+    def __init__(self, name: str, random_seed: int = 42):
         self.DIAMOND = 0
         self.INFILL = 0
         self.ESCAPE = 0
@@ -31,6 +31,7 @@ class RefactEncoding:
         self._sentencepiece_tokenizer = None
         self._allowed_special = set()
         self._slash_n_banlist = set()
+        self._random = random.Random(random_seed)
 
         if name in ["openai_reversible50000"]:
             self.EOT = 50256
@@ -192,6 +193,9 @@ class RefactEncoding:
             for t in range(self.n_vocab):
                 self._token2bytes[t] = self._tik.decode_bytes([t])
 
+    def set_random_seed(self, random_seed: int):
+        self._random = random.Random(random_seed)
+
     def decode_utf8(self, tokens) -> str:
         if self._tokenizer:
             if len(tokens) == 1:
@@ -255,7 +259,7 @@ class RefactEncoding:
             bounds_at = list(set(bounds_at))
             bounds_at.sort()
         else:
-            bounds_set = set([random.randint(0, len(sequence) - 1)
+            bounds_set = set([self._random.randint(0, len(sequence) - 1)
                               for _ in range(bounds_n)])
             bounds_set.add(len(sequence))
             bounds_set.add(0)

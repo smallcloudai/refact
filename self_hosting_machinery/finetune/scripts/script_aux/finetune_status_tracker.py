@@ -1,19 +1,31 @@
 import json
 import os
 import time
+from pathlib import Path
 from typing import Dict, Any, Optional
 
 from self_hosting_machinery.finetune.utils.eta import EtaTracker
 from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_filter_stat
 from self_hosting_machinery.scripts import env
+from self_hosting_machinery.finetune.utils import traces
 
-__all__ = ['GlobalStatsContext']
+__all__ = ['FinetuneStatusTracker']
 
 
-class GlobalStatsContext:
-    class StatusDictTracker:
+def get_finetune_status() -> Dict[str, Any]:
+    return {
+        "started_ts": time.time(),
+        "worked_steps": 0,
+        "worked_minutes": 0,
+        "status": "starting",
+        "quality": "unknown"
+    }
+
+
+class FinetuneStatusTracker:
+    class LoopStatusTracker:
         def __init__(self, context, total_steps: int):
-            self.context: GlobalStatsContext = context
+            self.context: FinetuneStatusTracker = context
             self.eta_tracker = EtaTracker(total_steps)
             self.iter_n = 0
             self.initial_iter_tp = time.time()
@@ -29,13 +41,21 @@ class GlobalStatsContext:
             self.last_iter_tp = time.time()
 
     def __init__(self):
-        self._stats_dict = get_finetune_filter_stat(default=True)
+        self._stats_dict = get_finetune_status()
+        self._rank = os.environ.get('RANK', 0)
         self._tracker_extra_kwargs: Dict[str, Any] = dict()
+        self._status_filename = Path(traces.context().path) / "status.json"
 
     def dump(self):
-        with open(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", "w") as f:
+        if self._rank != 0:
+            return
+
+        traces.touch()
+        if not traces.context():
+            return
+        with open(self._status_filename.with_suffix(".tmp"), "w") as f:
             json.dump(self._stats_dict, f, indent=4)
-        os.rename(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", env.CONFIG_FINETUNE_FILTER_STAT)
+        os.rename(self._status_filename.with_suffix(".tmp"), self._status_filename)
 
     def update_status(
             self,
@@ -43,8 +63,8 @@ class GlobalStatsContext:
             error_message: Optional[str] = None,
             dump: bool = True
     ):
-        env.report_status("filter", status)
-        self._stats_dict["filtering_status"] = status
+        env.report_status("ftune", status)
+        self._stats_dict["status"] = status
         if error_message is not None:
             assert status in {"failed", "interrupted"}
             self._stats_dict["error"] = error_message
@@ -66,9 +86,9 @@ class GlobalStatsContext:
         self._tracker_extra_kwargs.update(kwargs)
         return self
 
-    def __enter__(self) -> 'GlobalStatsContext.StatusDictTracker':
+    def __enter__(self) -> 'FinetuneStatusTracker.LoopStatusTracker':
         self.add_stats(**self._tracker_extra_kwargs)
-        return GlobalStatsContext.StatusDictTracker(context=self, **self._tracker_extra_kwargs)
+        return FinetuneStatusTracker.LoopStatusTracker(context=self, **self._tracker_extra_kwargs)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass

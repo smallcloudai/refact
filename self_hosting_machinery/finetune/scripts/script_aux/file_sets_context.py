@@ -7,17 +7,13 @@ import jsonlines
 from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery.scripts import env
 
-__all__ = ['FileSetsContext']
+from self_hosting_machinery.scripts.env import (TRAIN_UNFILTERED_FILEPATH, TEST_UNFILTERED_FILEPATH,
+                                                TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH)
 
-DIR_UNPACKED = Path(env.DIR_UNPACKED)
+__all__ = ['FileSetsContext']
 
 
 class FileSetsContext:
-    UNFILTERED_TRAIN_FILENAME = DIR_UNPACKED / "train_set.jsonl"
-    FILTERED_TRAIN_FILENAME = DIR_UNPACKED / "train_set_filtered.jsonl"
-    UNFILTERED_TEST_FILENAME = DIR_UNPACKED / "test_set.jsonl"
-    FILTERED_TEST_FILENAME = DIR_UNPACKED / "test_set_filtered.jsonl"
-
     TRAIN_FILES_MIN_NUMBER_WITH_TEST_SET = 4
     TRAIN_FILES_MIN_NUMBER_WITHOUT_TEST_SET = 7
     TEST_FILES_COUNT_WARNING = 64
@@ -25,15 +21,15 @@ class FileSetsContext:
     def __init__(self, autoselect_test_files_num: int):
         self._check_prerequisites()
         self.autoselect_test_files_num = autoselect_test_files_num
-        self.train_files: List[Dict[str, Any]] = list(jsonlines.open(self.UNFILTERED_TRAIN_FILENAME))
-        self.test_files: List[Dict[str, Any]] = list(jsonlines.open(self.UNFILTERED_TEST_FILENAME))
+        self.train_files: List[Dict[str, Any]] = list(jsonlines.open(TRAIN_UNFILTERED_FILEPATH))
+        self.test_files: List[Dict[str, Any]] = list(jsonlines.open(TEST_UNFILTERED_FILEPATH))
 
     def _check_prerequisites(self):
-        if not self.UNFILTERED_TRAIN_FILENAME.exists():
+        if not Path(TRAIN_UNFILTERED_FILEPATH).exists():
             raise RuntimeError("No train files have been provided")
 
-        train_files = list(jsonlines.open(self.UNFILTERED_TRAIN_FILENAME))
-        test_files = list(jsonlines.open(self.UNFILTERED_TEST_FILENAME))
+        train_files = list(jsonlines.open(TRAIN_UNFILTERED_FILEPATH))
+        test_files = list(jsonlines.open(TEST_UNFILTERED_FILEPATH))
         train_min_number = (
             self.TRAIN_FILES_MIN_NUMBER_WITH_TEST_SET if len(test_files) > 0 else
             self.TRAIN_FILES_MIN_NUMBER_WITHOUT_TEST_SET
@@ -48,10 +44,10 @@ class FileSetsContext:
 
     def is_up_to_date(self) -> bool:
         unfiltered_train, filtered_train = (
-            self.UNFILTERED_TRAIN_FILENAME, self.FILTERED_TRAIN_FILENAME
+            Path(TRAIN_UNFILTERED_FILEPATH), Path(TRAIN_FILTERED_FILEPATH)
         )
         unfiltered_test, filtered_test = (
-            self.UNFILTERED_TRAIN_FILENAME, self.FILTERED_TRAIN_FILENAME
+            Path(TEST_UNFILTERED_FILEPATH), Path(TEST_FILTERED_FILEPATH)
         )
         how_to_filter = Path(env.CONFIG_HOW_TO_FILTER)
         how_to_filetypes = Path(env.CONFIG_HOW_TO_FILETYPES)
@@ -93,8 +89,8 @@ class FileSetsContext:
             train_files = files
             test_files = self.test_files
 
-        _dump(train_files, self.FILTERED_TRAIN_FILENAME)
-        _dump(test_files, self.FILTERED_TEST_FILENAME)
+        _dump(train_files, TRAIN_FILTERED_FILEPATH)
+        _dump(test_files, TEST_FILTERED_FILEPATH)
         traces.log("-" * 40 + "TEST SET" + "-" * 40)
         for file in test_files:
             traces.log(file["path"])
