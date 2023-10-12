@@ -146,6 +146,7 @@ def get_prog_and_status_for_ui() -> (str, str):
     prog, status = _get_status_by_watchdog()
 
     if os.path.exists(env.FLAG_LAUNCH_PROCESS_UPLOADS):
+        print('FLAG_LAUNCH_PROCESS_UPLOADS exists')
         return "prog_linguist", "starting"
 
     if os.path.exists(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY):

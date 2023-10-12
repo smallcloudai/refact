@@ -238,6 +238,6 @@ class ConfigBuilder:
 
     def set_low_gpu_mem_mode_by_heuristics(self) -> 'ConfigBuilder':
         gpu_mem = torch.cuda.get_device_properties('cuda').total_memory
-        self.set_low_gpu_mem_mode(gpu_mem < 20_000_000_000)
-        traces.log(f'Selected low_gpu_mem_mode={gpu_mem < 20_000_000_000} by total gpu memory\n')
+        self.set_low_gpu_mem_mode(gpu_mem < 30_000_000_000)
+        traces.log(f'Selected low_gpu_mem_mode={gpu_mem < 30_000_000_000} by total gpu memory\n')
         return self
