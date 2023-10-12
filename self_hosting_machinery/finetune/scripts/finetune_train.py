@@ -1,32 +1,33 @@
-import os
-import time
+import copy
 import json
+import logging
+import os
+import signal
 import subprocess
 import sys
-import signal
-
-import deepspeed
-import logging
-import torch as th
-
+import time
 from functools import partial
 from pathlib import Path
-from jsonlines import jsonlines
-from torchinfo import summary
+from typing import Optional, Dict, Any
 
-from self_hosting_machinery.finetune.configuration import supported_models
-from self_hosting_machinery.finetune.modelling.loss import masked_loss
-from self_hosting_machinery.finetune.scripts.script_aux.early_stopper import EarlyStopper
-from self_hosting_machinery.finetune.utils import traces
-from refact_data_pipeline import DatasetOpts, finetune_datasource
+import torch as th
+
 from refact_data_pipeline.datautils import BatchIterator
-from self_hosting_machinery.finetune.configuration.finetune_config import base_config, ConfigBuilder
-from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_config
-from self_hosting_machinery.finetune.modelling.model_handling import make_model, save_model_state, model_forward, \
-    setup_encoding
 from self_hosting_machinery import env
+from self_hosting_machinery.finetune.configuration import supported_models
+from self_hosting_machinery.finetune.configuration.finetune_config import base_config, ConfigBuilder
+from self_hosting_machinery.finetune.modelling.model_handling import make_model, save_model_state, model_forward
+from self_hosting_machinery.finetune.scripts.script_aux.dataset_context import get_ds_len_per_epoch
+from self_hosting_machinery.finetune.scripts.script_aux.early_stopper import EarlyStopper
+from self_hosting_machinery.finetune.scripts.script_aux.finetune_status_tracker import FinetuneStatusTracker
+from self_hosting_machinery.finetune.scripts.script_aux.model import ModelContext
+from self_hosting_machinery.finetune.utils import traces
+from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_config
 
-from typing import Optional, Callable, Dict, Any, Tuple
+
+def _log_everywhere(message):
+    logging.info(message)
+    traces.log(message)
 
 
 def save_status_json(status_dict, status_string):
@@ -49,27 +50,7 @@ def save_status_json(status_dict, status_string):
         traces.log("(no big deal, will try again next iteration)")
 
 
-def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
-    def _get_ds_len_per_epoch(model_name, cfg_builder):
-        model_config = supported_models.config[model_name]
-        ds_opts = DatasetOpts(model_config["train_ds_pipeline"]["ds_opts"].format(
-            n_ctx=cfg_builder.cfg['model_info']['ctx_size'] + 1
-        ) + ",quit_on_epoch=1")
-        ds_opts.set_encoding(setup_encoding(
-            model_name=model_name,
-            weights_path=cfg_builder.cfg['model_info']['weight_path'],
-            repo_id=cfg_builder.cfg['model_info']['repo_id']
-        ))
-        pipe = getattr(finetune_datasource, model_config["train_ds_pipeline"]["pipeline_name"])
-        ds = pipe(filtered_train, ds_opts)
-        ds_len = 0
-        try:
-            for _ in ds:
-                ds_len += 1
-            return ds_len
-        except Exception as e:
-            return ds_len
-
+def build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str, Any]:
     with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
         initial_loss = json.load(f)["avg_loss"]
 
@@ -77,15 +58,13 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
     cfg_builder = ConfigBuilder(base_config(user_cfg['model_name'], models_db))
     if user_cfg['use_heuristics']:
         traces.log("Retrieving dataset length per epoch, it may take a while...")
-        ds_len = _get_ds_len_per_epoch(user_cfg['model_name'], cfg_builder)
+        ds_len = get_ds_len_per_epoch(user_cfg['model_name'], cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
         (cfg_builder
          .set_lora_quality_by_heuristics(ds_len=ds_len, initial_loss=initial_loss)
          .set_schedule_by_heuristics(ds_len=ds_len)
          .set_low_gpu_mem_mode_by_heuristics())
     else:
-        traces.log('Not using heuristics')
-        traces.log('low_gpu_mem_mode: %s' % user_cfg['low_gpu_mem_mode'])
         (cfg_builder
          .set_train_steps(user_cfg['train_steps'])
          .set_lr_decay_steps(user_cfg['lr_decay_steps'])
@@ -99,10 +78,7 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
          .set_batch_size(user_cfg['batch_size'])
          .set_warmup_steps(user_cfg['warmup_num_steps'])
          .set_limit_time_seconds(user_cfg['limit_time_seconds'])
-         .set_weight_decay(user_cfg['weight_decay'])
-         .set_lora_target_modules(user_cfg['lora_target_modules'])
-         .set_freeze_exceptions(user_cfg['freeze_exceptions'])
-         .set_save_every(user_cfg['save_every']))
+         .set_weight_decay(user_cfg['weight_decay']))
 
     traces.log(f'Freeze exceptions: {cfg_builder.cfg["model_info"]["freeze_exceptions"]}')
     for k, v in cfg_builder.cfg["model_info"]["lora"].items():
@@ -114,52 +90,10 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
     return cfg_builder.cfg
 
 
-def create_data(model_name, cfg, enc) -> Tuple[Any, Optional[Any]]:
-    model_config = supported_models.config[model_name]
-    train_dataopts = DatasetOpts(model_config["train_ds_pipeline"]["ds_opts"].format(
-        n_ctx=cfg['model_info']['ctx_size'] + 1
-    ))
-    train_dataopts.set_encoding(enc)
-    test_dataopts = DatasetOpts(model_config["test_ds_pipeline"]["ds_opts"].format(
-        n_ctx=cfg['model_info']['ctx_size'] + 1
-    ))
-    test_dataopts.set_encoding(enc)
-
-    train_pipe = getattr(finetune_datasource, model_config["train_ds_pipeline"]["pipeline_name"])
-    test_pipe = getattr(finetune_datasource, model_config["test_ds_pipeline"]["pipeline_name"])
-
-    train_ds = train_pipe(filtered_train, train_dataopts)
-    traces.log('train batch size: %s' % cfg['train_batch_size'])
-    train_ds = BatchIterator(train_ds, dataopts=dict(
-        batch_size=cfg['train_batch_size'],
-        drop_last=True
-    ))
-    has_train_files = os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_train)) and \
-                      len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_train)))) > 0
-    if not has_train_files:
-        raise RuntimeError("No train files provided")
-
-    has_test_files = os.path.exists(os.path.join(env.DIR_UNPACKED, filtered_test)) \
-                     and len(list(jsonlines.open(os.path.join(env.DIR_UNPACKED, filtered_test)))) > 0
-    if has_test_files:
-        test_ds = test_pipe(filtered_test, test_dataopts)
-        test_ds = list(test_ds)
-    else:
-        traces.log("Warning: no test set provided, the number of files is zero")
-        test_ds = None
-    return train_ds, test_ds
-
-
 def loop(
-        cfg,
-        model,
-        optimizer,
-        loss_function: Callable,
-        model_name: str,
-        *,
-        status_dict,
-        train_ds,
-        test_ds: Optional[Any]
+        finetune_cfg: Dict[str, Any],
+        model_context: ModelContext,
+        status_tracker: FinetuneStatusTracker
 ):
     def _save_checkpoint(force: bool = False):
         if force or (iter_n != 0 and iter_n % cfg['save_every'] == 0):
@@ -169,17 +103,15 @@ def loop(
                 tag = "iter%04d-trainloss%0.3f" % (iter_n, progress["loss"])
             traces.log("saving checkpoint %s" % tag)
             save_model_state(model, save_path=save_path, tag=tag)
-            traces.log("finished saving checkpoint %s" % tag)
 
     model_config = supported_models.config[model_name]
     save_path = os.path.join(traces.context().path, "checkpoints")
-    model.train()
+    model_context.train()
     test_ds_fn = partial(BatchIterator, dataopts=dict(
         batch_size=1,
         drop_last=False
     ))
     micro_bs = cfg['micro_batch_size']
-    backend = cfg['model_info']['backend']
     tokens_n = 0
     iter_time_last = None
     t0 = time.time()
@@ -189,7 +121,7 @@ def loop(
     plot_process: Optional[subprocess.Popen] = None
     save_status_json(status_dict, "working")
     low_gpu_mem_mode = cfg['low_gpu_mem_mode'] or model_config['force_enable_checkpointing']
-    forward = partial(model_forward, model=model, backend=backend)
+    forward = partial(model_forward, model=model)
     early_stop = EarlyStopper(patience=int(cfg['train_iters'] * 0.2))
     for iter_n in range(cfg['train_iters'] + 1):  # +1 so we can save 100 (not 99)
         t0_iter = time.time()
@@ -208,9 +140,7 @@ def loop(
             f"({batch['mask'].sum()}/{batch['mask'].numel()})"
         )
 
-        print("train batch size: %s" % cfg.get("train_batch_size"))
         for b0 in range(0, cfg.get("train_batch_size"), cfg.get("micro_batch_size")):
-
             try:
                 input = batch['input'][b0:b0 + micro_bs].contiguous()
                 logits = forward(input=input, low_gpu_mem_mode=low_gpu_mem_mode)
@@ -254,9 +184,10 @@ def loop(
                 if len(test_losses) > 0 and early_stop(sum(test_losses) / len(test_losses)):
                     traces.log(f"Stopping the training due to "
                                f"test loss was above minimum {early_stop.counter} times")
-                    _save_checkpoint(force=True)
+
+                    _save_checkpoint(iter_n=iter_n, loss=loss)
                     break
-            model.train()
+            model_context.train()
 
         for k, v in ds_stats.items():
             traces.progress(f'ds/{k}', v)
@@ -296,88 +227,47 @@ def loop(
             logging.info("finished iteration %d, train_loss=%0.3f" % (iter_n, progress["loss"]))
 
 
-def finetune(status_dict, models_db: Dict[str, Any]):
-    logging.info("starting finetune at %s" % traces.context().path)
-    cfg = load_finetune_config(models_db)
-    traces.log("Creating model %s..." % cfg['model_name'])
-    t0 = time.time()
-    model = make_model(
-        model_name=cfg['model_name'],
-        weights_path=cfg['model_info']['weight_path'],
-        repo_id=cfg['model_info']['repo_id'],
-        freeze_exceptions=cfg['model_info']['freeze_exceptions'],
-        lora_target_modules=cfg['model_info']['lora']['lora_target_modules'],
-        lora_r=cfg['model_info']['lora']['lora_r'],
-        lora_alpha=cfg['model_info']['lora']['lora_alpha'],
-        lora_dropout=cfg['model_info']['lora']['lora_dropout'],
-        lora_init_scale=cfg['model_info']['lora']['lora_init_scale'],
-        dtype=th.bfloat16 if 'bf16' in cfg and cfg['bf16']['enabled'] else th.float16,
-        init_device="cuda",
-        device="cuda",
-    )
-    t1 = time.time()
-    traces.log("/model %0.1fms" % ((t1 - t0) * 1000))
-    traces.log(cfg)
-    if cfg['debug']:
-        summary(model, depth=4, col_names=['num_params', 'params_percent', 'trainable'])
-
-    model, optimizer, _, _ = deepspeed.initialize(
-        config=cfg,
-        model=model,
-        model_parameters=[p for p in model.parameters() if p.requires_grad],
-        dist_init_required=True
-    )
-    train_ds, test_ds = create_data(cfg['model_name'], cfg, model.encoding)
-    loop(
-        cfg=cfg,
-        model=model,
-        optimizer=optimizer,
-        loss_function=partial(
-            masked_loss, average_elements=cfg['model_info']['loss_average_elements'],
-            enc=model.encoding
-        ),
-        model_name=cfg['model_name'],
-        train_ds=train_ds,
-        test_ds=test_ds,
-        status_dict=status_dict
-    )
-    logging.info("finished finetune at %s" % traces.context().path)
-
-
 def main(models_db: Dict[str, Any]):
-    status_dict = {
-        "started_ts": time.time(),
-        "worked_steps": 0,
-        "worked_minutes": 0,
-        "status": "starting",
-        "quality": "unknown"
-    }
-    save_status_json(status_dict, "working")
+    _log_everywhere("Loading status tracker...")
+    status_tracker = FinetuneStatusTracker()
 
     def catch_sigusr1(signum, frame):
-        logging.info("catched SIGUSR1, interrupted")
-        traces.log("Interrupted")
-        status_dict["error"] = "interrupted"
-        save_status_json(status_dict, "interrupted")
+        _log_everywhere("catched SIGUSR1, interrupted")
+        status_tracker.update_status("interrupted", error_message="catched SIGUSR1, interrupted")
         exit(99)
 
     signal.signal(signal.SIGUSR1, catch_sigusr1)
+
+    _log_everywhere("Loading finetune configs...")
+    finetune_cfg = build_finetune_config_by_heuristics(models_db)
+    model_cfg = copy.deepcopy(base_config(finetune_cfg["model_name"], models_db))
+
     try:
-        finetune(status_dict, models_db)
-        save_status_json(status_dict, "finished")
-    except SystemExit:
-        # catched sigusr1, interrupt by watchdog
-        exit(99)  # this has to be there, even if catch_sigusr1() already called exit with 99, otherwise exit code is zero
-    except BaseException as e:  # BaseException includes KeyboardInterrupt
-        if "error" not in status_dict:  # if there is, a more detailed error is already in place
-            t = str(e) or str(type(e))
-            status_dict["error"] = t
-            logging.error("FAILED: %s" % t)
-            traces.log("FAILED: %s" % t)
-            save_status_json(status_dict, "failed")
-        logging.error("FAILED finetune at %s" % traces.context().path)
-        logging.error("Error was: %s" % status_dict["error"])
-        raise e
+        status_tracker.update_status("working")
+        _log_everywhere(f"Starting finetune at {traces.context().path}\n\n"
+                        f"Building the model...")
+        model_context = ModelContext(
+            finetune_cfg=finetune_cfg,
+            model_cfg=model_cfg,
+            use_deepspeed=True
+        )
+        loop(
+            finetune_cfg=finetune_cfg,
+            model_context=model_context,
+            status_tracker=status_tracker
+        )
+        logging.info("finished finetune at %s" % traces.context().path)
+        status_tracker.update_status("finished")
+
+    # finetune_sequence relies on exit code to continue or stop
+    except (SystemExit, KeyboardInterrupt):
+        # caught sigusr1, interrupt by watchdog or by user
+        # this has to be there, even if catch_sigusr1() already called exit with 99, otherwise exit code is zero
+        exit(99)
+    except Exception as e:
+        _log_everywhere(f"Finetune is failed\nException: {e}")
+        status_tracker.update_status("failed", error_message=str(e) or str(type(e)))
+        exit(1)
 
 
 if __name__ == "__main__":

@@ -174,7 +174,37 @@ class ModelContext:
         assert self.use_deepspeed
         self.model.step()
 
-    def save_model_state(
+    def train_information(self) -> Dict[str, Any]:
+        if self.use_deepspeed:
+            return dict(gpumem_p0=torch.cuda.max_memory_allocated())
+
+        return dict(
+            gpumem_p0=torch.cuda.max_memory_allocated(),
+            lr=self.model.optimizer.param_groups[-1]['lr'],
+            num_skipped_updates=self.model.skipped_steps,
+            scale=self.model.optimizer.cur_scale,
+        )
+
+    def train(self):
+        self.model.train()
+
+    def eval(self):
+        self.model.eval()
+
+    def save_checkpoint(
+            self,
+            iter_n: int,
+            loss: float
+    ):
+        if force or (iter_n != 0 and iter_n % cfg['save_every'] == 0):
+            if "test_loss" in progress:
+                tag = "iter%04d-testloss%0.3f" % (iter_n, progress["test_loss"])
+            else:
+                tag = "iter%04d-trainloss%0.3f" % (iter_n, progress["loss"])
+            traces.log(f"saving checkpoint {tag}")
+            self._save_model_state(save_path=save_path, tag=tag)
+
+    def _save_model_state(
             self,
             save_path: str,
             tag: str
@@ -194,17 +224,6 @@ class ModelContext:
             cp = torch.load(str(cp_path), map_location='cpu')
             cp = {k: v for k, v in cp.items() if k in keys_white_list}
             torch.save(cp, str(cp_path))
-
-    def train_information(self) -> Dict[str, Any]:
-        if self.use_deepspeed:
-            return dict(gpumem_p0=torch.cuda.max_memory_allocated())
-
-        return dict(
-            gpumem_p0=torch.cuda.max_memory_allocated(),
-            lr=self.model.optimizer.param_groups[-1]['lr'],
-            num_skipped_updates=self.model.skipped_steps,
-            scale=self.model.optimizer.cur_scale,
-        )
 
     def _freeze_model(
             self,
