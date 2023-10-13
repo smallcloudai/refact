@@ -104,6 +104,10 @@ class ModelContext:
             torch_dtype=dtype,
             trust_remote_code=True
         )
+        model.encoding = self._setup_encoding(
+            weights_path=self.model_cfg['model_info']['weight_path'],
+            repo_id=self.model_cfg['model_info']['repo_id']
+        )
         freeze_exceptions, lora_target_modules = self._map_model_specific_params(
             freeze_exceptions, lora_target_modules
         )
@@ -191,20 +195,7 @@ class ModelContext:
     def eval(self):
         self.model.eval()
 
-    def save_checkpoint(
-            self,
-            iter_n: int,
-            loss: float
-    ):
-        if force or (iter_n != 0 and iter_n % cfg['save_every'] == 0):
-            if "test_loss" in progress:
-                tag = "iter%04d-testloss%0.3f" % (iter_n, progress["test_loss"])
-            else:
-                tag = "iter%04d-trainloss%0.3f" % (iter_n, progress["loss"])
-            traces.log(f"saving checkpoint {tag}")
-            self._save_model_state(save_path=save_path, tag=tag)
-
-    def _save_model_state(
+    def save_model_state(
             self,
             save_path: str,
             tag: str
@@ -246,8 +237,6 @@ class ModelContext:
             repo_id, cache_dir=weights_path,
             trust_remote_code=True
         )
-        encoding.encode_stochastic = lambda x, *args, **kwargs: (encoding.encode(x), None)
-        encoding.decode_utf8 = lambda x, *args, **kwargs: encoding.decode(x)
         encoding.EOT = self.model_mappings_config["tokenizer"]["eot_idx"]
         encoding.DIAMOND = self.model_mappings_config["tokenizer"]["padding_idx"]
         encoding.PREFIX = self.model_mappings_config["tokenizer"]["fim_prefix"]

@@ -6,22 +6,21 @@ import os
 import signal
 import textwrap
 import time
-from functools import partial
 from typing import Dict, Any
 
 import torch
 
 import self_hosting_machinery.finetune.utils.traces as traces
-from refact_data_pipeline import finetune_datasource
-from refact_data_pipeline.datautils import BatchIterator
+from refact_data_pipeline.finetune_datasource import RefactPlainCodeDataset, RefactDataset
 from self_hosting_machinery import env
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config
-from self_hosting_machinery.finetune.modelling.model_handling import model_forward
+from self_hosting_machinery.finetune.scripts.process_uploaded_files import make_matcher
+from self_hosting_machinery.finetune.scripts.script_aux.dataset import create_finetune_filter_dataloader, to_cuda
 from self_hosting_machinery.finetune.scripts.script_aux.file_sets_context import FileSetsContext
 from self_hosting_machinery.finetune.scripts.script_aux.file_status_context import FilesStatusContext
-from self_hosting_machinery.finetune.scripts.script_aux.global_stats_context import FinetuneFilterStatusTracker
-from self_hosting_machinery.finetune.scripts.script_aux.model_context import ModelContext
-from self_hosting_machinery.finetune.scripts.process_uploaded_files import make_matcher
+from self_hosting_machinery.finetune.scripts.script_aux.finetune_filter_status_tracker import \
+    FinetuneFilterStatusTracker
+from self_hosting_machinery.finetune.scripts.script_aux.model import ModelContext
 from self_hosting_machinery.finetune.utils.finetune_utils import (get_finetune_config, get_finetune_filter_config)
 
 
@@ -60,15 +59,21 @@ def loss_based_filter(
         *,
         filter_loss_threshold
 ):
-    def _get_file_loss() -> float:
+    def _get_file_loss(file) -> float:
         file_losses = []
-        for batch, stats in batch_iter_fn(finetune_datasource.local_plain([file], dataopts)):
-            logits = forward(input=batch['input'])
-            loss = float(loss_fn(
+        ds = create_finetune_filter_dataloader(
+            file=file,
+            dataset_options=f"n_ctx={model_context.finetune_cfg['model_info']['ctx_size'] + 1},"
+                            "quit_on_epoch=1,pack_single=1,pack_complete=0",
+            encoding=model_context.encoding
+        )
+        for data in map(to_cuda, ds):
+            logits = model_context.forward(input=data['input'])
+            loss = model_context.loss(
                 logits=logits.to(torch.float32),
-                labels=batch['labels'],
-                mask=batch['mask'],
-            ).item())
+                labels=data['labels'],
+                mask=data['mask'],
+            ).item()
             if not (math.isnan(loss) or math.isinf(loss)):
                 file_losses.append(loss)
 
@@ -77,16 +82,13 @@ def loss_based_filter(
 
         return sum(file_losses) / len(file_losses)
 
-    model, loss_fn, dataopts = model_context.model, model_context.loss_fn, model_context.dataopts
-    model.eval()
-    batch_iter_fn = partial(BatchIterator, dataopts=dict(batch_size=1, drop_last=False))
-    forward = partial(model_forward, model=model, low_gpu_mem_mode=False)
-    train_files = files_status_context.no_status_train_files()
+    model_context.eval()
     all_losses = []
+    train_files = files_status_context.no_status_train_files()
     with status_tracker(total_steps=len(train_files)) as stats_tracker:
         for file in train_files:
             try:
-                file_loss = _get_file_loss()
+                file_loss = _get_file_loss(file)
             except Exception as e:
                 files_status_context.reject_file(file, reason=str(e))
                 continue
@@ -98,7 +100,7 @@ def loss_based_filter(
                 all_losses.append(file_loss)
 
             stats_tracker.step()
-    status_tracker.add_stats(avg_loss=sum(all_losses) / len(all_losses))
+    status_tracker.add_stats(avg_loss=sum(all_losses) / (len(all_losses) + 0.001))
 
 
 def finetune_filter(
@@ -190,7 +192,7 @@ def main(models_db: Dict[str, Any]):
     except Exception as e:
         _log_everywhere(f"Finetune gpu filter is failed\nException: {e}")
         status_tracker.update_status("failed", error_message=str(e) or str(type(e)))
-        exit(1)
+        raise e
 
 
 if __name__ == "__main__":
