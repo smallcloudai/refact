@@ -56,7 +56,7 @@ config = {
         "train_ds_pipeline": _fim_train_ds_pipeline,
         "test_ds_pipeline": _fim_test_ds_pipeline,
         "train_model_modifiers": [
-            "triton_flash_sa.apply_flash_mha_to_refact_model"
+            "flash_sa.apply_flash_mha_to_refact_model"
         ],
         "force_enable_checkpointing": False
     },
