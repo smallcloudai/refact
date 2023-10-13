@@ -41,6 +41,7 @@ class ModelContext:
         self.model_cfg = model_cfg
         self.model_name = finetune_cfg["model_name"]
         self.model_mappings_config = supported_models.config[self.model_name]
+        self.low_gpu_mem_hook = None
         with Timer(message="/model load {time_ms:.1f}ms"):
             self.model = self._make_model(
                 weights_path=self.model_cfg['model_info']['weight_path'],
