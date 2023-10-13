@@ -157,7 +157,8 @@ class Tokenizer:
         self.tkr_rm_bos_in_completion: int = dataopts.get("tkr_rm_bos_in_completion", 0)
         self.random_seed: int = dataopts.get("seed", 42)
         self.enc = dataopts.encoding
-        self.enc.set_random_seed(self.random_seed)
+        if hasattr(self.enc, "set_random_seed"):
+            self.enc.set_random_seed(self.random_seed)
         self.stats = {
             "tkr_skip_prompt_len": 0,
             "tkr_skip_completion_len": 0,
@@ -168,9 +169,13 @@ class Tokenizer:
     def __iter__(self):
         for ex in self.inner_filter:
             if self.tkr_stochastic_tokens > 0:
-                prompt_tokens, _ = self.enc.encode_stochastic(ex["prompt"], [], 0.01 * self.tkr_stochastic_tokens)
-                completion_tokens, _ = self.enc.encode_stochastic(ex["completion"], [],
-                                                                  0.01 * self.tkr_stochastic_tokens)
+                if hasattr(self.enc, 'encode_stochastic'):
+                    prompt_tokens, _ = self.enc.encode_stochastic(ex["prompt"], [], 0.01 * self.tkr_stochastic_tokens)
+                    completion_tokens, _ = self.enc.encode_stochastic(ex["completion"], [],
+                                                                      0.01 * self.tkr_stochastic_tokens)
+                else:
+                    prompt_tokens = self.enc.encode(ex["prompt"])
+                    completion_tokens = self.enc.encode_stochastic(ex["completion"])
             else:
                 prompt_tokens = self.enc.encode(ex["prompt"])
                 completion_tokens = self.enc.encode(ex["completion"])

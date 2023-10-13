@@ -49,7 +49,8 @@ class FIM:
         self.fim_probability = dataopts.get("fim_probability", 0.5)
         self.tkr_stochastic_tokens = dataopts.get("tkr_stochastic_tokens", 3)
         self.enc: RefactEncoding = dataopts.encoding
-        self.enc.set_random_seed(dataopts.get("seed", 42))
+        if hasattr(self.enc, "set_random_seed"):
+            self.enc.set_random_seed(dataopts.get("seed", 42))
         self.special_tokens = [
             self.enc.PREFIX,
             self.enc.SUFFIX,
@@ -67,7 +68,10 @@ class FIM:
             "fim_out": 0,
         }
         for sample in self.inner_filter:
-            tokens, _ = self.enc.encode_stochastic(sample["text"], [], 0.01*self.tkr_stochastic_tokens)
+            if hasattr(self.enc, 'encode_stochastic'):
+                tokens, _ = self.enc.encode_stochastic(sample["text"], [], 0.01 * self.tkr_stochastic_tokens)
+            else:
+                tokens = self.enc.encode(sample["text"])
             cursor = 0
             while cursor < len(tokens):
                 if self.random.random() > self.fim_probability:
@@ -100,7 +104,10 @@ class FIM:
                     pre_fim_toks = tokens[cursor : cursor + wiggle]
                     cursor += len(pre_fim_toks)
                     try:
-                        text = self.enc.decode_utf8(pre_fim_toks)
+                        if hasattr(self.enc, 'decode_utf8'):
+                            text = self.enc.decode_utf8(pre_fim_toks)
+                        else:
+                            text = self.enc.decode(pre_fim_toks)
                     except:
                         stats["fim_unicode_split"] += 1
                         continue
@@ -112,15 +119,23 @@ class FIM:
                     except (RuntimeError, ValueError):
                         stats["fim_unable_to_split"] += 1
                         continue
-                    prefix_toks, _ = self.enc.encode_stochastic(prefix, [], 0.01*self.tkr_stochastic_tokens)
-                    suffix_toks, _ = self.enc.encode_stochastic(suffix, [], 0.01*self.tkr_stochastic_tokens)
+                    if hasattr(self.enc, 'encode_stochastic'):
+                        prefix_toks, _ = self.enc.encode_stochastic(prefix, [], 0.01 * self.tkr_stochastic_tokens)
+                        suffix_toks, _ = self.enc.encode_stochastic(suffix, [], 0.01 * self.tkr_stochastic_tokens)
+                    else:
+                        prefix_toks = self.enc.encode(prefix)
+                        suffix_toks = self.enc.encode(suffix)
+
                     if self.random.random() < 0.5:
                         tokens_context = [self.enc.PREFIX] + prefix_toks + [self.enc.SUFFIX] + suffix_toks
                         mask_context = [0] + [1] * len(prefix_toks) + [0] + [1] * len(suffix_toks)
                     else:
                         tokens_context = [self.enc.SUFFIX] + suffix_toks + [self.enc.PREFIX] + prefix_toks
                         mask_context = [0] + [1] * len(suffix_toks) + [0] + [1] * len(prefix_toks)
-                    middle_toks, _ = self.enc.encode_stochastic(middle, [], 0.01*self.tkr_stochastic_tokens)
+                    if hasattr(self.enc, 'encode_stochastic'):
+                        middle_toks, _ = self.enc.encode_stochastic(middle, [], 0.01 * self.tkr_stochastic_tokens)
+                    else:
+                        middle_toks = self.enc.encode(middle)
                     middle_mask = [1] * len(middle_toks)
                     yield {
                         "tokens": tokens_context + [self.enc.INFILL] + middle_toks + [self.enc.EOT],

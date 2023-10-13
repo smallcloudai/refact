@@ -1,18 +1,21 @@
 import collections
-import sys
-import re
 import copy
 import os
-import jsonlines
+import re
+from multiprocessing import Process
+from pathlib import Path
 from typing import List, Dict
 
-import numpy as np
+import jsonlines
 import matplotlib
+import numpy as np
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import io
 
+
+__all__ = ['AsyncPlotter']
 
 def smooth(y: np.array, radius: int, eps: float = 1e-20):
     kernel = np.zeros(2 * radius + 1)
@@ -113,26 +116,47 @@ def plot(
     return buf
 
 
-if __name__ == "__main__":
-    jdict = {}
-    jdict["test"] = []
-    jdict["train"] = list(jsonlines.open(sys.argv[1]))
-    for line in jdict["train"]:
-        line = copy.deepcopy(line)
-        if "test_loss" in line:
-            line["loss"] = line["test_loss"]
-        jdict["test"].append(line)
-    if len(jdict["test"]) == 0:
-        jdict.pop("test")
-    buf = plot(
-        "iteration",
-        0,
-        int(sys.argv[2]),
-        "loss[0,2.6]",  # ,smooth5
-        jdict,
-        ["#ff0000", "#880000"],
-    )
-    # save
-    with open("progress.svg.tmp", "wb") as f:
-        f.write(buf.getvalue())
-    os.rename("progress.svg.tmp", "progress.svg")
+class AsyncPlotter:
+    def __init__(
+            self,
+            run_path: Path,
+            progress_filename: str,
+            iters: int,
+    ):
+        self._run_path = Path(run_path)
+        assert self._run_path.exists()
+        self._progress_filename = self._run_path / progress_filename
+        self._output_filename = self._run_path / "progress.svg"
+        self._iters = iters + int(0.1 * iters)
+        self.process = None
+
+    def _plot_fn(self):
+        jdict = {
+            "test": [],
+            "train": list(jsonlines.open(self._progress_filename))
+        }
+        for line in jdict["train"]:
+            line = copy.deepcopy(line)
+            if "test_loss" in line:
+                line["loss"] = line["test_loss"]
+            jdict["test"].append(line)
+        if len(jdict["test"]) == 0:
+            jdict.pop("test")
+        buf = plot(
+            "iteration",
+            0,
+            self._iters,
+            "loss[0,2.6]",  # ,smooth5
+            jdict,
+            ["#ff0000", "#880000"],
+        )
+        with open(self._output_filename.with_suffix(".tmp"), "wb") as f:
+            f.write(buf.getvalue())
+        os.rename(self._output_filename.with_suffix(".tmp"), self._output_filename)
+
+    def plot_async(self):
+        if self.process is not None:
+            self.process.join()
+        assert self._progress_filename.exists()
+        self.process = Process(target=self._plot_fn)
+        self.process.start()
