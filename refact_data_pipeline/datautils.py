@@ -25,6 +25,19 @@ _prefer_dtypes = {
 }
 
 
+def _after_collate(result: Dict[str, th.Tensor]) -> Dict[str, th.Tensor]:
+    if 'first' in result:
+        result['first'] = result.pop("first")[:, :-1]
+    if 'mask' in result:
+        result['mask'] = result.pop("mask")[:, 1:]
+    result["labels"] = result["tokens"][:, 1:]
+    result["input"] = result["tokens"][:, :-1]
+    return {
+        k: (v if isinstance(v, th.Tensor) else v)
+        for k, v in result.items()
+    }
+
+
 def collate_fn(records: List[Dict[str, Any]]) -> Dict[str, Any]:
     output = defaultdict(list)
     last_stats = None
@@ -36,15 +49,15 @@ def collate_fn(records: List[Dict[str, Any]]) -> Dict[str, Any]:
             output[k].append(
                 th.tensor(record[k], dtype=_prefer_dtypes.get(k, th.int64))
             )
-    return {
+    return _after_collate({
         "stats": last_stats,
         **{k: th.stack(v).contiguous() for k, v in output.items()}
-    }
+    })
 
 
 def data_parallel_split_and_collate_fn(records: List[Dict[str, Any]]) -> Dict[str, Any]:
-    rank = os.environ.get('RANK', 0)
-    world_size = os.environ.get('WORLD_SIZE', 1)
+    rank = int(os.environ.get('RANK', 0))
+    world_size = int(os.environ.get('WORLD_SIZE', 1))
 
     output = defaultdict(list)
     last_stats = None
@@ -59,10 +72,10 @@ def data_parallel_split_and_collate_fn(records: List[Dict[str, Any]]) -> Dict[st
     assert len(records) % world_size == 0, "effective batch size %s" % len(records)
     effective_bs = len(records) // world_size
     from_, to = rank * effective_bs, (rank + 1) * effective_bs
-    return {
+    return _after_collate({
         "stats": last_stats,
         **{k: th.stack(v)[from_:to].contiguous() for k, v in output.items()}
-    }
+    })
 
 
 def read_and_collate(

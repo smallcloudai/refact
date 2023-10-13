@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Any, Dict, List
 
-from self_hosting_machinery.finetune.scripts.finetune_filter_context.global_stats_context import GlobalStatsContext
+from self_hosting_machinery.finetune.scripts.script_aux.finetune_filter_status_tracker import \
+    FinetuneFilterStatusTracker
 from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery.finetune.utils.finetune_utils import get_file_digest
 from self_hosting_machinery.scripts import env
@@ -21,7 +22,7 @@ class FileStatus:
     reason: Optional[str] = None
 
     def hash(self) -> str:
-        assert self.path.exists()
+        assert self.path.exists(), f"File {self.path} doesn't exist, try to rescan your files"
         return get_file_digest(self.path)
 
 
@@ -30,7 +31,7 @@ class FilesStatusContext:
             self,
             train_files: List[Dict[str, Any]],
             test_files: List[Dict[str, Any]],
-            status_tracker: GlobalStatsContext
+            status_tracker: FinetuneFilterStatusTracker
     ):
         self.file_statuses: Dict[str, FileStatus] = {
             info["path"]: FileStatus(path=Path(DIR_UNPACKED / info["path"]), info=info, is_train=True)
