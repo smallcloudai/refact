@@ -356,8 +356,8 @@ function render_checkpoints(data = []) {
                     let modal_instance = bootstrap.Modal.getOrCreateInstance(modal);
                     document.querySelector('#finetune-tab-model-warning-modal #model-warning-message').innerHTML = `
                     <label>
-                        Checkpoint you're about to activate trained for <b>${finetune_run.model_name}</b> model.
-                        Use another checkpoint for <b>${finetune_configs_and_runs.completion_model}</b> model instead.
+                        This fine-tuning checkpoint is for <b>${finetune_run.model_name}</b> base model.
+                        Your currently active model is <b>${finetune_configs_and_runs.completion_model}</b>, you can change it in the Model Hosting tab.
                     </label>
                     `;
                     modal_instance.show();
