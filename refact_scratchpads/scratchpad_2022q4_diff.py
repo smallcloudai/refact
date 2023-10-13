@@ -467,7 +467,10 @@ class ScratchpadDiff(ScratchpadBase):
             token_jdx = token_idx + 1
             while token_jdx <= len(tokens):
                 try:
-                    text = self.enc.decode_utf8(tokens[token_idx:token_jdx])
+                    if hasattr(self.enc, 'decode_utf8'):
+                        text = self.enc.decode_utf8(tokens[token_idx:token_jdx])
+                    else:
+                        text = self.enc.decode(tokens[token_idx:token_jdx])
                     return token_jdx - token_idx, len(text)
                 except UnicodeDecodeError:
                     token_jdx += 1

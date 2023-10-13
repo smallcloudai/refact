@@ -86,7 +86,10 @@ class Chat2023Q2:
         if self.debug:
             print(f'Chat2023Q2:\n{text}\n\n')
 
-        tokens, _ = self.enc.encode_stochastic(text, [], 0.01 * self.tkr_stochastic_tokens)
+        if hasattr(self.enc, 'encode_stochastic'):
+            tokens, _ = self.enc.encode_stochastic(text, [], 0.01 * self.tkr_stochastic_tokens)
+        else:
+            tokens = self.enc.encode(text)
         tokens += [self.enc.EOT]
         emit = {
             "tokens": tokens,
