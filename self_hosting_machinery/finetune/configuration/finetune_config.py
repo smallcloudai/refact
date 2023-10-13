@@ -37,7 +37,7 @@ def base_config(model_name: str, models_db: Dict[str, Any]):
         ),
         debug=False,
         limit_time_seconds=48 * 60 * 60,
-        low_gpu_mem_mode=True,
+        low_gpu_mem_mode=False,
         save_every=10,
         test_every=1,
         train_iters=5,
