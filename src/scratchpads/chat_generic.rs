@@ -79,23 +79,21 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         let mut prompt = "".to_string();
         let mut last_role = "assistant".to_string();
         for msg in limited_msgs {
-            if self.token_esc.len() > 0 {
-                prompt.push_str(self.token_esc.as_str());
-                if msg.role == "system" {
-                    prompt.push_str(self.keyword_syst.as_str());
-                } else if msg.role == "user" {
-                    prompt.push_str(self.keyword_user.as_str());
-                } else if msg.role == "assistant" {
-                    prompt.push_str(self.keyword_asst.as_str());
-                } else {
-                    return Err(format!("role \"{}\"not recognized", msg.role));
-                }
-                last_role = msg.role.clone();
+            prompt.push_str(self.token_esc.as_str());
+            if msg.role == "system" {
+                prompt.push_str(self.keyword_syst.as_str());
+            } else if msg.role == "user" {
+                prompt.push_str(self.keyword_user.as_str());
+            } else if msg.role == "assistant" {
+                prompt.push_str(self.keyword_asst.as_str());
+            } else {
+                return Err(format!("role \"{}\"not recognized", msg.role));
             }
-            prompt.push_str(" ");
+            last_role = msg.role.clone();
             prompt.push_str(msg.content.as_str());
-            prompt.push_str("\n\n");
+            prompt.push_str("\n");
         }
+        prompt.push_str(self.token_esc.as_str());
         if last_role == "assistant" || last_role == "system" {
             self.dd.role = "user".to_string();
             prompt.push_str(self.keyword_user.as_str());

@@ -98,9 +98,9 @@ const KNOWN_MODELS: &str = r#"
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
                     "token_esc": "<empty_output>",
-                    "keyword_system": "SYSTEM",
-                    "keyword_user": "USER",
-                    "keyword_assistant": "ASSISTANT",
+                    "keyword_system": "SYSTEM ",
+                    "keyword_user": "USER ",
+                    "keyword_assistant": "ASSISTANT ",
                     "stop_list": ["<empty_output>"],
                     "default_system_message": "You are a programming assistant."
                 }
@@ -130,10 +130,10 @@ const KNOWN_MODELS: &str = r#"
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
-                    "token_esc": "<|end|>\n",
+                    "token_esc": "",
                     "keyword_system": "<|system|>\n",
-                    "keyword_user": "<|user|>\n",
-                    "keyword_assistant": "<|assistant|>\n",
+                    "keyword_user": "<|end|>\n<|user|>\n",
+                    "keyword_assistant": "<|end|>\n<|assistant|>\n",
                     "stop_list": [
                         "<|system|>",
                         "<|user|>",
