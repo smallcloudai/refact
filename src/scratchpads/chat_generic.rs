@@ -55,9 +55,12 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         self.keyword_asst = patch.get("keyword_assistant").and_then(|x| x.as_str()).unwrap_or("ASSISTANT:").to_string();
         self.default_system_message = patch.get("default_system_message").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
-        self.t.assert_one_token(&self.t.eot.as_str())?;
+
         self.dd.stop_list.clear();
-        self.dd.stop_list.push(self.t.eot.clone());
+        if !self.t.eot.is_empty() {
+            self.t.assert_one_token(&self.t.eot.as_str())?;
+            self.dd.stop_list.push(self.t.eot.clone());
+        }
         if self.token_esc.len() > 0 {
             self.dd.stop_list.push(self.token_esc.clone());
         } else {

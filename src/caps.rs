@@ -160,12 +160,13 @@ const KNOWN_MODELS: &str = r#"
             "n_ctx": 2048,
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
-                    "token_esc": "\n\n",
-                    "keyword_system": "",
-                    "keyword_user": "USER: ",
-                    "keyword_assistant": "ASSISTANT: ",
-                    "stop_list": [],
-                    "default_system_message": ""
+                    "token_esc": "",
+                    "keyword_system": "<s>",
+                    "keyword_user": "\nUSER: ",
+                    "keyword_assistant": "\nASSISTANT: ",
+                    "eot": "",
+                    "stop_list": ["\n\n"],
+                    "default_system_message": "You are a helpful AI assistant.\n"
                 }
             },
             "similar_models": [
