@@ -104,6 +104,8 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
          .set_schedule_by_heuristics(ds_len=ds_len)
          .set_low_gpu_mem_mode_by_heuristics())
     else:
+        traces.log('Not using heuristics')
+        traces.log('low_gpu_mem_mode: %s' % user_cfg['low_gpu_mem_mode'])
         (cfg_builder
          .set_train_steps(user_cfg['train_steps'])
          .set_lr_decay_steps(user_cfg['lr_decay_steps'])
@@ -117,7 +119,10 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
          .set_batch_size(user_cfg['batch_size'])
          .set_warmup_steps(user_cfg['warmup_num_steps'])
          .set_limit_time_seconds(user_cfg['limit_time_seconds'])
-         .set_weight_decay(user_cfg['weight_decay']))
+         .set_weight_decay(user_cfg['weight_decay'])
+         .set_lora_target_modules(user_cfg['lora_target_modules'])
+         .set_freeze_exceptions(user_cfg['freeze_exceptions'])
+         .set_save_every(user_cfg['save_every']))
 
     traces.log(f'Freeze exceptions: {cfg_builder.cfg["model_info"]["freeze_exceptions"]}')
     for k, v in cfg_builder.cfg["model_info"]["lora"].items():
@@ -341,9 +346,9 @@ def finetune(status_dict, models_db: Dict[str, Any]):
     t1 = time.time()
     traces.log("/model %0.1fms" % ((t1 - t0) * 1000))
     traces.log(cfg)
-    traces.log(model)
+    # traces.log(model)
     traces.log([p.requires_grad for p in model.parameters()])
-    traces.log([p for p in model.parameters() if p.requires_grad])
+    # traces.log([p for p in model.parameters() if p.requires_grad])
     if cfg['debug']:
         summary(model, depth=4, col_names=['num_params', 'params_percent', 'trainable'])
 
