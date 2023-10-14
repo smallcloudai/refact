@@ -35,8 +35,9 @@ _starcoder_base = {
     "tokenizer": _bigcode_tokenizer_mapping,
     "train_ds_pipeline": _fim_train_ds_pipeline,
     "test_ds_pipeline": _fim_test_ds_pipeline,
-    "train_model_modifiers": [],
-    "force_enable_checkpointing": True
+    "train_model_modifiers": [
+        "flash_sa.apply_flash_mha_to_starcoder_model"
+    ]
 }
 
 config = {
