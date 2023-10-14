@@ -37,7 +37,8 @@ _starcoder_base = {
     "test_ds_pipeline": _fim_test_ds_pipeline,
     "train_model_modifiers": [
         "flash_sa.apply_flash_mha_to_starcoder_model"
-    ]
+    ],
+    "force_enable_checkpointing": False
 }
 
 config = {
