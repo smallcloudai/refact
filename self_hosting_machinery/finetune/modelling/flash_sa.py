@@ -1,6 +1,3 @@
-'''
-MAX_JOBS=16 pip install git+https://github.com/smallcloudai/flash-attention.git@feat/alibi
-'''
 import functools
 import math
 
@@ -9,6 +6,7 @@ import torch
 from typing import Tuple, Optional
 
 from flash_attn import flash_attn_func
+from transformers.models import gpt_bigcode
 
 
 @functools.lru_cache(maxsize=2)
@@ -70,6 +68,39 @@ def apply_flash_mha_to_refact_model(model):
         attn_output = flash_attn_func(
             q, k, v, softmax_scale=self.scale_factor, causal=True,
             alibi=True, alibi_start=alibi_start, alibi_ratio=alibi_ratio
+        )
+
+        attn_output = einops.rearrange(attn_output, "b t h d -> b t (h d)")
+        attn_output = self.c_proj(attn_output)
+        return attn_output, None
+
+    if torch.cuda.get_device_capability() < (8, 0):
+        return
+
+    for block in model.transformer.h:
+        block.attn.forward = _forward.__get__(block.attn, type(block.attn))
+
+
+def apply_flash_mha_to_starcoder_model(model):
+    def _forward(
+            self,
+            x: torch.Tensor,
+            layer_past: Optional[torch.Tensor] = None,
+            attention_mask: Optional[torch.Tensor] = None,
+            head_mask: Optional[torch.Tensor] = None,
+            encoder_hidden_states: Optional[torch.Tensor] = None,
+            encoder_attention_mask: Optional[torch.Tensor] = None,
+            use_cache: Optional[bool] = False,
+            output_attentions: Optional[bool] = False,
+    ):
+        qkv = self.c_attn(x)
+        q = einops.rearrange(qkv[:, :, :self.embed_dim], "b t (h d) -> b t h d", h=self.num_heads)
+        k = einops.rearrange(qkv[:, :, self.embed_dim:self.embed_dim + self.kv_dim], "b t (h d) -> b t h d", h=1)
+        v = einops.rearrange(qkv[:, :, self.embed_dim + self.kv_dim:], "b t (h d) -> b t h d", h=1)
+
+        scale_factor = self.head_dim ** -0.5
+        attn_output = flash_attn_func(
+            q, k, v, softmax_scale=scale_factor, causal=True,
         )
 
         attn_output = einops.rearrange(attn_output, "b t h d -> b t (h d)")
