@@ -78,7 +78,13 @@ const KNOWN_MODELS: &str = r#"
         "codellama/CodeLlama-13b-hf": {
             "n_ctx": 4096,
             "supports_scratchpads": {
-                "FIM-PSM": {"prefix_token": "<PRE>", "suffix_token": "<SUF>", "middle_token": "<MID>", "eot_token": "<EOT>"}
+                "FIM-PSM": {
+                    "fim_prefix": "<PRE>",
+                    "fim_suffix": "<SUF>",
+                    "fim_middle": "<MID>",
+                    "eot": "<EOT>",
+                    "eos": "</s>"
+                }
             },
             "default_scratchpad": "FIM-PSM",
             "similar_models": [

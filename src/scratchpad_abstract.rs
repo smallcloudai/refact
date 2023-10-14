@@ -37,11 +37,12 @@ pub trait ScratchpadAbstract: Send {
 pub struct HasTokenizerAndEot {
     pub tokenizer: Arc<RwLock<Tokenizer>>,
     pub eot: String,
+    pub eos: String,
 }
 
 impl HasTokenizerAndEot {
     pub fn new(tokenizer: Arc<RwLock<Tokenizer>>) -> Self {
-        HasTokenizerAndEot { tokenizer, eot: String::new() }
+        HasTokenizerAndEot { tokenizer, eot: String::new(), eos: String::new() }
     }
 
     pub fn count_tokens(

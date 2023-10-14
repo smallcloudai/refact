@@ -52,10 +52,14 @@ impl ScratchpadAbstract for SingleFileFIM {
         self.fim_suffix = patch.get("fim_suffix").and_then(|x| x.as_str()).unwrap_or("<fim_suffix>").to_string();
         self.fim_middle = patch.get("fim_middle").and_then(|x| x.as_str()).unwrap_or("<fim_middle>").to_string();
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
+        self.t.eos = patch.get("eos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.t.assert_one_token(&self.fim_prefix.as_str())?;
         self.t.assert_one_token(&self.fim_suffix.as_str())?;
         self.t.assert_one_token(&self.fim_middle.as_str())?;
         self.t.assert_one_token(&self.t.eot.as_str())?;
+        if !self.t.eos.is_empty() {
+            self.t.assert_one_token(&self.t.eos.as_str())?;
+        }
         Ok(())
     }
 
@@ -128,7 +132,8 @@ impl ScratchpadAbstract for SingleFileFIM {
         let prompt: String;
         if self.order == "PSM" {
             prompt = format!(
-                "{}{}{}{}{}{}{}",
+                "{}{}{}{}{}{}{}{}",
+                self.t.eos,
                 self.fim_prefix,
                 before.into_iter().rev().collect::<Vec<_>>().join(""),
                 cursor_line1,
@@ -139,7 +144,8 @@ impl ScratchpadAbstract for SingleFileFIM {
             );
         } else if self.order == "SPM" {
             prompt = format!(
-                "{}{}{}{}{}{}{}",
+                "{}{}{}{}{}{}{}{}",
+                self.t.eos,
                 self.fim_suffix,
                 cursor_line2,
                 after,
