@@ -74,7 +74,7 @@ impl ScratchpadAbstract for ChatLlama2 {
                 if !do_strip {
                     prompt.push_str("<<SYS>>\n");
                     prompt.push_str(self.default_system_message.as_str());
-                    prompt.push_str("\n<</SYS>>\n\n");
+                    prompt.push_str("\n<</SYS>>\n");
                 }
             } else {
                 // prompt.push_str("\n\n");
