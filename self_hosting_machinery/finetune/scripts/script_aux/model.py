@@ -8,11 +8,11 @@ import deepspeed
 import torch
 from torchinfo import summary
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from refact_models.lora import LoraMixin
 
+from refact_models.lora import LoraMixin
 from self_hosting_machinery.finetune.configuration import supported_models
 from self_hosting_machinery.finetune.modelling.loss import masked_loss
-from self_hosting_machinery.finetune.modelling.model_handling import map_model_specific_params
+from self_hosting_machinery.finetune.modelling.utils import map_model_specific_params
 from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery.finetune.utils.timer import Timer
 
@@ -263,13 +263,18 @@ class ModelContext:
             path, modifier_name = modifier.rsplit('.', maxsplit=1)
             mod_path = importlib.import_module(f"self_hosting_machinery.finetune.modelling.{path}")
             mod = getattr(mod_path, modifier_name)
-            mod(model)
+            try:
+                mod(model)
+            except Exception as e:
+                logging.error(f"Applying model modifier {mod_path} wasn't successful: {e}")
 
     def _set_low_gpu_mode(
             self,
             low_gpu_mode: bool
     ):
-        self.low_gpu_mem_mode = low_gpu_mode
+        force_low_gpu_mem_mode = hasattr(self.model, "force_low_gpu_mem_mode") and self.model.force_low_gpu_mem_mode
+        self.low_gpu_mem_mode = low_gpu_mode or force_low_gpu_mem_mode
+        logging.warning("Setting low_gpu_mem_mode={self.low_gpu_mem_mode} for the model")
 
         if self.low_gpu_mem_mode:
             self.model.gradient_checkpointing_enable()
