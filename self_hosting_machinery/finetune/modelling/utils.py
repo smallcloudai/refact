@@ -1,29 +1,6 @@
 from typing import List, Tuple
 
-import torch as th
-
 from self_hosting_machinery.finetune.configuration import supported_models
-
-
-def model_forward(
-        model: th.nn.Module,
-        input: th.Tensor,
-        low_gpu_mem_mode: bool,
-) -> th.Tensor:
-    if low_gpu_mem_mode:
-        model.gradient_checkpointing_enable()
-
-        def make_inputs_require_grad(module, input, output):
-            output.requires_grad_(True)
-
-        model.get_input_embeddings().register_forward_hook(make_inputs_require_grad)
-    else:
-        model.gradient_checkpointing_disable()
-    logits = model.forward(
-        input,
-        return_dict=False, output_attentions=False, output_hidden_states=False
-    )[0]
-    return logits
 
 
 def map_model_specific_params(

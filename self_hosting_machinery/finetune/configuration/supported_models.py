@@ -67,5 +67,8 @@ config = {
 
     "starcoder/3b/base": _starcoder_base,
 
-    "starcoder/7b/base": _starcoder_base
+    "starcoder/7b/base": {
+        **_starcoder_base,
+        "force_enable_checkpointing": True
+    }
 }

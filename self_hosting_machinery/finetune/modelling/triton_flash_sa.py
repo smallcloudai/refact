@@ -1,4 +1,5 @@
 import functools
+import logging
 import math
 
 import torch as th
@@ -616,6 +617,7 @@ def apply_flash_mha_to_refact_model(model):
         return attn_output, None
 
     if th.cuda.get_device_capability() < (8, 0):
+        logging.warning("Triton flash attention is not supported on gpus with cuda capability < 8")
         return
 
     for block in model.transformer.h:
