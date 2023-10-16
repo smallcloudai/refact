@@ -617,8 +617,10 @@ def apply_flash_mha_to_refact_model(model):
         return attn_output, None
 
     if th.cuda.get_device_capability() < (8, 0):
+        model.force_low_gpu_mem_mode = True
         logging.warning("Triton flash attention is not supported on gpus with cuda capability < 8")
         return
 
+    logging.warning("Applying triton flash attention to the model")
     for block in model.transformer.h:
         block.attn.forward = _forward.__get__(block.attn, type(block.attn))

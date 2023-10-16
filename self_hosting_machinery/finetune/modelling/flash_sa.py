@@ -129,7 +129,10 @@ def apply_flash_mha_to_starcoder_model(model):
         return attn_output, None
 
     if torch.cuda.get_device_capability() < (8, 0):
+        model.force_low_gpu_mem_mode = True
+        logging.warning("Flash attention is not supported on gpus with cuda capability < 8")
         return
 
+    logging.warning("Applying flash attention to the model")
     for block in model.transformer.h:
         block.attn.forward = _forward.__get__(block.attn, type(block.attn))
