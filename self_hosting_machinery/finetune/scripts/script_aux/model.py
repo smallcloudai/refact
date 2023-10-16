@@ -33,32 +33,30 @@ class ModelContext:
     def __init__(
             self,
             finetune_cfg: Dict[str, Any],
-            model_cfg: Dict[str, Any],
             use_deepspeed: bool = False,
             debug: bool = False
     ):
-        self.finetune_cfg = model_cfg
-        self.model_cfg = model_cfg
         self.model_name = finetune_cfg["model_name"]
+        self.finetune_cfg = finetune_cfg
         self.model_mappings_config = supported_models.config[self.model_name]
         self.low_gpu_mem_hook = None
         with Timer(message="/model load {time_ms:.1f}ms"):
             self.model = self._make_model(
-                weights_path=self.model_cfg['model_info']['weight_path'],
-                repo_id=self.model_cfg['model_info']['repo_id'],
-                freeze_exceptions=self.model_cfg['model_info']['freeze_exceptions'],
-                lora_target_modules=self.model_cfg['model_info']['lora']['lora_target_modules'],
-                lora_r=self.model_cfg['model_info']['lora']['lora_r'],
-                lora_alpha=self.model_cfg['model_info']['lora']['lora_alpha'],
-                lora_dropout=self.model_cfg['model_info']['lora']['lora_dropout'],
-                lora_init_scale=self.model_cfg['model_info']['lora']['lora_init_scale'],
-                dtype=(torch.bfloat16 if 'bf16' in self.model_cfg and self.model_cfg['bf16']['enabled']
+                weights_path=self.finetune_cfg['model_info']['weight_path'],
+                repo_id=self.finetune_cfg['model_info']['repo_id'],
+                freeze_exceptions=self.finetune_cfg['model_info']['freeze_exceptions'],
+                lora_target_modules=self.finetune_cfg['model_info']['lora']['lora_target_modules'],
+                lora_r=self.finetune_cfg['model_info']['lora']['lora_r'],
+                lora_alpha=self.finetune_cfg['model_info']['lora']['lora_alpha'],
+                lora_dropout=self.finetune_cfg['model_info']['lora']['lora_dropout'],
+                lora_init_scale=self.finetune_cfg['model_info']['lora']['lora_init_scale'],
+                dtype=(torch.bfloat16 if 'bf16' in self.finetune_cfg and self.finetune_cfg['bf16']['enabled']
                        else torch.float16),
                 init_device="cuda",
                 device="cuda",
             )
             self._set_low_gpu_mode(
-                self.model_cfg['low_gpu_mem_mode']
+                self.finetune_cfg['low_gpu_mem_mode']
                 or self.model_mappings_config['force_enable_checkpointing']
             )
         self.encoding = self.model.encoding
@@ -66,7 +64,7 @@ class ModelContext:
         if use_deepspeed:
             with Timer(message="/deepspeed initialization {time_ms:.1f}ms"):
                 self.model, _, _, _ = deepspeed.initialize(
-                    config=self.model_cfg,
+                    config=self.finetune_cfg,
                     model=self.model,
                     model_parameters=[p for p in self.model.parameters() if p.requires_grad],
                     dist_init_required=True
@@ -79,7 +77,7 @@ class ModelContext:
 
         self.loss_fn = partial(
             masked_loss,
-            average_elements=self.model_cfg['model_info']['loss_average_elements'],
+            average_elements=self.finetune_cfg['model_info']['loss_average_elements'],
             enc=self.encoding
         )
 
@@ -106,8 +104,8 @@ class ModelContext:
             trust_remote_code=True
         )
         model.encoding = self._setup_encoding(
-            weights_path=self.model_cfg['model_info']['weight_path'],
-            repo_id=self.model_cfg['model_info']['repo_id']
+            weights_path=self.finetune_cfg['model_info']['weight_path'],
+            repo_id=self.finetune_cfg['model_info']['repo_id']
         )
         freeze_exceptions, lora_target_modules = self._map_model_specific_params(
             freeze_exceptions, lora_target_modules

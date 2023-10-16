@@ -11,7 +11,6 @@ from typing import Dict, Any
 import torch
 
 import self_hosting_machinery.finetune.utils.traces as traces
-from refact_data_pipeline.finetune_datasource import RefactPlainCodeDataset, RefactDataset
 from self_hosting_machinery import env
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config
 from self_hosting_machinery.finetune.scripts.process_uploaded_files import make_matcher
@@ -108,7 +107,6 @@ def finetune_filter(
         dataset_context: FileSetsContext,
         finetune_cfg: Dict[str, Any],
         finetune_filter_cfg: Dict[str, Any],
-        model_cfg: Dict[str, Any]
 ):
     _log_everywhere("Loading files statuses...")
     file_status_context = FilesStatusContext(
@@ -118,12 +116,11 @@ def finetune_filter(
     )
 
     _log_everywhere("Loading model...")
-    model_cfg['model_info']['lora']['lora_dropout'] = 0.0
-    model_cfg['model_info']['lora']['lora_init_scale'] = 1e-5
-    model_cfg['model_info']['loss_average_elements'] = 1
+    finetune_cfg['model_info']['lora']['lora_dropout'] = 0.0
+    finetune_cfg['model_info']['lora']['lora_init_scale'] = 1e-5
+    finetune_cfg['model_info']['loss_average_elements'] = 1
     model_context = ModelContext(
         finetune_cfg=finetune_cfg,
-        model_cfg=model_cfg,
     )
 
     _log_everywhere("Running force include/exclude filter...")
@@ -157,8 +154,8 @@ def main(models_db: Dict[str, Any]):
 
     _log_everywhere("Loading finetune configs...")
     finetune_filter_cfg = get_finetune_filter_config(logger=traces.log)
-    finetune_cfg = get_finetune_config(models_db, logger=traces.log)
-    model_cfg = copy.deepcopy(base_config(finetune_cfg["model_name"], models_db))
+    model_name = get_finetune_config(models_db, logger=traces.log)["model_name"]
+    finetune_cfg = copy.deepcopy(base_config(model_name, models_db))
 
     _log_everywhere("Loading file sets context...")
     file_sets_context = FileSetsContext(
@@ -180,7 +177,6 @@ def main(models_db: Dict[str, Any]):
             dataset_context=file_sets_context,
             finetune_cfg=finetune_cfg,
             finetune_filter_cfg=finetune_filter_cfg,
-            model_cfg=model_cfg
         )
         status_tracker.update_status("finished")
 
