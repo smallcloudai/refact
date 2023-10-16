@@ -22,9 +22,7 @@ from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_config
 
 
-def _log_everywhere(message, status_tracker: Optional[FinetuneStatusTracker] = None):
-    if status_tracker is not None:
-        status_tracker.update_status("working")
+def _log_everywhere(message):
     logging.info(message)
     traces.log(message)
 
@@ -33,10 +31,11 @@ def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str,
     with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
         initial_loss = json.load(f)["avg_loss"]
 
+    _log_everywhere("Calculating finetune optimal parameters")
     user_cfg = get_finetune_config(models_db, logger=traces.log)
     cfg_builder = ConfigBuilder(base_config(user_cfg['model_name'], models_db))
     if user_cfg['use_heuristics']:
-        traces.log("Retrieving dataset length per epoch, it may take a while...")
+        _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
         ds_len = get_ds_len_per_epoch(user_cfg['model_name'], cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
         (cfg_builder
@@ -189,8 +188,8 @@ def loop(
                 test_loss=test_loss,
                 **{f'ds/{k}': v for k, v in data.get("stats", dict()).items()},
                 **model_context.train_information(),
-                gtokens=tokens_n / 1e9,
-                tokens_num=tokens_n,
+                gtokens=overall_tokens_n / 1e9,
+                tokens_num=overall_tokens_n,
                 time_elapsed=time.time() - t0,
             )
 
@@ -215,18 +214,17 @@ def main(models_db: Dict[str, Any]):
     signal.signal(signal.SIGUSR1, catch_sigusr1)
 
     try:
-        _log_everywhere("Loading finetune configs...", status_tracker)
-        finetune_cfg = _build_finetune_config_by_heuristics(models_db)
-        model_cfg = copy.deepcopy(base_config(finetune_cfg["model_name"], models_db))
+        status_tracker.update_status("working")
+        _log_everywhere("Loading finetune configs...")
+        finetune_cfg = copy.deepcopy(_build_finetune_config_by_heuristics(models_db))
 
-        _log_everywhere(f"Building the model...", status_tracker)
+        _log_everywhere(f"Building the model...")
         model_context = ModelContext(
             finetune_cfg=finetune_cfg,
-            model_cfg=model_cfg,
             use_deepspeed=True
         )
 
-        _log_everywhere(f"Starting finetune at {traces.context().path}\n\n", status_tracker)
+        _log_everywhere(f"Starting finetune at {traces.context().path}\n\n")
         loop(
             finetune_cfg=finetune_cfg,
             model_context=model_context,

@@ -1,12 +1,10 @@
 import functools
+import logging
 import math
 
 import einops
 import torch
 from typing import Tuple, Optional
-
-from flash_attn import flash_attn_func
-from transformers.models import gpt_bigcode
 
 
 @functools.lru_cache(maxsize=2)
@@ -50,7 +48,24 @@ def generate_alibi(
     return alibi, alibi_start, alibi_ratio
 
 
+def _prerequisites_are_ok(model):
+    try:
+        from flash_attn import flash_attn_func
+        return True
+    except ImportError:
+        logging.warning("Original flash attention is not installed, trying to use triton implementation...")
+        from self_hosting_machinery.finetune.modelling.triton_flash_sa import (apply_flash_mha_to_refact_model
+                                                                               as apply_triton_flash)
+        apply_triton_flash(model)
+        return False
+
+
 def apply_flash_mha_to_refact_model(model):
+    if not _prerequisites_are_ok(model):
+        return
+
+    from flash_attn import flash_attn_func
+
     def _forward(
             self,
             x: torch.Tensor,
@@ -75,6 +90,7 @@ def apply_flash_mha_to_refact_model(model):
         return attn_output, None
 
     if torch.cuda.get_device_capability() < (8, 0):
+        logging.warning("Triton flash attention is not supported on gpus with cuda capability < 8")
         return
 
     for block in model.transformer.h:
@@ -82,6 +98,11 @@ def apply_flash_mha_to_refact_model(model):
 
 
 def apply_flash_mha_to_starcoder_model(model):
+    if not _prerequisites_are_ok(model):
+        return
+
+    from flash_attn import flash_attn_func
+
     def _forward(
             self,
             x: torch.Tensor,
