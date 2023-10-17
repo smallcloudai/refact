@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-Refact allows you to easily do fine-tuning and self-hosting of code LLMs, and use them for local autocompletion and context-aware chat inside your favourite IDEs. 
+Refact is an open-source Copilot alternative available as a self-hosted or cloud option.
 
 ---
 
@@ -18,7 +18,7 @@ Refact allows you to easily do fine-tuning and self-hosting of code LLMs, and us
 - [x] Autocompletion powered by best-in-class open-source code models
 - [x] Context-aware chat on a current file
 - [x] Refactor, explain, analyse, optimise code, and fix bug functions
-- [x] Fine-tuning on codebase [Docs](https://refact.ai/docs/fine-tuning/)
+- [x] Fine-tuning on codebase (Beta, self-hosted only) [Docs](https://refact.ai/docs/fine-tuning/)
 - [ ] Context-aware chat on entire codebase
 
 ![Image Description](./almost-all-features-05x-dark.jpeg)
@@ -113,22 +113,22 @@ Under the hood, it uses Refact models and the best open-source models.
 
 At the moment, you can choose between the following models:
 
-| Model                                                                                | Completion | Chat | AI Toolbox | Fine-tuning |
-|--------------------------------------------------------------------------------------|------------|------|------------|-------------|
-| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                   | +          | +    |            | +           |
-| [starcoder/1b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)                 | +          |      |            |   +          |
-| [starcoder/3b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)             | +          |      |            |         +    |
-| [starcoder/7b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)             | +          |      |            |         +    |
-| [starcoder/15b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)             | +          |      |            |             |
-| [starcoder/15b/plus](https://huggingface.co/TheBloke/starcoderplus-GPTQ)             | +          |      |            |             |
-| [wizardcoder/15b](https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GPTQ)          | +          |      |            |             |
-| [codellama/7b](https://huggingface.co/TheBloke/CodeLlama-7B-fp16)                    | +          |      |            |             |
-| [starchat/15b/beta](https://huggingface.co/TheBloke/starchat-beta-GPTQ)              |            | +    |            |             |
-| [wizardlm/7b](https://huggingface.co/TheBloke/WizardLM-7B-V1.0-Uncensored-GPTQ)      |            | +    |            |             |
-| [wizardlm/13b](https://huggingface.co/TheBloke/WizardLM-13B-V1.1-GPTQ)               |            | +    |            |             |
-| [wizardlm/30b](https://huggingface.co/TheBloke/WizardLM-30B-GPTQ)               |            | +    |            |             |
-| [llama2/7b](https://huggingface.co/TheBloke/Llama-2-7b-Chat-GPTQ)                    |            | +    |            |             |
-| [llama2/13b](https://huggingface.co/TheBloke/Llama-2-13B-chat-GPTQ)                  |            | +    |            |             |
+| Model                                                                           | Completion | Chat | AI Toolbox | Fine-tuning |
+|---------------------------------------------------------------------------------|------------|------|------------|-------------|
+| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)              | +          | +    |            | +           |
+| [starcoder/1b/base](https://huggingface.co/smallcloudai/starcoderbase-1b)       | +          |      |            | +           |
+| [starcoder/3b/base](https://huggingface.co/smallcloudai/starcoderbase-3b)       | +          |      |            | +           |
+| [starcoder/7b/base](https://huggingface.co/smallcloudai/starcoderbase-7b)       | +          |      |            | +           |
+| [starcoder/15b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)            | +          |      |            |             |
+| [starcoder/15b/plus](https://huggingface.co/TheBloke/starcoderplus-GPTQ)        | +          |      |            |             |
+| [wizardcoder/15b](https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GPTQ)     | +          |      |            |             |
+| [codellama/7b](https://huggingface.co/TheBloke/CodeLlama-7B-fp16)               | +          |      |            |             |
+| [starchat/15b/beta](https://huggingface.co/TheBloke/starchat-beta-GPTQ)         |            | +    |            |             |
+| [wizardlm/7b](https://huggingface.co/TheBloke/WizardLM-7B-V1.0-Uncensored-GPTQ) |            | +    |            |             |
+| [wizardlm/13b](https://huggingface.co/TheBloke/WizardLM-13B-V1.1-GPTQ)          |            | +    |            |             |
+| [wizardlm/30b](https://huggingface.co/TheBloke/WizardLM-30B-fp16)               |            | +    |            |             |
+| [llama2/7b](https://huggingface.co/TheBloke/Llama-2-7b-Chat-GPTQ)               |            | +    |            |             |
+| [llama2/13b](https://huggingface.co/TheBloke/Llama-2-13B-chat-GPTQ)             |            | +    |            |             |
 
 
 ## Usage
@@ -140,10 +140,6 @@ Refact is free to use for individuals and small teams under BSD-3-Clause license
 Q: Can I run a model on CPU?
 
 A: it doesn't run on CPU yet, but it's certainly possible to implement this.
-
-Q: Sharding is disabled, why?
-
-A: It's not ready yet, but it's coming soon.
 
 ## Community & Support
 
