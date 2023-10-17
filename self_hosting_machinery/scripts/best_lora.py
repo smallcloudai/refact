@@ -1,11 +1,45 @@
 import re
 import os
 import json
-from typing import Dict
 
 from self_hosting_machinery import env
 from refact_data_pipeline.finetune.finetune_utils import get_run_model_name
 from refact_data_pipeline.finetune.finetune_utils import default_finetune_model
+
+from typing import Dict, Optional
+
+
+def find_best_checkpoint(run_id: str) -> Dict[str, str]:
+    run_dir = os.path.join(env.DIR_LORAS, run_id)
+    if not os.path.isdir(run_dir):
+        raise RuntimeError(f"run_id not found")
+    checkpoints_dir = os.path.join(run_dir, "checkpoints")
+    if not os.path.isdir(checkpoints_dir):
+        raise RuntimeError(f"run_id has no checkpoints")
+
+    def checkpoint_name_to_loss(checkpoint_id: str) -> Optional[float]:
+        match = re.match(r"iter(\d+)-testloss(\d+\.\d+)", checkpoint_id)
+        if match is None:
+            return None
+        return float(match.group(2))
+
+    checkpoints = list(filter(lambda x: x[0] is not None and os.path.isdir(x[1]), [
+        (
+            checkpoint_name_to_loss(checkpoint_id),
+            os.path.join(checkpoints_dir, checkpoint_id),
+            checkpoint_id,
+        )
+        for checkpoint_id in os.listdir(checkpoints_dir)
+    ]))
+
+    if not checkpoints:
+        raise RuntimeError(f"run_id has no valid checkpoints")
+
+    best_checkpoint = min(checkpoints, key=lambda x: x[0])
+    return {
+        "best_checkpoint_id": best_checkpoint[2],
+        "path": best_checkpoint[1],
+    }
 
 
 def find_best_lora(model_name: str) -> Dict[str, str]:
@@ -74,4 +108,10 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default=default_finetune_model)
     args = parser.parse_args()
 
-    print(find_best_lora(args.model))
+    best_lora = find_best_lora(args.model)
+    try:
+        best_checkpoint = find_best_checkpoint(best_lora["latest_run_id"])
+    except RuntimeError as e:
+        best_checkpoint = None
+    print("Best LoRA", best_lora)
+    print("Best checkpoint", best_checkpoint)
