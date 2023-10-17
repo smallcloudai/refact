@@ -214,7 +214,7 @@ class ModelAssigner:
             finetune_info = None
             if k in active_loras:
                 lora_mode = active_loras[k]["lora_mode"]
-                latest_best_lora_info = find_best_lora(k)
+                latest_best_lora_info = find_best_lora(rec.get("finetune_model", k))
                 if lora_mode == "latest-best" and latest_best_lora_info["latest_run_id"]:
                     finetune_info = {
                         "run": latest_best_lora_info["latest_run_id"],
