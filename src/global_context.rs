@@ -54,7 +54,7 @@ pub async fn caps_background_reload(
     global_context: Arc<ARwLock<GlobalContext>>,
 ) -> () {
     loop {
-        let caps_result = crate::caps::load_recommendations(
+        let caps_result = crate::caps::load_caps(
             CommandLine::from_args()
         ).await;
         match caps_result {
@@ -87,7 +87,7 @@ pub async fn try_load_caps_quickly_if_not_present(
     if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
         return Err("server is not reachable, no caps available".to_string());
     }
-    let caps_result = crate::caps::load_recommendations(
+    let caps_result = crate::caps::load_caps(
         CommandLine::from_args()
     ).await;
     {

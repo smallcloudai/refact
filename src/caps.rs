@@ -209,7 +209,7 @@ const SMC_DEFAULT_CAPS: &str = r#"
 }
 "#;
 
-pub async fn load_recommendations(
+pub async fn load_caps(
     cmdline: crate::global_context::CommandLine,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let mut buffer = String::new();
@@ -250,6 +250,26 @@ pub async fn load_recommendations(
         error!("{}\nfailed to parse {}: {}", up_to_line, report_url, e);
         format!("failed to parse {}: {}", report_url, e)
     })?;
+    _inherit_r1_from_r0(&mut r1, &r0);
+    // endpoint_template
+    if !r1.endpoint_template.starts_with("http") {
+        let joined_url = Url::parse(&cmdline.address_url.clone())
+            .and_then(|base_url| base_url.join(&r1.endpoint_template))
+            .map_err(|_| format!("failed to join URL \"{}\" and possibly relative \"{}\"", &cmdline.address_url, &r1.endpoint_template))?;
+        r1.endpoint_template = joined_url.to_string();
+        info!("endpoint_template relative path: {}", &r1.endpoint_template);
+    }
+    info!("caps {} completion models", r1.code_completion_models.len());
+    info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
+    info!("caps {} chat models", r1.code_chat_models.len());
+    info!("caps default chat model: \"{}\"", r1.code_chat_default_model);
+    Ok(Arc::new(StdRwLock::new(r1)))
+}
+
+fn _inherit_r1_from_r0(
+    r1: &mut CodeAssistantCaps,
+    r0: &ModelsOnly,
+) {
     // inherit models from r0, only if not already present in r1
     for k in r0.code_completion_models.keys() {
         if !r1.code_completion_models.contains_key(k) {
@@ -261,7 +281,7 @@ pub async fn load_recommendations(
             r1.code_chat_models.insert(k.to_string(), r0.code_chat_models[k].clone());
         }
     }
-    // clone "similar_models"
+    // clone to "similar_models"
     let ccmodel_keys_copy = r1.code_completion_models.keys().cloned().collect::<Vec<String>>();
     for k in ccmodel_keys_copy {
         let model_rec = r1.code_completion_models[&k].clone();
@@ -276,21 +296,14 @@ pub async fn load_recommendations(
             r1.code_chat_models.insert(similar_model.to_string(), model_rec.clone());
         }
     }
-    r1.code_completion_models = r1.code_completion_models.into_iter().filter(|(k, _)| r1.running_models.contains(&k)).collect();
-    r1.code_chat_models = r1.code_chat_models.into_iter().filter(|(k, _)| r1.running_models.contains(&k)).collect();
-    // endpoint_template
-    if !r1.endpoint_template.starts_with("http") {
-        let joined_url = Url::parse(&cmdline.address_url.clone())
-            .and_then(|base_url| base_url.join(&r1.endpoint_template))
-            .map_err(|_| format!("failed to join URL \"{}\" and possibly relative \"{}\"", &cmdline.address_url, &r1.endpoint_template))?;
-        r1.endpoint_template = joined_url.to_string();
-        info!("endpoint_template relative path: {}", &r1.endpoint_template);
+    r1.code_completion_models = r1.code_completion_models.clone().into_iter().filter(|(k, _)| r1.running_models.contains(&k)).collect();
+    r1.code_chat_models = r1.code_chat_models.clone().into_iter().filter(|(k, _)| r1.running_models.contains(&k)).collect();
+
+    for k in r1.running_models.iter() {
+        if !r0.code_completion_models.contains_key(k) &&!r0.code_chat_models.contains_key(k) {
+            info!("indicated as running, unknown model {}", k);
+        }
     }
-    info!("caps {} completion models", r1.code_completion_models.len());
-    info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
-    info!("caps {} chat models", r1.code_chat_models.len());
-    info!("caps default chat model: \"{}\"", r1.code_chat_default_model);
-    Ok(Arc::new(StdRwLock::new(r1)))
 }
 
 pub fn which_model_to_use<'a>(
