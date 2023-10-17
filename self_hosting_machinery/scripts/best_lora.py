@@ -12,10 +12,10 @@ from typing import Dict, Optional
 def find_best_checkpoint(run_id: str) -> Dict[str, str]:
     run_dir = os.path.join(env.DIR_LORAS, run_id)
     if not os.path.isdir(run_dir):
-        raise RuntimeError(f"run_id {run_id} not found")
+        raise RuntimeError(f"run_id not found")
     checkpoints_dir = os.path.join(run_dir, "checkpoints")
     if not os.path.isdir(checkpoints_dir):
-        raise RuntimeError(f"run_id {run_id} has no checkpoints")
+        raise RuntimeError(f"run_id has no checkpoints")
 
     def checkpoint_name_to_loss(checkpoint_id: str) -> Optional[float]:
         match = re.match(r"iter(\d+)-testloss(\d+\.\d+)", checkpoint_id)
@@ -33,7 +33,7 @@ def find_best_checkpoint(run_id: str) -> Dict[str, str]:
     ]))
 
     if not checkpoints:
-        raise RuntimeError(f"run_id {run_id} has no valid checkpoints")
+        raise RuntimeError(f"run_id has no valid checkpoints")
 
     best_checkpoint = min(checkpoints, key=lambda x: x[0])
     return {
