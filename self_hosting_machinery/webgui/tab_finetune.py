@@ -143,6 +143,11 @@ class TabFinetuneRouter(APIRouter):
     async def _tab_finetune_config_and_runs(self):
         completion_model = self._model_assigner.model_assignment.get("completion", "")
         runs = get_finetune_runs()
+        for run in runs:
+            try:
+                run["best_checkpoint"] = best_lora.find_best_checkpoint(run["run_id"])
+            except Exception as e:
+                run["best_checkpoint"] = {"error": str(e)}
         config = get_finetune_config(self._model_assigner.models_db)
         result = {
             "completion_model": completion_model,
