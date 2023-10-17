@@ -117,6 +117,29 @@ function render_finetune_settings(data = {}) {
     }
 }
 
+function finetune_activate_run(run_id, checkpoint) {
+    const finetune_run = finetune_configs_and_runs.finetune_runs.find((run) => run.run_id === run_id);
+    if (!finetune_run) {
+        return;
+    }
+    if (!checkpoint) {
+        checkpoint = finetune_run["best_checkpoint"]["best_checkpoint_id"];
+    }
+    if (finetune_run.model_name !== finetune_configs_and_runs.completion_model) {
+        const modal = document.getElementById('finetune-tab-model-warning-modal');
+        const modal_instance = bootstrap.Modal.getOrCreateInstance(modal);
+        document.querySelector('#finetune-tab-model-warning-modal #model-warning-message').innerHTML = `
+        <label>
+            Checkpoint you're about to activate trained for <b>${finetune_run.model_name}</b> model.
+            Use another checkpoint for <b>${finetune_configs_and_runs.completion_model}</b> model instead.
+        </label>
+        `;
+        modal_instance.show();
+    } else if (checkpoint) {
+        finetune_switch_activate("specific", run_id, checkpoint);
+    }
+}
+
 function render_runs() {
     const runs_table = document.querySelector('.run-table');
     if(finetune_configs_and_runs.finetune_runs.length === 0) {
@@ -172,7 +195,11 @@ function render_runs() {
 
         const item_disabled = run_is_working ? "disabled" : ""
         run_delete.innerHTML = `<button class="btn btn-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
-        run_active.innerHTML = `<button class="btn btn-hover btn-primary btn-sm" ${item_disabled}><i class="bi bi-play-fill"></i></button>`;
+        if (find_checkpoints_by_run(run.run_id).length > 0) {
+            run_active.innerHTML = `<button class="btn btn-hover btn-primary btn-sm" ${item_disabled}><i class="bi bi-play-fill"></i></button>`;
+        } else {
+            run_active.innerHTML = ``;
+        }
         run_table_row.appendChild(run_name);
         run_table_row.appendChild(run_status);
         run_table_row.appendChild(run_minutes);
@@ -191,9 +218,7 @@ function render_runs() {
             });
             run_active.addEventListener('click', (event) => {
                 event.stopPropagation();
-                const lora_for_start = run_table_row.dataset.run;
-                console.log('lora_for_start', lora_for_start);
-                finetune_switch_activate("latest-best", lora_for_start);
+                finetune_activate_run(run_table_row.dataset.run);
             });
         }
 
@@ -350,20 +375,7 @@ function render_checkpoints(data = []) {
                     }
                     row.classList.add('table-success');
                 }
-                const finetune_run = finetune_configs_and_runs.finetune_runs.find((run) => run.run_id === selected_lora);
-                if (finetune_run && finetune_run.model_name !== finetune_configs_and_runs.completion_model) {
-                    let modal = document.getElementById('finetune-tab-model-warning-modal');
-                    let modal_instance = bootstrap.Modal.getOrCreateInstance(modal);
-                    document.querySelector('#finetune-tab-model-warning-modal #model-warning-message').innerHTML = `
-                    <label>
-                        Checkpoint you're about to activate trained for <b>${finetune_run.model_name}</b> model.
-                        Use another checkpoint for <b>${finetune_configs_and_runs.completion_model}</b> model instead.
-                    </label>
-                    `;
-                    modal_instance.show();
-                } else {
-                    finetune_switch_activate("specific", selected_lora, cell.dataset.checkpoint);
-                }
+                finetune_activate_run(selected_lora, cell.dataset.checkpoint);
             });
         });
     }
