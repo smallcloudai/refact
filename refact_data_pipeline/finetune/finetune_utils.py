@@ -73,13 +73,24 @@ def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
             active_loras = {
                 legacy_finetune_model: active_loras,
             }
+
+    def get_active_lora(model_name: str, model_info: Dict[str, Any]) -> Dict:
+        finetune_model = model_info.get("finetune_model", model_name)
+        if finetune_model not in active_loras:
+            return {}
+        else:
+            return {
+                **active_loras[finetune_model],
+                "model": model_name
+            }
+
     return {
         model_name: {
             "lora_mode": "latest-best",
-            **active_loras.get(model_name, {}),
+            **get_active_lora(model_name, model_info),
         }
         for model_name, model_info in models_db.items()
-        if "finetune" in model_info["filter_caps"]
+        if "finetune_model" in model_info or "finetune" in model_info["filter_caps"]
     }
 
 
