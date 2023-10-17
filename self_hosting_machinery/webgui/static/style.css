@@ -502,22 +502,20 @@ h3 {
 }
 .sources-stats-db {
     display: none;
+    flex-direction: column;
 }
 .sources-stats-finetune {
     display: none;
     flex-direction: column;
-    margin-left: auto;
-}
-.sources-stats-finetune a i {
-    margin-right: 5px;
 }
 .sources-stats-finetune h6,
 .sources-stats-db h6 {
     margin-bottom: 4px;
     font-weight: bold;
 }
-.sources-stats-db {
-    margin-top: 10px;
+.sources-stats-proceed {
+    margin-top: 8px;
+    width: 70%;
 }
 .run-pane-grid {
     display: flex;

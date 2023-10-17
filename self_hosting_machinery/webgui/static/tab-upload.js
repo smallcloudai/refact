@@ -355,7 +355,6 @@ function save_filter_setup() {
 
 function render_stats() {
     const stats_finetune = document.querySelector('.sources-stats-finetune');
-    // const stats_db = document.querySelector('.sources-stats-db');
     if (tab_files_data.filestats_scan_finetune && typeof tab_files_data.filestats_scan_finetune === 'object') {
         if(Object.keys(tab_files_data.filestats_scan_finetune).length > 0) {
             stats_finetune.style.display = 'flex';
@@ -366,6 +365,18 @@ function render_stats() {
             fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log?accepted_or_rejected=rejected">Full List</a>`;
         }
     }
+    const stats_db = document.querySelector('.sources-stats-db');
+    if (tab_files_data.filestats_scan_db && typeof tab_files_data.filestats_scan_db === 'object') {
+        if (Object.keys(tab_files_data.filestats_scan_db).length > 0) {
+            stats_db.style.display = 'flex';
+            stats_db.style.whiteSpace = 'nowrap';
+            const files_accepted = document.querySelector('.sources-stats-db-accepted span');
+            files_accepted.innerHTML = `${tab_files_data.filestats_scan_db.accepted} <a target="_blank" class="sources-stats-db-accepted" href="/tab-files-log?accepted_or_rejected=accepted">Full List</a>`;
+            const files_rejected = document.querySelector('.sources-stats-db-rejected span');
+            files_rejected.innerHTML = `${tab_files_data.filestats_scan_db.rejected} <a target="_blank" class="sources-stats-db-rejected" href="/tab-files-log?accepted_or_rejected=rejected">Full List</a>`;
+        }
+    }
+
 }
 
 
@@ -630,6 +641,17 @@ export async function init(general_error) {
             link.classList.remove('main-active');
         });
         let nav_link = document.querySelector('[data-tab="finetune"]');
+        nav_link.classList.add('main-active');
+    });
+
+    const proceed_context_button = document.querySelector('.proceed-context');
+    proceed_context_button.addEventListener('click', function() {
+        document.querySelector('#upload').classList.remove('main-active');
+        document.querySelector('#context').classList.add('main-active');
+        document.querySelectorAll('.nav-link').forEach(function(link) {
+            link.classList.remove('main-active');
+        });
+        let nav_link = document.querySelector('[data-tab="context"]');
         nav_link.classList.add('main-active');
     });
 }
