@@ -371,9 +371,7 @@ function render_stats() {
             stats_db.style.display = 'flex';
             stats_db.style.whiteSpace = 'nowrap';
             const files_accepted = document.querySelector('.sources-stats-db-accepted span');
-            files_accepted.innerHTML = `${tab_files_data.filestats_scan_db.accepted} <a target="_blank" class="sources-stats-db-accepted" href="/tab-files-log?accepted_or_rejected=accepted">Full List</a>`;
-            const files_rejected = document.querySelector('.sources-stats-db-rejected span');
-            files_rejected.innerHTML = `${tab_files_data.filestats_scan_db.rejected} <a target="_blank" class="sources-stats-db-rejected" href="/tab-files-log?accepted_or_rejected=rejected">Full List</a>`;
+            files_accepted.innerHTML = `${tab_files_data.filestats_scan_db.accepted} <a target="_blank" class="sources-stats-db-accepted" href="/tab-files-log?accepted_or_rejected=vecdb">Full List</a>`;
         }
     }
 

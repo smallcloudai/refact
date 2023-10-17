@@ -510,12 +510,13 @@ h3 {
 }
 .sources-stats-finetune h6,
 .sources-stats-db h6 {
-    margin-bottom: 4px;
     font-weight: bold;
 }
 .sources-stats-proceed {
-    margin-top: 8px;
     width: 70%;
+}
+.sources-stats-proceed-btn-group {
+    margin-top: 5px;
 }
 .run-pane-grid {
     display: flex;

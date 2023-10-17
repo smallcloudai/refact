@@ -58,35 +58,27 @@
             <label for="force_include" class="form-label">Force include in finetune</label>
             <input type="text" class="form-control" id="force_include" placeholder="src/strange_file.py">
           </div>
-<!--          <div class="sources-stats">-->
             <div class="mb-3">
               <div class="row">
                 <div class="col-6 sources-stats-finetune">
                   <h6>Files for Finetune</h6>
                   <div class="sources-stats-fine-accepted">Accepted: <span></span></div>
                   <div class="sources-stats-fine-rejected">Rejected: <span></span></div>
-                  <button class="btn btn-sm btn-outline-secondary sources-stats-proceed proceed-finetune">Proceed to Finetune</button>
                 </div>
                 <div class="col-6 sources-stats-db">
                   <h6>Files for Context</h6>
                   <div class="sources-stats-db-accepted">Accepted: <span></span></div>
-                  <div class="sources-stats-db-rejected">Rejected: <span></span></div>
-                <button class="btn btn-sm btn-outline-secondary sources-stats-proceed proceed-context">Proceed to Context</button>
-              </div>
-
+                </div>
               </div>
             </div>
-<!--            <div class="sources-stats-finetune">-->
-<!--              <h6>Files for Finetune</h6>-->
-<!--              <div class="sources-stats-fine-accepted">Accepted: <span></span></div>-->
-<!--              <div class="sources-stats-fine-rejected">Rejected: <span></span></div>-->
-<!--            </div>-->
-<!--            <div class="sources-stats-db">-->
-<!--              <h6>Files for Vector DB</h6>-->
-<!--              <div class="sources-stats-db-accepted">Accepted: <span></span></div>-->
-<!--              <div class="sources-stats-db-rejected">Rejected: <span></span></div>-->
-<!--            </div>-->
-<!--          </div>-->
+          <div class="row sources-stats-proceed-btn-group">
+            <div class="col-6">
+              <button class="btn btn-sm btn-outline-secondary sources-stats-proceed proceed-finetune">Proceed to Finetune</button>
+            </div>
+            <div class="col-6">
+              <button class="btn btn-sm btn-outline-secondary sources-stats-proceed proceed-context">Proceed to Context</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

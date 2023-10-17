@@ -279,6 +279,16 @@ class TabUploadRouter(APIRouter):
         return JSONResponse("OK")
 
     async def _tab_files_log(self, accepted_or_rejected: str):
+        if accepted_or_rejected == 'vecdb':
+            fn = os.path.join(env.DIR_UNPACKED, 'database_set.jsonl')
+            if not os.path.exists(fn):
+                log(f"tab_files_log: File {fn} does not exist")
+                return Response("File list empty\n", media_type="text/plain")
+            return StreamingResponse(
+                ("CTXT " + json.loads(line).get('path', '') + "\n" for line in open(fn, "r")),
+                media_type="text/plain"
+            )
+
         if accepted_or_rejected == "accepted":
             fn = env.LOG_FILES_ACCEPTED_SCAN
         else:
