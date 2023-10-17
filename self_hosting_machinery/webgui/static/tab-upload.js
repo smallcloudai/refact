@@ -1,7 +1,6 @@
 import { general_error } from './error.js';
 import { init as init_upload_files_modal, switch_away as upload_files_modal_switch_away } from './components/modals/modal-upload-files.js'
 
-
 let tab_files_data = null;
 let show_scan_error = false;
 let sort_type = 'filetype';
@@ -11,6 +10,22 @@ let dont_disable_file_types = false;
 
 let sources_pane = null;
 let filetypes_pane = null;
+
+
+function get_vecdb_files_loaded_stats() {
+    fetch("/tab-vecdb-files-stats")
+        .then(function(response) {
+            if (response.ok) {
+                return response.json();
+            }
+            return {'files_cnt': 'error', 'chunks_cnt': 'error'}
+        })
+        .then(function(data) {
+            document.querySelector('.sources-stats-db-files-loaded span').innerText = data['files_cnt'];
+            document.querySelector('.sources-stats-db-chunks-loaded span').innerText = data['chunks_cnt'];
+        });
+}
+
 
 function do_starting_state() {
     filetypes_pane.classList.add('pane-disabled');
@@ -656,6 +671,7 @@ export async function init(general_error) {
 
 export function tab_switched_here() {
     get_tab_files();
+    get_vecdb_files_loaded_stats();
     const files_modal = document.querySelector('#upload-files-modal');
     init_upload_files_modal(
         files_modal,

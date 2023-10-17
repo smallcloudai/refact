@@ -20,20 +20,23 @@
 
 
   <div class="row">
-    <h2>VecDB</h2>
-  </div>
-  <div class="row">
-    <div class="col-3">
+    <div class="col-5">
       <div class="pane">
-        <h3>Select Model</h3>
+        <h3>VecDB: Codebase Database</h3>
+        <div style="margin-top: 15px" class="mb-3 form-text ssh-info">
+            Once files are chosen for Context and Indexed, Refact Chat and Refact Completion are able to see your entire codebase.
+        </div>
+        <h6 style="font-weight: bold">Select Model for Embeddings</h6>
         <select id="vecdb-select-model" class="form-select disabled" data-selected="" data-options="" data-selected-temp="" aria-label="">
         </select>
-      </div>
 
-      <div class="pane">
-        <h3>Indexes</h3>
-        <span>Status: <span id="vecdb-indexing-status" data-prev-state=""></span></span>
-        <div id="vecdb-indexing-progress-row" class="row" hidden="">
+        <div style="font-weight: bold; margin-top: 20px" class="vecdb-indexing-status">
+          Status: <span data-prev-state=""></span>
+        </div>
+
+<!--        <span>Status: <span id="" data-prev-state=""></span></span>-->
+
+        <div id="vecdb-indexing-progress-row" class="row" hidden>
           <div class="col-lg-9">
             <div class="progress">
               <div
@@ -48,30 +51,8 @@
             <span id="vecdb-upload-files-progress-span"></span>
           </div>
         </div>
-      </div>
 
-      <div class="pane">
-        <h3>Search API</h3>
-        <div>
-          <span>Status: <span id="vecdb-health">0</span></span>
-        </div>
-        <div>
-          <span>Files loaded: <span id="vecdb-files-loaded-cnt">0</span></span>
-        </div>
-        <div>
-          <span>Chunks loaded: <span id="vecdb-chunks-loaded-cnt">0</span></span>
-        </div>
       </div>
-      <!--					<div class="pane">-->
-      <!--						<h3>Context Fill</h3>-->
-      <!--						<label for="vecdb-range-chat-context" class="form-label">For Chat <span></span></label>-->
-      <!--						<input type="range" class="form-range" min="0" max="50" step="5" id="vecdb-range-chat-context">-->
-      <!--						<label for="vecdb-range-completion-context" class="form-label">For Completion <span></span></label>-->
-      <!--						<input type="range" class="form-range" min="0" max="50" step="5" id="vecdb-range-completion-context">-->
-      <!--					</div>-->
-    </div>
-
-    <div class="col-3">
     </div>
   </div>
 

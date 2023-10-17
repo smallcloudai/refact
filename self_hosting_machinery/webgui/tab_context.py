@@ -5,12 +5,11 @@ from pathlib import Path
 
 from pydantic import BaseModel
 from fastapi import APIRouter, Request
-from fastapi.responses import Response
 
 from self_hosting_machinery import env
 from refact_vecdb.common.context import VDBFiles
 from refact_vecdb import VDBSearchAPI
-from refact_vecdb.embeds_api.embed_spads import embed_providers
+from refact_vecdb.embeds_api.embed_spads import models as embed_providers
 
 
 __all__ = ['TabContextRouter']
@@ -29,7 +28,6 @@ class TabContextRouter(APIRouter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._workdir = Path(env.DIR_UNPACKED)
-        self._account = 'XXX'
 
         self.add_api_route("/tab-vecdb-files-stats", self._files_stats, methods=["GET"])
         self.add_api_route("/tab-vecdb-status", self._status, methods=["GET"])
@@ -53,54 +51,40 @@ class TabContextRouter(APIRouter):
             except:
                 pass
 
-    async def _status(self):
+    async def _status(self, account: str = 'XXX'):
         content = {}
         try:
             vdb_search_api = VDBSearchAPI()
-            search_api_status = await vdb_search_api.status(self._account)
-            providers = list(embed_providers.keys())
-
-            content = {
+            search_api_status = await vdb_search_api.status(account)
+            content.update({
                 "status": "ok",
                 "provider": search_api_status.get('provider'),
-                "available_providers": providers,
+                "change_provider_flag": os.path.exists(env.FLAG_VECDB_CHANGE_PROVIDER),
+                "available_providers": embed_providers,
                 "ongoing": {},
-            }
-            if VDBFiles.status.exists():
-                status = json.loads(VDBFiles.status.read_text())['status']
-                content['status'] = status
+            })
 
-            if VDBFiles.file_stats.exists():
-                state = json.loads(VDBFiles.file_stats.read_text())
-                status = ''
-                if state['file_n'] != state['total']:
-                    status = 'in progress'
-                elif state['file_n'] == state['total']:
-                    status = 'done'
-                progress_text = f'{state["file_n"]}/{state["total"]}'
-                progress_val = round((state['file_n'] / state['total']) * 100)
-                content["ongoing"] = {'indexing': {'status': status, 'progress_text': progress_text, "progress_val": progress_val}}
+            if os.path.exists(env.CONFIG_VECDB_STATUS):
+                status = json.loads(open(env.CONFIG_VECDB_STATUS).read())
+                content['status'] = status['status']
 
-            if VDBFiles.change_provider.exists():
-                if content['ongoing'].get('indexing'):
-                    if content['ongoing']['indexing'].get('status') != 'in progress':
-                        content['ongoing']['indexing']['status'] = 'scheduled'
+            if os.path.exists(env.CONFIG_VECDB_FILE_STATS):
+                state = json.loads(open(env.CONFIG_VECDB_FILE_STATS).read())  # "file_n", "total"
+                content["ongoing"] = {'indexing': state}
 
         except Exception as e:
             traceback.print_exc()
             content["status"] = str(e)
-        print(f'status out: {content}')
-        return Response(content=json.dumps(content), status_code=200)
 
-    async def _files_stats(self):
-        content = {}
+        return content
+
+    async def _files_stats(self, account: str = 'XXX'):
         try:
-            files_stats = await VDBSearchAPI().files_stats(self._account)
-            print(f'files_stats: {files_stats}')
-            content['files_cnt'] = files_stats['files_cnt']
-            content['chunks_cnt'] = files_stats['chunks_cnt']
+            files_stats = await VDBSearchAPI().files_stats(account)
+            return {
+                "files_cnt": files_stats['files_cnt'],
+                "chunks_cnt": files_stats['chunks_cnt']
+            }
         except Exception as e:
             traceback.format_exc()
-            content["error"] = str(e)
-        print(f'files_stats out: {content}')
-        return Response(content=json.dumps(content))
+            return {"error": str(e)}

@@ -1,28 +1,9 @@
-
-function fetch_and_set_files_loaded_cnt() {
-    fetch("/tab-vecdb-files-stats")
-        .then(function(response) {
-            if (response.ok) {
-                return response.json();
-            }
-            return {'files_cnt': 'error', 'chunks_cnt': 'error'}
-        })
-        .then(function(data) {
-            document.querySelector('#vecdb-files-loaded-cnt').innerHTML = data['files_cnt'];
-            document.querySelector('#vecdb-chunks-loaded-cnt').innerHTML = data['chunks_cnt'];
-        });
-}
-
-
-
 function on_select_model_modal_ok_click(event) {
     let select_model_div = document.getElementById('vecdb-select-model');
     let selected_option = select_model_div.getAttribute('data-selected-temp');
-    // select_model_div.setAttribute('data-selected', selected_option);
     select_model_div.setAttribute('data-selected-temp', "");
     select_model_div.setAttribute('data-ok', "true");
     select_model_div.setAttribute('disabled', "");
-    console.log("ok click")
 
     fetch('/tab-vecdb-update-provider', {
         method: 'POST',
@@ -39,7 +20,6 @@ function on_select_model_modal_hide(event) {
     let select_model_div = document.getElementById('vecdb-select-model');
     if (select_model_div.getAttribute('data-ok') === "true") {
         select_model_div.removeAttribute('data-ok');
-        console.log('on_modal_hide, but data-ok');
         return;
     }
     console.log('on_modal_hide', select_model_div.getAttribute('data-ok'));
@@ -59,14 +39,16 @@ export async function init() {
         'hidden.bs.modal', on_select_model_modal_hide
     )
 
-    await render_vecdb_status();
-    fetch_and_set_files_loaded_cnt();
+    let select_model_div = document.getElementById('vecdb-select-model');
+    select_model_div.addEventListener('change', (event) => {
+        select_model_div.setAttribute('data-selected-temp', event.target.value);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('vecdb-select-model-modal')).show();
+    });
 }
 
 
 export async function tab_switched_here() {
     await render_vecdb_status();
-    fetch_and_set_files_loaded_cnt();
 }
 
 
@@ -75,106 +57,78 @@ export async function tab_switched_away() {
 }
 
 
-
-async function vecdb_render_select_model(available_providers, provider) {
-    let select_model_div = document.getElementById('vecdb-select-model');
-    if (
-        select_model_div.getAttribute('data-selected') === provider &&
-        select_model_div.getAttribute('data-options') === JSON.stringify(available_providers)
-    ) {
-        return;
-    }
-    if (!provider || !available_providers) {
-        return;
-    }
-    select_model_div.innerHTML = '';
-    for (let p of available_providers) {
-        let option = document.createElement('option');
-        option.value = p;
-        option.innerHTML = p;
-        option.classList.add('vecdb-select-model-option');
-        if (p === provider) {
-            option.selected = true;
-        }
-        select_model_div.appendChild(option);
-    }
-
-    select_model_div.setAttribute('data-selected', provider);
-    select_model_div.setAttribute('data-options', JSON.stringify(available_providers));
-
-    select_model_div.addEventListener('change', (event) => {
-        select_model_div.setAttribute('data-selected-temp', event.target.value);
-        console.log('selected', event.target.value);
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('vecdb-select-model-modal')).show();
-    });
-}
-
-
 async function render_vecdb_status() {
-    function fetch_vecdb_status() {
-        return fetch('/tab-vecdb-status').then(
-            function (response) {
-                if (response.ok) {
-                    return response.json();
-                } else {
-                    return {}
-                }
-            }
-        )
-    }
-
-    function set_health_status(vecdb_status) {
-        let health_display_text = vecdb_status['status'];
-        if (health_display_text === 'ok') {
-            health_display_text = 'healthy ❤️';
+    async function vecdb_render_select_model(available_providers, provider) {
+        let select_model_div = document.getElementById('vecdb-select-model');
+        if (select_model_div.getAttribute('data-selected') === provider || !provider || !available_providers) {
+            return;
         }
-        document.querySelector('#vecdb-health').innerHTML = health_display_text;
+        select_model_div.innerHTML = '';
+        for (let p of available_providers) {
+            let option = document.createElement('option');
+            option.value = p;
+            option.innerHTML = p;
+            option.classList.add('vecdb-select-model-option');
+            if (p === provider) {
+                option.selected = true;
+            }
+            select_model_div.appendChild(option);
+        }
 
+        select_model_div.setAttribute('data-selected', provider);
+        // select_model_div.setAttribute('data-options', JSON.stringify(available_providers));
     }
 
-    function check_ongoing(vecdb_status) {
+    async function check_ongoing(vecdb_status) {
         let select_model_div = document.getElementById('vecdb-select-model');
         let indexing_progress_div = document.getElementById('vecdb-indexing-progress-row')
+        let indexing_progress_bar = document.getElementById('vecdb-upload-files-progress-bar')
+        let indexing_progress_span = document.getElementById('vecdb-upload-files-progress-span')
+        let indexing_status_span = document.querySelector('.vecdb-indexing-status span')
 
-        let ongoing = vecdb_status['ongoing'];
-        if (ongoing && 'indexing' in ongoing) {
-            const indexing_status = ongoing['indexing']['status'];
-            let indexing_status_span = document.getElementById('vecdb-indexing-status')
-            indexing_status_span.innerHTML = indexing_status;
-            if (indexing_status === 'in progress') {
+        if (!vecdb_status) {
+            return;
+        }
+
+        indexing_status_span.innerText = vecdb_status['status'];
+        console.log(vecdb_status);
+
+        if (vecdb_status['change_provider_flag']) {
+            select_model_div.setAttribute('disabled', 'true');
+        }
+
+        const ongoing_indexing = vecdb_status["ongoing"]['indexing'];
+        if (ongoing_indexing) {
+            let progress_val = Math.round(parseInt(ongoing_indexing['file_n']) / parseInt(ongoing_indexing['total']) * 100);
+
+            if (progress_val !== 100) {
                 indexing_progress_div.removeAttribute("hidden");
-                let indexing_progress_bar = document.getElementById('vecdb-upload-files-progress-bar')
-                let indexing_progress_span = document.getElementById('vecdb-upload-files-progress-span')
-                indexing_progress_bar.style.width = `${ongoing['indexing']['progress_val']}%`;
-                indexing_progress_span.innerHTML = ongoing['indexing']['progress_text'];
-            }
-            if (indexing_status !== 'done') {
+                indexing_progress_bar.style.width = `${progress_val}%`;
+                indexing_progress_span.innerText = `${ongoing_indexing['file_n']}/${ongoing_indexing['total']}`;
                 select_model_div.setAttribute('disabled', "");
             } else {
-                indexing_progress_div.setAttribute("hidden", "");
+                indexing_progress_div.hidden = true;
                 select_model_div.removeAttribute('disabled');
-                let prev_state = indexing_status_span.getAttribute('data-prev-state');
-                if (prev_state && prev_state !== 'done') {
-                    fetch_vecdb_status()
-                    fetch_and_set_files_loaded_cnt()
-                }
             }
-            indexing_status_span.setAttribute('data-prev-state', indexing_status);
         } else {
-            document.getElementById('vecdb-indexing-status').innerHTML = 'Not scheduled';
             select_model_div.removeAttribute('disabled');
         }
     }
 
-
-    fetch_vecdb_status().then(async (vecdb_status) => {
-        check_ongoing(vecdb_status);
-        set_health_status(vecdb_status);
+    await fetch('/tab-vecdb-status').then(
+        async function (response) {
+            if (response.ok) {
+                return response.json();
+            } else {
+                return {}
+            }
+        }
+    ).then(async (vecdb_status) => {
+        await check_ongoing(vecdb_status);
         await vecdb_render_select_model(
             vecdb_status['available_providers'], vecdb_status['provider']
         )
     });
-
 }
 
 
