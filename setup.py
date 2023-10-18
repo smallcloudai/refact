@@ -39,7 +39,7 @@ all_refact_packages = {
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools',
                   "cdifflib", "ujson", "zstandard", "scipy", "deepspeed==0.9.2",
                   "peft", "einops", "mpi4py", "matplotlib", "transformers",
-                  "triton==2.0.0.post1", "torchinfo", "giturlparse", "jsonlines",
+                  "triton", "torchinfo", "giturlparse", "jsonlines",
                   "binpacking", "filelock", "tables==3.8.0", "pygments", "kshingle"],
         requires_packages=["refact_encoding", "code_contrast", "self_hosting_machinery",
                            "refact_models"],
