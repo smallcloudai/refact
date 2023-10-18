@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
 
 RUN apt-get update
 RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
@@ -17,7 +17,7 @@ RUN echo "export PATH=/usr/local/cuda/bin:\$PATH" > /etc/profile.d/50-smc.sh
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # torch
-RUN pip install --no-cache-dir torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118
+RUN pip install --no-cache-dir torch==2.1.0 --index-url https://download.pytorch.org/whl/cu121
 
 # linguist requisites
 RUN apt-get update
