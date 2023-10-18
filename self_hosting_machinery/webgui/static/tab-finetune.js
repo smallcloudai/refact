@@ -144,13 +144,13 @@ function finetune_activate_run(run_id, checkpoint) {
     if (!checkpoint) {
         checkpoint = finetune_run["best_checkpoint"]["best_checkpoint_id"];
     }
-    if (finetune_run.model_name !== finetune_configs_and_runs.completion_model) {
+    if (finetune_run.model_name !== finetune_configs_and_runs.completion_model.finetune) {
         const modal = document.getElementById('finetune-tab-model-warning-modal');
         const modal_instance = bootstrap.Modal.getOrCreateInstance(modal);
         document.querySelector('#finetune-tab-model-warning-modal #model-warning-message').innerHTML = `
         <label>
             This fine-tuning checkpoint is for <b>${finetune_run.model_name}</b> base model.
-            Your currently active model is <b>${finetune_configs_and_runs.completion_model}</b>, you can change it in the Model Hosting tab.
+            Your currently active model is <b>${finetune_configs_and_runs.completion_model.name}</b>, you can change it in the Model Hosting tab.
         </label>
         `;
         modal_instance.show();
@@ -302,12 +302,13 @@ const find_checkpoints_by_run = (run_id) => {
 };
 
 function render_lora_switch() {
-    const model_name = finetune_configs_and_runs.completion_model;
+    const model_name = finetune_configs_and_runs.completion_model.name;
+    const finetune_model = finetune_configs_and_runs.completion_model.finetune;
     let lora_switch_model = document.querySelector('#lora-switch-model');
     lora_switch_model.innerHTML = `
         <b>Model:</b> ${model_name}
     `;
-    let mode = finetune_configs_and_runs.active[model_name] ? finetune_configs_and_runs.active[model_name].lora_mode : "latest-best";
+    let mode = finetune_configs_and_runs.active[finetune_model] ? finetune_configs_and_runs.active[finetune_model].lora_mode : "latest-best";
     loras_switch_no_reaction = true; // avoid infinite loop when setting .checked
     if (mode === 'off') {
         loras_switch_off.checked = true;
@@ -324,8 +325,8 @@ function render_lora_switch() {
         lora_switch_checkpoint.style.display = 'block';
         lora_switch_run_id.style.opacity = 1;
         lora_switch_checkpoint.style.opacity = 1;
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.active[model_name].specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.active[model_name].specific_checkpoint}`;
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.active[finetune_model].specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.active[finetune_model].specific_checkpoint}`;
     } else if (mode == 'latest-best') {
         lora_switch_run_id.style.display = 'block';
         lora_switch_checkpoint.style.display = 'block';
@@ -336,8 +337,8 @@ function render_lora_switch() {
     } else {
         lora_switch_run_id.style.display = 'none';
         lora_switch_checkpoint.style.display = 'none';
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.active[model_name].specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.active[model_name].specific_checkpoint}`;
+        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.active[finetune_model].specific_lora_run_id}`;
+        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.active[finetune_model].specific_checkpoint}`;
     }
 }
 
@@ -394,12 +395,12 @@ function animate_use_model() {
 
 function finetune_switch_activate(lora_mode, run_id, checkpoint) {
     animate_use_model();
-    const model_name = finetune_configs_and_runs.completion_model;
+    const finetune_model = finetune_configs_and_runs.completion_model.finetune;
     let send_this = {
-        "model": model_name,
+        "model": finetune_model,
         "lora_mode": lora_mode,
-        "specific_lora_run_id": run_id ? run_id : finetune_configs_and_runs.active[model_name].specific_lora_run_id,
-        "specific_checkpoint": checkpoint ? checkpoint : finetune_configs_and_runs.active[model_name].specific_checkpoint,
+        "specific_lora_run_id": run_id ? run_id : finetune_configs_and_runs.active[finetune_model].specific_lora_run_id,
+        "specific_checkpoint": checkpoint ? checkpoint : finetune_configs_and_runs.active[finetune_model].specific_checkpoint,
     }
     fetch("/tab-finetune-activate", {
         method: "POST",
