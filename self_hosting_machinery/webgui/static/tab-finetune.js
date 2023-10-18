@@ -117,6 +117,25 @@ function render_finetune_settings(data = {}) {
     }
 }
 
+function run_checked(run_id) {
+    if (gfx_showing_run_id != run_id) {
+        gfx_showing_run_id = run_id;
+        const timestamp = new Date().getTime();
+        const gfx = document.querySelector('.fine-gfx');
+        gfx.src = `/tab-finetune-progress-svg/${run_id}?t=${timestamp}`;
+    }
+    start_log_stream(run_id);
+    render_checkpoints(find_checkpoints_by_run(run_id));
+
+    const log_link = document.querySelector('.log-link');
+    if (log_link && log_link.classList.contains('d-none')) {
+        log_link.classList.remove('d-none');
+    }
+    if (log_link) {
+        log_link.href = `/tab-finetune-log/${run_id}`;
+    }
+}
+
 function finetune_activate_run(run_id, checkpoint) {
     const finetune_run = finetune_configs_and_runs.finetune_runs.find((run) => run.run_id === run_id);
     if (!finetune_run) {
@@ -225,22 +244,7 @@ function render_runs() {
         runs_table.appendChild(run_table_row);
         if (selected_lora == run.run_id) {
             run_table_row.classList.add('table-success');
-            if (gfx_showing_run_id != run.run_id) {
-                gfx_showing_run_id = run.run_id;
-                const timestamp = new Date().getTime();
-                const gfx = document.querySelector('.fine-gfx');
-                gfx.src = `/tab-finetune-progress-svg/${run.run_id}?t=${timestamp}`;
-            }
-            start_log_stream(run.run_id);
-            render_checkpoints(find_checkpoints_by_run(run.run_id));
-
-            const log_link = document.querySelector('.log-link');
-            if(log_link && log_link.classList.contains('d-none')) {
-                log_link.classList.remove('d-none');
-            }
-            if(log_link) {
-                log_link.href = `/tab-finetune-log/${run.run_id}`;
-            }
+            run_checked(run.run_id);
         }
         // if(is_working) {
             //     start_finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
@@ -257,7 +261,7 @@ function render_runs() {
             event.stopPropagation();
             const run_id = this.dataset.run;
             selected_lora = run_id;
-            render_checkpoints(find_checkpoints_by_run(run_id));
+            run_checked(run_id);
         });
     });
 }
@@ -277,7 +281,7 @@ function delete_run(run_id) {
         }
         const gfx = document.querySelector('.fine-gfx');
         gfx.src = `/tab-finetune-progress-svg/none`;
-          const log_container = document.querySelector('.tab-upload-finetune-logs');
+        const log_container = document.querySelector('.tab-upload-finetune-logs');
         if (log_container) {
             log_container.innerHTML = '';
         }
