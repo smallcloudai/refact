@@ -189,6 +189,7 @@ def loop(
                 tag = "iter%04d-trainloss%0.3f" % (iter_n, progress["loss"])
             traces.log("saving checkpoint %s" % tag)
             save_model_state(model, save_path=save_path, tag=tag)
+            traces.log("finished saving checkpoint %s" % tag)
 
     model_config = supported_models.config[model_name]
     save_path = os.path.join(traces.context().path, "checkpoints")
