@@ -98,13 +98,10 @@ async fn _lookup_chat_scratchpad(
     Ok((model_name, sname.clone(), patch.clone()))
 }
 
-async fn handle_v1_code_completion(
+pub async fn handle_v1_code_completion(
     global_context: Arc<ARwLock<GlobalContext>>,
-    body_bytes: hyper::body::Bytes
+    code_completion_post: &mut CodeCompletionPost
 ) -> Result<Response<Body>, ScratchError> {
-    let mut code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    )?;
     let (model_name, scratchpad_name, scratchpad_patch) = _lookup_code_completion_scratchpad(
         global_context.clone(),
         &code_completion_post,
@@ -165,6 +162,16 @@ async fn handle_v1_code_completion(
     } else {
         crate::restream::scratchpad_interaction_stream(global_context.clone(), scratchpad, "completion-stream".to_string(), &prompt, model_name, client1, api_key, &code_completion_post.parameters).await
     }
+}
+
+pub async fn handle_v1_code_completion_web(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    body_bytes: hyper::body::Bytes
+) -> Result<Response<Body>, ScratchError> {
+    let mut code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    )?;
+    handle_v1_code_completion(global_context.clone(), &mut code_completion_post).await
 }
 
 
@@ -279,7 +286,7 @@ async fn handle_request(
     info!("{} {} {} body_bytes={}", remote_addr, method, path, body_bytes.len());
     let result: Result<Response<Body>, ScratchError>;
     if method == Method::POST && path == "/v1/code-completion" {
-        result = handle_v1_code_completion(global_context.clone(), body_bytes).await;
+        result = handle_v1_code_completion_web(global_context.clone(), body_bytes).await;
     } else if method == Method::POST && path == "/v1/chat" {
         result = handle_v1_chat(global_context.clone(), body_bytes).await;
     } else if method == Method::POST && path == "/v1/telemetry-network" {

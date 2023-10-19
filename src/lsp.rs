@@ -1,33 +1,23 @@
-use ropey::Rope;
-use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::time::Instant;
+
+use ropey::Rope;
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
+use tower_lsp::{ClientSocket, LanguageServer, LspService};
 use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
-use tower_lsp::{ClientSocket, LanguageServer, LspService};
-use tracing::info;
+use tracing::{error, info};
 
-use crate::telemetry_snippets;
+use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
 use crate::global_context;
+use crate::http_server::handle_v1_code_completion;
+use crate::telemetry_snippets;
 
-
-// const NAME: &str = "llm-ls";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-
-// #[derive(Serialize)]
-// struct APIRequest {
-//     inputs: String,
-//     parameters: APIParams,
-// }
-
-// #[derive(Debug, Deserialize)]
-// struct Generation {
-//     pub generated_text: String,
-// }
 
 #[derive(Debug, Deserialize)]
 struct APIError {
@@ -40,13 +30,6 @@ impl Display for APIError {
     }
 }
 
-// #[derive(Debug, Deserialize)]
-// #[serde(untagged)]
-// enum APIResponse {
-//     Generation(Generation),
-//     Generations(Vec<Generation>),
-//     Error(APIError),
-// }
 
 #[derive(Debug)]
 pub struct Document {
@@ -70,36 +53,96 @@ pub struct Backend {
 }
 
 
-// Maybe support llm-vscode nonstandard call?
-// #[derive(Clone, Debug, Deserialize, Serialize)]
-// pub struct RequestParams {
-//     pub max_new_tokens: u32,
-//     pub temperature: f32,
-//     pub do_sample: bool,
-//     pub top_p: f32,
-//     pub stop_tokens: Option<Vec<String>>,
-// }
-// #[derive(Debug, Deserialize, Serialize)]
-// pub struct CompletionParams1 {
-//     #[serde(flatten)]
-//     pub text_document_position: TextDocumentPositionParams,
-//     pub request_params: RequestParams,
-//     #[serde(default)]
-//     #[serde(deserialize_with = "parse_ide")]
-//     pub ide: Ide,
-//     // fim: FimParams,
-//     pub api_token: Option<String>,
-//     pub model: String,
-//     pub tokens_to_clear: Vec<String>,
-//     // tokenizer_config: Option<TokenizerConfig>,
-//     pub context_window: usize,
-//     pub tls_skip_verify_insecure: bool,
-// }
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RequestParams {
+    pub max_new_tokens: u32,
+    pub temperature: f32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Completion {
+    generated_text: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CompletionParams1 {
+    #[serde(flatten)]
+    pub text_document_position: TextDocumentPositionParams,
+    pub parameters: RequestParams,
+    pub multiline: bool,
+    // pub model: String,
+}
+
+fn internal_error<E: Display>(err: E) -> Error {
+    let err_msg = err.to_string();
+    error!(err_msg);
+    Error {
+        code: tower_lsp::jsonrpc::ErrorCode::InternalError,
+        message: err_msg.into(),
+        data: None,
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct Choice {
+    pub index: u32,
+    pub code_completion: String,
+    pub finish_reason: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct CompletionRes {
+    pub choices: Vec<Choice>,
+    pub cached: Option<bool>,
+    pub snippet_telemetry_id: u32,
+    pub model: String,
+    pub created: Option<f32>,
+}
 
 impl Backend {
-    // pub async fn get_completions(&self, params: CompletionParams1) -> Result<Vec<Completion>> {
-    //     Ok(vec![Completion { generated_text: "hello".to_owned() }])
-    // }
+    async fn params_to_body(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
+        let document_map = self.document_map.read().await;
+        let document = document_map
+            .get(params.text_document_position.text_document.uri.as_str())
+            .unwrap();
+        let txt = &document.text;
+
+        Ok(CodeCompletionPost {
+            inputs: CodeCompletionInputs {
+                sources: HashMap::from([(String::from(&params.text_document_position.text_document.uri.to_string()),
+                                         (&txt).to_string())]),
+                cursor: CursorPosition {
+                    file: String::from(&params.text_document_position.text_document.uri.to_string()),
+                    line: params.text_document_position.position.line as i32,
+                    character: params.text_document_position.position.character as i32,
+                },
+                multiline: params.multiline,
+            },
+            parameters: SamplingParameters {
+                max_new_tokens: params.parameters.max_new_tokens as usize,
+                temperature: Option::from(params.parameters.temperature),
+                top_p: None,
+                stop: None,
+            },
+            model: "".to_string(),
+            scratchpad: "".to_string(),
+            stream: false,
+        })
+    }
+
+    pub async fn get_completions(&self, params: CompletionParams1) -> Result<CompletionRes> {
+        let mut post = self.params_to_body(&params).await;
+
+        let res = handle_v1_code_completion(self.gcx.clone(),
+                                            &mut post?).await;
+        let resp = res.unwrap();
+        let body_bytes = hyper::body::to_bytes(resp.into_body()).await.unwrap();
+
+        let s = String::from_utf8(body_bytes.to_vec()).unwrap();
+        let value = serde_json::from_str::<CompletionRes>(s.as_str()).map_err(|e| internal_error(e))?;
+
+        Ok(value)
+    }
 }
 
 
@@ -176,14 +219,14 @@ impl LanguageServer for Backend {
         telemetry_snippets::sources_changed(
             self.gcx.clone(),
             &uri,
-            &params.content_changes[0].text
+            &params.content_changes[0].text,
         ).await;
         info!("{} changed, telemetry time: {:?}", uri, t1.elapsed());
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         self.client
-            .log_message(MessageType::INFO, "{llm-ls} file saved")
+            .log_message(MessageType::INFO, "{refact-lsp} file saved")
             .await;
         let uri = params.text_document.uri.to_string();
         info!("{uri} saved");
@@ -191,7 +234,7 @@ impl LanguageServer for Backend {
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         self.client
-            .log_message(MessageType::INFO, "{llm-ls} file closed")
+            .log_message(MessageType::INFO, "{refact-lsp} file closed")
             .await;
         let uri = params.text_document.uri.to_string();
         info!("{uri} closed");
@@ -206,7 +249,7 @@ impl LanguageServer for Backend {
         info!("asked for completion");
         Ok(Some(CompletionResponse::Array(vec![
             CompletionItem::new_simple("Hello".to_string(), "Some detail".to_string()),
-            CompletionItem::new_simple("Bye".to_string(), "More detail".to_string())
+            CompletionItem::new_simple("Bye".to_string(), "More detail".to_string()),
         ])))
     }
 }
@@ -220,7 +263,7 @@ pub fn build_lsp_service(
         document_map: Arc::new(ARwLock::new(HashMap::new())),
         workspace_folders: Arc::new(ARwLock::new(None)),
     })
-    // .custom_method("llm-ls/getCompletions", Backend::get_completions)
-    .finish();
+        .custom_method("refact/getCompletions", Backend::get_completions)
+        .finish();
     (lsp_service, socket)
 }
