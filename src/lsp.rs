@@ -100,14 +100,13 @@ pub struct CompletionRes {
 }
 
 impl Backend {
-    async fn params_to_body(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
+    async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> CodeCompletionPost {
         let document_map = self.document_map.read().await;
         let document = document_map
             .get(params.text_document_position.text_document.uri.as_str())
             .unwrap();
         let txt = &document.text;
-
-        Ok(CodeCompletionPost {
+        CodeCompletionPost {
             inputs: CodeCompletionInputs {
                 sources: HashMap::from([(String::from(&params.text_document_position.text_document.uri.to_string()),
                                          (&txt).to_string())]),
@@ -127,14 +126,14 @@ impl Backend {
             model: "".to_string(),
             scratchpad: "".to_string(),
             stream: false,
-        })
+        }
     }
 
     pub async fn get_completions(&self, params: CompletionParams1) -> Result<CompletionRes> {
-        let mut post = self.params_to_body(&params).await;
+        let mut post = self.flat_params_to_code_completion_post(&params).await;
 
         let res = handle_v1_code_completion(self.gcx.clone(),
-                                            &mut post?).await;
+                                            &mut post).await;
         let resp = res.unwrap();
         let body_bytes = hyper::body::to_bytes(resp.into_body()).await.unwrap();
 
@@ -163,7 +162,7 @@ impl LanguageServer for Backend {
         };
         Ok(InitializeResult {
             server_info: Some(ServerInfo {
-                name: "llm-ls".to_owned(),
+                name: "refact".to_owned(),
                 version: Some(VERSION.to_owned()),
             }),
             capabilities: ServerCapabilities {
@@ -187,9 +186,6 @@ impl LanguageServer for Backend {
     // textDocument/didClose
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        self.client
-            .log_message(MessageType::INFO, "{llm-ls} file opened")
-            .await;
         let rope = ropey::Rope::from_str(&params.text_document.text);
         let uri = params.text_document.uri.to_string();
         *self
@@ -204,9 +200,6 @@ impl LanguageServer for Backend {
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let t0 = Instant::now();
-        self.client
-            .log_message(MessageType::INFO, "{llm-ls} file changed")
-            .await;
         let rope = ropey::Rope::from_str(&params.content_changes[0].text);
         let uri = params.text_document.uri.to_string();
         let mut document_map = self.document_map.write().await;
