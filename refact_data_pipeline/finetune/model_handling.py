@@ -108,19 +108,13 @@ def save_model_state(model, save_path, tag):
         'ds_config', 'ds_version'
     }
     
-    print("model.save_checkpoint")
     model.save_checkpoint(save_dir=save_path, tag=tag)
     cp_path = Path(save_path) / tag
-    print("model_cps")
     model_cps = [p for p in cp_path.iterdir() if 'model_states' in p.name]
     _ = [p.unlink() for p in cp_path.iterdir() if 'model_states' not in p.name]
-    print("iterate through model_cps")
     for cp_path in model_cps:
-        print(cp_path)
-        print("load")
         cp = th.load(str(cp_path), map_location='cpu')
         cp = {k: v for k, v in cp.items() if k in keys_white_list}
-        print("save")
         th.save(cp, str(cp_path))
 
 
@@ -196,7 +190,6 @@ def setup_model_specific_params(
     assert model_name in supported_models.config
     model_config = supported_models.config[model_name]
     freeze_exceptions = [model_config["freeze_exceptions_mapping"][e] for e in freeze_exceptions]
-    print(f'lora_target_modules: {lora_target_modules}')
     lora_target_modules_mapping = [m for modules in lora_target_modules
                                    for m in model_config["lora_target_modules_mapping"][modules]]
     return list(set(freeze_exceptions)), list(set(lora_target_modules_mapping))

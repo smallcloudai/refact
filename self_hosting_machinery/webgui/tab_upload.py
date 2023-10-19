@@ -111,7 +111,6 @@ class TabUploadRouter(APIRouter):
         }
         uploaded_path = env.DIR_UPLOADS
         if os.path.isfile(env.CONFIG_HOW_TO_UNZIP):
-            print('Config how to unzip')
             how_to_process = json.load(open(env.CONFIG_HOW_TO_UNZIP, "r"))
         else:
             how_to_process = {'uploaded_files': {}}
@@ -119,7 +118,6 @@ class TabUploadRouter(APIRouter):
         scan_stats = {"uploaded_files": {}}
         stats_uploaded_files = {}
         if os.path.isfile(env.CONFIG_PROCESSING_STATS):
-            print('config processing stats')
             scan_stats = json.load(open(env.CONFIG_PROCESSING_STATS, "r"))
             mtime = os.path.getmtime(env.CONFIG_PROCESSING_STATS)
             stats_uploaded_files = scan_stats.get("uploaded_files", {})
@@ -144,7 +142,6 @@ class TabUploadRouter(APIRouter):
         }
         print(uploaded_path)
         for fn in sorted(os.listdir(uploaded_path)):
-            print(fn)
             result["uploaded_files"][fn] = {
                 "which_set": how_to_process["uploaded_files"].get(fn, default)["which_set"],
                 "to_db": how_to_process["uploaded_files"].get(fn, default)["to_db"],
@@ -152,7 +149,6 @@ class TabUploadRouter(APIRouter):
                 **stats_uploaded_files.get(fn, {})
             }
             if os.path.exists(os.path.join(uploaded_path, fn, env.GIT_CONFIG_FILENAME)):
-                print('is_git_true')
                 with open(os.path.join(uploaded_path, fn, env.GIT_CONFIG_FILENAME)) as f:
                     config = json.load(f)
                 result["uploaded_files"][fn].update({
@@ -164,7 +160,6 @@ class TabUploadRouter(APIRouter):
         result.update(scan_stats)
 
         prog, status = get_prog_and_status_for_ui()
-        print('_tab_files_get')
         working = status in ["starting", "working"]
         result["finetune_working_now"] = ((prog in ["prog_filter", "prog_ftune"]) and working)
 
@@ -308,7 +303,6 @@ class TabUploadRouter(APIRouter):
 
     async def _upload_files_process_now(self):
         _start_process_now()
-        logging.info('_upload_files_process_now executed')
         return JSONResponse("OK")
 
 

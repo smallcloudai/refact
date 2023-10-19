@@ -97,12 +97,10 @@ def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
 def get_finetune_config(models_db: Dict[str, Any], logger: Optional[Callable] = None) -> Dict[str, Any]:
     cfg = copy.deepcopy(finetune_train_defaults)
     if os.path.exists(env.CONFIG_FINETUNE):
-        print('user config exists')
         if logger is not None:
             logger("Reading %s" % env.CONFIG_FINETUNE)
         cfg.update(**json.load(open(env.CONFIG_FINETUNE)))
     if cfg.get("model_name", None) not in models_db:
-        print('user config does not exist')
         cfg["model_name"] = default_finetune_model
     return cfg
 
@@ -148,7 +146,6 @@ def get_prog_and_status_for_ui() -> (str, str):
     prog, status = _get_status_by_watchdog()
 
     if os.path.exists(env.FLAG_LAUNCH_PROCESS_UPLOADS):
-        print('FLAG_LAUNCH_PROCESS_UPLOADS exists')
         return "prog_linguist", "starting"
 
     if os.path.exists(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY):
