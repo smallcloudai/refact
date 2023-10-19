@@ -114,7 +114,6 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_finetune_get(self):
         prog, status = get_prog_and_status_for_ui()
-        print('_tab_fine_tune_get')
         working = status in ["starting", "working"]
         result = {
             "prog_name": prog,
