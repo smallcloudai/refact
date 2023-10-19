@@ -1,8 +1,7 @@
-from setuptools import setup
+from setuptools import setup, find_packages
+
 
 setup(
-    name="refact-lsp",
-    py_modules=["refact_lsp"],
     version="0.0.1",
     url="https://github.com/smallcloudai/refact_lsp",
     summary="LSP server for Refact, suitable for Sublime Text, and other editors",

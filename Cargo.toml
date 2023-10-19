@@ -1,0 +1,41 @@
+[package]
+name = "code-scratchpads"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hyper = { version = "0.14", features = ["server", "stream"] }
+reqwest = { version = "0.11", features = ["json", "stream"] }
+tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal"] }
+reqwest-eventsource = "0.4.0"
+url = "2.4.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tower = "0.4"
+tower-lsp = "0.20"
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tokenizers = "0.13"
+ropey = "1.6"
+home = "0.5"
+structopt = "0.3"
+futures = "0.3"
+futures-core = "0.3"
+futures-util = "0.3"
+async-stream = "0.3.5"
+chrono = "0.4.31"
+difference = "2.0.0"
+regex = "1.9.5"
+
+#use = "0.0.0"
+#async-trait = "0.1.73"
+#route-recognizer = "0.3.1"
+#bytes = "0.5"
+#eventsource-client = "0.11.0"
+#reqwest-streams = { version = "0.3.0", features = ["json"] }
+#tokio-stream = "0.1.14"
+#eventsource-stream = "0.2.3"
+
