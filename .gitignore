@@ -161,3 +161,4 @@ dmypy.json
 *.code-workspace
 
 workdir
+Cargo.lock
