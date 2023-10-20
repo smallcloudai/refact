@@ -1,3 +1,4 @@
+# pip install pylspclient
 import pylspclient
 import argparse
 import socket
@@ -22,7 +23,6 @@ def main():
     lsp_client.initialize(1337, None, root_uri, None, capabilities, "off", workspace_folders)
     uri = "file:///workspace/hello.py"
     languageId = pylspclient.lsp_structs.LANGUAGE_IDENTIFIER.PYTHON
-    version = 1
     lsp_client.didOpen(pylspclient.lsp_structs.TextDocumentItem(uri, languageId, version=1, text=hello_py))
 
     cc = lsp_client.lsp_endpoint.call_method(

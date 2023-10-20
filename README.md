@@ -55,7 +55,7 @@ curl http://127.0.0.1:8001/v1/code-completion -k \
 
 Output is `[{"code_completion": "\n    return \"Hello World!\"\n"}]`.
 
-[LSP example](examples/lsp_completion.ts)
+[LSP example](examples/lsp_completion.py)
 
 
 ## Telemetry
@@ -78,9 +78,10 @@ When using Refact self-hosted server, telemetry goes to the self-hosted server, 
 
 The `--address-url` parameter controls the behavior of this program by a lot. The address is first used
 to construct `$URL/coding_assistant_caps.json` address to fetch the caps file. Furthermore, there are
-compiled-in caps files you can use by magic addresses "Refact" and "HF".
+compiled-in caps you can use by magic addresses "Refact" and "HF".
 
-The caps file defines which models are running, where to send the telemetry, how to download a
+The caps file describes which models are running, default models for completion and chat,
+where to send the telemetry, how to download a
 tokenizer, where is the endpoint to access actual language models. To read more, check out
 compiled-in caps in [caps.rs](src/caps.rs).
 
@@ -94,4 +95,4 @@ You can also run [measure_humaneval_fim.py](tests/measure_humaneval_fim.py) for 
 
 ## Credits
 
-The initial version of this project was written by looking at llm-ls by @McPatate. He's a Rust fan who inspired this project!
+The initial version of this project was written by looking at llm-ls by [@McPatate](https://github.com/McPatate). He's a Rust fan who inspired this project!

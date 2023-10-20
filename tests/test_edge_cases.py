@@ -82,7 +82,7 @@ def pretty_print_wrapper(
     return ans
 
 
-def test_battery(model, stream):
+def test_edge_cases(model, stream):
     x = pretty_print_wrapper(hello_world, model=model, stream=stream, multiline=False, cursor_line=2, cursor_character=52)
     assert x.rstrip() in ["rue", "rue."], x
     x = pretty_print_wrapper(hello_world, model=model, stream=stream, multiline=False, cursor_line=3, cursor_character=7)
@@ -98,5 +98,7 @@ def test_battery(model, stream):
 
 
 if __name__ == "__main__":
-    test_battery("", stream=True)
-    # test_battery("bigcode/starcoder", stream=False)
+    test_edge_cases(
+        model="",     # use default model if empty
+        stream=True   # both stream and not stream should work
+    )
