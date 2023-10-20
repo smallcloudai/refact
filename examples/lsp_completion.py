@@ -3,10 +3,10 @@ import argparse
 import socket
 import os
 import time
+import termcolor
 
 
 hello_py = "def hello_world():\n    "
-
 
 
 def main():
@@ -35,8 +35,7 @@ def main():
         },
         multiline=False
     )
-    print("CC:", cc)
-
+    print("CC result:", cc)
     try:
         # pylspclient conflicts with tower-lsp, shutdown() below sends {} as parameters and lsp-tower expects something else
         # the result is:
@@ -47,8 +46,12 @@ def main():
         pass
     lsp_endpoint.join()
 
+    print("%s%s" % (
+        termcolor.colored(hello_py, "green"),
+        termcolor.colored(cc["choices"][0]["code_completion"], "magenta")
+    ))
+
 
 if __name__ == "__main__":
     main()
-
 
