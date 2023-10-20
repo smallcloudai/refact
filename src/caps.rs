@@ -195,7 +195,7 @@ const HF_DEFAULT_CAPS: &str = r#"
 }
 "#;
 
-const SMC_DEFAULT_CAPS: &str = r#"
+const REFACT_DEFAULT_CAPS: &str = r#"
 {
     "cloud_name": "Refact",
     "endpoint_template": "https://inference.smallcloud.ai/v1/completions",
@@ -219,7 +219,7 @@ pub async fn load_caps(
         buffer = HF_DEFAULT_CAPS.to_string();
         report_url = "<compiled-in-caps-hf>".to_string();
     } else if cmdline.address_url == "Refact" {
-        buffer = SMC_DEFAULT_CAPS.to_string();
+        buffer = REFACT_DEFAULT_CAPS.to_string();
         report_url = "<compiled-in-caps-smc>".to_string();
     } else if not_http {
         let base: PathBuf = PathBuf::from(cmdline.address_url.clone());
