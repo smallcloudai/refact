@@ -161,7 +161,7 @@ pub async fn handle_v1_code_completion(
     if !code_completion_post.stream {
         crate::restream::scratchpad_interaction_not_stream(global_context.clone(), scratchpad, "completion".to_string(), &prompt, model_name, client1, api_key, &code_completion_post.parameters).await
     } else {
-        crate::restream::scratchpad_interaction_stream(global_context.clone(), scratchpad, "completion-stream".to_string(), &prompt, model_name, client1, api_key, &code_completion_post.parameters).await
+        crate::restream::scratchpad_interaction_stream(global_context.clone(), scratchpad, "completion-stream".to_string(), prompt, model_name, client1, api_key, code_completion_post.parameters.clone()).await
     }
 }
 
@@ -220,12 +220,16 @@ async fn handle_v1_chat(
     )?;
     // info!("chat prompt {:?}\n{}", t1.elapsed(), prompt);
     info!("chat prompt {:?}", t1.elapsed());
-    let streaming = chat_post.stream.unwrap_or(false);
-    if streaming {
-        crate::restream::scratchpad_interaction_stream(global_context.clone(), scratchpad, "chat-stream".to_string(), &prompt, model_name, client1, api_key, &chat_post.parameters).await
-    } else {
-        crate::restream::scratchpad_interaction_not_stream(global_context.clone(), scratchpad, "chat".to_string(), &prompt, model_name, client1, api_key, &chat_post.parameters).await
-    }
+    crate::restream::scratchpad_interaction_stream(
+        global_context.clone(),
+        scratchpad,
+        "chat-stream".to_string(),
+        prompt,
+        model_name,
+        client1,
+        api_key,
+        chat_post.parameters.clone()
+    ).await
 }
 
 
