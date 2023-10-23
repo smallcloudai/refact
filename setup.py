@@ -37,7 +37,7 @@ all_refact_packages = {
     "refact_data_pipeline": PyPackage(
         requires=["numpy", "tokenizers==0.14.0", "torch", "requests", "cloudpickle",
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools',
-                  "cdifflib", "ujson", "zstandard", "scipy", "deepspeed==0.9.2",
+                  "cdifflib", "ujson", "zstandard", "scipy", "deepspeed==0.11.1",
                   "peft", "einops", "mpi4py", "matplotlib", "transformers",
                   "triton", "torchinfo", "giturlparse", "jsonlines",
                   "binpacking", "filelock", "tables==3.8.0", "pygments", "kshingle"],
