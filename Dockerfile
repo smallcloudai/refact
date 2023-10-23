@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
 
 RUN apt-get update
 RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
@@ -6,6 +6,7 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
     git \
     htop \
     tmux \
+    file \
     vim \
     expect \
     mpich \
