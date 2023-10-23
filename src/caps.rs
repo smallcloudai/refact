@@ -119,10 +119,12 @@ const KNOWN_MODELS: &str = r#"
         },
         "gpt-3.5": {
             "n_ctx": 4096,
-            "supports_scratchpads": {"PASSTHROUGH": {}},
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
             "similar_models": [
-                "gpt-4",
                 "gpt3.5",
+                "gpt-4",
                 "gpt4"
             ]
         },
@@ -200,6 +202,7 @@ const REFACT_DEFAULT_CAPS: &str = r#"
     "cloud_name": "Refact",
     "endpoint_template": "https://inference.smallcloud.ai/v1/completions",
     "endpoint_style": "openai",
+    "endpoint_chat_passthrough": "https://api.openai.com/v1/chat/completions",
     "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
     "tokenizer_rewrite_path": {},
     "code_completion_default_model": "smallcloudai/Refact-1_6B-fim",
