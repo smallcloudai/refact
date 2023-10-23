@@ -37,6 +37,8 @@ pub struct CodeCompletionPost {
     pub scratchpad: String,
     #[serde(default)]
     pub stream: bool,
+    #[serde(default)]
+    pub no_cache: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]

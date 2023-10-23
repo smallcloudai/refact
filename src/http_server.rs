@@ -128,14 +128,16 @@ pub async fn handle_v1_code_completion(
 
     let cache_arc = global_context.read().await.completions_cache.clone();
     let tele_storage = global_context.read().await.telemetry.clone();
-    let cache_key = completion_cache::cache_key_from_post(&code_completion_post);
-    let cached_maybe = completion_cache::cache_get(cache_arc.clone(), cache_key.clone());
-    if let Some(cached_json_value) = cached_maybe {
-        // info!("cache hit for key {:?}", cache_key.clone());
-        if !code_completion_post.stream {
-            return crate::restream::cached_not_stream(&cached_json_value).await;
-        } else {
-            return crate::restream::cached_stream(&cached_json_value).await;
+    if (!code_completion_post.no_cache) {
+        let cache_key = completion_cache::cache_key_from_post(&code_completion_post);
+        let cached_maybe = completion_cache::cache_get(cache_arc.clone(), cache_key.clone());
+        if let Some(cached_json_value) = cached_maybe {
+            // info!("cache hit for key {:?}", cache_key.clone());
+            if !code_completion_post.stream {
+                return crate::restream::cached_not_stream(&cached_json_value).await;
+            } else {
+                return crate::restream::cached_stream(&cached_json_value).await;
+            }
         }
     }
 

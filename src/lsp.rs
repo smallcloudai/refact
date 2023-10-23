@@ -126,6 +126,7 @@ impl Backend {
             model: "".to_string(),
             scratchpad: "".to_string(),
             stream: false,
+            no_cache: false
         }
     }
 
