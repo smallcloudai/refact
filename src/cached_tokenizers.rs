@@ -1,7 +1,14 @@
-use reqwest::header::AUTHORIZATION;
-use tracing::info;
 use tokio::io::AsyncWriteExt;
 use std::path::Path;
+use std::sync::Arc;
+use std::sync::RwLock as StdRwLock;
+use tokio::sync::RwLock as ARwLock;
+use tokenizers::Tokenizer;
+use reqwest::header::AUTHORIZATION;
+use tracing::info;
+
+use crate::global_context::GlobalContext;
+use crate::caps::CodeAssistantCaps;
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -10,7 +17,7 @@ pub struct Error {
     pub data: Option<serde_json::Value>,
 }
 
-pub async fn download_tokenizer_file(
+async fn _download_tokenizer_file(
     http_client: &reqwest::Client,
     http_path: &str,
     api_token: String,
@@ -45,4 +52,38 @@ pub async fn download_tokenizer_file(
         .map_err(|e| format!("failed to fetch bytes: {}", e))?
     ).await.map_err(|e| format!("failed to write to file: {}", e))?;
     Ok(())
+}
+
+pub async fn cached_tokenizer(
+    caps: Arc<StdRwLock<CodeAssistantCaps>>,
+    global_context: Arc<ARwLock<GlobalContext>>,
+    model_name: String,
+) -> Result<Arc<StdRwLock<Tokenizer>>, String> {
+    let mut cx_locked = global_context.write().await;
+    let client2 = cx_locked.http_client.clone();
+    let cache_dir = cx_locked.cache_dir.clone();
+    let tokenizer_arc = match cx_locked.tokenizer_map.get(&model_name) {
+        Some(arc) => arc.clone(),
+        None => {
+            let tokenizer_cache_dir = std::path::PathBuf::from(cache_dir).join("tokenizers");
+            tokio::fs::create_dir_all(&tokenizer_cache_dir)
+                .await
+                .expect("failed to create cache dir");
+            let path = tokenizer_cache_dir.join(model_name.clone()).join("tokenizer.json");
+            // Download it while it's locked, so another download won't start.
+            let http_path;
+            {
+                // To avoid deadlocks, in all other places locks must be in the same order
+                let caps_locked = caps.read().unwrap();
+                let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).unwrap_or(&model_name);
+                http_path = caps_locked.tokenizer_path_template.replace("$MODEL", rewritten_model_name);();
+            }
+            _download_tokenizer_file(&client2, http_path.as_str(), cx_locked.cmdline.api_key.clone(), &path).await?;
+            let tokenizer = Tokenizer::from_file(path).map_err(|e| format!("failed to load tokenizer: {}", e))?;
+            let arc = Arc::new(StdRwLock::new(tokenizer));
+            cx_locked.tokenizer_map.insert(model_name.clone(), arc.clone());
+            arc
+        }
+    };
+    Ok(tokenizer_arc)
 }

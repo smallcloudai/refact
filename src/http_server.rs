@@ -9,9 +9,7 @@ use hyper::{Body, Request, Response, Server, Method, StatusCode};
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
 use serde_json::json;
-use tokenizers::Tokenizer;
 
-use crate::cached_tokenizers;
 use crate::caps;
 use crate::scratchpads;
 use crate::call_validation::{CodeCompletionPost, ChatPost};
@@ -21,49 +19,12 @@ use crate::custom_error::ScratchError;
 use crate::telemetry_basic;
 use crate::telemetry_snippets;
 use crate::completion_cache;
-// use crate::vecdb_search::VecdbSearch;
 
-
-async fn _get_caps_and_tokenizer(
-    global_context: Arc<ARwLock<GlobalContext>>,
-    model_name: String,
-) -> Result<(Arc<StdRwLock<CodeAssistantCaps>>, Arc<StdRwLock<Tokenizer>>, reqwest::Client, String), String> {
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
-    let mut cx_locked = global_context.write().await;
-    let client1 = cx_locked.http_client.clone();
-    let client2 = cx_locked.http_client.clone();
-    let cache_dir = cx_locked.cache_dir.clone();
-    let tokenizer_arc = match cx_locked.tokenizer_map.get(&model_name) {
-        Some(arc) => arc.clone(),
-        None => {
-            let tokenizer_cache_dir = std::path::PathBuf::from(cache_dir).join("tokenizers");
-            tokio::fs::create_dir_all(&tokenizer_cache_dir)
-                .await
-                .expect("failed to create cache dir");
-            let path = tokenizer_cache_dir.join(model_name.clone()).join("tokenizer.json");
-            // Download it while it's locked, so another download won't start.
-            let http_path;
-            {
-                // To avoid deadlocks, in all other places locks must be in the same order
-                let caps_locked = caps.read().unwrap();
-                let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).unwrap_or(&model_name);
-                http_path = caps_locked.tokenizer_path_template.replace("$MODEL", rewritten_model_name);();
-            }
-            cached_tokenizers::download_tokenizer_file(&client2, http_path.as_str(), cx_locked.cmdline.api_key.clone(), &path).await?;
-            let tokenizer = Tokenizer::from_file(path).map_err(|e| format!("failed to load tokenizer: {}", e))?;
-            let arc = Arc::new(StdRwLock::new(tokenizer));
-            cx_locked.tokenizer_map.insert(model_name.clone(), arc.clone());
-            arc
-        }
-    };
-    Ok((caps, tokenizer_arc, client1, cx_locked.cmdline.api_key.clone()))
-}
 
 async fn _lookup_code_completion_scratchpad(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    caps: Arc<StdRwLock<CodeAssistantCaps>>,
     code_completion_post: &CodeCompletionPost,
 ) -> Result<(String, String, serde_json::Value), String> {
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
     let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
         caps::which_model_to_use(
@@ -80,10 +41,9 @@ async fn _lookup_code_completion_scratchpad(
 }
 
 async fn _lookup_chat_scratchpad(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    caps: Arc<StdRwLock<CodeAssistantCaps>>,
     chat_post: &ChatPost,
 ) -> Result<(String, String, serde_json::Value), String> {
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
     let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
         caps::which_model_to_use(
@@ -103,8 +63,9 @@ pub async fn handle_v1_code_completion(
     global_context: Arc<ARwLock<GlobalContext>>,
     code_completion_post: &mut CodeCompletionPost
 ) -> Result<Response<Body>, ScratchError> {
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
     let (model_name, scratchpad_name, scratchpad_patch) = _lookup_code_completion_scratchpad(
-        global_context.clone(),
+        caps.clone(),
         &code_completion_post,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", e))
@@ -119,16 +80,11 @@ pub async fn handle_v1_code_completion(
         code_completion_post.scratchpad = scratchpad_name.clone();
     }
     code_completion_post.parameters.temperature = Some(code_completion_post.parameters.temperature.unwrap_or(0.2));
-    let (_caps, tokenizer_arc, client1, api_key) = _get_caps_and_tokenizer(
-        global_context.clone(),
-        model_name.clone(),
-    ).await.map_err(|e|
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
-    )?;
-
-    let cache_arc = global_context.read().await.completions_cache.clone();
-    let tele_storage = global_context.read().await.telemetry.clone();
-    if (!code_completion_post.no_cache) {
+    let (client1, api_key, cache_arc, tele_storage) = {
+        let cx_locked = global_context.write().await;
+        (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone(), cx_locked.completions_cache.clone(), cx_locked.telemetry.clone())
+    };
+    if !code_completion_post.no_cache {
         let cache_key = completion_cache::cache_key_from_post(&code_completion_post);
         let cached_maybe = completion_cache::cache_get(cache_arc.clone(), cache_key.clone());
         if let Some(cached_json_value) = cached_maybe {
@@ -142,13 +98,15 @@ pub async fn handle_v1_code_completion(
     }
 
     let mut scratchpad = scratchpads::create_code_completion_scratchpad(
+        global_context.clone(),
+        caps,
+        model_name.clone(),
         code_completion_post.clone(),
         &scratchpad_name,
         &scratchpad_patch,
-        tokenizer_arc.clone(),
         cache_arc.clone(),
         tele_storage.clone(),
-    ).map_err(|e|
+    ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
     let t1 = std::time::Instant::now();
@@ -185,8 +143,9 @@ async fn handle_v1_chat(
     let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     )?;
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
     let (model_name, scratchpad_name, scratchpad_patch) = _lookup_chat_scratchpad(
-        global_context.clone(),
+        caps.clone(),
         &chat_post,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", e))
@@ -196,21 +155,20 @@ async fn handle_v1_chat(
     }
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(0.2));
     chat_post.model = model_name.clone();
-    let (_caps, tokenizer_arc, client1, api_key) = _get_caps_and_tokenizer(
-        global_context.clone(),
-        model_name.clone(),
-    ).await.map_err(|e|
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,format!("Tokenizer: {}", e))
-    )?;
-
+    let (client1, api_key) = {
+        let cx_locked = global_context.write().await;
+        (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
+    };
     let vecdb_search = global_context.read().await.vecdb_search.clone();
     let mut scratchpad = scratchpads::create_chat_scratchpad(
+        global_context.clone(),
+        caps,
+        model_name.clone(),
         chat_post.clone(),
         &scratchpad_name,
         &scratchpad_patch,
-        tokenizer_arc.clone(),
         vecdb_search,
-    ).map_err(|e|
+    ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
     let t1 = std::time::Instant::now();

@@ -12,6 +12,8 @@ use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::telemetry_storage;
 use crate::vecdb_search::VecdbSearch;
+use crate::custom_error::ScratchError;
+use hyper::StatusCode;
 
 
 #[derive(Debug, StructOpt, Clone)]
@@ -77,7 +79,7 @@ pub async fn caps_background_reload(
 
 pub async fn try_load_caps_quickly_if_not_present(
     global_context: Arc<ARwLock<GlobalContext>>,
-) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
+) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, ScratchError> {
     let caps_last_attempted_ts;
     {
         let cx_locked = global_context.write().await;
@@ -88,7 +90,7 @@ pub async fn try_load_caps_quickly_if_not_present(
     }
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
     if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
-        return Err("server is not reachable, no caps available".to_string());
+        return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "server is not reachable, no caps available".to_string()));
     }
     let caps_result = crate::caps::load_caps(
         CommandLine::from_args()
@@ -104,7 +106,7 @@ pub async fn try_load_caps_quickly_if_not_present(
                 Ok(caps)
             },
             Err(e) => {
-                Err(format!("server is not reachable: {}", e))
+                return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("server is not reachable: {}", e)));
             }
         }
     }
