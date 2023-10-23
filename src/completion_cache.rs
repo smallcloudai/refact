@@ -99,7 +99,7 @@ pub fn cache_key_from_post(
     let mut cursor_line = cursor_line_maybe.unwrap().to_string();
     let cpos = post.inputs.cursor.character as usize;
     if cpos < cursor_line.len() {
-        cursor_line = cursor_line[..cpos].to_string();
+        cursor_line = cursor_line.chars().take(cpos).collect();
     }
     let mut before_iter = rope.lines_at(post.inputs.cursor.line as usize).reversed();
     let mut linesvec = Vec::<String>::new();
@@ -147,9 +147,9 @@ impl Drop for CompletionSaveToCache {
             believe_chars += 1;
         }
         for char_num in 0..believe_chars {
-            let code_completion_ahead = self.completion0_text[char_num..].to_string();
-            let cache_key_ahead = (
-                self.cache_key.0.clone() + &self.completion0_text[..char_num],
+            let code_completion_ahead: String = self.completion0_text.chars().skip(char_num).collect();
+            let cache_key_ahead: (String, String) = (
+                self.cache_key.0.clone() + &self.completion0_text.chars().take(char_num).collect::<String>(),
                 self.cache_key.1.clone()
             );
             cache_put(self.cache_arc.clone(), cache_key_ahead, serde_json::json!(
