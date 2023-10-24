@@ -183,6 +183,7 @@ function render_runs() {
         const run_minutes = document.createElement("td");
         const run_steps = document.createElement("td");
         const run_active = document.createElement("td");
+        const run_download = document.createElement("td");
         const run_delete = document.createElement("td");
 
         run_name.innerHTML = `<div class="run-table-name">${run.run_id}<span>${run.model_name}</span></div>`
@@ -220,7 +221,14 @@ function render_runs() {
         const item_disabled = run_is_working ? "disabled" : ""
         run_delete.innerHTML = `<button class="btn btn-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
         if (find_checkpoints_by_run(run.run_id).length > 0) {
-            run_active.innerHTML = `<button class="btn btn-hover btn-primary btn-sm" ${item_disabled}><i class="bi bi-play-fill"></i></button>`;
+            run_active.innerHTML = `
+                <button class="btn btn-hover btn-primary btn-sm" ${item_disabled}>
+                <i class="bi bi-play-fill"></i>
+                </button>`;
+            run_download.innerHTML = `
+                <a href="/lora-download/${run.run_id}.zip" download class="btn btn-hover btn-primary btn-sm" ${item_disabled}>
+                <i class="bi bi-download"></i>
+                </a>`;
             if (!run_is_working) {
                 run_active.addEventListener('click', (event) => {
                     event.stopPropagation();
@@ -235,6 +243,7 @@ function render_runs() {
         run_table_row.appendChild(run_minutes);
         run_table_row.appendChild(run_steps);
         run_table_row.appendChild(run_active);
+        run_table_row.appendChild(run_download);
         run_table_row.appendChild(run_delete);
 
         if (!run_is_working) {

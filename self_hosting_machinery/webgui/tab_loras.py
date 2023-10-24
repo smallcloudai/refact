@@ -1,11 +1,13 @@
+import asyncio
+import aiofiles
 import os
 import subprocess
 
 from typing import Union
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, UploadFile, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from self_hosting_machinery import env
 from self_hosting_machinery.webgui.selfhost_webutils import log
@@ -57,6 +59,7 @@ class TabLorasRouter(APIRouter):
         super().__init__(*args, **kwargs)
         self.add_api_route("/lora-upload", self._upload_lora, methods=["POST"])
         self.add_api_route("/lora-upload-url", self._upload_lora_url, methods=["POST"])
+        self.add_api_route("/lora-download/{run_id}.zip", self._download_lora, methods=["GET"])
 
     async def _upload_lora(self, file: UploadFile):
         async def write_to_file() -> JSONResponse:
@@ -103,3 +106,33 @@ class TabLorasRouter(APIRouter):
         if resp.status_code != 200:
             return resp
         return JSONResponse("OK", status_code=200)
+
+    async def _download_lora(self, run_id: str):
+
+        async def _archived_content():
+            temp_filename = str(Path(env.TMPDIR) / f"{run_id}.zip")
+            try:
+                rm(temp_filename)
+                process = await asyncio.create_subprocess_exec(
+                    "zip", "-r", temp_filename, run_id, cwd=env.DIR_LORAS)
+                await process.wait()
+                if process.returncode != 0:
+                    raise RuntimeError("archive creation failed")
+
+                async with aiofiles.open(temp_filename, "rb") as f:
+                    while True:
+                        if not (contents := await f.read(1024 * 1024)):
+                            break
+                        yield contents
+            except BaseException as e:
+                rm(temp_filename)
+                err_msg = "Error while downloading: %s" % (e or str(type(e)))
+                log(err_msg)
+                raise HTTPException(detail=err_msg, status_code=500)
+            finally:
+                rm(temp_filename)
+
+        return StreamingResponse(
+            _archived_content(),
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename={run_id}.zip"})
