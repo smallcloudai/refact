@@ -222,7 +222,7 @@ pub fn unchanged_percentage(
     (common as f64) / (largest_of_two as f64)
 }
 
-async fn manage_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext>>) {
+async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext>>) {
     let tele_storage;
     let now = chrono::Local::now().timestamp();
     let enduser_client_version;
@@ -259,7 +259,7 @@ async fn manage_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext
         }
     }
 
-    if !mothership_enabled {
+    if !mothership_enabled || telemetry_corrected_snippets_dest.is_empty() {
         info!("telemetry snippets sending not enabled, skip");
         return;
     }
@@ -291,6 +291,6 @@ pub async fn tele_snip_background_task(
 ) -> () {
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
-        manage_finished_snippets(global_context.clone()).await;
+        send_finished_snippets(global_context.clone()).await;
     }
 }
