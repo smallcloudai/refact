@@ -147,11 +147,16 @@ function finetune_activate_run(run_id, checkpoint) {
     if (finetune_run.model_name !== finetune_configs_and_runs.completion_model.finetune) {
         const modal = document.getElementById('finetune-tab-model-warning-modal');
         const modal_instance = bootstrap.Modal.getOrCreateInstance(modal);
-        document.querySelector('#finetune-tab-model-warning-modal #model-warning-message').innerHTML = `
-        <label>
+        let warning_text = `
             This fine-tuning checkpoint is for <b>${finetune_run.model_name}</b> base model.
-            Your currently active model is <b>${finetune_configs_and_runs.completion_model.name}</b>, you can change it in the Model Hosting tab.
-        </label>
+            Your currently active model is <b>${finetune_configs_and_runs.completion_model.name}</b>,
+            you can change it in the Model Hosting tab.
+        `;
+        if (!finetune_configs_and_runs.completion_model.name) {
+            warning_text = `Choose completion model first to activate checkpoint.`;
+        }
+        document.querySelector('#finetune-tab-model-warning-modal #model-warning-message').innerHTML = `
+            <label>${warning_text}</label>
         `;
         modal_instance.show();
     } else if (checkpoint) {
@@ -216,6 +221,12 @@ function render_runs() {
         run_delete.innerHTML = `<button class="btn btn-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
         if (find_checkpoints_by_run(run.run_id).length > 0) {
             run_active.innerHTML = `<button class="btn btn-hover btn-primary btn-sm" ${item_disabled}><i class="bi bi-play-fill"></i></button>`;
+            if (!run_is_working) {
+                run_active.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    finetune_activate_run(run_table_row.dataset.run);
+                });
+            }
         } else {
             run_active.innerHTML = ``;
         }
@@ -234,10 +245,6 @@ function render_runs() {
                 delete_lora_modal_button.dataset.lora = lora_for_delete;
                 let delete_lora_modal_instance = bootstrap.Modal.getOrCreateInstance(delete_lora_modal);
                 delete_lora_modal_instance.show();
-            });
-            run_active.addEventListener('click', (event) => {
-                event.stopPropagation();
-                finetune_activate_run(run_table_row.dataset.run);
             });
         }
 
