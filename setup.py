@@ -46,7 +46,7 @@ all_refact_packages = {
         data=["git_command.exp"],
     ),
     "self_hosting_machinery": PyPackage(
-        requires=["aiohttp", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.10",
+        requires=["aiohttp", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
                   "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2",
                   "torch", "transformers", "termcolor", "accelerate", "bitsandbytes"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu", "refact_models",
