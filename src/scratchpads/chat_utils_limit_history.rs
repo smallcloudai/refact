@@ -53,7 +53,6 @@ pub fn limit_messages_history(
 
 pub fn limit_messages_history_in_bytes(
     post: &ChatPost,
-    context_size: usize,
     bytes_limit: usize,
     default_system_mesage: &String,
 ) -> Result<Vec<ChatMessage>, String>

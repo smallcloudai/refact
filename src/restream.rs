@@ -27,11 +27,11 @@ pub async fn scratchpad_interaction_not_stream(
     parameters: &SamplingParameters,
 ) -> Result<Response<Body>, ScratchError> {
     let t2 = std::time::SystemTime::now();
-    let (endpoint_style, endpoint_template, tele_storage) = {
+    let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage) = {
         let cx = global_context.write().await;
         let caps = cx.caps.clone().unwrap();
         let caps_locked = caps.read().unwrap();
-        (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), cx.telemetry.clone())
+        (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), caps_locked.endpoint_chat_passthrough.clone(), cx.telemetry.clone())
     };
     let mut save_url: String = String::new();
     let model_says = if endpoint_style == "hf" {
@@ -52,6 +52,7 @@ pub async fn scratchpad_interaction_not_stream(
             &prompt,
             &client,
             &endpoint_template,
+            &endpoint_chat_passthrough,
             &parameters,
         ).await
     }.map_err(|e| {
@@ -137,11 +138,11 @@ pub async fn scratchpad_interaction_stream(
     let t1 = std::time::SystemTime::now();
     let evstream = stream! {
         let scratch: &mut Box<dyn ScratchpadAbstract> = &mut scratchpad;
-        let (endpoint_style, endpoint_template, tele_storage) = {
+        let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage) = {
             let cx = global_context.write().await;
             let caps = cx.caps.clone().unwrap();
             let caps_locked = caps.read().unwrap();
-            (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), cx.telemetry.clone())
+            (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), caps_locked.endpoint_chat_passthrough.clone(), cx.telemetry.clone())
         };
         let mut save_url: String = String::new();
         loop {
@@ -163,6 +164,7 @@ pub async fn scratchpad_interaction_stream(
                     &prompt,
                     &client,
                     &endpoint_template,
+                    &endpoint_chat_passthrough,
                     &parameters,
                 ).await
             };

@@ -28,6 +28,7 @@ pub struct CodeAssistantCaps {
     pub cloud_name: String,
     pub endpoint_template: String,
     pub endpoint_style: String,
+    pub endpoint_chat_passthrough: String,
     pub tokenizer_path_template: String,
     pub tokenizer_rewrite_path: HashMap<String, String>,
     pub telemetry_basic_dest: String,
@@ -117,15 +118,12 @@ const KNOWN_MODELS: &str = r#"
                 }
             }
         },
-        "gpt-3.5": {
+        "gpt-3.5-turbo": {
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
             "similar_models": [
-                "gpt3.5",
-                "gpt-4",
-                "gpt4"
             ]
         },
         "starchat/15b/beta": {
@@ -208,7 +206,7 @@ const REFACT_DEFAULT_CAPS: &str = r#"
     "code_completion_default_model": "smallcloudai/Refact-1_6B-fim",
     "code_chat_default_model": "smallcloudai/Refact-1_6B-fim",
     "telemetry_basic_dest": "https://www.smallcloud.ai/v1/telemetry-basic",
-    "running_models": ["smallcloudai/Refact-1_6B-fim"]
+    "running_models": ["smallcloudai/Refact-1_6B-fim", "gpt-3.5-turbo"]
 }
 "#;
 

@@ -41,7 +41,7 @@ pub struct CodeCompletionPost {
     pub no_cache: bool,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatMessage {
     pub role: String,
     pub content: String,

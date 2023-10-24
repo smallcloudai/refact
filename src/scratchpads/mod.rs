@@ -59,10 +59,11 @@ pub async fn create_chat_scratchpad(
     vecdb_search: Arc<AMutex<Box<dyn vecdb_search::VecdbSearch + Send>>>,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
-    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context, model_name_for_tokenizer).await?;
     if scratchpad_name == "CHAT-GENERIC" {
+        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context, model_name_for_tokenizer).await?;
         result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc, post, vecdb_search));
     } else if scratchpad_name == "CHAT-LLAMA2" {
+        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context, model_name_for_tokenizer).await?;
         result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post, vecdb_search));
     } else if scratchpad_name == "PASSTHROUGH" {
         result = Box::new(chat_passthrough::ChatPassthrough::new(post, vecdb_search));
