@@ -226,13 +226,17 @@ function render_runs() {
                 <i class="bi bi-play-fill"></i>
                 </button>`;
             run_download.innerHTML = `
-                <a href="/lora-download/${run.run_id}.zip" download class="btn btn-hover btn-primary btn-sm" ${item_disabled}>
+                <a href="/lora-download?run_id=${run.run_id}"
+                   download class="btn btn-hover btn-primary btn-sm" ${item_disabled}>
                 <i class="bi bi-download"></i>
                 </a>`;
             if (!run_is_working) {
                 run_active.addEventListener('click', (event) => {
                     event.stopPropagation();
                     finetune_activate_run(run_table_row.dataset.run);
+                });
+                run_download.addEventListener('click', (event) => {
+                    event.stopPropagation();
                 });
             }
         } else {
@@ -384,9 +388,22 @@ function render_checkpoints(data = []) {
                 row.classList.add('table-success');
             }
             const activate_cell = document.createElement('td');
-            activate_cell.innerHTML = `<button class="btn btn-hover btn-primary btn-sm"><i class="bi bi-play-fill"></i></button>`;
+            const download_cell = document.createElement('td');
+
+            activate_cell.innerHTML = `
+                <button class="btn btn-hover btn-primary btn-sm">
+                <i class="bi bi-play-fill"></i>
+                </button>`;
+            download_cell.innerHTML = `
+                <a href="/lora-download?run_id=${selected_lora}&checkpoint_id=${element.checkpoint_name}"
+                   download class="btn btn-hover btn-primary btn-sm">
+                <i class="bi bi-download"></i>
+                </a>`;
+
             row.appendChild(activate_cell);
+            row.appendChild(download_cell);
             row.appendChild(cell);
+
             checkpoints.appendChild(row);
             activate_cell.addEventListener('click', (event) => {
                 if(!row.classList.contains('table-success')) {
@@ -397,6 +414,9 @@ function render_checkpoints(data = []) {
                     row.classList.add('table-success');
                 }
                 finetune_activate_run(selected_lora, cell.dataset.checkpoint);
+            });
+            activate_cell.addEventListener('click', (event) => {
+                event.stopPropagation();
             });
         });
     }
