@@ -280,22 +280,31 @@ fn _push_streaming_json_into_scratchpad(
     was_correct_output_even_if_error: &mut bool,
 ) -> Result<serde_json::Value, String> {
     if let Some(token) = json.get("token") { // hf style produces this
-        let text = token.get("text").unwrap().as_str().unwrap().to_string();
+        let text = token.get("text").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
         let mut value: serde_json::Value;
-        (value, *finished) = scratch.response_streaming(text, false, false).unwrap();
+        (value, *finished) = scratch.response_streaming(text, false, false)?;
         value["model"] = json!(model_name.clone());
         *was_correct_output_even_if_error |= json.get("generated_text").is_some();
-        // Ok(format!("data: {}\n\n", serde_json::to_string(&value).unwrap()));
         Ok(value)
     } else if let Some(choices) = json.get("choices") { // openai style
         let choice0 = &choices[0];
-        let text = choice0.get("text").unwrap().as_str().unwrap().to_string();
-        let finish_reason = choice0.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap().to_string();
+        let mut value: serde_json::Value;
+        let finish_reason = choice0.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
         let stop_toks = !finish_reason.is_empty() && finish_reason.starts_with("stop");
         let stop_length = !finish_reason.is_empty() && !finish_reason.starts_with("stop");
-        let mut value: serde_json::Value;
-        (value, *finished) = scratch.response_streaming(text, stop_toks, stop_length).unwrap();
-        *model_name = json["model"].as_str().unwrap().to_string();
+        if let Some(delta) = choice0.get("delta") {
+            // passthrough messages case
+            let _role = delta.get("role").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
+            let content = delta.get("content").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
+            (value, *finished) = scratch.response_streaming(content, stop_toks, stop_length)?;
+        } else {
+            // normal case
+            let text = choice0.get("text").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
+            (value, *finished) = scratch.response_streaming(text, stop_toks, stop_length)?;
+        }
+        if let Some(model_value) = choice0.get("model") {
+            model_name.clone_from(&model_value.as_str().unwrap_or("").to_string());
+        }
         value["model"] = json!(model_name.clone());
         Ok(value)
     } else {

@@ -75,7 +75,31 @@ impl ScratchpadAbstract for ChatPassthrough {
         stop_toks: bool,
         stop_length: bool,
     ) -> Result<(serde_json::Value, bool), String> {
-        unimplemented!()
+        // info!("chat passthrough response_streaming delta={:?}, stop_toks={}, stop_length={}", delta, stop_toks, stop_length);
+        let finished = stop_toks || stop_length;
+        let json_choices;
+        if finished {
+            json_choices = serde_json::json!([{
+                "index": 0,
+                "delta": {
+                    "role": "assistant",
+                    "content": delta
+                },
+                "finish_reason": serde_json::Value::String(if stop_toks { "stop".to_string() } else { "length".to_string() }),
+            }]);
+        } else {
+            json_choices = serde_json::json!([{
+                "index": 0,
+                "delta": {
+                    "role": "assistant",
+                    "content": delta
+                },
+                "finish_reason": serde_json::Value::Null
+            }]);
+        }
+        let ans = serde_json::json!({
+            "choices": json_choices,
+        });
+        Ok((ans, finished))
     }
 }
-
