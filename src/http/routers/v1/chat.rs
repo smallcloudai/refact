@@ -55,7 +55,7 @@ pub async fn handle_v1_chat(
         let cx_locked = global_context.write().await;
         (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
     };
-    let vecdb_search = global_context.read().await.vecdb_search.clone();
+    let vecdb_search = global_context.read().await.vec_db.clone();
     let mut scratchpad = scratchpads::create_chat_scratchpad(
         global_context.clone(),
         caps,

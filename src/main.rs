@@ -20,11 +20,12 @@ mod restream;
 mod custom_error;
 mod completion_cache;
 mod telemetry;
-mod vecdb_search;
 mod lsp;
 mod http;
 mod background_tasks;
 mod receive_workspace_changes;
+mod vecdb;
+
 
 #[tokio::main]
 async fn main() {
@@ -60,8 +61,13 @@ async fn main() {
     }
     let mut background_tasks = start_background_tasks(gcx.clone());
 
+    background_tasks.extend(match *gcx.read().await.vec_db.lock().await {
+        Some(ref db) => db.start_background_tasks().await,
+        None => vec![]
+    });
+
     let should_start_http = cmdline.http_port != 0;
-    let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) || 
+    let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||
         (cmdline.lsp_port != 0 && cmdline.lsp_stdin_stdout == 0);
 
     let mut main_handle: Option<JoinHandle<()>> = None;
@@ -78,7 +84,7 @@ async fn main() {
     if main_handle.is_some() {
         let _ = main_handle.unwrap().await;
     }
-    
+
     background_tasks.abort().await;
     info!("saving telemetry without sending, so should be quick");
     basic_transmit::basic_telemetry_compress(gcx.clone()).await;

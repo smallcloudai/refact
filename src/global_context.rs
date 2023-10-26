@@ -11,11 +11,11 @@ use std::io::Write;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::telemetry::telemetry_structs;
-use crate::vecdb_search::VecdbSearch;
 use crate::custom_error::ScratchError;
 use hyper::StatusCode;
 use tower_lsp::lsp_types::WorkspaceFolder;
 use crate::receive_workspace_changes::Document;
+use crate::vecdb::vecdb::VecDb;
 
 
 #[derive(Debug, StructOpt, Clone)]
@@ -40,6 +40,10 @@ pub struct CommandLine {
     pub lsp_stdin_stdout: u16,
     #[structopt(long, help="Trust self-signed SSL certificates")]
     pub insecure: bool,
+    #[structopt(long, help="Whether to use a vector database")]
+    pub vecdb: bool,
+    #[structopt(long, short = "f", default_value = "", help = "The path to jsonl file which contains filtered source files")]
+    pub files_set_path: String,
 }
 
 
@@ -64,7 +68,7 @@ pub struct GlobalContext {
     pub tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
-    pub vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
+    pub vec_db: Arc<AMutex<Option<VecDb>>>,
     pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
     pub lsp_backend_document_state: LSPBackendDocumentState,
 }
@@ -148,6 +152,27 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
+    let mut vec_db: Option<VecDb> = None;
+    if cmdline.vecdb {
+        vec_db = match VecDb::init(
+            cache_dir.clone(), cmdline.clone(),
+            384, 60, 512, 1024,
+            "BAAI/bge-small-en-v1.5".to_string(),
+        ).await {
+            Ok(res) => Some(res),
+            Err(err) => {
+                error!("Ooops database is broken!
+                    Last error message: {}
+                    You can report this issue here:
+                    https://github.com/smallcloudai/refact-lsp/issues
+                    Also you can run this to erase your db:
+                    `rm -rf ~/.cache/refact/refact_vecdb_cache`
+                    After that restart this LSP server or your IDE.", err);
+                None
+            }
+        };
+    }
+
 
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
@@ -159,7 +184,7 @@ pub async fn create_global_context(
         tokenizer_map: HashMap::new(),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
-        vecdb_search: Arc::new(AMutex::new(Box::new(crate::vecdb_search::VecdbSearchTest::new()))),
+        vec_db: Arc::new(AMutex::new(vec_db)),
         ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
         lsp_backend_document_state: LSPBackendDocumentState {
             document_map: Arc::new(ARwLock::new(HashMap::new())),
