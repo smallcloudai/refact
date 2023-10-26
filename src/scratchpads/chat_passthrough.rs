@@ -1,33 +1,33 @@
-use tracing::info;
 use std::sync::Arc;
-use tokio::sync::Mutex as AMutex;
+
 use async_trait::async_trait;
+use tokio::sync::Mutex as AMutex;
+use tracing::info;
 
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::call_validation::{ChatPost, ChatMessage, SamplingParameters, ContextFile};
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history_in_bytes;
-// use crate::vecdb_search::{VecdbSearch, embed_vecdb_results};
-use crate::vecdb_search::VecdbSearch;
-
+use crate::scratchpads::chat_utils_rag::embed_vecdb_results;
+use crate::vecdb::structs::VecdbSearch;
 
 const DEBUG: bool = true;
 
 
 // #[derive(Debug)]
-pub struct ChatPassthrough {
+pub struct ChatPassthrough<T> {
     pub post: ChatPost,
     pub default_system_message: String,
     pub limit_bytes: usize,
-    pub vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
+    pub vecdb_search: Arc<AMutex<Option<T>>>,
 }
 
-const DEFAULT_LIMIT_BYTES: usize = 4096*3;
+const DEFAULT_LIMIT_BYTES: usize = 4096*6;
 
-impl ChatPassthrough {
+impl<T: Send + Sync + VecdbSearch> ChatPassthrough<T> {
     pub fn new(
         post: ChatPost,
-        vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
-    ) -> Self {
+        vecdb_search: Arc<AMutex<Option<T>>>,
+    ) -> Self where T: VecdbSearch + 'static + Sync {
         ChatPassthrough {
             post,
             default_system_message: "".to_string(),
@@ -38,7 +38,7 @@ impl ChatPassthrough {
 }
 
 #[async_trait]
-impl ScratchpadAbstract for ChatPassthrough {
+impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for ChatPassthrough<T> {
     fn apply_model_adaptation_patch(
         &mut self,
         patch: &serde_json::Value,
@@ -53,7 +53,11 @@ impl ScratchpadAbstract for ChatPassthrough {
         _context_size: usize,
         _sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history_in_bytes(&self.post, self.limit_bytes, &self.default_system_message)?;
+        let augmented_msgs = match *self.vecdb_search.lock().await {
+            Some(ref db) => embed_vecdb_results(db, &self.post.messages, 6).await,
+            None => { self.post.messages.clone() }
+        };
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history_in_bytes(&augmented_msgs, self.limit_bytes, &self.default_system_message)?;
         info!("chat passthrough {} messages -> {} messages after applying limits and possibly adding the default system message", &limited_msgs.len(), &limited_msgs.len());
         let mut filtered_msgs: Vec<ChatMessage> = Vec::<ChatMessage>::new();
         for msg in &limited_msgs {
@@ -64,7 +68,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                 for context_file in &vector_of_context_files {
                     filtered_msgs.push(ChatMessage {
                         role: "user".to_string(),
-                        content: format!("{}\n```\n{}```", context_file.file_name, context_file.file_content),
+                        content: format!("{}:{}-{}\n```\n{}```", context_file.file_name, context_file.line1, context_file.line2, context_file.file_content),
                     });
                 }
             }

@@ -1,39 +1,40 @@
-use tracing::info;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use tokio::sync::Mutex as AMutex;
-use tokenizers::Tokenizer;
+
 use async_trait::async_trait;
+use tokenizers::Tokenizer;
+use tokio::sync::Mutex as AMutex;
+use tracing::info;
 
-use crate::scratchpad_abstract::ScratchpadAbstract;
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::HasTokenizerAndEot;
+use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
-use crate::call_validation::{ChatPost, ChatMessage, SamplingParameters, ContextFile};
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
-use crate::vecdb_search::{VecdbSearch, embed_vecdb_results};
-
+use crate::scratchpads::chat_utils_rag::embed_vecdb_results;
+use crate::vecdb::structs::VecdbSearch;
 
 const DEBUG: bool = true;
 
 
 // #[derive(Debug)]
-pub struct ChatLlama2 {
+pub struct ChatLlama2<T> {
     pub t: HasTokenizerAndEot,
     pub dd: DeltaDeltaChatStreamer,
     pub post: ChatPost,
     pub keyword_s: String, // "SYSTEM:" keyword means it's not one token
     pub keyword_slash_s: String,
     pub default_system_message: String,
-    pub vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
+    pub vecdb_search: Arc<AMutex<Option<T>>>,
 }
 
 
-impl ChatLlama2 {
+impl<T: Send + Sync + VecdbSearch> ChatLlama2<T> {
     pub fn new(
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: ChatPost,
-        vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
-    ) -> Self {
+        vecdb_search: Arc<AMutex<Option<T>>>,
+    ) -> Self where T: VecdbSearch + Send {
         ChatLlama2 {
             t: HasTokenizerAndEot::new(tokenizer),
             dd: DeltaDeltaChatStreamer::new(),
@@ -47,7 +48,7 @@ impl ChatLlama2 {
 }
 
 #[async_trait]
-impl ScratchpadAbstract for ChatLlama2 {
+impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for ChatLlama2<T> {
     fn apply_model_adaptation_patch(
         &mut self,
         patch: &serde_json::Value,
@@ -69,8 +70,11 @@ impl ScratchpadAbstract for ChatLlama2 {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        // embed_vecdb_results(self.vecdb_search.clone(), &mut self.post, 3).await;
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post, context_size, &self.default_system_message)?;
+        let augmented_msgs = match *self.vecdb_search.lock().await {
+            Some(ref db) => embed_vecdb_results(db, &self.post.messages, 6).await,
+            None => { self.post.messages.clone() }
+        };
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &augmented_msgs, self.post.parameters.max_new_tokens, context_size, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
         // loosely adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();

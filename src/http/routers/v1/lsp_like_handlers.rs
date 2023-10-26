@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
@@ -7,6 +8,7 @@ use url::Url;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 use crate::receive_workspace_changes;
+use crate::vecdb::file_filter::retrieve_files_by_proj_folders;
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -28,6 +30,14 @@ pub async fn handle_v1_lsp_initialize(
     let _post = serde_json::from_slice::<PostInit>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
+
+    let files = retrieve_files_by_proj_folders(
+        post.project_roots.iter().map(|x| PathBuf::from(x.path())).collect()
+    ).await;
+    match *global_context.read().await.vec_db.lock().await {
+        Some(ref mut db) => db.add_or_update_files(files, true).await,
+        None => {}
+    };
 
     Ok(Response::builder()
         .status(StatusCode::OK)

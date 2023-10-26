@@ -34,14 +34,14 @@ jobs:
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             code-target: win32-arm64
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             code-target: linux-x64
             container: ubuntu:18.04
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
             code-target: linux-arm64
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             target: arm-unknown-linux-gnueabihf
             code-target: linux-armhf
           - os: macos-11
@@ -68,7 +68,12 @@ jobs:
         if: matrix.container == 'ubuntu:18.04'
         shell: bash
         run: |
-          apt-get update && apt-get install -y build-essential curl libssl-dev pkg-config
+          apt-get update && apt install -y build-essential manpages-dev software-properties-common
+          add-apt-repository ppa:ubuntu-toolchain-r/test
+          apt-get install -y sudo build-essential curl libssl-dev pkg-config wget git zlib1g zlib1g-dev gcc-11 g++-11
+          unlink /usr/bin/gcc && ln -s /usr/bin/gcc-11 /usr/bin/gcc && unlink /usr/bin/g++ && ln -s /usr/bin/g++-11 /usr/bin/g++
+          wget https://github.com/Kitware/CMake/releases/download/v3.20.0/cmake-3.20.0.tar.gz
+          tar -zxvf cmake-3.20.0.tar.gz && cd cmake-3.20.0 && ./bootstrap && make && make install && cd.. && cmake --version
           curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --profile minimal --default-toolchain none -y
           echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
 
@@ -88,8 +93,22 @@ jobs:
 
       - name: Install ARM target toolchain
         if: matrix.target == 'arm-unknown-linux-gnueabihf'
-        run: sudo apt-get install gcc-multilib-arm-linux-gnueabihf
-      
+        run: sudo apt-get install gcc-arm-linux-gnueabihf
+
+      - name: Install toolchain dependencies (MacOS)
+        if: startsWith(matrix.os, 'macos')
+        run: brew install protobuf
+
+      - name: Install toolchain dependencies (Windows)
+        if: startsWith(matrix.os, 'windows')
+        run: choco install protoc
+
+      - name: Build and install protobuf library
+        if: matrix.target == 'arm-unknown-linux-gnueabihf' || matrix.target == 'x86_64-unknown-linux-gnu' || matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          git clone --depth=1 --recursive -b v25.1 https://github.com/protocolbuffers/protobuf
+          cd protobuf && cmake . && cmake --build . --parallel 10 && sudo cmake --install .
+
       - name: Build and test artifact
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
@@ -131,7 +150,12 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: apk add --no-cache git clang lld musl-dev nodejs npm openssl-dev pkgconfig g++
+        run: apk add --no-cache sudo git clang lld musl-dev nodejs npm openssl-dev pkgconfig g++ make cmake zlib linux-headers
+
+      - name: Build and install protobuf library
+        run: |
+          git clone --depth=1 --recursive -b v25.1 https://github.com/protocolbuffers/protobuf
+          cd protobuf && cmake . && cmake --build . --parallel 10 && sudo cmake --install .
 
       - name: Checkout repository
         uses: actions/checkout@v3
