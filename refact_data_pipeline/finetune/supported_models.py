@@ -167,7 +167,7 @@ config = {
         },
         "tokenizer": {
             "eot_idx": 6,
-            "padding_idx": 7, #?
+            "padding_idx": 7,
             "fim_prefix": 3,
             "fim_middle": 4,
             "fim_suffix": 5,
