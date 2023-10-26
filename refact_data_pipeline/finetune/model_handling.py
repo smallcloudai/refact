@@ -141,6 +141,9 @@ def setup_encoding(
     encoding.INFILL = model_config["tokenizer"]["fim_middle"]
     encoding.SUFFIX = model_config["tokenizer"]["fim_suffix"]
     encoding.ESCAPE = model_config["tokenizer"]["escape"]
+    encoding.BOS = model_config["tokenizer"]["bos"] if model_config["tokenizer"]["bos"] else ""
+    encoding.EOS = model_config["tokenizer"]["eos"] if model_config["tokenizer"]["eos"] else ""
+
     return encoding
 
 

@@ -65,6 +65,15 @@
         "rstrip": false,
         "normalized": false,
         "special": true
+      },
+      {
+        "id": 7,
+        "content": "",
+        "single_word": false,
+        "lstrip": false,
+        "rstrip": false,
+        "normalized": false,
+        "special": true
       }
     ],
     "normalizer": {

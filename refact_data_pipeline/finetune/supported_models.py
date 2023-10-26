@@ -167,11 +167,13 @@ config = {
         },
         "tokenizer": {
             "eot_idx": 6,
-            "padding_idx": 4, #?
+            "padding_idx": 7, #?
             "fim_prefix": 3,
             "fim_middle": 4,
             "fim_suffix": 5,
-            "escape": 14
+            "escape": 7,
+            "bos": 1,
+            "eos": 2
         },
         "train_ds_pipeline": {
             "ds_opts": "n_ctx={n_ctx},fim_probability=0.9,fim_drop_residual=1,"
