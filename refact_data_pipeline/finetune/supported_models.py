@@ -166,11 +166,11 @@ config = {
             "lora": "lora"
         },
         "tokenizer": {
-            "eot_idx": 0,
-            "padding_idx": 4,
-            "fim_prefix": 1,
-            "fim_middle": 2,
-            "fim_suffix": 3,
+            "eot_idx": 6,
+            "padding_idx": 4, #?
+            "fim_prefix": 3,
+            "fim_middle": 4,
+            "fim_suffix": 5,
             "escape": 14
         },
         "train_ds_pipeline": {
