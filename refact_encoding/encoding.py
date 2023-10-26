@@ -133,14 +133,18 @@ class RefactEncoding:
                     # print("%05i \"%s\"" % (i, self._tik.decode([i]).replace("\n", "\\n").replace("\r", "\\r")))
 
         elif name in ['llama']:
-            from sentencepiece import SentencePieceProcessor
-            filename = Path(__file__).resolve().parent / f"{name}.tokenizer.model"
-            self._sentencepiece_tokenizer = SentencePieceProcessor(str(filename))
-            self.n_vocab = self._sentencepiece_tokenizer.vocab_size()
-            self.bos_id: int = self._sentencepiece_tokenizer.bos_id()
-            self.DIAMOND = self._sentencepiece_tokenizer.unk_id()
-            self.EOT = self._sentencepiece_tokenizer.eos_id()
-            self.LF = 13
+            # from sentencepiece import SentencePieceProcessor
+            # filename = Path(__file__).resolve().parent / f"{name}.tokenizer.model"
+            # self._sentencepiece_tokenizer = SentencePieceProcessor(str(filename))
+            # self.n_vocab = self._sentencepiece_tokenizer.vocab_size()
+            # self.bos_id: int = self._sentencepiece_tokenizer.bos_id()
+            # self.DIAMOND = self._sentencepiece_tokenizer.unk_id()
+            # self.EOT = self._sentencepiece_tokenizer.eos_id()
+            # self.LF = 13
+            import tokenizers
+            filename = Path(__file__).resolve().parent / f"{name}.json"
+            self._tokenizer = tokenizers.Tokenizer.from_file(str(filename))
+
 
         elif name in ['bigcode_largemodel']:
             import tokenizers
