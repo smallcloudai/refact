@@ -75,22 +75,28 @@ def validate_description_dict(
     }
 
 
-def completions_wait_batch(req_session, my_desc, verbose=False):
+def completions_wait_batch(req_session: requests.Session, my_desc, verbose=False):
     resp = None
     json_resp = None
     for attempt in range(5):
         t0 = time.time()
         url = url_get_the_best() + "completions-wait-batch"
+        status: Optional[int] = None
         try:
             resp = req_session.post(url, json=my_desc, timeout=15, proxies={"http": "", "https": ""})
+            status = resp.status_code
             json_resp = resp.json()
+            status = resp.status_code
         except requests.exceptions.ReadTimeout as e:
             t1 = time.time()
             logger.warning("%0.1fms %s %s" % (1000*(t1 - t0), url, termcolor.colored("TIMEOUT", "green")))
             url_complain_doesnt_work()
             continue
         except Exception as e:
-            logger.warning("%s fetch batch failed: %s %s\nServer response was: \"%s\"" % (url, str(type(e)), str(e), resp.text[:150] if resp else "no response"))
+            logger.warning(
+                f"{url} fetch batch failed: {type(e)} '{e}'\n"
+                f"Server response was: {status} \"{txt[:150] if txt else 'no response'}\""
+            )
             url_complain_doesnt_work()
             continue
         if resp and resp.status_code != 200:
