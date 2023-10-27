@@ -31,9 +31,12 @@ async def completions_wait_batch(
     for attempt in range(5):
         t0 = time.time()
         url = stream_results.url_get_the_best() + "completions-wait-batch"
+        status: Optional[int] = None
         try:
             async with aio_session.post(url, json=my_desc, timeout=WAIT_TIMEOUT) as resp:
+                status = resp.status
                 txt = await resp.text()
+                status = resp.status
                 j = await resp.json()
         except asyncio.TimeoutError:
             t1 = time.time()
@@ -41,7 +44,10 @@ async def completions_wait_batch(
             stream_results.url_complain_doesnt_work()
             continue
         except aiohttp.ClientError as e:
-            logger.warning("%s fetch batch failed: %s %s\nServer response was: \"%s\"" % (url, str(type(e)), str(e), txt[:150] if txt else "no response"))
+            logger.warning(
+                f"{url} fetch batch failed: {type(e)} '{e}'\n"
+                f"Server response was: {status} \"{txt[:150] if txt else 'no response'}\""
+            )
             stream_results.url_complain_doesnt_work()
             continue
         if "retcode" not in j:
