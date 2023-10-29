@@ -21,6 +21,7 @@ use difference;
 // 4. Changes are translated to "after_walkaway_remaining50to95" etc
 
 const SNIP_FINISHED_AFTER : i64 = 300;
+const SNIP_TIMEOUT_AFTER : i64 = 300;
 
 
 #[derive(Debug, Clone)]
@@ -54,7 +55,8 @@ pub struct SnippetTelemetry {
     // pub remaining_percent_300s: f64,
     // pub remaining_percent_walkaway: f64,
     // pub walkaway_ms: u64,
-    pub created_at: i64
+    pub created_ts: i64,
+    pub accepted_ts: i64,
 }
 
 pub fn snippet_register(
@@ -70,7 +72,8 @@ pub fn snippet_register(
         accepted: false,
         corrected_by_user: "".to_string(),
         remaining_percent_30s: 0.0,
-        created_at: chrono::Local::now().timestamp(),
+        created_ts: chrono::Local::now().timestamp(),
+        accepted_ts: 0,
     };
     storage_locked.tele_snippet_next_id += 1;
     storage_locked.tele_snippets.push(snip);
@@ -103,6 +106,7 @@ pub async fn snippet_accepted(
     let snip = storage_locked.tele_snippets.iter_mut().find(|s| s.snippet_telemetry_id == snippet_telemetry_id);
     if let Some(snip) = snip {
         snip.accepted = true;
+        snip.accepted_ts = chrono::Local::now().timestamp();
         return true;
     }
     return false;
@@ -135,16 +139,19 @@ pub async fn sources_changed(
         if !orig_text.is_some() {
             continue;
         }
-        // let time_from_creation = chrono::Local::now().timestamp() - snip.created_at;
-        let (valid1, mut gray_suggested) = if_head_tail_equal_return_added_text(
+        if !snip.accepted {
+            continue;
+        }
+        let time_from_accepted = chrono::Local::now().timestamp() - snip.accepted_ts;
+        let (valid1, mut gray_corrected) = if_head_tail_equal_return_added_text(
             orig_text.unwrap(),
             text
         );
-        snip.corrected_by_user = gray_suggested.clone();
-        gray_suggested = gray_suggested.replace("\r", "");
-        info!("valid1: {:?}, gray_suggested: {:?}", valid1, gray_suggested);
+        gray_corrected = gray_corrected.replace("\r", "");
+        snip.corrected_by_user = gray_corrected.clone();
+        info!("valid1: {:?}, gray_corrected: {:?}", valid1, gray_corrected);
         info!("orig grey_text: {:?}", snip.grey_text);
-        let unchanged_percentage = unchanged_percentage(&gray_suggested, &snip.grey_text);
+        let unchanged_percentage = unchanged_percentage(&gray_corrected, &snip.grey_text);
         info!("unchanged_percentage {:.2}", unchanged_percentage);
     }
 }
@@ -247,11 +254,16 @@ async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext>>
         let mut to_remove: Vec<usize> = vec![];
         let mut storage_locked = tele_storage.write().unwrap();
         for (idx, snip) in &mut storage_locked.tele_snippets.iter().enumerate() {
-            if now - snip.created_at >= SNIP_FINISHED_AFTER {
-                if snip.accepted {
+            if snip.accepted && snip.accepted_ts != 0 {
+                if now - snip.accepted_ts >= SNIP_FINISHED_AFTER {
+                    to_remove.push(idx);
                     snips_send.push(snip.clone());
                 }
+                continue;
+            }
+            if now - snip.created_ts >= SNIP_TIMEOUT_AFTER {
                 to_remove.push(idx);
+                continue;
             }
         }
         for idx in to_remove.iter().rev() {
@@ -259,13 +271,23 @@ async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext>>
         }
     }
 
-    if !mothership_enabled || telemetry_corrected_snippets_dest.is_empty() {
+    if !mothership_enabled {
         info!("telemetry snippets sending not enabled, skip");
         return;
     }
+    if telemetry_corrected_snippets_dest.is_empty() {
+        info!("telemetry_corrected_snippets_dest is empty, skip");
+        return;
+    }
+    if snips_send.is_empty() {
+        info!("no snippets to send, skip");
+        return;
+    }
+    info!("sending {} snippets", snips_send.len());
 
     for snip in snips_send {
         let json_dict = serde_json::to_value(snip).unwrap();
+        info!("sending snippet: {:?}", json_dict);
         let big_json_snip = json!({
             "records": [json_dict],
             "ts_start": now,
@@ -290,7 +312,8 @@ pub async fn tele_snip_background_task(
     global_context: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> () {
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+        info!("tele_snip_background_task");
         send_finished_snippets(global_context.clone()).await;
     }
 }
