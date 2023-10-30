@@ -44,7 +44,11 @@ function render_gpus(gpus) {
         const used_mem = Math.round(element.mem_used_mb / (element.mem_total_mb / 100));
         gpu_name.innerHTML = element.name;
         gpu_mem.innerHTML = `<b>Mem</b><div class="gpus-mem-wrap"><div class="gpus-mem-bar"><span style="width: ${used_mem}%"></span></div>${used_gb}/${total_gb} GB</div>`;
-        gpu_temp.innerHTML = `<b>Temp</b>` + element.temp_celsius + '°C';
+        if (element.temp_celsius < 0) {
+            gpu_temp.innerHTML = `<b>Temp</b> N/A`;
+        } else {
+            gpu_temp.innerHTML = `<b>Temp</b>` + element.temp_celsius + '°C';
+        }
         row.appendChild(gpu_image);
         gpu_wrapper.appendChild(gpu_name);
         gpu_wrapper.appendChild(gpu_mem);
