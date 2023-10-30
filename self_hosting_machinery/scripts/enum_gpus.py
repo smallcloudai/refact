@@ -20,12 +20,18 @@ def query_nvidia_smi():
             "--format=csv"])
         for description in nvidia_smi_output.decode().splitlines()[1:]:
             gpu_bus_id, gpu_name, gpu_mem_used, gpu_mem_total, gpu_temp = description.split(", ")
+            gpu_mem_used_mb = int(gpu_mem_used.split()[0])
+            gpu_mem_total_mb = int(gpu_mem_total.split()[0])
+            try:
+                gpu_temp_celsius = int(gpu_temp.split()[0])
+            except ValueError:
+                gpu_temp_celsius = -1
             descriptions.append({
                 "id": gpu_bus_id,
                 "name": gpu_name,
-                "mem_used_mb": int(gpu_mem_used.split()[0]),
-                "mem_total_mb": int(gpu_mem_total.split()[0]),
-                "temp_celsius": int(gpu_temp.split()[0])
+                "mem_used_mb": gpu_mem_used_mb,
+                "mem_total_mb": gpu_mem_total_mb,
+                "temp_celsius": gpu_temp_celsius,
             })
     except Exception:
         logging.warning("nvidia-smi does not work, that's especially bad for initial setup.")
