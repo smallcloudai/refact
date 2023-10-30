@@ -1,0 +1,90 @@
+use axum::{Extension, http::{StatusCode, Uri}, response::IntoResponse, Router};
+use tokio::signal;
+use tower::ServiceExt;
+use tracing::info;
+
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use std::io::Write;
+use std::sync::Arc;
+use std::sync::RwLock as StdRwLock;
+use tokio::sync::RwLock as ARwLock;
+use hyper::{Body, Request, Response, Server, Method};
+use hyper::server::conn::AddrStream;
+use hyper::service::{make_service_fn, service_fn};
+use serde_json::json;
+
+use crate::caps;
+use crate::scratchpads;
+use crate::call_validation::{CodeCompletionPost, ChatPost};
+use crate::global_context::GlobalContext;
+use crate::caps::CodeAssistantCaps;
+use crate::custom_error::ScratchError;
+use crate::telemetry_basic;
+use crate::telemetry_snippets;
+use crate::completion_cache;
+use routers::make_v1_router;
+
+pub mod routers;
+mod utils;
+
+async fn handler_404(path: Uri) -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, format!("no handler for {}", path))
+}
+
+
+pub fn make_server() -> Router {
+    Router::new()
+        .fallback(handler_404)
+        .nest("/v1", make_v1_router())
+}
+
+
+pub async fn shutdown_signal(ask_shutdown_receiver: std::sync::mpsc::Receiver<String>) {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+        let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            info!("SIGINT signal received");
+        },
+        _ = terminate => {},
+        _ = tokio::task::spawn_blocking(move || ask_shutdown_receiver.recv()) => {
+            info!("graceful shutdown to store telemetry");
+        }
+    }
+}
+
+pub async fn start_server(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    ask_shutdown_receiver: std::sync::mpsc::Receiver<String>
+) -> Result<(), String> {
+    let port = global_context.read().await.cmdline.http_port;
+    let addr = ([127, 0, 0, 1], port).into();
+    let builder = Server::try_bind(&addr).map_err(|e| {
+        write!(std::io::stderr(), "PORT_BUSY {}\n", e).unwrap();
+        std::io::stderr().flush().unwrap();
+        format!("port busy, address {}: {}", addr, e)
+    })?;
+    info!("HTTP server listening on {}", addr);
+    let router = make_server().layer(Extension(global_context.clone()));
+    let server = builder
+        .serve(router.into_make_service())
+        .with_graceful_shutdown(shutdown_signal(ask_shutdown_receiver));
+    let resp = server.await.map_err(|e| format!("HTTP server error: {}", e));
+    resp
+}

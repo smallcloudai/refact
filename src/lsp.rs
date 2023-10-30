@@ -13,7 +13,7 @@ use tracing::{error, info};
 
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
 use crate::global_context;
-use crate::http_server::handle_v1_code_completion;
+use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::telemetry;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");

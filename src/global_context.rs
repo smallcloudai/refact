@@ -53,7 +53,7 @@ pub struct GlobalContext {
     pub vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
 }
 
-
+pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;
 const CAPS_RELOAD_BACKOFF: u64 = 60;       // seconds
 const CAPS_BACKGROUND_RELOAD: u64 = 3600;  // seconds
 
