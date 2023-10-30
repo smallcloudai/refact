@@ -57,7 +57,15 @@ const KNOWN_MODELS: &str = r#"
                 "FIM-SPM": {}
             },
             "default_scratchpad": "FIM-PSM",
-            "similar_models": ["bigcode/starcoderbase"]
+            "similar_models": [
+                "bigcode/starcoderbase",
+                "starcoder/15b/base",
+                "starcoder/15b/plus",
+                "starcoder/1b/base",
+                "starcoder/3b/base",
+                "starcoder/7b/base",
+                "wizardcoder/15b"
+            ]
         },
         "smallcloudai/Refact-1_6B-fim": {
             "n_ctx": 4096,
@@ -65,15 +73,9 @@ const KNOWN_MODELS: &str = r#"
                 "FIM-PSM": {},
                 "FIM-SPM": {}
             },
-            "default_scratchpad": "FIM-PSM",
+            "default_scratchpad": "FIM-SPM",
             "similar_models": [
-                "Refact/1.6B",
-                "starcoder/15b/base",
-                "starcoder/15b/plus",
-                "starcoder/1b/base",
-                "starcoder/3b/base",
-                "starcoder/7b/base",
-                "wizardcoder/15b"
+                "Refact/1.6B"
             ]
         },
         "codellama/CodeLlama-13b-hf": {
