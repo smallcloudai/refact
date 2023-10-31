@@ -45,9 +45,11 @@ ENV TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0+PTX"
 COPY . /tmp/app
 RUN pip install /tmp/app && rm -rf /tmp/app
 
+ENV MAX_JOBS=8
+ENV FLASH_ATTENTION_FORCE_BUILD="TRUE"
 RUN git clone -b feat/alibi https://github.com/smallcloudai/flash-attention.git /tmp/flash-attention \
     && cd /tmp/flash-attention \
-    && MAX_JOBS=8 python3 setup.py install
+    && python3 setup.py install
 
 ENV REFACT_PERM_DIR "/perm_storage"
 ENV REFACT_TMP_DIR "/tmp"
