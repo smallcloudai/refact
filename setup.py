@@ -40,9 +40,9 @@ all_refact_packages = {
     ),
     "self_hosting_machinery": PyPackage(
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
-                  "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2",
-                  "blobfile", "cloudpickle", "termcolor", "torch", "transformers", "accelerate",
-                  "bitsandbytes", "safetensors", "peft", "triton", "torchinfo", "mpi4py", "deepspeed==0.11.1"],
+                  "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2", "accelerate",
+                  "termcolor", "torch", "transformers", "bitsandbytes", "safetensors", "peft", "triton",
+                  "torchinfo", "mpi4py", "deepspeed==0.11.1"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
                            "known_models_db", "refact_data_pipeline"],
         data=["webgui/static/*", "webgui/static/js/*", "webgui/static/components/modals/*", "watchdog/watchdog.d/*"]),
