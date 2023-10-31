@@ -184,12 +184,18 @@ class ConfigBuilder:
         }
 
         scores_per_loraconfigs = {
-            (0, 1000): dict(lora_target_modules=[
+            (0, 8): dict(lora_target_modules=[
+                "qkv", "out", "mlp",
+            ], lora_r=64, lora_alpha=128, lora_dropout=0.01, lora_init_scale=0.01,
+                freeze_exceptions=[
+                    "lora"
+                ]),
+            (8, 1000): dict(lora_target_modules=[
                 "qkv", "out", "mlp",
             ], lora_r=64, lora_alpha=128, lora_dropout=0.01, lora_init_scale=0.01,
                 freeze_exceptions=[
                     "wte", "lm_head", "lora"
-                ]),
+                ])
         }
 
         score_acc = 0
@@ -222,12 +228,12 @@ class ConfigBuilder:
         min_iterations = 50
         round_to_iter = 50
         dslen_per_epochs = {
-            (0, 500): 60,
-            (500, 1000): 60,
-            (1000, 5000): 45,
-            (5000, 15000): 25,
-            (15000, 30000): 15,
-            (30000, 100000000): 5
+            (0, 500): 50,
+            (500, 1000): 50,
+            (1000, 5000): 35,
+            (5000, 15000): 20,
+            (15000, 30000): 10,
+            (30000, 100000000): 3
         }
         epochs = 1
         for (lhs_dslen, rhs_dslen), e in dslen_per_epochs.items():
@@ -248,4 +254,17 @@ class ConfigBuilder:
         gpu_mem = torch.cuda.get_device_properties('cuda').total_memory
         self.set_low_gpu_mem_mode(gpu_mem < 20_000_000_000)
         traces.log(f'Selected low_gpu_mem_mode={gpu_mem < 20_000_000_000} by total gpu memory\n')
+        return self
+
+    def set_trainable_embeddings(self, trainable_embeddings: bool) -> 'ConfigBuilder':
+        if not trainable_embeddings:
+            self.cfg['model_info']['freeze_exceptions'] = [
+                e
+                for e in self.cfg['model_info']['freeze_exceptions']
+                if e not in {"wte", "lm_head"}
+            ]
+        else:
+            freeze_exceptions = self.cfg['model_info']['freeze_exceptions'] + ["wte", "lm_head"]
+            freeze_exceptions = list(set(freeze_exceptions))
+            self.cfg['model_info']['freeze_exceptions'] = freeze_exceptions
         return self

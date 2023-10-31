@@ -528,6 +528,12 @@ function get_finetune_settings(defaults = false) {
         } else {
             document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked = false;
         }
+        const trainable_embeddings = settings_data.trainable_embeddings;
+        if(trainable_embeddings) {
+            document.querySelector('#finetune-tab-settings-modal #trainable_embeddings').checked = true;
+        } else {
+            document.querySelector('#finetune-tab-settings-modal #trainable_embeddings').checked = false;
+        }
         const use_heuristics = settings_data.use_heuristics;
         if(use_heuristics) {
             document.querySelector('#finetune-tab-settings-modal #use_heuristics').checked = true;
@@ -584,8 +590,12 @@ function change_finetune_model() {
 function save_finetune_settings() {
     // console.log('save_finetune_settings');
     let low_gpu = false;
+    let trainable_embeddings = false;
     if (document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked) {
         low_gpu = true;
+    }
+    if (document.querySelector('#finetune-tab-settings-modal #trainable_embeddings').checked) {
+        trainable_embeddings = true;
     }
     let use_heuristics = false;
     if (document.querySelector('#finetune-tab-settings-modal #use_heuristics').checked) {
@@ -610,6 +620,7 @@ function save_finetune_settings() {
             lora_alpha: document.querySelector('#finetune-tab-settings-modal #lora_alpha').value,
             lora_init_scale: document.querySelector('#finetune-tab-settings-modal #lora_init_scale').value,
             lora_dropout: document.querySelector('#finetune-tab-settings-modal #lora_dropout').value,
+            trainable_embeddings: trainable_embeddings,
             low_gpu_mem_mode: low_gpu
         })
     })

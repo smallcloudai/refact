@@ -6,7 +6,7 @@ import os
 import signal
 import time
 from pathlib import Path
-from typing import Dict, Any, Iterable, Tuple, Optional
+from typing import Dict, Any, Iterable, Tuple
 
 import torch as th
 
@@ -50,7 +50,8 @@ def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str,
          .set_lora_alpha(user_cfg['lora_alpha'])
          .set_lora_init_scale(user_cfg['lora_init_scale'])
          .set_lora_dropout(user_cfg['lora_dropout'])
-         .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode']))
+         .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
+         .set_trainable_embeddings(user_cfg['trainable_embeddings']))
         (cfg_builder
          .set_lr(user_cfg['lr'])
          .set_batch_size(user_cfg['batch_size'])
