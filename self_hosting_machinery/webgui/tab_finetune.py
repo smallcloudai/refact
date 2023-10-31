@@ -86,6 +86,7 @@ class TabFinetuneTrainingSetup(BaseModel):
     lora_alpha: Optional[float] = Query(default=32, ge=1, le=256)
     lora_init_scale: Optional[float] = Query(default=0.01, ge=0.0, le=1.0)
     lora_dropout: Optional[float] = Query(default=0.01, ge=0.0, le=0.5)
+    trainable_embeddings: Optional[bool] = Query(default=False)
     low_gpu_mem_mode: Optional[bool] = Query(default=True)
 
 
