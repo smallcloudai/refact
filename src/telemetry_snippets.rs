@@ -11,7 +11,7 @@ use crate::global_context;
 use crate::completion_cache;
 use crate::telemetry_storage;
 use crate::call_validation::CodeCompletionPost;
-use difference;
+use similar::{ChangeTag, TextDiff};
 
 
 // How it works:
@@ -131,15 +131,14 @@ pub async fn sources_changed(
     //     // Goal: diff orig vs compl, orig vs uedit. If head and tail are the same, then user edit is valid and useful.
     //     // Memorize the last valid user edit. At the point it becomes invalid, save feedback and forget.
     for snip in &mut storage_locked.tele_snippets {
-        info!("does {:?} match {:?}", uri, snip.inputs.cursor.file);
+        if !snip.accepted {
+            continue;
+        }
         if !uri.ends_with(&snip.inputs.cursor.file) {
             continue;
         }
         let orig_text = snip.inputs.sources.get(&snip.inputs.cursor.file);
         if !orig_text.is_some() {
-            continue;
-        }
-        if !snip.accepted {
             continue;
         }
         let time_from_accepted = chrono::Local::now().timestamp() - snip.accepted_ts;
@@ -160,46 +159,55 @@ pub fn if_head_tail_equal_return_added_text(
     text_a: &String,
     text_b: &String,
 ) -> (bool, String) {
-    let difference::Changeset { diffs, .. } = difference::Changeset::new(&text_a, &text_b, "\n");
-    let mut allow_remove_spaces_once = true;
+    let diff = TextDiff::from_lines(text_a, text_b);
+    // let mut allow_remove_spaces_once = true;
+    let mut adding_one_block = false;
     let mut added_one_block = false;
     let mut added_text = "".to_string();
     let mut kill_slash_n = false;
-    let mut failed = false;
     let regex_space_only = regex::Regex::new(r"^\s*$").unwrap();
-    for c in &diffs {
-        match *c {
-            difference::Difference::Rem(ref z) => {
-                if !allow_remove_spaces_once {
-                    failed = true;
+    for c in diff.iter_all_changes() {
+        match c.tag() {
+            ChangeTag::Delete => {
+                info!("- {}", c.value());
+                if adding_one_block {
+                    added_one_block = true;
                 }
-                allow_remove_spaces_once = false;
-                let whitespace_only = regex_space_only.is_match(&z);
+
+                // if !allow_remove_spaces_once {
+                //     return (false, "".to_string());
+                // }
+                // allow_remove_spaces_once = false;
+                let whitespace_only = regex_space_only.is_match(&c.value());
                 if !whitespace_only {
-                    failed = true;
+                    error!("if_head_tail_equal_return_added_text: whitespace_only is false");
+                    return (false, "".to_string());
                 }
-                if z.ends_with("\n") {
+                if c.value().ends_with("\n") {
                     kill_slash_n = true;
                 }
             }
-            difference::Difference::Add(ref z) => {
+            ChangeTag::Insert => {
+                info!("+ {}", c.value());
                 if added_one_block {
-                    failed = true;
+                    error!("if_head_tail_equal_return_added_text: added_one_block is true");
+                    return (false, "".to_string());
                 }
-                added_one_block = true;
-                added_text = z.clone();
+                adding_one_block = true;
+                added_text += c.value().clone();
             }
-            difference::Difference::Same(ref _z) => {
+            ChangeTag::Equal => {
+                if adding_one_block {
+                    added_one_block = true;
+                }
+                info!("= {}", c.value());
             }
         }
-    }
-    if failed {
-        return (false, "".to_string());
     }
     if kill_slash_n {
         if !added_text.ends_with("\n") {
             // should not normally happen, but who knows
-            info!("if_head_tail_equal_return_added_text: added_text does not end with \\n");
+            error!("if_head_tail_equal_return_added_text: added_text does not end with \\n");
             return (false, "".to_string());
         }
         added_text = added_text[..added_text.len() - 1].to_string();
@@ -211,17 +219,16 @@ pub fn unchanged_percentage(
     text_a: &String,
     text_b: &String,
 ) -> f64 {
-    let char_level = "";
-    let difference::Changeset { diffs, .. } = difference::Changeset::new(&text_a, &text_b, char_level);
+    let diff = TextDiff::from_chars(text_a, text_b);
     let mut common = 0;
-    for c in &diffs {
-        match *c {
-            difference::Difference::Rem(ref _z) => {
+    for c in diff.iter_all_changes() {
+        match c.tag() {
+            ChangeTag::Delete => {
             }
-            difference::Difference::Add(ref _z) => {
+            ChangeTag::Insert => {
             }
-            difference::Difference::Same(ref z) => {
-                common += z.len();
+            ChangeTag::Equal => {
+                common += c.value().len();
             }
         }
     }
