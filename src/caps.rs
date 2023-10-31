@@ -28,6 +28,7 @@ pub struct CodeAssistantCaps {
     pub cloud_name: String,
     pub endpoint_template: String,
     pub endpoint_style: String,
+    #[serde(default)]
     pub endpoint_chat_passthrough: String,
     pub tokenizer_path_template: String,
     pub tokenizer_rewrite_path: HashMap<String, String>,
