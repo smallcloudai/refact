@@ -1,4 +1,5 @@
 import importlib
+import json
 import logging
 from functools import partial
 from pathlib import Path
@@ -8,8 +9,9 @@ import deepspeed
 import torch
 from torchinfo import summary
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from safetensors.torch import save_file
 
-from refact_models.lora import LoraMixin
+from self_hosting_machinery.finetune.modelling.lora import LoraMixin
 from self_hosting_machinery.finetune.configuration import supported_models
 from self_hosting_machinery.finetune.modelling.loss import masked_loss
 from self_hosting_machinery.finetune.modelling.utils import map_model_specific_params
@@ -199,21 +201,24 @@ class ModelContext:
             save_path: str,
             tag: str
     ):
-        keys_white_list = {
-            'module', 'buffer_names', 'optimizer', 'param_shapes', 'frozen_param_shapes',
-            'lr_scheduler', 'data_sampler', 'random_ltd', 'sparse_tensor_module_names',
-            'skipped_steps', 'global_steps', 'global_samples', 'dp_world_size', 'mp_world_size',
-            'ds_config', 'ds_version'
-        }
-
         self.model.save_checkpoint(save_path, tag=tag)
         cp_path = Path(save_path) / tag
         model_cps = [p for p in cp_path.iterdir() if 'model_states' in p.name]
         _ = [p.unlink() for p in cp_path.iterdir() if 'model_states' not in p.name]
         for cp_path in model_cps:
             cp = torch.load(str(cp_path), map_location='cpu')
-            cp = {k: v for k, v in cp.items() if k in keys_white_list}
-            torch.save(cp, str(cp_path))
+            tensors = {k: v.contiguous() for k, v in cp["module"].items()}
+            meta: Dict[str, str] = {
+                "skipped_steps": str(cp["skipped_steps"]),
+                "global_steps": str(cp["global_steps"]),
+                "global_samples": str(cp["global_samples"]),
+                "dp_world_size": str(cp["dp_world_size"]),
+                "mp_world_size": str(cp["mp_world_size"]),
+                "ds_config": json.dumps(cp["ds_config"]),
+                "ds_version": str(cp["ds_version"]),
+            }
+            save_file(tensors, cp_path.with_suffix(".safetensors"), metadata=meta)
+            cp_path.unlink()
 
     def _freeze_model(
             self,
