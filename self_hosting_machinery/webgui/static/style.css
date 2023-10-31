@@ -574,6 +574,15 @@ h3 {
     font-weight: bold;
     margin-bottom: 5px;
 }
+.ftune-progress {
+    width: 100%;
+}
+.ftune-eta {
+    opacity: 0.5;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
 .upload-tab-table-count-sort,
 .upload-tab-table-mime-sort
  {
