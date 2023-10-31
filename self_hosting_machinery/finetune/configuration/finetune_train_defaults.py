@@ -12,8 +12,6 @@ finetune_train_defaults = {
     "lora_alpha": 32,
     "lora_init_scale": 0.01,
     "lora_dropout": 0.01,
-    "low_gpu_mem_mode": True,
-    "lora_target_modules": ["qkv", "out", "mlp"],
-    "freeze_exceptions": ["wte", "lm_head", "lora"],
-    "save_every": 10
+    "trainable_embeddings": False,
+    "low_gpu_mem_mode": True
 }
