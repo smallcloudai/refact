@@ -25,10 +25,6 @@ all_refact_packages = {
     "refact_encoding": PyPackage(
         requires=["tiktoken", "tokenizers==0.14.0", "sentencepiece", "termcolor"],
         data=["*.json"]),
-    "refact_models": PyPackage(
-        requires=["torch", "blobfile", "cloudpickle", "fsspec==2023.1.0", "huggingface_hub==0.16.4",
-                  "transformers", "dataclasses", "dataclasses_json"],
-        requires_packages=["refact_encoding"]),
     "refact_scratchpads": PyPackage(
         requires=["termcolor", "torch"],
         requires_packages=["refact_encoding", "code_contrast", "refact_scratchpads_no_gpu"]),
@@ -36,20 +32,18 @@ all_refact_packages = {
         requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson", "setproctitle"]),
     "refact_data_pipeline": PyPackage(
         requires=["numpy", "tokenizers==0.14.0", "torch", "requests", "cloudpickle",
-                  "tqdm", "dataclasses_json", "termcolor", 'more_itertools',
-                  "cdifflib", "ujson", "zstandard", "scipy", "deepspeed==0.11.1",
-                  "peft", "einops", "mpi4py", "matplotlib", "transformers",
-                  "triton", "torchinfo", "giturlparse", "jsonlines",
-                  "binpacking", "filelock", "tables==3.8.0", "pygments", "kshingle"],
-        requires_packages=["refact_encoding", "code_contrast", "self_hosting_machinery",
-                           "refact_models"],
+                  "tqdm", "dataclasses_json", "termcolor", 'more_itertools', "cdifflib",
+                  "ujson", "zstandard", "scipy", "einops", "matplotlib", "giturlparse",
+                  "jsonlines", "binpacking", "filelock", "tables==3.8.0", "pygments", "kshingle"],
+        requires_packages=["refact_encoding", "code_contrast", "self_hosting_machinery"],
         data=["git_command.exp"],
     ),
     "self_hosting_machinery": PyPackage(
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
                   "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2",
-                  "torch", "transformers", "termcolor", "accelerate", "bitsandbytes"],
-        requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu", "refact_models",
+                  "blobfile", "cloudpickle", "termcolor", "torch", "transformers", "accelerate",
+                  "bitsandbytes", "safetensors", "peft", "triton", "torchinfo", "mpi4py", "deepspeed==0.11.1"],
+        requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
                            "known_models_db", "refact_data_pipeline"],
         data=["webgui/static/*", "webgui/static/js/*", "webgui/static/components/modals/*", "watchdog/watchdog.d/*"]),
 }

@@ -2,11 +2,11 @@ import os
 import torch
 import logging
 
-from refact_models.lora import LoraMixin
+from self_hosting_machinery.finetune.modelling.lora import LoraMixin
 
 from self_hosting_machinery.scripts import best_lora
-from refact_models.checkpoint_loader import load_finetune_checkpoint
-from refact_models.checkpoint_loader import load_finetune_checkpoint_only
+from self_hosting_machinery.inference.checkpoint_loader import load_finetune_checkpoint
+from self_hosting_machinery.inference.checkpoint_loader import load_finetune_checkpoint_only
 
 from self_hosting_machinery.finetune.utils.finetune_utils import get_active_loras
 

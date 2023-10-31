@@ -9,7 +9,6 @@ from refact_scratchpads_no_gpu.stream_results import validate_description_dict
 from refact_scratchpads_no_gpu.stream_results import UploadProxy
 from refact_scratchpads_no_gpu.stream_results import completions_wait_batch
 
-from self_hosting_machinery.inference import InferenceLegacy
 from self_hosting_machinery.inference import InferenceHF
 
 from typing import Dict, Any
@@ -32,14 +31,10 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
     log("STATUS loading model")
 
     model_dict = models_db[model_name]
-    if model_dict.get("backend", "legacy") == "legacy":
-        inference_model = InferenceLegacy(
-            model_name=model_name,
-            model_dict=model_dict)
-    else:
-        inference_model = InferenceHF(
-            model_name=model_name,
-            model_dict=model_dict)
+    assert model_dict["backend"] != "legacy"
+    inference_model = InferenceHF(
+        model_name=model_name,
+        model_dict=model_dict)
 
     class DummyUploadProxy:
         def upload_result(*args, **kwargs):
