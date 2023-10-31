@@ -64,7 +64,7 @@
           <button type="button" class="sources-run-button btn btn-primary"><i class="bi bi-funnel-fill"></i> Run filter</button>
           <button type="button" data-bs-toggle="modal" data-bs-target="#upload-tab-source-settings-modal" class="btn btn-outline-primary sources-settings">Settings</button>
         </div>
-        <div class="start-funetune-stats callout">
+        <div class="start-filter-stats callout">
           <div class="ftf-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
             <div class="ftf-bar bg-success" style="width: 0%"></div>
           </div>
@@ -79,6 +79,12 @@
         <div class="start-funetune__inline">
           <button id="run_now" type="button" class="btn btn-primary tab-finetune-run-now"><i class="bi bi-gpu-card"></i> Run Now</button>
           <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn btn-outline-primary tab-finetune-fine-settings">Finetune Settings</button>
+        </div>
+        <div class="start-finetune-stats callout">
+          <div class="ftune-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+            <div class="ftune-bar bg-success" style="width: 0%"></div>
+          </div>
+          <div class="ftune-eta"></div>
         </div>
         <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn finetune-autorun btn-sm btn-outline-primary mt-1"><i class="bi bi-stopwatch-fill"></i>Autorun Settings</button>
       </div>

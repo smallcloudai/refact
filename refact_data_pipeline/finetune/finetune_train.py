@@ -309,6 +309,7 @@ def loop(
 def finetune(status_dict, models_db: Dict[str, Any]):
     logging.info("starting finetune at %s" % traces.context().path)
     cfg = load_finetune_config(models_db)
+    status_dict["total_steps"] = cfg['train_iters']
     traces.log("creating model...")
     t0 = time.time()
     model = make_model(
@@ -356,6 +357,7 @@ def finetune(status_dict, models_db: Dict[str, Any]):
 def main(models_db: Dict[str, Any]):
     status_dict = {
         "started_ts": time.time(),
+        "total_steps": 0,
         "worked_steps": 0,
         "worked_minutes": 0,
         "status": "starting",
