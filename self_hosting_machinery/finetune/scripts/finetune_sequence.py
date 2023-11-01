@@ -1,8 +1,9 @@
-import sys
 import os
-import subprocess
-import time
 import signal
+import subprocess
+import sys
+import time
+
 import psutil
 
 
