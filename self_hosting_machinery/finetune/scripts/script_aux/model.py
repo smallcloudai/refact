@@ -225,7 +225,7 @@ class ModelContext:
             model: torch.nn.Module,
             freeze_exceptions: List[str]
     ):
-        for name, p in model.named_parameters():
+        for name, p in model.named_parameters(remove_duplicate=False):
             if any([e in name for e in freeze_exceptions]):
                 p.requires_grad_(True)
             else:

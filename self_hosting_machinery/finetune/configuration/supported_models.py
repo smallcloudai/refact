@@ -28,9 +28,9 @@ _starcoder_base = {
         "mlp": ["mlp.c_fc", "mlp.c_proj"],
     },
     "freeze_exceptions_mapping": {
-        "wte": "wte",
-        "lm_head": "lm_head",
-        "lora": "lora"
+        "wte": ["wte", "wpe"],
+        "lm_head": ["lm_head"],
+        "lora": ["lora"]
     },
     "tokenizer": _bigcode_tokenizer_mapping,
     "train_ds_pipeline": _fim_train_ds_pipeline,
@@ -50,9 +50,9 @@ config = {
             "mlp": ["mlp.gate_up_proj", "mlp.c_proj"],
         },
         "freeze_exceptions_mapping": {
-            "wte": "wte",
-            "lm_head": "lm_head",
-            "lora": "lora"
+            "wte": ["wte"],
+            "lm_head": ["lm_head"],
+            "lora": ["lora"]
         },
         "tokenizer": _bigcode_tokenizer_mapping,
         "train_ds_pipeline": _fim_train_ds_pipeline,
