@@ -136,6 +136,14 @@ class ConfigBuilder:
     def set_lora_init_scale(self, init_scale: float) -> 'ConfigBuilder':
         self.cfg['model_info']['lora']['lora_init_scale'] = init_scale
         return self
+    
+    def set_freeze_exceptions(self, exceptions: List[str]) -> 'ConfigBuilder':
+        self.cfg['model_info']['freeze_exceptions'] = exceptions
+        return self
+    
+    def set_save_every(self, save_every: int) -> 'ConfigBuilder':
+        self.cfg['save_every'] = save_every
+        return self
 
     def set_limit_time_seconds(self, seconds: int) -> 'ConfigBuilder':
         self.cfg['limit_time_seconds'] = seconds

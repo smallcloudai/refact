@@ -107,8 +107,8 @@ def save_model_state(model, save_path, tag):
         'skipped_steps', 'global_steps', 'global_samples', 'dp_world_size', 'mp_world_size',
         'ds_config', 'ds_version'
     }
-
-    model.save_checkpoint(save_path, tag=tag)
+    
+    model.save_checkpoint(save_dir=save_path, tag=tag)
     cp_path = Path(save_path) / tag
     model_cps = [p for p in cp_path.iterdir() if 'model_states' in p.name]
     _ = [p.unlink() for p in cp_path.iterdir() if 'model_states' not in p.name]
@@ -141,6 +141,9 @@ def setup_encoding(
     encoding.INFILL = model_config["tokenizer"]["fim_middle"]
     encoding.SUFFIX = model_config["tokenizer"]["fim_suffix"]
     encoding.ESCAPE = model_config["tokenizer"]["escape"]
+    encoding.BOS = model_config["tokenizer"]["bos"] if model_config["tokenizer"]["bos"] else ""
+    encoding.EOS = model_config["tokenizer"]["eos"] if model_config["tokenizer"]["eos"] else ""
+
     return encoding
 
 

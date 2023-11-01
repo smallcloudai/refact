@@ -103,6 +103,8 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
          .set_schedule_by_heuristics(ds_len=ds_len)
          .set_low_gpu_mem_mode_by_heuristics())
     else:
+        traces.log('Not using heuristics')
+        traces.log('low_gpu_mem_mode: %s' % user_cfg['low_gpu_mem_mode'])
         (cfg_builder
          .set_train_steps(user_cfg['train_steps'])
          .set_lr_decay_steps(user_cfg['lr_decay_steps'])
@@ -116,7 +118,10 @@ def load_finetune_config(models_db: Dict[str, Any]) -> Dict[str, Any]:
          .set_batch_size(user_cfg['batch_size'])
          .set_warmup_steps(user_cfg['warmup_num_steps'])
          .set_limit_time_seconds(user_cfg['limit_time_seconds'])
-         .set_weight_decay(user_cfg['weight_decay']))
+         .set_weight_decay(user_cfg['weight_decay'])
+         .set_lora_target_modules(user_cfg['lora_target_modules'])
+         .set_freeze_exceptions(user_cfg['freeze_exceptions'])
+         .set_save_every(user_cfg['save_every']))
 
     traces.log(f'Freeze exceptions: {cfg_builder.cfg["model_info"]["freeze_exceptions"]}')
     for k, v in cfg_builder.cfg["model_info"]["lora"].items():
@@ -143,6 +148,7 @@ def create_data(model_name, cfg, enc) -> Tuple[Any, Optional[Any]]:
     test_pipe = getattr(finetune_datasource, model_config["test_ds_pipeline"]["pipeline_name"])
 
     train_ds = train_pipe(filtered_train, train_dataopts)
+    traces.log('train batch size: %s' % cfg['train_batch_size'])
     train_ds = BatchIterator(train_ds, dataopts=dict(
         batch_size=cfg['train_batch_size'],
         drop_last=True
@@ -182,6 +188,7 @@ def loop(
                 tag = "iter%04d-trainloss%0.3f" % (iter_n, progress["loss"])
             traces.log("saving checkpoint %s" % tag)
             save_model_state(model, save_path=save_path, tag=tag)
+            traces.log("finished saving checkpoint %s" % tag)
 
     model_config = supported_models.config[model_name]
     save_path = os.path.join(traces.context().path, "checkpoints")
@@ -220,7 +227,9 @@ def loop(
             f"({batch['mask'].sum()}/{batch['mask'].numel()})"
         )
 
+        print("train batch size: %s" % cfg.get("train_batch_size"))
         for b0 in range(0, cfg.get("train_batch_size"), cfg.get("micro_batch_size")):
+            
             try:
                 input = batch['input'][b0:b0 + micro_bs].contiguous()
                 logits = forward(input=input, low_gpu_mem_mode=low_gpu_mem_mode)
@@ -309,7 +318,7 @@ def loop(
 def finetune(status_dict, models_db: Dict[str, Any]):
     logging.info("starting finetune at %s" % traces.context().path)
     cfg = load_finetune_config(models_db)
-    traces.log("creating model...")
+    traces.log("Creating model %s..." % cfg['model_name'])
     t0 = time.time()
     model = make_model(
         model_name=cfg['model_name'],
@@ -328,8 +337,10 @@ def finetune(status_dict, models_db: Dict[str, Any]):
     )
     t1 = time.time()
     traces.log("/model %0.1fms" % ((t1 - t0) * 1000))
+    traces.log(cfg)
     if cfg['debug']:
         summary(model, depth=4, col_names=['num_params', 'params_percent', 'trainable'])
+
     model, optimizer, _, _ = deepspeed.initialize(
         config=cfg,
         model=model,
