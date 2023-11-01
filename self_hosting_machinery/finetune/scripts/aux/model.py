@@ -267,6 +267,8 @@ class ModelContext:
         encoding.INFILL = self.model_mappings_config["tokenizer"]["fim_middle"]
         encoding.SUFFIX = self.model_mappings_config["tokenizer"]["fim_suffix"]
         encoding.ESCAPE = self.model_mappings_config["tokenizer"]["escape"]
+        encoding.BOS = self.model_mappings_config["tokenizer"].get("bos_idx", None)
+
         return encoding
 
     def _map_model_specific_params(
