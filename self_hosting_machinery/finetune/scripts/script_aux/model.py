@@ -1,6 +1,8 @@
 import importlib
 import json
 import logging
+import os
+from collections import defaultdict
 from functools import partial
 from pathlib import Path
 from typing import Dict, Any, List, Tuple
@@ -29,6 +31,17 @@ def _lora_state_dict(model, *args, destination=None, prefix='', keep_vars=False,
         ).items()
         if any(n in name for n in layer_names)
     }
+
+
+def _shared_pointers(tensors):
+    ptrs = defaultdict(list)
+    for k, v in tensors.items():
+        ptrs[v.data_ptr()].append(k)
+    failing = []
+    for ptr, names in ptrs.items():
+        if len(names) > 1:
+            failing.append(names)
+    return failing
 
 
 class ModelContext:
@@ -207,7 +220,12 @@ class ModelContext:
         _ = [p.unlink() for p in cp_path.iterdir() if 'model_states' not in p.name]
         for cp_path in model_cps:
             cp = torch.load(str(cp_path), map_location='cpu')
+            shared = _shared_pointers(cp["module"])
+            for shared_weights in shared:
+                for name in shared_weights[1:]:
+                    cp["module"].pop(name)
             tensors = {k: v.contiguous() for k, v in cp["module"].items()}
+
             meta: Dict[str, str] = {
                 "skipped_steps": str(cp["skipped_steps"]),
                 "global_steps": str(cp["global_steps"]),
@@ -236,6 +254,8 @@ class ModelContext:
             weights_path: str,
             repo_id: str
     ) -> AutoTokenizer:
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
         assert "tokenizer" in self.model_mappings_config
         encoding = AutoTokenizer.from_pretrained(
             repo_id, cache_dir=weights_path,
