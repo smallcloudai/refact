@@ -56,7 +56,7 @@ class FinetuneStatusTracker:
                              f"test_loss={progress['test_loss']:.3f}")
                 self.plotter.plot_async()
 
-            self.context.dump()
+            self.context.update_status("working", dump=True)
             self.iter_n += 1
             self.last_iter_tp = time.time()
 
