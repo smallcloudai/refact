@@ -24,6 +24,7 @@ def base_config(model_name: str, models_db: Dict[str, Any]):
                 "lora_target_modules": [
                     "qkv",
                     "backproj",
+                    "mlp"
                 ],
                 "lora_r": 16,
                 "lora_alpha": 32,
@@ -31,7 +32,7 @@ def base_config(model_name: str, models_db: Dict[str, Any]):
                 "lora_init_scale": 0.01
             },
             freeze_exceptions=[
-                "lora",
+                "lora"
             ],
             loss_average_elements=16
         ),
@@ -167,20 +168,20 @@ class ConfigBuilder:
             ds_len: int
     ) -> 'ConfigBuilder':
         losses_per_scores = {
-            (0.0, 0.9): 0,
-            (0.9, 1.3): 1,
-            (1.3, 1.7): 2,
-            (1.7, 2.3): 3,
-            (2.3, 2.6): 4,
-            (2.6, 100.0): 5
+            (0.0, 0.7): 0,
+            (0.7, 0.8): 1,
+            (0.8, 1.1): 2,
+            (1.1, 1.5): 3,
+            (1.5, 2.5): 4,
+            (2.5, 100.0): 5
         }
         dslen_per_scores = {
             (0, 500): 0,
             (500, 1000): 1,
-            (1000, 5000): 2,
-            (5000, 15000): 3,
-            (15000, 30000): 5,
-            (30000, 100000000): 8
+            (1000, 2500): 2,
+            (2500, 5000): 3,
+            (5000, 10000): 5,
+            (10000, 100000000): 8
         }
 
         scores_per_loraconfigs = {

@@ -1,6 +1,8 @@
 import logging
 import os
 import time
+from itertools import chain
+
 import torch
 import traceback
 import termcolor
@@ -192,10 +194,10 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
             logging.getLogger("MODEL").error(f"Skipping embeddings dumping for the model {self._model_name}")
             return
         model_cfg = supported_models.config[self._model_name]
-        emb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["wte"])
-        unemb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["lm_head"])
-        torch.save(emb, f"{self.cache_dir}/{self._model_dir}/emb")
-        torch.save(unemb, f"{self.cache_dir}/{self._model_dir}/unemb")
+        for name in chain(model_cfg["freeze_exceptions_mapping"]["wte"],
+                          model_cfg["freeze_exceptions_mapping"]["lm_head"]):
+            param = find_param_by_name(model=self._model, name=name)
+            torch.save(param, f"{self.cache_dir}/{self._model_dir}/{name}")
 
     def load_embeddings(self):
         try:
@@ -204,14 +206,12 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
             raise ImportError("please install refact_data_pipeline")
 
         model_cfg = supported_models.config[self._model_name]
-        emb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["wte"])
-        unemb = find_param_by_name(model=self._model, name=model_cfg["freeze_exceptions_mapping"]["lm_head"])
 
-        emb_w = torch.load(f"{self.cache_dir}/{self._model_dir}/emb", map_location=self._device)
-        unemb_w = torch.load(f"{self.cache_dir}/{self._model_dir}/unemb", map_location=self._device)
-
-        emb.data.copy_(emb_w)
-        unemb.data.copy_(unemb_w)
+        for name in chain(model_cfg["freeze_exceptions_mapping"]["wte"],
+                          model_cfg["freeze_exceptions_mapping"]["lm_head"]):
+            param = find_param_by_name(model=self._model, name=name)
+            weights = torch.load(f"{self.cache_dir}/{self._model_dir}/{name}", map_location=self._device)
+            param.data.copy_(weights)
 
     def _prepare_scratchpad(self, request: Dict[str, Any]):
         def logger(*args):
