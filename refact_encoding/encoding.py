@@ -142,6 +142,7 @@ class RefactEncoding:
             self.EOT = self._sentencepiece_tokenizer.eos_id()
             self.LF = 13
 
+
         elif name in ['bigcode_largemodel']:
             import tokenizers
             filename = Path(__file__).resolve().parent / f"{name}.json"

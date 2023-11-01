@@ -1,4 +1,6 @@
 import re
+import logging
+import json
 import os
 import json
 import time
@@ -138,6 +140,7 @@ class TabUploadRouter(APIRouter):
             "which_set": "train",
             "to_db": True,
         }
+        print(uploaded_path)
         for fn in sorted(os.listdir(uploaded_path)):
             result["uploaded_files"][fn] = {
                 "which_set": how_to_process["uploaded_files"].get(fn, default)["which_set"],

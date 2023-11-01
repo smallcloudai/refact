@@ -119,7 +119,7 @@ huggingface_mini_db = {
         },
         "required_memory_mb": 14000,
         "T": 2048,
-        "filter_caps": ["completion"],
+        "filter_caps": ["completion", "finetune"],
     },
     "wizardlm/30b": {
         "backend": "transformers",
