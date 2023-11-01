@@ -279,7 +279,6 @@ class FIMv2:
         return {
             "tokens": plain,
             "mask": mask,
-            "first": [1] + [0] * (len(plain) - 1),
             "stats": {**sample["stats"], **stats},
         }, cursor
 
@@ -316,29 +315,105 @@ class FIMv2:
         if hasattr(self.enc, 'encode_stochastic'):
             prefix_toks, _ = self.enc.encode_stochastic(prefix, [], 0.01 * self.tkr_stochastic_tokens)
             suffix_toks, _ = self.enc.encode_stochastic(suffix, [], 0.01 * self.tkr_stochastic_tokens)
+            middle_toks, _ = self.enc.encode_stochastic(middle, [], 0.01 * self.tkr_stochastic_tokens)
         else:
             prefix_toks = self.enc.encode(prefix)
             suffix_toks = self.enc.encode(suffix)
+            middle_toks = self.enc.encode(middle)
+
+        tokens, mask = self._fim_format(
+            prefix_toks=prefix_toks, suffix_toks=suffix_toks, middle_toks=middle_toks
+        )
+
+        stats["fim_out"] += 1
+        return {
+            "tokens": tokens,
+            "mask": mask,
+            "stats": {**sample["stats"], **stats},
+        }, cursor
+
+    def _fim_format(
+            self,
+            prefix_toks: List[int],
+            middle_toks: List[int],
+            suffix_toks: List[int],
+    ):
         if self.random.random() < 0.5:
             tokens_context = [self.enc.PREFIX] + prefix_toks + [self.enc.SUFFIX] + suffix_toks
             mask_context = [0] + [1] * len(prefix_toks) + [0] + [1] * len(suffix_toks)
         else:
             tokens_context = [self.enc.SUFFIX] + suffix_toks + [self.enc.PREFIX] + prefix_toks
             mask_context = [0] + [1] * len(suffix_toks) + [0] + [1] * len(prefix_toks)
-        if hasattr(self.enc, 'encode_stochastic'):
-            middle_toks, _ = self.enc.encode_stochastic(middle, [], 0.01 * self.tkr_stochastic_tokens)
-        else:
-            middle_toks = self.enc.encode(middle)
+
         middle_mask = [1] * len(middle_toks)
-        stats["fim_out"] += 1
         if self.debug:
             print(f'splitter: {splitter}, middle_size: {len(middle)}, middle: {middle}')
             print(termcolor.colored(self.enc.decode(prefix_toks), "red"), end='')
             print(termcolor.colored(self.enc.decode(middle_toks), "green"), end='')
             print(termcolor.colored(self.enc.decode(suffix_toks), "red"))
+
+        tokens = tokens_context + [self.enc.INFILL] + middle_toks + [self.enc.EOT]
+        mask = mask_context + [0] + middle_mask + [1]
+
+        return tokens, mask
+
+
+class FIMv2CodeLlama(FIMv2):
+    def _generate_plain_text(self, tokens, cursor, sample, stats) \
+            -> Tuple[Optional[Dict[str, Union[str, List[str]]]], int]:
+        assert self.enc.BOS is not None
+        plain = tokens[cursor: cursor + self.n_ctx]
+        cursor += len(plain)
+        is_cut_file = len(tokens[cursor:]) > 0
+        mask = [1] * len(plain)
+        plain.append(self.enc.EOT)
+        # If last_chunk then the EOT is real, the model should predict it. If not, it just
+        # acts as a separator, the model should not predict it.
+        # And it's not visible anyway if len(plain) > n_ctx
+        if is_cut_file:
+            mask.append(0)
+        else:
+            mask.append(1)
+
         return {
-            "tokens": tokens_context + [self.enc.INFILL] + middle_toks + [self.enc.EOT],
-            "mask": mask_context + [0] + middle_mask + [1],
-            "first": [1] + [0] * (-1 + len(tokens_context) + 1 + len(middle_toks) + 1),
+            "tokens": [self.enc.BOS] + plain,
+            "mask": [0] + mask,
             "stats": {**sample["stats"], **stats},
         }, cursor
+
+
+    def _fim_format(
+            self,
+            prefix_toks: List[int],
+            middle_toks: List[int],
+            suffix_toks: List[int],
+    ):
+        assert self.enc.BOS is not None
+        # https://github.com/facebookresearch/codellama/blob/cb51c14ec761370ba2e2bc351374a79265d0465e/llama/generation.py#L380
+        if self.random.random() < 0.5:
+            tokens = (
+                    [self.enc.BOS, self.enc.PREFIX] + prefix_toks
+                    + [self.enc.SUFFIX] + suffix_toks
+                    + [self.enc.INFILL] + middle_toks
+                    + [self.enc.EOT]
+            )
+            mask = (
+                    [0, 0] + ([1] * len(prefix_toks))
+                    + [0] + ([1] * len(suffix_toks))
+                    + [0] + ([1] * len(middle_toks))
+                    + [1]
+            )
+        else:
+            tokens = (
+                    [self.enc.BOS, self.enc.PREFIX, self.enc.SUFFIX]
+                    + suffix_toks + [self.enc.INFILL]
+                    + prefix_toks + middle_toks
+                    + [self.enc.EOT]
+            )
+            mask = (
+                    [0, 0, 0]
+                    + ([1] * len(suffix_toks)) + [0]
+                    + ([1] * len(prefix_toks)) + ([1] * len(middle_toks))
+                    + [1]
+            )
+        return tokens, mask

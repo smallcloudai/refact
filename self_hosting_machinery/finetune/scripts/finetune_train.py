@@ -31,10 +31,10 @@ def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str,
     with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
         initial_loss = json.load(f)["avg_loss"]
 
-    _log_everywhere("Calculating finetune optimal parameters")
     user_cfg = get_finetune_config(models_db, logger=traces.log)
     cfg_builder = ConfigBuilder(base_config(user_cfg['model_name'], models_db))
     if user_cfg['use_heuristics']:
+        _log_everywhere("Calculating finetune optimal parameters")
         _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
         ds_len = get_ds_len_per_epoch(user_cfg['model_name'], cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
@@ -43,6 +43,7 @@ def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str,
          .set_schedule_by_heuristics(ds_len=ds_len)
          .set_low_gpu_mem_mode_by_heuristics())
     else:
+        _log_everywhere("Using finetune setup parameters")
         (cfg_builder
          .set_train_steps(user_cfg['train_steps'])
          .set_lr_decay_steps(user_cfg['lr_decay_steps'])
@@ -60,6 +61,7 @@ def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str,
          .set_weight_decay(user_cfg['weight_decay']))
 
     traces.log(f'Freeze exceptions: {cfg_builder.cfg["model_info"]["freeze_exceptions"]}')
+    traces.log(f'Low memory mode: {user_cfg["low_gpu_mem_mode"]}')
     for k, v in cfg_builder.cfg["model_info"]["lora"].items():
         traces.log(f'Lora config: {k:>20} {v}')
 
@@ -136,7 +138,7 @@ def loop(
     def _save_checkpoint(iter_n: int, loss: float, force: bool = False):
         if force or (iter_n != 0 and iter_n % finetune_cfg['save_every'] == 0):
             tag = f"iter{iter_n:04d}-testloss{loss:.3f}"
-            traces.log("saving checkpoint %s" % tag)
+            traces.log(f"Saving checkpoint {tag}")
             model_context.save_model_state(save_path=save_path, tag=tag)
 
     save_path = os.path.join(traces.context().path, "checkpoints")
@@ -219,7 +221,7 @@ def main(models_db: Dict[str, Any]):
         _log_everywhere("Loading finetune configs...")
         finetune_cfg = copy.deepcopy(_build_finetune_config_by_heuristics(models_db))
 
-        _log_everywhere(f"Building the model...")
+        _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
         model_context = ModelContext(
             finetune_cfg=finetune_cfg,
             use_deepspeed=True
