@@ -24,7 +24,7 @@ class FinetuneFilterStatusTracker:
             self.context._stats_dict["eta_minutes"] = int(round(self.eta_tracker.eta() / 60))
             self.context._stats_dict["worked_steps"] = self.iter_n
             self.context._stats_dict["worked_minutes"] = int((time.time() - self.initial_iter_tp) / 60)
-            self.context.dump()
+            self.context.update_status("working", dump=True)
             self.iter_n += 1
             self.last_iter_tp = time.time()
 
