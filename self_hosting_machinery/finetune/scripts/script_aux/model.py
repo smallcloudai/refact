@@ -299,7 +299,7 @@ class ModelContext:
     ):
         force_low_gpu_mem_mode = hasattr(self.model, "force_low_gpu_mem_mode") and self.model.force_low_gpu_mem_mode
         self.low_gpu_mem_mode = low_gpu_mode or force_low_gpu_mem_mode
-        logging.warning("Setting low_gpu_mem_mode={self.low_gpu_mem_mode} for the model")
+        logging.warning(f"Setting low_gpu_mem_mode={self.low_gpu_mem_mode} for the model")
 
         if self.low_gpu_mem_mode:
             self.model.gradient_checkpointing_enable()
