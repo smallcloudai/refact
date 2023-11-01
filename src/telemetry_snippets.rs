@@ -120,16 +120,6 @@ pub async fn sources_changed(
     info!("sources_changed: uri: {:?}, text: {:?}", uri, text);
     let tele_storage = gcx.read().await.telemetry.clone();
     let mut storage_locked = tele_storage.write().unwrap();
-    //     //  orig1    orig1    orig1
-    //     //  orig2    orig2    orig2
-    //     //  |        comp1    comp1
-    //     //  orig3    comp2    edit
-    //     //  orig4    comp3    comp3
-    //     //  orig5    orig3    orig3
-    //     //           orig4    orig4
-    //     // -------------------------------
-    //     // Goal: diff orig vs compl, orig vs uedit. If head and tail are the same, then user edit is valid and useful.
-    //     // Memorize the last valid user edit. At the point it becomes invalid, save feedback and forget.
     for snip in &mut storage_locked.tele_snippets {
         if !snip.accepted {
             continue;
@@ -166,10 +156,12 @@ pub fn if_head_tail_equal_return_added_text(
     let mut added_text = "".to_string();
     let mut kill_slash_n = false;
     let regex_space_only = regex::Regex::new(r"^\s*$").unwrap();
+    let mut allow_deletions_once = true;
+    let mut deletion_once = "".to_string();
     for c in diff.iter_all_changes() {
         match c.tag() {
             ChangeTag::Delete => {
-                info!("- {}", c.value());
+                // info!("- {}", c.value());
                 if adding_one_block {
                     added_one_block = true;
                 }
@@ -180,27 +172,41 @@ pub fn if_head_tail_equal_return_added_text(
                 // allow_remove_spaces_once = false;
                 let whitespace_only = regex_space_only.is_match(&c.value());
                 if !whitespace_only {
-                    error!("if_head_tail_equal_return_added_text: whitespace_only is false");
-                    return (false, "".to_string());
+                    if allow_deletions_once {
+                        allow_deletions_once = false;
+                        deletion_once = c.value().clone().to_string();
+                    } else {
+                        error!("if_head_tail_equal_return_added_text: whitespace_only is false");
+                        return (false, "".to_string());
+                    }
                 }
                 if c.value().ends_with("\n") {
                     kill_slash_n = true;
                 }
             }
             ChangeTag::Insert => {
-                info!("+ {}", c.value());
+                // info!("+ {}", c.value());
                 if added_one_block {
                     error!("if_head_tail_equal_return_added_text: added_one_block is true");
                     return (false, "".to_string());
                 }
+                if !c.value().to_string().starts_with(&deletion_once) {
+                    error!("if_head_tail_equal_return_added_text: !c.value().to_string().starts_with(&deletion_once)");
+                    return (false, "".to_string());
+                }
+
                 adding_one_block = true;
-                added_text += c.value().clone();
+                if deletion_once.is_empty() {
+                    added_text += c.value().clone();
+                } else {
+                    added_text += &c.value()[deletion_once.len()..];
+                }
             }
             ChangeTag::Equal => {
                 if adding_one_block {
                     added_one_block = true;
                 }
-                info!("= {}", c.value());
+                // info!("= {}", c.value());
             }
         }
     }
