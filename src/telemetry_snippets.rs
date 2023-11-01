@@ -21,7 +21,7 @@ use similar::{ChangeTag, TextDiff};
 // 4. Changes are translated to "after_walkaway_remaining50to95" etc
 
 const SNIP_FINISHED_AFTER : i64 = 300;
-const SNIP_TIMEOUT_AFTER : i64 = 300;
+const SNIP_TIMEOUT_AFTER : i64 = 30;
 
 
 #[derive(Debug, Clone)]
@@ -36,7 +36,7 @@ impl SaveSnippet {
         post: &CodeCompletionPost
     ) -> Self {
         SaveSnippet {
-            storage_arc: storage_arc,
+            storage_arc,
             post: post.clone(),
         }
     }
@@ -50,13 +50,11 @@ pub struct SnippetTelemetry {
     pub grey_text: String,
     pub accepted: bool,
     pub corrected_by_user: String,
-    // add
-    pub remaining_percent_30s: f64,
-    // pub remaining_percent_300s: f64,
-    // pub remaining_percent_walkaway: f64,
     // pub walkaway_ms: u64,
+    pub remaining_percentage: f64,
     pub created_ts: i64,
     pub accepted_ts: i64,
+    pub finished_ts: i64,
 }
 
 pub fn snippet_register(
@@ -71,9 +69,10 @@ pub fn snippet_register(
         grey_text: grey_text.clone(),
         accepted: false,
         corrected_by_user: "".to_string(),
-        remaining_percent_30s: 0.0,
+        remaining_percentage: 0.0,
         created_ts: chrono::Local::now().timestamp(),
         accepted_ts: 0,
+        finished_ts: 0,
     };
     storage_locked.tele_snippet_next_id += 1;
     storage_locked.tele_snippets.push(snip);
@@ -117,46 +116,54 @@ pub async fn sources_changed(
     uri: &String,
     text: &String,
 ) {
-    info!("sources_changed: uri: {:?}, text: {:?}", uri, text);
     let tele_storage = gcx.read().await.telemetry.clone();
     let mut storage_locked = tele_storage.write().unwrap();
     for snip in &mut storage_locked.tele_snippets {
-        if !snip.accepted {
-            continue;
-        }
-        if !uri.ends_with(&snip.inputs.cursor.file) {
+        if !snip.accepted || snip.finished_ts > 0 || !uri.ends_with(&snip.inputs.cursor.file) {
             continue;
         }
         let orig_text = snip.inputs.sources.get(&snip.inputs.cursor.file);
         if !orig_text.is_some() {
             continue;
         }
-        let time_from_accepted = chrono::Local::now().timestamp() - snip.accepted_ts;
-        let (valid1, mut gray_corrected) = if_head_tail_equal_return_added_text(
+        let (grey_valid, mut grey_corrected) = if_head_tail_equal_return_added_text(
             orig_text.unwrap(),
-            text
+            text,
+            &snip.grey_text,
         );
-        gray_corrected = gray_corrected.replace("\r", "");
-        snip.corrected_by_user = gray_corrected.clone();
-        info!("valid1: {:?}, gray_corrected: {:?}", valid1, gray_corrected);
+        info!("grey_valid: {:?}, grey_corrected: {:?}", grey_valid, grey_corrected);
         info!("orig grey_text: {:?}", snip.grey_text);
-        let unchanged_percentage = unchanged_percentage(&gray_corrected, &snip.grey_text);
-        info!("unchanged_percentage {:.2}", unchanged_percentage);
+        if grey_valid {
+            let unchanged_percentage = unchanged_percentage(&grey_corrected, &snip.grey_text);
+            info!("unchanged_percentage {:.2}", unchanged_percentage);
+            grey_corrected = grey_corrected.replace("\r", "");
+            snip.corrected_by_user = grey_corrected.clone();
+            snip.remaining_percentage = unchanged_percentage;
+        } else {
+            if !snip.corrected_by_user.is_empty() {
+                snip.finished_ts = chrono::Local::now().timestamp();
+                info!("snip {} is finished with score={}!", snip.grey_text, snip.remaining_percentage);
+            } else {
+                info!("snip {} is finished with accepted = false", snip.grey_text);
+                snip.accepted = false;
+            }
+        }
     }
 }
 
 pub fn if_head_tail_equal_return_added_text(
     text_a: &String,
     text_b: &String,
+    orig_grey_text: &String,
 ) -> (bool, String) {
     let diff = TextDiff::from_lines(text_a, text_b);
-    // let mut allow_remove_spaces_once = true;
+    let mut allow_add_spaces_once = true;
+    let is_multiline = orig_grey_text.contains("\n");
     let mut adding_one_block = false;
     let mut added_one_block = false;
     let mut added_text = "".to_string();
     let mut kill_slash_n = false;
     let regex_space_only = regex::Regex::new(r"^\s*$").unwrap();
-    let mut allow_deletions_once = true;
     let mut deletion_once = "".to_string();
     for c in diff.iter_all_changes() {
         match c.tag() {
@@ -165,18 +172,15 @@ pub fn if_head_tail_equal_return_added_text(
                 if adding_one_block {
                     added_one_block = true;
                 }
-
-                // if !allow_remove_spaces_once {
-                //     return (false, "".to_string());
-                // }
-                // allow_remove_spaces_once = false;
                 let whitespace_only = regex_space_only.is_match(&c.value());
                 if !whitespace_only {
-                    if allow_deletions_once {
-                        allow_deletions_once = false;
+                    if deletion_once.is_empty() {
                         deletion_once = c.value().clone().to_string();
+                        if deletion_once.ends_with("\n") {
+                            deletion_once = deletion_once[..deletion_once.len() - 1].to_string();
+                        }
                     } else {
-                        error!("if_head_tail_equal_return_added_text: whitespace_only is false");
+                        error!("!whitespace_only");
                         return (false, "".to_string());
                     }
                 }
@@ -186,27 +190,44 @@ pub fn if_head_tail_equal_return_added_text(
             }
             ChangeTag::Insert => {
                 // info!("+ {}", c.value());
-                if added_one_block {
-                    error!("if_head_tail_equal_return_added_text: added_one_block is true");
+                let val = c.value().clone();
+                let whitespace_only = regex_space_only.is_match(&c.value());
+
+                if !allow_add_spaces_once {
+                    error!("!allow_add_spaces_once");
                     return (false, "".to_string());
                 }
-                if !c.value().to_string().starts_with(&deletion_once) {
-                    error!("if_head_tail_equal_return_added_text: !c.value().to_string().starts_with(&deletion_once)");
+                if whitespace_only {
+                    allow_add_spaces_once = false;
+                }
+                if added_one_block {
+                    error!("added is more then one block!");
+                    return (false, "".to_string());
+                }
+                if !deletion_once.is_empty() && !val.starts_with(&deletion_once.clone()) {
+                    info!("!deletion_once.is_empty() && !val.starts_with(&deletion_once.clone())");
                     return (false, "".to_string());
                 }
 
-                adding_one_block = true;
-                if deletion_once.is_empty() {
-                    added_text += c.value().clone();
-                } else {
-                    added_text += &c.value()[deletion_once.len()..];
+                if adding_one_block && !is_multiline {
+                    if !whitespace_only {
+                        error!("adding_one_block && !is_multiline && !whitespace_only");
+                        return (false, "".to_string());
+                    }
                 }
+
+                if deletion_once.is_empty() {
+                    added_text += val;
+                } else {
+                    added_text += &val[deletion_once.len()..];
+                }
+                adding_one_block = true;
             }
             ChangeTag::Equal => {
+                // info!("= {}", c.value());
                 if adding_one_block {
                     added_one_block = true;
                 }
-                // info!("= {}", c.value());
             }
         }
     }
@@ -267,14 +288,14 @@ async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext>>
         let mut to_remove: Vec<usize> = vec![];
         let mut storage_locked = tele_storage.write().unwrap();
         for (idx, snip) in &mut storage_locked.tele_snippets.iter().enumerate() {
-            if snip.accepted && snip.accepted_ts != 0 {
-                if now - snip.accepted_ts >= SNIP_FINISHED_AFTER {
+            if snip.accepted && snip.accepted_ts > 0 {
+                if snip.finished_ts > 0 {
                     to_remove.push(idx);
                     snips_send.push(snip.clone());
                 }
                 continue;
             }
-            if now - snip.created_ts >= SNIP_TIMEOUT_AFTER {
+            if !snip.accepted && now - snip.created_ts >= SNIP_TIMEOUT_AFTER {
                 to_remove.push(idx);
                 continue;
             }
