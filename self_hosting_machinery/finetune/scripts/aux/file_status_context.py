@@ -2,8 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Any, Dict, List
 
-from self_hosting_machinery.finetune.scripts.script_aux.finetune_filter_status_tracker import \
-    FinetuneFilterStatusTracker
+from self_hosting_machinery.finetune.scripts.aux.finetune_filter_status_tracker import FinetuneFilterStatusTracker
 from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery.finetune.utils.finetune_utils import get_file_digest
 from self_hosting_machinery.scripts import env
