@@ -69,16 +69,16 @@ def find_required_packages(packages: Set[str]) -> Set[str]:
     return packages
 
 
-def get_install_requires():
+def get_install_requires(packages):
     install_requires = list({
         required_package
-        for py_package in setup_packages.values()
+        for py_package in packages.values()
         for required_package in py_package.requires
     })
     if install_optional.upper() == "TRUE":
         install_requires.extend(list({
             required_package
-            for py_package in setup_packages.values()
+            for py_package in packages.values()
             for required_package in py_package.optional
         }))
     return install_requires
@@ -107,5 +107,5 @@ setup(
     packages=find_packages(include=(
         f"{name}*" for name in setup_packages
     )),
-    install_requires=get_install_requires(),
+    install_requires=get_install_requires(setup_packages),
 )
