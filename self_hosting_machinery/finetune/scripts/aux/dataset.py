@@ -38,6 +38,7 @@ def setup_encoding(
     encoding.INFILL = model_config["tokenizer"]["fim_middle"]
     encoding.SUFFIX = model_config["tokenizer"]["fim_suffix"]
     encoding.ESCAPE = model_config["tokenizer"]["escape"]
+    encoding.BOS = model_config["tokenizer"].get("bos_idx", None)
     return encoding
 
 

@@ -149,7 +149,7 @@ class DensePacker:
         self.pack_complete: bool = dataopts.get('pack_complete', 1) == 1
         self.drop_less_than_t: int = dataopts.get('pack_drop_less_than_t', 6)
         self.buffer_size: int = dataopts.get('pack_buffer_size', 256)
-        self.keys = dataopts.get('packer_keys', 'tokens;mask;first').split(';')
+        self.keys = dataopts.get('packer_keys', 'tokens;mask').split(';')
         self.max_packing_rounds = 8
         self.do_nothing_keys = ['stats']
         assert len(self.keys) > 0

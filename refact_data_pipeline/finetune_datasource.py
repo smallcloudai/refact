@@ -9,7 +9,7 @@ import torch.utils.data
 
 from refact_data_pipeline import DatasetOpts
 from refact_data_pipeline import pipeline_pieces as pp
-from refact_data_pipeline.filters_fim_v2 import FIMv2
+from refact_data_pipeline.filters_fim_v2 import FIMv2, FIMv2CodeLlama
 from self_hosting_machinery import env
 
 __all__ = [
@@ -142,6 +142,15 @@ class RefactFIMCodeDataset(RefactDataset):
     def _build_pipeline(self, files: List[Dict[str, Any]]):
         ds = ReadFileByFile(files, self._ds_options)
         ds = FIMv2(ds, self._ds_options)
+        ds = pp.DensePacker(ds, self._ds_options)
+        ds = pp.Shuffle(ds, self._ds_options)
+        return ds
+
+
+class CodeLLamaFIMDataset(RefactDataset):
+    def _build_pipeline(self, files: List[Dict[str, Any]]):
+        ds = ReadFileByFile(files, self._ds_options)
+        ds = FIMv2CodeLlama(ds, self._ds_options)
         ds = pp.DensePacker(ds, self._ds_options)
         ds = pp.Shuffle(ds, self._ds_options)
         return ds
