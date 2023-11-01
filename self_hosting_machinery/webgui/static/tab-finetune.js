@@ -167,7 +167,7 @@ function finetune_activate_run(run_id, checkpoint) {
 function render_runs() {
     const runs_table = document.querySelector('.run-table');
     if(finetune_configs_and_runs.finetune_runs.length === 0) {
-        runs_table.innerHTML = '<tr><td>No runs yet.</td><td></td><td></td><td></td><td></td><td></td></tr>';
+        runs_table.innerHTML = '<tr><td>No runs yet.</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
         return;
     }
     let finetune_is_working = false;
