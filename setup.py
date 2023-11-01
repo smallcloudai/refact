@@ -7,10 +7,19 @@ from setuptools import setup, find_packages
 
 from typing import List, Set
 
+setup_package = os.environ.get("SETUP_PACKAGE", None)
+install_optional = os.environ.get("INSTALL_OPTIONAL", "TRUE")
+
+# Setting some env variables to force flash-attention build from sources
+# We can get rid of them when https://github.com/Dao-AILab/flash-attention/pull/540 is merged
+os.environ["MAX_JOBS"] = "4"
+os.environ["FLASH_ATTENTION_FORCE_BUILD"] = "TRUE"
+
 
 @dataclass
 class PyPackage:
     requires: List[str] = field(default_factory=list)
+    optional: List[str] = field(default_factory=list)
     requires_packages: List[str] = field(default_factory=list)
     data: List[str] = field(default_factory=list)
 
@@ -42,8 +51,8 @@ all_refact_packages = {
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
                   "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2", "accelerate",
                   "termcolor", "torch", "transformers", "bitsandbytes", "safetensors", "peft", "triton",
-                  "torchinfo", "mpi4py", "deepspeed==0.11.1",
-                  "flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
+                  "torchinfo", "mpi4py", "deepspeed==0.11.1"],
+        optional=["flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
                            "known_models_db", "refact_data_pipeline"],
         data=["webgui/static/*", "webgui/static/js/*", "webgui/static/components/modals/*", "watchdog/watchdog.d/*"]),
@@ -60,7 +69,21 @@ def find_required_packages(packages: Set[str]) -> Set[str]:
     return packages
 
 
-setup_package = os.environ.get("SETUP_PACKAGE", None)
+def get_install_requires():
+    install_requires = list({
+        required_package
+        for py_package in setup_packages.values()
+        for required_package in py_package.requires
+    })
+    if install_optional.upper() == "TRUE":
+        install_requires.extend(list({
+            required_package
+            for py_package in setup_packages.values()
+            for required_package in py_package.optional
+        }))
+    return install_requires
+
+
 if setup_package is not None:
     if setup_package not in all_refact_packages:
         raise ValueError(f"Package {setup_package} not found in repo")
@@ -71,7 +94,6 @@ if setup_package is not None:
     }
 else:
     setup_packages = all_refact_packages
-
 
 setup(
     name="refact-self-hosting",
@@ -85,9 +107,5 @@ setup(
     packages=find_packages(include=(
         f"{name}*" for name in setup_packages
     )),
-    install_requires=list({
-        required_package
-        for py_package in setup_packages.values()
-        for required_package in py_package.requires
-    }),
+    install_requires=get_install_requires(),
 )

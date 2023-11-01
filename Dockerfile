@@ -11,7 +11,7 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
     expect \
     mpich \
     libmpich-dev \
-    python3 python3-pip \
+    python3 python3-pip python3-packaging \
     && rm -rf /var/lib/{apt,dpkg,cache,log}
 
 RUN echo "export PATH=/usr/local/cuda/bin:\$PATH" > /etc/profile.d/50-smc.sh
@@ -45,7 +45,7 @@ ENV TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0+PTX"
 COPY . /tmp/app
 RUN pip install /tmp/app && rm -rf /tmp/app
 
-ENV MAX_JOBS=8
+ENV MAX_JOBS=4
 ENV FLASH_ATTENTION_FORCE_BUILD="TRUE"
 RUN git clone -b feat/alibi https://github.com/smallcloudai/flash-attention.git /tmp/flash-attention \
     && cd /tmp/flash-attention \
