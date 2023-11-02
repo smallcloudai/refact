@@ -101,7 +101,9 @@ config = {
             **_fim_test_ds_pipeline,
             "ds_name": "CodeLLamaFIMDataset"
         },
-        "train_model_modifiers": [],
+        "train_model_modifiers": [
+            "flash_sa.apply_flash_mha_to_codellama_model"
+        ],
         "force_enable_checkpointing": True
     }
 }
