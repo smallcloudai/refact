@@ -235,7 +235,7 @@ class ScratchpadPSM(ScratchpadFIM):
         ]
 
 
-class ScratchpadCodeLlama(ScratchpadHuggingfaceBase):
+class ScratchpadCodeLlamaBase(ScratchpadHuggingfaceBase):
 
     def __init__(self, sources: Dict[str, str], cursor_file: str, cursor0: int, cursor1: int, **kwargs):
         super().__init__(**kwargs)
@@ -248,40 +248,82 @@ class ScratchpadCodeLlama(ScratchpadHuggingfaceBase):
 
         self._prefix: Optional[str] = None
         self._suffix: Optional[str] = None
+        self._suffix_line0cut: Optional[str] = None
         self._completion = []
 
         self._tokens_produced = 0
+        self._bos = self._encode_one_token("<s>")
         self._fim_prefix = self._encode_one_token("<PRE>")
         self._fim_suffix = self._encode_one_token("<SUF>")
         self._fim_middle = self._encode_one_token("<MID>")
         self._fim_eot = self._encode_one_token("<EOT>")
         self._special_tokens.update({
-            self._fim_prefix, self._fim_suffix, self._fim_middle, self._fim_eot,
+            self._bos, self._fim_prefix, self._fim_suffix, self._fim_middle, self._fim_eot,
         })
+
+    def _prompt_format(self, prefix_tokens, suffix_tokens):
+        raise NotImplementedError()
 
     def prompt(self, T: int):
         self._prefix = self._code[:self._cursor]
-        self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        # Why we need to cut the line right of the cursor?
+        # Example 1:
+        # function_call(param1, GENERATED_TONENS<EOF>)
+        # => everything works right
+        # Example 2:
+        # function_call(param1, GENERATED_TONENS)\nMORE_TOKENS\nSOME_OTHER_CALL(OTHER_PARAM<EOF>)
+        #                                        ^^ but we stop here because we need single line completion
+        # => we have two closing parenthesis.
+        # self._suffix = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
+        self._suffix = self._code[self._cursor:].lstrip(" \t")
+        self._suffix_line0cut = "".join(self._code[self._cursor:].splitlines(keepends=True)[1:])
         self._completion.clear()
 
         prefix_cut, suffix_cut = trim_context_infill(
-            self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens)
-        prompt: List[int] = [
-            self._eos_token,
-            self._fim_prefix,
-            *self._tokenizer.encode(prefix_cut),
-            self._fim_suffix,
-            *self._tokenizer.encode(suffix_cut),
-            self._fim_middle,
-        ]
+            self._prefix, self._suffix, EncodingWrapper(self._tokenizer), T - self._max_tokens
+        )
+        prefix_cut_tokens = self._encode_without_special_tokens(prefix_cut)
+        suffix_cut_tokens = self._encode_without_special_tokens(suffix_cut)
+        self.debuglog(
+            "ScratchpadFIM prompt prefix %d chars -> %d tokens, suffix %d chars -> %d tokens, T=%d max_new_tokens=%d" %
+            (len(prefix_cut), len(prefix_cut_tokens), len(suffix_cut), len(suffix_cut_tokens), T, self._max_tokens)
+        )
+        prompt: List[int] = self._prompt_format(prefix_cut_tokens, suffix_cut_tokens)
+        self.debuglog("-"*40)
+        self.debuglog(self._tokenizer.decode(prompt))
+        self.debuglog("-"*40)
         return prompt
 
     def completion(self, final: bool):
         assert self._prefix is not None
         assert self._suffix is not None
-        return {
-            self._cursor_file: self._prefix + self._tokenizer.decode(self._completion) + self._suffix,
-        }
+        completion = self._tokenizer.decode(self._completion)
+        if self.finish_reason == "eot":
+            # Correct stop
+            return {self._cursor_file: self._prefix + completion + self._suffix}
+        else:
+            # "stop-lf" or "length" or not stopped yet (empty reason), it's better to remove first line remainder
+            return {self._cursor_file: self._prefix + completion + self._suffix_line0cut}
+
+
+class ScratchpadCodeLlamaSPM(ScratchpadCodeLlamaBase):
+
+    def _prompt_format(self, prefix_tokens, suffix_tokens):
+        return [
+            self._bos, self._fim_prefix, self._fim_suffix,
+            *suffix_tokens,
+            self._fim_middle, *prefix_tokens,
+        ]
+
+
+class ScratchpadCodeLlamaPSM(ScratchpadCodeLlamaBase):
+
+    def _prompt_format(self, prefix_tokens, suffix_tokens):
+        return [
+            self._bos, self._fim_prefix, *prefix_tokens,
+            self._fim_suffix, *suffix_tokens,
+            self._fim_middle,
+        ]
 
 
 class ScratchpadChatBase(ScratchpadHuggingfaceBase):
