@@ -11,8 +11,8 @@ use tracing::info;
 use async_trait::async_trait;
 
 use crate::completion_cache;
-use crate::telemetry_storage;
-use crate::telemetry_snippets;
+use crate::telemetry::telemetry_structs;
+use crate::telemetry::snippets_collection;
 
 const DEBUG: bool = false;
 
@@ -26,7 +26,7 @@ pub struct SingleFileFIM {
     pub fim_suffix: String,
     pub fim_middle: String,
     pub data4cache: completion_cache::CompletionSaveToCache,
-    pub data4snippet: telemetry_snippets::SaveSnippet,
+    pub data4snippet: snippets_collection::SaveSnippet,
 }
 
 impl SingleFileFIM {
@@ -35,10 +35,10 @@ impl SingleFileFIM {
         post: CodeCompletionPost,
         order: String,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
-        tele_storage: Arc<StdRwLock<telemetry_storage::Storage>>,
+        tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
-        let data4snippet = telemetry_snippets::SaveSnippet::new(tele_storage, &post);
+        let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
         SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(), fim_suffix: String::new(), fim_middle: String::new(), data4cache, data4snippet }
     }
 
@@ -204,7 +204,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             })
         }).collect::<Vec<_>>();
 
-        telemetry_snippets::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
+        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
         return Ok(serde_json::json!(
             {
                 "choices": json_choices,
@@ -250,7 +250,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             self.data4cache.completion0_finish_reason = "length".to_string();
             finished = true;
         }
-        telemetry_snippets::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
+        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
         let ans = serde_json::json!({
             "choices": json_choices,
             "snippet_telemetry_id": self.data4cache.completion0_snippet_telemetry_id,

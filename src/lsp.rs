@@ -14,7 +14,7 @@ use tracing::{error, info};
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
 use crate::global_context;
 use crate::http_server::handle_v1_code_completion;
-use crate::telemetry_snippets;
+use crate::telemetry;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -72,6 +72,22 @@ pub struct CompletionParams1 {
     pub multiline: bool,
     // pub model: String,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct TestHeadTailAddedText {
+    pub text_a: String,
+    pub text_b: String,
+    pub orig_grey_text: String,
+}
+
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct TestHeadTailAddedTextRes {
+    pub is_valid: bool,
+    pub grey_corrected: String,
+    pub unchanged_percentage: f64,
+}
+
 
 fn internal_error<E: Display>(err: E) -> Error {
     let err_msg = err.to_string();
@@ -143,7 +159,21 @@ impl Backend {
 
         Ok(value)
     }
-}
+
+    pub async fn test_if_head_tail_equal_return_added_text(&self, params: TestHeadTailAddedText) -> Result<TestHeadTailAddedTextRes> {
+        let (is_valid, grey_corrected) = telemetry::utils::if_head_tail_equal_return_added_text(
+            &params.text_a, &params.text_b, &params.orig_grey_text
+        );
+        let mut unchanged_percentage = -1.;
+        if is_valid {
+            unchanged_percentage = telemetry::utils::unchanged_percentage(
+                &params.orig_grey_text,
+                &grey_corrected
+            );
+        }
+        Ok(TestHeadTailAddedTextRes{is_valid, grey_corrected, unchanged_percentage})
+    }
+ }
 
 
 #[tower_lsp::async_trait]
@@ -210,7 +240,7 @@ impl LanguageServer for Backend {
         doc.text = rope;
         info!("{} changed, save time: {:?}", uri, t0.elapsed());
         let t1 = Instant::now();
-        telemetry_snippets::sources_changed(
+        telemetry::snippets_collection::sources_changed(
             self.gcx.clone(),
             &uri,
             &params.content_changes[0].text,
@@ -258,6 +288,7 @@ pub fn build_lsp_service(
         workspace_folders: Arc::new(ARwLock::new(None)),
     })
         .custom_method("refact/getCompletions", Backend::get_completions)
+        .custom_method("refact/test_if_head_tail_equal_return_added_text", Backend::test_if_head_tail_equal_return_added_text)
         .finish();
     (lsp_service, socket)
 }

@@ -10,7 +10,7 @@ use structopt::StructOpt;
 use std::io::Write;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
-use crate::telemetry_storage;
+use crate::telemetry::telemetry_structs;
 use crate::vecdb_search::VecdbSearch;
 use crate::custom_error::ScratchError;
 use hyper::StatusCode;
@@ -49,7 +49,7 @@ pub struct GlobalContext {
     pub caps_last_attempted_ts: u64,
     pub cmdline: CommandLine,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
-    pub telemetry: Arc<StdRwLock<telemetry_storage::Storage>>,
+    pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
 }
 
@@ -147,7 +147,7 @@ pub async fn create_global_context(
         caps_last_attempted_ts: 0,
         cmdline: cmdline.clone(),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
-        telemetry: Arc::new(StdRwLock::new(telemetry_storage::Storage::new())),
+        telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vecdb_search: Arc::new(AMutex::new(Box::new(crate::vecdb_search::VecdbSearchTest::new()))),
     };
     (Arc::new(ARwLock::new(cx)), ask_shutdown_receiver, cmdline)

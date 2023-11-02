@@ -16,8 +16,8 @@ use crate::call_validation::{CodeCompletionPost, ChatPost};
 use crate::global_context::GlobalContext;
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
-use crate::telemetry_basic;
-use crate::telemetry_snippets;
+use crate::telemetry::telemetry_structs;
+use crate::telemetry::snippets_collection;
 use crate::completion_cache;
 
 
@@ -197,7 +197,7 @@ async fn handle_v1_telemetry_network(
     global_context: Arc<ARwLock<GlobalContext>>,
     body_bytes: hyper::body::Bytes
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<telemetry_basic::TelemetryNetwork>(&body_bytes).map_err(|e| {
+    let post = serde_json::from_slice::<telemetry_structs::TelemetryNetwork>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     global_context.write().await.telemetry.write().unwrap().tele_net.push(post);
@@ -211,10 +211,10 @@ async fn handle_v1_snippet_accepted(
     global_context: Arc<ARwLock<GlobalContext>>,
     body_bytes: hyper::body::Bytes
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<telemetry_snippets::SnippetAccepted>(&body_bytes).map_err(|e| {
+    let post = serde_json::from_slice::<snippets_collection::SnippetAccepted>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let success = telemetry_snippets::snippet_accepted(global_context.clone(), post.snippet_telemetry_id).await;
+    let success = snippets_collection::snippet_accepted(global_context.clone(), post.snippet_telemetry_id).await;
     Ok(Response::builder()
       .status(StatusCode::OK)
       .body(Body::from(json!({"success": success}).to_string()))
@@ -276,7 +276,7 @@ async fn handle_request(
         if !e.telemetry_skip {
             let tele_storage = &global_context.read().await.telemetry;
             let mut tele_storage_locked = tele_storage.write().unwrap();
-            tele_storage_locked.tele_net.push(telemetry_basic::TelemetryNetwork::new(
+            tele_storage_locked.tele_net.push(telemetry_structs::TelemetryNetwork::new(
                 path.clone(),
                 format!("{}", method),
                 false,

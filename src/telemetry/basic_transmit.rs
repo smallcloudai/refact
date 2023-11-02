@@ -1,87 +1,22 @@
-use tokio::io::AsyncReadExt;
 use tracing::{error, info};
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::path::PathBuf;
-use tokio::sync::RwLock as ARwLock;
 use serde_json::json;
+
+use tokio::sync::RwLock as ARwLock;
 
 use crate::caps::CodeAssistantCaps;
 use crate::global_context;
-use crate::telemetry_basic;
-use crate::telemetry_snippets;
+use crate::telemetry::basic_network;
+use crate::telemetry::basic_robot_human;
+use crate::telemetry::basic_comp_counters;
+use crate::telemetry::utils::{sorted_json_files, read_file, cleanup_old_files, telemetry_storage_dirs};
+
 
 const TELEMETRY_COMPRESSION_SECONDS: u64 = 3600;
+const TELEMETRY_FILES_KEEP: i32 = 30;
 
-
-#[derive(Debug)]
-pub struct Storage {
-    pub last_flushed_ts: i64,
-    pub tele_net: Vec<telemetry_basic::TelemetryNetwork>,
-    pub tele_completion: Vec<telemetry_basic::TelemetryCompletion>,
-    pub tele_snippets: Vec<telemetry_snippets::SnippetTelemetry>,
-    pub tele_snippet_next_id: u64,
-}
-
-impl Storage {
-    pub fn new() -> Self {
-        Self {
-            last_flushed_ts: chrono::Local::now().timestamp(),
-            tele_net: Vec::new(),
-            tele_completion: Vec::new(),
-            tele_snippets: Vec::new(),
-            tele_snippet_next_id: 100,
-        }
-    }
-}
-
-pub async fn cleanup_old_files(
-    dir: PathBuf,
-    how_much_to_keep: i32,
-) {
-    let files = _sorted_files(dir.clone()).await;
-    let mut leave_alone = how_much_to_keep;
-    for path in files {
-        leave_alone -= 1;
-        if leave_alone > 0 {
-            // info!("leave_alone telemetry file: {}", path.to_str().unwrap());
-            continue;
-        }
-        info!("removing old telemetry file: {}", path.to_str().unwrap());
-        tokio::fs::remove_file(path).await.unwrap_or_else(|e| {
-            error!("error removing old telemetry file: {}", e);
-            // better to continue deleting, not much we can do
-        });
-    }
-}
-
-async fn _sorted_files(dir: PathBuf) -> Vec<PathBuf> {
-    // Most recent files first
-    if let Ok(mut entries) = tokio::fs::read_dir(dir).await {
-        let mut sorted = Vec::<PathBuf>::new();
-        while let Some(entry) = entries.next_entry().await.unwrap() {
-            if !entry.file_type().await.unwrap().is_file() {
-                continue;
-            }
-            let path = entry.path();
-            if !path.to_str().unwrap().ends_with(".json") {
-                continue;
-            }
-            sorted.push(path);
-        }
-        sorted.sort_by(|a, b| b.cmp(&a));
-        sorted
-    } else {
-        Vec::<PathBuf>::new()
-    }
-}
-
-async fn _read_file(path: PathBuf) -> Result<String, String> {
-    let mut f = tokio::fs::File::open(path.clone()).await.map_err(|e| format!("{:?}", e))?;
-    let mut contents = String::new();
-    f.read_to_string(&mut contents).await.map_err(|e| format!("{}", e))?;
-    Ok(contents)
-}
 
 pub async fn send_telemetry_data(
     contents: String,
@@ -117,16 +52,16 @@ pub async fn send_telemetry_files_to_mothership(
     api_key: String,
 ) {
     // Send files found in dir_compressed, move to dir_sent if successful.
-    let files = _sorted_files(dir_compressed.clone()).await;
+    let files = sorted_json_files(dir_compressed.clone()).await;
     for path in files {
-        let contents_maybe = _read_file(path.clone()).await;
+        let contents_maybe = read_file(path.clone()).await;
         if contents_maybe.is_err() {
             error!("cannot read {}: {}", path.display(), contents_maybe.err().unwrap());
             continue
         }
         let contents = contents_maybe.unwrap();
-
-        if path.to_str().unwrap().ends_with("-net.json") {
+        let path_str = path.to_str().unwrap();
+        if path_str.ends_with("-net.json") || path_str.ends_with("-rh.json") || path_str.ends_with("-comp.json") {
             info!("sending telemetry file\n{}\nto url\n{}", path.to_str().unwrap(), telemetry_basic_dest);
             let resp = send_telemetry_data(contents, &telemetry_basic_dest, &api_key).await;
             if resp.is_err() {
@@ -154,7 +89,7 @@ pub async fn telemetry_full_cycle(
     info!("basic telemetry compression starts");
     let caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>;
     let api_key: String;
-    let mothership_enabled: bool;
+    let enable_basic_telemetry: bool;   // from command line, will not send anything if false
     let mut telemetry_basic_dest: String = String::new();
     let cache_dir: PathBuf;
     {
@@ -162,15 +97,19 @@ pub async fn telemetry_full_cycle(
         caps = cx.caps.clone();
         cache_dir = cx.cache_dir.clone();
         api_key = cx.cmdline.api_key.clone();
-        mothership_enabled = cx.cmdline.basic_telemetry;
+        enable_basic_telemetry = cx.cmdline.basic_telemetry;
     }
+    let (dir_sent, dir_compressed) = telemetry_storage_dirs(&cache_dir).await;
+
     if caps.is_some() {
         telemetry_basic_dest = caps.clone().unwrap().read().unwrap().telemetry_basic_dest.clone();
     }
-    telemetry_basic::compress_basic_telemetry_to_file(global_context.clone()).await;
-    let dir_compressed = cache_dir.join("telemetry").join("compressed");
-    let dir_sent = cache_dir.join("telemetry").join("sent");
-    if mothership_enabled && !telemetry_basic_dest.is_empty() && !skip_sending_part {
+
+    basic_network::compress_basic_telemetry_to_file(global_context.clone()).await;
+    basic_robot_human::tele_robot_human_compress_to_file(global_context.clone()).await;
+    basic_comp_counters::compress_tele_completion_to_file(global_context.clone()).await;
+
+    if enable_basic_telemetry && !telemetry_basic_dest.is_empty() && !skip_sending_part {
         send_telemetry_files_to_mothership(
             dir_compressed.clone(),
             dir_sent.clone(),
@@ -178,11 +117,11 @@ pub async fn telemetry_full_cycle(
             api_key
         ).await;
     }
-    if !mothership_enabled {
+    if !enable_basic_telemetry {
         info!("telemetry sending not enabled, skip");
     }
-    cleanup_old_files(dir_compressed, 10).await;
-    cleanup_old_files(dir_sent, 10).await;
+    cleanup_old_files(dir_compressed, TELEMETRY_FILES_KEEP).await;
+    cleanup_old_files(dir_sent, TELEMETRY_FILES_KEEP).await;
 }
 
 pub async fn telemetry_background_task(

@@ -17,7 +17,7 @@ use crate::global_context::GlobalContext;
 use crate::caps::CodeAssistantCaps;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::completion_cache;
-use crate::telemetry_storage;
+use crate::telemetry::telemetry_structs;
 use crate::vecdb_search;
 use crate::cached_tokenizers;
 
@@ -33,7 +33,7 @@ pub async fn create_code_completion_scratchpad(
     scratchpad_name: &str,
     scratchpad_patch: &serde_json::Value,
     cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
-    tele_storage: Arc<StdRwLock<telemetry_storage::Storage>>,
+    tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context, model_name_for_tokenizer).await?;

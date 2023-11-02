@@ -2,7 +2,6 @@ use tracing::{error, info};
 use tokio::net::TcpListener;
 use std::io::Write;
 use tracing_appender;
-
 mod global_context;
 mod caps;
 mod call_validation;
@@ -15,11 +14,12 @@ mod http_server;
 mod restream;
 mod custom_error;
 mod completion_cache;
-mod telemetry_basic;
-mod telemetry_snippets;
-mod telemetry_storage;
+mod telemetry;
 mod vecdb_search;
 mod lsp;
+
+
+use crate::telemetry::{basic_transmit, snippets_transmit};
 
 
 #[tokio::main]
@@ -50,8 +50,8 @@ async fn main() {
     let gcx3 = gcx.clone();
     let gcx4 = gcx.clone();
     let caps_reload_task = tokio::spawn(global_context::caps_background_reload(gcx.clone()));
-    let tele_backgr_task = tokio::spawn(telemetry_storage::telemetry_background_task(gcx.clone()));
-    let tele_snip_backgr_task = tokio::spawn(telemetry_snippets::tele_snip_background_task(gcx.clone()));
+    let tele_backgr_task = tokio::spawn(basic_transmit::telemetry_background_task(gcx.clone()));
+    let tele_snip_backgr_task = tokio::spawn(snippets_transmit::tele_snip_background_task(gcx.clone()));
     let http_server_task = tokio::spawn(async move {
         let gcx_clone = gcx.clone();
         let server = http_server::start_server(gcx_clone);
@@ -115,6 +115,6 @@ async fn main() {
     lsp_task.abort();
     let _ = lsp_task.await;
     info!("saving telemetry without sending, so should be quick");
-    telemetry_storage::telemetry_full_cycle(gcx4.clone(), true).await;
+    basic_transmit::telemetry_full_cycle(gcx4.clone(), true).await;
     info!("bb\n");
 }
