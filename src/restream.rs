@@ -178,7 +178,7 @@ pub async fn scratchpad_interaction_stream(
                         false,
                         e_str.to_string(),
                     ));
-                    error!("forward_to_endpoint: {}", e_str);
+                    error!(e_str);
                     let value_str = serde_json::to_string(&json!({"detail": e_str})).unwrap();
                     yield Result::<_, String>::Ok(value_str);
                     break;
