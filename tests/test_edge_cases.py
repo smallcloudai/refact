@@ -5,7 +5,7 @@ import os
 
 
 hello_world = "def hello_world():\n    '''\n    This function prints 'Hello World' and returns True.\n    '''\n"
-
+extra_str = "save_checkpoint(x, y)"
 
 def call_completion(
     code,
@@ -85,6 +85,8 @@ def pretty_print_wrapper(
 def test_edge_cases(model, stream):
     x = pretty_print_wrapper(hello_world, model=model, stream=stream, multiline=False, cursor_line=2, cursor_character=52)
     assert x.rstrip() in ["rue", "rue."], x
+    x = pretty_print_wrapper(extra_str, model=model, stream=stream, multiline=False, cursor_line=0, cursor_character=5)
+    assert x.rstrip() in [""], x
     x = pretty_print_wrapper(hello_world, model=model, stream=stream, multiline=False, cursor_line=3, cursor_character=7)
     assert x == "", x
     x = pretty_print_wrapper(hello_world, model=model, stream=stream, multiline=True, cursor_line=3, cursor_character=7)

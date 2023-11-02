@@ -41,6 +41,14 @@ impl SingleFileFIM {
         let data4snippet = telemetry_snippets::SaveSnippet::new(tele_storage, &post);
         SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(), fim_suffix: String::new(), fim_middle: String::new(), data4cache, data4snippet }
     }
+
+    fn cleanup_prompt(&mut self, text: &String) -> String {
+        text.replace(&self.fim_prefix, "")
+            .replace(&self.fim_middle, "")
+            .replace(&self.fim_suffix, "")
+            .replace(&self.t.eos, "")
+            .replace(&self.t.eot, "")
+    }
 }
 
 
@@ -65,7 +73,6 @@ impl ScratchpadAbstract for SingleFileFIM {
         }
         Ok(())
     }
-
     async fn prompt(
         &mut self,
         context_size: usize,
@@ -80,10 +87,13 @@ impl ScratchpadAbstract for SingleFileFIM {
             }
             sampling_parameters_to_patch.stop = Some(stop_list);
         }
-        let text = Rope::from_str(
-            self.post.inputs.sources.get(&self.post.inputs.cursor.file)
-            .ok_or("Cursor is in file not found in sources".to_string())?
-        );
+        let mut source = self.post.inputs.sources.get(
+            &self.post.inputs.cursor.file)
+            .ok_or("Cursor is in file not found in sources".to_string())?.clone();
+        source = self.cleanup_prompt(&source);
+
+        let text = Rope::from_str(&*source);
+
         let pos = &self.post.inputs.cursor;
         let mut before_iter = text.lines_at(pos.line as usize).reversed();
         let mut after_iter = text.lines_at(pos.line as usize + 1);
