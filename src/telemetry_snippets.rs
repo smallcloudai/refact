@@ -48,7 +48,6 @@ pub struct SnippetTelemetry {
     pub snippet_telemetry_id: u64,
     pub inputs: call_validation::CodeCompletionInputs,
     pub grey_text: String,
-    pub accepted: bool,
     pub corrected_by_user: String,
     // pub walkaway_ms: u64,
     pub remaining_percentage: f64,
@@ -67,7 +66,6 @@ pub fn snippet_register(
         snippet_telemetry_id,
         inputs: ss.post.inputs.clone(),
         grey_text: grey_text.clone(),
-        accepted: false,
         corrected_by_user: "".to_string(),
         remaining_percentage: 0.0,
         created_ts: chrono::Local::now().timestamp(),
@@ -104,7 +102,6 @@ pub async fn snippet_accepted(
     let mut storage_locked = tele_storage_arc.write().unwrap();
     let snip = storage_locked.tele_snippets.iter_mut().find(|s| s.snippet_telemetry_id == snippet_telemetry_id);
     if let Some(snip) = snip {
-        snip.accepted = true;
         snip.accepted_ts = chrono::Local::now().timestamp();
         return true;
     }
@@ -119,7 +116,7 @@ pub async fn sources_changed(
     let tele_storage = gcx.read().await.telemetry.clone();
     let mut storage_locked = tele_storage.write().unwrap();
     for snip in &mut storage_locked.tele_snippets {
-        if !snip.accepted || snip.finished_ts > 0 || !uri.ends_with(&snip.inputs.cursor.file) {
+        if snip.accepted_ts == 0 || snip.finished_ts > 0 || !uri.ends_with(&snip.inputs.cursor.file) {
             continue;
         }
         let orig_text = snip.inputs.sources.get(&snip.inputs.cursor.file);
@@ -145,7 +142,7 @@ pub async fn sources_changed(
                 info!("snip {} is finished with score={}!", snip.grey_text, snip.remaining_percentage);
             } else {
                 info!("snip {} is finished with accepted = false", snip.grey_text);
-                snip.accepted = false;
+                snip.accepted_ts = 0;  // that will cleanup and not send
             }
         }
     }
@@ -288,14 +285,14 @@ async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext>>
         let mut to_remove: Vec<usize> = vec![];
         let mut storage_locked = tele_storage.write().unwrap();
         for (idx, snip) in &mut storage_locked.tele_snippets.iter().enumerate() {
-            if snip.accepted && snip.accepted_ts > 0 {
+            if snip.accepted_ts > 0 {
                 if snip.finished_ts > 0 {
                     to_remove.push(idx);
                     snips_send.push(snip.clone());
                 }
                 continue;
             }
-            if !snip.accepted && now - snip.created_ts >= SNIP_TIMEOUT_AFTER {
+            if snip.accepted_ts == 0 && snip.created_ts + SNIP_TIMEOUT_AFTER < now {
                 to_remove.push(idx);
                 continue;
             }
@@ -306,7 +303,8 @@ async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext>>
     }
 
     if !mothership_enabled {
-        info!("telemetry snippets sending not enabled, skip");
+        // cleaning is above, can safely quit
+        // info!("telemetry snippets sending not enabled, skip");
         return;
     }
     if telemetry_corrected_snippets_dest.is_empty() {
@@ -347,7 +345,6 @@ pub async fn tele_snip_background_task(
 ) -> () {
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
-        info!("tele_snip_background_task");
         send_finished_snippets(global_context.clone()).await;
     }
 }
