@@ -758,16 +758,12 @@ function reset_ftf_progress() {
 }
 
 function render_ftune_stats(run) {
-    if (run && run.status === "working") {
-        const worked_minutes = Number(run.worked_minutes);
-        const total_steps = run.total_steps;
-        const working_steps = run.worked_steps;
-        const eta_minutes = run.eta_minutes;
-        const percentage = (Math.max(1, Number(working_steps)) / Number(total_steps)) * 100;
-        render_ftune_progress(percentage, eta_minutes);
-    } else {
-        reset_ftune_progress();
-    }
+    const worked_minutes = Number(run.worked_minutes);
+    const total_steps = run.total_steps;
+    const working_steps = run.worked_steps;
+    const eta_minutes = run.eta_minutes;
+    const percentage = (Math.max(1, Number(working_steps)) / Number(total_steps)) * 100;
+    render_ftune_progress(percentage, eta_minutes);
 }
 
 function render_ftune_progress(ftune_progress, ftune_eta) {
@@ -939,12 +935,11 @@ function finetune_controls_state()
     //     "error": "_update_and_dump_status() missing 1 required positional argument: 'new_status'"
     // },
 
-    const runs = finetune_configs_and_runs.finetune_runs
+    const runs = finetune_configs_and_runs.finetune_runs.filter(run => run.status === "working");
     if (runs.length > 0) {
-        const latest_run = runs[runs.length - 1]
-        render_ftune_stats(latest_run);
+        render_ftune_stats(runs[runs.length - 1]);
     } else {
-        render_ftune_stats();
+        reset_ftune_progress();
     }
 }
 
