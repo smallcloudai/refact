@@ -346,11 +346,11 @@ class FIMv2:
             mask_context = [0] + [1] * len(suffix_toks) + [0] + [1] * len(prefix_toks)
 
         middle_mask = [1] * len(middle_toks)
-        if self.debug:
-            print(f'splitter: {splitter}, middle_size: {len(middle)}, middle: {middle}')
-            print(termcolor.colored(self.enc.decode(prefix_toks), "red"), end='')
-            print(termcolor.colored(self.enc.decode(middle_toks), "green"), end='')
-            print(termcolor.colored(self.enc.decode(suffix_toks), "red"))
+        # if self.debug:
+        #     print(f'splitter: {splitter}, middle_size: {len(middle)}, middle: {middle}')
+        #     print(termcolor.colored(self.enc.decode(prefix_toks), "red"), end='')
+        #     print(termcolor.colored(self.enc.decode(middle_toks), "green"), end='')
+        #     print(termcolor.colored(self.enc.decode(suffix_toks), "red"))
 
         tokens = tokens_context + [self.enc.INFILL] + middle_toks + [self.enc.EOT]
         mask = mask_context + [0] + middle_mask + [1]
