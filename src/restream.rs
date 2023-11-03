@@ -71,6 +71,7 @@ pub async fn scratchpad_interaction_not_stream(
         "".to_string(),
     ));
     info!("forward to endpoint {:.2}ms", t2.elapsed().unwrap().as_millis() as f64);
+    crate::global_context::look_for_piggyback_fields(global_context.clone(), &model_says).await;
 
     let scratchpad_result: Result<serde_json::Value, String>;
     if let Some(hf_arr) = model_says.as_array() {
@@ -196,6 +197,7 @@ pub async fn scratchpad_interaction_stream(
                             break;
                         }
                         let json = serde_json::from_str::<serde_json::Value>(&message.data).unwrap();
+                        crate::global_context::look_for_piggyback_fields(global_context.clone(), &json).await;
                         let value_maybe = _push_streaming_json_into_scratchpad(
                             scratch,
                             &json,

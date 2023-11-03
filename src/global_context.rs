@@ -114,6 +114,25 @@ pub async fn try_load_caps_quickly_if_not_present(
     }
 }
 
+pub async fn look_for_piggyback_fields(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    anything_from_server: &serde_json::Value)
+{
+    let mut global_context_locked = global_context.write().await;
+    if let Some(dict) = anything_from_server.as_object() {
+        let new_caps_version = dict.get("caps_version").and_then(|v| v.as_i64()).unwrap_or(0);
+        if new_caps_version > 0 {
+            if let Some(caps) = global_context_locked.caps.clone() {
+                let caps_locked = caps.read().unwrap();
+                if caps_locked.caps_version < new_caps_version {
+                    info!("detected biggyback caps version {} is newer than the current version {}", new_caps_version, caps_locked.caps_version);
+                    global_context_locked.caps = None;
+                }
+            }
+        }
+    }
+}
+
 pub async fn create_global_context(
     cache_dir: PathBuf,
 ) -> (Arc<ARwLock<GlobalContext>>, std::sync::mpsc::Receiver<String>, CommandLine) {
