@@ -123,7 +123,7 @@ pub fn cache_key_from_post(
     key.push_str(&linesvec.join(""));
     key.push_str(&cursor_line.to_string());
     if key.len() > CACHE_KEY_CHARS {
-        key = key[..CACHE_KEY_CHARS].to_string();
+        key = key[(key.len() - CACHE_KEY_CHARS)..].to_string();
     }
     return (key, cache_part2_from_post(post));
 }
