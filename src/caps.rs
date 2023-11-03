@@ -266,8 +266,10 @@ fn relative_to_full_url(
 ) -> Result<String, String> {
     if maybe_relative_url.starts_with("http") {
         Ok(maybe_relative_url.to_string())
+    } else if maybe_relative_url.is_empty() {
+        Ok("".to_string())
     } else {
-        let base_url = Url::parse(caps_url.as_str()).map_err(|_| "failed to parse address url (1)".to_string())?;
+        let base_url = Url::parse(caps_url.as_str()).map_err(|_| "failed to parse address url (3)".to_string())?;
         let joined_url = base_url.join(maybe_relative_url).map_err(|_| "failed to join URL \"{}\" and possibly relative \"{}\"".to_string())?;
         Ok(joined_url.to_string())
     }
