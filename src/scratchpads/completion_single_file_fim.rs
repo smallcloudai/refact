@@ -73,6 +73,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         }
         Ok(())
     }
+
     async fn prompt(
         &mut self,
         context_size: usize,
