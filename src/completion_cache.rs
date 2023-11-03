@@ -96,10 +96,10 @@ pub fn cache_key_from_post(
     if let None = cursor_line_maybe {
         return (format!("dummy2-{}:{}", post.inputs.cursor.line, post.inputs.cursor.character), "".to_string());
     }
-    let mut cursor_line = cursor_line_maybe.unwrap().to_string();
+    let mut cursor_line = cursor_line_maybe.unwrap();
     let cpos = post.inputs.cursor.character as usize;
-    if cpos < cursor_line.len() {
-        cursor_line = cursor_line.chars().take(cpos).collect();
+    if cpos < cursor_line.len_chars() {
+        cursor_line = cursor_line.slice(..cpos);
     }
     let mut before_iter = rope.lines_at(post.inputs.cursor.line as usize).reversed();
     let mut linesvec = Vec::<String>::new();
@@ -112,8 +112,8 @@ pub fn cache_key_from_post(
         let line = line_maybe.unwrap();
         // info!("cache key line prev: {:?}", line);
         let line_str = line.to_string();
-        bytes += line_str.len();
         linesvec.push(line_str.replace("\r", ""));
+        bytes += line.len_chars();
         if bytes > CACHE_KEY_CHARS {
             break;
         }
@@ -122,8 +122,10 @@ pub fn cache_key_from_post(
     let mut key = "".to_string();
     key.push_str(&linesvec.join(""));
     key.push_str(&cursor_line.to_string());
-    if key.len() > CACHE_KEY_CHARS {
-        key = key[(key.len() - CACHE_KEY_CHARS)..].to_string();
+    let mut chars = key.chars();
+    
+    if chars.clone().count() > CACHE_KEY_CHARS {
+        key = chars.skip(key.len() - CACHE_KEY_CHARS).collect();
     }
     return (key, cache_part2_from_post(post));
 }
