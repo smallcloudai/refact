@@ -82,7 +82,7 @@ def completions_wait_batch(req_session, my_desc, verbose=False):
         t0 = time.time()
         url = url_get_the_best() + "completions-wait-batch"
         try:
-            resp = req_session.post(url, json=my_desc, timeout=15)
+            resp = req_session.post(url, json=my_desc, timeout=15, proxies={"http": "", "https": ""})
             json_resp = resp.json()
         except requests.exceptions.ReadTimeout as e:
             t1 = time.time()
@@ -320,7 +320,7 @@ def _upload_results_loop(upload_q: multiprocessing.Queue, cancelled_q: multiproc
             j = dict()
             try:
                 url = url_get_the_best() + "completion-upload-results"
-                resp = req_session.post(url, json=upload_dict, timeout=2)
+                resp = req_session.post(url, json=upload_dict, timeout=2, proxies={"http": "", "https": ""})
                 j = resp.json()
             except requests.exceptions.ReadTimeout as e:
                 t3 = time.time()
