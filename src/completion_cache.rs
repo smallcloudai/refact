@@ -122,8 +122,8 @@ pub fn cache_key_from_post(
     let mut key = "".to_string();
     key.push_str(&linesvec.join(""));
     key.push_str(&cursor_line.to_string());
-    let mut chars = key.chars();
-    
+    let chars = key.chars();
+
     if chars.clone().count() > CACHE_KEY_CHARS {
         key = chars.skip(key.len() - CACHE_KEY_CHARS).collect();
     }
@@ -139,6 +139,9 @@ pub fn cache_part2_from_post(post: &CodeCompletionPost) -> String {
 impl Drop for CompletionSaveToCache {
     fn drop(&mut self) {
         // flush to cache on destruction
+        if self.completion0_finish_reason.is_empty() { // error happened
+            return;
+        }
         let mut believe_chars = self.completion0_text.len();
         if self.completion0_finish_reason == "length" {
             // Model stopped because of max tokens, there is a continuation, so it's good for cache in the beginning, but don't believe it to the end.
