@@ -32,7 +32,7 @@ async def completions_wait_batch(
         t0 = time.time()
         url = stream_results.url_get_the_best() + "completions-wait-batch"
         try:
-            async with aio_session.post(url, json=my_desc, timeout=WAIT_TIMEOUT) as resp:
+            async with aio_session.post(url, json=my_desc, timeout=WAIT_TIMEOUT, proxies={"http": "", "https": ""}) as resp:
                 txt = await resp.text()
                 j = await resp.json()
         except asyncio.TimeoutError:
@@ -200,7 +200,7 @@ class UploadAsync:
                 j = dict()
                 try:
                     url = stream_results.url_get_the_best() + "completion-upload-results"
-                    async with self.aio_session.post(url, json=upload_dict, timeout=2) as resp:
+                    async with self.aio_session.post(url, json=upload_dict, timeout=2, proxies={"http": "", "https": ""}) as resp:
                         txt = await resp.text()
                         j = await resp.json()
                 except asyncio.exceptions.TimeoutError as e:
