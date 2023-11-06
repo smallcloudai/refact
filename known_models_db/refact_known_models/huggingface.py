@@ -139,6 +139,15 @@ huggingface_mini_db = {
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
      },
+    "deepseek-ai/deepseek-coder-5.7bmqa-base": {
+        "backend": "transformers",
+        "model_path": "deepseek-ai/deepseek-coder-5.7bmqa-base",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadDeepSeekCoderFIM",
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {},
+        "T": 4096,
+        "filter_caps": ["completion", "finetune"],
+     },
     "deepseek-ai/deepseek-coder-6.7b-base": {
         "backend": "transformers",
         "model_path": "deepseek-ai/deepseek-coder-6.7b-base",
