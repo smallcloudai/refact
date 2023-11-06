@@ -138,14 +138,14 @@ config = {
         "force_enable_checkpointing": True
     },
 
-    "deepseek-ai/deepseek-coder-1.3b-base": _deepseek_base,
+    "deepseek-coder/1.3b/base": _deepseek_base,
 
-    "deepseek-ai/deepseek-coder-5.7bmqa-base":  {
+    "deepseek-coder/5.7b/mqa-base":  {
         **_deepseek_base,
         "force_enable_checkpointing": True
     },
 
-    "deepseek-ai/deepseek-coder-6.7b-base": {
+    "deepseek-coder/6.7b/base": {
         **_deepseek_base,
         "force_enable_checkpointing": True
     }

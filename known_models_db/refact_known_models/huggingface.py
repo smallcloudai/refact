@@ -130,7 +130,7 @@ huggingface_mini_db = {
         "T": 2048,
         "filter_caps": ["wizardlm"],
      },
-    "deepseek-ai/deepseek-coder-1.3b-base": {
+    "deepseek-coder/1.3b/base": {
         "backend": "transformers",
         "model_path": "deepseek-ai/deepseek-coder-1.3b-base",
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadDeepSeekCoderFIM",
@@ -139,7 +139,7 @@ huggingface_mini_db = {
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
      },
-    "deepseek-ai/deepseek-coder-5.7bmqa-base": {
+    "deepseek-coder/5.7b/mqa-base": {
         "backend": "transformers",
         "model_path": "deepseek-ai/deepseek-coder-5.7bmqa-base",
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadDeepSeekCoderFIM",
@@ -148,7 +148,7 @@ huggingface_mini_db = {
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
      },
-    "deepseek-ai/deepseek-coder-6.7b-base": {
+    "deepseek-coder/6.7b/base": {
         "backend": "transformers",
         "model_path": "deepseek-ai/deepseek-coder-6.7b-base",
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadDeepSeekCoderFIM",
