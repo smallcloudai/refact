@@ -4,6 +4,7 @@ from refact_scratchpads.scratchpad_hf import ScratchpadSPM
 from refact_scratchpads.scratchpad_hf import ScratchpadPSM
 from refact_scratchpads.scratchpad_hf import ScratchpadCodeLlamaPSM
 from refact_scratchpads.scratchpad_hf import ScratchpadCodeLlamaSPM
+from refact_scratchpads.scratchpad_hf import ScratchpadDeepSeekCoderFIM
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceStarChat
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceWizard
 from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceLlama2
