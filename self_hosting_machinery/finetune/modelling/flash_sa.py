@@ -152,6 +152,7 @@ def apply_flash_mha_to_codellama_model(model):
             past_key_value: Optional[Tuple[torch.Tensor]] = None,
             output_attentions: bool = False,
             use_cache: bool = False,
+            **kwargs
     ):
         from transformers.models.llama.modeling_llama import apply_rotary_pos_emb
 

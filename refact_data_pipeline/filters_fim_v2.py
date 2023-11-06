@@ -214,7 +214,8 @@ class FIMv2:
         self.fim_probability = dataopts.get("fim_probability", 0.5)
         self.tkr_stochastic_tokens = dataopts.get("tkr_stochastic_tokens", 3)
         self.fim_drop_residuals = bool(dataopts.get("fim_drop_residuals", 0))
-        self.random_trim_context_prob = bool(dataopts.get("random_trim_context_prob", 0.0))
+        self.random_trim_context_prob = dataopts.get("random_trim_context_prob", 0.0)
+        self.spm_prob = dataopts.get("spm_prob", 0.5)
         self.debug = bool(dataopts.get("debug", 0))
         self.enc = dataopts.encoding
         if hasattr(self.enc, "set_random_seed"):
@@ -338,7 +339,7 @@ class FIMv2:
             middle_toks: List[int],
             suffix_toks: List[int],
     ):
-        if self.random.random() < 0.5:
+        if self.random.random() < self.spm_prob:
             tokens_context = [self.enc.PREFIX] + prefix_toks + [self.enc.SUFFIX] + suffix_toks
             mask_context = [0] + [1] * len(prefix_toks) + [0] + [1] * len(suffix_toks)
         else:
@@ -390,7 +391,7 @@ class FIMv2CodeLlama(FIMv2):
     ):
         assert self.enc.BOS is not None
         # https://github.com/facebookresearch/codellama/blob/cb51c14ec761370ba2e2bc351374a79265d0465e/llama/generation.py#L380
-        if self.random.random() < 0.5:
+        if self.random.random() < self.spm_prob:
             tokens = (
                     [self.enc.BOS, self.enc.PREFIX] + prefix_toks
                     + [self.enc.SUFFIX] + suffix_toks
