@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 from typing import List, Set
 
 setup_package = os.environ.get("SETUP_PACKAGE", None)
-install_optional = os.environ.get("INSTALL_OPTIONAL", "TRUE")
+install_optional = os.environ.get("INSTALL_OPTIONAL", "FALSE")
 
 # Setting some env variables to force flash-attention build from sources
 # We can get rid of them when https://github.com/Dao-AILab/flash-attention/pull/540 is merged
