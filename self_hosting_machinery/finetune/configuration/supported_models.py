@@ -41,6 +41,36 @@ _starcoder_base = {
     "force_enable_checkpointing": False
 }
 
+_deepseek_base = {
+    "lora_target_modules_mapping": {
+        "qkv": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj"],
+        "out": ["self_attn.o_proj"],
+        "backproj": ["self_attn.o_proj"],
+        "mlp": ["mlp.gate_proj", "mlp.up_proj", "mlp.down_proj"],
+    },
+    "freeze_exceptions_mapping": {
+        "wte": ["embed_tokens"],
+        "lm_head": ["lm_head"],
+        "lora": ["lora"]
+    },
+    "tokenizer": {
+        "eot_idx": 32021,  # `<|EOT|>`
+        "padding_idx": 32018,  # `<pad>`
+        "fim_prefix": 32016,  # `<｜fim▁begin｜>`
+        "fim_middle": 32017,  # `<｜fim▁end｜>`
+        "fim_suffix": 32015,  # `<｜fim▁hole｜>`
+        "escape": 32013,  # using `<｜begin▁of▁sentence｜>` token for now
+    },
+    "train_ds_pipeline": {
+        "ds_opts": f"{_fim_train_ds_pipeline['ds_opts']},spm_prob=0.0",
+        "ds_name": _fim_train_ds_pipeline["ds_name"]
+    },
+    "test_ds_pipeline": _fim_test_ds_pipeline,
+    "train_model_modifiers": [
+        "flash_sa.apply_flash_mha_to_codellama_model"
+    ]
+}
+
 config = {
     "Refact/1.6B": {
         "lora_target_modules_mapping": {
@@ -104,6 +134,13 @@ config = {
         "train_model_modifiers": [
             "flash_sa.apply_flash_mha_to_codellama_model"
         ],
+        "force_enable_checkpointing": True
+    },
+
+    "deepseek-ai/deepseek-coder-1.3b-base": _deepseek_base,
+
+    "deepseek-ai/deepseek-coder-6.7b-base": {
+        **_deepseek_base,
         "force_enable_checkpointing": True
     }
 }
