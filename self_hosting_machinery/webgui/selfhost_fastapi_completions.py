@@ -234,14 +234,14 @@ class CompletionsRouter(APIRouter):
         super().__init__(*args, **kwargs)
 
         # API for direct FIM and Chat usage
-        self.add_api_route("/login", self._login, methods=["GET"])
-        self.add_api_route("/secret-key-activate", self._secret_key_activate, methods=["GET"])
-        self.add_api_route("/contrast", self._contrast, methods=["POST"])
-        self.add_api_route("/chat", self._chat, methods=["POST"])
+        self.add_api_route("/v1/login", self._login, methods=["GET"])
+        self.add_api_route("/v1/secret-key-activate", self._secret_key_activate, methods=["GET"])
+        self.add_api_route("/v1/contrast", self._contrast, methods=["POST"])
+        self.add_api_route("/v1/chat", self._chat, methods=["POST"])
 
         # API for LSP server
         self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
-        self.add_api_route("/completions", self._completions, methods=["POST"])
+        self.add_api_route("/v1/completions", self._completions, methods=["POST"])
 
         self._inference_queue = inference_queue
         self._id2ticket = id2ticket
@@ -252,7 +252,7 @@ class CompletionsRouter(APIRouter):
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
         return {
             "cloud_name": "Refact Self-Hosted",
-            "endpoint_template": f"{self.prefix}/completions",
+            "endpoint_template": "v1/completions",
             "endpoint_style": "openai",
             "telemetry_basic_dest": "",
             "running_models": self._inference_queue.models_available(),
