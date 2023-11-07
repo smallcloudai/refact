@@ -1,11 +1,10 @@
-from refact_encoding import RefactEncoding
 
 from code_contrast.format_2023q2.element import Format2023q2
 from code_contrast.format_2023q2.el_msg import MsgElement
 from code_contrast.format_2023q2.el_chunk import ChunkElement
 
 
-def format_2023q2_escape(enc: RefactEncoding) -> Format2023q2:
+def format_2023q2_escape(enc) -> Format2023q2:
     fmt = Format2023q2(enc)
     fmt.element_start_seq = {
     "SYSTEM": [enc.ESCAPE, *enc.encode("SYSTEM")],

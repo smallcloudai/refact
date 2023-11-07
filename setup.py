@@ -40,7 +40,7 @@ all_refact_packages = {
     "refact_scratchpads_no_gpu": PyPackage(
         requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson", "setproctitle"]),
     "refact_data_pipeline": PyPackage(
-        requires=["numpy", "tokenizers==0.14.0", "torch", "requests", "cloudpickle",
+        requires=["numpy", "tokenizers==0.14.0", "torch", "requests", "cloudpickle", "blobfile",
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools', "cdifflib",
                   "ujson", "zstandard", "scipy", "einops", "matplotlib", "giturlparse",
                   "jsonlines", "binpacking", "filelock", "tables==3.8.0", "pygments", "kshingle"],
@@ -52,7 +52,7 @@ all_refact_packages = {
                   "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2", "accelerate",
                   "termcolor", "torch", "transformers", "bitsandbytes", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed==0.11.1"],
-        optional=["flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
+        optional=["ninja", "flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
                            "known_models_db", "refact_data_pipeline"],
         data=["webgui/static/*", "webgui/static/js/*", "webgui/static/components/modals/*", "watchdog/watchdog.d/*"]),

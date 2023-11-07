@@ -18,7 +18,6 @@ from refact_data_pipeline.datadef import DatasetMix
 from refact_data_pipeline.datadef import DatasetOpts
 from refact_data_pipeline.filters_hdfs import Hdf5Dataset
 from refact_data_pipeline.filters_packing import Packer, SinglePacker, DensePacker
-from refact_encoding import RefactEncoding
 
 log = print
 
@@ -281,7 +280,7 @@ class Mix:
 def build_filter_stack(
         datadef: Union[DatasetDef, DatasetMix],
         dataopts: DatasetOpts,
-        enc: RefactEncoding,
+        enc,
         comm: MPI.Comm,
         cold_restart: List[int] = [],
         cold_restart_offset: int = 0,

@@ -1,6 +1,5 @@
 import random
 
-from refact_encoding import RefactEncoding
 from refact_data_pipeline import DatasetOpts
 
 from typing import Dict, Union
@@ -48,7 +47,7 @@ class FIM:
         self.n_ctx = dataopts.get("n_ctx", 2048)
         self.fim_probability = dataopts.get("fim_probability", 0.5)
         self.tkr_stochastic_tokens = dataopts.get("tkr_stochastic_tokens", 3)
-        self.enc: RefactEncoding = dataopts.encoding
+        self.enc = dataopts.encoding
         if hasattr(self.enc, "set_random_seed"):
             self.enc.set_random_seed(dataopts.get("seed", 42))
         self.special_tokens = [

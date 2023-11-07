@@ -1,4 +1,3 @@
-from refact_encoding import RefactEncoding, hlprint
 
 from code_contrast.format_2023q2.element import Element, ElementPackingContext, Format2023q2
 from typing import List, Optional
@@ -7,7 +6,7 @@ from typing import List, Optional
 class Packer:
     def __init__(self, fmt: Format2023q2):
         self.fmt = fmt
-        self.enc: RefactEncoding = fmt.enc
+        self.enc = fmt.enc
         self.r: List[int] = list()
         self.m: List[int] = list()
         self.plan: List[Element] = list()

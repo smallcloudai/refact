@@ -5,7 +5,6 @@ import copy
 
 import numpy as np
 
-from refact_encoding import RefactEncoding
 from code_contrast.format_2023q2.element import Format2023q2
 from code_contrast.format_2023q2 import format, packing
 from code_contrast.format_2023q2.from_orig_dest_message import from_odm_dict
@@ -24,7 +23,7 @@ class Contrast2023Q2FromODM:
         self.seed = dataopts.get("seed", 42)
         self.py_random = random.Random(self.seed if self.seed else None)
         self.np_random = np.random.RandomState(self.seed if self.seed else None)
-        self.enc: RefactEncoding = dataopts.encoding
+        self.enc = dataopts.encoding
         self.fmt: Format2023q2 = format.format_2023q2_escape(self.enc)
 
     def __iter__(self):
