@@ -53,6 +53,8 @@ RUN pip install /tmp/app -v --no-build-isolation && rm -rf /tmp/app
 
 ENV REFACT_PERM_DIR "/perm_storage"
 ENV REFACT_TMP_DIR "/tmp"
+ENV RDMAV_FORK_SAFE 0
+ENV RDMAV_HUGEPAGES_SAFE 0
 
 EXPOSE 8008
 
