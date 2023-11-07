@@ -64,7 +64,6 @@ class WebGUI(FastAPI):
             TabLorasRouter(),
             PluginsRouter(),
             CompletionsRouter(
-                prefix="/v1",
                 id2ticket=id2ticket,
                 inference_queue=inference_queue,
                 model_assigner=model_assigner),
