@@ -1,7 +1,5 @@
 import termcolor
 
-from refact_encoding import RefactEncoding, hlprint
-
 from collections import defaultdict
 
 from typing import List, Dict, Tuple, DefaultDict, Any, Optional
@@ -231,8 +229,13 @@ def self_test(
 
 
 if __name__ == "__main__":
-    enc = RefactEncoding("bigcode_largemodel")
+    raise NotImplementedError("This code will fail cause the tokenizer doesn't "
+                              "have extra fields we had before"
+                              "Should migrate tokenizer more porperly")
+    from transformers import AutoTokenizer
+    enc = AutoTokenizer.from_pretrained("bigcode_largemodel")
     fmt = format.format_2023q2_escape(enc)
+
     # test_messages(fmt)
     # test_expansion(fmt)
     self_test(fmt, example_odm, limit_ctx_n=1024, limit_aux_n=128, for_training=True, verbose=True)
