@@ -146,9 +146,8 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         assert torch.cuda.is_available(), "model is only supported on GPU"
 
         self._device = "cuda:0"
-        for attempt in [0, 1]:
+        for local_files_only in [True, False]:
             try:
-                local_files_only = (attempt == 0)
                 logging.getLogger("MODEL").info("loading model local_files_only=%i" % local_files_only)
                 self._tokenizer = AutoTokenizer.from_pretrained(
                     self._model_dict["model_path"], cache_dir=self.cache_dir, trust_remote_code=True,
@@ -177,7 +176,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
                     raise RuntimeError(f"unknown model backend {model_dict['backend']}")
                 break
             except IOError as e:
-                if attempt == 1:
+                if local_files_only == False:
                     raise e
         self._dump_embeddings()
 
