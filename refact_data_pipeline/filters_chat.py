@@ -8,7 +8,6 @@ from code_contrast.format_2023q2 import format, packing
 from code_contrast.format_2023q2.el_msg import MsgElement
 from code_contrast.format_2023q2.element import Format2023q2
 from refact_data_pipeline import DatasetOpts
-from refact_encoding.encoding import RefactEncoding
 
 
 class Chat2023Q2:
@@ -22,7 +21,7 @@ class Chat2023Q2:
         self.no_format_prob = dataopts.get("chat_no_format_prob", 0.0)
         self.debug = bool(dataopts.get("debug", 0))
         self.tkr_stochastic_tokens = bool(dataopts.get("tkr_stochastic_tokens", 0.0))
-        self.enc: RefactEncoding = dataopts.encoding
+        self.enc = dataopts.encoding
         self.fmt: Format2023q2 = format.format_2023q2_escape(self.enc)
         self.random = np.random.RandomState(dataopts.get("seed", 42))
 

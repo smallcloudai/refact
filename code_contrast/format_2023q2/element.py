@@ -1,10 +1,9 @@
 import termcolor, re
-from refact_encoding import RefactEncoding
 from typing import List, Dict, Tuple, Callable, Type
 
 
 class Format2023q2:
-    def __init__(self, enc: RefactEncoding):
+    def __init__(self, enc):
         self.enc = enc
         self.element_start_seq: Dict[str, List[int]] = {}
         self.element_classes: Dict[str, Type[Element]] = {}

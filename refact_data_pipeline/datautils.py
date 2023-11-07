@@ -1,8 +1,8 @@
 import os
-
-import torch as th
 from collections import defaultdict
 from typing import Iterator, Tuple, Dict, Any, Callable, Iterable, List
+
+import torch as th
 
 from refact_data_pipeline import DatasetOpts
 

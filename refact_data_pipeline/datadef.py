@@ -4,10 +4,11 @@ from typing import List, Set, Tuple
 
 
 class DatasetDef:
-    def __init__(self,
-        cloud_path: str,
-        cloud_files: List[str],
-        to_apply: Set[str]
+    def __init__(
+            self,
+            cloud_path: str,
+            cloud_files: List[str],
+            to_apply: Set[str]
     ):
         self.cloud_path = cloud_path
         self.cloud_files = cloud_files
@@ -39,9 +40,10 @@ class DatasetDumpedDef:
 
 
 class DatasetMix:
-    def __init__(self,
-        dataset_defs: List[DatasetDef],
-        proportions: List[float] = [],
+    def __init__(
+            self,
+            dataset_defs: List[DatasetDef],
+            proportions: List[float] = [],
     ):
         self.dataset_defs = dataset_defs
         self.proportions = proportions
@@ -83,4 +85,3 @@ class DatasetOpts:
 
     def __repr__(self):
         return json.dumps(self.opts)
-

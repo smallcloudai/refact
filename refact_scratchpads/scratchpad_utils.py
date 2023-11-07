@@ -1,14 +1,12 @@
 from itertools import zip_longest
 
-from refact_encoding import RefactEncoding
-
 from typing import Tuple
 
 
 def trim_context_infill(
         prefix: str,
         suffix: str,
-        enc: RefactEncoding,
+        enc,
         tokens_limit: int
 ) -> Tuple[str, str]:
     lines_prefix = [(l, 'prefix') for l in reversed(prefix.splitlines(keepends=True))]
