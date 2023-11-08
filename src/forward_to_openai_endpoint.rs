@@ -19,7 +19,7 @@ pub async fn forward_to_openai_style_endpoint(
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
 ) -> Result<serde_json::Value, String> {
-    let is_passthrough = prompt.starts_with("MESSAGES ");
+    let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
     save_url.clone_from(&&url);
     let mut headers = HeaderMap::new();
@@ -66,7 +66,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
 ) -> Result<EventSource, String> {
-    let is_passthrough = prompt.starts_with("MESSAGES ");
+    let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
     save_url.clone_from(&&url);
     let mut headers = HeaderMap::new();
@@ -98,8 +98,8 @@ fn _passthrough_messages_to_json(
     data: &mut serde_json::Value,
     prompt: &str,
 ) {
-    assert!(prompt.starts_with("MESSAGES "));
-    let messages_str = &prompt[9..];
+    assert!(prompt.starts_with("PASSTHROUGH "));
+    let messages_str = &prompt[12..];
     let messages: Vec<call_validation::ChatMessage> = serde_json::from_str(&messages_str).unwrap();
     data["messages"] = serde_json::json!(messages);
 }

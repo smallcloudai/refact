@@ -42,6 +42,12 @@ pub struct CodeCompletionPost {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ContextFile {
+    pub file_name: String,
+    pub file_content: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatMessage {
     pub role: String,
     pub content: String,

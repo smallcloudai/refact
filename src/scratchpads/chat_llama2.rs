@@ -8,9 +8,7 @@ use async_trait::async_trait;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
-use crate::call_validation::ChatPost;
-use crate::call_validation::ChatMessage;
-use crate::call_validation::SamplingParameters;
+use crate::call_validation::{ChatPost, ChatMessage, SamplingParameters, ContextFile};
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::vecdb_search::{VecdbSearch, embed_vecdb_results};
 
@@ -88,6 +86,12 @@ impl ScratchpadAbstract for ChatLlama2 {
                 }
             } else {
                 // prompt.push_str("\n\n");
+            }
+            if msg.role == "context_file" {
+                let vector_of_context_files: Vec<ContextFile> = serde_json::from_str(&msg.content).unwrap(); // FIXME unwrap
+                for context_file in vector_of_context_files {
+                    prompt.push_str(format!("{}\n```\n{}```\n\n", context_file.file_name, context_file.file_content).as_str());
+                }
             }
             if msg.role == "user" {
                 let user_input = if do_strip { msg.content.trim().to_string() } else { msg.content.clone() };

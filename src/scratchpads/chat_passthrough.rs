@@ -4,15 +4,13 @@ use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::call_validation::ChatPost;
-use crate::call_validation::ChatMessage;
-use crate::call_validation::SamplingParameters;
+use crate::call_validation::{ChatPost, ChatMessage, SamplingParameters, ContextFile};
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history_in_bytes;
 // use crate::vecdb_search::{VecdbSearch, embed_vecdb_results};
 use crate::vecdb_search::VecdbSearch;
 
 
-// const DEBUG: bool = true;
+const DEBUG: bool = true;
 
 
 // #[derive(Debug)]
@@ -57,7 +55,26 @@ impl ScratchpadAbstract for ChatPassthrough {
     ) -> Result<String, String> {
         let limited_msgs: Vec<ChatMessage> = limit_messages_history_in_bytes(&self.post, self.limit_bytes, &self.default_system_message)?;
         info!("chat passthrough {} messages -> {} messages after applying limits and possibly adding the default system message", &limited_msgs.len(), &limited_msgs.len());
-        let prompt = "MESSAGES ".to_string() + &serde_json::to_string(&limited_msgs).unwrap();
+        let mut filtered_msgs: Vec<ChatMessage> = Vec::<ChatMessage>::new();
+        for msg in &limited_msgs {
+            if msg.role == "assistant" || msg.role == "system" || msg.role == "user" {
+                filtered_msgs.push(msg.clone());
+            } else if msg.role == "context_file" {
+                let vector_of_context_files: Vec<ContextFile> = serde_json::from_str(&msg.content).unwrap(); // FIXME unwrap
+                for context_file in &vector_of_context_files {
+                    filtered_msgs.push(ChatMessage {
+                        role: "user".to_string(),
+                        content: format!("{}\n```\n{}```", context_file.file_name, context_file.file_content),
+                    });
+                }
+            }
+        }
+        let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&filtered_msgs).unwrap();
+        if DEBUG {
+            for msg in &filtered_msgs {
+                info!("filtered message: {:?}", msg);
+            }
+        }
         Ok(prompt.to_string())
     }
 

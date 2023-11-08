@@ -188,6 +188,7 @@ pub async fn scratchpad_interaction_stream(
             let mut finished: bool = false;
             let mut problem_reported = false;
             let mut was_correct_output_even_if_error = false;
+            // let mut test_countdown = 250;
             while let Some(event) = event_source.next().await {
                 match event {
                     Ok(Event::Open) => {},
@@ -196,6 +197,14 @@ pub async fn scratchpad_interaction_stream(
                         if message.data.starts_with("[DONE]") {
                             break;
                         }
+                        // test_countdown -= 1;
+                        // if test_countdown == 0 {
+                        //     error!("test_countdown!");
+                        //     let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": "test_countdown happened"})).unwrap());
+                        //     yield Result::<_, String>::Ok(value_str);
+                        //     problem_reported = true;
+                        //     break;
+                        // }
                         let json = serde_json::from_str::<serde_json::Value>(&message.data).unwrap();
                         crate::global_context::look_for_piggyback_fields(global_context.clone(), &json).await;
                         let value_maybe = _push_streaming_json_into_scratchpad(
@@ -216,6 +225,7 @@ pub async fn scratchpad_interaction_stream(
                             let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
                             yield Result::<_, String>::Ok(value_str);
                             // TODO: send telemetry
+                            problem_reported = true;
                             break;
                         }
                         if finished {

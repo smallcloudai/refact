@@ -1,9 +1,7 @@
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
-use crate::call_validation::ChatPost;
-use crate::call_validation::ChatMessage;
-use crate::call_validation::SamplingParameters;
+use crate::call_validation::{ChatPost, ChatMessage, SamplingParameters, ContextFile};
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::vecdb_search::{VecdbSearch, embed_vecdb_results};
 
@@ -97,6 +95,11 @@ impl ScratchpadAbstract for GenericChatScratchpad {
                 prompt.push_str(self.keyword_user.as_str());
             } else if msg.role == "assistant" {
                 prompt.push_str(self.keyword_asst.as_str());
+            } else if msg.role == "context_file" {
+                let vector_of_context_files: Vec<ContextFile> = serde_json::from_str(&msg.content).unwrap(); // FIXME unwrap
+                for context_file in vector_of_context_files {
+                    prompt.push_str(format!("{}\n```\n{}```\n\n", context_file.file_name, context_file.file_content).as_str());
+                }
             } else {
                 return Err(format!("role \"{}\"not recognized", msg.role));
             }

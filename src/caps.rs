@@ -128,7 +128,9 @@ const KNOWN_MODELS: &str = r#"
         "gpt-3.5-turbo": {
             "n_ctx": 4096,
             "supports_scratchpads": {
-                "PASSTHROUGH": {}
+                "PASSTHROUGH": {
+                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
+                }
             },
             "similar_models": [
             ]
