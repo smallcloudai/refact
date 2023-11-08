@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-Refact is an open-source Copilot alternative available as a self-hosted or cloud option.
+This repo consists Refact WebUI for fine-tuning and self-hosting of code models, that you can later use inside Refact plugins for code completion and chat. 
 
 ---
 
@@ -15,22 +15,15 @@ Refact is an open-source Copilot alternative available as a self-hosted or cloud
 [![Visual Studio](https://img.shields.io/visual-studio-marketplace/d/smallcloud.codify?label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
 [![JetBrains](https://img.shields.io/jetbrains/plugin/d/com.smallcloud.codify?label=JetBrains)](https://plugins.jetbrains.com/plugin/20647-codify)
 
-- [x] Autocompletion powered by best-in-class open-source code models
-- [x] Context-aware chat on a current file
-- [x] Refactor, explain, analyse, optimise code, and fix bug functions
-- [x] Fine-tuning on codebase (Beta, self-hosted only) [Docs](https://refact.ai/docs/fine-tuning/)
-- [ ] Context-aware chat on entire codebase
+- [x] Fine-tuning of open-source code models
+- [x] Self-hosting of open-source code models 
+- [x] Download and upload Lloras
+- [x] Use models for code completion and chat inside Refact plugins 
+- [x] Model sharding
+- [x] Host several small models on one GPU
+- [x] Use OpenAI keys to connect GPT-models for chat 
 
-![Image Description](./almost-all-features-05x-dark.jpeg)
-
-## Getting Started
-
-Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai).
-
-You can start using Refact Cloud immediately, just create an account at [https://refact.ai/](https://refact.ai/).
-
-Instructions below are for the self-hosted version.
-
+![self-hosting-refact](https://github.com/smallcloudai/refact/assets/5008686/18e48b42-b638-4606-bde0-cadd47fd26e7)
 
 ### Running Refact Self-Hosted in a Docker Container
 
@@ -97,6 +90,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for installation without a docker contain
 
 ### Setting Up Plugins
 
+
+Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai).
+
 Go to plugin settings and set up a custom inference URL `http://127.0.0.1:8008`
 
 <details><summary>JetBrains</summary>
@@ -107,11 +103,7 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 </details>
 
 
-## How Refact Works
-
-Under the hood, it uses Refact models and the best open-source models.
-
-At the moment, you can choose between the following models:
+## Supported models
 
 | Model                                                                           | Completion | Chat | AI Toolbox | Fine-tuning |
 |---------------------------------------------------------------------------------|------------|------|------------|-------------|
@@ -148,4 +140,3 @@ A: it doesn't run on CPU yet, but it's certainly possible to implement this.
 - [Community forum](https://github.com/smallcloudai/refact/discussions) for community support and discussions
 - [Discord](https://www.smallcloud.ai/discord) for chatting with community members
 - [Twitter](https://twitter.com/refact_ai) for product news and updates
-
