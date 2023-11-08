@@ -1,5 +1,7 @@
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 
+ARG is_cicl=false
+
 RUN apt-get update
 RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
     curl \
@@ -46,10 +48,12 @@ ENV BUILD_CUDA_EXT=1
 ENV GITHUB_ACTIONS=true
 ENV TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0+PTX"
 ENV FLASH_ATTENTION_FORCE_BUILD=TRUE
-ENV MAX_JOBS=8
 COPY . /tmp/app
 RUN pip install ninja
-RUN pip install /tmp/app -v --no-build-isolation && rm -rf /tmp/app
+RUN if [ "$is_cicl" = "true" ]; then  \
+    pip install -v --no-build-isolation https://github.com/smallcloudai/flash-attention/releases/download/2.3.2/flash_attn-2.3.2-cp310-cp310-linux_x86_64.whl;  \
+    fi
+RUN MAX_JOBS=$(nproc) pip install /tmp/app -v --no-build-isolation && rm -rf /tmp/app
 
 ENV REFACT_PERM_DIR "/perm_storage"
 ENV REFACT_TMP_DIR "/tmp"
