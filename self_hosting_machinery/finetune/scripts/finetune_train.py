@@ -178,7 +178,7 @@ def loop(
                 iter_n=iter_n,
                 model_context=model_context,
                 finetune_cfg=finetune_cfg,
-                status_tracker=stats_tracker
+                status_tracker=status_tracker
             )
             overall_tokens_n += tokens_n
 
