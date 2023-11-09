@@ -127,6 +127,17 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 
 Refact is free to use for individuals and small teams under BSD-3-Clause license. If you wish to use Refact for Enterprise, please [contact us](https://refact.ai/contact/).
 
+## Custom installation
+
+You can also install refact repo without docker:
+```shell
+pip install .
+```
+If you have a GPU with CUDA capability >= 8.0, you can also install it with flash-attention v2 support:
+```shell
+FLASH_ATTENTION_FORCE_BUILD=TRUE MAX_JOBS=4 INSTALL_OPTIONAL=TRUE pip install .
+```
+
 ## FAQ
 
 Q: Can I run a model on CPU?
