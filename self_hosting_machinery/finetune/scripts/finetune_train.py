@@ -79,6 +79,7 @@ def _train_iteration(
         iter_n: int,
         model_context: ModelContext,
         finetune_cfg: Dict[str, Any],
+        status_tracker: FinetuneStatusTracker,
 ) -> Tuple[float, int]:
     world_size = int(os.environ.get('WORLD_SIZE', 1))
 
@@ -99,6 +100,7 @@ def _train_iteration(
         model_context.step()
         tokens_n += (input.shape[0] * input.shape[1]) * world_size
         losses.append(loss.item())
+        status_tracker.update_status("working")
 
         if finetune_cfg['debug']:
             with open(data_path / ('%d_%0.3f.txt' % (b0, loss.item())), 'w') as f:
@@ -175,7 +177,8 @@ def loop(
                 data=data,
                 iter_n=iter_n,
                 model_context=model_context,
-                finetune_cfg=finetune_cfg
+                finetune_cfg=finetune_cfg,
+                status_tracker=stats_tracker
             )
             overall_tokens_n += tokens_n
 
