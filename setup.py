@@ -18,7 +18,6 @@ class PyPackage:
     requires_packages: List[str] = field(default_factory=list)
     data: List[str] = field(default_factory=list)
 
-
 all_refact_packages = {
     "code_contrast": PyPackage(
         requires=["cdifflib", "termcolor", "numpy", "dataclasses"],
@@ -45,7 +44,7 @@ all_refact_packages = {
     "self_hosting_machinery": PyPackage(
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
                   "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2", "accelerate",
-                  "termcolor", "torch", "transformers", "bitsandbytes", "safetensors", "peft", "triton",
+                  "termcolor", "torch", "transformers==4.34.0", "bitsandbytes", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed==0.11.1"],
         optional=["ninja", "flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
