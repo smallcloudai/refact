@@ -101,22 +101,6 @@ const KNOWN_MODELS: &str = r#"
         }
     },
     "code_chat_models": {
-        "smallcloudai/Refact-1_6B-fim": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-GENERIC": {
-                    "token_esc": "<empty_output>",
-                    "keyword_system": "SYSTEM ",
-                    "keyword_user": "USER ",
-                    "keyword_assistant": "ASSISTANT ",
-                    "stop_list": ["<empty_output>"],
-                    "default_system_message": "You are a programming assistant."
-                }
-            },
-            "similar_models": [
-                "Refact/1.6B"
-            ]
-        },
         "meta-llama/Llama-2-70b-chat-hf": {
             "n_ctx": 4096,
             "supports_scratchpads": {
