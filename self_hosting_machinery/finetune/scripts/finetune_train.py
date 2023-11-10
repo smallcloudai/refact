@@ -166,7 +166,7 @@ def loop(
 
     early_stop = EarlyStopper(patience=int(train_iters * 0.2))
     with status_tracker(total_steps=train_iters) as stats_tracker:
-        for iter_n in range(train_iters):
+        for iter_n in range(1, train_iters + 1):
             data = to_cuda(next(train_ds_iter))
             traces.log(
                 f"iter {iter_n}/{finetune_cfg['train_iters']}  tokens {overall_tokens_n / 1e9:0.3f} "
