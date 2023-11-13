@@ -16,6 +16,7 @@ __all__ = ['FinetuneStatusTracker']
 def get_finetune_status() -> Dict[str, Any]:
     return {
         "started_ts": time.time(),
+        "total_steps": 0,
         "worked_steps": 0,
         "worked_minutes": 0,
         "status": "starting"
