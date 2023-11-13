@@ -167,7 +167,7 @@ function finetune_activate_run(run_id, checkpoint) {
 function render_runs() {
     const runs_table = document.querySelector('.run-table');
     if(finetune_configs_and_runs.finetune_runs.length === 0) {
-        runs_table.innerHTML = '<tr><td>No runs yet.</td><td></td><td></td><td></td><td></td><td></td></tr>';
+        runs_table.innerHTML = '<tr><td>No runs yet.</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
         return;
     }
     let finetune_is_working = false;
@@ -757,6 +757,39 @@ function reset_ftf_progress() {
     error.innerHTML = 'Error:<span class="text-danger"></span>';
 }
 
+function render_ftune_stats(run) {
+    const worked_minutes = Number(run.worked_minutes);
+    const total_steps = run.total_steps;
+    const working_steps = run.worked_steps;
+    const eta_minutes = run.eta_minutes;
+    const percentage = (Math.max(1, Number(working_steps)) / Number(total_steps)) * 100;
+    render_ftune_progress(percentage, eta_minutes);
+}
+
+function render_ftune_progress(ftune_progress, ftune_eta) {
+    const progress_container = document.querySelector('.ftune-progress');
+    progress_container.classList.remove('d-none');
+    const ftune_bar = document.querySelector('.ftune-bar');
+    ftune_bar.style.width = ftune_progress + "%";
+    if (ftune_eta !== undefined) {
+        const eta_state = document.querySelector('.ftune-eta');
+        eta_state.innerHTML = 'ETA: ' + ftune_eta + ' minute(s)';
+    }
+    const ftune_stats = document.querySelector('.start-finetune-stats');
+    ftune_stats.classList.remove('d-none');
+}
+
+function reset_ftune_progress() {
+    const ftune_progress = document.querySelector('.ftune-progress');
+    ftune_progress.classList.add('d-none');
+    const ftune_bar = document.querySelector('.ftune-bar');
+    ftune_bar.style.width = "0%";
+    const eta_state = document.querySelector('.ftune-eta');
+    eta_state.innerHTML = '';
+    const ftune_stats = document.querySelector('.start-finetune-stats');
+    ftune_stats.classList.add('d-none');
+}
+
 function get_filters_settings(defaults = false) {
     fetch("/tab-finetune-smart-filter-get")
     .then(function(response) {
@@ -901,6 +934,13 @@ function finetune_controls_state()
     //     "avg_loss": 1.1812065972222223,
     //     "error": "_update_and_dump_status() missing 1 required positional argument: 'new_status'"
     // },
+
+    const runs = finetune_configs_and_runs.finetune_runs.filter(run => run.status === "working");
+    if (runs.length > 0) {
+        render_ftune_stats(runs[runs.length - 1]);
+    } else {
+        reset_ftune_progress();
+    }
 }
 
 let logs_streamer_to_stop = undefined;
@@ -965,7 +1005,7 @@ export async function init() {
 
     finetune_filter_panel = document.querySelector('.start-funetune-step1');
     finetune_filter_panel.classList.add('pane-disabled');
-    finetune_filter_progress = document.querySelector('.start-funetune-stats .progress-bar');
+    finetune_filter_progress = document.querySelector('.start-filter-stats .progress-bar');
     finetune_filter_settings = document.querySelector('.sources-settings');
     finetune_filter_status = document.querySelector('.ftf-status span');
     finetune_filter_error = document.querySelector('.ftf-error');
