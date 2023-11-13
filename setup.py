@@ -10,11 +10,6 @@ from typing import List, Set
 setup_package = os.environ.get("SETUP_PACKAGE", None)
 install_optional = os.environ.get("INSTALL_OPTIONAL", "FALSE")
 
-# Setting some env variables to force flash-attention build from sources
-# We can get rid of them when https://github.com/Dao-AILab/flash-attention/pull/540 is merged
-os.environ["MAX_JOBS"] = "4"
-os.environ["FLASH_ATTENTION_FORCE_BUILD"] = "TRUE"
-
 
 @dataclass
 class PyPackage:
@@ -22,7 +17,6 @@ class PyPackage:
     optional: List[str] = field(default_factory=list)
     requires_packages: List[str] = field(default_factory=list)
     data: List[str] = field(default_factory=list)
-
 
 all_refact_packages = {
     "code_contrast": PyPackage(
@@ -50,7 +44,7 @@ all_refact_packages = {
     "self_hosting_machinery": PyPackage(
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
                   "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2", "accelerate",
-                  "termcolor", "torch", "transformers", "bitsandbytes", "safetensors", "peft", "triton",
+                  "termcolor", "torch", "transformers==4.34.0", "bitsandbytes", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed==0.11.1"],
         optional=["ninja", "flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",

@@ -153,6 +153,7 @@ huggingface_mini_db = {
         "model_path": "deepseek-ai/deepseek-coder-6.7b-base",
         "diff_scratchpad_class": "refact_scratchpads:ScratchpadDeepSeekCoderFIM",
         "chat_scratchpad_class": None,
+        "hidden": True,  # we see some kind of problem with this model (nan's while loss calculation)
         "model_class_kwargs": {},
         "T": 4096,
         "filter_caps": ["completion", "finetune"],

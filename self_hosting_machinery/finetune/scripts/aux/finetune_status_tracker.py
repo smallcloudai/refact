@@ -32,7 +32,7 @@ class FinetuneStatusTracker:
                 progress_filename="progress.jsonl",
                 iters=total_steps
             )
-            self.iter_n = 0
+            self.iter_n = 1
             self.initial_iter_tp = time.time()
             self.last_iter_tp = time.time()
 
