@@ -37,7 +37,7 @@ class TabHostRouter(APIRouter):
     async def _tab_host_models_get(self):
         return Response(json.dumps({
             **self._model_assigner.models_info,
-            **self._model_assigner.model_assignment,
+            **self._model_assigner.inference_cfg,
         }, indent=4) + "\n")
 
     async def _tab_host_models_assign(self, post: TabHostModelsAssign):

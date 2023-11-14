@@ -33,7 +33,7 @@ class WebGUI(FastAPI):
     def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        inference_queue = InferenceQueue()
+        inference_queue = InferenceQueue(model_assigner)
         id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
         for router in self._routers_list(id2ticket, inference_queue, model_assigner):
             self.include_router(router)

@@ -7,7 +7,9 @@ from dataclasses import dataclass, field
 from self_hosting_machinery import env
 from self_hosting_machinery.finetune.utils.finetune_utils import get_active_loras
 from self_hosting_machinery.webgui.selfhost_webutils import log
-from known_models_db.refact_known_models import models_mini_db
+from known_models_db.refact_known_models import ModelSpec
+from known_models_db.refact_known_models import ModelRegistry
+from known_models_db.refact_known_models import models_registry
 from known_models_db.refact_toolbox_db import modelcap_records
 from self_hosting_machinery.scripts.best_lora import find_best_lora
 
@@ -21,11 +23,11 @@ __all__ = ["ModelAssigner"]
 class ModelGroup:
     model_assign: Dict[str, Dict] = field(default_factory=dict)
 
-    def required_memory_mb(self, models_db: Dict[str, Any]) -> int:
-        return sum(
-            models_db[model_name].get("required_memory_mb", 0)
-            for model_name in self.model_assign.keys()
-        )
+    # def required_memory_mb(self, models_db: Dict[str, Any]) -> int:
+    #     return sum(
+    #         models_db[model_name].get("required_memory_mb", 0)
+    #         for model_name in self.model_assign.keys()
+    #     )
 
     def gpus_shard(self) -> int:
         if not self.model_assign:
@@ -35,9 +37,13 @@ class ModelGroup:
 
 class ModelAssigner:
 
+    # @property
+    # def models_db(self) -> Dict[str, Any]:
+    #     return models_mini_db
+
     @property
-    def models_db(self) -> Dict[str, Any]:
-        return models_mini_db
+    def models_registry(self) -> ModelRegistry:
+        return models_registry
 
     @property
     def models_caps_db(self) -> List:
@@ -47,14 +53,15 @@ class ModelAssigner:
         model_groups: List[ModelGroup] = []
         shared_group = ModelGroup()
         for model_name, assignment in model_assign.items():
-            if model_name not in self.models_db.keys():
+            spec = self.models_registry.find_spec(assignment["spec"])
+            if model_name not in self.models_registry.models:
                 log(f"unknown model '{model_name}', skipping")
                 continue
             if assignment["gpus_shard"] not in [1, 2, 4]:
                 log(f"invalid shard count {assignment['gpus_shard']}, skipping '{model_name}'")
                 continue
-            if self.models_db[model_name]["backend"] not in ["transformers"] and assignment["gpus_shard"] > 1:
-                log(f"sharding not supported for '{self.models_db['backend']}' backend, skipping '{model_name}'")
+            if spec.backend not in ["transformers"] and assignment["gpus_shard"] > 1:
+                log(f"sharding not supported for '{spec.backend}' backend, skipping '{model_name}'")
                 continue
             if assignment.get("share_gpu", False):
                 if not shared_group.model_assign:
@@ -66,8 +73,7 @@ class ModelAssigner:
 
     def models_to_watchdog_configs(self, inference_config=None):
         if inference_config is None:
-            inference_config = self.model_assignment
-
+            inference_config = self.inference_cfg
         inference_config = self._model_assign_filter(inference_config)
         inference_config = self._model_inference_setup(inference_config)
         inference_config = self._integrations_inference_setup(inference_config)
@@ -77,11 +83,18 @@ class ModelAssigner:
         os.rename(env.CONFIG_INFERENCE + ".tmp", env.CONFIG_INFERENCE)
 
     def _model_assign_filter(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
-        inference_config["model_assign"] = {
-            model_name: model_cfg
-            for model_name, model_cfg in inference_config["model_assign"].items()
-            if model_name in self.models_db and not self.models_db[model_name].get("hidden")
-        }
+        model_assign = {}
+        for model_name, model_info in inference_config.get("model_assign", {}).items():
+            if model_name not in self.models_registry.models:
+                log(f"'{model_name}' not found in models_registry, skip")
+                continue
+            spec = self.models_registry.find_spec(model_info.get("spec", {}))
+            if spec is None:
+                log(f"spec for '{model_name}' not found in models_registry, use default")
+                spec = self.models_registry.default(model_name)
+            model_info["spec"] = spec.to_dict()
+            model_assign[model_name] = model_info
+        inference_config["model_assign"] = model_assign
         return inference_config
 
     def _model_inference_setup(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -107,16 +120,23 @@ class ModelAssigner:
                     fn = os.path.join(env.DIR_WATCHDOG_D, cfg_out)
                     with open(fn + ".tmp", "w") as f:
                         model_cfg_j = copy.deepcopy(model_cfg_template)
-                        model_cfg_j["command_line"].append("--model")
-                        model_cfg_j["command_line"].append(model_name)
+                        model_cfg_j["command_line"].extend([
+                            model_name, json.dumps({
+                                "backend": assignment["spec"]["backend"],
+                                "model_path": assignment["spec"]["model_path"],
+                                "model_class_kwargs": json.dumps(assignment["spec"]["model_class_kwargs"]),
+                                "diff_scratchpad_class": assignment["spec"]["diff_scratchpad_class"],
+                                "chat_scratchpad_class": assignment["spec"]["chat_scratchpad_class"],
+                            })
+                        ])
                         model_cfg_j["gpus"] = list(range(model_cursor, model_cursor + assignment["gpus_shard"]))
                         model_cfg_j["share_gpu"] = assignment.get("share_gpu", False)
                         del model_cfg_j["unfinished"]
                         json.dump(model_cfg_j, f, indent=4)
                     os.rename(fn + ".tmp", fn)
             for _ in range(model_group.gpus_shard()):
-                if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb(self.models_db):
-                    required_memory_exceed_available = True
+                # if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb(self.models_db):
+                #     required_memory_exceed_available = True
                 cursor += 1
         log("required_memory_exceed_available %d" % required_memory_exceed_available)
         log("more_models_than_gpus %d" % more_models_than_gpus)
@@ -238,13 +258,9 @@ class ModelAssigner:
         return {"models": info}
 
     @property
-    def model_assignment(self):
+    def inference_cfg(self):
         if os.path.exists(env.CONFIG_INFERENCE):
-            j = json.load(open(env.CONFIG_INFERENCE, "r"))
+            cfg = json.load(open(env.CONFIG_INFERENCE, "r"))
         else:
-            j = {"model_assign": {}}
-        j["model_assign"] = {
-            model: v for model, v in j["model_assign"].items()
-            if model in self.models_db
-        }
-        return j
+            cfg = {}
+        return self._model_assign_filter(cfg)

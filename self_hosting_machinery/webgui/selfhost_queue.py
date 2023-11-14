@@ -5,6 +5,7 @@ import json
 from collections import defaultdict
 from self_hosting_machinery import env
 from self_hosting_machinery.webgui.selfhost_webutils import log
+from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 from fastapi import HTTPException
 from typing import Dict, List
 
@@ -12,7 +13,8 @@ from typing import Dict, List
 class InferenceQueue:
     CACHE_MODELS_AVAILABLE = 5
 
-    def __init__(self):
+    def __init__(self, model_assigner: ModelAssigner):
+        self._model_assigner = model_assigner
         self._user2gpu_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)
         self._models_available: List[str] = []
         self._models_available_ts = 0
@@ -29,13 +31,12 @@ class InferenceQueue:
         if self._models_available_ts + self.CACHE_MODELS_AVAILABLE > t1:
             return self._models_available
         self._models_available = []
-        if os.path.exists(env.CONFIG_INFERENCE):
-            j = json.load(open(env.CONFIG_INFERENCE, 'r'))
-            for model in j["model_assign"]:
-                self._models_available.append(model)
-            self._models_available_ts = time.time()
-            if j.get("openai_api_enable", False):
-                # self._models_available.append('gpt3.5')
-                # self._models_available.append('gpt4')
-                self._models_available.append('longthink/stable')
+        cfg = self._model_assigner.inference_cfg
+        for model in cfg.get("model_assign", {}):
+            self._models_available.append(model)
+        self._models_available_ts = time.time()
+        if cfg.get("openai_api_enable", False):
+            # self._models_available.append('gpt3.5')
+            # self._models_available.append('gpt4')
+            self._models_available.append('longthink/stable')
         return self._models_available

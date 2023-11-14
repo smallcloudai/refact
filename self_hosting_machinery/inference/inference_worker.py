@@ -1,5 +1,6 @@
 import sys
 import logging
+import json
 import time
 import signal
 import socket
@@ -18,23 +19,9 @@ quit_flag = False
 log = logging.getLogger("MODEL").info
 
 
-def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
-    if model_name not in models_db:
-        log(f"STATUS not found {model_name}")
-        if compile:
-            return
-        log("will sleep for 5 minutes and then exit, to slow down service restarts")
-        wake_up_ts = time.time() + 300
-        while time.time() < wake_up_ts and not quit_flag:
-            time.sleep(1)
-        raise RuntimeError(f"unknown model \"{model_name}\"")
+def worker_loop(model_name: str, model_dict: Dict[str, Any], compile: bool):
     log("STATUS loading model")
-
-    model_dict = models_db[model_name]
-    assert model_dict["backend"] != "legacy"
-    inference_model = InferenceHF(
-        model_name=model_name,
-        model_dict=model_dict)
+    inference_model = InferenceHF(model_name=model_name, model_dict=model_dict)
 
     class DummyUploadProxy:
         def upload_result(*args, **kwargs):
@@ -111,10 +98,10 @@ def catch_sigkill(signum, frame):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-    from known_models_db.refact_known_models import models_mini_db
 
     parser = ArgumentParser()
-    parser.add_argument("--model", type=str)
+    parser.add_argument("model_name", type=str)
+    parser.add_argument("model_dict", type=str)
     parser.add_argument("--compile", action="store_true", help="download and compile triton kernels, quit")
     args = parser.parse_args()
 
@@ -126,4 +113,7 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGUSR1, catch_sigkill)
 
-    worker_loop(args.model, models_mini_db, compile=args.compile)
+    worker_loop(
+        model_name=args.model_name,
+        model_dict=json.loads(args.model_dict),
+        compile=args.compile)

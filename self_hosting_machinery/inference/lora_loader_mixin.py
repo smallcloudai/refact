@@ -95,7 +95,7 @@ class LoraLoaderMixin:
             log("using lora %s" % lora_checkpoint_dir)
 
     def lora_switch_according_to_config(self):
-        if "finetune" not in self.model_dict.get("filter_caps", []):
+        if not self.model_dict["finetune"]:
             log(f"Model {self.model_name} does not support finetune")
             self.lora_switch(lora_checkpoint_dir="")
             return

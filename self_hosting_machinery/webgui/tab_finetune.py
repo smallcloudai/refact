@@ -139,7 +139,7 @@ class TabFinetuneRouter(APIRouter):
             return f"Error: {str(e)}"
 
     async def _tab_finetune_config_and_runs(self):
-        completion_model = self._model_assigner.model_assignment.get("completion", "")
+        completion_model = self._model_assigner.inference_cfg.get("completion", "")
         completion_model_info = self._model_assigner.models_db.get(completion_model, {})
         finetune_model = completion_model_info.get("finetune_model", completion_model)
 

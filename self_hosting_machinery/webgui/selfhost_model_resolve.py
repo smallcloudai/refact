@@ -1,16 +1,11 @@
-import json
-
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
-from self_hosting_machinery import env
 
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 
 def completion_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]:
     have_models: List[str] = inference_queue.models_available()
-
-    with open(env.CONFIG_INFERENCE, 'r') as f:
-        completion_model = json.load(f).get("completion", None)
+    completion_model: Optional[str] = inference_queue.inference_cfg.get("completion_model", None)
 
     if completion_model is None:
         return "", f"completion model is not set"

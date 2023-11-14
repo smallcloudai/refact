@@ -260,9 +260,9 @@ class CompletionsRouter(APIRouter):
             "code_chat_default_model": "",
             "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
             "tokenizer_rewrite_path": {
-                model: self._model_assigner.models_db[model]["model_path"]
+                model: self._model_assigner.models_registry.default(model).model_path
                 for model in self._inference_queue.models_available()
-                if model in self._model_assigner.models_db
+                if model in self._model_assigner.models_registry.models
             },
         }
 
