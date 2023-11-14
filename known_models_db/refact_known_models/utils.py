@@ -1,10 +1,12 @@
 from dataclasses_json import dataclass_json
+from dataclasses import dataclass
 from dataclasses import field
 
 from typing import Any, Dict, List, Optional, Iterable, Set
 
 
 @dataclass_json
+@dataclass
 class ModelSpec:
     name: str
 
@@ -74,3 +76,7 @@ class ModelRegistry:
         elif len(default_specs) > 1:
             assert False, f"multiple default specs for model '{model_name}'"
         return default_specs[0]
+
+    @property
+    def specs(self) -> List[ModelSpec]:
+        return self._specs

@@ -124,7 +124,7 @@ class ModelAssigner:
                             model_name, json.dumps({
                                 "backend": assignment["spec"]["backend"],
                                 "model_path": assignment["spec"]["model_path"],
-                                "model_class_kwargs": json.dumps(assignment["spec"]["model_class_kwargs"]),
+                                "model_class_kwargs": assignment["spec"]["model_class_kwargs"],
                                 "diff_scratchpad_class": assignment["spec"]["diff_scratchpad_class"],
                                 "chat_scratchpad_class": assignment["spec"]["chat_scratchpad_class"],
                             })
@@ -227,33 +227,32 @@ class ModelAssigner:
 
         chat_caps = _capabilities("chat")
         toolbox_caps = _capabilities("toolbox")
-        active_loras = get_active_loras(self.models_db)
-        for k, rec in self.models_db.items():
-            if rec.get("hidden", False):
-                continue
+        active_loras = get_active_loras(self.models_registry.models)
+        for spec in self.models_registry.specs:
             finetune_info = None
-            if k in active_loras:
-                lora_mode = active_loras[k]["lora_mode"]
-                latest_best_lora_info = find_best_lora(rec.get("finetune_model", k))
+            if spec.name in active_loras and spec.finetune:
+                active_lora = active_loras[spec.name]
+                lora_mode = active_lora["lora_mode"]
+                latest_best_lora_info = find_best_lora(spec.name)
                 if lora_mode == "latest-best" and latest_best_lora_info["latest_run_id"]:
                     finetune_info = {
                         "run": latest_best_lora_info["latest_run_id"],
                         "checkpoint": latest_best_lora_info["best_checkpoint_id"],
                     }
-                elif lora_mode == "specific" and active_loras[k].get("specific_lora_run_id", ""):
+                elif lora_mode == "specific" and active_lora.get("specific_lora_run_id", ""):
                     finetune_info = {
-                        "run": active_loras[k]["specific_lora_run_id"],
-                        "checkpoint": active_loras[k]["specific_checkpoint"],
+                        "run": active_lora["specific_lora_run_id"],
+                        "checkpoint": active_lora["specific_checkpoint"],
                     }
             info.append({
-                "name": k,
-                "backend": rec["backend"],
+                "name": spec.name,
+                "backend": spec.backend,
                 "finetune_info": finetune_info,
-                "has_completion": bool("completion" in rec["filter_caps"]),
-                "has_finetune": bool("finetune" in rec["filter_caps"]),
-                "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),
-                "has_chat": bool(rec["chat_scratchpad_class"]) and bool(chat_caps.intersection(rec["filter_caps"])),
-                "has_sharding": rec["backend"] in ["transformers"],
+                "has_completion": bool("completion" in spec.filter_caps),
+                "has_finetune": spec.finetune,
+                "has_toolbox": bool(toolbox_caps.intersection(spec.filter_caps)),
+                "has_chat": bool(spec.chat_scratchpad_class) and bool(chat_caps.intersection(spec.filter_caps)),
+                "has_sharding": spec.backend in ["transformers"],
             })
         return {"models": info}
 

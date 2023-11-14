@@ -100,9 +100,7 @@ class LoraLoaderMixin:
             self.lora_switch(lora_checkpoint_dir="")
             return
 
-        cfg = get_active_loras({
-            self.model_name: self.model_dict
-        })[self.model_name]
+        cfg = get_active_loras({self.model_name})[self.model_name]
         # {
         #     "lora_mode": "specific",
         #     "specific_lora_run_id": "lora-20230614-164840",

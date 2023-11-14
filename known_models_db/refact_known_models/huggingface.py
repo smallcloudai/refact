@@ -160,8 +160,8 @@
 # }
 
 
-from utils import ModelSpec
-from utils import model_specs_from_list
+from known_models_db.refact_known_models.utils import ModelSpec
+from known_models_db.refact_known_models.utils import model_specs_from_list
 
 from typing import List
 

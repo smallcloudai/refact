@@ -10,7 +10,7 @@ from self_hosting_machinery.finetune.configuration.finetune_train_defaults impor
 
 from self_hosting_machinery import env
 
-from typing import Any, Dict, Optional, Callable, Union
+from typing import Any, Dict, Optional, Callable, Union, Set
 
 legacy_finetune_model = "CONTRASTcode/3b/multi"
 default_finetune_model = "Refact/1.6B"
@@ -67,7 +67,7 @@ def get_finetune_runs():
     return res
 
 
-def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+def get_active_loras(model_names: Set[str]) -> Dict[str, Dict[str, Any]]:
     active_loras = {}
     if os.path.exists(env.CONFIG_ACTIVE_LORA):
         active_loras = json.load(open(env.CONFIG_ACTIVE_LORA))
@@ -76,23 +76,21 @@ def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
                 legacy_finetune_model: active_loras,
             }
 
-    def get_active_lora(model_name: str, model_info: Dict[str, Any]) -> Dict:
-        finetune_model = model_info.get("finetune_model", model_name)
-        if finetune_model not in active_loras:
+    def get_active_lora(model_name: str) -> Dict:
+        if model_name not in active_loras:
             return {}
         else:
             return {
-                **active_loras[finetune_model],
-                "model": model_name
+                **active_loras[model_name],
+                "model": model_name,
             }
 
     return {
         model_name: {
             "lora_mode": "latest-best",
-            **get_active_lora(model_name, model_info),
+            **get_active_lora(model_name),
         }
-        for model_name, model_info in models_db.items()
-        if "finetune_model" in model_info or "finetune" in model_info["filter_caps"]
+        for model_name in model_names.items()
     }
 
 

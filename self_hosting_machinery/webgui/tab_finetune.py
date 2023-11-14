@@ -163,7 +163,7 @@ class TabFinetuneRouter(APIRouter):
                 "auto_delete_n_runs": "5",
                 **config,  # TODO: why we mix finetune config for training and schedule?
             },
-            "active": get_active_loras(self._model_assigner.models_db),
+            "active": get_active_loras(self._model_assigner.models_registry.models),
             "finetune_latest_best": best_lora.find_best_lora(finetune_model),
         }
         return Response(json.dumps(result, indent=4) + "\n")
@@ -267,7 +267,7 @@ class TabFinetuneRouter(APIRouter):
         return JSONResponse("OK")
 
     async def _tab_finetune_activate(self, activate: TabFinetuneActivate):
-        active_loras = get_active_loras(self._model_assigner.models_db)
+        active_loras = get_active_loras(self._model_assigner.models_registry.models)
         active_loras[activate.model] = activate.dict()
         with open(env.CONFIG_ACTIVE_LORA, "w") as f:
             json.dump(active_loras, f, indent=4)
