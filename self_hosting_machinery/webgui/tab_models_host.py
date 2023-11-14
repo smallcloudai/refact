@@ -6,7 +6,7 @@ from fastapi.responses import Response, JSONResponse
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Any
 
 
 __all__ = ["TabHostRouter"]
@@ -15,6 +15,7 @@ __all__ = ["TabHostRouter"]
 class TabHostModelRec(BaseModel):
     gpus_shard: int = Query(default=1, ge=1, le=4)
     share_gpu: bool = False
+    spec: Dict[str, Any] = {}
 
 
 class TabHostModelsAssign(BaseModel):

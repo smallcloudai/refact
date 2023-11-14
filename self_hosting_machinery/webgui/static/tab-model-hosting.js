@@ -265,8 +265,8 @@ function render_models(models) {
     const models_table = document.querySelector('.table-models tbody');
     models_table.innerHTML = '';
     models.models.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-    for(let index in models.models) {
-        console.log('xxxx',models.models);
+    console.log('xxxx',models.models);
+    for (let index in models.models) {
         const row = document.createElement('tr');
         row.setAttribute('data-model',models.models[index].name);
         const model_name = document.createElement("td");
@@ -295,7 +295,9 @@ function render_models(models) {
         models_table.appendChild(row);
         row.addEventListener('click', function(e) {
             models_data.model_assign[models.models[index].name] = {
-                gpus_shard: 1
+                gpus_shard: 1,
+                share_gpu: false,
+                spec: models.models[index].spec,
             };
             save_model_assigned();
             const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));

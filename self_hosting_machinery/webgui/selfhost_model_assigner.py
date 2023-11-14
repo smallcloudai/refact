@@ -253,6 +253,7 @@ class ModelAssigner:
                 "has_toolbox": bool(toolbox_caps.intersection(spec.filter_caps)),
                 "has_chat": bool(spec.chat_scratchpad_class) and bool(chat_caps.intersection(spec.filter_caps)),
                 "has_sharding": spec.backend in ["transformers"],
+                "spec": spec.to_dict(),
             })
         return {"models": info}
 

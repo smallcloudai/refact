@@ -90,7 +90,7 @@ def get_active_loras(model_names: Set[str]) -> Dict[str, Dict[str, Any]]:
             "lora_mode": "latest-best",
             **get_active_lora(model_name),
         }
-        for model_name in model_names.items()
+        for model_name in model_names
     }
 
 
@@ -102,13 +102,13 @@ def get_finetune_filter_config(logger: Optional[Callable] = None):
     return cfg
 
 
-def get_finetune_config(models_db: Dict[str, Any], logger: Optional[Callable] = None) -> Dict[str, Any]:
+def get_finetune_config(model_names: Set[str], logger: Optional[Callable] = None) -> Dict[str, Any]:
     cfg = copy.deepcopy(finetune_train_defaults)
     if os.path.exists(env.CONFIG_FINETUNE):
         if logger is not None:
             logger("Reading %s" % env.CONFIG_FINETUNE)
         cfg.update(**json.load(open(env.CONFIG_FINETUNE)))
-    if cfg.get("model_name", None) not in models_db:
+    if cfg.get("model_name", None) not in model_names:
         cfg["model_name"] = default_finetune_model
     return cfg
 

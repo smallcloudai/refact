@@ -140,8 +140,6 @@ class TabFinetuneRouter(APIRouter):
 
     async def _tab_finetune_config_and_runs(self):
         completion_model = self._model_assigner.inference_cfg.get("completion", "")
-        completion_model_info = self._model_assigner.models_db.get(completion_model, {})
-        finetune_model = completion_model_info.get("finetune_model", completion_model)
 
         runs = get_finetune_runs()
         for run in runs:
@@ -149,11 +147,11 @@ class TabFinetuneRouter(APIRouter):
                 run["best_checkpoint"] = best_lora.find_best_checkpoint(run["run_id"])
             except Exception as e:
                 run["best_checkpoint"] = {"error": str(e)}
-        config = get_finetune_config(self._model_assigner.models_db)
+        config = get_finetune_config(self._model_assigner.models_registry.models)
         result = {
             "completion_model": {
                 "name": completion_model,
-                "finetune": finetune_model,
+                "finetune": completion_model,  # TODO: not needed
             },
             "finetune_runs": runs,
             "config": {
@@ -164,7 +162,7 @@ class TabFinetuneRouter(APIRouter):
                 **config,  # TODO: why we mix finetune config for training and schedule?
             },
             "active": get_active_loras(self._model_assigner.models_registry.models),
-            "finetune_latest_best": best_lora.find_best_lora(finetune_model),
+            "finetune_latest_best": best_lora.find_best_lora(completion_model),
         }
         return Response(json.dumps(result, indent=4) + "\n")
 
@@ -200,7 +198,7 @@ class TabFinetuneRouter(APIRouter):
     async def _tab_finetune_training_get(self):
         result = {
             "defaults": finetune_train_defaults,
-            "user_config": get_finetune_config(self._model_assigner.models_db),
+            "user_config": get_finetune_config(self._model_assigner.models_registry.models),
         }
         return Response(json.dumps(result, indent=4) + "\n")
 
