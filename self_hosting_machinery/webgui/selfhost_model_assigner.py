@@ -121,9 +121,11 @@ class ModelAssigner:
                     with open(fn + ".tmp", "w") as f:
                         model_cfg_j = copy.deepcopy(model_cfg_template)
                         model_cfg_j["command_line"].extend([
-                            model_name, json.dumps({
+                            "--model-name", model_name,
+                            "--model-dict", json.dumps({
                                 "backend": assignment["spec"]["backend"],
                                 "model_path": assignment["spec"]["model_path"],
+                                "finetune": assignment["spec"]["finetune"],
                                 "model_class_kwargs": assignment["spec"]["model_class_kwargs"],
                                 "diff_scratchpad_class": assignment["spec"]["diff_scratchpad_class"],
                                 "chat_scratchpad_class": assignment["spec"]["chat_scratchpad_class"],

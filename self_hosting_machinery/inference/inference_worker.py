@@ -100,8 +100,8 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument("model_name", type=str)
-    parser.add_argument("model_dict", type=str)
+    parser.add_argument("--model-name", type=str, required=True)
+    parser.add_argument("--model-dict", type=str, required=True)
     parser.add_argument("--compile", action="store_true", help="download and compile triton kernels, quit")
     args = parser.parse_args()
 
