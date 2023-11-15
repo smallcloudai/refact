@@ -1,13 +1,13 @@
 import asyncio
 import time
-import os
-import json
+
 from collections import defaultdict
-from self_hosting_machinery import env
+from fastapi import HTTPException
+
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
-from fastapi import HTTPException
-from typing import Dict, List
+
+from typing import Dict, List, Optional
 
 
 class InferenceQueue:
@@ -40,3 +40,7 @@ class InferenceQueue:
             # self._models_available.append('gpt4')
             self._models_available.append('longthink/stable')
         return self._models_available
+
+    @property
+    def completion_model(self) -> Optional[str]:
+        return self._model_assigner.inference_cfg.get("completion", None)

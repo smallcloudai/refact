@@ -19,6 +19,7 @@ class ModelSpec:
     model_path: str
     quantization: Optional[str] = None
     model_class_kwargs: Dict[str, Any] = field(default_factory=dict)
+    completion: bool = False
     finetune: bool = False
     default: bool = False
 
@@ -41,13 +42,14 @@ class ModelSpec:
 def model_specs_from_list(
         name: str,
         context_sizes: List[int],
-        filter_caps: List[str],
         specs_kwargs: List[Dict[str, Any]],
+        completion: bool = False,
+        filter_caps: List[str] = [],
         diff_scratchpad_class: Optional[str] = None,
         chat_scratchpad_class: Optional[str] = None) -> Iterable[ModelSpec]:
     for spec_kwargs in specs_kwargs:
         yield ModelSpec(
-            name=name, context_sizes=context_sizes, filter_caps=filter_caps,
+            name=name, context_sizes=context_sizes, filter_caps=filter_caps, completion=completion,
             diff_scratchpad_class=diff_scratchpad_class, chat_scratchpad_class=chat_scratchpad_class,
             **spec_kwargs)
 

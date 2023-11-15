@@ -168,8 +168,7 @@ from typing import List
 
 huggingface_specs: List[ModelSpec] = [
     *model_specs_from_list(
-        name="starcoder/15b/base", context_sizes=[4096],
-        filter_caps=["completion"],
+        name="starcoder/15b/base", context_sizes=[4096], completion=True,
         diff_scratchpad_class="refact_scratchpads:ScratchpadPSM",
         specs_kwargs=[
             {

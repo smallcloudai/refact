@@ -5,7 +5,7 @@ from typing import Tuple, List, Optional
 
 def completion_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]:
     have_models: List[str] = inference_queue.models_available()
-    completion_model: Optional[str] = inference_queue.inference_cfg.get("completion_model", None)
+    completion_model: Optional[str] = inference_queue.completion_model
 
     if completion_model is None:
         return "", f"completion model is not set"
