@@ -28,20 +28,19 @@ class ModelSpec:
         return self.name.split("/")[0]
 
     @staticmethod
-    def __dict_to_hash(spec: Dict) -> Tuple:
+    def __unique_id(spec: Dict) -> Tuple:
         return (
             spec.get("name", None),
             spec.get("model_path", None),
             spec.get("quantization", None),
         )
 
-    @property
-    def __hash__(self) -> Tuple:
-        return self.__dict_to_hash(self.to_dict())
+    def __hash__(self) -> int:
+        return hash(self.__unique_id(self.to_dict()))
 
     def __eq__(self, other) -> bool:
         if isinstance(other, dict):
-            return hash(self) == self.__dict_to_hash(other)
+            return hash(self) == hash(self.__unique_id(other))
         elif isinstance(other, ModelSpec):
             return hash(self) == hash(other)
         assert False, f"cannot compare ModelSpec with {type(other)}"
@@ -68,11 +67,10 @@ class ModelRegistry:
         self._specs: List[ModelSpec] = list(specs)
 
         # duplicate specs validation
-        validated_spec_hashes = set()
+        validated_specs = set()
         for spec in self._specs:
-            spec_hash = hash(spec)
-            assert spec_hash not in validated_spec_hashes, f"duplicate spec: {spec}"
-            validated_spec_hashes.add(spec_hash)
+            assert spec not in validated_specs, f"duplicate spec: {spec}"
+            validated_specs.add(spec)
 
         # default spec validation
         for model_name in {spec.name for spec in self._specs}:
