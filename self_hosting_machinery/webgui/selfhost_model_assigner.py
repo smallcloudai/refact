@@ -93,6 +93,7 @@ class ModelAssigner:
                 log(f"spec for '{model_name}' not found in models_registry, use default")
                 spec = self.models_registry.default(model_name)
             model_info["spec"] = spec.to_dict()
+            model_info["spec_id"] = hash(spec)
             model_assign[model_name] = model_info
         inference_config["model_assign"] = model_assign
         return inference_config
@@ -250,12 +251,13 @@ class ModelAssigner:
                 "name": spec.name,
                 "backend": spec.backend,
                 "finetune_info": finetune_info,
-                "has_completion": bool("completion" in spec.filter_caps),
+                "has_completion": spec.completion,
                 "has_finetune": spec.finetune,
                 "has_toolbox": bool(toolbox_caps.intersection(spec.filter_caps)),
                 "has_chat": bool(spec.chat_scratchpad_class) and bool(chat_caps.intersection(spec.filter_caps)),
                 "has_sharding": spec.backend in ["transformers"],
                 "spec": spec.to_dict(),
+                "spec_id": hash(spec),
             })
         return {"models": info}
 
