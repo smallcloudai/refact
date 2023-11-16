@@ -326,17 +326,6 @@ function render_models(models) {
 
         const quantization_combobox = document.createElement("select");
         quantization_combobox.classList.add('form-select');
-        const quantization_set = new Set(Object.values(m_items).reduce((accumulator, item) => {
-            accumulator.push(item.spec.quantization);
-            return accumulator;
-        }, []));
-        quantization_set.forEach((item) => {
-            const option = document.createElement('option');
-            option.text = item ? item : 'auto';
-            option.value = item;
-            option.selected = (item == default_quantization);
-            quantization_combobox.add(option);
-        });
         quantization.appendChild(quantization_combobox);
 
         const selected_item = () => {
@@ -344,11 +333,28 @@ function render_models(models) {
             return m_items[key];
         };
         const render_model_row = function() {
-            const item = selected_item();
-            has_completion.innerHTML = item.has_completion ? '<i class="bi bi-check"></i>' : '';
-            has_finetune.innerHTML = item.has_finetune ? '<i class="bi bi-check"></i>' : '';
-            has_toolbox.innerHTML = item.has_toolbox ? '<i class="bi bi-check"></i>' : '';
-            has_chat.innerHTML = item.has_chat ? '<i class="bi bi-check"></i>' : '';
+            const selected_quantization = quantization_combobox.value ? quantization_combobox.value : default_quantization;
+            while (quantization_combobox.options.length > 0) {
+                quantization_combobox.remove(0);
+            }
+            const quantization_set = new Set(Object.values(m_items).reduce((accumulator, item) => {
+                if (item.spec.backend == backend_combobox.value) {
+                    accumulator.push(item.spec.quantization);
+                }
+                return accumulator;
+            }, []));
+            quantization_set.forEach((item) => {
+                const option = document.createElement('option');
+                option.text = item ? item : 'auto';
+                option.value = item;
+                option.selected = (item == selected_quantization);
+                quantization_combobox.add(option);
+            });
+            const s_item = selected_item();
+            has_completion.innerHTML = s_item.has_completion ? '<i class="bi bi-check"></i>' : '';
+            has_finetune.innerHTML = s_item.has_finetune ? '<i class="bi bi-check"></i>' : '';
+            has_toolbox.innerHTML = s_item.has_toolbox ? '<i class="bi bi-check"></i>' : '';
+            has_chat.innerHTML = s_item.has_chat ? '<i class="bi bi-check"></i>' : '';
         }
         backend.addEventListener('click', (event) => {
             event.stopPropagation();
