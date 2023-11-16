@@ -271,40 +271,114 @@ function render_models_assigned(models) {
 function render_models(models) {
     const models_table = document.querySelector('.table-models tbody');
     models_table.innerHTML = '';
-    models.models.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-    console.log('xxxx',models.models);
-    for (let index in models.models) {
+
+    const unique_key = (backend, quantization) => `${backend}-${quantization}`;
+    const grouped_models = models.models.reduce((accumulator, item) => {
+        const model_name = item.name;
+        if (!accumulator[model_name]) {
+            accumulator[model_name] = {};
+        }
+        const key = unique_key(item.spec.backend, item.spec.quantization);
+        if (accumulator[model_name].hasOwnProperty(key)) {
+            console.log(
+                "multiple specs with the same backend and quantization",
+                model_name, item.spec.backend, item.spec.quantization);
+        } else {
+            accumulator[model_name][key] = item;
+        }
+        return accumulator;
+    }, {});
+
+    Object.entries(grouped_models)
+          .sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }))
+          .forEach(([m_name, m_items]) => {
         const row = document.createElement('tr');
-        row.setAttribute('data-model',models.models[index].name);
+        row.setAttribute('data-model', m_name);
+
         const model_name = document.createElement("td");
         const has_completion = document.createElement("td");
         const has_finetune = document.createElement("td");
         const has_toolbox = document.createElement("td");
         const has_chat = document.createElement("td");
-        model_name.textContent = models.models[index].name;
+        const backend = document.createElement("td");
+        const quantization = document.createElement("td");
 
-        has_completion.innerHTML = models.models[index].has_completion ? '<i class="bi bi-check"></i>' : '';
-        has_finetune.innerHTML = models.models[index].has_finetune ? '<i class="bi bi-check"></i>' : '';
-        has_toolbox.innerHTML = models.models[index].has_toolbox ? '<i class="bi bi-check"></i>' : '';
-        has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
+        model_name.textContent = m_name;
+
+        const default_item = Object.values(m_items).filter((item) => item.spec.default)[0];
+        const default_backend = default_item.spec.backend;
+        const default_quantization = default_item.spec.quantization;
+
+        const backend_combobox = document.createElement("select");
+        backend_combobox.classList.add('form-select');
+        const backend_set = new Set(Object.values(m_items).reduce((accumulator, item) => {
+            accumulator.push(item.spec.backend);
+            return accumulator;
+        }, []));
+        backend_set.forEach((item) => {
+            const option = document.createElement('option');
+            option.text = item;
+            option.value = item;
+            option.selected = (item == default_backend);
+            backend_combobox.add(option);
+        });
+        backend.appendChild(backend_combobox);
+
+        const quantization_combobox = document.createElement("select");
+        quantization_combobox.classList.add('form-select');
+        const quantization_set = new Set(Object.values(m_items).reduce((accumulator, item) => {
+            accumulator.push(item.spec.quantization);
+            return accumulator;
+        }, []));
+        quantization_set.forEach((item) => {
+            const option = document.createElement('option');
+            option.text = item ? item : 'auto';
+            option.value = item;
+            option.selected = (item == default_quantization);
+            quantization_combobox.add(option);
+        });
+        quantization.appendChild(quantization_combobox);
+
+        const selected_item = () => {
+            const key = unique_key(backend_combobox.value, quantization_combobox.value);
+            return m_items[key];
+        };
+        const render_model_row = function() {
+            const item = selected_item();
+            has_completion.innerHTML = item.has_completion ? '<i class="bi bi-check"></i>' : '';
+            has_finetune.innerHTML = item.has_finetune ? '<i class="bi bi-check"></i>' : '';
+            has_toolbox.innerHTML = item.has_toolbox ? '<i class="bi bi-check"></i>' : '';
+            has_chat.innerHTML = item.has_chat ? '<i class="bi bi-check"></i>' : '';
+        }
+        backend.addEventListener('click', (event) => {
+            event.stopPropagation();
+            render_model_row();
+        });
+        quantization.addEventListener('click', (event) => {
+            event.stopPropagation();
+            render_model_row();
+        });
+        render_model_row();
 
         row.appendChild(model_name);
         row.appendChild(has_completion);
         row.appendChild(has_finetune);
         row.appendChild(has_toolbox);
         row.appendChild(has_chat);
+        row.appendChild(backend);
+        row.appendChild(quantization);
         models_table.appendChild(row);
         row.addEventListener('click', function(e) {
-            models_data.model_assign[models.models[index].name] = {
+            models_data.model_assign[m_name] = {
                 gpus_shard: 1,
                 share_gpu: false,
-                spec: models.models[index].spec,
+                spec: selected_item().spec,
             };
             save_model_assigned();
             const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
             add_model_modal.hide();
         });
-    }
+    });
 }
 
 function format_memory(memory_in_mb, decimalPlaces = 2) {

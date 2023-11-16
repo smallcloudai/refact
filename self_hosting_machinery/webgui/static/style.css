@@ -94,7 +94,7 @@ h2 {
 }
 
 .add-model-modal-dialog {
-   max-width: 800px;
+   max-width: fit-content;
 }
 
 .upload-tab-table-files tbody td,
