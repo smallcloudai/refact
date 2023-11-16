@@ -91,10 +91,16 @@ impl ScratchpadAbstract for GenericChatScratchpad {
             prompt.push_str(self.token_esc.as_str());
             if msg.role == "system" {
                 prompt.push_str(self.keyword_syst.as_str());
+                prompt.push_str(msg.content.as_str());
+                prompt.push_str("\n");
             } else if msg.role == "user" {
                 prompt.push_str(self.keyword_user.as_str());
+                prompt.push_str(msg.content.as_str());
+                prompt.push_str("\n");
             } else if msg.role == "assistant" {
                 prompt.push_str(self.keyword_asst.as_str());
+                prompt.push_str(msg.content.as_str());
+                prompt.push_str("\n");
             } else if msg.role == "context_file" {
                 let vector_of_context_files: Vec<ContextFile> = serde_json::from_str(&msg.content).unwrap(); // FIXME unwrap
                 for context_file in vector_of_context_files {
@@ -104,8 +110,6 @@ impl ScratchpadAbstract for GenericChatScratchpad {
                 return Err(format!("role \"{}\"not recognized", msg.role));
             }
             last_role = msg.role.clone();
-            prompt.push_str(msg.content.as_str());
-            prompt.push_str("\n");
         }
         prompt.push_str(self.token_esc.as_str());
         if last_role == "assistant" || last_role == "system" {
