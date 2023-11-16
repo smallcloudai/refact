@@ -269,16 +269,15 @@ class CompletionsRouter(APIRouter):
     async def _login(self):
         longthink_functions = dict()
         longthink_filters = set()
-        models_mini_db_extended = {
-            "longthink/stable": {
-                "filter_caps": ["gpt3.5", "gpt4"],
-            },
-            **self._model_assigner.models_db,
+        extended_model_filter_caps = {
+            model_name: self._model_assigner.models_registry.default(model_name).filter_caps
+            for model_name in self._model_assigner.models_registry.models
         }
+        extended_model_filter_caps["longthink/stable"] = ["gpt3.5", "gpt4"],
         filter_caps = set([
             capability
             for model in self._inference_queue.models_available()
-            for capability in models_mini_db_extended.get(model, {}).get("filter_caps", [])
+            for capability in extended_model_filter_caps.get(model, [])
         ])
         for rec in self._model_assigner.models_caps_db:
             rec_modelcaps = rec.model if isinstance(rec.model, list) else [rec.model]
