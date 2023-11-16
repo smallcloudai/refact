@@ -139,10 +139,6 @@ function save_model_assigned() {
 }
 
 function render_models_assigned(models) {
-    const models_info = models_data.models.reduce(function(obj, item) {
-      obj[item["name"]] = item;
-      return obj;
-    }, {});
     const models_table = document.querySelector('.table-assigned-models tbody');
     models_table.innerHTML = '';
     for(let index in models) {
@@ -155,9 +151,20 @@ function render_models_assigned(models) {
         const gpus_share = document.createElement("td");
         const del = document.createElement("td");
 
-        model_name.textContent = index;
+        let quantization_html = "";
+        if (models[index].spec.quantization) {
+            quantization_html = `
+                <div class="text-secondary">Quantization: ${models[index].spec.quantization}</div>
+            `;
+        }
+        model_name.innerHTML = `
+            <div>${index}</div>
+            <div class="text-secondary"><div>Backend: ${models[index].spec.backend}</div>
+            ${quantization_html}
+        `;
 
-        if (models_info[index].hasOwnProperty('has_completion') && models_info[index].has_completion) {
+        const model_info = models_data.models.filter((item) => item.spec_id === models[index].spec_id)[0];
+        if (model_info.has_completion) {
             const completion_input = document.createElement("input");
             completion_input.setAttribute('type','radio');
             completion_input.setAttribute('name','completion-radio-button');
@@ -173,22 +180,22 @@ function render_models_assigned(models) {
             completion.appendChild(completion_input);
         }
 
-        if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
+        if (model_info.finetune_info) {
             finetune_info.innerHTML = `
             <table cellpadding="5">
                 <tr>
                     <td>Run: </td>
-                    <td>${models_info[index].finetune_info.run}</td>
+                    <td>${model_info.finetune_info.run}</td>
                 </tr>
                 <tr>
                     <td>Checkpoint: </td>
-                    <td>${models_info[index].finetune_info.checkpoint}</td>
+                    <td>${model_info.finetune_info.checkpoint}</td>
                 </tr>
             </table>
             `;
         }
 
-         if (models_info[index].hasOwnProperty('has_sharding') && models_info[index].has_sharding) {
+         if (model_info.has_sharding) {
             const select_gpus_div = document.createElement("div");
             select_gpus_div.setAttribute("class", "btn-group btn-group-sm");
             select_gpus_div.setAttribute("role", "group");
@@ -275,18 +282,12 @@ function render_models(models) {
         const has_toolbox = document.createElement("td");
         const has_chat = document.createElement("td");
         model_name.textContent = models.models[index].name;
-        if(models.models[index].hasOwnProperty('has_completion')) {
-            has_completion.innerHTML = models.models[index].has_completion ? '<i class="bi bi-check"></i>' : '';
-        }
-        if(models.models[index].hasOwnProperty('has_finetune')) {
-            has_finetune.innerHTML = models.models[index].has_finetune ? '<i class="bi bi-check"></i>' : '';
-        }
-        if(models.models[index].hasOwnProperty('has_toolbox')) {
-            has_toolbox.innerHTML = models.models[index].has_toolbox ? '<i class="bi bi-check"></i>' : '';
-        }
-        if(models.models[index].hasOwnProperty('has_chat')) {
-            has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
-        }
+
+        has_completion.innerHTML = models.models[index].has_completion ? '<i class="bi bi-check"></i>' : '';
+        has_finetune.innerHTML = models.models[index].has_finetune ? '<i class="bi bi-check"></i>' : '';
+        has_toolbox.innerHTML = models.models[index].has_toolbox ? '<i class="bi bi-check"></i>' : '';
+        has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
+
         row.appendChild(model_name);
         row.appendChild(has_completion);
         row.appendChild(has_finetune);

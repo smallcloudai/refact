@@ -174,7 +174,7 @@ huggingface_specs: List[ModelSpec] = [
             {
                 "backend": "autogptq",
                 "model_path": "TheBloke/starcoder-GPTQ",
-                "quantization": "q4",
+                "quantization": "4 bit",
                 "default": True,
             },
         ]),
