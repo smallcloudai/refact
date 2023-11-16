@@ -21,18 +21,20 @@ from self_hosting_machinery.finetune.scripts.aux.model import ModelContext
 from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_config
 
+from known_models_db.refact_known_models.utils import ModelRegistry
+
 
 def _log_everywhere(message):
     logging.info(message)
     traces.log(message)
 
 
-def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str, Any]:
+def _build_finetune_config_by_heuristics(models_registry: ModelRegistry) -> Dict[str, Any]:
     with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
         initial_loss = json.load(f)["avg_loss"]
 
-    user_cfg = get_finetune_config(models_db, logger=traces.log)
-    cfg_builder = ConfigBuilder(base_config(user_cfg['model_name'], models_db))
+    user_cfg = get_finetune_config(models_registry.models, logger=traces.log)
+    cfg_builder = ConfigBuilder(base_config(user_cfg['model_name'], models_registry))
     if user_cfg['use_heuristics']:
         _log_everywhere("Calculating finetune optimal parameters")
         _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
@@ -205,7 +207,7 @@ def loop(
                 _save_checkpoint(force=False, iter_n=iter_n, loss=test_loss)
 
 
-def main(models_db: Dict[str, Any]):
+def main(models_registry: ModelRegistry):
     _log_everywhere("Loading status tracker...")
     status_tracker = FinetuneStatusTracker()
 
@@ -219,7 +221,7 @@ def main(models_db: Dict[str, Any]):
     try:
         status_tracker.update_status("working")
         _log_everywhere("Loading finetune configs...")
-        finetune_cfg = copy.deepcopy(_build_finetune_config_by_heuristics(models_db))
+        finetune_cfg = copy.deepcopy(_build_finetune_config_by_heuristics(models_registry))
 
         _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
         model_context = ModelContext(
@@ -249,8 +251,8 @@ def main(models_db: Dict[str, Any]):
 
 
 if __name__ == "__main__":
-    from known_models_db.refact_known_models import models_mini_db
+    from known_models_db.refact_known_models import models_registry
 
     YMD_hms = os.environ.get("LORA_LOGDIR", "") or time.strftime("lora-%Y%m%d-%H%M%S")
     traces.configure(task_dir="loras", task_name=YMD_hms, work_dir=env.PERMDIR)
-    main(models_mini_db)
+    main(models_registry)

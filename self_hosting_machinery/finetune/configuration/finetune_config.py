@@ -1,25 +1,24 @@
 import math
 import torch
 
+from known_models_db.refact_known_models.utils import ModelRegistry
 from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery import env
 
 from typing import Any, Dict, List
 
 
-def base_config(model_name: str, models_db: Dict[str, Any]):
-    if model_name not in models_db:
-        raise RuntimeError(f"Unknown model {model_name}, try to update repo")
-    model_info = models_db[model_name]
-    if "finetune" not in model_info.get("filter_caps", []):
-        raise RuntimeError(f"Model {model_name} does not support finetune")
+def base_config(model_name: str, model_registry: ModelRegistry):
+    spec = model_registry.default_finetune(model_name)
+    if spec is None:
+        raise RuntimeError(f"Cannot fine default finetune for {model_name}, try to update repo")
     return dict(
         model_name=model_name,
         model_info=dict(
             weight_path=env.DIR_WEIGHTS,
-            repo_id=model_info['model_path'],
-            backend=model_info['backend'],
-            ctx_size=model_info['T'],
+            repo_id=spec.model_path,
+            backend=spec.backend,
+            ctx_size=spec.context_sizes[-1],
             lora={
                 "lora_target_modules": [
                     "qkv",

@@ -21,7 +21,9 @@ class ModelSpec:
     model_class_kwargs: Dict[str, Any] = field(default_factory=dict)
     completion: bool = False
     finetune: bool = False
+
     default: bool = False
+    default_finetune: bool = False
 
     @property
     def family(self) -> str:
@@ -81,6 +83,22 @@ class ModelRegistry:
             assert default_specs, f"default spec for model '{model_name}' not found"
             assert len(default_specs) == 1, f"multiple default specs for model '{model_name}'"
 
+            finetune_specs = [
+                spec for spec in self._specs
+                if spec.name == model_name and spec.finetune
+            ]
+            finetune_default_specs = [
+                spec for spec in self._specs
+                if spec.name == model_name and spec.default_finetune
+            ]
+            if finetune_specs:
+                assert finetune_default_specs, f"default finetune spec for model '{model_name}' not found"
+                assert len(finetune_default_specs) == 1, f"multiple default finetune specs for model '{model_name}'"
+
+        # validate context sizes
+        for spec in self._specs:
+            assert len(spec.context_sizes), f"no context sizes for model '{spec.name}'"
+
     @property
     def models(self) -> Set[str]:
         return {spec.name for spec in self._specs}
@@ -95,6 +113,13 @@ class ModelRegistry:
             if spec.name == model_name and spec.default
         ]
         return default_specs[0]
+
+    def default_finetune(self, model_name: str) -> Optional[ModelSpec]:
+        default_specs = [
+            spec for spec in self._specs
+            if spec.name == model_name and spec.default_finetune
+        ]
+        return default_specs[0] if default_specs else None
 
     @property
     def specs(self) -> List[ModelSpec]:

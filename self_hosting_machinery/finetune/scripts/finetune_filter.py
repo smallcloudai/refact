@@ -21,6 +21,8 @@ from self_hosting_machinery.finetune.scripts.aux.model import ModelContext
 from self_hosting_machinery.finetune.scripts.process_uploaded_files import make_matcher
 from self_hosting_machinery.finetune.utils.finetune_utils import (get_finetune_config, get_finetune_filter_config)
 
+from known_models_db.refact_known_models.utils import ModelRegistry
+
 
 def _log_everywhere(message):
     logging.info(message)
@@ -140,7 +142,7 @@ def finetune_filter(
     )
 
 
-def main(models_db: Dict[str, Any]):
+def main(model_registry: ModelRegistry):
     _log_everywhere("Loading status tracker...")
     status_tracker = FinetuneFilterStatusTracker()
 
@@ -153,8 +155,8 @@ def main(models_db: Dict[str, Any]):
 
     _log_everywhere("Loading finetune configs...")
     finetune_filter_cfg = get_finetune_filter_config(logger=traces.log)
-    model_name = get_finetune_config(models_db, logger=traces.log)["model_name"]
-    finetune_cfg = copy.deepcopy(base_config(model_name, models_db))
+    model_name = get_finetune_config(model_registry.models, logger=traces.log)["model_name"]
+    finetune_cfg = copy.deepcopy(base_config(model_name, model_registry))
 
     _log_everywhere("Loading file sets context...")
     file_sets_context = FileSetsContext(
@@ -191,8 +193,8 @@ def main(models_db: Dict[str, Any]):
 
 
 if __name__ == "__main__":
-    from known_models_db.refact_known_models import models_mini_db
+    from known_models_db.refact_known_models import models_registry
 
     task_name = os.environ.get("LORA_LOGDIR", "") or time.strftime("lora-%Y%m%d-%H%M%S")
     traces.configure(task_dir="loras", task_name=task_name, work_dir=env.PERMDIR)
-    main(models_mini_db)
+    main(models_registry)

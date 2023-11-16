@@ -37,10 +37,6 @@ class ModelGroup:
 
 class ModelAssigner:
 
-    # @property
-    # def models_db(self) -> Dict[str, Any]:
-    #     return models_mini_db
-
     @property
     def models_registry(self) -> ModelRegistry:
         return models_registry
