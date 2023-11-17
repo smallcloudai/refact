@@ -105,22 +105,24 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 
 ## Supported models
 
-| Model                                                                           | Completion | Chat | AI Toolbox | Fine-tuning |
-|---------------------------------------------------------------------------------|------------|------|------------|-------------|
-| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)              | +          | +    |            | +           |
-| [starcoder/1b/base](https://huggingface.co/smallcloudai/starcoderbase-1b)       | +          |      |            | +           |
-| [starcoder/3b/base](https://huggingface.co/smallcloudai/starcoderbase-3b)       | +          |      |            | +           |
-| [starcoder/7b/base](https://huggingface.co/smallcloudai/starcoderbase-7b)       | +          |      |            | +           |
-| [starcoder/15b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)            | +          |      |            |             |
-| [starcoder/15b/plus](https://huggingface.co/TheBloke/starcoderplus-GPTQ)        | +          |      |            |             |
-| [wizardcoder/15b](https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GPTQ)     | +          |      |            |             |
-| [codellama/7b](https://huggingface.co/TheBloke/CodeLlama-7B-fp16)               | +          |      |            |             |
-| [starchat/15b/beta](https://huggingface.co/TheBloke/starchat-beta-GPTQ)         |            | +    |            |             |
-| [wizardlm/7b](https://huggingface.co/TheBloke/WizardLM-7B-V1.0-Uncensored-GPTQ) |            | +    |            |             |
-| [wizardlm/13b](https://huggingface.co/TheBloke/WizardLM-13B-V1.1-GPTQ)          |            | +    |            |             |
-| [wizardlm/30b](https://huggingface.co/TheBloke/WizardLM-30B-fp16)               |            | +    |            |             |
-| [llama2/7b](https://huggingface.co/TheBloke/Llama-2-7b-Chat-GPTQ)               |            | +    |            |             |
-| [llama2/13b](https://huggingface.co/TheBloke/Llama-2-13B-chat-GPTQ)             |            | +    |            |             |
+| Model                                                                                          | Completion | Chat | AI Toolbox | Fine-tuning |
+|------------------------------------------------------------------------------------------------|------------|------|------------|-------------|
+| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                             | +          |      |            | +           |
+| [starcoder/1b/base](https://huggingface.co/smallcloudai/starcoderbase-1b)                      | +          |      |            | +           |
+| [starcoder/3b/base](https://huggingface.co/smallcloudai/starcoderbase-3b)                      | +          |      |            | +           |
+| [starcoder/7b/base](https://huggingface.co/smallcloudai/starcoderbase-7b)                      | +          |      |            | +           |
+| [starcoder/15b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)                           | +          |      |            |             |
+| [starcoder/15b/plus](https://huggingface.co/TheBloke/starcoderplus-GPTQ)                       | +          |      |            |             |
+| [wizardcoder/15b](https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GPTQ)                    | +          |      |            |             |
+| [codellama/7b](https://huggingface.co/TheBloke/CodeLlama-7B-fp16)                              | +          |      |            |             |
+| [starchat/15b/beta](https://huggingface.co/TheBloke/starchat-beta-GPTQ)                        |            | +    |            |             |
+| [wizardlm/7b](https://huggingface.co/TheBloke/WizardLM-7B-V1.0-Uncensored-GPTQ)                |            | +    |            |             |
+| [wizardlm/13b](https://huggingface.co/TheBloke/WizardLM-13B-V1.1-GPTQ)                         |            | +    |            |             |
+| [wizardlm/30b](https://huggingface.co/TheBloke/WizardLM-30B-fp16)                              |            | +    |            |             |
+| [llama2/7b](https://huggingface.co/TheBloke/Llama-2-7b-Chat-GPTQ)                              |            | +    |            |             |
+| [llama2/13b](https://huggingface.co/TheBloke/Llama-2-13B-chat-GPTQ)                            |            | +    |            |             |
+| [deepseek-coder/1.3b/base](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-base)        | +          |      |            | +           |
+| [deepseek-coder/5.7b/mqa-base](https://huggingface.co/deepseek-ai/deepseek-coder-5.7bmqa-base) | +          |      |            | +           |
 
 
 ## Usage
