@@ -14,7 +14,7 @@ use crate::telemetry::basic_comp_counters;
 use crate::telemetry::utils::{sorted_json_files, read_file, cleanup_old_files, telemetry_storage_dirs};
 
 
-const TELEMETRY_COMPRESSION_SECONDS: u64 = 3600;
+const TELEMETRY_TRANSMIT_EACH_N_SECONDS: u64 = 3600;
 const TELEMETRY_FILES_KEEP: i32 = 30;
 
 
@@ -128,7 +128,7 @@ pub async fn telemetry_background_task(
     global_context: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> () {
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_COMPRESSION_SECONDS)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_TRANSMIT_EACH_N_SECONDS)).await;
         telemetry_full_cycle(global_context.clone(), false).await;
     }
 }

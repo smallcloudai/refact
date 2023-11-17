@@ -6,7 +6,6 @@ use reqwest_eventsource::EventSource;
 use serde_json::json;
 use crate::call_validation;
 use crate::call_validation::SamplingParameters;
-use tracing::info;
 
 
 pub async fn forward_to_openai_style_endpoint(

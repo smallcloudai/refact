@@ -1,9 +1,7 @@
-use std::error::Error;
 use std::future::Future;
 use std::pin::Pin;
 
 use axum::Extension;
-use axum::response::IntoResponse;
 use axum::Router;
 use axum::routing::{get, post};
 use hyper::{Body, Response};

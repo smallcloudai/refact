@@ -1,17 +1,12 @@
-use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
 use tracing::info;
 use axum::Extension;
-use axum::handler::Handler;
 use axum::http::{Method, Uri};
-use axum::response::IntoResponse;
-use axum::routing::{MethodRouter, post};
 use hyper::{Body, Response};
-use hyper::body::HttpBody;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::telemetry_basic;
+use crate::telemetry::telemetry_structs;
 
 pub async fn telemetry_wrapper(func: impl Fn(Extension<SharedGlobalContext>, hyper::body::Bytes)
                                         -> Pin<Box<dyn Future<Output=Result<Response<Body>, ScratchError>> + Send>> ,
@@ -25,7 +20,7 @@ pub async fn telemetry_wrapper(func: impl Fn(Extension<SharedGlobalContext>, hyp
         if !e.telemetry_skip {
             let tele_storage = &ex.read().await.telemetry;
             let mut tele_storage_locked = tele_storage.write().unwrap();
-            tele_storage_locked.tele_net.push(telemetry_basic::TelemetryNetwork::new(
+            tele_storage_locked.tele_net.push(telemetry_structs::TelemetryNetwork::new(
                 path.path().to_string(),
                 format!("{}", method),
                 false,
@@ -44,8 +39,8 @@ macro_rules! telemetry_post {
     $name:ident
      ) => {
            post(|path, method, ex, body_bytes| async {
-               let tmp = |ex: Extension<SharedGlobalContext>, 
-                          body_bytes: hyper::body::Bytes| 
+               let tmp = |ex: Extension<SharedGlobalContext>,
+                          body_bytes: hyper::body::Bytes|
                -> Pin<Box<dyn Future<Output=Result<Response<Body>, ScratchError>> + Send>> {
                     Box::pin($name(ex, body_bytes))
                 };
@@ -60,8 +55,8 @@ macro_rules! telemetry_get {
     $name:ident
      ) => {
            get(|path, method, ex, body_bytes| async {
-               let tmp = |ex: Extension<SharedGlobalContext>, 
-                          body_bytes: hyper::body::Bytes| 
+               let tmp = |ex: Extension<SharedGlobalContext>,
+                          body_bytes: hyper::body::Bytes|
                -> Pin<Box<dyn Future<Output=Result<Response<Body>, ScratchError>> + Send>> {
                     Box::pin($name(ex, body_bytes))
                 };

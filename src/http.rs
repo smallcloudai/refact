@@ -1,28 +1,14 @@
 use axum::{Extension, http::{StatusCode, Uri}, response::IntoResponse, Router};
 use tokio::signal;
-use tower::ServiceExt;
 use tracing::info;
 
-use std::convert::Infallible;
-use std::net::SocketAddr;
 use std::io::Write;
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock as ARwLock;
-use hyper::{Body, Request, Response, Server, Method};
-use hyper::server::conn::AddrStream;
-use hyper::service::{make_service_fn, service_fn};
-use serde_json::json;
+use hyper::Server;
 
-use crate::caps;
-use crate::scratchpads;
-use crate::call_validation::{CodeCompletionPost, ChatPost};
 use crate::global_context::GlobalContext;
-use crate::caps::CodeAssistantCaps;
-use crate::custom_error::ScratchError;
-use crate::telemetry_basic;
-use crate::telemetry_snippets;
-use crate::completion_cache;
+// use crate::telemetry_snippets;
 use routers::make_v1_router;
 
 pub mod routers;

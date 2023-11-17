@@ -50,8 +50,8 @@ impl ScratchpadAbstract for ChatPassthrough {
 
     async fn prompt(
         &mut self,
-        context_size: usize,
-        sampling_parameters_to_patch: &mut SamplingParameters,
+        _context_size: usize,
+        _sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         let limited_msgs: Vec<ChatMessage> = limit_messages_history_in_bytes(&self.post, self.limit_bytes, &self.default_system_message)?;
         info!("chat passthrough {} messages -> {} messages after applying limits and possibly adding the default system message", &limited_msgs.len(), &limited_msgs.len());
@@ -80,8 +80,8 @@ impl ScratchpadAbstract for ChatPassthrough {
 
     fn response_n_choices(
         &mut self,
-        choices: Vec<String>,
-        stopped: Vec<bool>,
+        _choices: Vec<String>,
+        _stopped: Vec<bool>,
     ) -> Result<serde_json::Value, String> {
         unimplemented!()
     }

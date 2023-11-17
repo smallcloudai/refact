@@ -5,8 +5,6 @@ use serde_json::json;
 use std::fmt;
 use axum::Json;
 use axum::response::IntoResponse;
-use crate::global_context::SharedGlobalContext;
-use crate::telemetry_basic;
 
 
 #[derive(Debug, Clone)]

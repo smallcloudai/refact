@@ -1,6 +1,6 @@
 use axum::Extension;
 use axum::response::Result;
-use hyper::{Body, Response, StatusCode};
+use hyper::{Body, Response};
 use serde_json::json;
 
 use crate::custom_error::ScratchError;
