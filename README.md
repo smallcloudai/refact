@@ -114,7 +114,7 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 | [starcoder/15b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)                           | +          |      |            |             |
 | [starcoder/15b/plus](https://huggingface.co/TheBloke/starcoderplus-GPTQ)                       | +          |      |            |             |
 | [wizardcoder/15b](https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GPTQ)                    | +          |      |            |             |
-| [codellama/7b](https://huggingface.co/TheBloke/CodeLlama-7B-fp16)                              | +          |      |            |             |
+| [codellama/7b](https://huggingface.co/TheBloke/CodeLlama-7B-fp16)                              | +          |      |            | +           |
 | [starchat/15b/beta](https://huggingface.co/TheBloke/starchat-beta-GPTQ)                        |            | +    |            |             |
 | [wizardlm/7b](https://huggingface.co/TheBloke/WizardLM-7B-V1.0-Uncensored-GPTQ)                |            | +    |            |             |
 | [wizardlm/13b](https://huggingface.co/TheBloke/WizardLM-13B-V1.1-GPTQ)                         |            | +    |            |             |
