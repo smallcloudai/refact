@@ -81,7 +81,8 @@ const KNOWN_MODELS: &str = r#"
             },
             "default_scratchpad": "FIM-SPM",
             "similar_models": [
-                "Refact/1.6B"
+                "Refact/1.6B",
+                "Refact/1.6B/vllm"
             ]
         },
         "codellama/CodeLlama-13b-hf": {
