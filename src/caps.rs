@@ -100,6 +100,21 @@ const KNOWN_MODELS: &str = r#"
             "similar_models": [
                 "codellama/7b"
             ]
+        },
+        "deepseek-coder/1.3b/base": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "FIM-PSM": {
+                    "fim_prefix": "<｜fim▁begin｜>",
+                    "fim_suffix": "<｜fim▁hole｜>",
+                    "fim_middle": "<｜fim▁end｜>",
+                    "eot": "<|EOT|>"
+                }
+            },
+            "default_scratchpad": "FIM-PSM",
+            "similar_models": [
+                "deepseek-coder/5.7b/mqa-base"
+            ]
         }
     },
     "code_chat_models": {
