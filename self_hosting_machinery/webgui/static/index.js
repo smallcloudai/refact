@@ -35,8 +35,8 @@ window.addEventListener('popstate', () => {
     }
     // hide all active modals
     document.querySelectorAll('.modal').forEach(modal => {
-      let currentModal = bootstrap.Modal.getInstance(modal)
-      if (currentModal) currentModal.hide()
+        let currentModal = bootstrap.Modal.getInstance(modal)
+        if (currentModal) currentModal.hide()
     })
 
     const page = history_state.at(-2);
@@ -59,7 +59,7 @@ function active_tab_switched() {
     for (const plugin of plugins) {
         if (active_tab.id === plugin.tab) {
             localStorage.setItem('active_tab_storage', plugin.tab);
-            history.pushState({'page': plugin.tab}, '', '');
+            history.pushState({ 'page': plugin.tab }, '', '');
             if (create_h_state) {
                 history_state.push(plugin.tab);
             }
@@ -131,8 +131,7 @@ function start_tab_timer() {
 start_tab_timer();
 
 
-function plugins_to_top_nav_bar(plugins)
-{
+function plugins_to_top_nav_bar(plugins) {
     // show immediately, import later
     const template_ltr = Handlebars.compile(document.getElementById('nav-template-ltr').innerHTML);
     const html = template_ltr({ "items": plugins });
@@ -143,7 +142,7 @@ function plugins_to_top_nav_bar(plugins)
 
     tab_buttons.forEach(tab_button => {
         tab_button.addEventListener('click', () => {
-            if(tab_button.hasAttribute('disabled')) { return };
+            if (tab_button.hasAttribute('disabled')) { return };
             const target_tab = tab_button.dataset.tab;
 
             tab_buttons.forEach(btn => {
@@ -151,11 +150,11 @@ function plugins_to_top_nav_bar(plugins)
             });
 
             tab_panes.forEach(pane => {
-            if (pane.id === target_tab) {
-                pane.classList.add('main-active');
-            } else {
-                pane.classList.remove('main-active');
-            }
+                if (pane.id === target_tab) {
+                    pane.classList.add('main-active');
+                } else {
+                    pane.classList.remove('main-active');
+                }
             });
 
             tab_button.classList.add('main-active');
@@ -184,34 +183,34 @@ const inputs_for_validate = document.querySelectorAll('.validate');
 let typing_timer;
 
 function validate_input(input) {
-  const value = parseFloat(input.value);
-  const min = parseFloat(input.getAttribute('data-min'));
-  const max = parseFloat(input.getAttribute('data-max'));
+    const value = parseFloat(input.value);
+    const min = parseFloat(input.getAttribute('data-min'));
+    const max = parseFloat(input.getAttribute('data-max'));
 
-  if (isNaN(value)) {
-    return;
-  }
+    if (isNaN(value)) {
+        return;
+    }
 
-  if (value < min) {
-    input.value = min;
-  } else if (value > max) {
-    input.value = max;
-  }
+    if (value < min) {
+        input.value = min;
+    } else if (value > max) {
+        input.value = max;
+    }
 }
 
 inputs_for_validate.forEach((input) => {
     input.addEventListener('input', () => {
-      clearTimeout(typing_timer);
-      typing_timer = setTimeout(() => {
-        validate_input(input);
-      }, 750);
+        clearTimeout(typing_timer);
+        typing_timer = setTimeout(() => {
+            validate_input(input);
+        }, 750);
     });
 });
 
-const dropdown_menu = document.querySelector('.dropdown-menu');
+const dropdown_menu = document.querySelector('#dropdown-menu');
 const reset_button_wrapper = document.createElement('li');
 const reset_button = document.createElement('button');
-reset_button.classList.add('nav-link','main-tab-button');
+reset_button.classList.add('nav-link', 'main-tab-button');
 reset_button.setAttribute('data-bs-toggle', 'modal');
 reset_button.setAttribute('data-bs-target', '#settings-tab-reset-modal');
 reset_button.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Factory Reset';
@@ -223,20 +222,20 @@ reset_button.addEventListener('click', () => {
     reset_modal.show();
 });
 
-let reset_submit_button  = document.querySelector('.settings-tab-factoryreset-submit');
+let reset_submit_button = document.querySelector('.settings-tab-factoryreset-submit');
 reset_submit_button.addEventListener('click', () => {
     fetch("/tab-settings-factory-reset")
-    .then(function(response) {
-        setTimeout(() => {
-            window.location.reload();
-        }, 20000);
-    })
-   .catch(function(error) {
-        console.log(error);
-        general_error(error);
-    });
+        .then(function (response) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 20000);
+        })
+        .catch(function (error) {
+            console.log(error);
+            general_error(error);
+        });
 });
 
-window.addEventListener("offline", function() {
+window.addEventListener("offline", function () {
     general_error("Connection problem. Seems your browser is offline.");
 })
