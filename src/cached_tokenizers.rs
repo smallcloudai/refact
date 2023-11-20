@@ -51,6 +51,7 @@ async fn _download_tokenizer_file(
     file.write_all(&res.bytes().await
         .map_err(|e| format!("failed to fetch bytes: {}", e))?
     ).await.map_err(|e| format!("failed to write to file: {}", e))?;
+    file.flush().await.map_err(|e| format!("failed to flush file: {}", e))?;
     Ok(())
 }
 
