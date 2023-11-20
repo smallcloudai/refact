@@ -52,7 +52,7 @@
 
       <div class="collapse navbar-collapse" id="nav-container">
       </div>
-     </div>
+    </div>
   </nav>
 
   <script id="nav-template-ltr" type="text/x-handlebars-template">
@@ -64,18 +64,35 @@
       </li>
       {{/unless}}
       {{/each}}
-      <li class="nav-item dropdown ms-auto">
-        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Settings</a>
-        <ul class="dropdown-menu dropdown-menu-end">
-          {{#each items}}
-          {{#if hamburger}}
-          <li>
-            <button class="nav-link main-tab-button" id="{{tab}}-tab" data-tab="{{tab}}" type="button">{{label}}</button>
-          </li>
-          {{/if}}
-          {{/each}}
-        </ul>
-      </li>
+      <div class="d-flex ms-auto">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
+            aria-expanded="false">Resources</a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <a class="nav-link" href="https://refact.ai/" target="_blank">Website</a>
+            </li>
+            <li>
+              <a class="nav-link" href="https://docs.refact.ai/" target="_blank">Docs</a>
+            </li>
+            <li>
+              <a class="nav-link" href="https://smallcloud.ai/discord" target="_blank">Community</a>
+            </li>
+          </ul>
+        </li>
+        <li class="nav-item dropdown ms-auto">
+          <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Settings</a>
+          <ul id="dropdown-menu" class="dropdown-menu dropdown-menu-end">
+            {{#each items}}
+            {{#if hamburger}}
+            <li>
+              <button class="nav-link main-tab-button" id="{{tab}}-tab" data-tab="{{tab}}" type="button">{{label}}</button>
+            </li>
+            {{/if}}
+            {{/each}}
+          </ul>
+        </li>
+      </div>
     </ul>
   </script>
 
@@ -103,7 +120,8 @@
   </footer>
 
   <div class="toast-container position-fixed top-0 end-0 p-3">
-    <div class="upload-tab-scan-error-toast toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="upload-tab-scan-error-toast toast align-items-center text-bg-danger border-0" role="alert"
+      aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body">
         </div>
@@ -113,37 +131,44 @@
   </div>
 
   <div class="toast-container position-fixed top-0 end-0 p-3">
-    <div class="upload-tab-scan-success-toast toast align-items-center text-bg-secondary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="upload-tab-scan-success-toast toast align-items-center text-bg-secondary border-0" role="alert"
+      aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body">
         </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+          aria-label="Close"></button>
       </div>
     </div>
   </div>
 
   <div class="toast-container position-fixed top-0 end-0 p-3">
-    <div class="int-saved-success-toast toast align-items-center text-bg-secondary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="int-saved-success-toast toast align-items-center text-bg-secondary border-0" role="alert"
+      aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body">
         </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+          aria-label="Close"></button>
         <!-- <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button> -->
       </div>
     </div>
   </div>
 
   <div class="toast-container position-fixed top-0 end-0 p-3">
-    <div class="global-error-toast toast align-items-center text-bg-danger border-0" role="alert" data-autohide="false" aria-live="assertive" aria-atomic="true">
+    <div class="global-error-toast toast align-items-center text-bg-danger border-0" role="alert" data-autohide="false"
+      aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body">
         </div>
-        <button type="button" class="global-error-toast-close btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        <button type="button" class="global-error-toast-close btn-close btn-close-white me-2 m-auto"
+          data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
     </div>
   </div>
 
-  <div class="modal fade" id="settings-tab-factoryreset-modal" tabindex="-1" aria-labelledby="settings-tab-factory-reset-modal" aria-hidden="true">
+  <div class="modal fade" id="settings-tab-factoryreset-modal" tabindex="-1"
+    aria-labelledby="settings-tab-factory-reset-modal" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -157,7 +182,8 @@
           </div>
           <div id="status-ssh" class="uploaded-status"></div>
           <div class="modal-footer">
-            <button type="button" class="btn settings-tab-factoryreset-close btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn settings-tab-factoryreset-close btn-secondary"
+              data-bs-dismiss="modal">Close</button>
             <button class="settings-tab-factoryreset-submit btn btn-danger">Delete all data</button>
           </div>
         </div>
