@@ -70,7 +70,6 @@ pub async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalConte
 
     for snip in snips_send {
         let json_dict = serde_json::to_value(snip).unwrap();
-        info!("sending snippet: {:?}", json_dict);
         let big_json_snip = json!({
             "records": [json_dict],
             "ts_start": now,

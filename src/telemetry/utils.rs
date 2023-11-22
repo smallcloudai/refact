@@ -277,16 +277,16 @@ pub fn unchanged_percentage_approx(
 
     let (texts_ab_added, _) = get_add_del_from_texts(text_a, text_b);
 
-    info!("unchanged_percentage_approx for snip:\n{grey_text_a}");
+    // info!("unchanged_percentage_approx for snip:\n{grey_text_a}");
     if texts_ab_added.is_empty() {
-        info!("texts_ab_added.is_empty()");
+        // info!("texts_ab_added.is_empty()");
         return 0.;
     }
 
     let mut common: i32 = 0;
     let mut a_idx_taken = vec![];
     for line in grey_text_a.lines() {
-        info!("checking line:\n{line}");
+        // info!("checking line:\n{line}");
 
         let mut biggest_common = BiggestCommon::new();
         for (a_idx, a_line) in texts_ab_added.lines().enumerate() {
@@ -299,8 +299,8 @@ pub fn unchanged_percentage_approx(
         if !biggest_common.valid {
             continue;
         }
-        info!("most similar line: {}", biggest_common.string);
-        info!("biggest common: +{}/{}", biggest_common.val, line.len());
+        // info!("most similar line: {}", biggest_common.string);
+        // info!("biggest common: +{}/{}", biggest_common.val, line.len());
         a_idx_taken.push(biggest_common.idx);
         common += biggest_common.val;
     }
