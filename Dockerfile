@@ -43,6 +43,7 @@ RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packagi
 
 # refact lsp requisites
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+ENV PATH="${PATH}:/root/.cargo/bin"
 RUN git clone https://github.com/smallcloudai/refact-lsp.git /tmp/refact-lsp \
     && cd /tmp/refact-lsp \
     && cargo install --path . \
