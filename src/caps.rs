@@ -38,6 +38,8 @@ pub struct CodeAssistantCaps {
     pub code_completion_models: HashMap<String, ModelRecord>,
     pub code_completion_default_model: String,
     #[serde(default)]
+    pub code_completion_n_ctx: usize,
+    #[serde(default)]
     pub code_chat_models: HashMap<String, ModelRecord>,
     pub code_chat_default_model: String,
     pub running_models: Vec<String>,
@@ -118,6 +120,16 @@ const KNOWN_MODELS: &str = r#"
             "similar_models": [
             ]
         },
+        "gpt-4": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
+                }
+            },
+            "similar_models": [
+            ]
+        },
         "starchat/15b/beta": {
             "n_ctx": 4096,
             "supports_scratchpads": {
@@ -180,6 +192,7 @@ const HF_DEFAULT_CAPS: &str = r#"
         "meta-llama/Llama-2-70b-chat-hf": "TheBloke/Llama-2-70B-fp16"
     },
     "code_completion_default_model": "bigcode/starcoder",
+    "code_completion_n_ctx": 2048,
     "code_chat_default_model": "meta-llama/Llama-2-70b-chat-hf",
     "telemetry_basic_dest": "https://staging.smallcloud.ai/v1/telemetry-basic",
     "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback",
@@ -216,8 +229,13 @@ pub async fn load_caps(
         file.read_to_string(&mut buffer).map_err(|_| format!("failed to read file '{}'", caps_url))?;
     }
     if is_remote_address {
+        let api_key = cmdline.api_key.clone();
         let http_client = reqwest::Client::new();
-        let response = http_client.get(caps_url.clone()).send().await.map_err(|e| format!("{}", e))?;
+        let mut headers = reqwest::header::HeaderMap::new();
+        if !api_key.is_empty() {
+            headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
+        }
+        let response = http_client.get(caps_url.clone()).headers(headers).send().await.map_err(|e| format!("{}", e))?;
         let status = response.status().as_u16();
         buffer = response.text().await.map_err(|e| format!("failed to read response: {}", e))?;
         if status != 200 {

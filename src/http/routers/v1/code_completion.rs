@@ -17,7 +17,7 @@ use crate::scratchpads;
 async fn _lookup_code_completion_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     code_completion_post: &CodeCompletionPost,
-) -> Result<(String, String, serde_json::Value), String> {
+) -> Result<(String, String, serde_json::Value, usize), String> {
     let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
         caps::which_model_to_use(
@@ -30,7 +30,9 @@ async fn _lookup_code_completion_scratchpad(
         &code_completion_post.scratchpad,
         &recommended_model_record.default_scratchpad,
     )?;
-    Ok((model_name, sname.clone(), patch.clone()))
+    let mut n_ctx = caps_locked.code_completion_n_ctx;
+    if n_ctx == 0 { n_ctx = 2048 }
+    Ok((model_name, sname.clone(), patch.clone(), n_ctx))
 }
 
 pub async fn handle_v1_code_completion(
@@ -38,7 +40,7 @@ pub async fn handle_v1_code_completion(
     code_completion_post: &mut CodeCompletionPost,
 ) -> Result<Response<Body>, ScratchError> {
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
-    let (model_name, scratchpad_name, scratchpad_patch) = _lookup_code_completion_scratchpad(
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = _lookup_code_completion_scratchpad(
         caps.clone(),
         &code_completion_post,
     ).await.map_err(|e| {
@@ -85,7 +87,7 @@ pub async fn handle_v1_code_completion(
     )?;
     let t1 = std::time::Instant::now();
     let prompt = scratchpad.prompt(
-        2048,
+        n_ctx,
         &mut code_completion_post.parameters,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))

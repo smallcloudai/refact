@@ -23,6 +23,7 @@ pub struct VecdbResult {
     pub results: Vec<VecdbResultRec>,
 }
 
+// FIXME: bad idea
 pub async fn embed_vecdb_results(
     vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
     post: &mut ChatPost,
@@ -45,7 +46,7 @@ pub async fn embed_vecdb_results(
     }
 }
 
-
+// FIXME: bad idea
 fn vecdb_resp_to_prompt(
     resp: &Result<VecdbResult, String>,
     limit_examples_cnt: usize,
