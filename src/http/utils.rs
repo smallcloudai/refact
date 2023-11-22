@@ -1,6 +1,6 @@
 use std::future::Future;
 use std::pin::Pin;
-use tracing::info;
+use tracing::{info, error};
 use axum::Extension;
 use axum::http::{Method, Uri};
 use hyper::{Body, Response};
@@ -27,6 +27,7 @@ pub async fn telemetry_wrapper(func: impl Fn(Extension<SharedGlobalContext>, hyp
                 format!("{}", e.message),
             ));
         }
+        error!("{} returning \"{}\"", path, e.status_code);
         return Ok(e.to_response());
     }
     info!("{} completed in {:?}", path, t0.elapsed());
