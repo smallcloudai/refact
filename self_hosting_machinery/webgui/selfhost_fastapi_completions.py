@@ -2,6 +2,7 @@ import time
 import json
 import copy
 import asyncio
+import aiohttp
 import termcolor
 
 from fastapi import APIRouter, Request, HTTPException, Query
@@ -243,6 +244,9 @@ class CompletionsRouter(APIRouter):
         self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
         self.add_api_route("/v1/completions", self._completions, methods=["POST"])
 
+        self.add_api_route("/v1/models", self._models, methods=["GET"])
+        self.add_api_route("/v1/chat/completions", self._chat_completions, methods=["POST"])
+
         self._inference_queue = inference_queue
         self._id2ticket = id2ticket
         self._model_assigner = model_assigner
@@ -423,3 +427,55 @@ class CompletionsRouter(APIRouter):
         self._id2ticket[ticket.id()] = ticket
         await q.put(ticket)
         return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))
+
+    async def _models(self):
+        async with aiohttp.ClientSession() as session:
+            async with session.get("http://127.0.0.1:8001/v1/caps") as resp:
+                lsp_server_caps = await resp.json()
+        completion_models = set()
+        for model, caps in lsp_server_caps["code_completion_models"].items():
+            completion_models.update({model, *caps["similar_models"]})
+        chat_models = set()
+        for model, caps in lsp_server_caps["code_chat_models"].items():
+            chat_models.update({model, *caps["similar_models"]})
+        data = [
+            {
+                "id": model, "root": model, "object": "model",
+                "created": 0, "owned_by": "", "permission": [], "parent": None,
+                "completion": model in completion_models, "chat": model in chat_models,
+            }
+            for model in lsp_server_caps["running_models"]
+        ]
+        return {
+            "object": "list",
+            "data": data,
+        }
+
+    async def _chat_completions(self, post: ChatContext, request: Request, account: str = "XXX"):
+
+        async def chat_completion_streamer(post: ChatContext):
+            finish_reason = None
+            prefix, postfix = "data: ", "\n\n"
+            post_url = "http://127.0.0.1:8001/v1/chat"
+            post_data = {
+                "messages": [m.dict() for m in post.messages],
+                "stream": True,
+                "model": post.model,
+                "parameters": {
+                    "temperature": post.temperature,
+                    "max_new_tokens": post.max_tokens,
+                }
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.post(post_url, json=post_data) as resp:
+                    async for data, _ in resp.content.iter_chunks():
+                        try:
+                            data = data.decode("utf-8")
+                            data = json.loads(data[len(prefix):-len(postfix)])
+                            finish_reason = data["choices"][0]["finish_reason"]
+                            data["choices"][0]["finish_reason"] = None
+                        except json.JSONDecodeError:
+                            data = {"choices": [{"finish_reason": finish_reason}]}
+                        yield prefix + json.dumps(data) + postfix
+
+        return StreamingResponse(chat_completion_streamer(post))
