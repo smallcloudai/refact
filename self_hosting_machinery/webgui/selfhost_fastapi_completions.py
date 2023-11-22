@@ -428,9 +428,14 @@ class CompletionsRouter(APIRouter):
         return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))
 
     async def _models(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get("http://127.0.0.1:8001/v1/caps") as resp:
-                lsp_server_caps = await resp.json()
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("http://127.0.0.1:8001/v1/caps") as resp:
+                    lsp_server_caps = await resp.json()
+        except aiohttp.ClientConnectorError as e:
+            err_msg = f"LSP server is not ready yet: {e}"
+            log(err_msg)
+            raise HTTPException(status_code=401, detail=err_msg)
         completion_models = set()
         for model, caps in lsp_server_caps["code_completion_models"].items():
             completion_models.update({model, *caps["similar_models"]})
@@ -466,15 +471,20 @@ class CompletionsRouter(APIRouter):
                 }
             }
             async with aiohttp.ClientSession() as session:
-                async with session.post(post_url, json=post_data) as resp:
-                    async for data, _ in resp.content.iter_chunks():
-                        try:
-                            data = data.decode("utf-8")
-                            data = json.loads(data[len(prefix):-len(postfix)])
-                            finish_reason = data["choices"][0]["finish_reason"]
-                            data["choices"][0]["finish_reason"] = None
-                        except json.JSONDecodeError:
-                            data = {"choices": [{"finish_reason": finish_reason}]}
-                        yield prefix + json.dumps(data) + postfix
+                try:
+                    async with session.post(post_url, json=post_data) as response:
+                        async for data, _ in response.content.iter_chunks():
+                            try:
+                                data = data.decode("utf-8")
+                                data = json.loads(data[len(prefix):-len(postfix)])
+                                finish_reason = data["choices"][0]["finish_reason"]
+                                data["choices"][0]["finish_reason"] = None
+                            except json.JSONDecodeError:
+                                data = {"choices": [{"finish_reason": finish_reason}]}
+                            yield prefix + json.dumps(data) + postfix
+                except aiohttp.ClientConnectorError as e:
+                    err_msg = f"LSP server is not ready yet: {e}"
+                    log(err_msg)
+                    yield prefix + json.dumps({"error": err_msg}) + postfix
 
         return StreamingResponse(chat_completion_streamer(post))
