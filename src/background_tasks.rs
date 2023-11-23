@@ -19,6 +19,10 @@ impl BackgroundTasksHolder {
             tasks
         }
     }
+    
+    pub fn push_back(&mut self, task: JoinHandle<()>) {
+        self.tasks.push(task)
+    }
 
     pub async fn abort(self) {
         for task in self.tasks {

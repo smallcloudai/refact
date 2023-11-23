@@ -5,14 +5,17 @@ use std::time::Instant;
 
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
+use tokio::net::TcpListener;
 use tokio::sync::RwLock as ARwLock;
+use tokio::task::JoinHandle;
 use tower_lsp::{ClientSocket, LanguageServer, LspService};
 use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
 use tracing::{error, info};
 
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
-use crate::global_context;
+use crate::{global_context, lsp};
+use crate::global_context::{CommandLine, SharedGlobalContext};
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::telemetry;
 
@@ -278,7 +281,7 @@ impl LanguageServer for Backend {
     }
 }
 
-pub fn build_lsp_service(
+fn build_lsp_service(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> (LspService::<Backend>, ClientSocket) {
     let (lsp_service, socket) = LspService::build(|client| Backend {
@@ -291,4 +294,46 @@ pub fn build_lsp_service(
         .custom_method("refact/test_if_head_tail_equal_return_added_text", Backend::test_if_head_tail_equal_return_added_text)
         .finish();
     (lsp_service, socket)
+}
+
+pub fn spawn_lsp_task(
+    gcx: SharedGlobalContext,
+    cmdline: CommandLine
+) -> Option<JoinHandle<()>> {
+    if cmdline.lsp_stdin_stdout == 0 && cmdline.lsp_port > 0 {
+        let gcx_t = gcx.clone();
+        let addr: std::net::SocketAddr = ([127, 0, 0, 1], cmdline.lsp_port).into();
+        return Some(tokio::spawn( async move {
+            let listener: TcpListener = TcpListener::bind(&addr).await.unwrap();
+            info!("LSP listening on {}", listener.local_addr().unwrap());
+            loop {
+                // possibly wrong code, look at
+                // tower-lsp-0.20.0/examples/tcp.rs
+                match listener.accept().await {
+                    Ok((s, addr)) => {
+                        info!("LSP new client connection from {}", addr);
+                        let (read, write) = tokio::io::split(s);
+                        let (lsp_service, socket) = build_lsp_service(gcx_t.clone());
+                        tower_lsp::Server::new(read, write, socket).serve(lsp_service).await;
+                    }
+                    Err(e) => {
+                        error!("Error accepting client connection: {}", e);
+                    }
+                }
+            }
+        }));
+    }
+
+    if cmdline.lsp_stdin_stdout != 0 && cmdline.lsp_port == 0 {
+        let gcx_t = gcx.clone();
+        return Some(tokio::spawn( async move {
+            let stdin = tokio::io::stdin();
+            let stdout = tokio::io::stdout();
+            let (lsp_service, socket) = build_lsp_service(gcx_t.clone());
+            tower_lsp::Server::new(stdin, stdout, socket).serve(lsp_service).await;
+            info!("LSP loop exit");
+        }));
+    }
+    
+    None
 }
