@@ -2,7 +2,6 @@ import json
 
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery import env
-from refact_enterprise.known_models_db.refact_known_models import models_mini_db
 
 from typing import Tuple, List
 
@@ -35,14 +34,19 @@ def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tu
         if model not in ["longthink/stable"]
     ]
 
-    # find by hf name
-    for k, dbrec in models_mini_db.items():
-        if dbrec["model_path"] == model_name:
-            model_name = k
-            break
-
     # pass full model name
     if model_name in have_models:
         return model_name, ""
 
-    return "", f"model is not loaded, available models: {have_models}"
+    # CONTRASTcode is default model
+    if model_name in ["CONTRASTcode"]:
+        model_name = ""
+
+    def _family(model: str) -> str:
+        return model.split("/")[0]
+
+    for have_model in have_models:
+        if not model_name or _family(model_name) == _family(have_model):
+            return have_model, ""
+    else:
+        return "", f"model is not loaded (3)"
