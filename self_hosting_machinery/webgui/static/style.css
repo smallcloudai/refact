@@ -778,10 +778,12 @@ h3 {
     font-weight: bold;
 }
 
-.dusers-teams-table-col {
+.dash-plot-btn {
+    margin-right: 5px;
+    padding: 1.5px 3.5px 1.5px 3.5px;
 }
 
-#dusers-teams-tables {
+.dash-plot-btn:active {
 }
 
 .dusers-teams-table td, .dusers-teams-table th {
