@@ -273,7 +273,7 @@ impl LanguageServer for Backend {
     }
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
-        info!("asked for completion");
+        info!("LSP asked for completion");
         Ok(Some(CompletionResponse::Array(vec![
             CompletionItem::new_simple("Hello".to_string(), "Some detail".to_string()),
             CompletionItem::new_simple("Bye".to_string(), "More detail".to_string()),
@@ -334,6 +334,6 @@ pub fn spawn_lsp_task(
             info!("LSP loop exit");
         }));
     }
-    
+
     None
 }

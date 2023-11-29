@@ -44,6 +44,7 @@ async fn main() {
         .with_target(true)
         .with_line_number(true)
         .compact()
+        .with_ansi(false)
         .init();
     info!("started");
     info!("cache dir: {}", cache_dir.display());

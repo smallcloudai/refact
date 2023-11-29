@@ -14,7 +14,7 @@ use crate::telemetry::basic_comp_counters;
 use crate::telemetry::utils::{sorted_json_files, read_file, cleanup_old_files, telemetry_storage_dirs};
 
 
-const TELEMETRY_TRANSMIT_EACH_N_SECONDS: u64 = 3600;
+const TELEMETRY_TRANSMIT_EACH_N_SECONDS: u64 = 3600*3;
 const TELEMETRY_FILES_KEEP: i32 = 30;
 
 
@@ -99,7 +99,7 @@ pub async fn telemetry_full_cycle(
         api_key = cx.cmdline.api_key.clone();
         enable_basic_telemetry = cx.cmdline.basic_telemetry;
     }
-    let (dir_sent, dir_compressed) = telemetry_storage_dirs(&cache_dir).await;
+    let (dir_compressed, dir_sent) = telemetry_storage_dirs(&cache_dir).await;
 
     if caps.is_some() {
         telemetry_basic_dest = caps.clone().unwrap().read().unwrap().telemetry_basic_dest.clone();
@@ -113,12 +113,16 @@ pub async fn telemetry_full_cycle(
         send_telemetry_files_to_mothership(
             dir_compressed.clone(),
             dir_sent.clone(),
-            telemetry_basic_dest,
+            telemetry_basic_dest.clone(),
             api_key
         ).await;
-    }
-    if !enable_basic_telemetry {
-        info!("telemetry sending not enabled, skip");
+    } else {
+        if !enable_basic_telemetry {
+            info!("basic telemetry sending not enabled, skip");
+        }
+        if telemetry_basic_dest.is_empty() {
+            info!("basic telemetry dest is empty, skip");
+        }
     }
     cleanup_old_files(dir_compressed, TELEMETRY_FILES_KEEP).await;
     cleanup_old_files(dir_sent, TELEMETRY_FILES_KEEP).await;
