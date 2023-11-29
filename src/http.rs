@@ -19,7 +19,7 @@ async fn handler_404(path: Uri) -> impl IntoResponse {
 }
 
 
-pub fn make_server() -> Router {
+pub fn make_refact_http_server() -> Router {
     Router::new()
         .fallback(handler_404)
         .nest("/v1", make_v1_router())
@@ -67,7 +67,7 @@ pub async fn start_server(
         format!("port busy, address {}: {}", addr, e)
     })?;
     info!("HTTP server listening on {}", addr);
-    let router = make_server().layer(Extension(global_context.clone()));
+    let router = make_refact_http_server().layer(Extension(global_context.clone()));
     let server = builder
         .serve(router.into_make_service())
         .with_graceful_shutdown(shutdown_signal(ask_shutdown_receiver));

@@ -46,11 +46,13 @@ async fn main() {
         .compact()
         .with_ansi(false)
         .init();
-    info!("started");
+    {
+        info!("started with enduser_client_version==\"{}\"\n", gcx.read().await.cmdline.enduser_client_version);
+    }
     info!("cache dir: {}", cache_dir.display());
 
     let mut background_tasks = start_background_tasks(gcx.clone());
-    let lsp_task = spawn_lsp_task(gcx.clone(), cmdline.clone());
+    let lsp_task = spawn_lsp_task(gcx.clone(), cmdline.clone());  // execution stays inside if stdin-stdout
     if lsp_task.is_some() {
         background_tasks.push_back(lsp_task.unwrap())
     }
