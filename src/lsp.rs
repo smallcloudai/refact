@@ -14,8 +14,8 @@ use tower_lsp::lsp_types::*;
 use tracing::{error, info};
 
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
-use crate::{global_context, lsp};
-use crate::global_context::{CommandLine, SharedGlobalContext};
+use crate::global_context;
+use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::telemetry;
 
@@ -297,7 +297,7 @@ fn build_lsp_service(
 }
 
 pub fn spawn_lsp_task(
-    gcx: SharedGlobalContext,
+    gcx: Arc<ARwLock<global_context::GlobalContext>>,
     cmdline: CommandLine
 ) -> Option<JoinHandle<()>> {
     if cmdline.lsp_stdin_stdout == 0 && cmdline.lsp_port > 0 {
@@ -332,6 +332,7 @@ pub fn spawn_lsp_task(
             let (lsp_service, socket) = build_lsp_service(gcx_t.clone());
             tower_lsp::Server::new(stdin, stdout, socket).serve(lsp_service).await;
             info!("LSP loop exit");
+            gcx_t.write().await.ask_shutdown_sender.lock().unwrap().send(format!("going-down-because-lsp-exited")).unwrap();
         }));
     }
 

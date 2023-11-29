@@ -47,7 +47,7 @@ async fn main() {
         .with_ansi(false)
         .init();
     {
-        info!("started with enduser_client_version==\"{}\"\n", gcx.read().await.cmdline.enduser_client_version);
+        info!("started with enduser_client_version==\"{}\"", gcx.read().await.cmdline.enduser_client_version);
     }
     info!("cache dir: {}", cache_dir.display());
 
