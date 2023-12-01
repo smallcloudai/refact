@@ -39,18 +39,25 @@ pub struct CommandLine {
 }
 
 
+pub struct Slowdown {
+    // Be nice to cloud/self-hosted, don't flood it
+    pub requests_in_flight: u64,
+}
+
+
 // #[derive(Debug)]
 pub struct GlobalContext {
+    pub cmdline: CommandLine,
     pub http_client: reqwest::Client,
-    pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
+    pub http_client_slowdown: Arc<Mutex<Slowdown>>,
     pub cache_dir: PathBuf,
-    pub tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
     pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
     pub caps_last_attempted_ts: u64,
-    pub cmdline: CommandLine,
+    pub tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
+    pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;
@@ -139,16 +146,17 @@ pub async fn create_global_context(
     let cmdline = CommandLine::from_args();
     let (ask_shutdown_sender, ask_shutdown_receiver) = std::sync::mpsc::channel::<String>();
     let cx = GlobalContext {
+        cmdline: cmdline.clone(),
         http_client: reqwest::Client::new(),
-        ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
+        http_client_slowdown: Arc::new(Mutex::new(Slowdown { requests_in_flight: 0 })),
         cache_dir,
-        tokenizer_map: HashMap::new(),
         caps: None,
         caps_last_attempted_ts: 0,
-        cmdline: cmdline.clone(),
+        tokenizer_map: HashMap::new(),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vecdb_search: Arc::new(AMutex::new(Box::new(crate::vecdb_search::VecdbSearchTest::new()))),
+        ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
     };
     (Arc::new(ARwLock::new(cx)), ask_shutdown_receiver, cmdline)
 }

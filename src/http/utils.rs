@@ -14,6 +14,7 @@ pub async fn telemetry_wrapper(func: impl Fn(Extension<SharedGlobalContext>, hyp
                                method: Method,
                                ex: Extension<SharedGlobalContext>,
                                body_bytes: hyper::body::Bytes) -> Result<Response<Body>, ScratchError> {
+    info!("{} starts", path);
     let t0 = std::time::Instant::now();
     let result = Box::pin(func(ex.clone(), body_bytes)).await;
     if let Err(e) = result {

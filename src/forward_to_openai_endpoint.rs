@@ -38,6 +38,7 @@ pub async fn forward_to_openai_style_endpoint(
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
     }
+    // When cancelling requests, coroutine ususally gets aborted here on the following line.
     let req = client.post(&url)
        .headers(headers)
        .body(data.to_string())
