@@ -8,6 +8,7 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::caps::CodeAssistantCaps;
 use crate::global_context;
+use crate::global_context::GlobalContext;
 use crate::telemetry::basic_network;
 use crate::telemetry::basic_robot_human;
 use crate::telemetry::basic_comp_counters;
@@ -22,8 +23,10 @@ pub async fn send_telemetry_data(
     contents: String,
     telemetry_dest: &String,
     api_key: &String,
+    gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(), String>{
-    let resp_maybe = reqwest::Client::new().post(telemetry_dest.clone())
+    let http_client = gcx.read().await.http_client.clone();
+    let resp_maybe = http_client.post(telemetry_dest.clone())
         .body(contents)
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {}", api_key))
         .header(reqwest::header::CONTENT_TYPE, format!("application/json"))
@@ -50,6 +53,7 @@ pub async fn send_telemetry_files_to_mothership(
     dir_sent: PathBuf,
     telemetry_basic_dest: String,
     api_key: String,
+    gcx: Arc<ARwLock<GlobalContext>>,
 ) {
     // Send files found in dir_compressed, move to dir_sent if successful.
     let files = sorted_json_files(dir_compressed.clone()).await;
@@ -63,7 +67,8 @@ pub async fn send_telemetry_files_to_mothership(
         let path_str = path.to_str().unwrap();
         if path_str.ends_with("-net.json") || path_str.ends_with("-rh.json") || path_str.ends_with("-comp.json") {
             info!("sending telemetry file\n{}\nto url\n{}", path.to_str().unwrap(), telemetry_basic_dest);
-            let resp = send_telemetry_data(contents, &telemetry_basic_dest, &api_key).await;
+            let resp = send_telemetry_data(contents, &telemetry_basic_dest, 
+                                           &api_key, gcx.clone()).await;
             if resp.is_err() {
                 error!("telemetry send failed: {}", resp.err().unwrap());
                 continue;
@@ -114,7 +119,8 @@ pub async fn telemetry_full_cycle(
             dir_compressed.clone(),
             dir_sent.clone(),
             telemetry_basic_dest.clone(),
-            api_key
+            api_key,
+            global_context.clone()
         ).await;
     } else {
         if !enable_basic_telemetry {

@@ -6,7 +6,9 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use tokio::sync::RwLock;
 use url::Url;
+use crate::global_context::GlobalContext;
 
 const CAPS_FILENAME: &str = "coding_assistant_caps.json";
 
@@ -218,6 +220,7 @@ const HF_DEFAULT_CAPS: &str = r#"
 
 pub async fn load_caps(
     cmdline: crate::global_context::CommandLine,
+    global_context: Arc<RwLock<GlobalContext>>,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let mut buffer = String::new();
     let mut is_local_file = false;
@@ -246,7 +249,7 @@ pub async fn load_caps(
     }
     if is_remote_address {
         let api_key = cmdline.api_key.clone();
-        let http_client = reqwest::Client::new();
+        let mut http_client = global_context.read().await.http_client.clone();
         let mut headers = reqwest::header::HeaderMap::new();
         if !api_key.is_empty() {
             headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());

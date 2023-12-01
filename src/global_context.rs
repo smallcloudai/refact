@@ -35,7 +35,9 @@ pub struct CommandLine {
     #[structopt(long, default_value="0", help="Bind 127.0.0.1:<port> and act as an LSP server. This is compatible with having an HTTP server at the same time.")]
     pub lsp_port: u16,
     #[structopt(long, default_value="0", help="Act as an LSP server, use stdin stdout for communication. This is compatible with having an HTTP server at the same time. But it's not compatible with LSP port.")]
-    pub lsp_stdin_stdout: u16,
+    pub lsp_stdin_stdout: u16,    
+    #[structopt(long, help="Trust self-signed SSL certificates")]
+    pub insecure: bool,
 }
 
 
@@ -69,7 +71,8 @@ pub async fn caps_background_reload(
 ) -> () {
     loop {
         let caps_result = crate::caps::load_caps(
-            CommandLine::from_args()
+            CommandLine::from_args(),
+            global_context.clone()
         ).await;
         match caps_result {
             Ok(caps) => {
@@ -102,7 +105,8 @@ pub async fn try_load_caps_quickly_if_not_present(
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "server is not reachable, no caps available".to_string()));
     }
     let caps_result = crate::caps::load_caps(
-        CommandLine::from_args()
+        CommandLine::from_args(),
+        global_context.clone()
     ).await;
     {
         let mut global_context_locked = global_context.write().await;
@@ -145,9 +149,15 @@ pub async fn create_global_context(
 ) -> (Arc<ARwLock<GlobalContext>>, std::sync::mpsc::Receiver<String>, CommandLine) {
     let cmdline = CommandLine::from_args();
     let (ask_shutdown_sender, ask_shutdown_receiver) = std::sync::mpsc::channel::<String>();
+    let mut http_client_builder = reqwest::Client::builder();
+    if cmdline.insecure {
+        http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
+    }
+    let http_client = http_client_builder.build().unwrap();
+    
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
-        http_client: reqwest::Client::new(),
+        http_client: http_client,
         http_client_slowdown: Arc::new(Mutex::new(Slowdown { requests_in_flight: 0 })),
         cache_dir,
         caps: None,

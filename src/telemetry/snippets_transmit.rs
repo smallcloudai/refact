@@ -80,7 +80,8 @@ pub async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalConte
         let resp_maybe = basic_transmit::send_telemetry_data(
             big_json_snip.to_string(),
             &telemetry_corrected_snippets_dest,
-            &api_key
+            &api_key,
+            gcx.clone()
         ).await;
         if resp_maybe.is_err() {
             error!("snippet send failed: {}", resp_maybe.err().unwrap());
