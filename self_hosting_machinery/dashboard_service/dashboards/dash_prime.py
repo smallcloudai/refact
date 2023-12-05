@@ -1,7 +1,7 @@
 import time
 
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import pandas as pd
 
 from fastapi import APIRouter
@@ -224,7 +224,7 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
 class DashboardPrimeRouter(APIRouter):
     def __init__(
             self,
-            data_tables: StatsDataTables,
+            data_tables: Optional[StatsDataTables],
             *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -232,6 +232,13 @@ class DashboardPrimeRouter(APIRouter):
         self.add_api_route("/plots-data", self._plots_data, methods=["GET"])
 
     async def _plots_data(self):
+        if self._data_tables is None:
+            return JSONResponse(
+                content={"error": "users sent no statistics so far"},
+                media_type='application/json',
+                status_code=404,
+            )
+
         time_start = time.time()
         data = {
             "table_lang_comp_stats": table_lang_comp_stats(self._data_tables.robot_human_df),

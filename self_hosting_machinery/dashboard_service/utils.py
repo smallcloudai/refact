@@ -16,11 +16,18 @@ class StatsDataTables:
     extra: Dict
 
 
+class NoDataInDatabase(Exception):
+    pass
+
+
 def retrieve_all_data_tables(stats_service: StatisticsService) -> StatsDataTables:
     extra = {}
     network_df = pd.DataFrame(stats_service.network_select_all())
     robot_human_df = pd.DataFrame(stats_service.robot_human_select_all())
     comp_counters_df = pd.DataFrame(stats_service.comp_counters_select_all())
+
+    if network_df.empty or robot_human_df.empty or comp_counters_df.empty:
+        raise NoDataInDatabase("No data in database!")
 
     network_df['dt_end'] = pd.to_datetime(network_df['ts_end'], unit='s')
     robot_human_df['dt_end'] = pd.to_datetime(robot_human_df['ts_end'], unit='s')
