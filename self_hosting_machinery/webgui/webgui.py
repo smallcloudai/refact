@@ -24,18 +24,25 @@ from self_hosting_machinery.webgui.tab_models_host import TabHostRouter
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 from self_hosting_machinery.webgui.tab_loras import TabLorasRouter
+from self_hosting_machinery.webgui.selfhost_statistics import TabStatisticsRouter
+
+from self_hosting_machinery.webgui.selfhost_database import RefactDatabase
+from self_hosting_machinery.webgui.selfhost_database import StatisticsService
 
 from typing import Dict
 
 
 class WebGUI(FastAPI):
 
-    def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
+    def __init__(self,
+                 model_assigner: ModelAssigner,
+                 stats_service: StatisticsService,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         inference_queue = InferenceQueue()
         id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
-        for router in self._routers_list(id2ticket, inference_queue, model_assigner):
+        for router in self._routers_list(id2ticket, inference_queue, model_assigner, stats_service):
             self.include_router(router)
 
         class NoCacheMiddleware(BaseHTTPMiddleware):
@@ -59,10 +66,14 @@ class WebGUI(FastAPI):
     def _routers_list(
             id2ticket: Dict[str, Ticket],
             inference_queue: InferenceQueue,
-            model_assigner: ModelAssigner):
+            model_assigner: ModelAssigner,
+            stats_service: StatisticsService):
         return [
             TabLorasRouter(),
             PluginsRouter(),
+            TabStatisticsRouter(
+                prefix="/stats",
+                stats_service=stats_service),
             CompletionsRouter(
                 id2ticket=id2ticket,
                 inference_queue=inference_queue,
@@ -103,8 +114,13 @@ if __name__ == "__main__":
         datefmt='%Y%m%d %H:%M:%S',
         handlers=[logging.StreamHandler(stream=sys.stderr)])
 
+    database = RefactDatabase()
     model_assigner = ModelAssigner()
-    app = WebGUI(model_assigner, docs_url=None, redoc_url=None)
+    stats_service = StatisticsService(database)
+    app = WebGUI(
+        model_assigner=model_assigner,
+        stats_service=stats_service,
+        docs_url=None, redoc_url=None)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     uvicorn.run(
