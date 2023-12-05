@@ -69,7 +69,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        embed_vecdb_results(self.vecdb_search.clone(), &mut self.post, 3).await;
+        // embed_vecdb_results(self.vecdb_search.clone(), &mut self.post, 3).await;
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post, context_size, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
         // loosely adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
