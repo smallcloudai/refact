@@ -60,19 +60,19 @@ class TabStatisticsRouter(APIRouter):
         async with aiohttp.ClientSession() as session:
             async with session.get('http://localhost:8010/dash-prime/plots-data') as resp:
                 resp_json = await resp.json()
-        return JSONResponse(content=resp_json, media_type='application/json')
+        return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
 
     async def _dash_teams_get(self):
         async with aiohttp.ClientSession() as session:
             async with session.get('http://localhost:8010/dash-teams/plots-data') as resp:
                 resp_json = await resp.json()
-        return JSONResponse(content=resp_json, media_type='application/json')
+        return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
 
     async def _dash_teams_post(self, data: DashTeamsGenDashData):
         async with aiohttp.ClientSession() as session:
             async with session.post('http://localhost:8010/dash-teams/plots-data', json=data.clamp()) as resp:
                 resp_json = await resp.json()
-        return JSONResponse(content=resp_json, media_type='application/json')
+        return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
 
     async def _telemetry_basic(self, data: TelemetryBasicData, request: Request, account: str = "XXX"):
         ip = request.client.host
