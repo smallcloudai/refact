@@ -1,12 +1,25 @@
 let plots_data = {};
 
+
+async function parse_and_display_error(response) {
+    try {
+        const error = await response.json();
+        const error_msg = error['error'];
+        document.querySelector('#dash-error').hidden = false;
+        document.querySelector('#dash-error h5').innerText = error_msg;
+    }
+    catch (error){}
+}
+
 export async function fetch_plots_data(dash_name) {
+    document.querySelector('#dash-error').hidden = true;
     if (plots_data[dash_name] === undefined) {
         try {
             console.log(`Fetching dashboard data: ${dash_name}`);
             const response = await fetch(`/stats/${dash_name}`);
 
             if (!response.ok) {
+                await parse_and_display_error(response);
                 throw new Error(`Failed to fetch dashboard data: ${dash_name}; ${response.status} ${response.statusText}`);
             }
             plots_data[dash_name] = await response.json();
@@ -19,6 +32,7 @@ export async function fetch_plots_data(dash_name) {
 }
 
 export async function fetch_teams_dashboard_data(data) {
+    document.querySelector('#dash-error').hidden = true;
     // post request to /dash-teams/generate-dashboard
     // data = {users_selected: [user1, user2, ...]}
     // response = {dashboard_html: html}
@@ -31,6 +45,7 @@ export async function fetch_teams_dashboard_data(data) {
         });
 
         if (!response.ok) {
+            await parse_and_display_error(response);
             throw new Error(`Failed to fetch dashboard data: dash-teams; ${response.status} ${response.statusText}`);
         }
         return await response.json();

@@ -1,6 +1,6 @@
 import time
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import pandas as pd
 
@@ -69,7 +69,7 @@ def barplot_completions_users(
 class DashboardTeamsRouter(APIRouter):
     def __init__(
             self,
-            data_tables: StatsDataTables,
+            data_tables: Optional[StatsDataTables] = None,
             *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -78,6 +78,12 @@ class DashboardTeamsRouter(APIRouter):
         self.add_api_route("/plots-data", self._generate_dashboard, methods=["POST"])
 
     async def _plots_data(self):
+        if self._data_tables is None:
+            return JSONResponse(
+                content={"error": "users sent no statistics so far"},
+                media_type='application/json',
+                status_code=404,
+            )
         time_start = time.time()
         data = {
             "teams_data": teams_data(self._data_tables.robot_human_df),
@@ -89,6 +95,12 @@ class DashboardTeamsRouter(APIRouter):
         )
 
     async def _generate_dashboard(self, post: DashTeamsGenDashData):
+        if self._data_tables is None:
+            return JSONResponse(
+                content={"error": "users sent no statistics so far"},
+                media_type='application/json',
+                status_code=404,
+            )
         time_start = time.time()
         data = {
             "barplot_completions_users": barplot_completions_users(
