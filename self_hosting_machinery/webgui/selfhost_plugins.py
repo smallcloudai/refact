@@ -11,6 +11,7 @@ class PluginsRouter(APIRouter):
             {"label": "Sources", "tab": "upload"},
             {"label": "Finetune", "tab": "finetune"},
             {"label": "Server Logs", "tab": "server-logs"},
+            {"label": "Stats", "tab": "stats"},
             {"label": "Credentials", "tab": "settings", "hamburger": True},
         ]
         self.add_api_route("/list-plugins", self._list_plugins, methods=["GET"])
