@@ -1,0 +1,37 @@
+<div id="refact-dashboards" class="pane">
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-expand-sm">
+    <a class="navbar-brand dash-logo" style="margin-left: 20px; margin-right: 30px">Refact Stats</a>
+    <ul class="navbar-nav" role="tablist">
+      <li class="nav-item dash-nav-item">
+        <button class="dash-nav-btn nav-link main-tab-button dash-default-active"
+                data-method="link" data-toggle="dash-prime"
+                id="dash-tab-overview">Summary
+        </button>
+      </li>
+<!--      <li class="nav-item dash-nav-item">-->
+<!--        <button class="dash-nav-btn nav-link main-tab-button" data-method="input" data-toggle="dash-teams"-->
+<!--                id="dash-tab-teams">Teams-->
+<!--        </button>-->
+<!--      </li>-->
+      <li class="nav-item dash-nav-item">
+        <button class="dash-nav-btn nav-link main-tab-button" data-method="input" data-toggle="dash-users"
+                id="dash-tab-users">Users
+        </button>
+      </li>
+<!--      <li class="nav-item dash-nav-item">-->
+<!--        <button class="dash-nav-btn nav-link main-tab-button" data-method="input" data-toggle="dash-models"-->
+<!--                id="dash-tab-models">Models-->
+<!--        </button>-->
+<!--      </li>-->
+    </ul>
+
+  </nav>
+
+  <div id="dash-prime" class="dash-main-div" hidden>
+  </div>
+  <div id="dash-teams" class="dash-main-div" hidden></div>
+  <div id="dash-users" class="dash-main-div" hidden></div>
+  <div id="dash-models" class="dash-main-div" hidden></div>
+
+</div>
