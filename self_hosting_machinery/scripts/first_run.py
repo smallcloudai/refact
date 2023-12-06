@@ -12,10 +12,13 @@ def copy_watchdog_configs_if_first_run_detected(model_assigner: ModelAssigner):
 
 
 def convert_old_configs(model_assigner: ModelAssigner):
-    # longthink.cfg is an old version of openai_api_worker.cfg
+    # longthink.cfg and openai_api_worker.cfg are deprecated watchdog configs
     old_longthink = os.path.join(env.DIR_WATCHDOG_D, "longthink.cfg")
     if os.path.exists(old_longthink):
         os.unlink(old_longthink)
+    openai_watchdog_cfg_fn = os.path.join(env.DIR_WATCHDOG_D, "openai_api_worker.cfg")
+    if os.path.exists(openai_watchdog_cfg_fn):
+        os.unlink(openai_watchdog_cfg_fn)
 
     for gpu in range(16):
         fn = os.path.join(env.DIR_WATCHDOG_D, "model-gpu%d.cfg" % gpu)
