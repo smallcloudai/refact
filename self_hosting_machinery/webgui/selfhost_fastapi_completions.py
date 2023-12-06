@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 
 from self_hosting_machinery import env
-from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
+from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model, embeddings_resolve_model
 from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
 from self_hosting_machinery.webgui.selfhost_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
@@ -107,6 +107,11 @@ class ChatContext(NlpSamplingParams):
     function: str = Query(default="chat", regex="^[a-zA-Z0-9_\.\-]+$")
 
 
+class EmbeddingsStyleOpenAI(BaseModel):
+    input: str
+    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
+
+
 async def _completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts, caps_version: int):
     try:
         packets_cnt = 0
@@ -187,6 +192,33 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
         ticket.done()
 
 
+async def embeddings_streamer(ticket: Ticket, timeout, created_ts):
+    try:
+        while 1:
+            try:
+                msg: Dict = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
+                msg['choices'] = msg['choices'][0]
+                msg["files"] = [json.loads(v) for v in msg['choices']['files'].values()]
+                del msg['choices']
+            except asyncio.TimeoutError:
+                log("TIMEOUT %s" % ticket.id())
+                msg = {"status": "error", "human_readable_message": "timeout"}
+
+            tmp = json.dumps(msg["files"])
+            yield tmp
+            log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
+            if msg.get("status", "") != "in_progress":
+                break
+
+        log(red_time(created_ts) + " /finished call %s" % ticket.id())
+        ticket.done()
+    finally:
+        if ticket.id() is not None:
+            log("   ***  CANCEL  ***  cancelling %s" % ticket.id() + red_time(created_ts))
+        ticket.cancelled = True
+        ticket.done()
+
+
 async def error_string_streamer(ticket_id, static_message, account, created_ts):
     yield "data: " + json.dumps(
         {"object": "smc.chat.chunk", "role": "assistant", "delta": static_message, "finish_reason": "END"}) + "\n\n"
@@ -212,6 +244,7 @@ class CompletionsRouter(APIRouter):
         # API for LSP server
         self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
         self.add_api_route("/v1/completions", self._completions, methods=["POST"])
+        self.add_api_route("/v1/embeddings", self._embeddings_style_openai, methods=["POST"])
 
         self.add_api_route("/v1/models", self._models, methods=["GET"])
         self.add_api_route("/v1/chat/completions", self._chat_completions, methods=["POST"])
@@ -233,6 +266,8 @@ class CompletionsRouter(APIRouter):
         os.environ["OPENAI_API_KEY"] = openai_api_key
 
     async def _coding_assistant_caps(self):
+        # embeddings_default_model, err = embeddings_resolve_model(self._inference_queue) # does not seem to be working
+        embeddings_default_model = "thenlper/gte-base" if "thenlper/gte-base" in self._inference_queue.models_available() else ""
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
         code_chat_default_model = ""
@@ -252,6 +287,12 @@ class CompletionsRouter(APIRouter):
             "running_models": models_available,
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
+
+            "default_embeddings_model": embeddings_default_model,
+            "endpoint_embeddings_template": "v1/embeddings",
+            "endpoint_embeddings_style": "openai",
+            "size_embeddings": 768,
+
             "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
             "tokenizer_rewrite_path": {
                 model: self._model_assigner.models_db[model]["model_path"]
@@ -373,6 +414,48 @@ class CompletionsRouter(APIRouter):
         self._id2ticket[ticket.id()] = ticket
         await q.put(ticket)
         return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))
+
+    async def _generate_embeddings(self, account: str, inputs: str, model_name: str):
+        ticket = Ticket("embed-")
+        if model_name not in self._inference_queue.models_available():
+            log(f"model {model_name} is not running")
+            raise HTTPException(status_code=400, detail=f"model {model_name} is not running")
+
+        req = {
+            "inputs": inputs,
+        }
+        req.update({
+            "id": ticket.id(),
+            "account": account,
+            "object": "embeddings_req",
+            "model": model_name,
+            "stream": True,
+            "created": time.time()
+        })
+        ticket.call.update(req)
+        q = self._inference_queue.model_name_to_queue(ticket, model_name, no_checks=True)
+        self._id2ticket[ticket.id()] = ticket
+        await q.put(ticket)
+
+        results = []
+        async for result in embeddings_streamer(ticket, 60, req["created"]):
+            results.extend(json.loads(result))
+        return results[0]
+
+    async def _embeddings_style_hf(self, post: EmbeddingsStyleOpenAI, request: Request, account: str = "XXX"):
+        embedding = await self._generate_embeddings(account, post.input, post.model)
+        return {
+            "embedding": embedding
+        }
+
+    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request, account: str = "XXX"):
+        embedding = await self._generate_embeddings(account, post.input, post.model)
+        return {
+            "data": [{"embedding": embedding, "index": 0, "object": "embedding"}],
+            "model": post.model,
+            "object": "list",
+            "usage": {"prompt_tokens": -1, "total_tokens": -1}
+        }
 
     async def _models(self):
         try:
