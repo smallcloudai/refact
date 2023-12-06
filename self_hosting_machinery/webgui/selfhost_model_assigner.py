@@ -248,3 +248,8 @@ class ModelAssigner:
             if model in self.models_db
         }
         return j
+
+    @staticmethod
+    def restart_lsp():
+        with open(env.FLAG_RESTART_LSP, "w") as f:
+            f.write("")
