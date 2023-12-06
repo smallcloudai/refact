@@ -35,7 +35,6 @@ class InferenceQueue:
                 self._models_available.append(model)
             self._models_available_ts = time.time()
             if j.get("openai_api_enable", False):
-                # self._models_available.append('gpt3.5')
-                # self._models_available.append('gpt4')
-                self._models_available.append('longthink/stable')
+                self._models_available.append('gpt-3.5-turbo')
+                self._models_available.append('gpt-4')
         return self._models_available
