@@ -25,8 +25,6 @@ from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 from self_hosting_machinery.webgui.tab_loras import TabLorasRouter
 
-from self_hosting_machinery import env
-
 from typing import Dict
 
 
@@ -35,6 +33,7 @@ class WebGUI(FastAPI):
     def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self._model_assigner = model_assigner
         inference_queue = InferenceQueue()
         id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
         for router in self._routers_list(id2ticket, inference_queue, model_assigner):
@@ -90,9 +89,8 @@ class WebGUI(FastAPI):
         signal.signal(signal.SIGINT, handle_sigint)
         signal.signal(signal.SIGUSR1, handle_sigint)
 
-        # NOTE: try run LSP after server started
-        with open(env.FLAG_LAUNCH_LSP, "w") as f:
-            f.write("")
+        # NOTE: try restart LSP after server started
+        self._model_assigner.restart_lsp()
 
 
 if __name__ == "__main__":

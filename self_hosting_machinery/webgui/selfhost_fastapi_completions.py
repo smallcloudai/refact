@@ -253,6 +253,7 @@ class CompletionsRouter(APIRouter):
         self._timeout = timeout
 
     async def _coding_assistant_caps(self):
+        models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
         return {
             "cloud_name": "Refact Self-Hosted",
@@ -260,13 +261,13 @@ class CompletionsRouter(APIRouter):
             "endpoint_style": "openai",
             "telemetry_basic_dest": "/stats/telemetry-basic",
             "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
-            "running_models": self._inference_queue.models_available(),
+            "running_models": models_available,
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": "",
             "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
             "tokenizer_rewrite_path": {
                 model: self._model_assigner.models_db[model]["model_path"]
-                for model in self._inference_queue.models_available()
+                for model in models_available
                 if model in self._model_assigner.models_db
             },
         }
@@ -282,7 +283,7 @@ class CompletionsRouter(APIRouter):
         }
         filter_caps = set([
             capability
-            for model in self._inference_queue.models_available()
+            for model in self._inference_queue.models_available(force_read=True)
             for capability in models_mini_db_extended.get(model, {}).get("filter_caps", [])
         ])
         for rec in self._model_assigner.models_caps_db:
