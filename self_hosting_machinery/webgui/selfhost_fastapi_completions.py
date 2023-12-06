@@ -4,10 +4,13 @@ import copy
 import asyncio
 import aiohttp
 import termcolor
+import os
+import litellm
 
 from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
+from self_hosting_machinery import env
 from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
 from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
@@ -252,6 +255,13 @@ class CompletionsRouter(APIRouter):
         self._model_assigner = model_assigner
         self._timeout = timeout
 
+    @staticmethod
+    def _interations_env_setup():
+        integrations = {}
+        if os.path.exists(env.CONFIG_INTEGRATIONS):
+            integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
+        os.environ["OPENAI_API_KEY"] = integrations.get("openai_api_key", "")
+
     async def _coding_assistant_caps(self):
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
@@ -458,36 +468,63 @@ class CompletionsRouter(APIRouter):
             "data": data,
         }
 
-    async def _chat_completions(self, post: ChatContext, request: Request, account: str = "XXX"):
+    async def _chat_completions(self, post: ChatContext, account: str = "XXX"):
+        prefix, postfix = "data: ", "\n\n"
 
-        async def chat_completion_streamer(post: ChatContext):
-            finish_reason = None
-            prefix, postfix = "data: ", "\n\n"
-            post_url = "http://127.0.0.1:8001/v1/chat"
-            post_data = {
-                "messages": [m.dict() for m in post.messages],
-                "stream": True,
-                "model": post.model,
-                "parameters": {
-                    "temperature": post.temperature,
-                    "max_new_tokens": post.max_tokens,
-                }
-            }
-            async with aiohttp.ClientSession() as session:
+        if post.model in litellm.model_list:
+            async def litellm_streamer(post: ChatContext):
                 try:
-                    async with session.post(post_url, json=post_data) as response:
-                        async for data, _ in response.content.iter_chunks():
-                            try:
-                                data = data.decode("utf-8")
-                                data = json.loads(data[len(prefix):-len(postfix)])
-                                finish_reason = data["choices"][0]["finish_reason"]
-                                data["choices"][0]["finish_reason"] = None
-                            except json.JSONDecodeError:
-                                data = {"choices": [{"finish_reason": finish_reason}]}
-                            yield prefix + json.dumps(data) + postfix
-                except aiohttp.ClientConnectorError as e:
-                    err_msg = f"LSP server is not ready yet: {e}"
+                    self._interations_env_setup()
+                    response = await litellm.acompletion(
+                        model=post.model, messages=post.messages, stream=True,
+                        temperature=post.temperature, top_p=post.top_p, max_tokens=post.max_tokens, stop=post.stop)
+                    finish_reason = None
+                    async for model_response in response:
+                        try:
+                            data = model_response.dict()
+                            finish_reason = data["choices"][0]["finish_reason"]
+                        except json.JSONDecodeError:
+                            data = {"choices": [{"finish_reason": finish_reason}]}
+                        yield prefix + json.dumps(data) + postfix
+                    # NOTE: DONE neededed by refact-lsp server
+                    yield prefix + "[DONE]" + postfix
+                except BaseException as e:
+                    err_msg = f"litellm error: {e}"
                     log(err_msg)
                     yield prefix + json.dumps({"error": err_msg}) + postfix
 
-        return StreamingResponse(chat_completion_streamer(post))
+            response_streamer = litellm_streamer(post)
+
+        else:
+            async def chat_completion_streamer(post: ChatContext):
+                post_url = "http://127.0.0.1:8001/v1/chat"
+                post_data = {
+                    "messages": [m.dict() for m in post.messages],
+                    "stream": True,
+                    "model": post.model,
+                    "parameters": {
+                        "temperature": post.temperature,
+                        "max_new_tokens": post.max_tokens,
+                    }
+                }
+                async with aiohttp.ClientSession() as session:
+                    try:
+                        async with session.post(post_url, json=post_data) as response:
+                            finish_reason = None
+                            async for data, _ in response.content.iter_chunks():
+                                try:
+                                    data = data.decode("utf-8")
+                                    data = json.loads(data[len(prefix):-len(postfix)])
+                                    finish_reason = data["choices"][0]["finish_reason"]
+                                    data["choices"][0]["finish_reason"] = None
+                                except json.JSONDecodeError:
+                                    data = {"choices": [{"finish_reason": finish_reason}]}
+                                yield prefix + json.dumps(data) + postfix
+                    except aiohttp.ClientConnectorError as e:
+                        err_msg = f"LSP server is not ready yet: {e}"
+                        log(err_msg)
+                        yield prefix + json.dumps({"error": err_msg}) + postfix
+
+            response_streamer = chat_completion_streamer(post)
+
+        return StreamingResponse(response_streamer, media_type="text/event-stream")
