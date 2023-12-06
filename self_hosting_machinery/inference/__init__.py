@@ -1,3 +1,4 @@
 from self_hosting_machinery.inference.inference_base import modload
 from self_hosting_machinery.inference.inference_base import InferenceBase
 from self_hosting_machinery.inference.inference_hf import InferenceHF
+from self_hosting_machinery.inference.inference_embeddings import InferenceEmbeddings

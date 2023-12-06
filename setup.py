@@ -52,6 +52,11 @@ all_refact_packages = {
                            "known_models_db", "refact_data_pipeline"],
         data=["webgui/static/*", "webgui/static/components/modals/*",
               "webgui/static/dashboards/*", "watchdog/watchdog.d/*"]),
+    "embeddings": PyPackage(
+        requires=["torch", "transformers"],
+        requires_packages=[],
+        data=[]
+    ),
 }
 
 

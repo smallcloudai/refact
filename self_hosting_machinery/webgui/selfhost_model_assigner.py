@@ -139,10 +139,15 @@ class ModelAssigner:
             "model_assign": {
                 "Refact/1.6B": {
                     'gpus_shard': 1,
-                    'share_gpu': False,
-                }
+                    'share_gpu': True,
+                },
+                "thenlper/gte-base": {
+                    'gpus_shard': 1,
+                    'share_gpu': True,
+                },
             },
             "completion": "Refact/1.6B",
+            "embeddings": "thenlper/gte-base",
             "openai_api_enable": False,
         }
         self.models_to_watchdog_configs(default_config)
@@ -207,6 +212,7 @@ class ModelAssigner:
                 "has_completion": bool("completion" in rec["filter_caps"]),
                 "has_finetune": bool("finetune" in rec["filter_caps"]),
                 "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),
+                "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
                 "has_sharding": rec["backend"] in ["transformers"],
             })

@@ -9,7 +9,7 @@ from refact_scratchpads_no_gpu.stream_results import validate_description_dict
 from refact_scratchpads_no_gpu.stream_results import UploadProxy
 from refact_scratchpads_no_gpu.stream_results import completions_wait_batch
 
-from self_hosting_machinery.inference import InferenceHF
+from self_hosting_machinery.inference import InferenceHF, InferenceEmbeddings
 
 from typing import Dict, Any
 
@@ -32,31 +32,46 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
 
     model_dict = models_db[model_name]
     assert model_dict["backend"] != "legacy"
-    inference_model = InferenceHF(
-        model_name=model_name,
-        model_dict=model_dict)
+
+    if "embeddings" in model_dict["filter_caps"]:
+        inference_model = InferenceEmbeddings(
+            model_name=model_name,
+            model_dict=model_dict,
+        )
+
+        dummy_call = {
+                'id': 'emb-legit-42',
+                'function': 'embeddings',
+                'inputs': "Common Knowledge",
+                'created': time.time(),
+        }
+    else:
+        inference_model = InferenceHF(
+            model_name=model_name,
+            model_dict=model_dict,
+        )
+
+        dummy_call = {
+                'temperature': 0.8,
+                'top_p': 0.95,
+                'max_tokens': 40,
+                'id': 'comp-wkCX57Le8giP-1337',
+                'object': 'text_completion_req',
+                'function': 'completion',
+                'echo': False,
+                'stop_tokens': [],
+                'prompt': 'Hello world',
+                'created': time.time(),
+        }
 
     class DummyUploadProxy:
         def upload_result(*args, **kwargs):
             pass
         def check_cancelled(*args, **kwargs):
             return set()
-    dummy_calls = [
-        {
-            'temperature': 0.8,
-            'top_p': 0.95,
-            'max_tokens': 40,
-            'id': 'comp-wkCX57Le8giP-1337',
-            'object': 'text_completion_req',
-            'function': 'completion',
-            'echo': False,
-            'stop_tokens': [],
-            'prompt': 'Hello world',
-            'created': time.time(),
-        }
-    ]
+
     log("STATUS test batch")
-    inference_model.infer(dummy_calls[0], DummyUploadProxy, {})
+    inference_model.infer(dummy_call, DummyUploadProxy, {})
     if compile:
         return
 

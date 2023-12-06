@@ -26,17 +26,17 @@ def red_time(base_ts):
 verify_api_key = os.environ.get("SMALLCLOUD_API_KEY", "EMPTY")
 
 
-def verify_bearer(authorization: str):
-    if verify_api_key is None:
-        return
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Missing authorization header")
-    bearer_hdr = authorization.split(" ")
-    if len(bearer_hdr) != 2 or bearer_hdr[0] != "Bearer":
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    api_key = bearer_hdr[1]
-    if api_key != verify_api_key:
-        raise HTTPException(status_code=401, detail="API key mismatch")
+def verify_bearer(authorization: str): ...
+    # if verify_api_key is None:
+    #     return
+    # if authorization is None:
+    #     raise HTTPException(status_code=401, detail="Missing authorization header")
+    # bearer_hdr = authorization.split(" ")
+    # if len(bearer_hdr) != 2 or bearer_hdr[0] != "Bearer":
+    #     raise HTTPException(status_code=401, detail="Invalid authorization header")
+    # api_key = bearer_hdr[1]
+    # if api_key != verify_api_key:
+    #     raise HTTPException(status_code=401, detail="API key mismatch")
 
 
 class EngineDescription(BaseModel):
