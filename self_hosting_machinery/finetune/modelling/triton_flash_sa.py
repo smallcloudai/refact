@@ -574,7 +574,8 @@ def apply_flash_mha_to_refact_model(model):
             attention_mask: Optional[th.Tensor] = None,
             alibi: Optional[th.Tensor] = None,
             use_cache: Optional[bool] = False,
-            output_attentions: Optional[bool] = False
+            output_attentions: Optional[bool] = False,
+            *args, **kwargs
     ):
         q = einops.rearrange(self.q(x), "b t (h d) -> b t h d", h=self.num_heads)
         kv = einops.rearrange(self.kv(x), "b t (h d) -> b t h d", h=2)
