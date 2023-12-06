@@ -258,6 +258,7 @@ class CompletionsRouter(APIRouter):
         return {
             "cloud_name": "Refact Self-Hosted",
             "endpoint_template": "v1/completions",
+            "endpoint_chat_passthrough": "v1/chat/completions",
             "endpoint_style": "openai",
             "telemetry_basic_dest": "/stats/telemetry-basic",
             "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
