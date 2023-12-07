@@ -21,7 +21,6 @@ separate terminals.
 ```commandline
 python -m self_hosting_machinery.webgui.webgui
 DEBUG=1 python -m self_hosting_machinery.inference.inference_worker --model wizardlm/7b
-DEBUG=1 python -m refact_scratchpads_no_gpu.infserver_no_gpu longthink/stable --openai_key sk-XXXYYY
 ```
 
 That should be enough to get started!
