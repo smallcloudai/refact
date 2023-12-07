@@ -269,6 +269,12 @@ class CompletionsRouter(APIRouter):
     async def _coding_assistant_caps(self):
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
+        code_chat_default_model = ""
+        for model_name in models_available:
+            if self._model_assigner.models_db.get(model_name, {}).get("chat_scratchpad_class", None) is not None \
+                    or model_name in litellm.model_list:
+                code_chat_default_model = model_name
+                break
         return {
             "cloud_name": "Refact Self-Hosted",
             "endpoint_template": "v1/completions",
@@ -278,7 +284,7 @@ class CompletionsRouter(APIRouter):
             "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
             "running_models": models_available,
             "code_completion_default_model": code_completion_default_model,
-            "code_chat_default_model": "",
+            "code_chat_default_model": code_chat_default_model,
             "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
             "tokenizer_rewrite_path": {
                 model: self._model_assigner.models_db[model]["model_path"]
