@@ -79,6 +79,7 @@ class TrackedJob:
         self.sent_sigusr1_ts = 0
         self.status_from_stderr = ""
         self.status_nickname = ""
+        self.command_not_found = False
 
     def set_status(self, newstatus):
         self.status_from_stderr = newstatus
@@ -96,7 +97,7 @@ class TrackedJob:
             os.rename(save_status_fn + ".tmp", save_status_fn)
 
     def _start(self):
-        if self.p is not None:
+        if self.p is not None or self.command_not_found:
             return
         global compiling_now
         alt_env = os.environ.copy()
@@ -113,12 +114,19 @@ class TrackedJob:
         CUDA_VISIBLE_DEVICES = ",".join(["%d" % x for x in self.cfg["gpus"]])
         alt_env["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
         self.start_ts = time.time()
-        self.p = subprocess.Popen(
-            cmdline,
-            env=alt_env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-        )
+        try:
+            self.p = subprocess.Popen(
+                cmdline,
+                env=alt_env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+            )
+        except FileNotFoundError as e:
+            log(f"failed to run command {self.cmdline_str}: '{e}'")
+            self.p = None
+            self.command_not_found = True
+            self.set_status("failed")
+            return
         log("%s CVD=%s starting %s\n -> pid %s" % (
             time.strftime("%Y%m%d %H:%M:%S"),
             CUDA_VISIBLE_DEVICES,
