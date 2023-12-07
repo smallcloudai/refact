@@ -900,16 +900,16 @@ function finetune_controls_state()
 
     render_ftf_stats(finetune_state.finetune_filter_stats);
 
-    if(finetune_state.finetune_filter_stats.filterting_status) {
+    if(finetune_state.finetune_filter_stats.filtering_status) {
         document.querySelector('.ftf-status').classList.remove('d-none');
-        document.querySelector('.ftf-status span').innerHTML = finetune_state.finetune_filter_stats.filterting_status;
+        document.querySelector('.ftf-status span').innerHTML = finetune_state.finetune_filter_stats.filtering_status;
     } else {
         document.querySelector('.ftf-status').classList.add('d-none');
     }
 
     let error_span = document.querySelector('.ftf-error span');
     let ftf_error = document.querySelector('.ftf-error');
-    if (finetune_state.finetune_filter_stats.filterting_status == "failed") {
+    if (finetune_state.finetune_filter_stats.filtering_status == "failed") {
         ftf_error.classList.remove('d-none');
         if(finetune_state.finetune_filter_stats.error && finetune_state.finetune_filter_stats.error !== '') {
             error_span.innerHTML = finetune_state.finetune_filter_stats.error;

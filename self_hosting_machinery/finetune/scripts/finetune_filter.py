@@ -156,20 +156,21 @@ def main(models_db: Dict[str, Any]):
     model_name = get_finetune_config(models_db, logger=traces.log)["model_name"]
     finetune_cfg = copy.deepcopy(base_config(model_name, models_db))
 
-    _log_everywhere("Loading file sets context...")
-    file_sets_context = FileSetsContext(
-        autoselect_test_files_num=finetune_filter_cfg.get("autoselect_test_files_num", 3)
-    )
-    if file_sets_context.is_up_to_date():
-        logging.info("Train set filtering: nothing changed since last time, quit")
-        return
-
-    traces.log(textwrap.fill(
-        f"This filter calculates perplexity for each file and filters out "
-        f"files with perplexity larger than {finetune_filter_cfg['filter_loss_threshold']:.3f}.\n"
-        f"Those files likely don't have meaningful content to train on", width=100
-    ))
     try:
+        _log_everywhere("Loading file sets context...")
+        file_sets_context = FileSetsContext(
+            autoselect_test_files_num=finetune_filter_cfg.get("autoselect_test_files_num", 3)
+        )
+        if file_sets_context.is_up_to_date():
+            logging.info("Train set filtering: nothing changed since last time, quit")
+            return
+
+        traces.log(textwrap.fill(
+            f"This filter calculates perplexity for each file and filters out "
+            f"files with perplexity larger than {finetune_filter_cfg['filter_loss_threshold']:.3f}.\n"
+            f"Those files likely don't have meaningful content to train on", width=100
+        ))
+
         status_tracker.update_status("starting")
         finetune_filter(
             status_tracker=status_tracker,
