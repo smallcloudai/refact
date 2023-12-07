@@ -257,10 +257,14 @@ class CompletionsRouter(APIRouter):
 
     @staticmethod
     def _interations_env_setup():
+        inference = {}
+        if os.path.exists(env.CONFIG_INFERENCE):
+            inference = json.load(open(env.CONFIG_INFERENCE, 'r'))
         integrations = {}
         if os.path.exists(env.CONFIG_INTEGRATIONS):
             integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
-        os.environ["OPENAI_API_KEY"] = integrations.get("openai_api_key", "")
+        openai_api_key = integrations.get("openai_api_key", "") if inference.get("openai_api_enable", False) else ""
+        os.environ["OPENAI_API_KEY"] = openai_api_key
 
     async def _coding_assistant_caps(self):
         models_available = self._inference_queue.models_available(force_read=True)
