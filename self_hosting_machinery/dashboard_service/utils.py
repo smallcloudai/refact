@@ -39,7 +39,7 @@ def retrieve_all_data_tables(stats_service: StatisticsService) -> StatsDataTable
 
     extra["week_n_to_fmt"] = {
         week_n: datetime.strftime(group["dt_end"].iloc[0], "%b %d")
-        for week_n, group in network_df.groupby(network_df['dt_end'].dt.week)
+        for week_n, group in network_df.groupby(network_df['dt_end'].dt.isocalendar().week)
     }
     extra["day_to_fmt"] = [
         datetime.strftime(group["dt_end"].iloc[0], "%b %d")
