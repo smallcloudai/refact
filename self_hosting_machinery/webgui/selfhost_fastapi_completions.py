@@ -2,11 +2,15 @@ import time
 import json
 import copy
 import asyncio
+import aiohttp
 import termcolor
+import os
+import litellm
 
 from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
+from self_hosting_machinery import env
 from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
 from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
@@ -243,26 +247,48 @@ class CompletionsRouter(APIRouter):
         self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
         self.add_api_route("/v1/completions", self._completions, methods=["POST"])
 
+        self.add_api_route("/v1/models", self._models, methods=["GET"])
+        self.add_api_route("/v1/chat/completions", self._chat_completions, methods=["POST"])
+
         self._inference_queue = inference_queue
         self._id2ticket = id2ticket
         self._model_assigner = model_assigner
         self._timeout = timeout
 
+    @staticmethod
+    def _interations_env_setup():
+        inference = {}
+        if os.path.exists(env.CONFIG_INFERENCE):
+            inference = json.load(open(env.CONFIG_INFERENCE, 'r'))
+        integrations = {}
+        if os.path.exists(env.CONFIG_INTEGRATIONS):
+            integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
+        openai_api_key = integrations.get("openai_api_key", "") if inference.get("openai_api_enable", False) else ""
+        os.environ["OPENAI_API_KEY"] = openai_api_key
+
     async def _coding_assistant_caps(self):
+        models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
+        code_chat_default_model = ""
+        for model_name in models_available:
+            if self._model_assigner.models_db.get(model_name, {}).get("chat_scratchpad_class", None) is not None \
+                    or model_name in litellm.model_list:
+                code_chat_default_model = model_name
+                break
         return {
             "cloud_name": "Refact Self-Hosted",
             "endpoint_template": "v1/completions",
+            "endpoint_chat_passthrough": "v1/chat/completions",
             "endpoint_style": "openai",
             "telemetry_basic_dest": "/stats/telemetry-basic",
             "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
-            "running_models": self._inference_queue.models_available(),
+            "running_models": models_available,
             "code_completion_default_model": code_completion_default_model,
-            "code_chat_default_model": "",
+            "code_chat_default_model": code_chat_default_model,
             "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
             "tokenizer_rewrite_path": {
                 model: self._model_assigner.models_db[model]["model_path"]
-                for model in self._inference_queue.models_available()
+                for model in models_available
                 if model in self._model_assigner.models_db
             },
         }
@@ -278,7 +304,7 @@ class CompletionsRouter(APIRouter):
         }
         filter_caps = set([
             capability
-            for model in self._inference_queue.models_available()
+            for model in self._inference_queue.models_available(force_read=True)
             for capability in models_mini_db_extended.get(model, {}).get("filter_caps", [])
         ])
         for rec in self._model_assigner.models_caps_db:
@@ -423,3 +449,92 @@ class CompletionsRouter(APIRouter):
         self._id2ticket[ticket.id()] = ticket
         await q.put(ticket)
         return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))
+
+    async def _models(self):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("http://127.0.0.1:8001/v1/caps") as resp:
+                    lsp_server_caps = await resp.json()
+        except aiohttp.ClientConnectorError as e:
+            err_msg = f"LSP server is not ready yet: {e}"
+            log(err_msg)
+            raise HTTPException(status_code=401, detail=err_msg)
+        completion_models = set()
+        for model, caps in lsp_server_caps["code_completion_models"].items():
+            completion_models.update({model, *caps["similar_models"]})
+        chat_models = set()
+        for model, caps in lsp_server_caps["code_chat_models"].items():
+            chat_models.update({model, *caps["similar_models"]})
+        data = [
+            {
+                "id": model, "root": model, "object": "model",
+                "created": 0, "owned_by": "", "permission": [], "parent": None,
+                "completion": model in completion_models, "chat": model in chat_models,
+            }
+            for model in lsp_server_caps["running_models"]
+        ]
+        return {
+            "object": "list",
+            "data": data,
+        }
+
+    async def _chat_completions(self, post: ChatContext, account: str = "XXX"):
+        prefix, postfix = "data: ", "\n\n"
+
+        if post.model in litellm.model_list:
+            async def litellm_streamer(post: ChatContext):
+                try:
+                    self._interations_env_setup()
+                    response = await litellm.acompletion(
+                        model=post.model, messages=post.messages, stream=True,
+                        temperature=post.temperature, top_p=post.top_p, max_tokens=post.max_tokens, stop=post.stop)
+                    finish_reason = None
+                    async for model_response in response:
+                        try:
+                            data = model_response.dict()
+                            finish_reason = data["choices"][0]["finish_reason"]
+                        except json.JSONDecodeError:
+                            data = {"choices": [{"finish_reason": finish_reason}]}
+                        yield prefix + json.dumps(data) + postfix
+                    # NOTE: DONE neededed by refact-lsp server
+                    yield prefix + "[DONE]" + postfix
+                except BaseException as e:
+                    err_msg = f"litellm error: {e}"
+                    log(err_msg)
+                    yield prefix + json.dumps({"error": err_msg}) + postfix
+
+            response_streamer = litellm_streamer(post)
+
+        else:
+            async def chat_completion_streamer(post: ChatContext):
+                post_url = "http://127.0.0.1:8001/v1/chat"
+                post_data = {
+                    "messages": [m.dict() for m in post.messages],
+                    "stream": True,
+                    "model": post.model,
+                    "parameters": {
+                        "temperature": post.temperature,
+                        "max_new_tokens": post.max_tokens,
+                    }
+                }
+                async with aiohttp.ClientSession() as session:
+                    try:
+                        async with session.post(post_url, json=post_data) as response:
+                            finish_reason = None
+                            async for data, _ in response.content.iter_chunks():
+                                try:
+                                    data = data.decode("utf-8")
+                                    data = json.loads(data[len(prefix):-len(postfix)])
+                                    finish_reason = data["choices"][0]["finish_reason"]
+                                    data["choices"][0]["finish_reason"] = None
+                                except json.JSONDecodeError:
+                                    data = {"choices": [{"finish_reason": finish_reason}]}
+                                yield prefix + json.dumps(data) + postfix
+                    except aiohttp.ClientConnectorError as e:
+                        err_msg = f"LSP server is not ready yet: {e}"
+                        log(err_msg)
+                        yield prefix + json.dumps({"error": err_msg}) + postfix
+
+            response_streamer = chat_completion_streamer(post)
+
+        return StreamingResponse(response_streamer, media_type="text/event-stream")

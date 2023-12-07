@@ -24,9 +24,9 @@ class InferenceQueue:
             raise HTTPException(status_code=400, detail="model '%s' is not available at this moment." % model_name)
         return self._user2gpu_queue[model_name]
 
-    def models_available(self) -> List[str]:
+    def models_available(self, force_read: bool = False) -> List[str]:
         t1 = time.time()
-        if self._models_available_ts + self.CACHE_MODELS_AVAILABLE > t1:
+        if not force_read and self._models_available_ts + self.CACHE_MODELS_AVAILABLE > t1:
             return self._models_available
         self._models_available = []
         if os.path.exists(env.CONFIG_INFERENCE):
@@ -35,7 +35,6 @@ class InferenceQueue:
                 self._models_available.append(model)
             self._models_available_ts = time.time()
             if j.get("openai_api_enable", False):
-                # self._models_available.append('gpt3.5')
-                # self._models_available.append('gpt4')
-                self._models_available.append('longthink/stable')
+                self._models_available.append('gpt-3.5-turbo')
+                self._models_available.append('gpt-4')
         return self._models_available

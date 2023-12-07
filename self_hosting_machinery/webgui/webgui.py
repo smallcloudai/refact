@@ -40,6 +40,7 @@ class WebGUI(FastAPI):
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self._model_assigner = model_assigner
         inference_queue = InferenceQueue()
         id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
         for router in self._routers_list(id2ticket, inference_queue, model_assigner, stats_service):
@@ -98,6 +99,9 @@ class WebGUI(FastAPI):
 
         signal.signal(signal.SIGINT, handle_sigint)
         signal.signal(signal.SIGUSR1, handle_sigint)
+
+        # NOTE: try restart LSP after server started
+        self._model_assigner.restart_lsp()
 
 
 if __name__ == "__main__":

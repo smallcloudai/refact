@@ -70,7 +70,6 @@ class ModelAssigner:
 
         inference_config = self._model_assign_filter(inference_config)
         inference_config = self._model_inference_setup(inference_config)
-        inference_config = self._integrations_inference_setup(inference_config)
 
         with open(env.CONFIG_INFERENCE + ".tmp", "w") as f:
             json.dump(inference_config, f, indent=4)
@@ -134,30 +133,6 @@ class ModelAssigner:
             "required_memory_exceed_available": required_memory_exceed_available,
             "more_models_than_gpus": more_models_than_gpus,
         }
-
-    def _integrations_inference_setup(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
-        integrations = {}
-        if os.path.exists(env.CONFIG_INTEGRATIONS):
-            integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
-
-        openai_api_key = integrations.get("openai_api_key", "")
-        openai_watchdog_cfg_fn = os.path.join(env.DIR_WATCHDOG_D, "openai_api_worker.cfg")
-
-        if inference_config.get("openai_api_enable", False) and openai_api_key.startswith("sk-"):
-            cfg = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "openai_api_worker.cfg"), 'r'))
-            cfg.pop('unfinished')
-            cfg['command_line'].append('--openai_key')
-            cfg['command_line'].append(openai_api_key)
-            with open(openai_watchdog_cfg_fn + ".tmp", "w") as f:
-                json.dump(cfg, f, indent=4)
-            os.rename(openai_watchdog_cfg_fn + ".tmp", openai_watchdog_cfg_fn)
-        else:
-            try:
-                os.unlink(openai_watchdog_cfg_fn)
-            except FileNotFoundError:
-                pass
-
-        return inference_config
 
     def first_run(self):
         default_config = {
@@ -248,3 +223,8 @@ class ModelAssigner:
             if model in self.models_db
         }
         return j
+
+    @staticmethod
+    def restart_lsp():
+        with open(env.FLAG_RESTART_LSP, "w") as f:
+            f.write("")

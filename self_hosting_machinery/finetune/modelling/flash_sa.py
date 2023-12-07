@@ -48,7 +48,7 @@ def generate_alibi(
     return alibi, alibi_start, alibi_ratio
 
 
-def _prerequisites_are_ok(model):
+def _prerequisites_are_ok(model, try_triton_kernel: bool):
     try:
         from flash_attn import flash_attn_func
         return True
@@ -56,12 +56,13 @@ def _prerequisites_are_ok(model):
         logging.warning("Original flash attention is not installed, trying to use triton implementation...")
         from self_hosting_machinery.finetune.modelling.triton_flash_sa import (apply_flash_mha_to_refact_model
                                                                                as apply_triton_flash)
-        apply_triton_flash(model)
+        if try_triton_kernel:
+            apply_triton_flash(model)
         return False
 
 
 def apply_flash_mha_to_refact_model(model):
-    if not _prerequisites_are_ok(model):
+    if not _prerequisites_are_ok(model, try_triton_kernel=True):
         return
 
     from flash_attn import flash_attn_func
@@ -73,7 +74,8 @@ def apply_flash_mha_to_refact_model(model):
             attention_mask: Optional[torch.Tensor] = None,
             alibi: Optional[torch.Tensor] = None,
             use_cache: Optional[bool] = False,
-            output_attentions: Optional[bool] = False
+            output_attentions: Optional[bool] = False,
+            *args, **kwargs
     ):
         q = einops.rearrange(self.q(x), "b t (h d) -> b t h d", h=self.num_heads)
         kv = einops.rearrange(self.kv(x), "b t (h d) -> b t h d", h=2)
@@ -98,7 +100,7 @@ def apply_flash_mha_to_refact_model(model):
 
 
 def apply_flash_mha_to_starcoder_model(model):
-    if not _prerequisites_are_ok(model):
+    if not _prerequisites_are_ok(model, try_triton_kernel=False):
         return
 
     from flash_attn import flash_attn_func
@@ -113,6 +115,7 @@ def apply_flash_mha_to_starcoder_model(model):
             encoder_attention_mask: Optional[torch.Tensor] = None,
             use_cache: Optional[bool] = False,
             output_attentions: Optional[bool] = False,
+            *args, **kwargs
     ):
         qkv = self.c_attn(x)
         q = einops.rearrange(qkv[:, :, :self.embed_dim], "b t (h d) -> b t h d", h=self.num_heads)
@@ -139,7 +142,7 @@ def apply_flash_mha_to_starcoder_model(model):
 
 
 def apply_flash_mha_to_codellama_model(model):
-    if not _prerequisites_are_ok(model):
+    if not _prerequisites_are_ok(model, try_triton_kernel=False):
         return
 
     from flash_attn import flash_attn_func
@@ -152,7 +155,7 @@ def apply_flash_mha_to_codellama_model(model):
             past_key_value: Optional[Tuple[torch.Tensor]] = None,
             output_attentions: bool = False,
             use_cache: bool = False,
-            **kwargs
+            *args, **kwargs
     ):
         from transformers.models.llama.modeling_llama import apply_rotary_pos_emb
 

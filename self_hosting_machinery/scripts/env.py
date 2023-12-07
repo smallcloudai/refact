@@ -42,6 +42,8 @@ FLAG_LAUNCH_FINETUNE_FILTER_ONLY = os.path.join(DIR_WATCHDOG_D, "_launch_finetun
 FLAG_LAUNCH_FINETUNE = os.path.join(DIR_WATCHDOG_D, "_launch_finetune.flag")
 FLAG_STOP_FINETUNE = os.path.join(DIR_WATCHDOG_D, "_stop_finetune.flag")
 
+FLAG_RESTART_LSP = os.path.join(DIR_WATCHDOG_D, "_restart_lsp.flag")
+
 def create_dirs():
     os.makedirs(DIR_WATCHDOG_D, exist_ok=True)
     os.makedirs(DIR_WEIGHTS, exist_ok=True)

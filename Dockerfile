@@ -41,6 +41,14 @@ ENV PATH="${PATH}:/tmp/linguist/bin"
 
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packaging
 
+# refact lsp requisites
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+ENV PATH="${PATH}:/root/.cargo/bin"
+RUN git clone https://github.com/smallcloudai/refact-lsp.git /tmp/refact-lsp \
+    && cd /tmp/refact-lsp \
+    && cargo install --path . \
+    && rm -rf /tmp/refact-lsp
+
 ENV INSTALL_OPTIONAL=TRUE
 ENV BUILD_CUDA_EXT=1
 ENV GITHUB_ACTIONS=true
