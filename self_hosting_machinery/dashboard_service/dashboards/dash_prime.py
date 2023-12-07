@@ -47,7 +47,7 @@ def barplot_rh(
             "human": int(group["human_characters"].sum()),
             "ratio": robot_human_ratio(group),
             "completions": int(group["completions_cnt"].sum()),
-        } for date, group in rh_df.groupby(rh_df['dt_end'].dt.week)
+        } for date, group in rh_df.groupby(rh_df['dt_end'].dt.isocalendar().week)
     }
     month_to_rh = {
         group["dt_end"].iloc[0].month: {
@@ -93,7 +93,7 @@ def barplot_completions(
     }
     week_to_comp_cnt = {
         group["dt_end"].iloc[0].week: {"completions": int(group["completions_cnt"].sum())}
-        for date, group in rh_df.groupby(rh_df['dt_end'].dt.week)
+        for date, group in rh_df.groupby(rh_df['dt_end'].dt.isocalendar().week)
     }
     month_to_comp_cnt = {
         group["dt_end"].iloc[0].month: {"completions": int(group["completions_cnt"].sum())}
@@ -135,7 +135,7 @@ def barplot_users(
     }
     week_to_users_cnt = {
         group["dt_end"].iloc[0].week: {"users": int(group["tenant_name"].nunique())}
-        for date, group in rh_df.groupby(rh_df['dt_end'].dt.week)
+        for date, group in rh_df.groupby(rh_df['dt_end'].dt.isocalendar().week)
     }
     month_to_users_cnt = {
         group["dt_end"].iloc[0].month: {"users": int(group["tenant_name"].nunique())}
@@ -201,7 +201,7 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
 
     res = {
         "last week": extract_stats(
-            rh_df.loc[rh_df["dt_end"].dt.week == rh_df["dt_end"].dt.week.max()],
+            rh_df.loc[rh_df["dt_end"].dt.isocalendar().week == rh_df["dt_end"].dt.isocalendar().week.max()],
             "last week"
         ),
         "last month": extract_stats(
