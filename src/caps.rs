@@ -72,7 +72,10 @@ const KNOWN_MODELS: &str = r#"
                 "starcoder/1b/base",
                 "starcoder/3b/base",
                 "starcoder/7b/base",
-                "wizardcoder/15b"
+                "wizardcoder/15b",
+                "starcoder/1b/vllm",
+                "starcoder/3b/vllm",
+                "starcoder/7b/vllm"
             ]
         },
         "smallcloudai/Refact-1_6B-fim": {
@@ -115,7 +118,9 @@ const KNOWN_MODELS: &str = r#"
             },
             "default_scratchpad": "FIM-PSM",
             "similar_models": [
-                "deepseek-coder/5.7b/mqa-base"
+                "deepseek-coder/5.7b/mqa-base",
+                "deepseek-coder/1.3b/vllm",
+                "deepseek-coder/5.7b/vllm"
             ]
         }
     },
