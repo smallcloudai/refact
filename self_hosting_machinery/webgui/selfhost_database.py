@@ -3,117 +3,107 @@ import time
 import uuid
 import logging
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from cassandra.cluster import Cluster, Session
-from cassandra.cluster import NoHostAvailable
-from cassandra.cluster import DCAwareRoundRobinPolicy
-from cassandra.auth import PlainTextAuthProvider
-
-from cassandra.cqlengine import columns, connection
-from cassandra.cqlengine.management import sync_table
-from cassandra.cqlengine.models import Model
+from sqlalchemy import Column, Integer, Boolean, DateTime, Text
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy_utils import database_exists, create_database
 
 
-os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
+class Base(DeclarativeBase):
+    pass
 
 
-def init_model(
-        model_cls,
-        keyspace: str,
-        connection: str,  # noqa;
-):
-    model_cls.__keyspace__ = keyspace
-    model_cls.__connection__ = connection
-    sync_table(model_cls, keyspaces=[keyspace], connections=[connection])
-    return model_cls
+class TelemetryNetwork(Base):
+    __tablename__ = 'telemetry_network'
+
+    id = Column(Text, primary_key=True)
+    tenant_name = Column(Text)
+    team = Column(Text, default="")
+    ts_reported = Column(DateTime)
+    ip = Column(Text)
+    enduser_client_version = Column(Text)
+
+    counter = Column(Integer)
+    error_message = Column(Text)
+    scope = Column(Text)
+    success = Column(Boolean)
+    url = Column(Text)
+
+    teletype = Column(Text)
+    ts_start = Column(Integer)
+    ts_end = Column(Integer)
 
 
-class UsersAccessControl(Model):
-    account = columns.Text(primary_key=True)
-    team = columns.Text()
-    api_key = columns.Text()
+class TelemetrySnippets(Base):
+    __tablename__ = 'telemetry_snippets'
+
+    id = Column(Text, primary_key=True)
+    tenant_name = Column(Text)
+    team = Column(Text, default="")
+    ts_reported = Column(DateTime)
+    ip = Column(Text)
+    enduser_client_version = Column(Text)
+
+    model = Column(Text)
+    corrected_by_user = Column(Text)
+    remaining_percentage = Column(Text)
+    created_ts = Column(Integer)
+    accepted_ts = Column(Integer)
+    finished_ts = Column(Integer)
+    grey_text = Column(Text)
+    cursor_character = Column(Integer)
+    cursor_file = Column(Text)
+    cursor_line = Column(Integer)
+    multiline = Column(Boolean)
+    sources = Column(Text)
+
+    teletype = Column(Text)
 
 
-class TelemetryNetwork(Model):
-    id = columns.Text(primary_key=True)
-    tenant_name = columns.Text()
-    team = columns.Text(default="")
-    ts_reported = columns.DateTime()
-    ip = columns.Text()
-    enduser_client_version = columns.Text()
+class TelemetryRobotHuman(Base):
+    __tablename__ = 'telemetry_robot_human'
 
-    counter = columns.Integer()
-    error_message = columns.Text()
-    scope = columns.Text()
-    success = columns.Boolean()
-    url = columns.Text()
+    id = Column(Text, primary_key=True)
+    tenant_name = Column(Text)
+    team = Column(Text, default="")
+    ts_reported = Column(DateTime)
+    ip = Column(Text)
+    enduser_client_version = Column(Text)
 
-    teletype = columns.Text()
-    ts_start = columns.Integer()
-    ts_end = columns.Integer()
+    completions_cnt = Column(Integer)
+    file_extension = Column(Text)
+    human_characters = Column(Integer)
+    model = Column(Text)
+    robot_characters = Column(Integer)
 
-
-class TelemetrySnippets(Model):
-    id = columns.Text(primary_key=True)
-    tenant_name = columns.Text()
-    team = columns.Text(default="")
-    ts_reported = columns.DateTime()
-    ip = columns.Text()
-    enduser_client_version = columns.Text()
-
-    model = columns.Text()
-    corrected_by_user = columns.Text()
-    remaining_percentage = columns.Float()
-    created_ts = columns.Integer()
-    accepted_ts = columns.Integer()
-    finished_ts = columns.Integer()
-    grey_text = columns.Text()
-    cursor_character = columns.Integer()
-    cursor_file = columns.Text()
-    cursor_line = columns.Integer()
-    multiline = columns.Boolean()
-    sources = columns.Text()
-
-    teletype = columns.Text()
+    teletype = Column(Text)
+    ts_start = Column(Integer)
+    ts_end = Column(Integer)
 
 
-class TelemetryRobotHuman(Model):
-    id = columns.Text(primary_key=True)
-    tenant_name = columns.Text()
-    team = columns.Text(default="")
-    ts_reported = columns.DateTime()
-    ip = columns.Text()
-    enduser_client_version = columns.Text()
+class TelemetryCompCounters(Base):
+    __tablename__ = 'telemetry_comp_counters'
 
-    completions_cnt = columns.Integer()
-    file_extension = columns.Text()
-    human_characters = columns.Integer()
-    model = columns.Text()
-    robot_characters = columns.Integer()
+    id = Column(Text, primary_key=True)
+    tenant_name = Column(Text)
+    team = Column(Text, default="")
+    ts_reported = Column(DateTime)
+    ip = Column(Text)
+    enduser_client_version = Column(Text)
 
-    teletype = columns.Text()
-    ts_start = columns.Integer()
-    ts_end = columns.Integer()
+    counters_json_text = Column(Text)
+    file_extension = Column(Text)
+    model = Column(Text)
+    multiline = Column(Boolean)
 
-
-class TelemetryCompCounters(Model):
-    id = columns.Text(primary_key=True)
-    tenant_name = columns.Text()
-    team = columns.Text(default="")
-    ts_reported = columns.DateTime()
-    ip = columns.Text()
-    enduser_client_version = columns.Text()
-
-    counters_json_text = columns.Text()
-    file_extension = columns.Text()
-    model = columns.Text()
-    multiline = columns.Boolean()
-
-    teletype = columns.Text()
-    ts_end = columns.Integer()
-    ts_start = columns.Integer()
+    teletype = Column(Text)
+    ts_end = Column(Integer)
+    ts_start = Column(Integer)
 
 
 class DisableLogger:
@@ -126,116 +116,84 @@ class DisableLogger:
 
 
 class RefactDatabase:
-    KEYSPACE = "smc"
-    CONN_NAME = "refactdb_connection"
 
     def __init__(self):
         # NOTE: this is a hack to wait for a db to be ready
-        self._session = None
-        self._cluster = None
-        self._conn_registered = False
+        self._session: Optional[Session] = None
         while True:
             try:
-                auth_provider = PlainTextAuthProvider(
-                    username="cassandra", password="cassandra")
-                self._cluster = Cluster(
-                    contact_points=[os.environ.get("REFACT_DATABASE_HOST", "127.0.0.1")],
-                    port=9042, auth_provider=auth_provider, protocol_version=4,
-                    load_balancing_policy=DCAwareRoundRobinPolicy(local_dc='datacenter1'))
                 with DisableLogger():
-                    self._session = self._cluster.connect()
-                connection.register_connection(self.CONN_NAME, session=self._session)
-                self._conn_registered = True
-                break
-            except NoHostAvailable:
-                logging.warning(f"No database available, sleep for 10 seconds...")
+                    url = os.environ.get("REFACT_DATABASE_URL", "postgresql://postgres:postrges@localhost:5432")
+                    engine = create_engine(f"{url}/refact")
+                    if not database_exists(engine.url):
+                        create_database(engine.url)
+                    Base.metadata.create_all(engine)
+                    self._session = sessionmaker(bind=engine)()
+                    break
+            except Exception as e:
+                logging.warning(f"Database problem {e}, sleep for 10 seconds...")
                 time.sleep(10)
-
-        self._create_and_set_keyspace()
 
     def __del__(self):
         if self._session:
-            self._session.shutdown()
-        if self._cluster:
-            self._cluster.shutdown()
-        if self._conn_registered:
-            connection.unregister_connection(self.CONN_NAME)
-
-    def _create_and_set_keyspace(self):
-        self._session.execute(f"""
-            CREATE KEYSPACE IF NOT EXISTS {self.KEYSPACE}
-            WITH replication = {{ 'class': 'SimpleStrategy', 'replication_factor': '2' }}
-        """)
-        self._session.set_keyspace(self.KEYSPACE)
+            self._session.close()
 
     @property
-    def session(self) -> Session:
+    def session(self) -> Optional[Session]:
         return self._session
 
 
 class StatisticsService:
-    def __init__(
-            self,
-            database: RefactDatabase,
-    ):
+
+    def __init__(self, database: RefactDatabase):
         self._database = database
-        self._net = init_model(TelemetryNetwork, database.KEYSPACE, database.CONN_NAME)
-        self._snip = init_model(TelemetrySnippets, database.KEYSPACE, database.CONN_NAME)
-        self._rh = init_model(TelemetryRobotHuman, database.KEYSPACE, database.CONN_NAME)
-        self._comp = init_model(TelemetryCompCounters, database.KEYSPACE, database.CONN_NAME)
 
-    def network_insert(self, telemetry_network: TelemetryNetwork):
-        self._net.create(**{
-            **telemetry_network._as_dict(),
-            "id": str(uuid.uuid1()),
-            "ts_reported": datetime.now(),
-        })
-
-    def snippets_insert(self, telemetry_snippets: TelemetrySnippets):
-        self._snip.create(**{
-            **telemetry_snippets._as_dict(),
-            "id": str(uuid.uuid1()),
-            "ts_reported": datetime.now(),
-        })
+    def network_insert(self, telemetry_snippets: TelemetrySnippets):
+        telemetry_snippets.id = str(uuid.uuid1())
+        telemetry_snippets.ts_reported = datetime.now()
+        self._database.session.add(telemetry_snippets)
+        self._database.session.commit()
 
     def robot_human_insert(self, telemetry_robot_human: TelemetryRobotHuman):
-        self._rh.create(**{
-            **telemetry_robot_human._as_dict(),
-            "id": str(uuid.uuid1()),
-            "ts_reported": datetime.now(),
-        })
+        telemetry_robot_human.id = str(uuid.uuid1())
+        telemetry_robot_human.ts_reported = datetime.now()
+        self._database.session.add(telemetry_robot_human)
+        self._database.session.commit()
 
     def comp_counters_insert(self, telemetry_comp_counters: TelemetryCompCounters):
-        self._comp.create(**{
-            **telemetry_comp_counters._as_dict(),
-            "id": str(uuid.uuid1()),
-            "ts_reported": datetime.now(),
-        })
+        telemetry_comp_counters.id = str(uuid.uuid1())
+        telemetry_comp_counters.ts_reported = datetime.now()
+        self._database.session.add(telemetry_comp_counters)
+        self._database.session.commit()
 
     def network_select_all(self) -> List[Dict[str, Any]]:
-        field_names = list(TelemetryNetwork._columns.keys())
         return [
-            {field: getattr(row, field) for field in field_names}
-            for row in self._net.objects.all()
+            {
+                field: getattr(row, field)
+                for field in TelemetryNetwork.__table__.columns.keys()
+            } for row in self._database.session.query(TelemetryNetwork).all()
         ]
 
     def snippets_select_all(self) -> List[Dict[str, Any]]:
-        field_names = list(TelemetrySnippets._columns.keys())
         return [
-            {field: getattr(row, field) for field in field_names}
-            for row in self._snip.objects.all()
+            {
+                field: getattr(row, field)
+                for field in TelemetrySnippets.__table__.columns.keys()
+            } for row in self._database.session.query(TelemetrySnippets).all()
         ]
 
     def robot_human_select_all(self) -> List[Dict[str, Any]]:
-        field_names = list(TelemetryRobotHuman._columns.keys())
         return [
-            {field: getattr(row, field) for field in field_names}
-            for row in self._rh.objects.all()
+            {
+                field: getattr(row, field)
+                for field in TelemetryRobotHuman.__table__.columns.keys()
+            } for row in self._database.session.query(TelemetryRobotHuman).all()
         ]
 
     def comp_counters_select_all(self) -> List[Dict[str, Any]]:
-        field_names = list(TelemetryCompCounters._columns.keys())
         return [
-            {field: getattr(row, field) for field in field_names}
-            for row in self._comp.objects.all()
+            {
+                field: getattr(row, field)
+                for field in TelemetryCompCounters.__table__.columns.keys()
+            } for row in self._database.session.query(TelemetryCompCounters).all()
         ]
