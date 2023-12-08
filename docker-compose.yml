@@ -12,8 +12,8 @@ services:
         reservations:
           devices:
             - driver: nvidia
-            - count: all
-            - capabilities: [ gpu ]
+              count: all
+              capabilities: [ gpu ]
     environment:
       REFACT_DATABASE_URL: postgresql://postgres:postgres@refact_db:5432
     links:

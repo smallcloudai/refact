@@ -45,12 +45,13 @@ all_refact_packages = {
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
                   "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2", "accelerate",
                   "termcolor", "torch", "transformers==4.34.0", "bitsandbytes", "safetensors", "peft", "triton",
-                  "torchinfo", "mpi4py", "deepspeed==0.11.1", "pandas>=2.0.3",
+                  "torchinfo", "mpi4py", "deepspeed==0.11.1", "pandas>=2.0.3", "litellm",
                   "sqlalchemy", "sqlalchemy-utils", "psycopg2-binary"],
         optional=["ninja", "flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
                            "known_models_db", "refact_data_pipeline"],
-        data=["webgui/static/*", "webgui/static/js/*", "webgui/static/components/modals/*", "watchdog/watchdog.d/*"]),
+        data=["webgui/static/*", "webgui/static/components/modals/*",
+              "webgui/static/dashboards/*", "watchdog/watchdog.d/*"]),
 }
 
 
