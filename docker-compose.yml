@@ -15,19 +15,15 @@ services:
               count: all
               capabilities: [ gpu ]
     environment:
-      REFACT_DATABASE_URL: postgresql://postgres:postgres@refact_db:5432
+      REFACT_DATABASE_HOST: refact_db
     links:
       - refact_db
     depends_on:
       - refact_db
   refact_db:
-    image: postgres
-    restart: always
-    environment:
-      POSTGRES_PASSWORD: postgres
-      PGDATA: /var/lib/postgresql/data/pgdata
+    image: scylladb/scylla
     volumes:
-      - refact_database:/var/lib/postgresql/data
+      - refact_database:/var/lib/scylla
 
 volumes:
   perm_storage:
