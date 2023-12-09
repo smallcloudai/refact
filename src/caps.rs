@@ -254,7 +254,7 @@ pub async fn load_caps(
     }
     if is_remote_address {
         let api_key = cmdline.api_key.clone();
-        let mut http_client = global_context.read().await.http_client.clone();
+        let http_client = global_context.read().await.http_client.clone();
         let mut headers = reqwest::header::HeaderMap::new();
         if !api_key.is_empty() {
             headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
