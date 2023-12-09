@@ -3,6 +3,8 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use std::time::Instant;
+use tracing::log::warn;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use tokio::sync::RwLock as ARwLock;
@@ -16,9 +18,17 @@ use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPos
 use crate::global_context;
 use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
+use crate::lsp::document::Document;
+use crate::telemetry;
 use crate::receive_workspace_changes;
 use crate::telemetry;
 use crate::vecdb::file_filter::is_valid_file;
+
+use crate::telemetry::snippets_collection::sources_changed;
+
+mod document;
+mod treesitter;
+mod language_id;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -227,7 +237,23 @@ impl LanguageServer for Backend {
             &params.text_document.uri.to_string(),
             &params.text_document.text,
             &params.text_document.language_id
-        ).await
+        ).await;
+
+        let uri = params.text_document.uri.to_string();
+        match Document::open(
+            &params.text_document.language_id,
+            &params.text_document.text,
+        ).await {
+            Ok(document) => {
+                self.document_map
+                    .write()
+                    .await
+                    .insert(uri.clone(), document);
+                info!("{uri} opened");
+            }
+            Err(err) => error!("error opening {uri}: {err}"),
+        }
+        info!("{uri} opened");
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
@@ -243,7 +269,29 @@ impl LanguageServer for Backend {
             self.gcx.clone(),
             &params.text_document.uri.to_string(),
             &params.content_changes[0].text
-        ).await
+        ).await;
+
+        let t0 = Instant::now();
+        let uri = params.text_document.uri.to_string();
+        let mut document_map = self.document_map.write().await;
+        let doc = document_map.get_mut(&uri);
+        if let Some(doc) = doc {
+            match doc.change(&params.content_changes[0].text).await {
+                Ok(()) => {
+                    info!("{} changed, save time: {:?}", uri, t0.elapsed());
+                    let t1 = Instant::now();
+                    sources_changed(
+                        self.gcx.clone(),
+                        &uri,
+                        &params.content_changes[0].text,
+                    ).await;
+                    info!("{} changed, telemetry time: {:?}", uri, t1.elapsed());
+                },
+                Err(err) => error!("error when changing {uri}: {err}"),
+            }
+        } else {
+            warn!("textDocument/didChange {uri}: document not found");
+        }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
