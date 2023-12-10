@@ -92,6 +92,9 @@ pub async fn compress_tele_completion_to_file(
         }
         storage_locked.snippet_data_accumulators.clear();
     }
+    if records.as_array().unwrap().is_empty() {
+        return;
+    }
 
     let (dir, _) = utils::telemetry_storage_dirs(&cache_dir).await;
 

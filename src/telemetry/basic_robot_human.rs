@@ -51,6 +51,7 @@ pub fn increase_counters_from_finished_snippet(
             rec.robot_characters_acc_baseline = 0;
             rec.baseline_text = text.clone();
         }
+        // info!("increasing for {}, human+{}, robot+{}", snip.snippet_telemetry_id, human_characters(rec, text), rec.robot_characters_acc_baseline);
     } else {
         let init_file_text_mb = snip.inputs.sources.get(&snip.inputs.cursor.file);
         if init_file_text_mb.is_none() {
@@ -112,6 +113,9 @@ pub async fn tele_robot_human_compress_to_file(
             records.as_array_mut().unwrap().push(json_dict);
         }
         storage_locked.tele_robot_human.clear();
+    }
+    if records.as_array().unwrap().is_empty() {
+        return;
     }
     let (dir, _) = utils::telemetry_storage_dirs(&cache_dir).await;
 

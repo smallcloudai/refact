@@ -69,6 +69,9 @@ pub async fn compress_basic_telemetry_to_file(
         big_json_net.as_object_mut().unwrap().insert("ts_start".to_string(), json!(storage_locked.last_flushed_ts));
         storage_locked.last_flushed_ts = now.timestamp();
     }
+    if records.as_array().unwrap().is_empty() {
+        return;
+    }
     // even if there's an error with i/o, storage is now clear, preventing infinite memory growth
     info!("basic telemetry save \"{}\"", fn_net.to_str().unwrap());
     let io_result = file_save(fn_net.clone(), big_json_net).await;
