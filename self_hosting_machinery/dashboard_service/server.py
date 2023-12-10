@@ -37,7 +37,7 @@ def main(args: argparse.Namespace):
     db = RefactDatabase()
     stats_service = StatisticsService(db)
 
-    # data is fetched once on a start, but service is being restarted every 24h by watchdog
+    # data is fetched once on a start, but service is being restarted every 1h by watchdog
     try:
         data_tables = retrieve_all_data_tables(stats_service)
     except NoDataInDatabase:
