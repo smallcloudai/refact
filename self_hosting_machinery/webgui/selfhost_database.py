@@ -221,30 +221,13 @@ class StatisticsService:
             "ts_reported": datetime.now(),
         })
 
-    def network_select_all(self) -> List[Dict[str, Any]]:
-        field_names = list(TelemetryNetwork._columns.keys())
-        return [
-            {field: getattr(row, field) for field in field_names}
-            for row in self._net.objects.all()
-        ]
+    @property
+    def session(self) -> Session:
+        return self._database.session
 
-    def snippets_select_all(self) -> List[Dict[str, Any]]:
-        field_names = list(TelemetrySnippets._columns.keys())
-        return [
-            {field: getattr(row, field) for field in field_names}
-            for row in self._snip.objects.all()
-        ]
-
-    def robot_human_select_all(self) -> List[Dict[str, Any]]:
-        field_names = list(TelemetryRobotHuman._columns.keys())
-        return [
-            {field: getattr(row, field) for field in field_names}
-            for row in self._rh.objects.all()
-        ]
-
-    def comp_counters_select_all(self) -> List[Dict[str, Any]]:
-        field_names = list(TelemetryCompCounters._columns.keys())
-        return [
-            {field: getattr(row, field) for field in field_names}
-            for row in self._comp.objects.all()
-        ]
+    # def network_select_all(self) -> List[Dict[str, Any]]:
+    #     field_names = list(TelemetryNetwork._columns.keys())
+    #     return [
+    #         {field: getattr(row, field) for field in field_names}
+    #         for row in self._net.objects.all()
+    #     ]
