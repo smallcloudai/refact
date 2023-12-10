@@ -20,11 +20,98 @@ class NoDataInDatabase(Exception):
     pass
 
 
+def network_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.DataFrame:
+    prep = stats_service.session.prepare(
+        "SELECT * FROM telemetry_network WHERE ts_end >= ? ALLOW FILTERING"
+    )
+
+    def fetch_records():
+        for record in stats_service.session.execute(
+                prep, (ts,)
+        ):
+            yield {
+                "tenant_name": record["tenant_name"],
+                "team": record["team"],
+                "ts_reported": record["ts_reported"],
+                # "ip": record.ip,
+                "enduser_client_version": record["enduser_client_version"],
+                "counter": record["counter"],
+                "error_message": record["error_message"],
+                "scope": record["scope"],
+                "success": record["success"],
+                "url": record["url"],
+                "teletype": record["teletype"],
+                "ts_start": record["ts_start"],
+                "ts_end": record["ts_end"],
+            }
+
+    return pd.DataFrame(fetch_records())
+
+
+def robot_human_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.DataFrame:
+    prep = stats_service.session.prepare(
+        "SELECT * FROM telemetry_robot_human WHERE ts_end >= ? ALLOW FILTERING"
+    )
+
+    def fetch_records():
+        for record in stats_service.session.execute(
+                prep, (ts,)
+        ):
+            yield {
+                "tenant_name": record["tenant_name"],
+                "team": record["team"],
+                # "ts_reported": record["ts_reported"],
+                # "ip": record.ip,
+                # "enduser_client_version": record.enduser_client_version,
+                "completions_cnt": record["completions_cnt"],
+                "file_extension": record["file_extension"],
+                "human_characters": record["human_characters"],
+                "model": record["model"],
+                "robot_characters": record["robot_characters"],
+                # "teletype": record.teletype,
+                # "ts_start": record["ts_start"],
+                "ts_end": record["ts_end"],
+            }
+
+    return pd.DataFrame(fetch_records())
+
+
+def comp_counters_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.DataFrame:
+    prep = stats_service.session.prepare(
+        "SELECT * FROM telemetry_comp_counters WHERE ts_end >= ? ALLOW FILTERING"
+    )
+
+    def fetch_records():
+        for record in stats_service.session.execute(
+                prep, (ts,)
+        ):
+            yield {
+                "tenant_name": record["tenant_name"],
+                "team": record["team"],
+                "ts_reported": record["ts_reported"],
+                # "ip": record.ip,
+                "enduser_client_version": record["enduser_client_version"],
+                # "counters_json_text": record.counters_json_text,
+                "file_extension": record["file_extension"],
+                "model": record["model"],
+                "multiline": record["multiline"],
+                # "teletype": record.teletype,
+                "ts_start": record["ts_start"],
+                "ts_end": record["ts_end"],
+            }
+
+    return pd.DataFrame(fetch_records())
+
+
 def retrieve_all_data_tables(stats_service: StatisticsService) -> StatsDataTables:
+    current_year = datetime.now().year
+    start_of_year = datetime(current_year, 1, 1, 0, 0, 0, 0)
+    timestamp_start_of_year = int(start_of_year.timestamp())
+
     extra = {}
-    network_df = pd.DataFrame(stats_service.network_select_all())
-    robot_human_df = pd.DataFrame(stats_service.robot_human_select_all())
-    comp_counters_df = pd.DataFrame(stats_service.comp_counters_select_all())
+    network_df = network_df_from_ts(stats_service, timestamp_start_of_year)
+    robot_human_df = robot_human_df_from_ts(stats_service, timestamp_start_of_year)
+    comp_counters_df = comp_counters_df_from_ts(stats_service, timestamp_start_of_year)
 
     if network_df.empty or robot_human_df.empty or comp_counters_df.empty:
         raise NoDataInDatabase("No data in database!")
