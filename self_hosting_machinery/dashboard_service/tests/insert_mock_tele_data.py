@@ -16,7 +16,8 @@ from self_hosting_machinery.webgui.selfhost_database import TelemetryRobotHuman
 from self_hosting_machinery.webgui.selfhost_database import TelemetryCompCounters
 from self_hosting_machinery.webgui.selfhost_database import TelemetryNetwork
 
-programming_languages = [
+
+LANGUAGES = [
     {"language": "JavaScript", "tags": ["website", "plugins"], "extension": ".js"},
     {"language": "Python", "tags": ["website", "self-host", "enterprise"], "extension": ".py"},
     {"language": "Java", "tags": ["enterprise"], "extension": ".java"},
@@ -41,7 +42,7 @@ programming_languages = [
 
 
 @dataclass
-class FakeUser:
+class MockUser:
     email: str = field(default_factory=lambda: faker.Faker().email())
     ip: str = field(default_factory=lambda: faker.Faker().ipv4())
     name: str = field(default_factory=lambda: faker.Faker().name())
@@ -55,13 +56,13 @@ class FakeUser:
 
 
 @dataclass
-class FakeModel:
+class MockModel:
     model: str
     robot_score_multiplier: float
     model_betterness: float
 
 
-def fake_robot_human(dt: datetime, user: FakeUser, model: FakeModel) -> Dict[str, Any]:
+def mock_robot_human(dt: datetime, user: MockUser, model: MockModel) -> Dict[str, Any]:
     records = [
         {
             "completions_cnt": (completions_cnt := random.randint(3, 20)),
@@ -85,7 +86,7 @@ def fake_robot_human(dt: datetime, user: FakeUser, model: FakeModel) -> Dict[str
     return big_json
 
 
-def fake_comp_counters(robot_human_json: Dict[str, Any], user: FakeUser, model: FakeModel) -> Dict[str, Any]:
+def mock_comp_counters(robot_human_json: Dict[str, Any], user: MockUser, model: MockModel) -> Dict[str, Any]:
     remainings_base = {
         "100": .15,
         "80_100": .20,
@@ -170,7 +171,7 @@ def fake_comp_counters(robot_human_json: Dict[str, Any], user: FakeUser, model: 
     return big_json
 
 
-def fake_network(robot_human_json: Dict[str, Any], user: FakeUser) -> Dict[str, Any]:
+def mock_network(robot_human_json: Dict[str, Any], user: MockUser) -> Dict[str, Any]:
     scope_types = [
         {"scope": "completion", "url_suffix": "/v1/completions", "proba": 1},
         {"scope": "chat", "url_suffix": "/v1/chat", "proba": 0.5},
@@ -279,7 +280,7 @@ def insert_network(stats_service: StatisticsService, records: Iterable[Dict[str,
             )
 
 
-def this_day_users_send_telemetry(dt: datetime, users: List[FakeUser], model: FakeModel) -> Iterator[Dict[str, Any]]:
+def this_day_users_send_telemetry(dt: datetime, users: List[MockUser], model: MockModel) -> Iterator[Dict[str, Any]]:
     workday_begins_at = 9
     workday_ends_at = 22
 
@@ -298,13 +299,13 @@ def this_day_users_send_telemetry(dt: datetime, users: List[FakeUser], model: Fa
                 continue
             hours_worked += 1
 
-            rh = fake_robot_human(dt, user, model)
+            rh = mock_robot_human(dt, user, model)
             yield rh
-            yield fake_comp_counters(rh, user, model)
-            yield fake_network(rh, user)
+            yield mock_comp_counters(rh, user, model)
+            yield mock_network(rh, user)
 
 
-def this_day(stats_service: StatisticsService, dt: datetime, users: List[FakeUser], model: FakeModel):
+def this_day(stats_service: StatisticsService, dt: datetime, users: List[MockUser], model: MockModel):
     for record in this_day_users_send_telemetry(dt, users, model):
         if record["teletype"] == "robot_human":
             insert_robot_human(stats_service, [record])
@@ -319,22 +320,22 @@ def main():
     stats_service = StatisticsService(database)
 
     teams = ["website", "plugins", "self-host", "enterprise"]
-    fake_users = [FakeUser() for _ in range(12)]
-    for user in fake_users:
+    mock_users = [MockUser() for _ in range(12)]
+    for user in mock_users:
         user.team = random.choice(teams)
         user.languages = random.sample(
-           (population := [l for l in programming_languages if user.team in l["tags"]]), random.randint(1, min(4, len(population)))
+           (population := [l for l in LANGUAGES if user.team in l["tags"]]), random.randint(1, min(4, len(population)))
         )
 
     dt_start = datetime.now() - timedelta(days=62)
     dt_end = datetime.now() - timedelta(days=2)
 
     models = [
-        {"model": FakeModel("refact-0", 1, 1.), "release_date": dt_start + timedelta(days=-14)},
-        {"model": FakeModel("refact-1", 1.3, 2.), "release_date": dt_start + timedelta(days=14)},
-        {"model": FakeModel("refact-2", 1.5, 3.), "release_date": dt_start + timedelta(days=28)},
-        {"model": FakeModel("refact-3", 1.8, 4.), "release_date": dt_start + timedelta(days=42)},
-        {"model": FakeModel("refact-4", 2, 5.), "release_date": dt_start + timedelta(days=56)},
+        {"model": MockModel("refact-0", 1, 1.), "release_date": dt_start + timedelta(days=-14)},
+        {"model": MockModel("refact-1", 1.3, 2.), "release_date": dt_start + timedelta(days=14)},
+        {"model": MockModel("refact-2", 1.5, 3.), "release_date": dt_start + timedelta(days=28)},
+        {"model": MockModel("refact-3", 1.8, 4.), "release_date": dt_start + timedelta(days=42)},
+        {"model": MockModel("refact-4", 2, 5.), "release_date": dt_start + timedelta(days=56)},
     ]
 
     # iterate over all days, creat dt = day at 00:00:00 + 9 hours
@@ -344,7 +345,7 @@ def main():
 
         model = [m["model"] for m in models if m["release_date"] <= dt][-1]
 
-        this_day(stats_service, dt, fake_users, model)
+        this_day(stats_service, dt, mock_users, model)
 
 
 if __name__ == '__main__':
