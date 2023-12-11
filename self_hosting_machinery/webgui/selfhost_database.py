@@ -1,9 +1,9 @@
 import os
-import time
+import asyncio
 import uuid
 import logging
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from cassandra.cluster import Cluster, Session
@@ -134,6 +134,8 @@ class RefactDatabase:
         self._session = None
         self._cluster = None
         self._conn_registered = False
+
+    async def connect(self):
         while True:
             try:
                 auth_provider = PlainTextAuthProvider(
@@ -150,7 +152,7 @@ class RefactDatabase:
             except NoHostAvailable:
                 logging.warning(f"No database available on {self._database_host}:{self._database_port}, "
                                 f"sleep for 10 seconds...")
-                time.sleep(10)
+                await asyncio.sleep(10)
 
         self._create_and_set_keyspace()
 
@@ -183,15 +185,22 @@ class RefactDatabase:
 
 
 class StatisticsService:
-    def __init__(
-            self,
-            database: RefactDatabase,
-    ):
-        self._database = database
+    def __init__(self):
+        self._net: Optional[Model] = None
+        self._snip: Optional[Model] = None
+        self._rh: Optional[Model] = None
+        self._comp: Optional[Model] = None
+
+    def init_models(self, database: RefactDatabase):
+        assert database.session is not None
         self._net = init_model(TelemetryNetwork, database.KEYSPACE, database.CONN_NAME)
         self._snip = init_model(TelemetrySnippets, database.KEYSPACE, database.CONN_NAME)
         self._rh = init_model(TelemetryRobotHuman, database.KEYSPACE, database.CONN_NAME)
         self._comp = init_model(TelemetryCompCounters, database.KEYSPACE, database.CONN_NAME)
+
+    @property
+    def is_ready(self) -> bool:
+        return self._comp is not None
 
     def network_insert(self, telemetry_network: TelemetryNetwork):
         self._net.create(**{

@@ -1,5 +1,5 @@
 import argparse
-import time
+import asyncio
 
 from argparse import ArgumentParser
 
@@ -34,8 +34,12 @@ def create_app_with_routers(data_tables):
 
 
 def main(args: argparse.Namespace):
-    db = RefactDatabase()
-    stats_service = StatisticsService(db)
+    database = RefactDatabase()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(database.connect())
+
+    stats_service = StatisticsService()
+    stats_service.init_models(database)
 
     # data is fetched once on a start, but service is being restarted every 1h by watchdog
     try:
