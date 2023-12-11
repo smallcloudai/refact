@@ -2,10 +2,13 @@
 name = "refact-lsp"
 version = "0.1.0"
 edition = "2021"
-
+build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[build-dependencies]
+shadow-rs = "0.25.0"
 
 [dependencies]
+shadow-rs = "0.25.0"
 hyper = { version = "0.14", features = ["server", "stream"] }
 reqwest = { version = "0.11", features = ["json", "stream"] }
 tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal"] }

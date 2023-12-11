@@ -1,28 +1,20 @@
-use axum::{Extension, http::{StatusCode, Uri}, response::IntoResponse, Router};
-use tokio::signal;
-use tracing::info;
-
 use std::io::Write;
 use std::sync::Arc;
-use tokio::sync::RwLock as ARwLock;
+
+use axum::{Extension, http::{StatusCode, Uri}, response::IntoResponse};
 use hyper::Server;
+use tokio::signal;
+use tokio::sync::RwLock as ARwLock;
+use tracing::info;
 
 use crate::global_context::GlobalContext;
-// use crate::telemetry_snippets;
-use routers::make_v1_router;
+use crate::http::routers::make_refact_http_server;
 
 pub mod routers;
 mod utils;
 
 async fn handler_404(path: Uri) -> impl IntoResponse {
     (StatusCode::NOT_FOUND, format!("no handler for {}", path))
-}
-
-
-pub fn make_refact_http_server() -> Router {
-    Router::new()
-        .fallback(handler_404)
-        .nest("/v1", make_v1_router())
 }
 
 
@@ -57,7 +49,7 @@ pub async fn shutdown_signal(ask_shutdown_receiver: std::sync::mpsc::Receiver<St
 
 pub async fn start_server(
     global_context: Arc<ARwLock<GlobalContext>>,
-    ask_shutdown_receiver: std::sync::mpsc::Receiver<String>
+    ask_shutdown_receiver: std::sync::mpsc::Receiver<String>,
 ) -> Result<(), String> {
     let port = global_context.read().await.cmdline.http_port;
     let addr = ([127, 0, 0, 1], port).into();
