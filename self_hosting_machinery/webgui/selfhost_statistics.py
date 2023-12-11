@@ -57,24 +57,56 @@ class TabStatisticsRouter(APIRouter):
         self.add_api_route('/dash-teams', self._dash_teams_post, methods=['POST'])
 
     async def _dash_prime_get(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get('http://localhost:8010/dash-prime/plots-data') as resp:
-                resp_json = await resp.json()
-        return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get('http://localhost:8010/dash-prime/plots-data') as resp:
+                    resp_json = await resp.json()
+            return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
+        except aiohttp.ClientConnectionError as e:
+            return JSONResponse(
+                content={
+                    'error': str(e)
+                },
+                media_type='application/json',
+                status_code=500)
 
     async def _dash_teams_get(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get('http://localhost:8010/dash-teams/plots-data') as resp:
-                resp_json = await resp.json()
-        return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get('http://localhost:8010/dash-teams/plots-data') as resp:
+                    resp_json = await resp.json()
+            return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
+        except aiohttp.ClientConnectionError as e:
+            return JSONResponse(
+                content={
+                    'error': str(e)
+                },
+                media_type='application/json',
+                status_code=500)
 
     async def _dash_teams_post(self, data: DashTeamsGenDashData):
-        async with aiohttp.ClientSession() as session:
-            async with session.post('http://localhost:8010/dash-teams/plots-data', json=data.clamp()) as resp:
-                resp_json = await resp.json()
-        return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post('http://localhost:8010/dash-teams/plots-data', json=data.clamp()) as resp:
+                    resp_json = await resp.json()
+            return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
+        except aiohttp.ClientConnectionError as e:
+            return JSONResponse(
+                content={
+                    'error': str(e)
+                },
+                media_type='application/json',
+                status_code=500)
 
     async def _telemetry_basic(self, data: TelemetryBasicData, request: Request, account: str = "XXX"):
+        if not self._stats_service.is_ready:
+            return JSONResponse(
+                content={
+                    'error': "Statistics service is not ready yet",
+                },
+                media_type='application/json',
+                status_code=500)
+
         ip = request.client.host
         clamp = data.clamp()
 
@@ -137,6 +169,14 @@ class TabStatisticsRouter(APIRouter):
         return JSONResponse({"retcode": "OK"})
 
     async def _telemetry_snippets(self, data: TelemetryBasicData, request: Request, account: str = "XXX"):
+        if not self._stats_service.is_ready:
+            return JSONResponse(
+                content={
+                    'error': "Statistics service is not ready yet",
+                },
+                media_type='application/json',
+                status_code=500)
+
         ip = request.client.host
         clamp = data.clamp()
         if not clamp['records']:
