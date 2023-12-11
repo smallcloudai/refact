@@ -39,7 +39,7 @@ class WebGUI(FastAPI):
 
         self._model_assigner = ModelAssigner()
         self._database = RefactDatabase()
-        self._stats_service = StatisticsService()
+        self._stats_service = StatisticsService(self._database)
 
         inference_queue = InferenceQueue()
         id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
@@ -105,7 +105,7 @@ class WebGUI(FastAPI):
 
         async def init_database():
             await self._database.connect()
-            self._stats_service.init_models(self._database)
+            self._stats_service.init_models()
 
         loop = asyncio.get_event_loop()
         loop.create_task(init_database(), name="database_initialization")
