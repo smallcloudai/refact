@@ -34,16 +34,16 @@ from typing import Dict
 
 class WebGUI(FastAPI):
 
-    def __init__(self,
-                 model_assigner: ModelAssigner,
-                 stats_service: StatisticsService,
-                 *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._model_assigner = model_assigner
+        self._model_assigner = ModelAssigner()
+        self._database = RefactDatabase()
+        self._stats_service = StatisticsService()
+
         inference_queue = InferenceQueue()
         id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
-        for router in self._routers_list(id2ticket, inference_queue, model_assigner, stats_service):
+        for router in self._routers_list(id2ticket, inference_queue, self._model_assigner, self._stats_service):
             self.include_router(router)
 
         class NoCacheMiddleware(BaseHTTPMiddleware):
@@ -103,6 +103,13 @@ class WebGUI(FastAPI):
         # NOTE: try restart LSP after server started
         self._model_assigner.restart_lsp()
 
+        async def init_database():
+            await self._database.connect()
+            self._stats_service.init_models(self._database)
+
+        loop = asyncio.get_event_loop()
+        loop.create_task(init_database(), name="database_initialization")
+
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -118,13 +125,7 @@ if __name__ == "__main__":
         datefmt='%Y%m%d %H:%M:%S',
         handlers=[logging.StreamHandler(stream=sys.stderr)])
 
-    database = RefactDatabase()
-    model_assigner = ModelAssigner()
-    stats_service = StatisticsService(database)
-    app = WebGUI(
-        model_assigner=model_assigner,
-        stats_service=stats_service,
-        docs_url=None, redoc_url=None)
+    app = WebGUI(docs_url=None, redoc_url=None)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     uvicorn.run(
