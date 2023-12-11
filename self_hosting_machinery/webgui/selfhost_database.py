@@ -185,18 +185,20 @@ class RefactDatabase:
 
 
 class StatisticsService:
-    def __init__(self):
+
+    def __init__(self, database: RefactDatabase):
+        self._database: RefactDatabase = database
         self._net: Optional[Model] = None
         self._snip: Optional[Model] = None
         self._rh: Optional[Model] = None
         self._comp: Optional[Model] = None
 
-    def init_models(self, database: RefactDatabase):
-        assert database.session is not None
-        self._net = init_model(TelemetryNetwork, database.KEYSPACE, database.CONN_NAME)
-        self._snip = init_model(TelemetrySnippets, database.KEYSPACE, database.CONN_NAME)
-        self._rh = init_model(TelemetryRobotHuman, database.KEYSPACE, database.CONN_NAME)
-        self._comp = init_model(TelemetryCompCounters, database.KEYSPACE, database.CONN_NAME)
+    def init_models(self):
+        assert self._database.session is not None
+        self._net = init_model(TelemetryNetwork, self._database.KEYSPACE, self._database.CONN_NAME)
+        self._snip = init_model(TelemetrySnippets, self._database.KEYSPACE, self._database.CONN_NAME)
+        self._rh = init_model(TelemetryRobotHuman, self._database.KEYSPACE, self._database.CONN_NAME)
+        self._comp = init_model(TelemetryCompCounters, self._database.KEYSPACE, self._database.CONN_NAME)
 
     @property
     def is_ready(self) -> bool:
@@ -233,10 +235,3 @@ class StatisticsService:
     @property
     def session(self) -> Session:
         return self._database.session
-
-    # def network_select_all(self) -> List[Dict[str, Any]]:
-    #     field_names = list(TelemetryNetwork._columns.keys())
-    #     return [
-    #         {field: getattr(row, field) for field in field_names}
-    #         for row in self._net.objects.all()
-    #     ]

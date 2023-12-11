@@ -38,8 +38,8 @@ def main(args: argparse.Namespace):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(database.connect())
 
-    stats_service = StatisticsService()
-    stats_service.init_models(database)
+    stats_service = StatisticsService(database)
+    stats_service.init_models()
 
     # data is fetched once on a start, but service is being restarted every 1h by watchdog
     try:

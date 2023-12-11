@@ -8,6 +8,7 @@ from dataclasses import field, dataclass
 from typing import Dict, List, Any, Optional, Iterator, Iterable
 
 import faker
+import asyncio
 from tqdm import tqdm
 
 from self_hosting_machinery.webgui.selfhost_database import RefactDatabase
@@ -317,7 +318,11 @@ def this_day(stats_service: StatisticsService, dt: datetime, users: List[MockUse
 
 def main():
     database = RefactDatabase()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(database.connect())
+
     stats_service = StatisticsService(database)
+    stats_service.init_models()
 
     teams = ["website", "plugins", "self-host", "enterprise"]
     mock_users = [MockUser() for _ in range(12)]
