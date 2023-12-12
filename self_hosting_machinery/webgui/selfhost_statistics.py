@@ -50,6 +50,12 @@ class TabStatisticsRouter(APIRouter):
     ):
         super().__init__(*args, **kwargs)
         self._stats_service = stats_service
+        self._stats_service_not_available_response = JSONResponse(
+            content={
+                'error': "Statistics service is not ready, waiting for database connection",
+            },
+            media_type='application/json',
+            status_code=500)
         self.add_api_route("/telemetry-basic", self._telemetry_basic, methods=["POST"])
         self.add_api_route("/telemetry-snippets", self._telemetry_snippets, methods=["POST"])
         self.add_api_route('/dash-prime', self._dash_prime_get, methods=['GET'])
@@ -57,6 +63,8 @@ class TabStatisticsRouter(APIRouter):
         self.add_api_route('/dash-teams', self._dash_teams_post, methods=['POST'])
 
     async def _dash_prime_get(self):
+        if not self._stats_service.is_ready:
+            return self._stats_service_not_available_response
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get('http://localhost:8010/dash-prime/plots-data') as resp:
@@ -71,6 +79,8 @@ class TabStatisticsRouter(APIRouter):
                 status_code=500)
 
     async def _dash_teams_get(self):
+        if not self._stats_service.is_ready:
+            return self._stats_service_not_available_response
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get('http://localhost:8010/dash-teams/plots-data') as resp:
@@ -85,6 +95,8 @@ class TabStatisticsRouter(APIRouter):
                 status_code=500)
 
     async def _dash_teams_post(self, data: DashTeamsGenDashData):
+        if not self._stats_service.is_ready:
+            return self._stats_service_not_available_response
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post('http://localhost:8010/dash-teams/plots-data', json=data.clamp()) as resp:
@@ -100,12 +112,7 @@ class TabStatisticsRouter(APIRouter):
 
     async def _telemetry_basic(self, data: TelemetryBasicData, request: Request, account: str = "XXX"):
         if not self._stats_service.is_ready:
-            return JSONResponse(
-                content={
-                    'error': "Statistics service is not ready yet",
-                },
-                media_type='application/json',
-                status_code=500)
+            return self._stats_service_not_available_response
 
         ip = request.client.host
         clamp = data.clamp()
@@ -170,12 +177,7 @@ class TabStatisticsRouter(APIRouter):
 
     async def _telemetry_snippets(self, data: TelemetryBasicData, request: Request, account: str = "XXX"):
         if not self._stats_service.is_ready:
-            return JSONResponse(
-                content={
-                    'error': "Statistics service is not ready yet",
-                },
-                media_type='application/json',
-                status_code=500)
+            return self._stats_service_not_available_response
 
         ip = request.client.host
         clamp = data.clamp()
