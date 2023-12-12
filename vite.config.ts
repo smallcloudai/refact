@@ -1,16 +1,23 @@
 /// <reference types="vitest" />
 import { PluginOption, defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
-import { eslint } from 'vite-plugin-eslint';
+import eslint from 'vite-plugin-eslint';
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [
-    react(),
+/** @type {import('vite').UserConfig} */
+export default defineConfig(({command}) => {
+  const plugins: PluginOption[] = [react()]
+  if(command !== "serve") {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    eslint(),
-  ] as PluginOption[],
-  test: {
-    environment: "jsdom",
+    plugins.push(eslint() as PluginOption)
+  }
+  return {
+    plugins,
+    test: {
+      environment: "jsdom"
+    },
+    css: {
+      modules: true
+    }
   }
 })

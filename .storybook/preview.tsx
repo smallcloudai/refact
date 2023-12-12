@@ -1,4 +1,8 @@
+import React from 'react';
 import type { Preview } from "@storybook/react";
+import '@radix-ui/themes/styles.css';
+import { Theme } from "@radix-ui/themes";
+
 
 const preview: Preview = {
   parameters: {
@@ -10,6 +14,9 @@ const preview: Preview = {
       },
     },
   },
+  decorators: [
+    (Page) => (<Theme><Page/></Theme>),
+  ]
 };
 
 export default preview;

@@ -1,0 +1,33 @@
+.buttonGroup {
+  position: absolute;
+  /* display: flex;
+    gap: 4px; */
+  right: 0;
+  bottom: 12px;
+  padding: 1px 6px;
+}
+
+.button {
+  color: #000;
+}
+
+.textarea {
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+
+.textarea :global(.rt-TextAreaInput) {
+  outline: none;
+}
+
+.textarea :global(.rt-TextAreaChrome) {
+  box-shadow: none;
+}
+
+.chatForm {
+  box-shadow: inset 0 0 0 1px var(--gray-a7);
+  border: 1px solid var(--gray-a7);
+  padding: 10px;
+  border-radius: 6px;
+}
