@@ -34,12 +34,16 @@ from typing import Dict
 
 class WebGUI(FastAPI):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self,
+                 model_assigner: ModelAssigner,
+                 database: RefactDatabase,
+                 stats_service: StatisticsService,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._model_assigner = ModelAssigner()
-        self._database = RefactDatabase()
-        self._stats_service = StatisticsService(self._database)
+        self._model_assigner = model_assigner
+        self._database = database
+        self._stats_service = stats_service
 
         inference_queue = InferenceQueue()
         id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
@@ -125,7 +129,14 @@ if __name__ == "__main__":
         datefmt='%Y%m%d %H:%M:%S',
         handlers=[logging.StreamHandler(stream=sys.stderr)])
 
-    app = WebGUI(docs_url=None, redoc_url=None)
+    model_assigner = ModelAssigner()
+    database = RefactDatabase()
+    stats_service = StatisticsService(database)
+    app = WebGUI(
+        model_assigner=model_assigner,
+        database=database,
+        stats_service=stats_service,
+        docs_url=None, redoc_url=None)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     uvicorn.run(
