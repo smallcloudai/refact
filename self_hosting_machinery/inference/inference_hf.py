@@ -267,15 +267,16 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
                     FeedScratchoadCriteria(self._tokenizer, t0, scratchpad),
                 ])
                 streamer = SMCStream(self._tokenizer, request_id, upload_proxy, upload_proxy_args, scratchpad)
+                temperature = request.get("temperature", 0.2)
                 generation_kwargs = dict(input_ids=tokens_prompt.view(1, *tokens_prompt.shape),
                                          streamer=streamer,
                                          max_new_tokens=request["max_tokens"],
                                          stopping_criteria=stopping_criteria,
-                                         do_sample=True,
+                                         do_sample=temperature >= 0.05,
                                          return_dict_in_generate=True,
                                          output_scores=True,
                                          top_p=request.get('top_p', 1.0),
-                                         temperature=request.get('temperature', 0.2))
+                                         temperature=temperature)
 
                 self._model.generate(**generation_kwargs)
             if not scratchpad.finish_reason:
