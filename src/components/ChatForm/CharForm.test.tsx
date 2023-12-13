@@ -9,10 +9,13 @@ describe("ChatForm", () => {
 
         const {user, ...app} = render(<ChatForm onSubmit={fakeOnSubmit} />)
 
-        const textarea = app.container.querySelector("textarea")
+        const textarea: HTMLTextAreaElement | null = app.container.querySelector("textarea")
         expect(textarea).not.toBeNull()
-        await user.type(textarea, "hello");
-        await user.type(textarea, "{enter}")
+        if(textarea) {
+            await user.type(textarea, "hello");
+            await user.type(textarea, "{enter}")
+        }
+
         expect(fakeOnSubmit).toHaveBeenCalled();
     })
 
@@ -22,8 +25,11 @@ describe("ChatForm", () => {
         const {user, ...app} = render(<ChatForm onSubmit={fakeOnSubmit} />)
         const textarea = app.container.querySelector("textarea")
         expect(textarea).not.toBeNull()
-        await user.type(textarea, "hello");
-        await user.type(textarea, "{Shift>}{enter}{/Shift}");
+        if(textarea) {
+            await user.type(textarea, "hello");
+            await user.type(textarea, "{Shift>}{enter}{/Shift}")
+        }
+;
         expect(fakeOnSubmit).not.toHaveBeenCalled();
     })
 })
