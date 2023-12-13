@@ -1,1 +1,1 @@
-export {PaperPlaneButton, BackToSideBarButton} from "./Buttons"
+export { PaperPlaneButton, BackToSideBarButton } from "./Buttons";
