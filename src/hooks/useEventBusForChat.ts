@@ -1,24 +1,16 @@
 import { useEffect, useReducer } from "react";
-import { ChatMessages, ChatChoice, ChatResponse } from "../services/refact";
+import { ChatMessages, ChatResponse } from "../services/refact";
 
 
-const CHAT_TYPE = "chat"; // TODO: make this longer
+const CHAT_TYPE = "chat_response"; // TODO: make this longer
 
-
-// const ADD_MESSAGE = "add_message";
-// type AddMessage = {
-//     type: ADD_MESSAGE;
-//     payload: CHAT_MESSAGE;
-// }
-
-// type Actions = MessageFromChat
 interface BaseAction {
   type: string;
   payload: unknown;
 };
 
 interface MessageFromChat extends BaseAction {
-  type: "chat";
+  type:  "chat_response"; // CHAT_TYPE didn't work
   payload: ChatResponse
 }
 
@@ -70,14 +62,9 @@ function formatChatResponse(messages: ChatMessages, response: ChatResponse): Cha
 }
 
 function reducer(state: ChatState, action: Actions) { // TODO: action types
-console.log("reducer");
-console.log({ state, action });
+
   switch(action.type) {
     case CHAT_TYPE: {
-      // return {
-      //   ...state,
-      //   choices: state.choices.concat(action.payload.choices)
-      // };
       const messages = formatChatResponse(state.messages, action.payload)
       return {
         ...state,
@@ -96,49 +83,18 @@ console.log({ state, action });
 }
 
 type ChatState = {
-    choices: ChatChoice[];
     messages: ChatMessages;
 }
 
 const initialState: ChatState = {
-    choices: [],
     messages: [],
-}
-
-function postChatToHost(question: string, messages: ChatMessages) {
-    const messagesToSend = messages.concat([
-        ["user", question]
-    ])
-
-    postMessage({type: "chat_question", payload: messagesToSend});
-    return messagesToSend;
 }
 
 
 export const useEventBusForChat = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
-  console.log({state});
-  // // this isn't good
-  // const messages = state.choices.reduce<ChatMessages>((acc, cur) => {
-  //   if(cur.delta.role === "context_file") {
-  //       return acc.concat([[cur.delta.role, cur.delta.file_content || ""]])
-  //   }
-  //   if(acc.length === 0) {
-  //       return acc.concat([[cur.delta.role, cur.delta.content]])
-  //   }
-  //   const lastMessage = acc[acc.length - 1];
-  //   if(lastMessage[0] === cur.delta.role) {
-  //       const head = acc.slice(0, -1)
-  //       return head.concat([[cur.delta.role, lastMessage[1] + cur.delta.content]])
-  //   }
-
-  //   return acc.concat([[cur.delta.role, cur.delta.content]])
-  // }, [])
 
   const listener = (event: MessageEvent) => {
-    console.log(event);
-    // check valid event from window
-    // validate the payload
     dispatch(event.data as Actions);
   };
 
@@ -151,9 +107,12 @@ export const useEventBusForChat = () => {
   }, []);
 
   function askQuestion(question: string) {
+    const messagesToSend = state.messages.concat([
+      ["user", question]
+  ])
 
-    const newMessages = postChatToHost(question, state.messages);
-    dispatch({type: "back_up_messages", payload: newMessages})
+    dispatch({type: "back_up_messages", payload: messagesToSend});
+    postMessage({type: "chat_question", payload: messagesToSend});
   }
 
   return { state, askQuestion };

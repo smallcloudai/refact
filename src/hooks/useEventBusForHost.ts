@@ -4,12 +4,9 @@ import { ChatMessages, sendChat } from "../services/refact";
 
 export function useEventBusForHost() {
 
-
 		useEffect(() => {
 			const controller = new AbortController();
 			const listener = (event: MessageEvent) => {
-				console.log("HOST EVENT");
-				console.log(event.data)
 				// TODO: validate the events
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if(!event.data.type) {return;}
@@ -72,7 +69,7 @@ function handleSend(messages: ChatMessages, controller: AbortController) {
 
 					// console.log(json);
 					window.postMessage({
-						type: "chat",
+						type: "chat_response",
 						payload: json,
 					}, "*");
 				}
