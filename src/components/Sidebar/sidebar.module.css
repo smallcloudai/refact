@@ -1,0 +1,10 @@
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  overflow-y: auto;
+  width: 250;
+  /* px: '$6',
+    py: '$6', */
+}
