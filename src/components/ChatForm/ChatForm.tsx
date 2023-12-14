@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Container, Flex } from "@radix-ui/themes";
+import { Box, Flex } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 import { TextArea } from "@radix-ui/themes";
 import classNames from "classnames";
@@ -29,7 +29,7 @@ export const ChatForm: React.FC<{
         onSubmit(value);
       }}
     >
-      <Container>
+      <Box>
         <TextArea
           className={styles.textarea}
           value={value}
@@ -48,7 +48,7 @@ export const ChatForm: React.FC<{
           )}
           <PaperPlaneButton title="send" size="1" type="submit" />
         </Flex>
-      </Container>
+      </Box>
     </form>
   );
 };

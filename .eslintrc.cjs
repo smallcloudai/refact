@@ -23,11 +23,11 @@ module.exports = {
     "@typescript-eslint/no-unused-vars": [
       "error", // or "error"
       {
-        "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_",
-        "caughtErrorsIgnorePattern": "^_"
-      }
-    ]
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+      },
+    ],
   },
   parserOptions: {
     ecmaVersion: "latest",
