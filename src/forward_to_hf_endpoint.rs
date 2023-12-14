@@ -47,7 +47,7 @@ pub async fn forward_to_hf_style_endpoint(
     if status_code != 200 {
         return Err(format!("{} status={} text {}", url, status_code, response_txt));
     }
-    Ok(serde_json::from_str(&response_txt).unwrap())
+    Ok(serde_json::from_str(&response_txt).unwrap())    // FIXME: unwrap
 }
 
 

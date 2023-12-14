@@ -80,6 +80,7 @@ pub async fn cached_tokenizer(
                 http_path = caps_locked.tokenizer_path_template.replace("$MODEL", rewritten_model_name);();
             }
             _download_tokenizer_file(&client2, http_path.as_str(), cx_locked.cmdline.api_key.clone(), &path).await?;
+            info!("using tokenizer \"{}\"", path.display());
             let tokenizer = Tokenizer::from_file(path).map_err(|e| format!("failed to load tokenizer: {}", e))?;
             let arc = Arc::new(StdRwLock::new(tokenizer));
             cx_locked.tokenizer_map.insert(model_name.clone(), arc.clone());
