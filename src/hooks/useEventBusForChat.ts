@@ -71,12 +71,9 @@ function formatChatResponse(
 }
 
 function reducer(state: ChatState, action: Actions) {
-  // TODO: action types
-
   switch (action.type) {
     case CHAT_TYPE: {
       if (action.payload.id !== state.id) return state;
-      // console.log({state, payload: action.payload})
       const messages = formatChatResponse(state.messages, action.payload);
       return {
         ...state,

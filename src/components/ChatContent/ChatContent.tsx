@@ -19,7 +19,7 @@ export const ChatContent: React.FC<{ messages: ChatMessages }> = ({
 }) => {
   const ref = React.useRef<HTMLDivElement>(null);
   useEffect(() => {
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    ref.current?.scrollIntoView && ref.current.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
   return (

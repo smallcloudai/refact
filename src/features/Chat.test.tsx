@@ -2,7 +2,11 @@ import { expect, vi, describe, it } from "vitest";
 import { render, waitFor } from "../utils/test-utils";
 import { Chat } from "./Chat";
 
-Element.prototype.scrollTo = () => ({});
+
+// Work around for jsdom
+function postMessage(data: unknown) {
+    return window.dispatchEvent(new MessageEvent('message', { source: window, origin: "*", data}))
+}
 
 describe("Chat", () => {
   it("should send  and recive messages from the window", async () => {
@@ -29,12 +33,14 @@ describe("Chat", () => {
         payload: {
           id: "foo",
           messages: [["user", "hello\n"]],
+          model: "gpt-3.5-turbo",
+          title: "",
         },
       },
       "*",
     );
 
-    window.postMessage(
+    postMessage(
       {
         type: "chat_response",
         payload: {
@@ -53,10 +59,9 @@ describe("Chat", () => {
           model: "gpt-3.5-turbo",
         },
       },
-      "*",
     );
 
-    window.postMessage(
+    postMessage(
       {
         type: "chat_response",
         payload: {
@@ -75,11 +80,11 @@ describe("Chat", () => {
           model: "gpt-3.5-turbo",
         },
       },
-      "*",
     );
 
     await waitFor(() => {
       expect(app.getAllByText("hello there")).not.toBeNull();
     });
+
   });
 });
