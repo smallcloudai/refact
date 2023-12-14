@@ -46,10 +46,15 @@ async fn main() {
         .compact()
         .with_ansi(false)
         .init();
+
     {
+        info!("cache dir: {}", cache_dir.display());
         info!("started with enduser_client_version==\"{}\"", gcx.read().await.cmdline.enduser_client_version);
+        let build_info: std::collections::HashMap<&str, &str> = crate::http::routers::info::get_build_info();
+        for (k, v) in build_info {
+            info!("{:>20} {}", k, v);
+        }
     }
-    info!("cache dir: {}", cache_dir.display());
 
     let mut background_tasks = start_background_tasks(gcx.clone());
     let lsp_task = spawn_lsp_task(gcx.clone(), cmdline.clone());  // execution stays inside if stdin-stdout

@@ -6,7 +6,7 @@ use axum::routing::get;
 use crate::http::handler_404;
 
 pub mod v1;
-mod info;
+pub mod info;
 
 
 pub fn make_refact_http_server() -> Router {
