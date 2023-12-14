@@ -10,7 +10,7 @@ interface BaseAction {
 }
 
 interface MessageFromChat extends BaseAction {
-  type: "chat_response"; // TODO: using a constant didn't work :/
+  type: "chat_response"; // TODO: using a constant didn't work, use enum instead
   payload: ChatResponse;
 }
 
@@ -20,7 +20,7 @@ interface BackUpMessages extends BaseAction {
 }
 
 interface RestoreChat extends BaseAction {
-  type: "restore_chat";
+  type: "restore_chat_from_history";
   payload: ChatState;
 }
 
@@ -71,6 +71,7 @@ function formatChatResponse(
 }
 
 function reducer(state: ChatState, action: Actions) {
+
   switch (action.type) {
     case CHAT_TYPE: {
       if (action.payload.id !== state.id) return state;
@@ -87,7 +88,7 @@ function reducer(state: ChatState, action: Actions) {
       };
     }
 
-    case "restore_chat": {
+    case "restore_chat_from_history": {
       return {
         ...state,
         ...action.payload,

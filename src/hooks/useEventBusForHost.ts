@@ -4,7 +4,7 @@ import { ChatState } from "./useEventBusForChat";
 import { useChatHistory } from "./useChatHistory";
 
 export function useEventBusForHost() {
-  const { history, saveChat } = useChatHistory();
+  const { saveChat } = useChatHistory();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -12,8 +12,6 @@ export function useEventBusForHost() {
       if (event.source !== window) {
         return;
       }
-      // console.log("host");
-      // console.log(event.data)
       // TODO: validate the events
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (!event.data.type) {
@@ -46,12 +44,10 @@ export function useEventBusForHost() {
     window.addEventListener("message", listener);
 
     return () => {
-      controller.abort();
       window.removeEventListener("message", listener);
     };
   }, [saveChat]);
 
-  return { history };
 }
 
 function handleSend(chat: ChatState, controller: AbortController) {

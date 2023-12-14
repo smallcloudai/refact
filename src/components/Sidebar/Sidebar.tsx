@@ -6,7 +6,11 @@ import { HistoryItem } from "./HistoryItem";
 
 export const Sidebar: React.FC<{
   history: ChatHistoryItem[];
-}> = ({ history }) => {
+  onHistoryItemClick: (id: string) => void;
+}> = ({
+  history,
+  onHistoryItemClick
+}) => {
   return (
     <Box display={{ initial: "none", md: "block" }} className={styles.sidebar}>
       <Box
@@ -22,7 +26,7 @@ export const Sidebar: React.FC<{
       >
         <ScrollArea scrollbars="vertical">
           {history.map((chat) => (
-            <HistoryItem key={chat.id} chat={chat} />
+            <HistoryItem onClick={onHistoryItemClick} key={chat.id} chat={chat} />
           ))}
         </ScrollArea>
       </Box>

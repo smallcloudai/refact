@@ -5,12 +5,22 @@ import { ChatBubbleIcon } from "@radix-ui/react-icons";
 
 export const HistoryItem: React.FC<{
   chat: ChatHistoryItem;
-}> = ({ chat }) => {
-  console.log(chat);
+  onClick: (id: string) => void;
+}> = ({
+  chat,
+  onClick
+}) => {
   const dateCreated = new Date(chat.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
   return (
-    <Card style={{ maxWidth: "240px" }}>
+    <Card
+      style={{ width: "240px" }}
+      asChild
+    >
+    <button onClick={() => {
+        console.log("Clicked")
+        onClick(chat.id)
+    }}>
       <Text
         as="div"
         size="2"
@@ -35,6 +45,7 @@ export const HistoryItem: React.FC<{
 
         <Text size="1">{dateTimeString}</Text>
       </Flex>
+      </button>
     </Card>
   );
 };

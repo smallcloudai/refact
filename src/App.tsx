@@ -7,11 +7,11 @@ import { HistorySideBar } from "./features/HistorySideBar";
 import { PageWrapper } from "./components/PageWrapper";
 
 function App() {
-  const { history } = useEventBusForHost();
+  useEventBusForHost();
   return (
     <Theme>
       <Flex>
-        <HistorySideBar history={history} />
+        <HistorySideBar />
         <PageWrapper>
           <Chat />
         </PageWrapper>

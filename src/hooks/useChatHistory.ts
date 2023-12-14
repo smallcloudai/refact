@@ -48,5 +48,14 @@ export function useChatHistory() {
     }
   }
 
-  return { history, setHistory, saveChat };
+    function restoreChatFromHistory(chatId: string) {
+
+      const chat = history.find((chat) => chat.id === chatId);
+      if(chat){
+        window.postMessage({ type: "restore_chat_from_history", payload: chat}, "*");
+      }
+    }
+
+
+  return { history, setHistory, saveChat, restoreChatFromHistory };
 }

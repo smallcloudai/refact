@@ -1,9 +1,8 @@
 import React from "react";
 import { Sidebar } from "../components/Sidebar/Sidebar";
-import type { ChatHistoryItem } from "../hooks/useChatHistory";
+import { useChatHistory } from "../hooks/useChatHistory";
 
-export const HistorySideBar: React.FC<{
-  history: ChatHistoryItem[];
-}> = ({ history }) => {
-  return <Sidebar history={history} />;
+export const HistorySideBar: React.FC = () => {
+  const { history, restoreChatFromHistory } = useChatHistory();
+  return <Sidebar history={history} onHistoryItemClick={restoreChatFromHistory} />;
 };
