@@ -30,4 +30,6 @@
   border: 1px solid var(--gray-a7);
   padding: 10px;
   border-radius: 6px;
+  position: relative;
+  flex-shrink: 0;
 }

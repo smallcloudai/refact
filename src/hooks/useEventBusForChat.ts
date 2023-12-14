@@ -51,7 +51,7 @@ function formatChatResponse(messages: ChatMessages, response: ChatResponse): Cha
           return acc.concat([[cur.delta.role, cur.delta.content]])
       }
       const lastMessage = acc[acc.length - 1];
-      console.log({lastMessage, cur})
+
       if(lastMessage[0] === cur.delta.role) {
           const head = acc.slice(0, -1)
           return head.concat([[cur.delta.role, lastMessage[1] + cur.delta.content]])
