@@ -10,7 +10,7 @@ interface BaseAction {
 };
 
 interface MessageFromChat extends BaseAction {
-  type:  "chat_response"; // CHAT_TYPE didn't work
+  type:  "chat_response"; // TODO: using a constant didn't work :/
   payload: ChatResponse
 }
 
@@ -95,7 +95,7 @@ export const useEventBusForChat = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const listener = (event: MessageEvent) => {
-    dispatch(event.data as Actions);
+    dispatch(event.data as Actions); // TODO: validate events
   };
 
   useEffect(() => {
@@ -114,6 +114,7 @@ export const useEventBusForChat = () => {
     dispatch({type: "back_up_messages", payload: messagesToSend});
     postMessage({type: "chat_question", payload: messagesToSend});
   }
+
 
   return { state, askQuestion };
 }
