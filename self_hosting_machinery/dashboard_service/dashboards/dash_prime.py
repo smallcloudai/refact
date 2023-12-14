@@ -10,19 +10,18 @@ from fastapi.responses import JSONResponse
 from self_hosting_machinery.dashboard_service.utils import StatsDataTables, complete_date_axis
 
 
+def robot_human_ratio(robot: int, human: int) -> float:
+    if human == 0:
+        return 1
+    if robot == 0:
+        return 0
+    return round(robot / robot + human, 2)
+
+
 def barplot_rh(
         rh_df: pd.DataFrame,
         extra: Dict
 ) -> Dict:
-    def robot_human_ratio(group) -> float:
-        robot = group["robot_characters"].sum()
-        human = group["human_characters"].sum()
-        if human == 0:
-            return 1
-        if robot == 0:
-            return 0
-        return round(robot / (robot + human), 2)
-
     def create_chart_data(data_dict, x_values, title, date_kind):
         return {
             "data": {key: [v[key] for v in data_dict.values()] for key in ["robot", "human", "ratio", "completions"]},
@@ -35,25 +34,25 @@ def barplot_rh(
     res = {}
     day_to_rh = {
         datetime.strftime(group["dt_end"].iloc[0], "%b %d"): {
-            "robot": int(group["robot_characters"].sum()),
-            "human": int(group["human_characters"].sum()),
-            "ratio": robot_human_ratio(group),
+            "robot": (robot := int(group["robot_characters"].sum())),
+            "human": (human := int(group["human_characters"].sum())),
+            "ratio": robot_human_ratio(robot, human),
             "completions": int(group["completions_cnt"].sum()),
         } for date, group in rh_df.groupby(rh_df['dt_end'].dt.date)
     }
     week_to_rh = {
         group["dt_end"].iloc[0].week: {
-            "robot": int(group["robot_characters"].sum()),
-            "human": int(group["human_characters"].sum()),
-            "ratio": robot_human_ratio(group),
+            "robot": (robot := int(group["robot_characters"].sum())),
+            "human": (human := int(group["human_characters"].sum())),
+            "ratio": robot_human_ratio(robot, human),
             "completions": int(group["completions_cnt"].sum()),
         } for date, group in rh_df.groupby(rh_df['dt_end'].dt.isocalendar().week)
     }
     month_to_rh = {
         group["dt_end"].iloc[0].month: {
-            "robot": int(group["robot_characters"].sum()),
-            "human": int(group["human_characters"].sum()),
-            "ratio": robot_human_ratio(group),
+            "robot": (robot := int(group["robot_characters"].sum())),
+            "human": (human := int(group["human_characters"].sum())),
+            "ratio": robot_human_ratio(robot, human),
             "completions": int(group["completions_cnt"].sum()),
         } for date, group in rh_df.groupby(rh_df['dt_end'].dt.month)
     }
@@ -185,7 +184,7 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
                 "Assistant": (robot := int(group["robot_characters"].sum())),
                 "Human": (human := int(group["human_characters"].sum())),
                 "Total (characters)": robot + human,
-                "A/(A+H)": round(robot / (robot + human), 2),
+                "A/(A+H)": robot_human_ratio(robot, human),
                 "Completions": int(group["completions_cnt"].sum()),
                 "Users": int(group["tenant_name"].nunique()),
             }
