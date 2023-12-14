@@ -13,7 +13,7 @@ export const Chat: React.FC = () => {
       justify="between"
       grow="1"
       style={{
-        height: "calc(100dvh - 100px)", // TODO: fix this
+        height: "calc(100dvh - 180px)", // TODO: fix this
       }}
     >
       <ChatContent messages={state.messages} />

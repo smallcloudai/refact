@@ -1,6 +1,7 @@
 import { expect, vi, describe, it } from "vitest";
 import { render, waitFor } from "../utils/test-utils";
 import { Chat } from "./Chat";
+import { EVENT_NAMES_TO_CHAT, EVENT_NAMES_FROM_CHAT } from "../events";
 
 
 // Work around for jsdom
@@ -29,7 +30,7 @@ describe("Chat", () => {
 
     expect(postMessageSpy).toHaveBeenLastCalledWith(
       {
-        type: "chat_question",
+        type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
           id: "foo",
           messages: [["user", "hello\n"]],
@@ -42,7 +43,7 @@ describe("Chat", () => {
 
     postMessage(
       {
-        type: "chat_response",
+        type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
         payload: {
           id: "foo",
           choices: [
@@ -63,7 +64,7 @@ describe("Chat", () => {
 
     postMessage(
       {
-        type: "chat_response",
+        type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
         payload: {
           id: "foo",
           choices: [
@@ -81,6 +82,8 @@ describe("Chat", () => {
         },
       },
     );
+
+    postMessage({type: EVENT_NAMES_TO_CHAT.DONE_STREAMING})
 
     await waitFor(() => {
       expect(app.getAllByText("hello there")).not.toBeNull();

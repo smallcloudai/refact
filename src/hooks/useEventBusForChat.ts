@@ -1,8 +1,8 @@
 import { useEffect, useReducer } from "react";
 import { ChatMessages, ChatResponse } from "../services/refact";
 import { v4 as uuidv4 } from "uuid";
+import { EVENT_NAMES_TO_CHAT, EVENT_NAMES_FROM_CHAT } from "../events";
 
-const CHAT_TYPE = "chat_response"; // TODO: make this longer
 
 interface BaseAction {
   type: string;
@@ -10,21 +10,25 @@ interface BaseAction {
 }
 
 interface MessageFromChat extends BaseAction {
-  type: "chat_response"; // TODO: using a constant didn't work, use enum instead
+  type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE //"chat_response"; // TODO: using a constant didn't work, use enum instead
   payload: ChatResponse;
 }
 
 interface BackUpMessages extends BaseAction {
-  type: "back_up_messages";
+  type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES; // "back_up_messages";
   payload: ChatMessages;
 }
 
 interface RestoreChat extends BaseAction {
-  type: "restore_chat_from_history";
+  type:  EVENT_NAMES_TO_CHAT.RESTORE_CHAT //"restore_chat_from_history";
   payload: ChatState;
 }
 
-type Actions = MessageFromChat | BackUpMessages | RestoreChat;
+interface NewChatThread extends BaseAction {
+  type: EVENT_NAMES_TO_CHAT.NEW_CHAT;
+}
+
+type Actions = MessageFromChat | BackUpMessages | RestoreChat | NewChatThread;
 
 declare global {
   interface Window {
@@ -73,7 +77,7 @@ function formatChatResponse(
 function reducer(state: ChatState, action: Actions) {
 
   switch (action.type) {
-    case CHAT_TYPE: {
+    case EVENT_NAMES_TO_CHAT.CHAT_RESPONSE: {
       if (action.payload.id !== state.id) return state;
       const messages = formatChatResponse(state.messages, action.payload);
       return {
@@ -81,19 +85,24 @@ function reducer(state: ChatState, action: Actions) {
         messages,
       };
     }
-    case "back_up_messages": {
+    case EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES: {
       return {
         ...state,
         messages: action.payload,
       };
     }
 
-    case "restore_chat_from_history": {
+    case EVENT_NAMES_TO_CHAT.RESTORE_CHAT: {
       return {
         ...state,
         ...action.payload,
       };
     }
+
+    case EVENT_NAMES_TO_CHAT.NEW_CHAT: {
+      return initialState;
+    }
+
     default:
       return state;
   }
@@ -124,11 +133,9 @@ export const useEventBusForChat = () => {
       // TODO: validate events
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       switch (event.data.type) {
-        case "chat_done_streaming": {
-          console.log("client saving chat");
-          console.log(state);
+        case  EVENT_NAMES_TO_CHAT.DONE_STREAMING: {
           postMessage({
-            type: "save_chat_to_history",
+            type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
             payload: state,
           });
           return;
@@ -148,9 +155,9 @@ export const useEventBusForChat = () => {
   function askQuestion(question: string) {
     const messagesToSend = state.messages.concat([["user", question]]);
 
-    dispatch({ type: "back_up_messages", payload: messagesToSend });
+    dispatch({ type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES, payload: messagesToSend });
     postMessage({
-      type: "chat_question",
+      type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
       payload: {
         id: state.id,
         messages: messagesToSend,

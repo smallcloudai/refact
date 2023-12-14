@@ -1,6 +1,7 @@
 import { useLocalStorage } from "usehooks-ts";
 import { ChatMessages } from "../services/refact";
 import { ChatState } from "./useEventBusForChat";
+import { EVENT_NAMES_TO_CHAT } from "../events";
 
 export type ChatHistoryItem = {
   id: string;
@@ -48,14 +49,18 @@ export function useChatHistory() {
     }
   }
 
-    function restoreChatFromHistory(chatId: string) {
+  function restoreChatFromHistory(chatId: string) {
 
-      const chat = history.find((chat) => chat.id === chatId);
-      if(chat){
-        window.postMessage({ type: "restore_chat_from_history", payload: chat}, "*");
-      }
+    const chat = history.find((chat) => chat.id === chatId);
+    if(chat){
+      window.postMessage({ type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT, payload: chat}, "*");
     }
+  }
+
+  function createNewChat() {
+    window.postMessage({type: EVENT_NAMES_TO_CHAT.NEW_CHAT}, "*");
+  }
 
 
-  return { history, setHistory, saveChat, restoreChatFromHistory };
+  return { history, setHistory, saveChat, restoreChatFromHistory, createNewChat };
 }

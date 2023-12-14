@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { sendChat } from "../services/refact";
 import { ChatState } from "./useEventBusForChat";
 import { useChatHistory } from "./useChatHistory";
+import { EVENT_NAMES_TO_CHAT, EVENT_NAMES_FROM_CHAT } from "../events";
 
 export function useEventBusForHost() {
   const { saveChat } = useChatHistory();
@@ -19,7 +20,7 @@ export function useEventBusForHost() {
       }
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       switch (event.data.type) {
-        case "chat_question": {
+        case EVENT_NAMES_FROM_CHAT.ASK_QUESTION: {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           const payload = event.data.payload as unknown as ChatState;
           saveChat({
@@ -32,7 +33,7 @@ export function useEventBusForHost() {
           handleSend(event.data.payload as ChatState, controller);
           return;
         }
-        case "save_chat_to_history": {
+        case EVENT_NAMES_FROM_CHAT.SAVE_CHAT: {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           const chat = event.data.payload as ChatState;
           saveChat(chat);
@@ -77,7 +78,7 @@ function handleSend(chat: ChatState, controller: AbortController) {
 
           const maybeJsonString = delta.substring(6);
           if (maybeJsonString === "[DONE]") {
-            window.postMessage({ type: "chat_done_streaming" }, "*");
+            window.postMessage({ type: EVENT_NAMES_TO_CHAT.DONE_STREAMING }, "*");
             return Promise.resolve(); // handle finish
           }
 
@@ -88,7 +89,7 @@ function handleSend(chat: ChatState, controller: AbortController) {
               unknown
             >;
             console.log(errorJson);
-            window.postMessage({ type: "chat_error", payload: errorJson }, "*");
+            window.postMessage({ type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING, payload: errorJson }, "*");
             return Promise.reject(errorJson.detail || "streaming error"); // handle error
           }
           // figure out how to safely parseJson
@@ -98,7 +99,7 @@ function handleSend(chat: ChatState, controller: AbortController) {
           // console.log(json);
           window.postMessage(
             {
-              type: "chat_response",
+              type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
               payload: {
                 id: chat.id,
                 ...json,
