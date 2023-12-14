@@ -14,7 +14,8 @@ export const HistoryItem: React.FC<{
   const dateTimeString = dateCreated.toLocaleString();
   return (
     <Card
-      style={{ width: "240px" }}
+      style={{ width: "240px", marginBottom: "2px" }}
+      variant="surface"
       asChild
     >
     <button onClick={() => {
