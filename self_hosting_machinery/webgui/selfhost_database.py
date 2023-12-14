@@ -126,7 +126,7 @@ class DisableLogger:
 
 
 class RefactDatabase:
-    KEYSPACE = "smc"
+    KEYSPACE = os.environ.get("REFACT_KEYSPACE", "smc")
     CONN_NAME = "refactdb_connection"
 
     def __init__(self):
