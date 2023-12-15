@@ -170,7 +170,7 @@ class RefactDatabase:
 
     @property
     def _database_port(self) -> int:
-        return 9042
+        return int(os.environ.get("REFACT_DATABASE_PORT", 9042))
 
     def _create_and_set_keyspace(self):
         self._session.execute(f"""
