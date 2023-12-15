@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { sendChat } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
-import { EVENT_NAMES_TO_CHAT, EVENT_NAMES_FROM_CHAT, ChatThread } from "../events";
+import {
+  EVENT_NAMES_TO_CHAT,
+  EVENT_NAMES_FROM_CHAT,
+  ChatThread,
+} from "../events";
 
 export function useEventBusForHost() {
   const { saveChat } = useChatHistory();
@@ -22,6 +26,7 @@ export function useEventBusForHost() {
         case EVENT_NAMES_FROM_CHAT.ASK_QUESTION: {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           const payload = event.data.payload as unknown as ChatThread;
+
           saveChat({
             id: payload.id,
             title: payload.title ?? "",
@@ -47,7 +52,6 @@ export function useEventBusForHost() {
       window.removeEventListener("message", listener);
     };
   }, [saveChat]);
-
 }
 
 function handleSend(chat: ChatThread, controller: AbortController) {
@@ -77,25 +81,25 @@ function handleSend(chat: ChatThread, controller: AbortController) {
 
           const maybeJsonString = delta.substring(6);
           if (maybeJsonString === "[DONE]") {
-            window.postMessage({ type: EVENT_NAMES_TO_CHAT.DONE_STREAMING }, "*");
+            window.postMessage(
+              { type: EVENT_NAMES_TO_CHAT.DONE_STREAMING },
+              "*",
+            );
             return Promise.resolve(); // handle finish
           }
 
           if (maybeJsonString === "[ERROR]") {
             console.log("Streaming error");
+            // TODO safely parse json
             const errorJson = JSON.parse(maybeJsonString) as Record<
               string,
               unknown
             >;
-            console.log(errorJson);
-            window.postMessage({ type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING, payload: errorJson }, "*");
-            return Promise.reject(errorJson.detail || "streaming error"); // handle error
+            return Promise.reject(errorJson.detail ?? "streaming error"); // handle error
           }
           // figure out how to safely parseJson
 
           const json = JSON.parse(maybeJsonString) as Record<string, unknown>;
-
-          // console.log(json);
           window.postMessage(
             {
               type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
@@ -111,5 +115,14 @@ function handleSend(chat: ChatThread, controller: AbortController) {
         return reader.read().then(pump);
       });
     })
-    .catch(console.error);
+    .catch((error: Error) => {
+      console.error(error);
+      window.postMessage(
+        { type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING, payload: error.message },
+        "*",
+      );
+    })
+    .finally(() => {
+      window.postMessage({ type: EVENT_NAMES_TO_CHAT.DONE_STREAMING }, "*");
+    });
 }

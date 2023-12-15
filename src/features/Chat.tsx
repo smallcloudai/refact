@@ -19,7 +19,6 @@ export const Chat: React.FC = () => {
       <ChatContent messages={state.chat.messages} />
       <ChatForm
         onSubmit={(value) => {
-
           askQuestion(value);
         }}
       />

@@ -6,10 +6,7 @@ import { ChatBubbleIcon } from "@radix-ui/react-icons";
 export const HistoryItem: React.FC<{
   chat: ChatHistoryItem;
   onClick: (id: string) => void;
-}> = ({
-  chat,
-  onClick
-}) => {
+}> = ({ chat, onClick }) => {
   const dateCreated = new Date(chat.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
   return (
@@ -18,34 +15,36 @@ export const HistoryItem: React.FC<{
       variant="surface"
       asChild
     >
-    <button onClick={() => {
-        console.log("Clicked")
-        onClick(chat.id)
-    }}>
-      <Text
-        as="div"
-        size="2"
-        weight="bold"
-        style={{
-          textOverflow: "ellipsis",
-          overflow: "hidden",
-          whiteSpace: "nowrap",
+      <button
+        onClick={() => {
+          console.log("Clicked");
+          onClick(chat.id);
         }}
       >
-        {chat.title}
-      </Text>
-
-      <Flex justify="between" style={{ marginTop: "8px" }}>
         <Text
-          size="1"
-          style={{ display: "flex", gap: "4px", alignItems: "center" }}
+          as="div"
+          size="2"
+          weight="bold"
+          style={{
+            textOverflow: "ellipsis",
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+          }}
         >
-          <ChatBubbleIcon />{" "}
-          {chat.messages.filter((message) => message[0] === "user").length}
+          {chat.title}
         </Text>
 
-        <Text size="1">{dateTimeString}</Text>
-      </Flex>
+        <Flex justify="between" style={{ marginTop: "8px" }}>
+          <Text
+            size="1"
+            style={{ display: "flex", gap: "4px", alignItems: "center" }}
+          >
+            <ChatBubbleIcon />{" "}
+            {chat.messages.filter((message) => message[0] === "user").length}
+          </Text>
+
+          <Text size="1">{dateTimeString}</Text>
+        </Flex>
       </button>
     </Card>
   );

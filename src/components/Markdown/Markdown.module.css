@@ -1,0 +1,8 @@
+.relative {
+  position: relative;
+}
+
+.floatButton {
+  position: absolute;
+  right: 20px;
+}

@@ -34,12 +34,12 @@ export function useChatHistory() {
       const firstMessage = chat.messages.find(
         (message) => message[0] === "user",
       );
-      const title = firstMessage ? firstMessage[1] : "New Chat";
+      const title = firstMessage?.[1].replace(/^\W*/, "") ?? "New Chat";
 
       const newChat: ChatHistoryItem = {
         id: chat.id,
         messages: chat.messages,
-        title: title,
+        title,
         model: chat.model,
         createdAt: now,
         lastUpdated: now,
@@ -50,20 +50,28 @@ export function useChatHistory() {
   }
 
   function restoreChatFromHistory(chatId: string) {
-
     const chat = history.find((chat) => chat.id === chatId);
-    if(chat){
-      window.postMessage({ type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT, payload: chat}, "*");
+    if (chat) {
+      window.postMessage(
+        { type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT, payload: chat },
+        "*",
+      );
     }
   }
 
   function createNewChat() {
-    window.postMessage({type: EVENT_NAMES_TO_CHAT.NEW_CHAT}, "*");
+    window.postMessage({ type: EVENT_NAMES_TO_CHAT.NEW_CHAT }, "*");
   }
 
   const sortedHistory = history.slice().sort((a, b) => {
-    return a.createdAt < b.createdAt? 1 : -1;
-  })
+    return a.createdAt < b.createdAt ? 1 : -1;
+  });
 
-  return { history: sortedHistory, setHistory, saveChat, restoreChatFromHistory, createNewChat };
+  return {
+    history: sortedHistory,
+    setHistory,
+    saveChat,
+    restoreChatFromHistory,
+    createNewChat,
+  };
 }

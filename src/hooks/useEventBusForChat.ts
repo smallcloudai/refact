@@ -1,8 +1,12 @@
 import { useEffect, useReducer } from "react";
 import { ChatMessages, ChatResponse } from "../services/refact";
 import { v4 as uuidv4 } from "uuid";
-import { EVENT_NAMES_TO_CHAT, EVENT_NAMES_FROM_CHAT, Actions, ChatThread } from "../events";
-
+import {
+  EVENT_NAMES_TO_CHAT,
+  EVENT_NAMES_FROM_CHAT,
+  Actions,
+  ChatThread,
+} from "../events";
 
 declare global {
   interface Window {
@@ -49,7 +53,6 @@ function formatChatResponse(
 }
 
 function reducer(state: ChatState, action: Actions): ChatState {
-
   switch (action.type) {
     case EVENT_NAMES_TO_CHAT.CHAT_RESPONSE: {
       if (action.payload.id !== state.chat.id) return state;
@@ -57,10 +60,10 @@ function reducer(state: ChatState, action: Actions): ChatState {
       return {
         ...state,
         chat: {
-         ...state.chat,
-         messages,
-        }
-      }
+          ...state.chat,
+          messages,
+        },
+      };
     }
     case EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES: {
       return {
@@ -68,19 +71,32 @@ function reducer(state: ChatState, action: Actions): ChatState {
         chat: {
           ...state.chat,
           messages: action.payload,
-        }
+        },
       };
     }
 
     case EVENT_NAMES_TO_CHAT.RESTORE_CHAT: {
       return {
         ...state,
+        streaming: false,
         chat: action.payload,
       };
     }
 
     case EVENT_NAMES_TO_CHAT.NEW_CHAT: {
       return createInitialState();
+    }
+
+    case EVENT_NAMES_TO_CHAT.DONE_STREAMING: {
+      // note: should avoid side effects in reducer :/
+      postMessage({
+        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+        payload: state.chat,
+      });
+      return {
+        ...state,
+        streaming: false,
+      };
     }
 
     default:
@@ -90,21 +106,22 @@ function reducer(state: ChatState, action: Actions): ChatState {
 
 export type ChatState = {
   chat: ChatThread;
-}
+  streaming: boolean;
+};
 
 function createInitialState(): ChatState {
   return {
+    streaming: false,
     chat: {
       id: uuidv4(),
       messages: [],
       title: "",
-      model: "gpt-3.5-turbo"
-    }
-  }
+      model: "gpt-3.5-turbo",
+    },
+  };
 }
 
 const initialState = createInitialState();
-
 
 export const useEventBusForChat = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -115,18 +132,8 @@ export const useEventBusForChat = () => {
         return;
       }
       // TODO: validate events
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      switch (event.data.type) {
-        case  EVENT_NAMES_TO_CHAT.DONE_STREAMING: {
-          postMessage({
-            type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-            payload: state.chat,
-          });
-          return;
-        }
-        default:
-          dispatch(event.data as Actions);
-      }
+
+      dispatch(event.data as Actions);
     };
 
     window.addEventListener("message", listener);
@@ -139,7 +146,10 @@ export const useEventBusForChat = () => {
   function askQuestion(question: string) {
     const messagesToSend = state.chat.messages.concat([["user", question]]);
 
-    dispatch({ type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES, payload: messagesToSend });
+    dispatch({
+      type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES,
+      payload: messagesToSend,
+    });
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
       payload: {

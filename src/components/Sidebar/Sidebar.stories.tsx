@@ -5,7 +5,7 @@ const meta = {
   title: "Sidebar",
   component: Sidebar,
   args: {
-    history: []
+    history: [],
   },
 } satisfies Meta<typeof Sidebar>;
 

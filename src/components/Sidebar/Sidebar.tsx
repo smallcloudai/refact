@@ -8,11 +8,7 @@ export const Sidebar: React.FC<{
   history: ChatHistoryItem[];
   onHistoryItemClick: (id: string) => void;
   onCreateNewChat: () => void;
-}> = ({
-  history,
-  onHistoryItemClick,
-  onCreateNewChat,
-}) => {
+}> = ({ history, onHistoryItemClick, onCreateNewChat }) => {
   return (
     <Box display={{ initial: "none", md: "block" }} className={styles.sidebar}>
       <Box
@@ -27,11 +23,23 @@ export const Sidebar: React.FC<{
         }}
       >
         <ScrollArea scrollbars="vertical">
-          <Flex style={{width: "240px"}} justify="center" align="center" pt="4" pb="4">
-            <Button onClick={onCreateNewChat} style={{marginRight: "16px"}}>Start a new chat</Button>
+          <Flex
+            style={{ width: "240px" }}
+            justify="center"
+            align="center"
+            pt="4"
+            pb="4"
+          >
+            <Button onClick={onCreateNewChat} style={{ marginRight: "16px" }}>
+              Start a new chat
+            </Button>
           </Flex>
           {history.map((chat) => (
-            <HistoryItem onClick={onHistoryItemClick} key={chat.id} chat={chat} />
+            <HistoryItem
+              onClick={onHistoryItemClick}
+              key={chat.id}
+              chat={chat}
+            />
           ))}
         </ScrollArea>
       </Box>

@@ -3,10 +3,11 @@ import { render, waitFor } from "../utils/test-utils";
 import { Chat } from "./Chat";
 import { EVENT_NAMES_TO_CHAT, EVENT_NAMES_FROM_CHAT } from "../events";
 
-
 // Work around for jsdom
 function postMessage(data: unknown) {
-    return window.dispatchEvent(new MessageEvent('message', { source: window, origin: "*", data}))
+  return window.dispatchEvent(
+    new MessageEvent("message", { source: window, origin: "*", data }),
+  );
 }
 
 describe("Chat", () => {
@@ -41,53 +42,48 @@ describe("Chat", () => {
       "*",
     );
 
-    postMessage(
-      {
-        type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
-        payload: {
-          id: "foo",
-          choices: [
-            {
-              delta: {
-                content: "",
-                role: "assistant",
-              },
-              finish_reason: null,
-              index: 0,
+    postMessage({
+      type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
+      payload: {
+        id: "foo",
+        choices: [
+          {
+            delta: {
+              content: "",
+              role: "assistant",
             },
-          ],
-          created: 1702552152.03,
-          model: "gpt-3.5-turbo",
-        },
+            finish_reason: null,
+            index: 0,
+          },
+        ],
+        created: 1702552152.03,
+        model: "gpt-3.5-turbo",
       },
-    );
+    });
 
-    postMessage(
-      {
-        type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
-        payload: {
-          id: "foo",
-          choices: [
-            {
-              delta: {
-                content: "hello there",
-                role: "assistant",
-              },
-              finish_reason: null,
-              index: 0,
+    postMessage({
+      type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
+      payload: {
+        id: "foo",
+        choices: [
+          {
+            delta: {
+              content: "hello there",
+              role: "assistant",
             },
-          ],
-          created: 1702552152.03,
-          model: "gpt-3.5-turbo",
-        },
+            finish_reason: null,
+            index: 0,
+          },
+        ],
+        created: 1702552152.03,
+        model: "gpt-3.5-turbo",
       },
-    );
+    });
 
-    postMessage({type: EVENT_NAMES_TO_CHAT.DONE_STREAMING})
+    postMessage({ type: EVENT_NAMES_TO_CHAT.DONE_STREAMING });
 
     await waitFor(() => {
       expect(app.getAllByText("hello there")).not.toBeNull();
     });
-
   });
 });
