@@ -100,7 +100,7 @@ function reducer(state: ChatState, action: Actions) {
     }
 
     case EVENT_NAMES_TO_CHAT.NEW_CHAT: {
-      return initialState;
+      return createInitialState();
     }
 
     default:
@@ -115,12 +115,17 @@ export type ChatState = {
   model: string;
 };
 
-const initialState: ChatState = {
-  id: uuidv4(),
-  messages: [],
-  title: "",
-  model: "gpt-3.5-turbo",
-};
+function createInitialState(): ChatState {
+  return {
+    id: uuidv4(),
+    messages: [],
+    title: "",
+    model: "gpt-3.5-turbo",
+  };
+}
+
+const initialState = createInitialState();
+
 
 export const useEventBusForChat = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
