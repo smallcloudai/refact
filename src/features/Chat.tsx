@@ -16,7 +16,7 @@ export const Chat: React.FC = () => {
         height: "calc(100dvh - 180px)", // TODO: fix this
       }}
     >
-      <ChatContent messages={state.messages} />
+      <ChatContent messages={state.chat.messages} />
       <ChatForm
         onSubmit={(value) => {
 

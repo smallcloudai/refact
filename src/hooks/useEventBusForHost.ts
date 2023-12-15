@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { sendChat } from "../services/refact";
-import { ChatState } from "./useEventBusForChat";
 import { useChatHistory } from "./useChatHistory";
-import { EVENT_NAMES_TO_CHAT, EVENT_NAMES_FROM_CHAT } from "../events";
+import { EVENT_NAMES_TO_CHAT, EVENT_NAMES_FROM_CHAT, ChatThread } from "../events";
 
 export function useEventBusForHost() {
   const { saveChat } = useChatHistory();
@@ -22,7 +21,7 @@ export function useEventBusForHost() {
       switch (event.data.type) {
         case EVENT_NAMES_FROM_CHAT.ASK_QUESTION: {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          const payload = event.data.payload as unknown as ChatState;
+          const payload = event.data.payload as unknown as ChatThread;
           saveChat({
             id: payload.id,
             title: payload.title ?? "",
@@ -30,12 +29,12 @@ export function useEventBusForHost() {
             model: payload.model || "gpt-3.5-turbo",
           });
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          handleSend(event.data.payload as ChatState, controller);
+          handleSend(event.data.payload as ChatThread, controller);
           return;
         }
         case EVENT_NAMES_FROM_CHAT.SAVE_CHAT: {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          const chat = event.data.payload as ChatState;
+          const chat = event.data.payload as ChatThread;
           saveChat(chat);
           return;
         }
@@ -51,7 +50,7 @@ export function useEventBusForHost() {
 
 }
 
-function handleSend(chat: ChatState, controller: AbortController) {
+function handleSend(chat: ChatThread, controller: AbortController) {
   sendChat(chat.messages, "gpt-3.5-turbo", controller)
     .then((response) => {
       const decoder = new TextDecoder();

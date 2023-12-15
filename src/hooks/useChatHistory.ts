@@ -1,7 +1,6 @@
 import { useLocalStorage } from "usehooks-ts";
 import { ChatMessages } from "../services/refact";
-import { ChatState } from "./useEventBusForChat";
-import { EVENT_NAMES_TO_CHAT } from "../events";
+import { ChatThread, EVENT_NAMES_TO_CHAT } from "../events";
 
 export type ChatHistoryItem = {
   id: string;
@@ -19,16 +18,17 @@ export function useChatHistory() {
   );
 
   // TODO: add model
-  function saveChat(chat: ChatState) {
+  function saveChat(chat: ChatThread | ChatHistoryItem) {
     const maybeChat = history.find((item) => item.id === chat.id);
     const now = new Date().toISOString();
-    console.log({ maybeChat });
+
     if (maybeChat) {
       maybeChat.lastUpdated = now;
       maybeChat.messages = chat.messages;
       const chats = history
         .filter((item) => item.id !== chat.id)
         .concat(maybeChat);
+
       setHistory(chats);
     } else {
       const firstMessage = chat.messages.find(
@@ -61,6 +61,9 @@ export function useChatHistory() {
     window.postMessage({type: EVENT_NAMES_TO_CHAT.NEW_CHAT}, "*");
   }
 
+  const sortedHistory = history.slice().sort((a, b) => {
+    return a.createdAt < b.createdAt? 1 : -1;
+  })
 
-  return { history, setHistory, saveChat, restoreChatFromHistory, createNewChat };
+  return { history: sortedHistory, setHistory, saveChat, restoreChatFromHistory, createNewChat };
 }
