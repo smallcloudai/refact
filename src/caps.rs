@@ -280,10 +280,8 @@ pub async fn load_caps(
     _inherit_r1_from_r0(&mut r1, &r0);
     r1.endpoint_template = relative_to_full_url(&caps_url, &r1.endpoint_template)?;
     r1.endpoint_chat_passthrough = relative_to_full_url(&caps_url, &r1.endpoint_chat_passthrough)?;
-    if r1.cloud_name == "Refact Self-Hosted" {
-        r1.telemetry_basic_dest = relative_to_full_url(&caps_url, &r1.telemetry_basic_dest)?;
-        r1.telemetry_corrected_snippets_dest = relative_to_full_url(&caps_url, &r1.telemetry_corrected_snippets_dest)?;
-    }
+    r1.telemetry_basic_dest = relative_to_full_url(&caps_url, &r1.telemetry_basic_dest)?;
+    r1.telemetry_corrected_snippets_dest = relative_to_full_url(&caps_url, &r1.telemetry_corrected_snippets_dest)?;
     info!("caps {} completion models", r1.code_completion_models.len());
     info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
     info!("caps {} chat models", r1.code_chat_models.len());
