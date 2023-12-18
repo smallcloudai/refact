@@ -4,8 +4,14 @@ import { v4 as uuidv4 } from "uuid";
 import {
   EVENT_NAMES_TO_CHAT,
   EVENT_NAMES_FROM_CHAT,
-  Actions,
+  isActionToChat,
+  ActionToChat,
   ChatThread,
+  isResponseToChat,
+  isBackupMessages,
+  isRestoreChat,
+  isCreateNewChat,
+  isChatDoneStreaming,
 } from "../events";
 
 declare global {
@@ -52,56 +58,55 @@ function formatChatResponse(
   }, messages);
 }
 
-function reducer(state: ChatState, action: Actions): ChatState {
-  switch (action.type) {
-    case EVENT_NAMES_TO_CHAT.CHAT_RESPONSE: {
-      if (action.payload.id !== state.chat.id) return state;
-      const messages = formatChatResponse(state.chat.messages, action.payload);
-      return {
-        ...state,
-        chat: {
-          ...state.chat,
-          messages,
-        },
-      };
-    }
-    case EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES: {
-      return {
-        ...state,
-        chat: {
-          ...state.chat,
-          messages: action.payload,
-        },
-      };
-    }
-
-    case EVENT_NAMES_TO_CHAT.RESTORE_CHAT: {
-      return {
-        ...state,
-        streaming: false,
-        chat: action.payload,
-      };
-    }
-
-    case EVENT_NAMES_TO_CHAT.NEW_CHAT: {
-      return createInitialState();
-    }
-
-    case EVENT_NAMES_TO_CHAT.DONE_STREAMING: {
-      // note: should avoid side effects in reducer :/
-      postMessage({
-        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-        payload: state.chat,
-      });
-      return {
-        ...state,
-        streaming: false,
-      };
-    }
-
-    default:
-      return state;
+function reducer(state: ChatState, action: ActionToChat): ChatState {
+  if (isResponseToChat(action)) {
+    if (action.payload.id !== state.chat.id) return state;
+    const messages = formatChatResponse(state.chat.messages, action.payload);
+    return {
+      ...state,
+      chat: {
+        ...state.chat,
+        messages,
+      },
+    };
   }
+
+  if (isBackupMessages(action)) {
+    return {
+      ...state,
+      chat: {
+        ...state.chat,
+        messages: action.payload,
+      },
+    };
+  }
+
+  if (isRestoreChat(action)) {
+    return {
+      ...state,
+      streaming: false,
+      chat: action.payload,
+    };
+  }
+
+  if (isCreateNewChat(action)) {
+    return createInitialState();
+  }
+
+  if (isChatDoneStreaming(action)) {
+    // note: should avoid side effects in reducer :/
+    postMessage({
+      type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+      payload: state.chat,
+    });
+
+    return {
+      ...state,
+      streaming: false,
+    };
+  }
+
+  return state;
 }
 
 export type ChatState = {
@@ -132,8 +137,9 @@ export const useEventBusForChat = () => {
         return;
       }
       // TODO: validate events
-
-      dispatch(event.data as Actions);
+      if (isActionToChat(event.data)) {
+        dispatch(event.data);
+      }
     };
 
     window.addEventListener("message", listener);
@@ -144,22 +150,25 @@ export const useEventBusForChat = () => {
   }, [state, dispatch]);
 
   function askQuestion(question: string) {
-    const messagesToSend = state.chat.messages.concat([["user", question]]);
+    const messages = state.chat.messages.concat([["user", question]]);
+    sendMessages(messages);
+  }
 
+  function sendMessages(messages: ChatMessages) {
     dispatch({
       type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES,
-      payload: messagesToSend,
+      payload: messages,
     });
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
       payload: {
         id: state.chat.id,
-        messages: messagesToSend,
+        messages: messages,
         title: state.chat.title,
         model: state.chat.model,
       },
     });
   }
 
-  return { state, askQuestion };
+  return { state, askQuestion, sendMessages };
 };

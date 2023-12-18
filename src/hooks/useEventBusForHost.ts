@@ -3,8 +3,9 @@ import { sendChat } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
   EVENT_NAMES_TO_CHAT,
-  EVENT_NAMES_FROM_CHAT,
   ChatThread,
+  isQuestionFromChat,
+  isSaveChatFromChat,
 } from "../events";
 
 export function useEventBusForHost() {
@@ -16,33 +17,24 @@ export function useEventBusForHost() {
       if (event.source !== window) {
         return;
       }
-      // TODO: validate the events
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (!event.data.type) {
+
+      if (isQuestionFromChat(event.data)) {
+        const payload = event.data.payload;
+
+        saveChat({
+          id: payload.id,
+          title: payload.title ?? "",
+          messages: payload.messages,
+          model: payload.model || "gpt-3.5-turbo",
+        });
+
+        handleSend(event.data.payload, controller);
         return;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      switch (event.data.type) {
-        case EVENT_NAMES_FROM_CHAT.ASK_QUESTION: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          const payload = event.data.payload as unknown as ChatThread;
 
-          saveChat({
-            id: payload.id,
-            title: payload.title ?? "",
-            messages: payload.messages,
-            model: payload.model || "gpt-3.5-turbo",
-          });
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          handleSend(event.data.payload as ChatThread, controller);
-          return;
-        }
-        case EVENT_NAMES_FROM_CHAT.SAVE_CHAT: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          const chat = event.data.payload as ChatThread;
-          saveChat(chat);
-          return;
-        }
+      if (isSaveChatFromChat(event.data)) {
+        const chat = event.data.payload;
+        saveChat(chat);
       }
     };
 

@@ -21,12 +21,16 @@ module.exports = {
     ],
     "@typescript-eslint/consistent-type-definitions": "off",
     "@typescript-eslint/no-unused-vars": [
-      "error", // or "error"
+      "error",
       {
         argsIgnorePattern: "^_",
         varsIgnorePattern: "^_",
         caughtErrorsIgnorePattern: "^_",
       },
+    ],
+    "@typescript-eslint/no-confusing-void-expression": [
+      "error",
+      { ignoreArrowShorthand: true },
     ],
   },
   parserOptions: {
