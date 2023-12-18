@@ -1,14 +1,16 @@
+import hashlib
+import json
+import os.path
 import random
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import jsonlines
 
 from self_hosting_machinery.finetune.utils import traces
-from self_hosting_machinery.scripts import env
-
 from self_hosting_machinery.scripts.env import (TRAIN_UNFILTERED_FILEPATH, TEST_UNFILTERED_FILEPATH,
-                                                TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH)
+                                                TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH,
+                                                LOSS_PER_HASH_DB_FILEPATH)
 
 __all__ = ['FileSetsContext']
 
@@ -17,12 +19,34 @@ class FileSetsContext:
     TRAIN_FILES_MIN_NUMBER_WITH_TEST_SET = 4
     TRAIN_FILES_MIN_NUMBER_WITHOUT_TEST_SET = 7
     TEST_FILES_COUNT_WARNING = 64
+    MAX_CACHED_LOSS_ROWS = 1_000_000
 
     def __init__(self, autoselect_test_files_num: int):
         self._check_prerequisites()
         self.autoselect_test_files_num = autoselect_test_files_num
         self.train_files: List[Dict[str, Any]] = list(jsonlines.open(TRAIN_UNFILTERED_FILEPATH))
         self.test_files: List[Dict[str, Any]] = list(jsonlines.open(TEST_UNFILTERED_FILEPATH))
+        try:
+            hash_db = list(jsonlines.open(LOSS_PER_HASH_DB_FILEPATH))
+            self.loss_per_hash_db = {(item["hash"], item["model"]): item for item in
+                                     hash_db[-FileSetsContext.MAX_CACHED_LOSS_ROWS:]}
+        except Exception:
+            self.loss_per_hash_db = dict()
+            Path(LOSS_PER_HASH_DB_FILEPATH).touch()
+
+    def get_loss_by_content(self, model_name: str, content: str) -> Optional[float]:
+        h = hashlib.sha1(content.encode("utf-8")).hexdigest()
+        return self.loss_per_hash_db[(h, model_name)]["loss"] if (h, model_name) in self.loss_per_hash_db else None
+
+    def add_content_loss_pair(self, model_name: str, content: str, loss: float):
+        row = {
+            "hash": hashlib.sha1(content.encode("utf-8")).hexdigest(),
+            "model": model_name,
+            "loss": loss
+        }
+        self.loss_per_hash_db[(row["hash"], row["model"])] = row
+        with open(LOSS_PER_HASH_DB_FILEPATH, "a") as f:
+            f.write(f"{json.dumps(row)}\n")
 
     def _check_prerequisites(self):
         if not Path(TRAIN_UNFILTERED_FILEPATH).exists():
@@ -41,29 +65,6 @@ class FileSetsContext:
         if len(test_files) > self.TEST_FILES_COUNT_WARNING:
             traces.log(f"Manually selected test set contains {len(test_files)} files. "
                        f"It could heavily slow down the training process on the next stage")
-
-    def is_up_to_date(self) -> bool:
-        unfiltered_train, filtered_train = (
-            Path(TRAIN_UNFILTERED_FILEPATH), Path(TRAIN_FILTERED_FILEPATH)
-        )
-        unfiltered_test, filtered_test = (
-            Path(TEST_UNFILTERED_FILEPATH), Path(TEST_FILTERED_FILEPATH)
-        )
-        how_to_filter = Path(env.CONFIG_HOW_TO_FILTER)
-        how_to_filetypes = Path(env.CONFIG_HOW_TO_FILETYPES)
-
-        try:
-            has_updates = [
-                unfiltered_train.lstat().st_mtime > filtered_train.lstat().st_mtime,
-                unfiltered_test.lstat().st_mtime > filtered_test.lstat().st_mtime,
-            ]
-            if how_to_filter.exists():
-                has_updates.append(how_to_filter.lstat().st_mtime > filtered_train.lstat().st_mtime)
-            if how_to_filetypes.exists():
-                has_updates.append(how_to_filetypes.lstat().st_mtime > filtered_train.lstat().st_mtime)
-        except OSError:
-            return False
-        return not any(has_updates)
 
     def dump_filtered(
             self,
