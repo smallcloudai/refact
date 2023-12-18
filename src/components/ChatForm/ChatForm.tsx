@@ -12,12 +12,18 @@ export const ChatForm: React.FC<{
   className?: string;
 }> = ({ onSubmit, onClose, className }) => {
   const [value, setValue] = React.useState("");
+  const handleSubmit = () => {
+    const trimmedValue = value.trim();
+    if (trimmedValue.length > 0) {
+      onSubmit(trimmedValue);
+      setValue(() => "");
+    }
+  };
 
   // TODO: Maybe make a hook for this ?
   const handleEnter = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
-      onSubmit(value);
-      setValue(() => "");
+      handleSubmit();
     }
   };
 
@@ -26,7 +32,7 @@ export const ChatForm: React.FC<{
       className={classNames(styles.chatForm, className)}
       onSubmit={(event) => {
         event.preventDefault();
-        onSubmit(value);
+        handleSubmit();
       }}
     >
       <Box>

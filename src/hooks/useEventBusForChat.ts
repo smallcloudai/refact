@@ -136,7 +136,6 @@ export const useEventBusForChat = () => {
       if (event.source !== window) {
         return;
       }
-      // TODO: validate events
       if (isActionToChat(event.data)) {
         dispatch(event.data);
       }
