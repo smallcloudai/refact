@@ -1,0 +1,13 @@
+.textarea {
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+
+.textarea :global(.rt-TextAreaInput) {
+  outline: none;
+}
+
+.textarea :global(.rt-TextAreaChrome) {
+  box-shadow: none;
+}

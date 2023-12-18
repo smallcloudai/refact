@@ -2,9 +2,11 @@ import React from "react";
 
 import { Box, Flex } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
-import { TextArea } from "@radix-ui/themes";
-import classNames from "classnames";
+
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
+import { TextArea } from "../TextArea";
+import { Form } from "./Form";
+import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
 
 export const ChatForm: React.FC<{
   onSubmit: (str: string) => void;
@@ -12,6 +14,7 @@ export const ChatForm: React.FC<{
   className?: string;
 }> = ({ onSubmit, onClose, className }) => {
   const [value, setValue] = React.useState("");
+
   const handleSubmit = () => {
     const trimmedValue = value.trim();
     if (trimmedValue.length > 0) {
@@ -20,24 +23,12 @@ export const ChatForm: React.FC<{
     }
   };
 
-  // TODO: Maybe make a hook for this ?
-  const handleEnter = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      handleSubmit();
-    }
-  };
+  const handleEnter = useOnPressedEnter(handleSubmit);
 
   return (
-    <form
-      className={classNames(styles.chatForm, className)}
-      onSubmit={(event) => {
-        event.preventDefault();
-        handleSubmit();
-      }}
-    >
+    <Form className={className} onSubmit={() => handleSubmit()}>
       <Box>
         <TextArea
-          className={styles.textarea}
           value={value}
           onChange={(event) => {
             setValue(() => event.target.value);
@@ -55,6 +46,6 @@ export const ChatForm: React.FC<{
           <PaperPlaneButton title="send" size="1" type="submit" />
         </Flex>
       </Box>
-    </form>
+    </Form>
   );
 };
