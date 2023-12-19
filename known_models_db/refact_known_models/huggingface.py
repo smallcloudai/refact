@@ -129,7 +129,7 @@ huggingface_mini_db = {
         },
         "T": 2048,
         "filter_caps": ["wizardlm"],
-     },
+    },
     "deepseek-coder/1.3b/base": {
         "backend": "transformers",
         "model_path": "deepseek-ai/deepseek-coder-1.3b-base",
@@ -138,7 +138,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
-     },
+    },
     "deepseek-coder/5.7b/mqa-base": {
         "backend": "transformers",
         "model_path": "deepseek-ai/deepseek-coder-5.7bmqa-base",
@@ -147,7 +147,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
-     },
+    },
     "deepseek-coder/6.7b/base": {
         "backend": "transformers",
         "model_path": "deepseek-ai/deepseek-coder-6.7b-base",
@@ -157,5 +157,71 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
-     },
+    },
+    "magicoder/6.7b": {
+        "backend": "autogptq",
+        "model_path": "TheBloke/Magicoder-S-DS-6.7B-GPTQ",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "model_class_kwargs": {
+            "inject_fused_attention": False,
+        },
+        "required_memory_mb": 8000,
+        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
+        "filter_caps": [],
+    },
+    "mistral/7b/instruct-v0.1": {
+        "backend": "autogptq",
+        "model_path": "TheBloke/Mistral-7B-Instruct-v0.1-GPTQ",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "model_class_kwargs": {},
+        "required_memory_mb": 8000,
+        "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
+        "filter_caps": [],
+    },
+    "mixtral/8x7b/instruct-v0.1": {
+        "backend": "transformers",
+        "model_path": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "model_class_kwargs": {},
+        "required_memory_mb": 8000,
+        "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
+        "filter_caps": [],
+    },
+    "phind/34b/v2": {
+        "backend": "transformers",
+        "model_path": "Phind/Phind-CodeLlama-34B-v2",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "model_class_kwargs": {},
+        "required_memory_mb": 40000,
+        "T": 4095,
+        "filter_caps": [],
+    },
+    "deepseek-coder/6.7b/instruct": {
+        "backend": "autogptq",
+        "model_path": "TheBloke/deepseek-coder-6.7B-instruct-GPTQ",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "model_class_kwargs": {
+            "inject_fused_attention": False,
+        },
+        "required_memory_mb": 40000,
+        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
+        "filter_caps": [],
+    },
+    "deepseek-coder/33b/instruct": {
+        "backend": "transformers",
+        "model_path": "deepseek-ai/deepseek-coder-33b-instruct",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "model_class_kwargs": {
+            "load_in_4bit": True,
+        },
+        "required_memory_mb": 40000,
+        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
+        "filter_caps": [],
+    },
 }
