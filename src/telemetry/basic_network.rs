@@ -70,6 +70,7 @@ pub async fn compress_basic_telemetry_to_file(
         storage_locked.last_flushed_ts = now.timestamp();
     }
     if records.as_array().unwrap().is_empty() {
+        info!("no network telemetry to save");
         return;
     }
     // even if there's an error with i/o, storage is now clear, preventing infinite memory growth

@@ -19,9 +19,15 @@ pub fn create_data_accumulator_for_finished_snippet(
     uri: &String,
     snip: &SnippetTracker
 ) {
-    if snip.accepted_ts == 0 || snip.finished_ts == 0 {
+    if snip.accepted_ts == 0  {
         return;
     }
+
+    // if snip.id is not in the list of finished snippets, add it
+    if snippet_data_accumulator.iter().any(|s: &TeleCompletionAccum| s.snippet_telemetry_id == snip.snippet_telemetry_id) {
+        return;
+    }
+
     let init_file_text_mb = snip.inputs.sources.get(&snip.inputs.cursor.file);
     if init_file_text_mb.is_none() {
         return;
@@ -29,6 +35,7 @@ pub fn create_data_accumulator_for_finished_snippet(
     let init_file_text = init_file_text_mb.unwrap();
 
     snippet_data_accumulator.push(TeleCompletionAccum::new(
+        snip.snippet_telemetry_id,
         uri.clone(),
         snip.model.clone(),
         init_file_text.clone(),
@@ -93,6 +100,7 @@ pub async fn compress_tele_completion_to_file(
         storage_locked.snippet_data_accumulators.clear();
     }
     if records.as_array().unwrap().is_empty() {
+        info!("no completion telemetry to save");
         return;
     }
 

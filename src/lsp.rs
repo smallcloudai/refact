@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
-use std::time::Instant;
 
-use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use tokio::sync::RwLock as ARwLock;
@@ -18,6 +16,8 @@ use crate::global_context;
 use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::telemetry;
+use crate::receive_workspace_changes;
+
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -34,25 +34,11 @@ impl Display for APIError {
 }
 
 
-#[derive(Debug)]
-pub struct Document {
-    #[allow(dead_code)]
-    pub language_id: String,
-    pub text: Rope,
-}
-
-impl Document {
-    fn new(language_id: String, text: Rope) -> Self {
-        Self { language_id, text }
-    }
-}
 
 // #[derive(Debug)]  GlobalContext does not implement Debug
 pub struct Backend {
     pub gcx: Arc<ARwLock<global_context::GlobalContext>>,
     pub client: tower_lsp::Client,
-    pub document_map: Arc<ARwLock<HashMap<String, Document>>>,
-    pub workspace_folders: Arc<ARwLock<Option<Vec<WorkspaceFolder>>>>,
 }
 
 
@@ -120,11 +106,14 @@ pub struct CompletionRes {
 
 impl Backend {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> CodeCompletionPost {
-        let document_map = self.document_map.read().await;
-        let document = document_map
-            .get(params.text_document_position.text_document.uri.as_str())
-            .unwrap();
-        let txt = &document.text;
+        let txt = {
+            let document_map = self.gcx.read().await.lsp_backend_document_state.document_map.clone();
+            let document_map = document_map.read().await;
+            let document = document_map
+                .get(params.text_document_position.text_document.uri.as_str())
+                .unwrap();
+            document.text.clone()
+        };
         CodeCompletionPost {
             inputs: CodeCompletionInputs {
                 sources: HashMap::from([(String::from(&params.text_document_position.text_document.uri.to_string()),
@@ -182,9 +171,12 @@ impl Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        *self.workspace_folders.write().await = params.workspace_folders;
         info!("LSP client_info {:?}", params.client_info);
-        info!("LSP workspace_folders {:?}", self.workspace_folders);
+        {
+            let mut gcx_locked = self.gcx.write().await;
+            *gcx_locked.lsp_backend_document_state.workspace_folders.write().await = params.workspace_folders;
+            info!("LSP workspace_folders {:?}", gcx_locked.lsp_backend_document_state.workspace_folders);
+        }
 
         let completion_options: CompletionOptions;
         completion_options = CompletionOptions {
@@ -220,35 +212,20 @@ impl LanguageServer for Backend {
     // textDocument/didClose
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let rope = ropey::Rope::from_str(&params.text_document.text);
-        let uri = params.text_document.uri.to_string();
-        *self
-            .document_map
-            .write()
-            .await
-            .entry(uri.clone())
-            .or_insert(Document::new("unknown".to_owned(), Rope::new())) =
-            Document::new(params.text_document.language_id, rope);
-        info!("{uri} opened");
+        receive_workspace_changes::on_did_open(
+            self.gcx.clone(),
+            &params.text_document.uri.to_string(),
+            &params.text_document.text,
+            &params.text_document.language_id
+        ).await
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let t0 = Instant::now();
-        let rope = ropey::Rope::from_str(&params.content_changes[0].text);
-        let uri = params.text_document.uri.to_string();
-        let mut document_map = self.document_map.write().await;
-        let doc = document_map
-            .entry(uri.clone())
-            .or_insert(Document::new("unknown".to_owned(), Rope::new()));
-        doc.text = rope;
-        info!("{} changed, save time: {:?}", uri, t0.elapsed());
-        let t1 = Instant::now();
-        telemetry::snippets_collection::sources_changed(
+        receive_workspace_changes::on_did_change(
             self.gcx.clone(),
-            &uri,
-            &params.content_changes[0].text,
-        ).await;
-        info!("{} changed, telemetry time: {:?}", uri, t1.elapsed());
+            &params.text_document.uri.to_string(),
+            &params.content_changes[0].text
+        ).await
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
@@ -281,14 +258,12 @@ impl LanguageServer for Backend {
     }
 }
 
-fn build_lsp_service(
+async fn build_lsp_service(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> (LspService::<Backend>, ClientSocket) {
     let (lsp_service, socket) = LspService::build(|client| Backend {
         gcx,
         client,
-        document_map: Arc::new(ARwLock::new(HashMap::new())),
-        workspace_folders: Arc::new(ARwLock::new(None)),
     })
         .custom_method("refact/getCompletions", Backend::get_completions)
         .custom_method("refact/test_if_head_tail_equal_return_added_text", Backend::test_if_head_tail_equal_return_added_text)
@@ -296,7 +271,7 @@ fn build_lsp_service(
     (lsp_service, socket)
 }
 
-pub fn spawn_lsp_task(
+pub async fn spawn_lsp_task(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
     cmdline: CommandLine
 ) -> Option<JoinHandle<()>> {
@@ -313,7 +288,7 @@ pub fn spawn_lsp_task(
                     Ok((s, addr)) => {
                         info!("LSP new client connection from {}", addr);
                         let (read, write) = tokio::io::split(s);
-                        let (lsp_service, socket) = build_lsp_service(gcx_t.clone());
+                        let (lsp_service, socket) = build_lsp_service(gcx_t.clone()).await;
                         tower_lsp::Server::new(read, write, socket).serve(lsp_service).await;
                     }
                     Err(e) => {
@@ -329,7 +304,7 @@ pub fn spawn_lsp_task(
         return Some(tokio::spawn( async move {
             let stdin = tokio::io::stdin();
             let stdout = tokio::io::stdout();
-            let (lsp_service, socket) = build_lsp_service(gcx_t.clone());
+            let (lsp_service, socket) = build_lsp_service(gcx_t.clone()).await;
             tower_lsp::Server::new(stdin, stdout, socket).serve(lsp_service).await;
             info!("LSP loop exit");
             gcx_t.write().await.ask_shutdown_sender.lock().unwrap().send(format!("going-down-because-lsp-exited")).unwrap();

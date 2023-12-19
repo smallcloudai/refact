@@ -97,6 +97,7 @@ impl TeleRobotHumanAccum {
 #[derive(Debug)]
 pub struct TeleCompletionAccum {
     // Internal struct, not sent anywhere. Tracks data for each snippet, converted to basic telemetry (counters) at 30, 60 seconds
+    pub snippet_telemetry_id: u64,
     pub uri: String,
     pub file_extension: String,
     pub model: String,
@@ -114,9 +115,10 @@ pub struct TeleCompletionAccum {
 
 impl TeleCompletionAccum {
     pub fn new(
-        uri: String, model: String, init_file_text: String, init_grey_text: String, created_ts: i64
+        snippet_telemetry_id: u64, uri: String, model: String, init_file_text: String, init_grey_text: String, created_ts: i64
     ) -> Self {
         Self {
+            snippet_telemetry_id,
             uri: uri.clone(),
             file_extension: utils::extract_extension_or_filename(&uri),
             multiline: init_grey_text.contains("\n"),

@@ -130,6 +130,9 @@ pub async fn telemetry_full_cycle(
         if telemetry_basic_dest.is_empty() {
             info!("basic telemetry dest is empty, skip");
         }
+        if skip_sending_part {
+            info!("skip_sending_part is true, skip");
+        }
     }
     cleanup_old_files(dir_compressed, TELEMETRY_FILES_KEEP).await;
     cleanup_old_files(dir_sent, TELEMETRY_FILES_KEEP).await;

@@ -27,12 +27,15 @@ pub fn increase_counters_from_finished_snippet(
     // Snippet is finished when it stops being valid for correction (user has changed code in a different place) or it timeouts
     fn robot_characters(snip: &SnippetTracker) -> i64 {
         let re = Regex::new(r"\s+").unwrap();
-        (re.replace_all(&snip.grey_text, "").len() as f64 * snip.remaining_percentage) as i64
+        let robot_characters = re.replace_all(&snip.grey_text, "").len() as i64;
+        info!("increase_counters_from_finished_snippet: ID: {}; robot_characters: {}", snip.snippet_telemetry_id, robot_characters);
+        robot_characters
     }
     fn human_characters(rec: &TeleRobotHumanAccum, text: &String) -> i64 {
         let re = Regex::new(r"\s+").unwrap();
         let (added_characters, _) = utils::get_add_del_from_texts(&rec.baseline_text, text);
-        re.replace_all(&added_characters, "").len() as i64 - rec.robot_characters_acc_baseline
+        let human_characters = re.replace_all(&added_characters, "").len() as i64 - rec.robot_characters_acc_baseline;
+        human_characters
     }
 
     let now = chrono::Local::now().timestamp();
@@ -41,7 +44,8 @@ pub fn increase_counters_from_finished_snippet(
         if rec.used_snip_ids.contains(&snip.snippet_telemetry_id) {
             return;
         }
-        rec.robot_characters_acc_baseline += robot_characters(snip);
+        let robot_characters = robot_characters(snip);
+        rec.robot_characters_acc_baseline += robot_characters;
         rec.used_snip_ids.push(snip.snippet_telemetry_id);
         if rec.baseline_updated_ts + ROBOT_HUMAN_FILE_STATS_UPDATE_EVERY < now {
             // New baseline, increase counters
@@ -51,8 +55,9 @@ pub fn increase_counters_from_finished_snippet(
             rec.robot_characters_acc_baseline = 0;
             rec.baseline_text = text.clone();
         }
-        // info!("increasing for {}, human+{}, robot+{}", snip.snippet_telemetry_id, human_characters(rec, text), rec.robot_characters_acc_baseline);
+        info!("increasing for {}, human+{}, robot+{}", snip.snippet_telemetry_id, human_characters(rec, text), robot_characters);
     } else {
+        info!("increase_counters_from_finished_snippet: new uri {}", uri);
         let init_file_text_mb = snip.inputs.sources.get(&snip.inputs.cursor.file);
         if init_file_text_mb.is_none() {
             return;
@@ -79,13 +84,14 @@ fn compress_robot_human(
     }
     let mut compressed_vec= vec![];
     for (key, entries) in unique_combinations {
+        info!("compress_robot_human: compressing {} entries for key {:?}", entries.len(), key);
         let mut record = TeleRobotHuman::new(
             key.0.clone(),
             key.1.clone()
         );
         for entry in entries {
             record.human_characters += entry.human_characters;
-            record.robot_characters += entry.robot_characters;
+            record.robot_characters += entry.robot_characters + entry.robot_characters_acc_baseline;
             record.completions_cnt += entry.used_snip_ids.len() as i64;
         }
         compressed_vec.push(record);
@@ -115,6 +121,7 @@ pub async fn tele_robot_human_compress_to_file(
         storage_locked.tele_robot_human.clear();
     }
     if records.as_array().unwrap().is_empty() {
+        info!("no robot_human telemetry to save");
         return;
     }
     let (dir, _) = utils::telemetry_storage_dirs(&cache_dir).await;
