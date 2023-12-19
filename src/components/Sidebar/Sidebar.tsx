@@ -29,7 +29,7 @@ export const Sidebar: React.FC<{
             align="center"
             pt="4"
             pb="4"
-            mr="2"
+            mr="1"
             direction="column"
             style={{
               backgroundColor: "var(--color-autofill-root)",
