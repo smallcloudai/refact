@@ -1,19 +1,5 @@
 import { ChatMessages, ChatResponse } from "../services/refact";
 
-/**
- * TODO:
- * open new file
- * diff paste back
- * open chat in new tab
- * send chat to side bar
- * stop streaming button
- * error handeling (done)
- *
- * back from chat (when in side-bar)
- * open chat in new tab (side bar only)
- * send chat to side bar
- *
- */
 export enum EVENT_NAMES_FROM_CHAT {
   SAVE_CHAT = "save_chat_to_history",
   ASK_QUESTION = "chat_question",
