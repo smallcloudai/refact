@@ -19,6 +19,7 @@ const ChatInput: React.FC<{ children: string }> = (props) => {
       <Markdown
         onCopyClick={(text: string) => {
           window.navigator.clipboard.writeText(text).catch(() => {
+            // eslint-disable-next-line no-console
             console.log("failed to copy to clipboard");
           });
         }}

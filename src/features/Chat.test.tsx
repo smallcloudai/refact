@@ -34,7 +34,7 @@ describe("Chat", () => {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
           id: "foo",
-          messages: [["user", "hello\n"]],
+          messages: [["user", "hello"]],
           model: "gpt-3.5-turbo",
           title: "",
         },

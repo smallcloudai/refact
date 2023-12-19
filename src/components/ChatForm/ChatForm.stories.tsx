@@ -7,9 +7,11 @@ const meta = {
   component: ChatForm,
   args: {
     onSubmit: (str) => {
+      // eslint-disable-next-line no-console
       console.log("submit called with " + str);
     },
     onClose: () => {
+      // eslint-disable-next-line no-console
       console.log("onclose called");
     },
   },

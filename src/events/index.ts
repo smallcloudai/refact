@@ -130,7 +130,6 @@ export function isBackupMessages(action: unknown): action is BackUpMessages {
 }
 
 export function isRestoreChat(action: unknown): action is RestoreChat {
-  console.log("isRestoreChat", action);
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
 }

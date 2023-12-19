@@ -61,7 +61,6 @@ function formatChatResponse(
 }
 
 function reducer(state: ChatState, action: ActionToChat): ChatState {
-  console.log("chat reducer", action);
   const isThisChat =
     action.payload?.id && action.payload.id === state.chat.id ? true : false;
 

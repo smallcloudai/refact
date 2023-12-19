@@ -41,6 +41,7 @@ export type ChatResponse = {
 
 const API_KEY: string | undefined = import.meta.env.VITE_REFACT_API_KEY;
 if (!API_KEY) {
+  // eslint-disable-next-line no-console
   console.error("VITE_REFACT_API_KEY not configured in .env file");
   throw new Error("api-key not defined");
 }

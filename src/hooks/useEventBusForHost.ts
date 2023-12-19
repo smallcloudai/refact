@@ -67,6 +67,7 @@ function handleSend(chat: ChatThread, controller: AbortController) {
 
         for (const delta of deltas) {
           if (!delta.startsWith("data: ")) {
+            // eslint-disable-next-line no-console
             console.log("Unexpected data in streaming buf: " + delta);
             continue;
           }
@@ -81,7 +82,6 @@ function handleSend(chat: ChatThread, controller: AbortController) {
           }
 
           if (maybeJsonString === "[ERROR]") {
-            console.log("Streaming error");
             // TODO safely parse json
             const errorJson = JSON.parse(maybeJsonString) as Record<
               string,
@@ -120,6 +120,7 @@ function handleSend(chat: ChatThread, controller: AbortController) {
       });
     })
     .catch((error: Error) => {
+      // eslint-disable-next-line no-console
       console.error(error);
       window.postMessage(
         {
