@@ -41,19 +41,7 @@ export const ChatContent: React.FC<{
 
   return (
     <ScrollArea scrollbars="vertical">
-      <Flex
-        grow="1"
-        direction="column"
-        className={styles.content}
-        style={
-          {
-            // overflowY: "auto",
-            // overflowWrap: "break-word",
-            // wordWrap: "break-word",
-            // maxWidth: "calc(100% - 20px)",
-          }
-        }
-      >
+      <Flex grow="1" direction="column" className={styles.content}>
         {messages.map(([role, text], index) => {
           if (role === "user") {
             const handleRetry = (question: string) => {

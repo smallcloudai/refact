@@ -25,7 +25,11 @@ export const Sidebar: React.FC<{
       >
         <ScrollArea scrollbars="vertical">
           <Flex justify="center" align="center" pt="4" pb="4">
-            <Button onClick={onCreateNewChat} style={{ marginRight: "16px" }}>
+            <Button
+              variant="soft"
+              onClick={onCreateNewChat}
+              style={{ marginRight: "16px" }}
+            >
               Start a new chat
             </Button>
           </Flex>

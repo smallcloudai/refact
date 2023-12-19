@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button } from "@radix-ui/themes";
+import { Button, Flex } from "@radix-ui/themes";
 
 import { TextArea } from "../TextArea";
 import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
@@ -37,8 +37,19 @@ export const RetryForm: React.FC<{
         onChange={(event) => onChange(event.target.value)}
         onKeyUp={onPressedEnter}
       />
-      <Button type="submit">Submit</Button>
-      <Button onClick={closeAndReset}>Cancel</Button>
+      <Flex align="center" justify="center" gap="1" direction="row">
+        <Button color="grass" variant="surface" size="1" type="submit">
+          Submit
+        </Button>
+        <Button
+          variant="surface"
+          color="tomato"
+          size="1"
+          onClick={closeAndReset}
+        >
+          Cancel
+        </Button>
+      </Flex>
     </Form>
   );
 };
