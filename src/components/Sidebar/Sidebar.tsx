@@ -24,22 +24,35 @@ export const Sidebar: React.FC<{
         }}
       >
         <ScrollArea scrollbars="vertical">
-          <Flex justify="center" align="center" pt="4" pb="4">
+          <Flex
+            justify="center"
+            align="center"
+            pt="4"
+            pb="4"
+            mr="2"
+            direction="column"
+            style={{
+              backgroundColor: "var(--color-autofill-root)",
+            }}
+          >
             <Button
               variant="soft"
               onClick={onCreateNewChat}
-              style={{ marginRight: "16px" }}
+              style={{
+                marginRight: "16px",
+                marginBottom: "16px",
+              }}
             >
               Start a new chat
             </Button>
+            {history.map((chat) => (
+              <HistoryItem
+                onClick={onHistoryItemClick}
+                key={chat.id}
+                chat={chat}
+              />
+            ))}
           </Flex>
-          {history.map((chat) => (
-            <HistoryItem
-              onClick={onHistoryItemClick}
-              key={chat.id}
-              chat={chat}
-            />
-          ))}
         </ScrollArea>
       </Box>
     </Box>
