@@ -3,13 +3,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Semaphore};
 use tokio::task::JoinHandle;
 use tracing::info;
 
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::handler::VecDBHandlerRef;
-use crate::vecdb::req_client::get_embedding;
+use crate::fetch_embedding::try_get_embedding;
 use crate::vecdb::structs::{Record, SplitResult, VecDbStatus, VecDbStatusRef};
 
 #[derive(Debug)]
@@ -21,8 +21,11 @@ pub struct FileVectorizerService {
     cooldown_secs: u64,
     splitter_window_size: usize,
     splitter_soft_limit: usize,
-    embedding_model_name: String,
+
+    model_name: String,
     api_key: String,
+    endpoint_embeddings_style: String,
+    endpoint_template: String,
 }
 
 async fn cooldown_queue_thread(
@@ -67,10 +70,16 @@ async fn vectorize_thread(
     status: VecDbStatusRef,
     splitter_window_size: usize,
     splitter_soft_limit: usize,
-    embedding_model_name: String,
+
+    model_name: String,
     api_key: String,
+    endpoint_embeddings_style: String,
+    endpoint_template: String,
+
+    max_concurrent_tasks: usize,
 ) {
     let file_splitter = FileSplitter::new(splitter_window_size, splitter_soft_limit);
+    let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
 
     loop {
         let (path_maybe, unprocessed_files_count) = {
@@ -108,41 +117,63 @@ async fn vectorize_thread(
         drop(vecdb_handler);
         info!("Retrieving embeddings for {} chunks", split_data_filtered.len());
 
-        let join_handles: Vec<_> = split_data_filtered.iter().map(
-            |x| get_embedding(x.window_text.clone(), &embedding_model_name, api_key.clone())
-        ).collect();
-        status.lock().await.requests_made_since_start += join_handles.len();
+        let join_handles: Vec<_> = split_data_filtered.into_iter().map(|x| {
+            let model_name_clone = model_name.clone();
+            let api_key_clone = api_key.clone();
+            let endpoint_embeddings_style_clone = endpoint_embeddings_style.clone();
+            let endpoint_template_clone = endpoint_template.clone();
 
-        let mut split_join_data: VecDeque<(SplitResult, JoinHandle<Result<Vec<f32>, String>>)>
-            = split_data_filtered.into_iter()
-            .zip(join_handles.into_iter())
-            .collect::<VecDeque<_>>();
+            let semaphore_clone = Arc::clone(&semaphore);
+            tokio::spawn(async move {
+                let _permit = match semaphore_clone.acquire().await {
+                    Ok(permit) => permit,
+                    Err(_) => {
+                        return None;
+                    }
+                };
 
-        let mut records: Vec<Record> = Vec::new();
-        while let Some((data_res, handle)) = split_join_data.pop_front() {
-            match handle.await {
-                Ok(Ok(result)) => {
-                    let now = SystemTime::now();
-                    records.push(
-                        Record {
-                            vector: Some(result),
-                            window_text: data_res.window_text,
-                            window_text_hash: data_res.window_text_hash,
-                            file_path: data_res.file_path,
-                            start_line: data_res.start_line,
-                            end_line: data_res.end_line,
-                            time_added: now,
-                            time_last_used: now,
-                            model_name: embedding_model_name.clone(),
-                            used_counter: 0,
-                            distance: -1.0,
-                        }
-                    );
+                let result = try_get_embedding(
+                    &endpoint_embeddings_style_clone,
+                    &model_name_clone,
+                    &endpoint_template_clone,
+                    x.window_text.clone(),
+                    &api_key_clone,
+                    3,
+                ).await;
+
+                drop(_permit);
+                Some((x, result))
+            })
+        }).collect();
+
+        let mut records = vec![];
+
+        for handle in join_handles {
+            if let Some((data_res, result_mb)) = handle.await.unwrap() {
+                match result_mb {
+                    Ok(result) => {
+                        let now = SystemTime::now();
+
+                        records.push(
+                            Record {
+                                vector: Some(result),
+                                window_text: data_res.window_text,
+                                window_text_hash: data_res.window_text_hash,
+                                file_path: data_res.file_path,
+                                start_line: data_res.start_line,
+                                end_line: data_res.end_line,
+                                time_added: SystemTime::now(),
+                                model_name: model_name.clone(),
+                                distance: -1.0,
+                                used_counter: 0,
+                                time_last_used: now,
+                            }
+                        );
+                    }
+                    Err(e) => {
+                        info!("Error retrieving embeddings for {}: {}", data_res.file_path.to_str().unwrap(), e);
+                    }
                 }
-                Ok(Err(e)) => {
-                    info!("Error retrieving embeddings for {}: {}", data_res.window_text, e);
-                }
-                Err(_) => { continue; }
             }
         }
         match vecdb_handler_ref.lock().await.add_or_update(records, true).await {
@@ -170,8 +201,11 @@ impl FileVectorizerService {
         cooldown_secs: u64,
         splitter_window_size: usize,
         splitter_soft_limit: usize,
-        embedding_model_name: String,
+
+        model_name: String,
         api_key: String,
+        endpoint_embeddings_style: String,
+        endpoint_template: String,
     ) -> Self {
         let update_request_queue = Arc::new(Mutex::new(VecDeque::new()));
         let output_queue = Arc::new(Mutex::new(VecDeque::new()));
@@ -191,8 +225,11 @@ impl FileVectorizerService {
             cooldown_secs,
             splitter_window_size,
             splitter_soft_limit,
-            embedding_model_name,
+
+            model_name,
             api_key,
+            endpoint_embeddings_style,
+            endpoint_template,
         }
     }
 
@@ -213,11 +250,16 @@ impl FileVectorizerService {
                 self.status.clone(),
                 self.splitter_window_size,
                 self.splitter_soft_limit,
-                self.embedding_model_name.clone(),
+
+                self.model_name.clone(),
                 self.api_key.clone(),
+                self.endpoint_embeddings_style.clone(),
+                self.endpoint_template.clone(),
+
+                4,
             )
         );
-        
+
         let cleanup_thread_handle = tokio::spawn(
             cleanup_thread(
                 self.vecdb_handler.clone()

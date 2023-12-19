@@ -152,26 +152,6 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
-    let mut vec_db: Option<VecDb> = None;
-    if cmdline.vecdb {
-        vec_db = match VecDb::init(
-            cache_dir.clone(), cmdline.clone(),
-            384, 60, 512, 1024,
-            "BAAI/bge-small-en-v1.5".to_string(),
-        ).await {
-            Ok(res) => Some(res),
-            Err(err) => {
-                error!("Ooops database is broken!
-                    Last error message: {}
-                    You can report this issue here:
-                    https://github.com/smallcloudai/refact-lsp/issues
-                    Also you can run this to erase your db:
-                    `rm -rf ~/.cache/refact/refact_vecdb_cache`
-                    After that restart this LSP server or your IDE.", err);
-                None
-            }
-        };
-    }
 
 
     let cx = GlobalContext {
@@ -184,7 +164,7 @@ pub async fn create_global_context(
         tokenizer_map: HashMap::new(),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
-        vec_db: Arc::new(AMutex::new(vec_db)),
+        vec_db: Arc::new(AMutex::new(None)),
         ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
         lsp_backend_document_state: LSPBackendDocumentState {
             document_map: Arc::new(ARwLock::new(HashMap::new())),

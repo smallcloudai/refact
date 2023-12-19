@@ -44,9 +44,19 @@ pub struct CodeAssistantCaps {
     #[serde(default)]
     pub code_chat_models: HashMap<String, ModelRecord>,
     pub code_chat_default_model: String,
+    #[serde(default)]
+    pub default_embeddings_model: String,
+    #[serde(default)]
+    pub endpoint_embeddings_template: String,
+    #[serde(default)]
+    pub endpoint_embeddings_style: String,
+    #[serde(default)]
+    pub size_embeddings: i32,
     pub running_models: Vec<String>,
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
+    #[serde(default)]
+    pub chat_rag_functions: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -272,6 +282,12 @@ const HF_DEFAULT_CAPS: &str = r#"
     "cloud_name": "Hugging Face",
     "endpoint_template": "https://api-inference.huggingface.co/models/$MODEL",
     "endpoint_style": "hf",
+
+    "default_embeddings_model": "BAAI/bge-small-en-v1.5",
+    "endpoint_embeddings_template": "https://api-inference.huggingface.co/models/$MODEL",
+    "endpoint_embeddings_style": "hf",
+    "size_embeddings": 384,
+
     "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
     "tokenizer_rewrite_path": {
         "meta-llama/Llama-2-70b-chat-hf": "TheBloke/Llama-2-70B-fp16"
@@ -344,12 +360,14 @@ pub async fn load_caps(
     r1.endpoint_chat_passthrough = relative_to_full_url(&caps_url, &r1.endpoint_chat_passthrough)?;
     r1.telemetry_basic_dest = relative_to_full_url(&caps_url, &r1.telemetry_basic_dest)?;
     r1.telemetry_corrected_snippets_dest = relative_to_full_url(&caps_url, &r1.telemetry_corrected_snippets_dest)?;
+    r1.endpoint_embeddings_template = relative_to_full_url(&caps_url, &r1.endpoint_embeddings_template)?;
     info!("caps {} completion models", r1.code_completion_models.len());
     info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
     info!("caps {} chat models", r1.code_chat_models.len());
     info!("caps default chat model: \"{}\"", r1.code_chat_default_model);
     Ok(Arc::new(StdRwLock::new(r1)))
 }
+
 
 fn relative_to_full_url(
     caps_url: &String,

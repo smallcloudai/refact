@@ -11,7 +11,7 @@ use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
-use crate::scratchpads::chat_utils_rag::embed_vecdb_results;
+use crate::scratchpads::chat_utils_rag::{chat_functions_middleware, HasVecdb, HasVecdbResults};
 use crate::vecdb::structs::VecdbSearch;
 
 const DEBUG: bool = true;
@@ -26,6 +26,7 @@ pub struct ChatLlama2<T> {
     pub keyword_slash_s: String,
     pub default_system_message: String,
     pub vecdb_search: Arc<AMutex<Option<T>>>,
+    pub has_vecdb_results: HasVecdbResults,
 }
 
 
@@ -42,7 +43,8 @@ impl<T: Send + Sync + VecdbSearch> ChatLlama2<T> {
             keyword_s: "<s>".to_string(),
             keyword_slash_s: "</s>".to_string(),
             default_system_message: "".to_string(),
-            vecdb_search
+            vecdb_search,
+            has_vecdb_results: HasVecdbResults::new(),
         }
     }
 }
@@ -70,11 +72,11 @@ impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for ChatLlama2<T> {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let augmented_msgs = match *self.vecdb_search.lock().await {
-            Some(ref db) => embed_vecdb_results(db, &self.post.messages, 6).await,
-            None => { self.post.messages.clone() }
-        };
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &augmented_msgs, self.post.parameters.max_new_tokens, context_size, &self.default_system_message)?;
+        match *self.vecdb_search.lock().await {
+            Some(ref db) => chat_functions_middleware(db, &mut self.post, 6, &mut self.has_vecdb_results).await,
+            None => {}
+        }
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, self.post.parameters.max_new_tokens, context_size, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
         // loosely adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();
@@ -136,6 +138,10 @@ impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for ChatLlama2<T> {
         stop_length: bool,
     ) -> Result<(serde_json::Value, bool), String> {
         self.dd.response_streaming(delta, stop_toks)
+    }
+
+    fn response_spontaneous(&mut self) -> Result<serde_json::Value, String> {
+        return self.has_vecdb_results.response_streaming();
     }
 }
 

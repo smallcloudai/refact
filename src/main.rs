@@ -3,6 +3,8 @@ use tokio::task::JoinHandle;
 
 use tracing::{error, info, Level};
 use tracing_appender;
+use std::sync::Arc;
+use tokio::sync::Mutex as AMutex;
 
 use crate::background_tasks::start_background_tasks;
 use crate::lsp::spawn_lsp_task;
@@ -25,6 +27,7 @@ mod http;
 mod background_tasks;
 mod receive_workspace_changes;
 mod vecdb;
+mod fetch_embedding;
 
 
 #[tokio::main]
@@ -60,11 +63,6 @@ async fn main() {
         }
     }
     let mut background_tasks = start_background_tasks(gcx.clone());
-
-    background_tasks.extend(match *gcx.read().await.vec_db.lock().await {
-        Some(ref db) => db.start_background_tasks().await,
-        None => vec![]
-    });
 
     let should_start_http = cmdline.http_port != 0;
     let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||
