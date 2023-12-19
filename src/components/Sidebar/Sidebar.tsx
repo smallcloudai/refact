@@ -28,7 +28,7 @@ export const Sidebar: React.FC<{
             justify="center"
             align="center"
             pt="4"
-            pb="4"
+            pb="2"
             mr="1"
             direction="column"
             style={{
@@ -39,7 +39,6 @@ export const Sidebar: React.FC<{
               variant="soft"
               onClick={onCreateNewChat}
               style={{
-                marginRight: "16px",
                 marginBottom: "16px",
               }}
             >
