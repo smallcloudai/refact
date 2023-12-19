@@ -2,8 +2,10 @@ import React, { useEffect } from "react";
 import { ChatMessages } from "../../services/refact";
 import { Markdown } from "../Markdown";
 import { UserInput } from "./UserInput";
+import { ScrollArea } from "../ScrollArea";
 
 import { Box, Flex } from "@radix-ui/themes";
+import styles from "./ChatContent.module.css";
 
 const ContextFile: React.FC<{ children: string }> = (props) => {
   // TODO how should the context file look?
@@ -38,38 +40,44 @@ export const ChatContent: React.FC<{
   }, [messages]);
 
   return (
-    <Flex
-      grow="1"
-      direction="column"
-      style={{
-        overflowY: "auto",
-        overflowWrap: "break-word",
-        wordWrap: "break-word",
-      }}
-    >
-      {messages.map(([role, text], index) => {
-        if (role === "user") {
-          const handleRetry = (question: string) => {
-            const toSend = messages
-              .slice(0, index)
-              .concat([["user", question]]);
-            onRetry(toSend);
-          };
-          return (
-            <UserInput onRetry={handleRetry} key={index}>
-              {text}
-            </UserInput>
-          );
-        } else if (role === "context_file") {
-          return <ContextFile key={index}>{text}</ContextFile>;
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        } else if (role === "assistant") {
-          return <ChatInput key={index}>{text}</ChatInput>;
-        } else {
-          return <Markdown key={index}>{text}</Markdown>;
+    <ScrollArea scrollbars="vertical">
+      <Flex
+        grow="1"
+        direction="column"
+        className={styles.content}
+        style={
+          {
+            // overflowY: "auto",
+            // overflowWrap: "break-word",
+            // wordWrap: "break-word",
+            // maxWidth: "calc(100% - 20px)",
+          }
         }
-      })}
-      <div ref={ref} />
-    </Flex>
+      >
+        {messages.map(([role, text], index) => {
+          if (role === "user") {
+            const handleRetry = (question: string) => {
+              const toSend = messages
+                .slice(0, index)
+                .concat([["user", question]]);
+              onRetry(toSend);
+            };
+            return (
+              <UserInput onRetry={handleRetry} key={index}>
+                {text}
+              </UserInput>
+            );
+          } else if (role === "context_file") {
+            return <ContextFile key={index}>{text}</ContextFile>;
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          } else if (role === "assistant") {
+            return <ChatInput key={index}>{text}</ChatInput>;
+          } else {
+            return <Markdown key={index}>{text}</Markdown>;
+          }
+        })}
+        <div ref={ref} />
+      </Flex>
+    </ScrollArea>
   );
 };

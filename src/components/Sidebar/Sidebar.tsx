@@ -1,8 +1,9 @@
 import React from "react";
-import { Box, ScrollArea, Flex, Button } from "@radix-ui/themes";
+import { Box, Flex, Button } from "@radix-ui/themes";
 import styles from "./sidebar.module.css";
 import { ChatHistoryItem } from "../../hooks/useChatHistory";
 import { HistoryItem } from "./HistoryItem";
+import { ScrollArea } from "../ScrollArea";
 
 export const Sidebar: React.FC<{
   history: ChatHistoryItem[];
@@ -23,13 +24,7 @@ export const Sidebar: React.FC<{
         }}
       >
         <ScrollArea scrollbars="vertical">
-          <Flex
-            style={{ width: "240px" }}
-            justify="center"
-            align="center"
-            pt="4"
-            pb="4"
-          >
+          <Flex justify="center" align="center" pt="4" pb="4">
             <Button onClick={onCreateNewChat} style={{ marginRight: "16px" }}>
               Start a new chat
             </Button>

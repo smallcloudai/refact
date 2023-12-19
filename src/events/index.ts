@@ -10,6 +10,7 @@ export enum EVENT_NAMES_FROM_CHAT {
    * open chat  in new tab
    * send chat to side bar
    * stop streaming button
+   * error handeling
    *
    * back from chat (when in side-bar)
    * open chat in new tab (side bar only)
