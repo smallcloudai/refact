@@ -5,8 +5,7 @@ import { ChatContent } from "../components/ChatContent";
 import { Flex } from "@radix-ui/themes";
 
 export const Chat: React.FC = () => {
-  const { state, askQuestion, sendMessages } = useEventBusForChat();
-
+  const { state, askQuestion, sendMessages, clearError } = useEventBusForChat();
   return (
     <Flex
       direction="column"
@@ -20,7 +19,10 @@ export const Chat: React.FC = () => {
         messages={state.chat.messages}
         onRetry={(messages) => sendMessages(messages)}
       />
+
       <ChatForm
+        error={state.error}
+        clearError={clearError}
         onSubmit={(value) => {
           askQuestion(value);
         }}

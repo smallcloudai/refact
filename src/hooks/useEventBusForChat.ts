@@ -12,6 +12,8 @@ import {
   isRestoreChat,
   isCreateNewChat,
   isChatDoneStreaming,
+  isChatErrorStreaming,
+  isChatClearError,
 } from "../events";
 
 declare global {
@@ -59,11 +61,15 @@ function formatChatResponse(
 }
 
 function reducer(state: ChatState, action: ActionToChat): ChatState {
-  if (isResponseToChat(action)) {
-    if (action.payload.id !== state.chat.id) return state;
+  console.log("chat reducer", action);
+  const isThisChat =
+    action.payload?.id && action.payload.id === state.chat.id ? true : false;
+
+  if (isThisChat && isResponseToChat(action)) {
     const messages = formatChatResponse(state.chat.messages, action.payload);
     return {
       ...state,
+      streaming: true,
       chat: {
         ...state.chat,
         messages,
@@ -71,20 +77,22 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
-  if (isBackupMessages(action)) {
+  if (isThisChat && isBackupMessages(action)) {
     return {
       ...state,
+      error: "",
       chat: {
         ...state.chat,
-        messages: action.payload,
+        messages: action.payload.messages,
       },
     };
   }
 
-  if (isRestoreChat(action)) {
+  if (!isThisChat && isRestoreChat(action)) {
     return {
       ...state,
       streaming: false,
+      error: "",
       chat: action.payload,
     };
   }
@@ -93,7 +101,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     return createInitialState();
   }
 
-  if (isChatDoneStreaming(action)) {
+  if (isThisChat && isChatDoneStreaming(action)) {
     // note: should avoid side effects in reducer :/
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
@@ -106,17 +114,33 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
+  if (isThisChat && isChatErrorStreaming(action)) {
+    return {
+      ...state,
+      error: action.payload.message,
+    };
+  }
+
+  if (isChatClearError(action)) {
+    return {
+      ...state,
+      error: "",
+    };
+  }
+
   return state;
 }
 
 export type ChatState = {
   chat: ChatThread;
   streaming: boolean;
+  error: string;
 };
 
 function createInitialState(): ChatState {
   return {
     streaming: false,
+    error: "",
     chat: {
       id: uuidv4(),
       messages: [],
@@ -149,25 +173,33 @@ export const useEventBusForChat = () => {
   }, [state, dispatch]);
 
   function askQuestion(question: string) {
+    dispatch({ type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR });
     const messages = state.chat.messages.concat([["user", question]]);
     sendMessages(messages);
   }
 
   function sendMessages(messages: ChatMessages) {
+    dispatch({ type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR });
+    const payload = {
+      id: state.chat.id,
+      messages: messages,
+      title: state.chat.title,
+      model: state.chat.model,
+    };
+
     dispatch({
       type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES,
-      payload: messages,
+      payload,
     });
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-      payload: {
-        id: state.chat.id,
-        messages: messages,
-        title: state.chat.title,
-        model: state.chat.model,
-      },
+      payload,
     });
   }
 
-  return { state, askQuestion, sendMessages };
+  function clearError() {
+    dispatch({ type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR });
+  }
+
+  return { state, askQuestion, sendMessages, clearError };
 };

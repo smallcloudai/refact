@@ -17,7 +17,6 @@ export const HistoryItem: React.FC<{
     >
       <button
         onClick={() => {
-          console.log("Clicked");
           onClick(chat.id);
         }}
       >

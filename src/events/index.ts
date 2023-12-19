@@ -1,25 +1,26 @@
 import { ChatMessages, ChatResponse } from "../services/refact";
 
+/**
+ * TODO:
+ * open new file
+ * diff paste back
+ * open chat in new tab
+ * send chat to side bar
+ * stop streaming button
+ * error handeling (done)
+ *
+ * back from chat (when in side-bar)
+ * open chat in new tab (side bar only)
+ * send chat to side bar
+ *
+ */
 export enum EVENT_NAMES_FROM_CHAT {
   SAVE_CHAT = "save_chat_to_history",
   ASK_QUESTION = "chat_question",
-  /**
-   * TODO:
-   * open new file
-   * diff paste back
-   * open chat  in new tab
-   * send chat to side bar
-   * stop streaming button
-   * error handeling
-   *
-   * back from chat (when in side-bar)
-   * open chat in new tab (side bar only)
-   * send chat to side bar
-   *
-   */
 }
 
 export enum EVENT_NAMES_TO_CHAT {
+  CLEAR_ERROR = "chat_clear_error",
   RESTORE_CHAT = "restore_chat_from_history",
   CHAT_RESPONSE = "chat_response",
   BACKUP_MESSAGES = "back_up_messages",
@@ -36,7 +37,7 @@ export type ChatThread = {
 };
 interface BaseAction {
   type: EVENT_NAMES_FROM_CHAT | EVENT_NAMES_TO_CHAT;
-  payload?: unknown;
+  payload?: { id: string };
 }
 
 export interface ActionFromChat extends BaseAction {
@@ -63,7 +64,10 @@ export interface ResponseToChat extends ActionToChat {
 
 export interface BackUpMessages extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES;
-  payload: ChatMessages;
+  payload: {
+    id: string;
+    messages: ChatMessages;
+  };
 }
 
 export interface RestoreChat extends ActionToChat {
@@ -77,6 +81,18 @@ export interface CreateNewChatThread extends ActionToChat {
 
 export interface ChatDoneStreaming extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.DONE_STREAMING;
+}
+
+export interface ChatErrorStreaming extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING;
+  payload: {
+    id: string;
+    message: string;
+  };
+}
+
+export interface ChatClearError extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR;
 }
 
 export type Actions = ActionToChat | ActionFromChat;
@@ -128,6 +144,7 @@ export function isBackupMessages(action: unknown): action is BackUpMessages {
 }
 
 export function isRestoreChat(action: unknown): action is RestoreChat {
+  console.log("isRestoreChat", action);
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
 }
@@ -144,4 +161,23 @@ export function isChatDoneStreaming(
 ): action is ChatDoneStreaming {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.DONE_STREAMING;
+}
+
+export function isChatErrorStreaming(
+  action: unknown,
+): action is ChatErrorStreaming {
+  if (!isActionToChat(action)) return false;
+  if (action.type !== EVENT_NAMES_TO_CHAT.ERROR_STREAMING) return false;
+  if (!("payload" in action)) return false;
+  if (typeof action.payload !== "object") return false;
+  if (!("id" in action.payload)) return false;
+  if (typeof action.payload.id !== "string") return false;
+  if (!("message" in action.payload)) return false;
+  if (typeof action.payload.message !== "string") return false;
+  return true;
+}
+
+export function isChatClearError(action: unknown): action is ChatClearError {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.CLEAR_ERROR;
 }

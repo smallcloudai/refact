@@ -52,7 +52,7 @@ function handleSend(chat: ChatThread, controller: AbortController) {
       const decoder = new TextDecoder();
       const reader = response.body?.getReader();
       if (!reader) return;
-      void reader.read().then(function pump({ done, value }): Promise<void> {
+      return reader.read().then(function pump({ done, value }): Promise<void> {
         if (done) {
           // Do something with last chunk of data then exit reader
           return Promise.resolve();
@@ -87,11 +87,23 @@ function handleSend(chat: ChatThread, controller: AbortController) {
               string,
               unknown
             >;
-            return Promise.reject(errorJson.detail ?? "streaming error"); // handle error
+            const errorMessage =
+              typeof errorJson.detail === "string"
+                ? errorJson.detail
+                : "error from lsp";
+            const error = new Error(errorMessage);
+            return Promise.reject(error); // handle error
           }
           // figure out how to safely parseJson
 
           const json = JSON.parse(maybeJsonString) as Record<string, unknown>;
+
+          if ("detail" in json) {
+            const errorMessage: string =
+              typeof json.detail === "string" ? json.detail : "error from lsp";
+            const error = new Error(errorMessage);
+            return Promise.reject(error);
+          }
           window.postMessage(
             {
               type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
@@ -110,7 +122,13 @@ function handleSend(chat: ChatThread, controller: AbortController) {
     .catch((error: Error) => {
       console.error(error);
       window.postMessage(
-        { type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING, payload: error.message },
+        {
+          type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
+          payload: {
+            id: chat.id,
+            message: error.message,
+          },
+        },
         "*",
       );
     })

@@ -1,5 +1,6 @@
 import React from "react";
 import classNames from "classnames";
+import { Box } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 export const Form: React.FC<
@@ -9,13 +10,15 @@ export const Form: React.FC<
   }>
 > = ({ className, onSubmit, ...props }) => {
   return (
-    <form
-      className={classNames(styles.chatForm, className)}
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit(event);
-      }}
-      {...props}
-    />
+    <Box mt="8">
+      <form
+        className={classNames(styles.chatForm, className)}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit(event);
+        }}
+        {...props}
+      />
+    </Box>
   );
 };

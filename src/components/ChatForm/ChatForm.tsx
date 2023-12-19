@@ -7,12 +7,15 @@ import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
 import { TextArea } from "../TextArea";
 import { Form } from "./Form";
 import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
+import { ErrorCallout } from "../Callout";
 
 export const ChatForm: React.FC<{
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
-}> = ({ onSubmit, onClose, className }) => {
+  clearError: () => void;
+  error?: string;
+}> = ({ onSubmit, onClose, className, error, clearError }) => {
   const [value, setValue] = React.useState("");
 
   const handleSubmit = () => {
@@ -24,10 +27,17 @@ export const ChatForm: React.FC<{
   };
 
   const handleEnter = useOnPressedEnter(handleSubmit);
+  if (error) {
+    return (
+      <ErrorCallout mt="2" onClick={clearError} timeout={5000}>
+        {error}
+      </ErrorCallout>
+    );
+  }
 
   return (
-    <Form className={className} onSubmit={() => handleSubmit()}>
-      <Box>
+    <Box mt="1">
+      <Form className={className} onSubmit={() => handleSubmit()}>
         <TextArea
           value={value}
           onChange={(event) => {
@@ -45,7 +55,7 @@ export const ChatForm: React.FC<{
           )}
           <PaperPlaneButton title="send" size="1" type="submit" />
         </Flex>
-      </Box>
-    </Form>
+      </Form>
+    </Box>
   );
 };
