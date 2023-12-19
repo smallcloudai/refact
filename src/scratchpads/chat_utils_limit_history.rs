@@ -7,7 +7,7 @@ pub fn limit_messages_history(
     messages: &Vec<ChatMessage>,
     max_new_tokens: usize,
     context_size: usize,
-    default_system_mesage: &String,
+    default_system_message: &String,
 ) -> Result<Vec<ChatMessage>, String>
 {
     let tokens_limit: i32 = context_size as i32 - max_new_tokens as i32;
@@ -24,9 +24,9 @@ pub fn limit_messages_history(
             have_system = true;
         }
     }
-    let need_default_system_msg = !have_system && default_system_mesage.len() > 0;
+    let need_default_system_msg = !have_system && default_system_message.len() > 0;
     if need_default_system_msg {
-        let tcnt = t.count_tokens(default_system_mesage.as_str())? as i32;
+        let tcnt = t.count_tokens(default_system_message.as_str())? as i32;
         tokens_used += tcnt;
     }
     for i in (0..messages.len()).rev() {
@@ -44,7 +44,7 @@ pub fn limit_messages_history(
     if need_default_system_msg {
         messages_out.insert(0, ChatMessage {
             role: "system".to_string(),
-            content: default_system_mesage.clone(),
+            content: default_system_message.clone(),
         });
     }
     Ok(messages_out)
@@ -54,7 +54,7 @@ pub fn limit_messages_history(
 pub fn limit_messages_history_in_bytes(
     messages: &Vec<ChatMessage>,
     bytes_limit: usize,
-    default_system_mesage: &String,
+    default_system_message: &String,
 ) -> Result<Vec<ChatMessage>, String>
 {
     let mut bytes_used: usize = 0;
@@ -67,9 +67,9 @@ pub fn limit_messages_history_in_bytes(
             have_system = true;
         }
     }
-    let need_default_system_msg = !have_system && default_system_mesage.len() > 0;
+    let need_default_system_msg = !have_system && default_system_message.len() > 0;
     if need_default_system_msg {
-        bytes_used += default_system_mesage.as_bytes().len();
+        bytes_used += default_system_message.as_bytes().len();
     }
     for i in (0..messages.len()).rev() {
         let bytes = messages[i].content.len();
@@ -86,7 +86,7 @@ pub fn limit_messages_history_in_bytes(
     if need_default_system_msg {
         messages_out.insert(0, ChatMessage {
             role: "system".to_string(),
-            content: default_system_mesage.clone(),
+            content: default_system_message.clone(),
         });
     }
     Ok(messages_out)

@@ -201,14 +201,9 @@ impl LanguageServer for Backend {
         }
 
         if let Some(folders) = params.workspace_folders {
-            let files = retrieve_files_by_proj_folders(
-                folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
-            ).await;
             match *self.gcx.read().await.vec_db.lock().await {
-                Some(ref db) => db.add_or_update_files(files, true).await,
-                None => {
-                    info!("LSP no vec_db");
-                }
+                Some(ref db) => db.init_folders(folders).await,
+                None => {},
             };
         }
 

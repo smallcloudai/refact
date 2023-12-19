@@ -285,6 +285,9 @@ impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for SingleFileFIM<T> {
         });
         Ok((ans, finished))
     }
+    fn response_spontaneous(&mut self) -> Result<serde_json::Value, String> {
+        return Err("".to_string());
+    }
 }
 
 fn get_context_near_cursor(text: &Rope, line_pos: usize, max_lines_count: usize) -> String {

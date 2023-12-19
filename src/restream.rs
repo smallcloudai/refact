@@ -153,6 +153,24 @@ pub async fn scratchpad_interaction_stream(
         let mut save_url: String = String::new();
         let permit = slowdown_arc.acquire().await;
         loop {
+            loop {
+                let value_maybe = scratch.response_spontaneous();
+                if let Ok(value) = value_maybe {
+                    if value == json!(null) {
+                        break;
+                    }
+                    let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
+                    info!("yield: {:?}", value_str);
+                    yield Result::<_, String>::Ok(value_str);
+                } else {
+                    let err_str = value_maybe.unwrap_err();
+                    error!("response_spontaneous error: {}", err_str);
+                    let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
+                    yield Result::<_, String>::Ok(value_str);
+                }
+                break;
+            }
+
             let event_source_maybe = if endpoint_style == "hf" {
                 forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
                     &mut save_url,

@@ -58,8 +58,13 @@ const ONE_MONTH: i32 = 30 * 24 * 3600;
 const MIN_LIKES: i32 = 3;
 
 impl VecDBHandler {
-    pub async fn init(cache_dir: PathBuf, embedding_size: i32) -> Result<VecDBHandler, String> {
-        let cache_dir_str = match cache_dir.join("refact_vecdb_cache").to_str() {
+    pub async fn init(cache_dir: &PathBuf, model_name: &String, embedding_size: i32) -> Result<VecDBHandler, String> {
+        let cache_dir_str = match cache_dir.join("refact_vecdb_cache")
+            .join(format!("model_{}_esize_{}",
+                          model_name.replace("/", "_"),
+                          embedding_size
+            )).to_str() {
+
             Some(dir) => dir.to_string(),
             None => {
                 return Err(format!("{:?}", "Cache directory is not a valid path"));
@@ -327,6 +332,7 @@ impl VecDBHandler {
             Some(res) => res
         };
 
+        // valerii: In documentation I found no way to preprocess strings to prevent SQL injections
         match self.cache_table.delete(
             format!("(file_path = \"{}\")", file_path_str).as_str()  // TODO: Prevent a possible sql injection here
         ).await {

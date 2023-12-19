@@ -59,7 +59,7 @@ pub async fn file_watcher_task(
     let (mut watcher, mut rx) = make_async_watcher().expect("Failed to make file watcher");
     let maybe_path = global_context.read().await.cmdline.files_set_path.clone();
     if maybe_path.is_empty() {
-        info!("file watcher: no files to watch");
+        info!("files_set_path is empty: no files to watch");
         return;
     }
     let path = PathBuf::from(maybe_path);
