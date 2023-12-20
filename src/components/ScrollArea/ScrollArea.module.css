@@ -1,4 +1,4 @@
-.scrollArea > div > div,
-.scrollArea :global(.rt-ScrollAreaViewport) {
+.vertical > div > div,
+.vertical :global(.rt-ScrollAreaViewport) {
   display: block !important;
 }

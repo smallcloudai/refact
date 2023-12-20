@@ -1,11 +1,12 @@
 import { useEffect } from "react";
-import { sendChat } from "../services/refact";
+import { sendChat, getCaps } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
   EVENT_NAMES_TO_CHAT,
   ChatThread,
   isQuestionFromChat,
   isSaveChatFromChat,
+  isRequestCapsFromChat,
 } from "../events";
 
 export function useEventBusForHost() {
@@ -36,6 +37,29 @@ export function useEventBusForHost() {
         const chat = event.data.payload;
         saveChat(chat);
       }
+
+      if (isRequestCapsFromChat(event.data)) {
+        const chat_id = event.data.payload.id;
+        getCaps()
+          .then((caps) => {
+            window.postMessage({
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS,
+              payload: {
+                id: chat_id,
+                caps,
+              },
+            });
+          })
+          .catch((error: Error) => {
+            window.postMessage({
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR,
+              payload: {
+                id: chat_id,
+                message: error.message,
+              },
+            });
+          });
+      }
     };
 
     window.addEventListener("message", listener);
@@ -47,7 +71,7 @@ export function useEventBusForHost() {
 }
 
 function handleSend(chat: ChatThread, controller: AbortController) {
-  sendChat(chat.messages, "gpt-3.5-turbo", controller)
+  sendChat(chat.messages, chat.model, controller)
     .then((response) => {
       const decoder = new TextDecoder();
       const reader = response.body?.getReader();

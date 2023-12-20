@@ -1,5 +1,6 @@
 const REFACT_URL = "http://127.0.0.1:8001";
 const CHAT_URL = `${REFACT_URL}/v1/chat`;
+const CAPS_URL = `${REFACT_URL}/v1/caps`;
 
 export type ChatRole = "user" | "assistant" | "context_file";
 export type ChatMessage = [ChatRole, string];
@@ -39,13 +40,6 @@ export type ChatResponse = {
   id: string;
 };
 
-const API_KEY: string | undefined = import.meta.env.VITE_REFACT_API_KEY;
-if (!API_KEY) {
-  // eslint-disable-next-line no-console
-  console.error("VITE_REFACT_API_KEY not configured in .env file");
-  throw new Error("api-key not defined");
-}
-
 export function sendChat(
   messages: ChatMessages,
   model: string,
@@ -66,7 +60,6 @@ export function sendChat(
 
   const headers = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${API_KEY}`,
   };
 
   return fetch(CHAT_URL, {
@@ -79,3 +72,70 @@ export function sendChat(
     signal: abortController.signal,
   });
 }
+
+export async function getCaps(): Promise<CapsResponse> {
+  const response = await fetch(CAPS_URL, {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
+  const json: unknown = await response.json();
+
+  if (!isCapsResponse(json)) {
+    throw new Error("Invalid response from caps");
+  }
+
+  return json;
+}
+
+type CodeChatModel = {
+  default_scratchpad: string;
+  n_ctx: number;
+  similar_models: string[];
+  supports_scratchpads: Record<
+    string,
+    {
+      default_system_message: string;
+    }
+  >;
+};
+
+type CodeCompletionModel = {
+  default_scratchpad: string;
+  n_ctx: number;
+  similar_models: string[];
+  supports_scratchpads: Record<string, Record<string, unknown>>;
+};
+
+export function isCapsResponse(json: unknown): json is CapsResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("code_chat_default_model" in json)) return false;
+  if (typeof json.code_chat_default_model !== "string") return false;
+  if (!("code_chat_models" in json)) return false;
+  return true;
+}
+
+export type CapsResponse = {
+  caps_version: number;
+  cloud_name: string;
+  code_chat_default_model: string;
+  code_chat_models: Record<string, CodeChatModel>;
+  code_completion_default_model: string;
+  code_completion_models: Record<string, CodeCompletionModel>;
+  code_completion_n_ctx: number;
+  endpoint_chat_passthrough: string;
+  endpoint_style: string;
+  endpoint_template: string;
+  running_models: string[];
+  telemetry_basic_dest: string;
+  telemetry_corrected_snippets_dest: string;
+  tokenizer_path_template: string;
+  tokenizer_rewrite_path: Record<string, unknown>;
+};

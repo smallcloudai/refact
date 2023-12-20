@@ -10,7 +10,7 @@ export const Form: React.FC<
   }>
 > = ({ className, onSubmit, ...props }) => {
   return (
-    <Box mt="8">
+    <Box mt="1">
       <form
         className={classNames(styles.chatForm, className)}
         onSubmit={(event) => {

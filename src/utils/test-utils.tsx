@@ -2,6 +2,7 @@ import { ReactElement } from "react";
 
 import { render, RenderOptions } from "@testing-library/react";
 import userEvent, { UserEvent } from "@testing-library/user-event";
+import { Theme } from "@radix-ui/themes";
 
 const customRender = (
   ui: ReactElement,
@@ -9,7 +10,7 @@ const customRender = (
 ): ReturnType<typeof render> & { user: UserEvent } => {
   const user = userEvent.setup();
   return {
-    ...render(ui, { ...options }),
+    ...render(ui, { wrapper: Theme, ...options }),
     user,
   };
 };

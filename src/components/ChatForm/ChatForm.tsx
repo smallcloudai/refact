@@ -8,14 +8,45 @@ import { TextArea } from "../TextArea";
 import { Form } from "./Form";
 import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
 import { ErrorCallout } from "../Callout";
+import { ChatCapsState } from "../../hooks/useEventBusForChat";
+import { Select } from "../Select/Select";
+
+const CapsSelect: React.FC<{
+  value: string;
+  onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  options: string[];
+}> = ({ options, value, onChange }) => {
+  return (
+    <Select
+      title="chat model"
+      options={options}
+      value={value}
+      onChange={onChange}
+    ></Select>
+  );
+};
 
 export const ChatForm: React.FC<{
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
   clearError: () => void;
-  error?: string;
-}> = ({ onSubmit, onClose, className, error, clearError }) => {
+  error: string | null;
+  caps: ChatCapsState;
+  model: string;
+  onSetChatModel: (model: string) => void;
+  canChangeModel: boolean;
+}> = ({
+  onSubmit,
+  onClose,
+  className,
+  error,
+  clearError,
+  caps,
+  model,
+  onSetChatModel,
+  canChangeModel,
+}) => {
   const [value, setValue] = React.useState("");
 
   const handleSubmit = () => {
@@ -37,6 +68,13 @@ export const ChatForm: React.FC<{
 
   return (
     <Box mt="1">
+      {canChangeModel && (
+        <CapsSelect
+          value={model || caps.default_cap}
+          onChange={(event) => onSetChatModel(event.target.value)}
+          options={caps.available_caps}
+        />
+      )}
       <Form className={className} onSubmit={() => handleSubmit()}>
         <TextArea
           value={value}

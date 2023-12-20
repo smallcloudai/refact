@@ -1,8 +1,14 @@
-import { ChatMessages, ChatResponse } from "../services/refact";
+import {
+  ChatMessages,
+  ChatResponse,
+  CapsResponse,
+  isCapsResponse,
+} from "../services/refact";
 
 export enum EVENT_NAMES_FROM_CHAT {
   SAVE_CHAT = "save_chat_to_history",
   ASK_QUESTION = "chat_question",
+  REQUEST_CAPS = "chat_request_caps",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -13,6 +19,9 @@ export enum EVENT_NAMES_TO_CHAT {
   DONE_STREAMING = "chat_done_streaming",
   ERROR_STREAMING = "chat_error_streaming",
   NEW_CHAT = "create_new_chat",
+  RECEIVE_CAPS = "receive_caps",
+  RECEIVE_CAPS_ERROR = "receive_caps_error",
+  SET_CHAT_MODEL = "chat_set_chat_model",
 }
 
 export type ChatThread = {
@@ -23,7 +32,7 @@ export type ChatThread = {
 };
 interface BaseAction {
   type: EVENT_NAMES_FROM_CHAT | EVENT_NAMES_TO_CHAT;
-  payload?: { id: string };
+  payload?: { id: string; [key: string]: unknown };
 }
 
 export interface ActionFromChat extends BaseAction {
@@ -40,8 +49,33 @@ export interface SaveChatFromChat extends ActionFromChat {
   payload: ChatThread;
 }
 
+export interface RequestCapsFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS;
+  payload: { id: string };
+}
+
+export function isRequestCapsFromChat(
+  action: unknown,
+): action is RequestCapsFromChat {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_CAPS;
+}
+
 export interface ActionToChat extends BaseAction {
   type: EVENT_NAMES_TO_CHAT;
+}
+
+export interface SetChatModel extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL;
+  payload: {
+    id: string;
+    model: string;
+  };
+}
+
+export function isSetChatModel(action: unknown): action is SetChatModel {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL;
 }
 export interface ResponseToChat extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE;
@@ -79,6 +113,38 @@ export interface ChatErrorStreaming extends ActionToChat {
 
 export interface ChatClearError extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR;
+}
+
+export interface ChatReceiveCaps extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS;
+  payload: {
+    id: string;
+    caps: CapsResponse;
+  };
+}
+
+export function isChatReceiveCaps(action: unknown): action is ChatReceiveCaps {
+  if (!isActionToChat(action)) return false;
+  if (!("payload" in action)) return false;
+  if (typeof action.payload !== "object") return false;
+  if (!("caps" in action.payload)) return false;
+  if (!isCapsResponse(action.payload.caps)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_CAPS;
+}
+
+export interface ChatReceiveCapsError extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR;
+  payload: {
+    id: string;
+    message: string;
+  };
+}
+
+export function isChatReceiveCapsError(
+  action: unknown,
+): action is ChatReceiveCapsError {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR;
 }
 
 export type Actions = ActionToChat | ActionFromChat;

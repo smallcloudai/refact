@@ -10,10 +10,14 @@ import {
   isResponseToChat,
   isBackupMessages,
   isRestoreChat,
-  isCreateNewChat,
   isChatDoneStreaming,
   isChatErrorStreaming,
   isChatClearError,
+  isChatReceiveCaps,
+  isRequestCapsFromChat,
+  isCreateNewChat,
+  isChatReceiveCapsError,
+  isSetChatModel,
 } from "../events";
 
 declare global {
@@ -79,7 +83,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   if (isThisChat && isBackupMessages(action)) {
     return {
       ...state,
-      error: "",
+      error: null,
       chat: {
         ...state.chat,
         messages: action.payload.messages,
@@ -91,13 +95,51 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     return {
       ...state,
       streaming: false,
-      error: "",
+      error: null,
       chat: action.payload,
     };
   }
 
   if (isCreateNewChat(action)) {
     return createInitialState();
+  }
+
+  if (isRequestCapsFromChat(action)) {
+    return {
+      ...state,
+      caps: {
+        ...state.caps,
+        fetching: true,
+      },
+    };
+  }
+
+  if (isThisChat && isChatReceiveCaps(action)) {
+    const default_cap = action.payload.caps.code_chat_default_model;
+    const available_caps = Object.keys(action.payload.caps.code_chat_models);
+    return {
+      ...state,
+      chat: {
+        ...state.chat,
+        model: state.chat.model || default_cap,
+      },
+      caps: {
+        fetching: false,
+        default_cap,
+        available_caps,
+      },
+    };
+  }
+
+  if (isThisChat && isChatReceiveCapsError(action)) {
+    return {
+      ...state,
+      error: action.payload.message,
+      caps: {
+        ...state.caps,
+        fetching: false,
+      },
+    };
   }
 
   if (isThisChat && isChatDoneStreaming(action)) {
@@ -120,31 +162,53 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
-  if (isChatClearError(action)) {
+  if (isThisChat && isChatClearError(action)) {
     return {
       ...state,
-      error: "",
+      error: null,
+    };
+  }
+
+  if (isThisChat && isSetChatModel(action)) {
+    return {
+      ...state,
+      chat: {
+        ...state.chat,
+        model: action.payload.model,
+      },
     };
   }
 
   return state;
 }
 
+export type ChatCapsState = {
+  fetching: boolean;
+  default_cap: string;
+  available_caps: string[];
+};
+
 export type ChatState = {
   chat: ChatThread;
   streaming: boolean;
-  error: string;
+  error: string | null;
+  caps: ChatCapsState;
 };
 
 function createInitialState(): ChatState {
   return {
     streaming: false,
-    error: "",
+    error: null,
     chat: {
       id: uuidv4(),
       messages: [],
       title: "",
-      model: "gpt-3.5-turbo",
+      model: "",
+    },
+    caps: {
+      fetching: false,
+      default_cap: "",
+      available_caps: [],
     },
   };
 }
@@ -196,9 +260,38 @@ export const useEventBusForChat = () => {
     });
   }
 
+  useEffect(() => {
+    function requestCaps() {
+      postMessage({
+        type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS,
+        payload: {
+          id: state.chat.id,
+        },
+      });
+    }
+
+    if (
+      state.chat.messages.length === 0 &&
+      state.caps.available_caps.length === 0
+    ) {
+      requestCaps();
+    }
+  }, [state]);
+
   function clearError() {
     dispatch({ type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR });
   }
 
-  return { state, askQuestion, sendMessages, clearError };
+  function setChatModel(model: string) {
+    const action = {
+      type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL,
+      payload: {
+        id: state.chat.id,
+        model,
+      },
+    };
+    dispatch(action);
+  }
+
+  return { state, askQuestion, sendMessages, clearError, setChatModel };
 };

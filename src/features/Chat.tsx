@@ -5,7 +5,9 @@ import { ChatContent } from "../components/ChatContent";
 import { Flex } from "@radix-ui/themes";
 
 export const Chat: React.FC = () => {
-  const { state, askQuestion, sendMessages, clearError } = useEventBusForChat();
+  const { state, askQuestion, sendMessages, clearError, setChatModel } =
+    useEventBusForChat();
+
   return (
     <Flex
       direction="column"
@@ -13,6 +15,7 @@ export const Chat: React.FC = () => {
       grow="1"
       style={{
         height: "calc(100dvh - 180px)", // TODO: fix this
+        // minHeight: "100%",
       }}
     >
       <ChatContent
@@ -21,11 +24,15 @@ export const Chat: React.FC = () => {
       />
 
       <ChatForm
+        canChangeModel={state.chat.messages.length === 0 && !state.streaming}
         error={state.error}
         clearError={clearError}
         onSubmit={(value) => {
           askQuestion(value);
         }}
+        model={state.chat.model}
+        onSetChatModel={setChatModel}
+        caps={state.caps}
       />
     </Flex>
   );
