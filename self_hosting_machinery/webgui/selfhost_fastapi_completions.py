@@ -271,7 +271,7 @@ class CompletionsRouter(APIRouter):
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
         code_chat_default_model = ""
         for model_name in models_available:
-            if self._model_assigner.models_db.get(model_name, {}).get("chat_scratchpad_class", None) is not None \
+            if "chat" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []) \
                     or model_name in litellm.model_list:
                 code_chat_default_model = model_name
                 break

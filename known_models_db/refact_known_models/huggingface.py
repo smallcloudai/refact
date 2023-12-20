@@ -27,7 +27,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 18000,
         "T": 4096,
-        "filter_caps": ["starchat"],
+        "filter_caps": ["chat", "starchat"],
     },
     "starcoder/1b/base": {
         "backend": "transformers",
@@ -77,7 +77,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 8000,
         "T": 2048,
-        "filter_caps": ["wizardlm"],
+        "filter_caps": ["chat", "wizardlm"],
     },
     "wizardlm/13b": {
         "backend": "autogptq",
@@ -87,7 +87,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 14000,
         "T": 2048,
-        "filter_caps": ["wizardlm"],
+        "filter_caps": ["chat", "wizardlm"],
     },
     "llama2/7b": {
         "backend": "autogptq",
@@ -97,7 +97,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 8000,
         "T": 2048,
-        "filter_caps": ["llama2"],
+        "filter_caps": ["chat", "llama2"],
     },
     "llama2/13b": {
         "backend": "autogptq",
@@ -107,7 +107,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 14000,
         "T": 2048,
-        "filter_caps": ["llama2"],
+        "filter_caps": ["chat", "llama2"],
     },
     "codellama/7b": {
         "backend": "transformers",
@@ -128,7 +128,7 @@ huggingface_mini_db = {
             "load_in_4bit": True,
         },
         "T": 2048,
-        "filter_caps": ["wizardlm"],
+        "filter_caps": ["chat", "wizardlm"],
     },
     "deepseek-coder/1.3b/base": {
         "backend": "transformers",
@@ -162,70 +162,70 @@ huggingface_mini_db = {
         "backend": "autogptq",
         "model_path": "TheBloke/Magicoder-S-DS-6.7B-GPTQ",
         "diff_scratchpad_class": None,
-        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "chat_scratchpad_class": None,
         "model_class_kwargs": {
             "inject_fused_attention": False,
         },
         "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
-        "filter_caps": [],
+        "filter_caps": ["chat"],
     },
     "mistral/7b/instruct-v0.1": {
         "backend": "autogptq",
         "model_path": "TheBloke/Mistral-7B-Instruct-v0.1-GPTQ",
         "diff_scratchpad_class": None,
-        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
-        "filter_caps": [],
+        "filter_caps": ["chat"],
     },
     "mixtral/8x7b/instruct-v0.1": {
         "backend": "transformers",
         "model_path": "mistralai/Mixtral-8x7B-Instruct-v0.1",
         "diff_scratchpad_class": None,
-        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "chat_scratchpad_class": None,
         "model_class_kwargs": {
             "load_in_4bit": True,
         },
         "required_memory_mb": 35000,
         "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
-        "filter_caps": [],
+        "filter_caps": ["chat"],
     },
     "phind/34b/v2": {
         "backend": "transformers",
         "model_path": "Phind/Phind-CodeLlama-34B-v2",
         "diff_scratchpad_class": None,
-        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "chat_scratchpad_class": None,
         "model_class_kwargs": {
             "load_in_4bit": True,
         },
         "required_memory_mb": 24000,
         "T": 4095,
-        "filter_caps": [],
+        "filter_caps": ["chat"],
     },
     "deepseek-coder/6.7b/instruct": {
         "backend": "autogptq",
         "model_path": "TheBloke/deepseek-coder-6.7B-instruct-GPTQ",
         "diff_scratchpad_class": None,
-        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "chat_scratchpad_class": None,
         "model_class_kwargs": {
             "inject_fused_attention": False,
         },
         "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
-        "filter_caps": [],
+        "filter_caps": ["chat"],
     },
     "deepseek-coder/33b/instruct": {
         "backend": "transformers",
         "model_path": "deepseek-ai/deepseek-coder-33b-instruct",
         "diff_scratchpad_class": None,
-        "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
+        "chat_scratchpad_class": None,
         "model_class_kwargs": {
             "load_in_4bit": True,
         },
         "required_memory_mb": 24000,
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
-        "filter_caps": [],
+        "filter_caps": ["chat"],
     },
 }
