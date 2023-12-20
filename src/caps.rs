@@ -55,7 +55,7 @@ pub struct ModelsOnly {
     pub code_chat_models: HashMap<String, ModelRecord>,
 }
 
-const KNOWN_MODELS: &str = r#"
+const KNOWN_MODELS: &str = r####"
 {
     "code_completion_models": {
         "bigcode/starcoder": {
@@ -200,10 +200,72 @@ const KNOWN_MODELS: &str = r#"
                 "wizardlm/13b",
                 "wizardlm/30b"
             ]
+        },
+        "magicoder/6.7b": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {
+                    "token_esc": "",
+                    "keyword_system": "",
+                    "keyword_user": "\n@@ Instruction\n",
+                    "keyword_assistant": "\n@@ Response\n",
+                    "stop_list": [],
+                    "default_system_message": "You are an exceptionally intelligent coding assistant that consistently delivers accurate and reliable responses to user instructions.",
+                    "eot": "<|EOT|>"
+                }
+            }
+        },
+        "mistral/7b/instruct-v0.1": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {
+                    "token_esc": "",
+                    "keyword_system": "",
+                    "keyword_user": "[INST] ",
+                    "keyword_assistant": "[/INST]\n",
+                    "stop_list": [],
+                    "default_system_message": "",
+                    "eot": "</s>"
+                }
+            },
+            "similar_models": [
+                "mixtral/8x7b/instruct-v0.1"
+            ]
+        },
+        "phind/34b/v2": {
+            "n_ctx": 4095,
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {
+                    "token_esc": "",
+                    "keyword_system": "### System Prompt\n",
+                    "keyword_user": "\n### User Message\n",
+                    "keyword_assistant": "\n### Assistant\n",
+                    "stop_list": [],
+                    "default_system_message": "You are an intelligent programming assistant.",
+                    "eot": "</s>"
+                }
+            }
+        },
+        "deepseek-coder/6.7b/instruct": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {
+                    "token_esc": "",
+                    "keyword_system": "",
+                    "keyword_user": "### Instruction:\n",
+                    "keyword_assistant": "### Response:\n",
+                    "stop_list": [],
+                    "default_system_message": "You are an AI programming assistant, utilizing the Deepseek Coder model, developed by Deepseek Company, and you only answer questions related to computer science. For politically sensitive questions, security and privacy issues, and other non-computer science questions, you will refuse to answer.",
+                    "eot": "<|EOT|>"
+                }
+            },
+            "similar_models": [
+                "deepseek-coder/33b/instruct"
+            ]
         }
     }
 }
-"#;
+"####;
 
 const HF_DEFAULT_CAPS: &str = r#"
 {

@@ -73,6 +73,8 @@ impl ScratchpadAbstract for GenericChatScratchpad {
             self.dd.stop_list.push(self.keyword_user.clone());
             self.dd.stop_list.push(self.keyword_asst.clone());
         }
+        self.dd.stop_list.retain(|x|!x.is_empty());
+
         Ok(())
     }
 
