@@ -110,7 +110,7 @@ class TabStatisticsRouter(APIRouter):
                 media_type='application/json',
                 status_code=500)
 
-    async def _telemetry_basic(self, data: TelemetryBasicData, request: Request, account: str = "XXX"):
+    async def _telemetry_basic(self, data: TelemetryBasicData, request: Request, account: str = "user"):
         if not self._stats_service.is_ready:
             return self._stats_service_not_available_response
 
@@ -175,7 +175,7 @@ class TabStatisticsRouter(APIRouter):
 
         return JSONResponse({"retcode": "OK"})
 
-    async def _telemetry_snippets(self, data: TelemetryBasicData, request: Request, account: str = "XXX"):
+    async def _telemetry_snippets(self, data: TelemetryBasicData, request: Request, account: str = "user"):
         if not self._stats_service.is_ready:
             return self._stats_service_not_available_response
 

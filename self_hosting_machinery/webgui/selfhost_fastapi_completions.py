@@ -345,7 +345,7 @@ class CompletionsRouter(APIRouter):
             "human_readable_message": "API key verified",
         }
 
-    async def _completions(self, post: NlpCompletion, account: str = "XXX"):
+    async def _completions(self, post: NlpCompletion, account: str = "user"):
         ticket = Ticket("comp-")
         req = post.clamp()
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
@@ -371,7 +371,7 @@ class CompletionsRouter(APIRouter):
             media_type=("text/event-stream" if post.stream else "application/json"),
         )
 
-    async def _contrast(self, post: DiffCompletion, request: Request, account: str = "XXX"):
+    async def _contrast(self, post: DiffCompletion, request: Request, account: str = "user"):
         if post.function != "diff-anywhere":
             if post.cursor_file not in post.sources:
                 raise HTTPException(status_code=400, detail="cursor_file='%s' is not in sources=%s" % (post.cursor_file, list(post.sources.keys())))
@@ -418,7 +418,7 @@ class CompletionsRouter(APIRouter):
         await q.put(ticket)
         return StreamingResponse(diff_streamer(ticket, post, self._timeout, req["created"]))
 
-    async def _chat(self, post: ChatContext, request: Request, account: str = "XXX"):
+    async def _chat(self, post: ChatContext, request: Request, account: str = "user"):
         ticket = Ticket("comp-")
 
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
@@ -478,7 +478,7 @@ class CompletionsRouter(APIRouter):
             "data": data,
         }
 
-    async def _chat_completions(self, post: ChatContext, account: str = "XXX"):
+    async def _chat_completions(self, post: ChatContext, account: str = "user"):
         prefix, postfix = "data: ", "\n\n"
 
         if post.model in litellm.model_list:
