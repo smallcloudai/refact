@@ -1,27 +1,16 @@
 import { expect, vi, describe, it } from "vitest";
-import { render, waitFor } from "../utils/test-utils";
+import {
+  render,
+  waitFor,
+  postMessage,
+  setUpCaps,
+  stubResizeObserver,
+} from "../utils/test-utils";
 import { Chat } from "./Chat";
 import { EVENT_NAMES_TO_CHAT, EVENT_NAMES_FROM_CHAT } from "../events";
-import { STUB_CAPS_RESPONSE } from "../__fixtures__";
-
-// Work around for jsdom
-function postMessage(data: unknown) {
-  return window.dispatchEvent(
-    new MessageEvent("message", { source: window, origin: "*", data }),
-  );
-}
-
-// Mock the ResizeObserver
 
 describe("Chat", () => {
-  const ResizeObserverMock = vi.fn(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  }));
-
-  // Stub the global ResizeObserver
-  vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+  stubResizeObserver();
 
   it("should send and receive messages from the window", async () => {
     vi.mock("uuid", () => ({ v4: () => "foo" }));
@@ -37,13 +26,7 @@ describe("Chat", () => {
       "*",
     );
 
-    postMessage({
-      type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS,
-      payload: {
-        id: "foo",
-        caps: STUB_CAPS_RESPONSE,
-      },
-    });
+    setUpCaps();
 
     const select = await app.findByTitle("chat model");
     expect(select.textContent).toContain("gpt-3.5-turbo");
@@ -108,10 +91,20 @@ describe("Chat", () => {
       },
     });
 
-    postMessage({ type: EVENT_NAMES_TO_CHAT.DONE_STREAMING });
+    postMessage({
+      type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
+      payload: { id: "foo" },
+    });
 
     await waitFor(() => {
       expect(app.getAllByText("hello there")).not.toBeNull();
     });
   });
+
+  it.todo("restore chat");
+  it.todo("create new chat");
+  it.todo("set chat model");
+  it.todo("retry chat");
+  it.todo("chat error streaming");
+  it.todo("char error getting caps");
 });

@@ -63,6 +63,11 @@ export function useChatHistory() {
     window.postMessage({ type: EVENT_NAMES_TO_CHAT.NEW_CHAT }, "*");
   }
 
+  function deleteChat(chatId: string) {
+    const chats = history.filter((chat) => chat.id !== chatId);
+    setHistory(chats);
+  }
+
   const sortedHistory = history.slice().sort((a, b) => {
     return a.createdAt < b.createdAt ? 1 : -1;
   });
@@ -73,5 +78,6 @@ export function useChatHistory() {
     saveChat,
     restoreChatFromHistory,
     createNewChat,
+    deleteChat,
   };
 }

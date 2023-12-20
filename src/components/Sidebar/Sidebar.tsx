@@ -9,7 +9,13 @@ export const Sidebar: React.FC<{
   history: ChatHistoryItem[];
   onHistoryItemClick: (id: string) => void;
   onCreateNewChat: () => void;
-}> = ({ history, onHistoryItemClick, onCreateNewChat }) => {
+  onDeleteHistoryItem: (id: string) => void;
+}> = ({
+  history,
+  onHistoryItemClick,
+  onCreateNewChat,
+  onDeleteHistoryItem,
+}) => {
   return (
     <Box display={{ initial: "none", md: "block" }} className={styles.sidebar}>
       <Box
@@ -21,6 +27,7 @@ export const Sidebar: React.FC<{
           zIndex: 1,
           overflowX: "hidden",
           width: "inherit",
+          // backgroundColor: "var(--color-autofill-root)", // TODO: over laps the scroll bar
         }}
       >
         <ScrollArea scrollbars="vertical">
@@ -31,9 +38,6 @@ export const Sidebar: React.FC<{
             pb="2"
             mr="1"
             direction="column"
-            style={{
-              backgroundColor: "var(--color-autofill-root)",
-            }}
           >
             <Button
               variant="soft"
@@ -47,6 +51,7 @@ export const Sidebar: React.FC<{
             {history.map((chat) => (
               <HistoryItem
                 onClick={onHistoryItemClick}
+                onDelete={onDeleteHistoryItem}
                 key={chat.id}
                 chat={chat}
               />

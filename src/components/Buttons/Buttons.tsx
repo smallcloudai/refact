@@ -1,6 +1,6 @@
 import React from "react";
 import { IconButton, Button } from "@radix-ui/themes";
-import { PaperPlaneIcon, ExitIcon } from "@radix-ui/react-icons";
+import { PaperPlaneIcon, ExitIcon, Cross1Icon } from "@radix-ui/react-icons";
 import classNames from "classnames";
 import styles from "./button.module.css";
 
@@ -19,14 +19,20 @@ export const BackToSideBarButton: React.FC<IconButtonProps> = (props) => (
   </IconButton>
 );
 
+export const CloseButton: React.FC<IconButtonProps> = (props) => (
+  <IconButton variant="ghost" {...props}>
+    <Cross1Icon />
+  </IconButton>
+);
+
 export const RightButton: React.FC<ButtonProps & { className?: string }> = (
   props,
 ) => {
   return (
     <Button
-      {...props}
       size="1"
       variant="surface"
+      {...props}
       className={classNames(styles.rightButton, props.className)}
     />
   );

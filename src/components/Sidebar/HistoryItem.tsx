@@ -1,50 +1,75 @@
 import React from "react";
-import { Card, Flex, Text } from "@radix-ui/themes";
+import { Card, Flex, Text, Box } from "@radix-ui/themes";
 import { ChatHistoryItem } from "../../hooks/useChatHistory";
 import { ChatBubbleIcon } from "@radix-ui/react-icons";
+import { CloseButton } from "../Buttons/Buttons";
 
 export const HistoryItem: React.FC<{
   chat: ChatHistoryItem;
   onClick: (id: string) => void;
-}> = ({ chat, onClick }) => {
+  onDelete: (id: string) => void;
+}> = ({ chat, onClick, onDelete }) => {
   const dateCreated = new Date(chat.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
+  // TODO: put the car in a box and have the close button there ?
   return (
-    <Card
-      style={{ width: "240px", marginBottom: "2px" }}
-      variant="surface"
-      asChild
-    >
-      <button
-        onClick={() => {
-          onClick(chat.id);
-        }}
+    <Box style={{ position: "relative" }}>
+      <Card
+        style={{ width: "240px", marginBottom: "2px" }}
+        variant="surface"
+        className="rt-Button"
+        asChild
+        role="button"
+        onClick={() => onClick(chat.id)}
       >
-        <Text
-          as="div"
-          size="2"
-          weight="bold"
-          style={{
-            textOverflow: "ellipsis",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
+        <button
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onClick(chat.id);
           }}
         >
-          {chat.title}
-        </Text>
-
-        <Flex justify="between" style={{ marginTop: "8px" }}>
           <Text
-            size="1"
-            style={{ display: "flex", gap: "4px", alignItems: "center" }}
+            as="div"
+            size="2"
+            weight="bold"
+            style={{
+              textOverflow: "ellipsis",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+            }}
           >
-            <ChatBubbleIcon />{" "}
-            {chat.messages.filter((message) => message[0] === "user").length}
+            {chat.title}
           </Text>
 
-          <Text size="1">{dateTimeString}</Text>
-        </Flex>
-      </button>
-    </Card>
+          <Flex justify="between" style={{ marginTop: "8px" }}>
+            <Text
+              size="1"
+              style={{ display: "flex", gap: "4px", alignItems: "center" }}
+            >
+              <ChatBubbleIcon />{" "}
+              {chat.messages.filter((message) => message[0] === "user").length}
+            </Text>
+
+            <Text size="1">{dateTimeString}</Text>
+          </Flex>
+        </button>
+      </Card>
+      <CloseButton
+        size="1"
+        // needs to be smaller
+        style={{
+          position: "absolute",
+          right: "6px",
+          top: "6px",
+        }}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onDelete(chat.id);
+        }}
+        title="delete chat"
+      />
+    </Box>
   );
 };
