@@ -48,6 +48,19 @@ def network_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.DataFram
     return pd.DataFrame(fetch_records())
 
 
+def try_get_user_to_team_dict(stats_service: StatisticsService) -> Dict[str, str]:
+    res = {}
+    try:
+        prep = stats_service.session.prepare(
+            "SELECT * FROM users_access_control"
+        )
+        for record in stats_service.session.execute(prep):
+            res.setdefault(record["account"], record["team"])
+    except Exception:
+        pass
+    return res
+
+
 def robot_human_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.DataFrame:
     prep = stats_service.session.prepare(
         "SELECT * FROM telemetry_robot_human WHERE ts_end >= ? ALLOW FILTERING"
@@ -107,6 +120,7 @@ def retrieve_all_data_tables(stats_service: StatisticsService) -> StatsDataTable
     current_year = datetime.now().year
     start_of_year = datetime(current_year, 1, 1, 0, 0, 0, 0)
     timestamp_start_of_year = int(start_of_year.timestamp())
+    user_to_team_dict = try_get_user_to_team_dict(stats_service)
 
     extra = {}
     network_df = network_df_from_ts(stats_service, timestamp_start_of_year)
@@ -119,6 +133,10 @@ def retrieve_all_data_tables(stats_service: StatisticsService) -> StatsDataTable
     network_df['dt_end'] = pd.to_datetime(network_df['ts_end'], unit='s')
     robot_human_df['dt_end'] = pd.to_datetime(robot_human_df['ts_end'], unit='s')
     comp_counters_df['dt_end'] = pd.to_datetime(comp_counters_df['ts_end'], unit='s')
+
+    network_df['team'] = network_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
+    robot_human_df['team'] = robot_human_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
+    comp_counters_df['team'] = comp_counters_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
 
     network_df.sort_values(by='dt_end', inplace=True)
     robot_human_df.sort_values(by='dt_end', inplace=True)
