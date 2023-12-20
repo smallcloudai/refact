@@ -26,7 +26,7 @@ all_refact_packages = {
         requires=["dataclasses", "dataclasses_json"],
         data=["refact_toolbox_db/htmls/*.html"]),
     "refact_encoding": PyPackage(
-        requires=["tiktoken", "tokenizers==0.14.0", "sentencepiece", "termcolor"],
+        requires=["tiktoken", "tokenizers==0.15.0", "sentencepiece", "termcolor", "protobuf"],
         data=["*.json"]),
     "refact_scratchpads": PyPackage(
         requires=["termcolor", "torch"],
@@ -34,7 +34,7 @@ all_refact_packages = {
     "refact_scratchpads_no_gpu": PyPackage(
         requires=["termcolor", "aiohttp", "tiktoken", "openai", "ujson", "setproctitle"]),
     "refact_data_pipeline": PyPackage(
-        requires=["numpy", "tokenizers==0.14.0", "torch", "requests", "cloudpickle", "blobfile",
+        requires=["numpy", "tokenizers==0.15.0", "torch", "requests", "cloudpickle", "blobfile",
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools', "cdifflib",
                   "ujson", "zstandard", "scipy", "einops", "matplotlib", "giturlparse",
                   "jsonlines", "binpacking", "filelock", "tables==3.8.0", "pygments", "kshingle"],
