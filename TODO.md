@@ -35,7 +35,7 @@
 [x] model selection
 [x] no api key
 [ ] Test edge cases (selecting model, errors, messages)
-[ ] remove item from history
+[x] remove item from history
 
 ### EVENTS TODO FOR IDEs
 
