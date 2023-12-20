@@ -207,7 +207,7 @@ class ModelAssigner:
                 "has_completion": bool("completion" in rec["filter_caps"]),
                 "has_finetune": bool("finetune" in rec["filter_caps"]),
                 "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),
-                "has_chat": bool(rec["chat_scratchpad_class"]) and bool(chat_caps.intersection(rec["filter_caps"])),
+                "has_chat": bool("chat" in rec["filter_caps"]),
                 "has_sharding": rec["backend"] in ["transformers"],
             })
         return {"models": info}
