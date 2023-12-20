@@ -15,7 +15,7 @@ def robot_human_ratio(robot: int, human: int) -> float:
         return 1
     if robot == 0:
         return 0
-    return round(robot / robot + human, 2)
+    return round(robot / (robot + human), 2)
 
 
 def barplot_rh(
