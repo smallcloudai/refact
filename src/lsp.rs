@@ -19,6 +19,7 @@ use crate::global_context;
 use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::lsp::document::Document;
+
 use crate::telemetry;
 use crate::receive_workspace_changes;
 use crate::telemetry;
@@ -26,9 +27,9 @@ use crate::vecdb::file_filter::is_valid_file;
 
 use crate::telemetry::snippets_collection::sources_changed;
 
-mod document;
 mod treesitter;
 mod language_id;
+mod document;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -243,7 +244,8 @@ impl LanguageServer for Backend {
         match Document::open(
             &params.text_document.language_id,
             &params.text_document.text,
-        ).await {
+            &params.text_document.uri.to_string()
+        ) {
             Ok(document) => {
                 self.document_map
                     .write()
