@@ -185,8 +185,10 @@ huggingface_mini_db = {
         "model_path": "mistralai/Mixtral-8x7B-Instruct-v0.1",
         "diff_scratchpad_class": None,
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
-        "model_class_kwargs": {},
-        "required_memory_mb": 8000,
+        "model_class_kwargs": {
+            "load_in_4bit": True,
+        },
+        "required_memory_mb": 35000,
         "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
         "filter_caps": [],
     },
@@ -195,8 +197,10 @@ huggingface_mini_db = {
         "model_path": "Phind/Phind-CodeLlama-34B-v2",
         "diff_scratchpad_class": None,
         "chat_scratchpad_class": "refact_scratchpads:ScratchpadHuggingfaceLlama2",  # this is a hack for rust layer
-        "model_class_kwargs": {},
-        "required_memory_mb": 40000,
+        "model_class_kwargs": {
+            "load_in_4bit": True,
+        },
+        "required_memory_mb": 24000,
         "T": 4095,
         "filter_caps": [],
     },
@@ -208,7 +212,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {
             "inject_fused_attention": False,
         },
-        "required_memory_mb": 40000,
+        "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
         "filter_caps": [],
     },
@@ -220,7 +224,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {
             "load_in_4bit": True,
         },
-        "required_memory_mb": 40000,
+        "required_memory_mb": 24000,
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
         "filter_caps": [],
     },
