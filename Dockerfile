@@ -41,6 +41,9 @@ ENV PATH="${PATH}:/tmp/linguist/bin"
 
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packaging
 
+# auto-gptq
+RUN pip install auto-gptq==0.6.0 --extra-index-url https://huggingface.github.io/autogptq-index/whl/cu118/
+
 # refact lsp requisites
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 ENV PATH="${PATH}:/root/.cargo/bin"
@@ -49,8 +52,6 @@ RUN git clone https://github.com/smallcloudai/refact-lsp.git /tmp/refact-lsp \
     && cargo install --path . \
     && rm -rf /tmp/refact-lsp
 
-ENV BUILD_CUDA_EXT=1
-ENV TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0+PTX"
 ENV INSTALL_OPTIONAL=TRUE
 ENV FLASH_ATTENTION_FORCE_BUILD=TRUE
 ENV MAX_JOBS=8
