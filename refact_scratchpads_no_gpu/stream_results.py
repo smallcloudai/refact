@@ -76,7 +76,7 @@ def validate_description_dict(
 
 
 def completions_wait_batch(req_session: requests.Session, my_desc, verbose=False):
-    resp = None
+    txt = ""
     json_resp = None
     for attempt in range(5):
         t0 = time.time()
@@ -84,6 +84,7 @@ def completions_wait_batch(req_session: requests.Session, my_desc, verbose=False
         status: Optional[int] = None
         try:
             resp = req_session.post(url, json=my_desc, timeout=15, proxies={"http": "", "https": ""})
+            txt = resp.text
             status = resp.status_code
             json_resp = resp.json()
             status = resp.status_code
