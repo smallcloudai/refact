@@ -78,7 +78,7 @@ export const ChatForm: React.FC<{
           <CapsSelect
             value={model || caps.default_cap}
             onChange={onSetChatModel}
-            options={caps.available_caps.concat("foo")}
+            options={caps.available_caps}
           />
         )}
         {isStreaming && (
