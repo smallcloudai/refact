@@ -6,7 +6,6 @@ import {
   setUpCapsForChat,
   stubResizeObserver,
   cleanup,
-  screen,
 } from "../utils/test-utils";
 import { Chat } from "./Chat";
 import {
@@ -188,15 +187,10 @@ describe("Chat", () => {
     );
 
     await user.click(app.getByTitle("chat model"));
-    // app.debug(app.queryByTitle("chat model")!);
-
-    // await user.click(app.getByText(/test-model/i));
 
     await user.click(app.getByRole("option", { name: /test-model/i }));
 
     await waitFor(() => expect(app.queryByText("test-model")).not.toBeNull());
-
-    screen.logTestingPlaygroundURL();
 
     const textarea: HTMLTextAreaElement | null =
       app.container.querySelector("textarea");
