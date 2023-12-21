@@ -1,11 +1,17 @@
+use std::fs::{File, read_to_string};
+use std::io;
+use std::io::BufReader;
 use tokio::io::AsyncWriteExt;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use std::thread::sleep;
+use std::time::Duration;
 use tokio::sync::RwLock as ARwLock;
 use tokenizers::Tokenizer;
 use reqwest::header::AUTHORIZATION;
 use tracing::info;
+use uuid::Uuid;
 
 use crate::global_context::GlobalContext;
 use crate::caps::CodeAssistantCaps;
@@ -55,6 +61,49 @@ async fn _download_tokenizer_file(
     Ok(())
 }
 
+
+fn _check_json_file(path: &Path) -> bool {
+    match Tokenizer::from_file(path) {
+        Ok(_) => { true }
+        Err(_) => { false }
+    }
+}
+
+async fn _try_download_tokenizer_file_and_open(
+    http_client: &reqwest::Client,
+    http_path: &str,
+    api_token: String,
+    to: impl AsRef<Path>,
+) -> Result<(), String> {
+    if to.as_ref().exists() && _check_json_file(to.as_ref()) {
+        return Ok(());
+    }
+    
+    let tmp_file = std::env::temp_dir().join(Uuid::new_v4().to_string());
+    
+    for _ in 0..15 {
+        match _download_tokenizer_file(http_client, http_path, api_token.clone(), tmp_file.clone().as_path()).await {
+            Ok(_) => {
+                tokio::fs::create_dir_all(
+                    to.as_ref().parent().ok_or_else(|| "tokenizer path has no parent")?,
+                )
+                    .await
+                    .map_err(|e| format!("failed to create parent dir: {}", e))?;
+                let ok = _check_json_file(tmp_file.as_ref());
+                if ok {
+                    match tokio::fs::copy(tmp_file.clone(), to.as_ref()).await {
+                        Ok(_) => { return Ok(()) }
+                        Err(_) => {}
+                    }
+                }
+            },
+            Err(_) => {}
+        }
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+    Err("can not download tokenizer".parse().unwrap())
+}
+
 pub async fn cached_tokenizer(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     global_context: Arc<ARwLock<GlobalContext>>,
@@ -79,7 +128,7 @@ pub async fn cached_tokenizer(
                 let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).unwrap_or(&model_name);
                 http_path = caps_locked.tokenizer_path_template.replace("$MODEL", rewritten_model_name);();
             }
-            _download_tokenizer_file(&client2, http_path.as_str(), cx_locked.cmdline.api_key.clone(), &path).await?;
+            _try_download_tokenizer_file_and_open(&client2, http_path.as_str(), cx_locked.cmdline.api_key.clone(), &path).await?;
             info!("using tokenizer \"{}\"", path.display());
             let tokenizer = Tokenizer::from_file(path).map_err(|e| format!("failed to load tokenizer: {}", e))?;
             let arc = Arc::new(StdRwLock::new(tokenizer));
