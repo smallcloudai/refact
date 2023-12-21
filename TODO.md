@@ -12,35 +12,33 @@
 ### for http release
 
 [?] get config (lsp url)
-[ ] style things
 [x] generic text area
 [x] fix scroll area
 [x] get caps (models)
-[?] handle errors
-
+[x] handle errors
 [x] disable inputs while streaming
-[ ] content for when chat is empty
-[ ] enable dark mode
 [x] remove item from history
 [ ] code block scroll area (wrap for now)
-
-[ ] content for empty chat
-[ ] fix the text area placement (empty chat content might help with this)
 [ ] type `postMessage` and `dispatch` calls
-[ ] configure build
 
 [ ] user markdown input?
+[?] enable dark mode
 
 ### PRIORITY
 
 [?] set lsp url
 [x] model selection
 [x] no api key
-[ ] Test cases (selecting model, errors, messages)
+[x] Test cases (selecting model, errors, messages)
 [x] remove item from history
 [x] disable inputs while streaming
 [x] stop stream button
-[ ] build the app
+[ ] build the app (also think about how it'll be configured)
+[ ] content for when chat is empty
+[ ] fix the text area placement (empty chat content might help with this)
+[ ] make it look nice
+[ ] how to handle being offline
+[ ] how to handle long requests
 
 ### EVENTS TODO FOR IDEs
 
@@ -49,7 +47,7 @@
 [ ] diff paste back
 [ ] open chat in new tab
 [ ] send chat to side bar
-[ ] stop streaming button
+[x] stop streaming button
 [x] error handling (done)
 [ ] back from chat (when in side-bar)
 [ ] open chat in new tab (side bar only)

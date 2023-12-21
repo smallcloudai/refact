@@ -70,7 +70,7 @@ export const ChatForm: React.FC<{
       </ErrorCallout>
     );
   }
-  // console.log({ model, caps });
+
   return (
     <Box mt="1" position="relative">
       <Flex>
