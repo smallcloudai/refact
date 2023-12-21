@@ -18,7 +18,9 @@ RUN echo "export PATH=/usr/local/cuda/bin:\$PATH" > /etc/profile.d/50-smc.sh
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # torch
-RUN pip install --no-cache-dir torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118
+RUN pip install --no-cache-dir torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+# auto-gptq
+RUN pip install auto-gptq==0.6.0 --extra-index-url https://huggingface.github.io/autogptq-index/whl/cu118/
 
 # linguist requisites
 RUN apt-get update
@@ -40,9 +42,6 @@ RUN git clone https://github.com/smallcloudai/linguist.git /tmp/linguist \
 ENV PATH="${PATH}:/tmp/linguist/bin"
 
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packaging
-
-# auto-gptq
-RUN pip install auto-gptq==0.6.0 --extra-index-url https://huggingface.github.io/autogptq-index/whl/cu118/
 
 # refact lsp requisites
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
