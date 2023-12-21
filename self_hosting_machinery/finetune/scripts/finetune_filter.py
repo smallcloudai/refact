@@ -22,6 +22,10 @@ from self_hosting_machinery.finetune.scripts.process_uploaded_files import make_
 from self_hosting_machinery.finetune.utils.finetune_utils import (get_finetune_config, get_finetune_filter_config)
 
 
+class InvalidLossValueException(Exception):
+    pass
+
+
 def _log_everywhere(message):
     logging.info(message)
     traces.log(message)
@@ -52,6 +56,7 @@ def force_include_exclude_filter(
 @torch.inference_mode()
 def loss_based_filter(
         model_context: ModelContext,
+        dataset_context: FileSetsContext,
         files_status_context: FilesStatusContext,
         status_tracker: FinetuneFilterStatusTracker,
         *,
@@ -66,17 +71,30 @@ def loss_based_filter(
             encoding=model_context.encoding
         )
         for data in map(to_cuda, ds):
-            logits = model_context.forward(input=data['input'])
-            loss = model_context.loss(
-                logits=logits.to(torch.float32),
-                labels=data['labels'],
-                mask=data['mask'],
-            ).item()
+            content = model_context.encoding.decode(data['input'][0])
+            maybe_loss = dataset_context.get_loss_by_content(
+                model_name=model_context.model_name,
+                content=content
+            )
+            if maybe_loss is not None:
+                loss = maybe_loss
+            else:
+                logits = model_context.forward(input=data['input'])
+                loss = model_context.loss(
+                    logits=logits.to(torch.float32),
+                    labels=data['labels'],
+                    mask=data['mask'],
+                ).item()
+                dataset_context.add_content_loss_pair(
+                    model_name=model_context.model_name,
+                    content=content,
+                    loss=loss
+                )
             if not (math.isnan(loss) or math.isinf(loss)):
                 file_losses.append(loss)
 
         if len(file_losses) == 0:
-            raise Exception("small file")
+            raise InvalidLossValueException("small file")
 
         return sum(file_losses) / len(file_losses)
 
@@ -87,7 +105,7 @@ def loss_based_filter(
         for file in train_files:
             try:
                 file_loss = _get_file_loss(file)
-            except Exception as e:
+            except InvalidLossValueException as e:
                 files_status_context.reject_file(file, reason=str(e))
                 continue
 
@@ -129,6 +147,7 @@ def finetune_filter(
     _log_everywhere("Running perplexity based filter...")
     loss_based_filter(
         model_context=model_context,
+        dataset_context=dataset_context,
         files_status_context=file_status_context,
         status_tracker=status_tracker,
         filter_loss_threshold=finetune_filter_cfg['filter_loss_threshold']
@@ -161,10 +180,6 @@ def main(models_db: Dict[str, Any]):
         file_sets_context = FileSetsContext(
             autoselect_test_files_num=finetune_filter_cfg.get("autoselect_test_files_num", 3)
         )
-        if file_sets_context.is_up_to_date():
-            logging.info("Train set filtering: nothing changed since last time, quit")
-            return
-
         traces.log(textwrap.fill(
             f"This filter calculates perplexity for each file and filters out "
             f"files with perplexity larger than {finetune_filter_cfg['filter_loss_threshold']:.3f}.\n"

@@ -18,6 +18,7 @@ TRAIN_UNFILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "train_set.jsonl")
 TRAIN_FILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "train_set_filtered.jsonl")
 TEST_UNFILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "test_set.jsonl")
 TEST_FILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "test_set_filtered.jsonl")
+LOSS_PER_HASH_DB_FILEPATH = os.path.join(DIR_UNPACKED, "loss_per_hash_db.json")
 
 CONFIG_ENUM_GPUS = os.path.join(DIR_CONFIG, "gpus_enum_result.out")
 CONFIG_BUSY_GPUS = os.path.join(DIR_CONFIG, "gpus_busy_result.out")
