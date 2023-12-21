@@ -36,6 +36,7 @@ export const ChatForm: React.FC<{
   model: string;
   onSetChatModel: (model: string) => void;
   canChangeModel: boolean;
+  isStreaming: boolean;
 }> = ({
   onSubmit,
   onClose,
@@ -46,12 +47,13 @@ export const ChatForm: React.FC<{
   model,
   onSetChatModel,
   canChangeModel,
+  isStreaming,
 }) => {
   const [value, setValue] = React.useState("");
 
   const handleSubmit = () => {
     const trimmedValue = value.trim();
-    if (trimmedValue.length > 0) {
+    if (trimmedValue.length > 0 && !isStreaming) {
       onSubmit(trimmedValue);
       setValue(() => "");
     }
@@ -75,8 +77,13 @@ export const ChatForm: React.FC<{
           options={caps.available_caps}
         />
       )}
-      <Form className={className} onSubmit={() => handleSubmit()}>
+      <Form
+        disabled={isStreaming}
+        className={className}
+        onSubmit={() => handleSubmit()}
+      >
         <TextArea
+          disabled={isStreaming}
           value={value}
           onChange={(event) => {
             setValue(() => event.target.value);
@@ -86,12 +93,18 @@ export const ChatForm: React.FC<{
         <Flex gap="2" className={styles.buttonGroup}>
           {onClose && (
             <BackToSideBarButton
+              disabled={isStreaming}
               title="return to sidebar"
               size="1"
               onClick={onClose}
             />
           )}
-          <PaperPlaneButton title="send" size="1" type="submit" />
+          <PaperPlaneButton
+            disabled={isStreaming}
+            title="send"
+            size="1"
+            type="submit"
+          />
         </Flex>
       </Form>
     </Box>

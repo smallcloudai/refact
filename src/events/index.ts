@@ -22,6 +22,7 @@ export enum EVENT_NAMES_TO_CHAT {
   RECEIVE_CAPS = "receive_caps",
   RECEIVE_CAPS_ERROR = "receive_caps_error",
   SET_CHAT_MODEL = "chat_set_chat_model",
+  SET_DISABLE_CHAT = "set_disable_chat",
 }
 
 export type ChatThread = {
@@ -65,6 +66,15 @@ export interface ActionToChat extends BaseAction {
   type: EVENT_NAMES_TO_CHAT;
 }
 
+export interface SetChatDisable extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT;
+  payload: { id: string; disable: boolean };
+}
+
+export function isSetDisableChat(action: unknown): action is SetChatDisable {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT;
+}
 export interface SetChatModel extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL;
   payload: {

@@ -18,6 +18,7 @@ import {
   isCreateNewChat,
   isChatReceiveCapsError,
   isSetChatModel,
+  isSetDisableChat,
 } from "../events";
 
 declare global {
@@ -67,6 +68,10 @@ function formatChatResponse(
 function reducer(state: ChatState, action: ActionToChat): ChatState {
   const isThisChat =
     action.payload?.id && action.payload.id === state.chat.id ? true : false;
+
+  if (isThisChat && isSetDisableChat(action)) {
+    return { ...state, streaming: action.payload.disable };
+  }
 
   if (isThisChat && isResponseToChat(action)) {
     const messages = formatChatResponse(state.chat.messages, action.payload);
@@ -236,13 +241,27 @@ export const useEventBusForChat = () => {
   }, [state, dispatch]);
 
   function askQuestion(question: string) {
-    dispatch({ type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR });
+    dispatch({
+      type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
+      payload: { id: state.chat.id },
+    });
+    dispatch({
+      type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
+      payload: { id: state.chat.id, disable: true },
+    });
     const messages = state.chat.messages.concat([["user", question]]);
     sendMessages(messages);
   }
 
   function sendMessages(messages: ChatMessages) {
-    dispatch({ type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR });
+    dispatch({
+      type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
+      payload: { id: state.chat.id },
+    });
+    dispatch({
+      type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
+      payload: { id: state.chat.id, disable: true },
+    });
     const payload = {
       id: state.chat.id,
       messages: messages,
@@ -279,7 +298,10 @@ export const useEventBusForChat = () => {
   }, [state]);
 
   function clearError() {
-    dispatch({ type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR });
+    dispatch({
+      type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
+      payload: { id: state.chat.id },
+    });
   }
 
   function setChatModel(model: string) {

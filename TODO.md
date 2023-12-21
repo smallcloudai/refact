@@ -16,15 +16,15 @@
 [x] get caps (models)
 [?] handle errors
 
-[ ] disable inputs while streaming
+[x] disable inputs while streaming
 [ ] content for when chat is empty
 [ ] enable dark mode
-[ ] remove item from history
+[x] remove item from history
 [ ] code block scroll area (wrap for now)
 
 [ ] content for empty chat
 [ ] fix the text area placement (empty chat content might help with this)
-[ ] type `postMessage` calls
+[ ] type `postMessage` and `dispatch` calls
 [ ] configure build
 
 [ ] user markdown input?
@@ -36,6 +36,8 @@
 [x] no api key
 [ ] Test edge cases (selecting model, errors, messages)
 [x] remove item from history
+[x] disable inputs while streaming
+[ ] stop stream button
 
 ### EVENTS TODO FOR IDEs
 

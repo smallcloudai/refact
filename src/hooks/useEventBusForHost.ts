@@ -26,7 +26,7 @@ export function useEventBusForHost() {
           id: payload.id,
           title: payload.title ?? "",
           messages: payload.messages,
-          model: payload.model || "gpt-3.5-turbo",
+          model: payload.model,
         });
 
         handleSend(event.data.payload, controller);
@@ -99,7 +99,10 @@ function handleSend(chat: ChatThread, controller: AbortController) {
           const maybeJsonString = delta.substring(6);
           if (maybeJsonString === "[DONE]") {
             window.postMessage(
-              { type: EVENT_NAMES_TO_CHAT.DONE_STREAMING },
+              {
+                type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
+                payload: { id: chat.id },
+              },
               "*",
             );
             return Promise.resolve(); // handle finish
@@ -158,6 +161,9 @@ function handleSend(chat: ChatThread, controller: AbortController) {
       );
     })
     .finally(() => {
-      window.postMessage({ type: EVENT_NAMES_TO_CHAT.DONE_STREAMING }, "*");
+      window.postMessage(
+        { type: EVENT_NAMES_TO_CHAT.DONE_STREAMING, payload: { id: chat.id } },
+        "*",
+      );
     });
 }

@@ -24,6 +24,7 @@ export const Chat: React.FC = () => {
       />
 
       <ChatForm
+        isStreaming={state.streaming}
         canChangeModel={state.chat.messages.length === 0 && !state.streaming}
         error={state.error}
         clearError={clearError}
