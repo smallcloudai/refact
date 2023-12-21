@@ -265,41 +265,87 @@ function render_models(models) {
     const models_table = document.querySelector('.table-models tbody');
     models_table.innerHTML = '';
     models.models.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-    for(let index in models.models) {
-        console.log('xxxx',models.models);
+    let models_tree = models.models.reduce((result, item) => {
+        const name_parts = item.name.split('/');
+        const group_name = name_parts[0];
+        if (!result[group_name]) {
+          result[group_name] = [];
+        }
+        result[group_name].push(item);
+        return result;
+    }, {});
+    for (const group_name in models_tree) {
+        if (models_tree.hasOwnProperty(group_name)) {
+            models_tree[group_name].sort((a, b) => {
+            return a.name.localeCompare(b.name);
+          });
+        }
+    }
+    for (const [key, value] of Object.entries(models_tree)) {
+        console.log(value);
         const row = document.createElement('tr');
-        row.setAttribute('data-model',models.models[index].name);
+        row.setAttribute('data-model',key);
         const model_name = document.createElement("td");
+        const model_span = document.createElement('span');
         const has_completion = document.createElement("td");
         const has_finetune = document.createElement("td");
         const has_toolbox = document.createElement("td");
         const has_chat = document.createElement("td");
-        model_name.textContent = models.models[index].name;
-        if(models.models[index].hasOwnProperty('has_completion')) {
-            has_completion.innerHTML = models.models[index].has_completion ? '<i class="bi bi-check"></i>' : '';
-        }
-        if(models.models[index].hasOwnProperty('has_finetune')) {
-            has_finetune.innerHTML = models.models[index].has_finetune ? '<i class="bi bi-check"></i>' : '';
-        }
-        if(models.models[index].hasOwnProperty('has_toolbox')) {
-            has_toolbox.innerHTML = models.models[index].has_toolbox ? '<i class="bi bi-check"></i>' : '';
-        }
-        if(models.models[index].hasOwnProperty('has_chat')) {
-            has_chat.innerHTML = models.models[index].has_chat ? '<i class="bi bi-check"></i>' : '';
-        }
+        model_span.textContent = key;
+        model_span.classList.add('model-span');
+        model_name.appendChild(model_span);
         row.appendChild(model_name);
         row.appendChild(has_completion);
         row.appendChild(has_finetune);
         row.appendChild(has_toolbox);
         row.appendChild(has_chat);
         models_table.appendChild(row);
+        value.forEach(element => {
+            const row = document.createElement('tr');
+            row.setAttribute('data-model',element.name);
+            row.setAttribute('data-parent',key);
+            row.classList.add('modelsub-row');
+            const model_name = document.createElement("td");
+            const has_completion = document.createElement("td");
+            const has_finetune = document.createElement("td");
+            const has_toolbox = document.createElement("td");
+            const has_chat = document.createElement("td");
+            model_name.innerHTML = element.name;
+            if(element.hasOwnProperty('has_completion')) {
+                has_completion.innerHTML = element.has_completion ? '<i class="bi bi-check"></i>' : '';
+            }
+            if(element.hasOwnProperty('has_finetune')) {
+                has_finetune.innerHTML = element.has_finetune ? '<i class="bi bi-check"></i>' : '';
+            }
+            if(value.hasOwnProperty('has_toolbox')) {
+                has_toolbox.innerHTML = element.has_toolbox ? '<i class="bi bi-check"></i>' : '';
+            }
+            if(element.hasOwnProperty('has_chat')) {
+                has_chat.innerHTML = element.has_chat ? '<i class="bi bi-check"></i>' : '';
+            }
+            row.appendChild(model_name);
+            row.appendChild(has_completion);
+            row.appendChild(has_finetune);
+            row.appendChild(has_toolbox);
+            row.appendChild(has_chat);
+            models_table.appendChild(row);
+            row.addEventListener('click', function(e) {
+                const model_name = this.dataset.model;
+                models_data.model_assign[model_name] = {
+                    gpus_shard: 1
+                };
+                save_model_assigned();
+                const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
+                add_model_modal.hide();
+            });
+        });
         row.addEventListener('click', function(e) {
-            models_data.model_assign[models.models[index].name] = {
-                gpus_shard: 1
-            };
-            save_model_assigned();
-            const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
-            add_model_modal.hide();
+            this.classList.toggle('row-active');
+            const model_name = this.dataset.model;
+            const sub_rows = document.querySelectorAll('[data-parent="'+model_name+'"]');
+            sub_rows.forEach(sub_row => {
+                sub_row.style.display = sub_row.style.display === 'table-row'? 'none' : 'table-row';
+            });
         });
     }
 }

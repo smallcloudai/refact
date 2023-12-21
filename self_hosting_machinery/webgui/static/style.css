@@ -799,3 +799,33 @@ h3 {
     height: 400px;
     width: 800px;
 }
+.model-span {
+    display: inline-flex;
+    align-items: center;
+}
+.model-span::before {
+    font-family: "bootstrap-icons";
+    content: '\f4fd';
+    margin-right: 5px;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    color: #777;
+}
+.row-active .model-span::before {
+    content: '\f2e9';
+}
+.modelsub-row {
+    display: none;
+}
+
+.modelsub-row td:first-child {
+    padding-left: 25px;
+}
+
+.modelsub-row.active {
+    display: table-row;
+}
