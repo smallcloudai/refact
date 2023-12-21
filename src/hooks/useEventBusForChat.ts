@@ -122,6 +122,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   if (isThisChat && isChatReceiveCaps(action)) {
     const default_cap = action.payload.caps.code_chat_default_model;
     const available_caps = Object.keys(action.payload.caps.code_chat_models);
+
     return {
       ...state,
       chat: {

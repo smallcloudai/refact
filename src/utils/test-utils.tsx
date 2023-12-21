@@ -29,11 +29,11 @@ export function postMessage(data: unknown) {
   );
 }
 
-export function setUpCaps() {
+export function setUpCapsForChat(chatId = "") {
   postMessage({
     type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS,
     payload: {
-      id: "foo",
+      id: chatId,
       caps: STUB_CAPS_RESPONSE,
     },
   });

@@ -16,6 +16,17 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
         },
       },
     },
+    "test-model": {
+      default_scratchpad: "",
+      n_ctx: 4096,
+      similar_models: [],
+      supports_scratchpads: {
+        PASSTHROUGH: {
+          default_system_message:
+            "You are a coding assistant that outputs short answers, gives links to documentation.",
+        },
+      },
+    },
   },
   code_completion_default_model: "smallcloudai/Refact-1_6B-fim",
   code_completion_models: {

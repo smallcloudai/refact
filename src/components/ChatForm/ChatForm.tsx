@@ -14,7 +14,7 @@ import { Button } from "@radix-ui/themes";
 
 const CapsSelect: React.FC<{
   value: string;
-  onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  onChange: (value: string) => void;
   options: string[];
 }> = ({ options, value, onChange }) => {
   return (
@@ -70,15 +70,15 @@ export const ChatForm: React.FC<{
       </ErrorCallout>
     );
   }
-
+  // console.log({ model, caps });
   return (
     <Box mt="1" position="relative">
       <Flex>
         {canChangeModel && (
           <CapsSelect
             value={model || caps.default_cap}
-            onChange={(event) => onSetChatModel(event.target.value)}
-            options={caps.available_caps}
+            onChange={onSetChatModel}
+            options={caps.available_caps.concat("foo")}
           />
         )}
         {isStreaming && (

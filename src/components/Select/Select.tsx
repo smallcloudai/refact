@@ -2,7 +2,7 @@ import React from "react";
 import { Select as RadixSelect } from "@radix-ui/themes";
 
 type SelectProps = {
-  onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  onChange: (value: string) => void;
   options: string[];
   defaultValue?: string;
   value?: string;
@@ -10,9 +10,14 @@ type SelectProps = {
   title?: string;
 };
 
-export const Select: React.FC<SelectProps> = ({ title, options, ...props }) => {
+export const Select: React.FC<SelectProps> = ({
+  title,
+  options,
+  onChange,
+  ...props
+}) => {
   return (
-    <RadixSelect.Root {...props}>
+    <RadixSelect.Root {...props} onValueChange={onChange}>
       <RadixSelect.Trigger title={title} />
       <RadixSelect.Content>
         {options.map((option) => {

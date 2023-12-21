@@ -26,7 +26,9 @@ export const UserInput: React.FC<{
 
   return (
     <Card variant="classic">
-      <RightButton onClick={() => setShowTextArea(true)}>Retry</RightButton>
+      <RightButton title="retry" onClick={() => setShowTextArea(true)}>
+        Retry
+      </RightButton>
       <Markdown>{props.children}</Markdown>
     </Card>
   );

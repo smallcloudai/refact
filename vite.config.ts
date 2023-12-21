@@ -18,7 +18,7 @@ export default defineConfig(({ command }) => {
       environment: "jsdom",
       coverage: {
         exclude: coverageConfigDefaults.exclude.concat(
-          "*.stories.@(js|jsx|mjs|ts|tsx)",
+          "**/*.stories.@(js|jsx|mjs|ts|tsx)",
         ),
       },
     },
