@@ -7,6 +7,7 @@ export const Form: React.FC<
   React.PropsWithChildren<{
     className?: string;
     onSubmit: React.FormEventHandler<HTMLFormElement>;
+    disabled?: boolean;
   }>
 > = ({ className, onSubmit, ...props }) => {
   return (

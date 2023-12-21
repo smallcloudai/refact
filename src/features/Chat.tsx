@@ -5,8 +5,14 @@ import { ChatContent } from "../components/ChatContent";
 import { Flex } from "@radix-ui/themes";
 
 export const Chat: React.FC = () => {
-  const { state, askQuestion, sendMessages, clearError, setChatModel } =
-    useEventBusForChat();
+  const {
+    state,
+    askQuestion,
+    sendMessages,
+    clearError,
+    setChatModel,
+    stopStreaming,
+  } = useEventBusForChat();
 
   return (
     <Flex
@@ -34,6 +40,7 @@ export const Chat: React.FC = () => {
         model={state.chat.model}
         onSetChatModel={setChatModel}
         caps={state.caps}
+        onStopStreaming={stopStreaming}
       />
     </Flex>
   );

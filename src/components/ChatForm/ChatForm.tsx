@@ -10,6 +10,7 @@ import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
 import { ErrorCallout } from "../Callout";
 import { ChatCapsState } from "../../hooks/useEventBusForChat";
 import { Select } from "../Select/Select";
+import { Button } from "@radix-ui/themes";
 
 const CapsSelect: React.FC<{
   value: string;
@@ -37,6 +38,7 @@ export const ChatForm: React.FC<{
   onSetChatModel: (model: string) => void;
   canChangeModel: boolean;
   isStreaming: boolean;
+  onStopStreaming: () => void;
 }> = ({
   onSubmit,
   onClose,
@@ -48,6 +50,7 @@ export const ChatForm: React.FC<{
   onSetChatModel,
   canChangeModel,
   isStreaming,
+  onStopStreaming,
 }) => {
   const [value, setValue] = React.useState("");
 
@@ -69,14 +72,26 @@ export const ChatForm: React.FC<{
   }
 
   return (
-    <Box mt="1">
-      {canChangeModel && (
-        <CapsSelect
-          value={model || caps.default_cap}
-          onChange={(event) => onSetChatModel(event.target.value)}
-          options={caps.available_caps}
-        />
-      )}
+    <Box mt="1" position="relative">
+      <Flex>
+        {canChangeModel && (
+          <CapsSelect
+            value={model || caps.default_cap}
+            onChange={(event) => onSetChatModel(event.target.value)}
+            options={caps.available_caps}
+          />
+        )}
+        {isStreaming && (
+          <Button
+            ml="auto"
+            color="red"
+            title="stop streaming"
+            onClick={onStopStreaming}
+          >
+            Stop
+          </Button>
+        )}
+      </Flex>
       <Form
         disabled={isStreaming}
         className={className}

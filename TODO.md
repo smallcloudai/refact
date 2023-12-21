@@ -7,6 +7,8 @@
 [ ] check cors issues with lsp
 [ ] clean events
 
+[?] How should it handle going offline?
+
 ### for http release
 
 [?] get config (lsp url)
@@ -34,10 +36,11 @@
 [?] set lsp url
 [x] model selection
 [x] no api key
-[ ] Test edge cases (selecting model, errors, messages)
+[ ] Test cases (selecting model, errors, messages)
 [x] remove item from history
 [x] disable inputs while streaming
-[ ] stop stream button
+[x] stop stream button
+[ ] build the app
 
 ### EVENTS TODO FOR IDEs
 

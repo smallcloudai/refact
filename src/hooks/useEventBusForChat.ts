@@ -315,5 +315,19 @@ export const useEventBusForChat = () => {
     dispatch(action);
   }
 
-  return { state, askQuestion, sendMessages, clearError, setChatModel };
+  function stopStreaming() {
+    postMessage({
+      type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING,
+      payload: { id: state.chat.id },
+    });
+  }
+
+  return {
+    state,
+    askQuestion,
+    sendMessages,
+    clearError,
+    setChatModel,
+    stopStreaming,
+  };
 };

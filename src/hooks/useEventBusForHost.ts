@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { sendChat, getCaps } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
@@ -7,15 +7,23 @@ import {
   isQuestionFromChat,
   isSaveChatFromChat,
   isRequestCapsFromChat,
+  isStopStreamingFromChat,
 } from "../events";
 
 export function useEventBusForHost() {
   const { saveChat } = useChatHistory();
+  // this needs to be a ref because it is mutated in a useEffect
+  const controller = useRef(new AbortController());
 
   useEffect(() => {
-    const controller = new AbortController();
     const listener = (event: MessageEvent) => {
       if (event.source !== window) {
+        return;
+      }
+
+      if (isStopStreamingFromChat(event.data)) {
+        controller.current.abort();
+        controller.current = new AbortController();
         return;
       }
 
@@ -29,7 +37,7 @@ export function useEventBusForHost() {
           model: payload.model,
         });
 
-        handleSend(event.data.payload, controller);
+        handleSend(event.data.payload, controller.current);
         return;
       }
 
@@ -73,12 +81,18 @@ export function useEventBusForHost() {
 function handleSend(chat: ChatThread, controller: AbortController) {
   sendChat(chat.messages, chat.model, controller)
     .then((response) => {
+      if (!response.ok) {
+        return Promise.reject(new Error(response.statusText));
+      }
       const decoder = new TextDecoder();
       const reader = response.body?.getReader();
       if (!reader) return;
       return reader.read().then(function pump({ done, value }): Promise<void> {
         if (done) {
           // Do something with last chunk of data then exit reader
+          return Promise.resolve();
+        }
+        if (controller.signal.aborted) {
           return Promise.resolve();
         }
 
@@ -119,6 +133,7 @@ function handleSend(chat: ChatThread, controller: AbortController) {
                 ? errorJson.detail
                 : "error from lsp";
             const error = new Error(errorMessage);
+
             return Promise.reject(error); // handle error
           }
           // figure out how to safely parseJson
@@ -147,18 +162,20 @@ function handleSend(chat: ChatThread, controller: AbortController) {
       });
     })
     .catch((error: Error) => {
-      // eslint-disable-next-line no-console
-      console.error(error);
-      window.postMessage(
-        {
-          type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
-          payload: {
-            id: chat.id,
-            message: error.message,
+      if (!controller.signal.aborted) {
+        // eslint-disable-next-line no-console
+        console.error(error);
+        window.postMessage(
+          {
+            type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
+            payload: {
+              id: chat.id,
+              message: error.message,
+            },
           },
-        },
-        "*",
-      );
+          "*",
+        );
+      }
     })
     .finally(() => {
       window.postMessage(

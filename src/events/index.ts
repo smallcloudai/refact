@@ -9,6 +9,7 @@ export enum EVENT_NAMES_FROM_CHAT {
   SAVE_CHAT = "save_chat_to_history",
   ASK_QUESTION = "chat_question",
   REQUEST_CAPS = "chat_request_caps",
+  STOP_STREAMING = "chat_stop_streaming",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -60,6 +61,18 @@ export function isRequestCapsFromChat(
 ): action is RequestCapsFromChat {
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_CAPS;
+}
+
+export interface StopStreamingFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING;
+  payload: { id: string };
+}
+
+export function isStopStreamingFromChat(
+  action: unknown,
+): action is StopStreamingFromChat {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.STOP_STREAMING;
 }
 
 export interface ActionToChat extends BaseAction {
