@@ -49,10 +49,9 @@ RUN git clone https://github.com/smallcloudai/refact-lsp.git /tmp/refact-lsp \
     && cargo install --path . \
     && rm -rf /tmp/refact-lsp
 
-ENV INSTALL_OPTIONAL=TRUE
 ENV BUILD_CUDA_EXT=1
-ENV GITHUB_ACTIONS=true
 ENV TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0+PTX"
+ENV INSTALL_OPTIONAL=TRUE
 ENV FLASH_ATTENTION_FORCE_BUILD=TRUE
 ENV MAX_JOBS=8
 COPY . /tmp/app
