@@ -1,5 +1,5 @@
 import React from "react";
-import { Theme as RadixTheme, IconButton } from "@radix-ui/themes";
+import { Theme as RadixTheme, IconButton, ThemePanel } from "@radix-ui/themes";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
@@ -21,6 +21,9 @@ export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = ({
       >
         <Icon />
       </IconButton>
+      {/** TODO: remove this in production */}
+      {/** use cmd + c to open and close */}
+      <ThemePanel defaultOpen={false} />
       {children}
     </RadixTheme>
   );
