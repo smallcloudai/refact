@@ -32,17 +32,15 @@ The easiest way to run the self-hosted server is a pre-build Docker image.
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
 
-
-Run docker container with following command:
+Run server with following command within this repo:
 ```commandline
-docker run -d --rm -p 8008:8008 -v perm-storage:/perm_storage --gpus all smallcloud/refact_self_hosting
+docker compose up -d
 ```
-
-`perm-storage` is a volume that is mounted inside the container. All the configuration files,
-downloaded weights and logs are stored here.
-
-To upgrade the docker, delete it using `docker kill XXX` (the volume `perm-storage` will retain your
-data), run `docker pull smallcloud/refact_self_hosting` and run it again.
+To upgrade the docker, you need to run:
+```commandline
+docker compose kill
+docker compose pull
+```
 
 Now you can visit http://127.0.0.1:8008 to see the server Web GUI.
 
