@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { Code } from "@radix-ui/themes";
 import { RightButton } from "../Buttons/Buttons";
+import { ScrollArea } from "../ScrollArea";
 
 const PreTagWithCopyButton: React.FC<
   React.PropsWithChildren<{
@@ -12,10 +13,12 @@ const PreTagWithCopyButton: React.FC<
   if (!onClick) return <pre {...props}>{children}</pre>;
 
   return (
-    <pre {...props}>
-      <RightButton onClick={onClick}>Copy</RightButton>
-      {children}
-    </pre>
+    <ScrollArea scrollbars="horizontal">
+      <pre {...props}>
+        <RightButton onClick={onClick}>Copy</RightButton>
+        {children}
+      </pre>
+    </ScrollArea>
   );
 };
 
@@ -28,8 +31,14 @@ export const Markdown: React.FC<
     <ReactMarkdown
       components={{
         code(props) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { children, className, node, color, ref, ...rest } = props;
+          const {
+            children,
+            className,
+            node,
+            color: _color,
+            ref: _ref,
+            ...rest
+          } = props;
           const match = /language-(\w+)/.exec(className ?? "");
 
           const textWithTrailingNewLine = String(children).replace(/\n$/, "");
@@ -56,8 +65,8 @@ export const Markdown: React.FC<
               className={className}
               PreTag={PreTag}
               language={match[1]}
-              wrapLines
-              wrapLongLines
+              // wrapLines
+              // wrapLongLines
               // useInlineStyles // set to false to use css
               // TODO: useDarkMode hook here and  in theme
               // style={dark}
