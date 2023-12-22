@@ -3,6 +3,7 @@ import { Theme as RadixTheme, IconButton, ThemePanel } from "@radix-ui/themes";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
+import "./theme-config.css";
 
 export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = ({
   children,

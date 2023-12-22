@@ -1,5 +1,3 @@
-import "./App.css";
-
 import { Flex } from "@radix-ui/themes";
 import { Chat } from "./features/Chat";
 import { useEventBusForHost } from "./hooks/useEventBusForHost";
