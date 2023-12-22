@@ -4,6 +4,7 @@ import SyntaxHighlighter from "react-syntax-highlighter";
 import { Code } from "@radix-ui/themes";
 import { RightButton } from "../Buttons/Buttons";
 import { ScrollArea } from "../ScrollArea";
+import remarkBreaks from "remark-breaks";
 
 const PreTagWithCopyButton: React.FC<
   React.PropsWithChildren<{
@@ -29,6 +30,7 @@ export const Markdown: React.FC<
 > = ({ children, onCopyClick }) => {
   return (
     <ReactMarkdown
+      remarkPlugins={[remarkBreaks]}
       components={{
         code(props) {
           const {
@@ -41,7 +43,10 @@ export const Markdown: React.FC<
           } = props;
           const match = /language-(\w+)/.exec(className ?? "");
 
-          const textWithTrailingNewLine = String(children).replace(/\n$/, "");
+          const textWithOutTrailingNewLine = String(children).replace(
+            /\n$/,
+            "",
+          );
 
           const renderedText = node?.children.reduce((acc, elem) => {
             if (elem.type === "text") {
@@ -71,7 +76,7 @@ export const Markdown: React.FC<
               // TODO: useDarkMode hook here and  in theme
               // style={dark}
             >
-              {textWithTrailingNewLine}
+              {textWithOutTrailingNewLine}
             </SyntaxHighlighter>
           ) : (
             <Code {...rest} className={className}>
