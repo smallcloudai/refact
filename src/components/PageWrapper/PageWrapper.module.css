@@ -3,6 +3,7 @@
   display: flex;
   max-width: 100%;
   justify-content: center;
+  height: 100dvh;
 }
 
 /* Gradually make space for the Quick Nav on the right until next breakpoint (up to -104px) */

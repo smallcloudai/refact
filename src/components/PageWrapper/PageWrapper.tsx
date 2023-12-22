@@ -8,10 +8,11 @@ export const PageWrapper: React.FC<React.PropsWithChildren> = ({
   return (
     <div className={styles.PageWrapper}>
       <Section
+        className={styles.PageWrapper}
         width="100%"
         px={{ initial: "5", xs: "6", sm: "7", md: "9" }}
         size={{ initial: "2", md: "3" }}
-        style={{ maxWidth: 858 }}
+        style={{ maxWidth: 858, flexGrow: 1 }}
       >
         {children}
       </Section>

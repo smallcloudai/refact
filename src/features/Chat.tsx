@@ -15,15 +15,7 @@ export const Chat: React.FC = () => {
   } = useEventBusForChat();
 
   return (
-    <Flex
-      direction="column"
-      justify="between"
-      grow="1"
-      style={{
-        height: "calc(100dvh - 180px)", // TODO: fix this
-        // minHeight: "100%",
-      }}
-    >
+    <Flex direction="column" justify="between" grow="1">
       <ChatContent
         messages={state.chat.messages}
         onRetry={(messages) => sendMessages(messages)}

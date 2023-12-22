@@ -4,13 +4,15 @@ import { Markdown } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 
-import { Box, Flex } from "@radix-ui/themes";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 
 const ContextFile: React.FC<{ children: string }> = (props) => {
   // TODO how should the context file look?
   return <Markdown>{props.children}</Markdown>;
 };
+
+const PlaceHolderText: React.FC = () => <Text>Hello</Text>;
 
 const ChatInput: React.FC<{ children: string }> = (props) => {
   // TODO: new file button?
@@ -43,6 +45,7 @@ export const ChatContent: React.FC<{
   return (
     <ScrollArea scrollbars="vertical">
       <Flex grow="1" direction="column" className={styles.content}>
+        {messages.length === 0 && <PlaceHolderText />}
         {messages.map(([role, text], index) => {
           if (role === "user") {
             const handleRetry = (question: string) => {

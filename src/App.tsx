@@ -4,6 +4,7 @@ import { useEventBusForHost } from "./hooks/useEventBusForHost";
 import { HistorySideBar } from "./features/HistorySideBar";
 import { PageWrapper } from "./components/PageWrapper";
 import { Theme } from "./components/Theme";
+import "./App.css";
 
 function App() {
   useEventBusForHost();
