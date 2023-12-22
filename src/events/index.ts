@@ -41,14 +41,37 @@ export interface ActionFromChat extends BaseAction {
   type: EVENT_NAMES_FROM_CHAT;
 }
 
+export function isActionFromChat(action: unknown): action is ActionFromChat {
+  if (!action) return false;
+  if (typeof action !== "object") return false;
+  if (!("type" in action)) return false;
+  if (typeof action.type !== "string") return false;
+  const ALL_EVENT_NAMES: Record<string, string> = { ...EVENT_NAMES_FROM_CHAT };
+  return Object.values(ALL_EVENT_NAMES).includes(action.type);
+}
+
 export interface QuestionFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION;
   payload: ChatThread;
 }
 
+export function isQuestionFromChat(
+  action: unknown,
+): action is QuestionFromChat {
+  if (!isAction(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.ASK_QUESTION;
+}
+
 export interface SaveChatFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT;
   payload: ChatThread;
+}
+
+export function isSaveChatFromChat(
+  action: unknown,
+): action is SaveChatFromChat {
+  if (!isAction(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.SAVE_CHAT;
 }
 
 export interface RequestCapsFromChat extends ActionFromChat {
@@ -79,6 +102,15 @@ export interface ActionToChat extends BaseAction {
   type: EVENT_NAMES_TO_CHAT;
 }
 
+export function isActionToChat(action: unknown): action is ActionToChat {
+  if (!action) return false;
+  if (typeof action !== "object") return false;
+  if (!("type" in action)) return false;
+  if (typeof action.type !== "string") return false;
+  const EVENT_NAMES: Record<string, string> = { ...EVENT_NAMES_TO_CHAT };
+  return Object.values(EVENT_NAMES).includes(action.type);
+}
+
 export interface SetChatDisable extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT;
   payload: { id: string; disable: boolean };
@@ -105,6 +137,11 @@ export interface ResponseToChat extends ActionToChat {
   payload: ChatResponse;
 }
 
+export function isResponseToChat(action: unknown): action is ResponseToChat {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.CHAT_RESPONSE;
+}
+
 export interface BackUpMessages extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES;
   payload: {
@@ -113,17 +150,41 @@ export interface BackUpMessages extends ActionToChat {
   };
 }
 
+export function isBackupMessages(action: unknown): action is BackUpMessages {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES;
+}
+
 export interface RestoreChat extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
   payload: ChatThread;
+}
+
+export function isRestoreChat(action: unknown): action is RestoreChat {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
 }
 
 export interface CreateNewChatThread extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.NEW_CHAT;
 }
 
+export function isCreateNewChat(
+  action: unknown,
+): action is CreateNewChatThread {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.NEW_CHAT;
+}
+
 export interface ChatDoneStreaming extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.DONE_STREAMING;
+}
+
+export function isChatDoneStreaming(
+  action: unknown,
+): action is ChatDoneStreaming {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.DONE_STREAMING;
 }
 
 export interface ChatErrorStreaming extends ActionToChat {
@@ -134,8 +195,27 @@ export interface ChatErrorStreaming extends ActionToChat {
   };
 }
 
+export function isChatErrorStreaming(
+  action: unknown,
+): action is ChatErrorStreaming {
+  if (!isActionToChat(action)) return false;
+  if (action.type !== EVENT_NAMES_TO_CHAT.ERROR_STREAMING) return false;
+  if (!("payload" in action)) return false;
+  if (typeof action.payload !== "object") return false;
+  if (!("id" in action.payload)) return false;
+  if (typeof action.payload.id !== "string") return false;
+  if (!("message" in action.payload)) return false;
+  if (typeof action.payload.message !== "string") return false;
+  return true;
+}
+
 export interface ChatClearError extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR;
+}
+
+export function isChatClearError(action: unknown): action is ChatClearError {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.CLEAR_ERROR;
 }
 
 export interface ChatReceiveCaps extends ActionToChat {
@@ -174,84 +254,4 @@ export type Actions = ActionToChat | ActionFromChat;
 
 export function isAction(action: unknown): action is Actions {
   return isActionFromChat(action) || isActionToChat(action);
-}
-
-export function isActionFromChat(action: unknown): action is ActionFromChat {
-  if (!action) return false;
-  if (typeof action !== "object") return false;
-  if (!("type" in action)) return false;
-  if (typeof action.type !== "string") return false;
-  const ALL_EVENT_NAMES: Record<string, string> = { ...EVENT_NAMES_FROM_CHAT };
-  return Object.values(ALL_EVENT_NAMES).includes(action.type);
-}
-
-export function isQuestionFromChat(
-  action: unknown,
-): action is QuestionFromChat {
-  if (!isAction(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.ASK_QUESTION;
-}
-
-export function isSaveChatFromChat(
-  action: unknown,
-): action is SaveChatFromChat {
-  if (!isAction(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.SAVE_CHAT;
-}
-
-export function isActionToChat(action: unknown): action is ActionToChat {
-  if (!action) return false;
-  if (typeof action !== "object") return false;
-  if (!("type" in action)) return false;
-  if (typeof action.type !== "string") return false;
-  const EVENT_NAMES: Record<string, string> = { ...EVENT_NAMES_TO_CHAT };
-  return Object.values(EVENT_NAMES).includes(action.type);
-}
-
-export function isResponseToChat(action: unknown): action is ResponseToChat {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.CHAT_RESPONSE;
-}
-
-export function isBackupMessages(action: unknown): action is BackUpMessages {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES;
-}
-
-export function isRestoreChat(action: unknown): action is RestoreChat {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
-}
-
-export function isCreateNewChat(
-  action: unknown,
-): action is CreateNewChatThread {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.NEW_CHAT;
-}
-
-export function isChatDoneStreaming(
-  action: unknown,
-): action is ChatDoneStreaming {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.DONE_STREAMING;
-}
-
-export function isChatErrorStreaming(
-  action: unknown,
-): action is ChatErrorStreaming {
-  if (!isActionToChat(action)) return false;
-  if (action.type !== EVENT_NAMES_TO_CHAT.ERROR_STREAMING) return false;
-  if (!("payload" in action)) return false;
-  if (typeof action.payload !== "object") return false;
-  if (!("id" in action.payload)) return false;
-  if (typeof action.payload.id !== "string") return false;
-  if (!("message" in action.payload)) return false;
-  if (typeof action.payload.message !== "string") return false;
-  return true;
-}
-
-export function isChatClearError(action: unknown): action is ChatClearError {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.CLEAR_ERROR;
 }

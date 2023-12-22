@@ -40,6 +40,8 @@
 [ ] how to handle being offline
 [ ] how to handle long requests
 
+[x] scroll lags a bit
+
 ### EVENTS TODO FOR IDEs
 
 [ ] add missing events

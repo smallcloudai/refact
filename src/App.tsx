@@ -1,10 +1,11 @@
 import "./App.css";
-import "@radix-ui/themes/styles.css";
-import { Theme, Flex } from "@radix-ui/themes";
+
+import { Flex } from "@radix-ui/themes";
 import { Chat } from "./features/Chat";
 import { useEventBusForHost } from "./hooks/useEventBusForHost";
 import { HistorySideBar } from "./features/HistorySideBar";
 import { PageWrapper } from "./components/PageWrapper";
+import { Theme } from "./components/Theme";
 
 function App() {
   useEventBusForHost();
