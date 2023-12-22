@@ -197,6 +197,7 @@ huggingface_mini_db = {
         "model_path": "Phind/Phind-CodeLlama-34B-v2",
         "diff_scratchpad_class": None,
         "chat_scratchpad_class": None,
+        "hidden": True,  # this model unexpectedly stops while sampling with </s> looks like a bug
         "model_class_kwargs": {
             "load_in_4bit": True,
         },
