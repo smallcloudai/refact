@@ -37,7 +37,7 @@ export const ChatContent: React.FC<{
   const ref = React.useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.scrollIntoView &&
-      ref.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      ref.current.scrollIntoView({ behavior: "instant", block: "end" });
   }, [messages]);
 
   return (
