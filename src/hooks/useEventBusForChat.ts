@@ -292,7 +292,8 @@ export const useEventBusForChat = () => {
 
     if (
       state.chat.messages.length === 0 &&
-      state.caps.available_caps.length === 0
+      state.caps.available_caps.length === 0 &&
+      state.caps.fetching
     ) {
       requestCaps();
     }
