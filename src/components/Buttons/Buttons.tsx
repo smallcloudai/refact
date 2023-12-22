@@ -19,9 +19,11 @@ export const BackToSideBarButton: React.FC<IconButtonProps> = (props) => (
   </IconButton>
 );
 
-export const CloseButton: React.FC<IconButtonProps> = (props) => (
+export const CloseButton: React.FC<IconButtonProps & { iconSize?: number }> = (
+  props,
+) => (
   <IconButton variant="ghost" {...props}>
-    <Cross1Icon />
+    <Cross1Icon width={props.iconSize} height={props.iconSize} />
   </IconButton>
 );
 

@@ -11,7 +11,6 @@ export const HistoryItem: React.FC<{
 }> = ({ chat, onClick, onDelete }) => {
   const dateCreated = new Date(chat.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
-  // TODO: put the car in a box and have the close button there ?
   return (
     <Box style={{ position: "relative" }}>
       <Card
@@ -68,6 +67,7 @@ export const HistoryItem: React.FC<{
           event.stopPropagation();
           onDelete(chat.id);
         }}
+        iconSize={10}
         title="delete chat"
       />
     </Box>
