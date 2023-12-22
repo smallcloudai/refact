@@ -6,7 +6,7 @@ export const PageWrapper: React.FC<React.PropsWithChildren> = ({
   children,
 }) => {
   return (
-    <div className={styles.PageWrapper}>
+    <div className={styles.PageWrapperContainer}>
       <Section
         className={styles.PageWrapper}
         width="100%"
