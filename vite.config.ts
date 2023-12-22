@@ -13,6 +13,11 @@ export default defineConfig(({ command }) => {
     plugins.push(eslint() as PluginOption);
   }
   return {
+    server: {
+      proxy: {
+        "/v1": "http://localhost:8001",
+      },
+    },
     plugins,
     test: {
       environment: "jsdom",

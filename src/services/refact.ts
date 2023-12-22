@@ -1,4 +1,5 @@
-const REFACT_URL = "http://127.0.0.1:8001";
+// const REFACT_URL = "http://127.0.0.1:8001";
+const REFACT_URL = "";
 const CHAT_URL = `${REFACT_URL}/v1/chat`;
 const CAPS_URL = `${REFACT_URL}/v1/caps`;
 
