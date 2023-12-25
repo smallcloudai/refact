@@ -9,6 +9,7 @@ from typing import List, Set
 
 setup_package = os.environ.get("SETUP_PACKAGE", None)
 install_optional = os.environ.get("INSTALL_OPTIONAL", "FALSE")
+use_rocm = os.environ.get("USE_ROCM", "FALSE")
 
 
 @dataclass
@@ -44,12 +45,24 @@ all_refact_packages = {
     "self_hosting_machinery": PyPackage(
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
                   "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.4.2", "accelerate",
-                  "termcolor", "torch", "transformers==4.34.0", "bitsandbytes", "safetensors", "peft", "triton",
-                  "torchinfo", "mpi4py", "deepspeed==0.11.1"],
-        optional=["ninja", "flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
+                  "termcolor", "torch", "transformers==4.34.0", "bitsandbytes", "safetensors", "peft",
+                  "torchinfo"],
+        optional=["ninja"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
                            "known_models_db", "refact_data_pipeline"],
         data=["webgui/static/*", "webgui/static/js/*", "webgui/static/components/modals/*", "watchdog/watchdog.d/*"]),
+    "rocm": PyPackage(
+            requires=[
+                # "bitsandbytes", # TODO: bitsandbytes still dont have support for the ROCm, so we build it from sources, see: https://github.com/TimDettmers/bitsandbytes/pull/756
+                # "deepspeed", # TODO: figure out how to install deepspeed at build time, see: docker-compose.rocm.yaml
+                # "flash_attn", # TODO: flash_attn has support limited support for GPUs, see: https://github.com/ROCmSoftwarePlatform/flash-attention/tree/flash_attention_for_rocm2
+                "pytorch-triton-rocm",
+                ]
+        ),
+    "cuda": PyPackage(
+            requires=["mpi4py", "deepspeed==0.11.1", "triton"],
+            optional=["flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
+        ),    
 }
 
 
@@ -66,16 +79,29 @@ def find_required_packages(packages: Set[str]) -> Set[str]:
 def get_install_requires(packages):
     install_requires = list({
         required_package
-        for py_package in packages.values()
+        for key, py_package in packages.items()
         for required_package in py_package.requires
+        if key not in ("rocm", "cuda")
     })
     if install_optional.upper() == "TRUE":
         install_requires.extend(list({
             required_package
-            for py_package in packages.values()
+            for key, py_package in packages.items()
             for required_package in py_package.optional
+            if key not in ("rocm", "cuda")
         }))
+    install_requires.extend(get_runtime_dependent_dependencies(packages))
     return install_requires
+
+def get_runtime_dependent_dependencies(packages):
+    required = []
+    runtime_key = "rocm" if use_rocm else "cuda"
+    if use_rocm:
+        required.extend(package for package in packages.get(runtime_key).requires)
+        if install_optional.upper() == "TRUE":
+            required.extend(package for package in packages.get(runtime_key).optional)
+    return required
+
 
 
 if setup_package is not None:
