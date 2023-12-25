@@ -9,6 +9,38 @@ import subprocess
 
 from self_hosting_machinery import env
 
+def query_rocm_smi():
+    rocm_smi_output = "- no output -"
+    descriptions = []
+    try:
+        rocm_smi_output = subprocess.check_output([
+            "/opt/rocm/bin/rocm-smi", 
+            "--showbus", 
+            "--showproductname", 
+            "--showtemp",
+            "--showmeminfo", "vram",
+            "--json"])
+        logging.info(rocm_smi_output)
+        smi_output_dict = json.loads(rocm_smi_output)
+        for gpu_id, props in smi_output_dict.items():
+            descriptions.append({
+                "id": props.get("PCI Bus"),
+                "name": props.get("Card model", "AMD GPU"),
+                "mem_used_mb": bytes_to_mb(int(props.get("VRAM Total Used Memory (B)", 0))),
+                "mem_total_mb": bytes_to_mb(int(props.get("VRAM Total Memory (B)", 0 ))),
+                "temp_celsius": props.get("Temperature (Sensor junction) (C)", -1),
+            })
+    except Exception:
+        logging.warning("rocm-smi does not work, that's especially bad for initial setup.")
+        logging.warning(traceback.format_exc())
+        logging.warning(f"output was:\n{smi_output_dict}")
+
+    return {"gpus": descriptions}
+
+def bytes_to_mb(bytes_size):
+    mb_size = bytes_size / (1024 ** 2)
+    return mb_size
+
 
 def query_nvidia_smi():
     nvidia_smi_output = "- no output -"
@@ -42,7 +74,10 @@ def query_nvidia_smi():
 
 
 def enum_gpus():
-    result = query_nvidia_smi()
+    if os.environ.get('USE_ROCM'):
+        result = query_rocm_smi()
+    else:
+        result = query_nvidia_smi()
     with open(env.CONFIG_ENUM_GPUS + ".tmp", 'w') as f:
         json.dump(result, f, indent=4)
     os.rename(env.CONFIG_ENUM_GPUS + ".tmp", env.CONFIG_ENUM_GPUS)
