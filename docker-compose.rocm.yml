@@ -1,0 +1,31 @@
+version: "3.9"
+services:
+  refact_self_hosted:
+    # TODO: figureout how to pass gpu to docker builds, so there is no need to install deepspeed at runtime
+    command: >
+      /bin/bash -c 'pip install deepspeed --no-cache-dir 
+      && python -m self_hosting_machinery.watchdog.docker_watchdog'
+    image: refact_self_hosting_rocm
+    build:
+      dockerfile: rocm.Dockerfile
+    shm_size: "32gb"
+    devices:
+      - "/dev/kfd"
+      - "/dev/dri"
+    group_add:
+      - "video"
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - perm_storage:/perm_storage
+    ports:
+      - 8008:8008
+  nginx:
+    image: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  perm_storage:
