@@ -5,6 +5,7 @@ import { Code } from "@radix-ui/themes";
 import { RightButton } from "../Buttons/Buttons";
 import { ScrollArea } from "../ScrollArea";
 import remarkBreaks from "remark-breaks";
+import "./highlightjs.css";
 
 const PreTagWithCopyButton: React.FC<
   React.PropsWithChildren<{
@@ -64,17 +65,12 @@ export const Markdown: React.FC<
             />
           );
 
-          // TBD: wrap long lines or scroll ? if scroll add it around the PreTag or CodeTag prop
           return match ? (
             <SyntaxHighlighter
               className={className}
               PreTag={PreTag}
               language={match[1]}
-              // wrapLines
-              // wrapLongLines
-              // useInlineStyles // set to false to use css
-              // TODO: useDarkMode hook here and  in theme
-              // style={dark}
+              useInlineStyles={false}
             >
               {textWithOutTrailingNewLine}
             </SyntaxHighlighter>
