@@ -17,7 +17,7 @@ export const Sidebar: React.FC<{
   onDeleteHistoryItem,
 }) => {
   return (
-    <Box display={{ initial: "none", md: "block" }} className={styles.sidebar}>
+    <Box className={styles.sidebar}>
       <Box
         position="fixed"
         left="0"
@@ -27,7 +27,6 @@ export const Sidebar: React.FC<{
           zIndex: 1,
           overflowX: "hidden",
           width: "inherit",
-          // backgroundColor: "var(--color-autofill-root)", // TODO: over laps the scroll bar
         }}
       >
         <ScrollArea scrollbars="vertical">
