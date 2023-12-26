@@ -6,3 +6,11 @@
   position: absolute;
   right: 20px;
 }
+
+.code {
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-word;
+  word-wrap: break-word;
+  white-space: break-spaces;
+}

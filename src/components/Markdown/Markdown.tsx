@@ -5,7 +5,9 @@ import { Code } from "@radix-ui/themes";
 import { RightButton } from "../Buttons/Buttons";
 import { ScrollArea } from "../ScrollArea";
 import remarkBreaks from "remark-breaks";
+import classNames from "classnames";
 import "./highlightjs.css";
+import styles from "./Markdown.module.css";
 
 const PreTagWithCopyButton: React.FC<
   React.PropsWithChildren<{
@@ -75,7 +77,7 @@ export const Markdown: React.FC<
               {textWithOutTrailingNewLine}
             </SyntaxHighlighter>
           ) : (
-            <Code {...rest} className={className}>
+            <Code {...rest} className={classNames(styles.code, className)}>
               {children}
             </Code>
           );
