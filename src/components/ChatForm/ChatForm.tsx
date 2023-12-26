@@ -6,9 +6,13 @@ import styles from "./ChatForm.module.css";
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
 import { TextArea } from "../TextArea";
 import { Form } from "./Form";
-import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
-import { ErrorCallout } from "../Callout";
-import { ChatCapsState } from "../../hooks/useEventBusForChat";
+import {
+  useOnPressedEnter,
+  type ChatCapsState,
+  useIsOnline,
+} from "../../hooks";
+import { ErrorCallout, Callout } from "../Callout";
+
 import { Select } from "../Select/Select";
 import { Button } from "@radix-ui/themes";
 
@@ -53,10 +57,11 @@ export const ChatForm: React.FC<{
   onStopStreaming,
 }) => {
   const [value, setValue] = React.useState("");
+  const isOnline = useIsOnline();
 
   const handleSubmit = () => {
     const trimmedValue = value.trim();
-    if (trimmedValue.length > 0 && !isStreaming) {
+    if (trimmedValue.length > 0 && !isStreaming && isOnline) {
       onSubmit(trimmedValue);
       setValue(() => "");
     }
@@ -73,6 +78,7 @@ export const ChatForm: React.FC<{
 
   return (
     <Box mt="1" position="relative">
+      {!isOnline && <Callout type="info">Offline</Callout>}
       <Flex>
         {canChangeModel && (
           <CapsSelect
@@ -92,8 +98,9 @@ export const ChatForm: React.FC<{
           </Button>
         )}
       </Flex>
+      {/** TODO: handle being offline */}
       <Form
-        disabled={isStreaming}
+        disabled={isStreaming || !isOnline}
         className={className}
         onSubmit={() => handleSubmit()}
       >
@@ -115,7 +122,7 @@ export const ChatForm: React.FC<{
             />
           )}
           <PaperPlaneButton
-            disabled={isStreaming}
+            disabled={isStreaming || !isOnline}
             title="send"
             size="1"
             type="submit"

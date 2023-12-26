@@ -18,11 +18,11 @@
 [x] handle errors
 [x] disable inputs while streaming
 [x] remove item from history
-[ ] code block scroll area (wrap for now)
+[x] code block scroll area (wrap for now)
 [ ] type `postMessage` and `dispatch` calls
 
-[ ] user markdown input?
-[?] enable dark mode
+[?] user markdown input?
+[x] enable dark mode
 
 ### PRIORITY
 
@@ -35,10 +35,10 @@
 [x] stop stream button
 [ ] build the app (also think about how it'll be configured)
 [ ] content for when chat is empty
-[ ] fix the text area placement (empty chat content might help with this)
+[x] fix the text area placement (empty chat content might help with this)
 [ ] make it look nice
-[ ] how to handle being offline
-[ ] how to handle long requests
+[x] handle being offline
+[ ] handle long requests
 
 [x] scroll lags a bit
 

@@ -10,7 +10,7 @@ type RadixCalloutProps = React.ComponentProps<typeof RadixCallout.Root>;
 
 export type CalloutProps = Omit<RadixCalloutProps, "onClick"> & {
   type: "info" | "error";
-  onClick: () => void;
+  onClick?: () => void;
   timeout?: number | null;
 };
 
@@ -18,7 +18,7 @@ export const Callout: React.FC<CalloutProps> = ({
   children,
   type = "info",
   timeout = null,
-  onClick,
+  onClick = () => void 0,
   ...props
 }) => {
   useTimeout(onClick, timeout);
