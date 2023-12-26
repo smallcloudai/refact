@@ -12,7 +12,9 @@ const ContextFile: React.FC<{ children: string }> = (props) => {
   return <Markdown>{props.children}</Markdown>;
 };
 
-const PlaceHolderText: React.FC = () => <Text>Hello</Text>;
+const PlaceHolderText: React.FC = () => (
+  <Text>Welcome to Refact chat! How can I assist you today?</Text>
+);
 
 const ChatInput: React.FC<{ children: string }> = (props) => {
   // TODO: new file button?
