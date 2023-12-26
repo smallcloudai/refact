@@ -15,9 +15,7 @@ export default defineConfig(({ command }) => {
   return {
     server: {
       proxy: {
-        // TODO: make this an env var
-        // https://vitejs.dev/config/#using-environment-variables-in-config
-        "/v1": "http://localhost:8001",
+        "/v1": process.env.REFACT_LSP_URL ?? "http://localhost:8001",
       },
     },
     plugins,
