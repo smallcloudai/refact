@@ -2,7 +2,6 @@ import { Flex } from "@radix-ui/themes";
 import { Chat } from "./features/Chat";
 import { useEventBusForHost } from "./hooks/useEventBusForHost";
 import { HistorySideBar } from "./features/HistorySideBar";
-import { PageWrapper } from "./components/PageWrapper";
 import { Theme } from "./components/Theme";
 import "./App.css";
 
@@ -12,9 +11,9 @@ function App() {
     <Theme>
       <Flex>
         <HistorySideBar />
-        <PageWrapper>
-          <Chat />
-        </PageWrapper>
+        {/* <PageWrapper> */}
+        <Chat />
+        {/* </PageWrapper> */}
       </Flex>
     </Theme>
   );

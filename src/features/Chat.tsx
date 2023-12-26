@@ -19,6 +19,17 @@ export const Chat: React.FC = () => {
       direction="column"
       justify="between"
       grow="1"
+      p={{
+        initial: "9",
+        // initial: "5",
+        //  xs: "6",
+        //  sm: "7",
+        //   md: "9"
+      }}
+      style={{
+        height: "100dvh",
+        maxWidth: "calc(100vw - 260px)", // TODO: host this  as the side bar won't always be there
+      }}
       // width="100%"
     >
       <ChatContent
