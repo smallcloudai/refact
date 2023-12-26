@@ -25,7 +25,14 @@ export const UserInput: React.FC<{
   }
 
   return (
-    <Card variant="classic">
+    <Card
+      variant="classic"
+      style={{
+        wordWrap: "break-word",
+        wordBreak: "break-word",
+        whiteSpace: "break-spaces",
+      }}
+    >
       <RightButton title="retry" onClick={() => setShowTextArea(true)}>
         Retry
       </RightButton>

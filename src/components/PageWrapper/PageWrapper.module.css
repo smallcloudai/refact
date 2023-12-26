@@ -1,10 +1,18 @@
 .PageWrapper {
+  /* this causes over flow issues*/
   display: flex;
+  flex-grow: 1;
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  justify-content: center;
+  height: 100dvh;
 }
 
 .PageWrapperContainer {
   flex-grow: 1;
   display: flex;
+  width: 100%;
   max-width: 100%;
   justify-content: center;
   height: 100dvh;
@@ -12,7 +20,7 @@
 
 /* Gradually make space for the Quick Nav on the right until next breakpoint (up to -104px) */
 @media (min-width: 1024px) {
-  .PageWrapperContainer {
+  .PageWrapper {
     margin-left: calc((1024px - 100vw) * 0.25);
   }
 }
@@ -22,7 +30,7 @@
    * 2. Gradually add negative compensation for the Quick Nav on the right (from 0px to -250px).
    */
 @media (min-width: 1440px) {
-  .PageWrapperContainer {
+  .PageWrapper {
     margin-left: calc(
       -104px + (100vw - 1440px) * 0.52 - (100vw - 1440px) * 1.25
     );
@@ -30,7 +38,7 @@
 }
 
 @media (min-width: 1640px) {
-  .PageWrapperContainer {
+  .PageWrapper {
     margin-left: -250px;
   }
 }

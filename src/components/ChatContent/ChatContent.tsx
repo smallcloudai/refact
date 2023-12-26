@@ -3,6 +3,7 @@ import { ChatMessages } from "../../services/refact";
 import { Markdown } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
+import { Spinner } from "../Spinner";
 
 import { Box, Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
@@ -19,7 +20,7 @@ const PlaceHolderText: React.FC = () => (
 const ChatInput: React.FC<{ children: string }> = (props) => {
   // TODO: new file button?
   return (
-    <Box p="2" position="relative">
+    <Box p="2" position="relative" width="100%" style={{ maxWidth: "100%" }}>
       <Markdown
         onCopyClick={(text: string) => {
           window.navigator.clipboard.writeText(text).catch(() => {
@@ -37,7 +38,8 @@ const ChatInput: React.FC<{ children: string }> = (props) => {
 export const ChatContent: React.FC<{
   messages: ChatMessages;
   onRetry: (question: ChatMessages) => void;
-}> = ({ messages, onRetry }) => {
+  isWaiting: boolean;
+}> = ({ messages, onRetry, isWaiting }) => {
   const ref = React.useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.scrollIntoView &&
@@ -70,6 +72,7 @@ export const ChatContent: React.FC<{
             return <Markdown key={index}>{text}</Markdown>;
           }
         })}
+        {isWaiting && <Spinner />}
         <div ref={ref} />
       </Flex>
     </ScrollArea>

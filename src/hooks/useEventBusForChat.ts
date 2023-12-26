@@ -70,13 +70,18 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
   if (isThisChat && isSetDisableChat(action)) {
-    return { ...state, streaming: action.payload.disable };
+    return {
+      ...state,
+      streaming: action.payload.disable,
+      waiting_for_response: action.payload.disable,
+    };
   }
 
   if (isThisChat && isResponseToChat(action)) {
     const messages = formatChatResponse(state.chat.messages, action.payload);
     return {
       ...state,
+      waiting_for_response: false,
       streaming: true,
       chat: {
         ...state.chat,
@@ -99,6 +104,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   if (!isThisChat && isRestoreChat(action)) {
     return {
       ...state,
+      waiting_for_response: false,
       streaming: false,
       error: null,
       chat: action.payload,
@@ -157,6 +163,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
 
     return {
       ...state,
+      waiting_for_response: false,
       streaming: false,
     };
   }
@@ -164,6 +171,8 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   if (isThisChat && isChatErrorStreaming(action)) {
     return {
       ...state,
+      streaming: false,
+      waiting_for_response: false,
       error: action.payload.message,
     };
   }
@@ -196,6 +205,7 @@ export type ChatCapsState = {
 
 export type ChatState = {
   chat: ChatThread;
+  waiting_for_response: boolean;
   streaming: boolean;
   error: string | null;
   caps: ChatCapsState;
@@ -204,6 +214,7 @@ export type ChatState = {
 function createInitialState(): ChatState {
   return {
     streaming: false,
+    waiting_for_response: false,
     error: null,
     chat: {
       id: uuidv4(),
@@ -242,14 +253,14 @@ export const useEventBusForChat = () => {
   }, [state, dispatch]);
 
   function askQuestion(question: string) {
-    dispatch({
-      type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
-      payload: { id: state.chat.id },
-    });
-    dispatch({
-      type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
-      payload: { id: state.chat.id, disable: true },
-    });
+    // dispatch({
+    //   type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
+    //   payload: { id: state.chat.id },
+    // });
+    // dispatch({
+    //   type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
+    //   payload: { id: state.chat.id, disable: true },
+    // });
     const messages = state.chat.messages.concat([["user", question]]);
     sendMessages(messages);
   }

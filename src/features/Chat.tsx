@@ -15,10 +15,16 @@ export const Chat: React.FC = () => {
   } = useEventBusForChat();
 
   return (
-    <Flex direction="column" justify="between" grow="1">
+    <Flex
+      direction="column"
+      justify="between"
+      grow="1"
+      // width="100%"
+    >
       <ChatContent
         messages={state.chat.messages}
         onRetry={(messages) => sendMessages(messages)}
+        isWaiting={state.waiting_for_response}
       />
 
       <ChatForm

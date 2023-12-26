@@ -73,6 +73,8 @@ export const Markdown: React.FC<
               PreTag={PreTag}
               language={match[1]}
               useInlineStyles={false}
+              // wrapLines={true}
+              // wrapLongLines
             >
               {textWithOutTrailingNewLine}
             </SyntaxHighlighter>
