@@ -12,7 +12,7 @@ function App() {
       <Flex>
         <HistorySideBar />
         {/* <PageWrapper> */}
-        <Chat />
+        <Chat style={{ maxWidth: "calc(100vw - 260px)" }} />
         {/* </PageWrapper> */}
       </Flex>
     </Theme>

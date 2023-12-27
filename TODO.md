@@ -4,7 +4,7 @@
 [ ] use lsp handlers for chat (keys and config)
 [-] no need for logins it's passed when the lsp starts
 
-[ ] check cors issues with lsp
+[x] check cors issues with lsp
 [ ] clean events
 
 [?] How should it handle going offline?
@@ -24,6 +24,8 @@
 [?] user markdown input?
 [x] enable dark mode
 
+[ ] use grid layout for chat and sidebar?
+
 ### PRIORITY
 
 [?] set lsp url
@@ -34,11 +36,11 @@
 [x] disable inputs while streaming
 [x] stop stream button
 [ ] build the app (also think about how it'll be configured)
-[ ] content for when chat is empty
+[x] content for when chat is empty
 [x] fix the text area placement (empty chat content might help with this)
-[ ] make it look nice
+[x] make it look nice
 [x] handle being offline
-[ ] handle long requests
+[x] handle long requests
 
 [x] scroll lags a bit
 

@@ -4,7 +4,7 @@ import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
 import { Flex } from "@radix-ui/themes";
 
-export const Chat: React.FC = () => {
+export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
   const {
     state,
     askQuestion,
@@ -21,16 +21,11 @@ export const Chat: React.FC = () => {
       grow="1"
       p={{
         initial: "9",
-        // initial: "5",
-        //  xs: "6",
-        //  sm: "7",
-        //   md: "9"
       }}
       style={{
+        ...props.style,
         height: "100dvh",
-        maxWidth: "calc(100vw - 260px)", // TODO: host this  as the side bar won't always be there
       }}
-      // width="100%"
     >
       <ChatContent
         messages={state.chat.messages}
