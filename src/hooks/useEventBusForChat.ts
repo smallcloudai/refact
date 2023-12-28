@@ -138,7 +138,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       },
       caps: {
         fetching: false,
-        default_cap,
+        default_cap: default_cap || available_caps[0] || "",
         available_caps,
       },
     };
