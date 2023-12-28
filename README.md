@@ -32,15 +32,16 @@ The easiest way to run the self-hosted server is a pre-build Docker image.
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
 
-Run server with following command within this repo:
+Run docker container with following command:
 ```commandline
-docker compose up -d
+docker run -d --rm --gpus all -p 8008:8008 -v perm-storage:/perm_storage -v refact-database:/var/lib/cassandra smallcloud/refact_self_hosting:latest
 ```
-To upgrade the docker, you need to run:
-```commandline
-docker compose kill
-docker compose pull
-```
+
+`perm-storage` is a volume that is mounted inside the container. All the configuration files, downloaded weights and logs are stored here.
+`refact-database` is a volume for database where server stores your statistics from plugin.
+
+To upgrade the docker, delete it using `docker kill XXX` (the volume `perm-storage` will retain your
+data), run `docker pull smallcloud/refact_self_hosting` and run it again.
 
 Now you can visit http://127.0.0.1:8008 to see the server Web GUI.
 
