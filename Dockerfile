@@ -46,7 +46,8 @@ RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packagi
 # cassandra
 RUN apt-get install -y \
     default-jdk \
-    wget
+    wget \
+    sudo
 RUN echo "deb https://debian.cassandra.apache.org 41x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list
 RUN curl https://downloads.apache.org/cassandra/KEYS | apt-key add -
 RUN apt-get update
