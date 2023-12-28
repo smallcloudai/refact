@@ -7,7 +7,8 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tower_lsp::{ClientSocket, LanguageServer, LspService};
-use tower_lsp::jsonrpc::{Error, Result};
+use tower_lsp::jsonrpc::{Error, ErrorCode, Result};
+use tower_lsp::jsonrpc::ErrorCode::ServerError;
 use tower_lsp::lsp_types::*;
 use tracing::{error, info};
 
@@ -17,6 +18,7 @@ use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::telemetry;
 use crate::receive_workspace_changes;
+use crate::receive_workspace_changes::Document;
 
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -105,16 +107,22 @@ pub struct CompletionRes {
 }
 
 impl Backend {
-    async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> CodeCompletionPost {
+    async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
         let txt = {
             let document_map = self.gcx.read().await.lsp_backend_document_state.document_map.clone();
             let document_map = document_map.read().await;
             let document = document_map
-                .get(params.text_document_position.text_document.uri.as_str())
-                .unwrap();
-            document.text.clone()
+                .get(params.text_document_position.text_document.uri.as_str());
+            match document {
+                None => {
+                    return Err(internal_error("document not found"));
+                }
+                Some(doc) => {
+                    doc.text.clone()
+                }
+            }
         };
-        CodeCompletionPost {
+        Ok(CodeCompletionPost {
             inputs: CodeCompletionInputs {
                 sources: HashMap::from([(String::from(&params.text_document_position.text_document.uri.to_string()),
                                          (&txt).to_string())]),
@@ -135,18 +143,18 @@ impl Backend {
             scratchpad: "".to_string(),
             stream: false,
             no_cache: false
-        }
+        })
     }
 
     pub async fn get_completions(&self, params: CompletionParams1) -> Result<CompletionRes> {
-        let mut post = self.flat_params_to_code_completion_post(&params).await;
+        let mut post = self.flat_params_to_code_completion_post(&params).await?;
 
-        let res = handle_v1_code_completion(self.gcx.clone(),
-                                            &mut post).await;
-        let resp = res.unwrap();
-        let body_bytes = hyper::body::to_bytes(resp.into_body()).await.unwrap();
+        let res = handle_v1_code_completion(self.gcx.clone(), &mut post)
+            .await.map_err(|e| internal_error(e))?;
+        
+        let body_bytes = hyper::body::to_bytes(res.into_body()).await.map_err(|e| internal_error(e))?;
 
-        let s = String::from_utf8(body_bytes.to_vec()).unwrap();
+        let s = String::from_utf8(body_bytes.to_vec()).map_err(|e|internal_error(e))?;
         let value = serde_json::from_str::<CompletionRes>(s.as_str()).map_err(|e| internal_error(e))?;
 
         Ok(value)
