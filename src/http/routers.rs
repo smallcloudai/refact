@@ -1,5 +1,3 @@
-use std::future::Future;
-
 use axum::Router;
 use axum::routing::get;
 

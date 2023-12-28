@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-use std::fmt::Display;
 use std::sync::Arc;
 use std::time::Instant;
 use ropey::Rope;
 
 use tokio::sync::RwLock as ARwLock;
-use tracing::{info};
+use tracing::info;
 
 use crate::global_context;
 use crate::telemetry;

@@ -7,8 +7,7 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tower_lsp::{ClientSocket, LanguageServer, LspService};
-use tower_lsp::jsonrpc::{Error, ErrorCode, Result};
-use tower_lsp::jsonrpc::ErrorCode::ServerError;
+use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
 use tracing::{error, info};
 
@@ -18,7 +17,6 @@ use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::telemetry;
 use crate::receive_workspace_changes;
-use crate::receive_workspace_changes::Document;
 
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -151,7 +149,7 @@ impl Backend {
 
         let res = handle_v1_code_completion(self.gcx.clone(), &mut post)
             .await.map_err(|e| internal_error(e))?;
-        
+
         let body_bytes = hyper::body::to_bytes(res.into_body()).await.map_err(|e| internal_error(e))?;
 
         let s = String::from_utf8(body_bytes.to_vec()).map_err(|e|internal_error(e))?;
@@ -181,7 +179,7 @@ impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         info!("LSP client_info {:?}", params.client_info);
         {
-            let mut gcx_locked = self.gcx.write().await;
+            let gcx_locked = self.gcx.write().await;
             *gcx_locked.lsp_backend_document_state.workspace_folders.write().await = params.workspace_folders;
             info!("LSP workspace_folders {:?}", gcx_locked.lsp_backend_document_state.workspace_folders);
         }

@@ -1,11 +1,7 @@
-use std::fs::{File, read_to_string};
-use std::io;
-use std::io::BufReader;
 use tokio::io::AsyncWriteExt;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use std::thread::sleep;
 use std::time::Duration;
 use tokio::sync::RwLock as ARwLock;
 use tokenizers::Tokenizer;
@@ -78,9 +74,9 @@ async fn _try_download_tokenizer_file_and_open(
     if to.as_ref().exists() && _check_json_file(to.as_ref()) {
         return Ok(());
     }
-    
+
     let tmp_file = std::env::temp_dir().join(Uuid::new_v4().to_string());
-    
+
     for _ in 0..15 {
         match _download_tokenizer_file(http_client, http_path, api_token.clone(), tmp_file.clone().as_path()).await {
             Ok(_) => {
