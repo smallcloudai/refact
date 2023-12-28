@@ -70,7 +70,7 @@ export const ChatForm: React.FC<{
   const handleEnter = useOnPressedEnter(handleSubmit);
   if (error) {
     return (
-      <ErrorCallout mt="2" onClick={clearError} timeout={5000}>
+      <ErrorCallout mt="2" onClick={clearError} timeout={null}>
         {error}
       </ErrorCallout>
     );

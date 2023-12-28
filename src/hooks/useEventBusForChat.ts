@@ -128,9 +128,10 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   if (isThisChat && isChatReceiveCaps(action)) {
     const default_cap = action.payload.caps.code_chat_default_model;
     const available_caps = Object.keys(action.payload.caps.code_chat_models);
-
+    const error = available_caps.length === 0 ? "No available caps" : null;
     return {
       ...state,
+      error,
       chat: {
         ...state.chat,
         model: state.chat.model || default_cap,
@@ -253,14 +254,6 @@ export const useEventBusForChat = () => {
   }, [state, dispatch]);
 
   function askQuestion(question: string) {
-    // dispatch({
-    //   type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
-    //   payload: { id: state.chat.id },
-    // });
-    // dispatch({
-    //   type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
-    //   payload: { id: state.chat.id, disable: true },
-    // });
     const messages = state.chat.messages.concat([["user", question]]);
     sendMessages(messages);
   }
