@@ -43,6 +43,15 @@ ENV PATH="${PATH}:/tmp/linguist/bin"
 
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packaging
 
+# cassandra
+RUN apt-get install -y \
+    default-jdk \
+    wget
+RUN echo "deb https://debian.cassandra.apache.org 41x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list
+RUN curl https://downloads.apache.org/cassandra/KEYS | apt-key add -
+RUN apt-get update
+RUN apt-get install cassandra -y
+
 # refact lsp requisites
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 ENV PATH="${PATH}:/root/.cargo/bin"
@@ -65,4 +74,7 @@ ENV RDMAV_HUGEPAGES_SAFE 0
 
 EXPOSE 8008
 
-CMD ["python", "-m", "self_hosting_machinery.watchdog.docker_watchdog"]
+COPY docker-entrypoint.sh /
+RUN chmod +x docker-entrypoint.sh
+
+CMD ./docker-entrypoint.sh
