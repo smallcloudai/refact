@@ -22,7 +22,6 @@ class LspProxy(APIRouter):
 
     async def _reverse_proxy(self, request: Request):
         ## TODO: handle errors
-        ## TODO: append api-key to the query
         path = request.url.path.replace("/lsp", "")
         url = httpx.URL(path=path, query=request.url.query.encode("utf-8"))
 

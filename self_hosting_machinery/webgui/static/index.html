@@ -65,6 +65,11 @@
       </li>
       {{/unless}}
       {{/each}}
+      {{#unless hamburger}}
+      <li class="nav-item" role="presentation">
+        <button onclick="window.open('/chat', '_blank')" class="nav-link" id="{{id}}" {{#if disabled}}disabled{{/if}}>Chat</button>
+      </li>
+      {{/unless}}
       <div class="d-flex ms-auto">
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"

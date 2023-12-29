@@ -27,10 +27,13 @@ class StaticRouter(APIRouter):
     async def _static_file(self, file_path: str):
         if ".." in file_path:
             raise HTTPException(404, "Path \"%s\" not found" % file_path)
+
         for spath in self.static_folders:
             fn = os.path.join(spath, file_path)
             if os.path.exists(fn):
                 return FileResponse(fn)
+            elif os.path.exists(fn + ".html"):
+                return FileResponse(fn + ".html", media_type="text/html")
         raise HTTPException(404, "Path \"%s\" not found" % file_path)
 
     async def _ping_handler(self):
