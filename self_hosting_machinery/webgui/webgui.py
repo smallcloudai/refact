@@ -27,6 +27,7 @@ from self_hosting_machinery.webgui.selfhost_statistics import TabStatisticsRoute
 
 from self_hosting_machinery.webgui.selfhost_database import RefactDatabase
 from self_hosting_machinery.webgui.selfhost_database import StatisticsService
+from self_hosting_machinery.webgui.selfhost_lsp_proxy import LspProxy
 
 from typing import Dict
 
@@ -93,6 +94,7 @@ class WebGUI(FastAPI):
             TabHostRouter(model_assigner),
             TabSettingsRouter(model_assigner),
             StaticRouter(),
+            LspProxy()
         ]
 
     async def _startup_event(self):
