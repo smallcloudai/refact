@@ -3,7 +3,7 @@ use std::sync::RwLock as StdRwLock;
 use serde::{Serialize, Deserialize};
 
 use tokio::sync::RwLock as ARwLock;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::global_context;
 use crate::completion_cache;
@@ -89,7 +89,7 @@ pub async fn snippet_accepted(
     let snip = storage_locked.tele_snippets.iter_mut().find(|s| s.snippet_telemetry_id == snippet_telemetry_id);
     if let Some(snip) = snip {
         snip.accepted_ts = chrono::Local::now().timestamp();
-        info!("snippet_accepted: ID{}: snippet is accepted", snippet_telemetry_id);
+        debug!("snippet_accepted: ID{}: snippet is accepted", snippet_telemetry_id);
         return true;
     }
     return false;
@@ -103,6 +103,9 @@ pub async fn sources_changed(
 ) {
     let tele_storage = gcx.read().await.telemetry.clone();
     let mut storage_locked = tele_storage.write().unwrap();
+
+    basic_robot_human::create_robot_human_record_if_not_exists(&mut storage_locked.tele_robot_human, uri, text);
+
     let mut accepted_snippets = vec![];
     for snip in storage_locked.tele_snippets.iter_mut() {
         if snip.accepted_ts == 0 || !uri.ends_with(&snip.inputs.cursor.file) {
@@ -119,7 +122,7 @@ pub async fn sources_changed(
         // if snip.id is not in the list of finished snippets, add it
         if !accepted_snippets.iter().any(|s: &SnippetTracker| s.snippet_telemetry_id == snip.snippet_telemetry_id) {
             accepted_snippets.push(snip.clone());
-            info!("sources_changed: ID{}: snippet is added to accepted", snip.snippet_telemetry_id);
+            debug!("sources_changed: ID{}: snippet is added to accepted", snip.snippet_telemetry_id);
         }
 
         let (grey_valid, mut grey_corrected) = utils::if_head_tail_equal_return_added_text(
@@ -135,12 +138,13 @@ pub async fn sources_changed(
         } else {
             if snip.remaining_percentage >= 0. {
                 snip.finished_ts = chrono::Local::now().timestamp();
-                // info!("ID{}: snippet is finished, remaining_percentage={}", snip.snippet_telemetry_id, snip.remaining_percentage);
+                debug!("ID{}: snippet is finished, remaining_percentage={}", snip.snippet_telemetry_id, snip.remaining_percentage);
             } else {
                 snip.accepted_ts = 0;  // that will cleanup and not send
             }
         }
     }
+
 
     for snip in accepted_snippets {
         basic_robot_human::increase_counters_from_finished_snippet(&mut storage_locked.tele_robot_human, uri, text, &snip);

@@ -16,8 +16,8 @@ use crate::telemetry::utils::{sorted_json_files, read_file, cleanup_old_files, t
 
 
 const TELEMETRY_TRANSMIT_AFTER_START_SECONDS: u64 = 60;
-const TELEMETRY_TRANSMIT_EACH_N_SECONDS: u64 = 3600*3;
-const TELEMETRY_FILES_KEEP: i32 = 30;
+const TELEMETRY_TRANSMIT_EACH_N_SECONDS: u64 = 3600;
+const TELEMETRY_FILES_KEEP: i32 = 128;
 
 
 pub async fn send_telemetry_data(
@@ -88,11 +88,19 @@ pub async fn send_telemetry_files_to_mothership(
     }
 }
 
-pub async fn telemetry_full_cycle(
+pub async fn basic_telemetry_compress(
     global_context: Arc<ARwLock<global_context::GlobalContext>>,
-    skip_sending_part: bool,
-) -> () {
+) {
     info!("basic telemetry compression starts");
+    basic_network::compress_basic_telemetry_to_file(global_context.clone()).await;
+    basic_robot_human::tele_robot_human_compress_to_file(global_context.clone()).await;
+    basic_comp_counters::compress_tele_completion_to_file(global_context.clone()).await;
+}
+
+pub async fn basic_telemetry_send(
+    global_context: Arc<ARwLock<global_context::GlobalContext>>,
+) -> () {
+    info!("basic telemetry sending starts");
     let caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>;
     let api_key: String;
     let enable_basic_telemetry: bool;   // from command line, will not send anything if false
@@ -111,11 +119,7 @@ pub async fn telemetry_full_cycle(
         telemetry_basic_dest = caps.clone().unwrap().read().unwrap().telemetry_basic_dest.clone();
     }
 
-    basic_network::compress_basic_telemetry_to_file(global_context.clone()).await;
-    basic_robot_human::tele_robot_human_compress_to_file(global_context.clone()).await;
-    basic_comp_counters::compress_tele_completion_to_file(global_context.clone()).await;
-
-    if enable_basic_telemetry && !telemetry_basic_dest.is_empty() && !skip_sending_part {
+    if enable_basic_telemetry && !telemetry_basic_dest.is_empty() {
         send_telemetry_files_to_mothership(
             dir_compressed.clone(),
             dir_sent.clone(),
@@ -130,9 +134,6 @@ pub async fn telemetry_full_cycle(
         if telemetry_basic_dest.is_empty() {
             info!("basic telemetry dest is empty, skip");
         }
-        if skip_sending_part {
-            info!("skip_sending_part is true, skip");
-        }
     }
     cleanup_old_files(dir_compressed, TELEMETRY_FILES_KEEP).await;
     cleanup_old_files(dir_sent, TELEMETRY_FILES_KEEP).await;
@@ -141,9 +142,11 @@ pub async fn telemetry_full_cycle(
 pub async fn telemetry_background_task(
     global_context: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> () {
+    tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_TRANSMIT_AFTER_START_SECONDS)).await;
+    basic_telemetry_send(global_context.clone()).await;
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_TRANSMIT_AFTER_START_SECONDS)).await;
-        telemetry_full_cycle(global_context.clone(), false).await;
-        tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_TRANSMIT_EACH_N_SECONDS - TELEMETRY_TRANSMIT_AFTER_START_SECONDS)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_TRANSMIT_EACH_N_SECONDS)).await;
+        basic_telemetry_compress(global_context.clone()).await;
+        basic_telemetry_send(global_context.clone()).await;
     }
 }

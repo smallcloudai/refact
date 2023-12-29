@@ -60,7 +60,7 @@ pub struct SnippetTracker {
     pub finished_ts: i64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct TeleRobotHumanAccum {
     // Internal struct, not sent anywhere
     pub uri: String,
@@ -78,18 +78,18 @@ pub struct TeleRobotHumanAccum {
 
 impl TeleRobotHumanAccum {
     pub fn new(
-        uri: String, model: String, baseline_text: String, robot_characters_acc_baseline: i64, used_snip_ids: Vec<u64>
+        uri: String, baseline_text: String
     ) -> Self {
         Self {
             uri: uri.clone(),
             file_extension: utils::extract_extension_or_filename(&uri),
-            model,
+            model: "".to_string(),
             baseline_text,
             baseline_updated_ts: 0,
-            robot_characters_acc_baseline,
+            robot_characters_acc_baseline: 0,
             robot_characters: 0,
             human_characters: 0,
-            used_snip_ids,
+            used_snip_ids: vec![],
         }
     }
 }

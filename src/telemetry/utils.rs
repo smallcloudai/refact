@@ -20,7 +20,54 @@ pub fn get_add_del_from_texts(
     text_a: &String,
     text_b: &String,
 ) -> (String, String) {
-    let diff = TextDiff::from_lines(text_a, text_b);
+    let mut text_a_lines = text_a.lines().collect::<Vec<&str>>();
+    let mut text_b_lines = text_b.lines().collect::<Vec<&str>>();
+
+    for s in &mut text_a_lines {
+        *s = s.trim_end().trim_start();
+        // info!("text_a: {}; len: {}", s, s.len());
+    }
+
+    for s in &mut text_b_lines {
+        *s = s.trim_end().trim_start();
+        // info!("text_b: {}; len: {}", s, s.len());
+    }
+
+    let mut text_a_new = text_a_lines.join("\n");
+    let text_b_new = text_b_lines.join("\n");
+
+    if !text_a_new.ends_with("\n") {
+        text_a_new += "\n";
+    }
+
+    let diff = TextDiff::from_lines(&text_a_new, &text_b_new);
+
+    let mut added = "".to_string();
+    let mut removed = "".to_string();
+    for change in diff.iter_all_changes() {
+        match change.tag() {
+            ChangeTag::Delete => {
+                // info!("rem: {}; len: {}", change.value(), change.value().len());
+                removed += change.value();
+            }
+            ChangeTag::Insert => {
+                added += change.value();
+                // info!("add: {}; len: {}", change.value(), change.value().len());
+            }
+            ChangeTag::Equal => {
+            }
+        }
+    }
+
+    (added, removed)
+}
+
+
+pub fn get_add_del_chars_from_texts(
+    text_a: &String,
+    text_b: &String,
+) -> (String, String) {
+    let diff = TextDiff::from_chars(text_a, text_b);
     let mut added = "".to_string();
     let mut removed = "".to_string();
     for change in diff.iter_all_changes() {
@@ -35,11 +82,9 @@ pub fn get_add_del_from_texts(
             }
         }
     }
-    added = added.replace("\r", "");
-    removed = added.replace("\r", "");
+    
     (added, removed)
 }
-
 
 pub async fn file_save(path: PathBuf, json: serde_json::Value) -> Result<(), String> {
     let mut f = tokio::fs::File::create(path).await.map_err(|e| format!("{:?}", e))?;

@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use tracing::{error, info};
+use tracing::{error, info, Level};
 use tracing_appender;
 
 use crate::background_tasks::start_background_tasks;
@@ -41,6 +41,7 @@ async fn main() {
         ))
     };
     let _tracing = tracing_subscriber::fmt()
+        .with_max_level(Level::DEBUG)
         .with_writer(logs_writer)
         .with_target(true)
         .with_line_number(true)
@@ -74,6 +75,6 @@ async fn main() {
 
     background_tasks.abort().await;
     info!("saving telemetry without sending, so should be quick");
-    basic_transmit::telemetry_full_cycle(gcx.clone(), true).await;
+    basic_transmit::basic_telemetry_compress(gcx.clone()).await;
     info!("bb\n");
 }
