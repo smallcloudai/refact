@@ -7,6 +7,7 @@ on:
   # Trigger the workflow on any pull request
   pull_request:
   workflow_dispatch:
+  repository_dispatch: 
 
 
 env:
