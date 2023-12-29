@@ -44,7 +44,12 @@
 
 [x] scroll lags a bit
 
+### TBD
+
 [ ] build an asset for docker (saves installing node on ubunto through nvm)
+[ ] automate adding the chat to docker
+
+[ ] in docker it seems that it maybe be posable to use the chat as a plugin or web-component
 
 ### EVENTS TODO FOR IDEs
 
