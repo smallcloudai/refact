@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-This repo consists Refact WebUI for fine-tuning and self-hosting of code models, that you can later use inside Refact plugins for code completion and chat. 
+This repo consists Refact WebUI for fine-tuning and self-hosting of code models, that you can later use inside Refact plugins for code completion and chat.
 
 ---
 
@@ -16,12 +16,12 @@ This repo consists Refact WebUI for fine-tuning and self-hosting of code models,
 [![JetBrains](https://img.shields.io/jetbrains/plugin/d/com.smallcloud.codify?label=JetBrains)](https://plugins.jetbrains.com/plugin/20647-codify)
 
 - [x] Fine-tuning of open-source code models
-- [x] Self-hosting of open-source code models 
+- [x] Self-hosting of open-source code models
 - [x] Download and upload Lloras
-- [x] Use models for code completion and chat inside Refact plugins 
+- [x] Use models for code completion and chat inside Refact plugins
 - [x] Model sharding
 - [x] Host several small models on one GPU
-- [x] Use OpenAI keys to connect GPT-models for chat 
+- [x] Use OpenAI keys to connect GPT-models for chat
 
 ![self-hosting-refact](https://github.com/smallcloudai/refact/assets/5008686/18e48b42-b638-4606-bde0-cadd47fd26e7)
 
@@ -38,7 +38,7 @@ docker run -d --rm --gpus all -p 8008:8008 -v perm-storage:/perm_storage -v refa
 ```
 
 `perm-storage` is a volume that is mounted inside the container. All the configuration files, downloaded weights and logs are stored here.
-`refact-database` is a volume for database where server stores your statistics from plugin.
+`refact-database` is a volume for database where server stores statistics from your users.
 
 To upgrade the docker, delete it using `docker kill XXX` (the volume `perm-storage` will retain your
 data), run `docker pull smallcloud/refact_self_hosting` and run it again.
