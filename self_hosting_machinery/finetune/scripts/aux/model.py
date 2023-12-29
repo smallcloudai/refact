@@ -154,7 +154,8 @@ class ModelContext:
             input,
             return_dict=False,
             output_attentions=False,
-            output_hidden_states=False
+            output_hidden_states=False,
+            use_cache=False
         )[0]
         return logits
 
