@@ -93,8 +93,8 @@ class WebGUI(FastAPI):
                 model_assigner=model_assigner),
             TabHostRouter(model_assigner),
             TabSettingsRouter(model_assigner),
+            LspProxy(),
             StaticRouter(),
-            LspProxy()
         ]
 
     async def _startup_event(self):
