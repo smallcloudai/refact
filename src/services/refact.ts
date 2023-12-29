@@ -1,4 +1,4 @@
-const REFACT_URL = process.env.VITE_REFACT_LSP_URL ?? "";
+const REFACT_URL = import.meta.env.VITE_REFACT_LSP_URL ?? "";
 const CHAT_URL = `${REFACT_URL}/v1/chat`;
 const CAPS_URL = `${REFACT_URL}/v1/caps`;
 

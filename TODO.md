@@ -44,6 +44,8 @@
 
 [x] scroll lags a bit
 
+[ ] build an asset for docker (saves installing node on ubunto through nvm)
+
 ### EVENTS TODO FOR IDEs
 
 [ ] add missing events
