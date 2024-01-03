@@ -261,6 +261,8 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
             if request_id in upload_proxy.check_cancelled():
                 scratchpad.finish_reason = "cancelled"
                 return
+            if torch.cuda.get_device_capability() < (8, 0):
+                torch.backends.cuda.enable_mem_efficient_sdp(False)
             with torch.inference_mode():
                 stopping_criteria = StoppingCriteriaList([
                     CancellationStoppingCriteria(scratchpad, request_id, upload_proxy),
