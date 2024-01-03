@@ -32,6 +32,7 @@ pub async fn forward_to_openai_style_endpoint(
         "stream": false,
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
+        "stop": sampling_parameters.stop,
     });
     if is_passthrough {
         _passthrough_messages_to_json(&mut data, prompt);
