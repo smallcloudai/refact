@@ -180,6 +180,7 @@ def apply_flash_mha_to_codellama_model(model):
 
     if torch.cuda.get_device_capability() < (8, 0):
         model.force_low_gpu_mem_mode = True
+        torch.backends.cuda.enable_mem_efficient_sdp(False)
         logging.warning("Flash attention is not supported on gpus with cuda capability < 8")
         return
 
