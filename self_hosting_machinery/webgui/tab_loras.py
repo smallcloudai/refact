@@ -84,8 +84,10 @@ class TabLorasRouter(APIRouter):
                 log("Error while uploading file: %s" % (e or str(type(e))))
                 return JSONResponse({"detail": "Cannot upload file, see logs for details"}, status_code=500)
             finally:
-                if os.path.exists(tmp_path):
+                try:
                     os.remove(tmp_path)
+                except:
+                    pass
 
         f = Path(os.path.join(env.DIR_LORAS, file.filename))
 
