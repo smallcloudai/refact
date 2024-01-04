@@ -3,6 +3,7 @@ const CHAT_URL = `${REFACT_URL}/v1/chat`;
 const CAPS_URL = `${REFACT_URL}/v1/caps`;
 
 export type ChatRole = "user" | "assistant" | "context_file";
+
 export type ChatContextFile = {
   file_name: string;
   file_content: string;
@@ -10,16 +11,40 @@ export type ChatContextFile = {
   line2: number;
 };
 
-export type ChatContentFileMessage = ["context_file", ChatContextFile];
+interface BaseMessage extends Array<string | ChatContextFile> {
+  0: ChatRole;
+  1: string | ChatContextFile;
+}
+
+export interface ChatContextFileMessage extends BaseMessage {
+  0: "context_file";
+  1: ChatContextFile;
+}
+
+export interface UserMessage extends BaseMessage {
+  0: "user";
+  1: string;
+}
+
+export interface AssistantMessage extends BaseMessage {
+  0: "assistant";
+  1: string;
+}
+
+export function isUserMessage(message: ChatMessage): message is UserMessage {
+  return message[0] === "user";
+}
+
 export type ChatMessage =
-  | [Omit<ChatRole, "context_file">, string]
-  | ChatContentFileMessage;
+  | UserMessage
+  | AssistantMessage
+  | ChatContextFileMessage;
 
 export type ChatMessages = ChatMessage[];
 
 export function isChatContextFileMessage(
   message: ChatMessage,
-): message is ChatContentFileMessage {
+): message is ChatContextFileMessage {
   return message[0] === "context_file";
 }
 
@@ -33,18 +58,17 @@ interface AssistantDelta extends BaseDelta {
 }
 
 // TODO: confirm UserDelta and ContextFileDelta are sent frm the lsp
-interface ChatContextFileDelta extends BaseDelta {
-  role: "context_file";
-  file_content: string;
-}
+// interface ChatContextFileDelta extends BaseDelta {
+//   role: "context_file";
+//   file_content: string;
+// }
 
-interface UserDelta extends BaseDelta {
-  role: "user";
-  content: string;
-}
+// interface UserDelta extends BaseDelta {
+//   role: "user";
+//   content: string;
+// }
 
-type Delta = UserDelta | AssistantDelta | ChatContextFileDelta;
-// interface Delta extends UserDelta, AssistantDelta , ChatContextFile {}
+type Delta = AssistantDelta; // UserDelta | AssistantDelta | ChatContextFileDelta;
 
 export type ChatChoice = {
   delta: Delta; // TODO: so far I've only seen AssistantDelta come from the lsp

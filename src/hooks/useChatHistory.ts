@@ -1,5 +1,5 @@
 import { useLocalStorage } from "usehooks-ts";
-import { ChatMessages } from "../services/refact";
+import { ChatMessages, isUserMessage } from "../services/refact";
 import { ChatThread, EVENT_NAMES_TO_CHAT } from "../events";
 
 export type ChatHistoryItem = {
@@ -17,7 +17,6 @@ export function useChatHistory() {
     [],
   );
 
-  // TODO: add model
   function saveChat(chat: ChatThread | ChatHistoryItem) {
     const maybeChat = history.find((item) => item.id === chat.id);
     const now = new Date().toISOString();
@@ -31,10 +30,14 @@ export function useChatHistory() {
 
       setHistory(chats);
     } else {
-      const firstMessage = chat.messages.find(
-        (message) => message[0] === "user",
+      const firstUserMessage = chat.messages.find((message) =>
+        isUserMessage(message),
       );
-      const title = firstMessage?.[1].replace(/^\W*/, "") ?? "New Chat";
+      let title = "New Chat";
+
+      if (firstUserMessage && isUserMessage(firstUserMessage)) {
+        title = firstUserMessage[1].replace(/^\W*/, "");
+      }
 
       const newChat: ChatHistoryItem = {
         id: chat.id,

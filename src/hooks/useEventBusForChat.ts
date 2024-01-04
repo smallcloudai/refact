@@ -54,9 +54,9 @@ function formatChatResponse(
 ): ChatMessages {
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     // TBD: chat doesn't seem to respond with a context file
-    if (cur.delta.role === "context_file") {
-      return acc.concat([[cur.delta.role, cur.delta.file_content || ""]]);
-    }
+    // if (cur.delta.role === "context_file") {
+    //   return acc.concat([[cur.delta.role, cur.delta.file_content || ""]]);
+    // }
     if (acc.length === 0) {
       return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
@@ -65,12 +65,8 @@ function formatChatResponse(
     if (lastMessage[0] === cur.delta.role) {
       const last = acc.slice(0, -1);
       const currentMessage = lastMessage[1];
-      const currentContent =
-        typeof currentMessage === "string"
-          ? currentMessage
-          : currentMessage.file_content;
       return last.concat([
-        [cur.delta.role, currentContent + cur.delta.content],
+        [cur.delta.role, currentMessage + cur.delta.content],
       ]);
     }
 

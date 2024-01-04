@@ -17,6 +17,8 @@ describe("ChatForm", () => {
         error=""
         clearError={vi.fn}
         canChangeModel={false}
+        handleContextFile={vi.fn}
+        hasContextFile={false}
       />,
     );
 
@@ -45,6 +47,8 @@ describe("ChatForm", () => {
         error=""
         clearError={vi.fn}
         canChangeModel={false}
+        handleContextFile={vi.fn}
+        hasContextFile={false}
       />,
     );
     const textarea = app.container.querySelector("textarea");

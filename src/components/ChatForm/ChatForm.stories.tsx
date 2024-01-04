@@ -26,6 +26,8 @@ const meta = {
     error: null,
     clearError: noop,
     canChangeModel: true,
+    hasContextFile: false,
+    handleContextFile: noop,
   },
 } satisfies Meta<typeof ChatForm>;
 

@@ -127,7 +127,7 @@ describe("Chat", () => {
 
     postMessage(restoreChatAction);
 
-    const firstMessage = MARS_ROVER_CHAT.messages[0][1];
+    const firstMessage = MARS_ROVER_CHAT.messages[0][1] as string;
 
     postMessage(restoreChatAction);
 
