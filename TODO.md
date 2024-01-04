@@ -43,13 +43,18 @@
 [x] handle long requests
 
 [x] scroll lags a bit
+[x] attach file (this will be different between docker and IDE's)
+[x] use the event bus to handle the file upload in the browser this can be done with the file system api using `window.showOpenFilePicker()`
+[ ] should we allow multiple context files?
+[ ] context file display could be an accordion button
+
+[ ] confirm if the lsp only responds with assistant deltas
 
 ### TBD
 
 [ ] build an asset for docker (saves installing node on ubunto through nvm)
 [ ] automate adding the chat to docker
-
-[ ] in docker it seems that it maybe be posable to use the chat as a plugin or web-component
+[ ] in the self hosted docker image it seems that it maybe be posable to use the chat as a plugin or web-component, of function
 
 ### EVENTS TODO FOR IDEs
 

@@ -3,6 +3,7 @@ import { ChatForm } from "../components/ChatForm";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
 import { Flex } from "@radix-ui/themes";
+import { isChatContextFileMessage } from "../services/refact";
 
 export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
   const {
@@ -12,6 +13,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     clearError,
     setChatModel,
     stopStreaming,
+    handleContextFile,
+    hasContextFile,
   } = useEventBusForChat();
 
   return (
@@ -35,7 +38,11 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
 
       <ChatForm
         isStreaming={state.streaming}
-        canChangeModel={state.chat.messages.length === 0 && !state.streaming}
+        canChangeModel={
+          state.chat.messages.filter(
+            (message) => !isChatContextFileMessage(message),
+          ).length === 0 && !state.streaming
+        }
         error={state.error}
         clearError={clearError}
         onSubmit={(value) => {
@@ -45,6 +52,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         onSetChatModel={setChatModel}
         caps={state.caps}
         onStopStreaming={stopStreaming}
+        handleContextFile={handleContextFile}
+        hasContextFile={hasContextFile}
       />
     </Flex>
   );

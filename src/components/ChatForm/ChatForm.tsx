@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Box, Flex } from "@radix-ui/themes";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
@@ -14,6 +14,7 @@ import {
 import { ErrorCallout, Callout } from "../Callout";
 
 import { Select } from "../Select/Select";
+import { FileUpload } from "../FileUpload";
 import { Button } from "@radix-ui/themes";
 
 const CapsSelect: React.FC<{
@@ -22,12 +23,15 @@ const CapsSelect: React.FC<{
   options: string[];
 }> = ({ options, value, onChange }) => {
   return (
-    <Select
-      title="chat model"
-      options={options}
-      value={value}
-      onChange={onChange}
-    ></Select>
+    <Flex gap="2" align="center">
+      <Text size="2">Use model:</Text>
+      <Select
+        title="chat model"
+        options={options}
+        value={value}
+        onChange={onChange}
+      ></Select>
+    </Flex>
   );
 };
 
@@ -43,6 +47,8 @@ export const ChatForm: React.FC<{
   canChangeModel: boolean;
   isStreaming: boolean;
   onStopStreaming: () => void;
+  handleContextFile: () => void;
+  hasContextFile: boolean;
 }> = ({
   onSubmit,
   onClose,
@@ -55,6 +61,8 @@ export const ChatForm: React.FC<{
   canChangeModel,
   isStreaming,
   onStopStreaming,
+  handleContextFile,
+  hasContextFile,
 }) => {
   const [value, setValue] = React.useState("");
   const isOnline = useIsOnline();
@@ -78,6 +86,7 @@ export const ChatForm: React.FC<{
 
   return (
     <Box mt="1" position="relative">
+      <FileUpload onClick={handleContextFile} checked={hasContextFile} />
       {!isOnline && <Callout type="info">Offline</Callout>}
       <Flex>
         {canChangeModel && (

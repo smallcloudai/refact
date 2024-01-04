@@ -1,16 +1,21 @@
 import React, { useEffect } from "react";
-import { ChatMessages } from "../../services/refact";
+import { ChatMessages, isChatContextFileMessage } from "../../services/refact";
 import { Markdown } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
-
 import { Box, Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 
-const ContextFile: React.FC<{ children: string }> = (props) => {
-  // TODO how should the context file look?
-  return <Markdown>{props.children}</Markdown>;
+const ContextFile: React.FC<{ name: string; children: string }> = ({
+  name,
+  ...props
+}) => {
+  return (
+    <Text size="2" title={props.children}>
+      <pre>📎 {name}</pre>
+    </Text>
+  );
 };
 
 const PlaceHolderText: React.FC = () => (
@@ -50,7 +55,18 @@ export const ChatContent: React.FC<{
     <ScrollArea scrollbars="vertical">
       <Flex grow="1" direction="column" className={styles.content}>
         {messages.length === 0 && <PlaceHolderText />}
-        {messages.map(([role, text], index) => {
+        {messages.map((message, index) => {
+          if (isChatContextFileMessage(message)) {
+            const [, file] = message;
+            return (
+              <ContextFile key={index} name={file.file_name}>
+                {file.file_content}
+              </ContextFile>
+            );
+          }
+
+          const [role, text] = message;
+
           if (role === "user") {
             const handleRetry = (question: string) => {
               const toSend = messages
@@ -63,8 +79,6 @@ export const ChatContent: React.FC<{
                 {text}
               </UserInput>
             );
-          } else if (role === "context_file") {
-            return <ContextFile key={index}>{text}</ContextFile>;
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           } else if (role === "assistant") {
             return <ChatInput key={index}>{text}</ChatInput>;

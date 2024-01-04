@@ -45,6 +45,7 @@
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@types/react-syntax-highlighter": "^15.5.11",
+    "@types/wicg-file-system-access": "^2023.10.4",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react-swc": "^3.5.0",

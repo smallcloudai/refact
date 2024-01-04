@@ -1,5 +1,9 @@
 import { useEffect, useReducer } from "react";
-import { ChatMessages, ChatResponse } from "../services/refact";
+import {
+  ChatMessages,
+  ChatResponse,
+  isChatContextFileMessage,
+} from "../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
   EVENT_NAMES_TO_CHAT,
@@ -19,6 +23,9 @@ import {
   isChatReceiveCapsError,
   isSetChatModel,
   isSetDisableChat,
+  isReceiveContextFile,
+  isRequestForFileFromChat,
+  isRemoveContext,
 } from "../events";
 
 declare global {
@@ -46,6 +53,7 @@ function formatChatResponse(
   response: ChatResponse,
 ): ChatMessages {
   return response.choices.reduce<ChatMessages>((acc, cur) => {
+    // TBD: chat doesn't seem to respond with a context file
     if (cur.delta.role === "context_file") {
       return acc.concat([[cur.delta.role, cur.delta.file_content || ""]]);
     }
@@ -55,9 +63,14 @@ function formatChatResponse(
     const lastMessage = acc[acc.length - 1];
 
     if (lastMessage[0] === cur.delta.role) {
-      const head = acc.slice(0, -1);
-      return head.concat([
-        [cur.delta.role, lastMessage[1] + cur.delta.content],
+      const last = acc.slice(0, -1);
+      const currentMessage = lastMessage[1];
+      const currentContent =
+        typeof currentMessage === "string"
+          ? currentMessage
+          : currentMessage.file_content;
+      return last.concat([
+        [cur.delta.role, currentContent + cur.delta.content],
       ]);
     }
 
@@ -191,6 +204,40 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       chat: {
         ...state.chat,
         model: action.payload.model,
+      },
+    };
+  }
+
+  if (isThisChat && isRequestForFileFromChat(action)) {
+    return {
+      ...state,
+      waiting_for_response: true,
+    };
+  }
+
+  if (isThisChat && isReceiveContextFile(action)) {
+    return {
+      ...state,
+      waiting_for_response: false,
+      chat: {
+        ...state.chat,
+        messages: state.chat.messages.concat([
+          ["context_file", action.payload.file],
+        ]),
+      },
+    };
+  }
+
+  if (isThisChat && isRemoveContext(action)) {
+    const messages = state.chat.messages.filter(
+      (message) => !isChatContextFileMessage(message),
+    );
+
+    return {
+      ...state,
+      chat: {
+        ...state.chat,
+        messages,
       },
     };
   }
@@ -329,6 +376,24 @@ export const useEventBusForChat = () => {
     });
   }
 
+  const hasContextFile = state.chat.messages.some((message) =>
+    isChatContextFileMessage(message),
+  );
+
+  function handleContextFile() {
+    if (hasContextFile) {
+      dispatch({
+        type: EVENT_NAMES_TO_CHAT.REMOVE_FILE,
+        payload: { id: state.chat.id },
+      });
+    } else {
+      postMessage({
+        type: EVENT_NAMES_FROM_CHAT.REQUEST_FILE,
+        payload: { id: state.chat.id },
+      });
+    }
+  }
+
   return {
     state,
     askQuestion,
@@ -336,5 +401,7 @@ export const useEventBusForChat = () => {
     clearError,
     setChatModel,
     stopStreaming,
+    handleContextFile,
+    hasContextFile,
   };
 };

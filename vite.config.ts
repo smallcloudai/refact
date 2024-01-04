@@ -17,7 +17,6 @@ export default defineConfig(({ command }) => {
       proxy: {
         // TODO: make this an env var
         // https://vitejs.dev/config/#using-environment-variables-in-config
-
         "/v1": process.env.REFACT_LSP_URL ?? "http://127.0.0.1:8001",
       },
     },

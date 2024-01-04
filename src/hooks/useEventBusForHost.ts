@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { sendChat, getCaps } from "../services/refact";
+import { sendChat, getCaps, ChatContextFile } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
   EVENT_NAMES_TO_CHAT,
@@ -8,6 +8,7 @@ import {
   isSaveChatFromChat,
   isRequestCapsFromChat,
   isStopStreamingFromChat,
+  isRequestForFileFromChat,
 } from "../events";
 
 export function useEventBusForHost() {
@@ -66,6 +67,52 @@ export function useEventBusForHost() {
                 message: error.message,
               },
             });
+          });
+      }
+
+      if (isRequestForFileFromChat(event.data)) {
+        const { payload } = event.data;
+        // TBD: should we allow multiple files?
+        window
+          .showOpenFilePicker()
+          .then((files) => {
+            files.map(async (file) => {
+              const data = await file.getFile();
+              const text = await data.text();
+              const message: ChatContextFile = {
+                file_name: file.name,
+                file_content: text,
+                line1: 1,
+                line2: text.split("\n").length + 1,
+              };
+
+              window.postMessage({
+                type: EVENT_NAMES_TO_CHAT.RECEIVE_FILE,
+                payload: {
+                  id: payload.id,
+                  file: message,
+                },
+              });
+            });
+          })
+          .catch((error: Error) => {
+            if (error instanceof DOMException && error.name === "AbortError") {
+              return;
+            }
+            // eslint-disable-next-line no-console
+            console.error(error);
+
+            // TODO: add specific error type for this case
+            window.postMessage(
+              {
+                type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
+                payload: {
+                  id: payload.id,
+                  message: error.message || "error attaching file",
+                },
+              },
+              "*",
+            );
           });
       }
     };

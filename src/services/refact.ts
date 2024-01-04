@@ -3,16 +3,28 @@ const CHAT_URL = `${REFACT_URL}/v1/chat`;
 const CAPS_URL = `${REFACT_URL}/v1/caps`;
 
 export type ChatRole = "user" | "assistant" | "context_file";
-export type ChatMessage = [ChatRole, string];
+export type ChatContextFile = {
+  file_name: string;
+  file_content: string;
+  line1: number;
+  line2: number;
+};
+
+export type ChatContentFileMessage = ["context_file", ChatContextFile];
+export type ChatMessage =
+  | [Omit<ChatRole, "context_file">, string]
+  | ChatContentFileMessage;
+
 export type ChatMessages = ChatMessage[];
+
+export function isChatContextFileMessage(
+  message: ChatMessage,
+): message is ChatContentFileMessage {
+  return message[0] === "context_file";
+}
 
 interface BaseDelta {
   role: ChatRole;
-}
-
-interface UserDelta extends BaseDelta {
-  role: "user";
-  content: string;
 }
 
 interface AssistantDelta extends BaseDelta {
@@ -20,19 +32,26 @@ interface AssistantDelta extends BaseDelta {
   content: string;
 }
 
-interface ChatContextFile extends BaseDelta {
+// TODO: confirm UserDelta and ContextFileDelta are sent frm the lsp
+interface ChatContextFileDelta extends BaseDelta {
   role: "context_file";
   file_content: string;
 }
 
-type Delta = UserDelta | AssistantDelta | ChatContextFile;
+interface UserDelta extends BaseDelta {
+  role: "user";
+  content: string;
+}
+
+type Delta = UserDelta | AssistantDelta | ChatContextFileDelta;
 // interface Delta extends UserDelta, AssistantDelta , ChatContextFile {}
 
 export type ChatChoice = {
-  delta: Delta;
+  delta: Delta; // TODO: so far I've only seen AssistantDelta come from the lsp
   finish_reason: "stop" | "abort" | null;
   index: number;
 };
+
 export type ChatResponse = {
   choices: ChatChoice[];
   created: number;
@@ -45,7 +64,11 @@ export function sendChat(
   model: string,
   abortController: AbortController,
 ) {
-  const jsonMessages = messages.map(([role, content]) => {
+  const jsonMessages = messages.map(([role, textOrFile]) => {
+    const content =
+      typeof textOrFile === "string"
+        ? textOrFile
+        : JSON.stringify([textOrFile]);
     return { role, content };
   });
 
