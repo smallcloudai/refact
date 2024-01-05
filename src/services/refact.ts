@@ -90,9 +90,7 @@ export function sendChat(
 ) {
   const jsonMessages = messages.map(([role, textOrFile]) => {
     const content =
-      typeof textOrFile === "string"
-        ? textOrFile
-        : JSON.stringify([textOrFile]);
+      typeof textOrFile === "string" ? textOrFile : JSON.stringify(textOrFile);
     return { role, content };
   });
 
