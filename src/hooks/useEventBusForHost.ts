@@ -49,7 +49,7 @@ export function useEventBusForHost(lspUrl?: string) {
 
       if (isRequestCapsFromChat(event.data)) {
         const chat_id = event.data.payload.id;
-        getCaps()
+        getCaps(lspUrl)
           .then((caps) => {
             window.postMessage({
               type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS,
