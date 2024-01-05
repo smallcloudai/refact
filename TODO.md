@@ -35,7 +35,7 @@
 [x] remove item from history
 [x] disable inputs while streaming
 [x] stop stream button
-[ ] build the app (also think about how it'll be configured)
+[x] build the app (also think about how it'll be configured)
 [x] content for when chat is empty
 [x] fix the text area placement (empty chat content might help with this)
 [x] make it look nice
@@ -45,13 +45,15 @@
 [x] scroll lags a bit
 [x] attach file (this will be different between docker and IDE's)
 [x] use the event bus to handle the file upload in the browser this can be done with the file system api using `window.showOpenFilePicker()`
-[ ] should we allow multiple context files?
+[x] should we allow multiple context files?
 [ ] context file display could be an accordion button
 
 [-] confirm if the lsp only responds with assistant deltas
 
 [x] should context file be an array of files?
-[ ] disable adding a file after a question has been asked
+[x] disable adding a file after a question has been asked
+[ ] custom build for self hosted as it doesn't need dark-mode or an interactive theme
+[ ] add a global variable style sheet "theme" in self-hosted
 
 ### TBD
 
