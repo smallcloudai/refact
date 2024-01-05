@@ -11,7 +11,7 @@ export enum EVENT_NAMES_FROM_CHAT {
   ASK_QUESTION = "chat_question",
   REQUEST_CAPS = "chat_request_caps",
   STOP_STREAMING = "chat_stop_streaming",
-  REQUEST_FILE = "chat_request_for_file",
+  REQUEST_FILES = "chat_request_for_file",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -26,8 +26,8 @@ export enum EVENT_NAMES_TO_CHAT {
   RECEIVE_CAPS_ERROR = "receive_caps_error",
   SET_CHAT_MODEL = "chat_set_chat_model",
   SET_DISABLE_CHAT = "set_disable_chat",
-  RECEIVE_FILE = "receive_context_file",
-  REMOVE_FILE = "remove_context_file",
+  RECEIVE_FILES = "receive_context_file",
+  REMOVE_FILES = "remove_context_file",
 }
 
 export type ChatThread = {
@@ -55,7 +55,7 @@ export function isActionFromChat(action: unknown): action is ActionFromChat {
 }
 
 export interface RequestForFileFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_FILE;
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_FILES;
   payload: { id: string };
 }
 
@@ -63,7 +63,7 @@ export function isRequestForFileFromChat(
   action: unknown,
 ): action is RequestForFileFromChat {
   if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_FILE;
+  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_FILES;
 }
 
 export interface QuestionFromChat extends ActionFromChat {
@@ -128,10 +128,10 @@ export function isActionToChat(action: unknown): action is ActionToChat {
 }
 
 export interface ReceiveContextFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_FILE;
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_FILES;
   payload: {
     id: string;
-    file: ChatContextFile;
+    files: ChatContextFile[];
   };
 }
 
@@ -139,17 +139,17 @@ export function isReceiveContextFile(
   action: unknown,
 ): action is ReceiveContextFile {
   if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_FILE;
+  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_FILES;
 }
 
 export interface RemoveContextFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.REMOVE_FILE;
+  type: EVENT_NAMES_TO_CHAT.REMOVE_FILES;
   payload: { id: string };
 }
 
 export function isRemoveContext(action: unknown): action is RemoveContextFile {
   if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.REMOVE_FILE;
+  return action.type === EVENT_NAMES_TO_CHAT.REMOVE_FILES;
 }
 
 export interface SetChatDisable extends ActionToChat {

@@ -72,27 +72,29 @@ export function useEventBusForHost() {
 
       if (isRequestForFileFromChat(event.data)) {
         const { payload } = event.data;
-        // TBD: should we allow multiple files?
-        window
-          .showOpenFilePicker()
-          .then((files) => {
-            files.map(async (file) => {
-              const data = await file.getFile();
-              const text = await data.text();
-              const message: ChatContextFile = {
-                file_name: file.name,
-                file_content: text,
-                line1: 1,
-                line2: text.split("\n").length + 1,
-              };
 
-              window.postMessage({
-                type: EVENT_NAMES_TO_CHAT.RECEIVE_FILE,
-                payload: {
-                  id: payload.id,
-                  file: message,
-                },
-              });
+        window
+          .showOpenFilePicker({ multiple: true })
+          .then(async (fileHandlers) => {
+            const promises = fileHandlers.map(async (fileHandler) => {
+              const file = await fileHandler.getFile();
+              const content = await file.text();
+              const messageInChat: ChatContextFile = {
+                file_name: fileHandler.name,
+                file_content: content,
+                line1: 1,
+                line2: content.split("\n").length + 1,
+              };
+              return messageInChat;
+            });
+
+            const files = await Promise.all(promises);
+            window.postMessage({
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_FILES,
+              payload: {
+                id: payload.id,
+                files,
+              },
             });
           })
           .catch((error: Error) => {

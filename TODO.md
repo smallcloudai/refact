@@ -48,7 +48,10 @@
 [ ] should we allow multiple context files?
 [ ] context file display could be an accordion button
 
-[ ] confirm if the lsp only responds with assistant deltas
+[-] confirm if the lsp only responds with assistant deltas
+
+[x] should context file be an array of files?
+[ ] disable adding a file after a question has been asked
 
 ### TBD
 

@@ -1,5 +1,9 @@
 import React, { useEffect } from "react";
-import { ChatMessages, isChatContextFileMessage } from "../../services/refact";
+import {
+  ChatContextFile,
+  ChatMessages,
+  isChatContextFileMessage,
+} from "../../services/refact";
 import { Markdown } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
@@ -16,6 +20,14 @@ const ContextFile: React.FC<{ name: string; children: string }> = ({
       <pre>📎 {name}</pre>
     </Text>
   );
+};
+
+const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({ files }) => {
+  return files.map((file, index) => (
+    <ContextFile key={index} name={file.file_name}>
+      {file.file_content}
+    </ContextFile>
+  ));
 };
 
 const PlaceHolderText: React.FC = () => (
@@ -57,12 +69,8 @@ export const ChatContent: React.FC<{
         {messages.length === 0 && <PlaceHolderText />}
         {messages.map((message, index) => {
           if (isChatContextFileMessage(message)) {
-            const [, file] = message;
-            return (
-              <ContextFile key={index} name={file.file_name}>
-                {file.file_content}
-              </ContextFile>
-            );
+            const [, files] = message;
+            return <ContextFiles key={index} files={files} />;
           }
 
           const [role, text] = message;

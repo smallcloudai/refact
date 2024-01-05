@@ -53,16 +53,12 @@ function formatChatResponse(
   response: ChatResponse,
 ): ChatMessages {
   return response.choices.reduce<ChatMessages>((acc, cur) => {
-    // TBD: chat doesn't seem to respond with a context file
-    // if (cur.delta.role === "context_file") {
-    //   return acc.concat([[cur.delta.role, cur.delta.file_content || ""]]);
-    // }
-    if (acc.length === 0) {
+    if (cur.delta.role === "context_file") {
       return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
-    const lastMessage = acc[acc.length - 1];
 
-    if (lastMessage[0] === cur.delta.role) {
+    const lastMessage = acc[acc.length - 1];
+    if (lastMessage[0] === "assistant") {
       const last = acc.slice(0, -1);
       const currentMessage = lastMessage[1];
       return last.concat([
@@ -218,7 +214,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       chat: {
         ...state.chat,
         messages: state.chat.messages.concat([
-          ["context_file", action.payload.file],
+          ["context_file", action.payload.files],
         ]),
       },
     };
@@ -379,12 +375,12 @@ export const useEventBusForChat = () => {
   function handleContextFile() {
     if (hasContextFile) {
       dispatch({
-        type: EVENT_NAMES_TO_CHAT.REMOVE_FILE,
+        type: EVENT_NAMES_TO_CHAT.REMOVE_FILES,
         payload: { id: state.chat.id },
       });
     } else {
       postMessage({
-        type: EVENT_NAMES_FROM_CHAT.REQUEST_FILE,
+        type: EVENT_NAMES_FROM_CHAT.REQUEST_FILES,
         payload: { id: state.chat.id },
       });
     }
