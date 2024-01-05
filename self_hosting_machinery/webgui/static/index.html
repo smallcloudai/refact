@@ -13,6 +13,8 @@
   <link rel="shortcut icon" href="#">
   <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script src="/chat/chat.umd.cjs"></script>
+  <link rel="stylesheet" href="/chat/style.css" />
   <title>Refact Self Hosting</title>
 </head>
 
@@ -65,11 +67,6 @@
       </li>
       {{/unless}}
       {{/each}}
-      {{#unless hamburger}}
-      <li class="nav-item" role="presentation">
-        <button onclick="window.open('/chat', '_blank')" class="nav-link" id="{{id}}" {{#if disabled}}disabled{{/if}}>Chat</button>
-      </li>
-      {{/unless}}
       <div class="d-flex ms-auto">
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
@@ -119,6 +116,8 @@
       <div class="main-tab-pane" id="settings">
       </div>
       <div class="main-tab-pane" id="license">
+      </div>
+      <div class="main-tab-pane" id="chat">
       </div>
     </div>
   </div>
