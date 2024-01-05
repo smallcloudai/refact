@@ -5,8 +5,11 @@ import { HistorySideBar } from "./features/HistorySideBar";
 import { Theme } from "./components/Theme";
 import "./App.css";
 
-function App() {
-  useEventBusForHost();
+const App: React.FC<{
+  lspUrl?: string;
+}> = ({ lspUrl }: { lspUrl?: string }) => {
+  useEventBusForHost(lspUrl);
+  // TODO: maybe make light and dark mode optional
   return (
     <Theme>
       <Flex>
@@ -17,6 +20,6 @@ function App() {
       </Flex>
     </Theme>
   );
-}
+};
 
 export default App;

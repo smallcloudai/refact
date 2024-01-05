@@ -1,12 +1,7 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App.tsx";
+import Chat from "./self-hosted-chat";
 
-// import './index.css'
+const element = document.getElementById("refact-chat");
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-ReactDOM.createRoot(document.getElementById("refact-chat")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+if (element) {
+  Chat(element);
+}

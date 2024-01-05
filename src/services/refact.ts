@@ -1,6 +1,5 @@
-const REFACT_URL = import.meta.env.VITE_REFACT_LSP_URL ?? "";
-const CHAT_URL = `${REFACT_URL}/v1/chat`;
-const CAPS_URL = `${REFACT_URL}/v1/caps`;
+const CHAT_URL = `/v1/chat`;
+const CAPS_URL = `/v1/caps`;
 
 export type ChatRole = "user" | "assistant" | "context_file";
 
@@ -56,8 +55,6 @@ interface AssistantDelta extends BaseDelta {
   role: "assistant";
   content: string;
 }
-
-// TODO: confirm UserDelta and ContextFileDelta are sent frm the lsp
 interface ChatContextFileDelta extends BaseDelta {
   role: "context_file";
   content: ChatContextFile[];
@@ -68,10 +65,10 @@ interface ChatContextFileDelta extends BaseDelta {
 //   content: string;
 // }
 
-type Delta = AssistantDelta | ChatContextFileDelta; // UserDelta | AssistantDelta | ChatContextFileDelta;
+type Delta = AssistantDelta | ChatContextFileDelta;
 
 export type ChatChoice = {
-  delta: Delta; // TODO: so far I've only seen AssistantDelta come from the lsp
+  delta: Delta;
   finish_reason: "stop" | "abort" | null;
   index: number;
 };
@@ -87,6 +84,7 @@ export function sendChat(
   messages: ChatMessages,
   model: string,
   abortController: AbortController,
+  lspUrl?: string,
 ) {
   const jsonMessages = messages.map(([role, textOrFile]) => {
     const content =
@@ -106,8 +104,11 @@ export function sendChat(
   const headers = {
     "Content-Type": "application/json",
   };
+  const chatEndpoint = lspUrl
+    ? `${lspUrl.replace(/\/*$/, "")}${CHAT_URL}`
+    : CHAT_URL;
 
-  return fetch(CHAT_URL, {
+  return fetch(chatEndpoint, {
     method: "POST",
     headers,
     body,
@@ -118,8 +119,12 @@ export function sendChat(
   });
 }
 
-export async function getCaps(): Promise<CapsResponse> {
-  const response = await fetch(CAPS_URL, {
+export async function getCaps(lspUrl?: string): Promise<CapsResponse> {
+  const capsEndpoint = lspUrl
+    ? `${lspUrl.replace(/\/*$/, "")}${CAPS_URL}`
+    : CAPS_URL;
+
+  const response = await fetch(capsEndpoint, {
     method: "GET",
     headers: {
       accept: "application/json",

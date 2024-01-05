@@ -11,7 +11,7 @@ import {
   isRequestForFileFromChat,
 } from "../events";
 
-export function useEventBusForHost() {
+export function useEventBusForHost(lspUrl?: string) {
   const { saveChat } = useChatHistory();
   // this needs to be a ref because it is mutated in a useEffect
   const controller = useRef(new AbortController());
@@ -38,7 +38,7 @@ export function useEventBusForHost() {
           model: payload.model,
         });
 
-        handleSend(event.data.payload, controller.current);
+        handleSend(event.data.payload, controller.current, lspUrl);
         return;
       }
 
@@ -124,11 +124,15 @@ export function useEventBusForHost() {
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [saveChat]);
+  }, [saveChat, lspUrl]);
 }
 
-function handleSend(chat: ChatThread, controller: AbortController) {
-  sendChat(chat.messages, chat.model, controller)
+function handleSend(
+  chat: ChatThread,
+  controller: AbortController,
+  lspUrl?: string,
+) {
+  sendChat(chat.messages, chat.model, controller, lspUrl)
     .then((response) => {
       if (!response.ok) {
         return Promise.reject(new Error(response.statusText));
