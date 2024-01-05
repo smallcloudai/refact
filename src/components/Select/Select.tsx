@@ -1,12 +1,9 @@
 import React from "react";
 import { Select as RadixSelect } from "@radix-ui/themes";
 
-type SelectProps = {
+type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   onChange: (value: string) => void;
   options: string[];
-  defaultValue?: string;
-  value?: string;
-  label?: string;
   title?: string;
 };
 

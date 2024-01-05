@@ -21,11 +21,13 @@ const CapsSelect: React.FC<{
   value: string;
   onChange: (value: string) => void;
   options: string[];
-}> = ({ options, value, onChange }) => {
+  disabled?: boolean;
+}> = ({ options, value, onChange, disabled }) => {
   return (
     <Flex gap="2" align="center">
       <Text size="2">Use model:</Text>
       <Select
+        disabled={disabled}
         title="chat model"
         options={options}
         value={value}
@@ -86,8 +88,10 @@ export const ChatForm: React.FC<{
 
   return (
     <Box mt="1" position="relative">
-      <FileUpload onClick={handleContextFile} checked={hasContextFile} />
       {!isOnline && <Callout type="info">Offline</Callout>}
+      {canChangeModel && (
+        <FileUpload onClick={handleContextFile} checked={hasContextFile} />
+      )}
       <Flex>
         {canChangeModel && (
           <CapsSelect
