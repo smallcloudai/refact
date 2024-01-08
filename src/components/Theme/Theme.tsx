@@ -1,13 +1,18 @@
 import React from "react";
-import { Theme as RadixTheme, IconButton, ThemePanel } from "@radix-ui/themes";
+import {
+  Theme as RadixTheme,
+  IconButton,
+  // ThemePanel
+} from "@radix-ui/themes";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
 
-export const InteractiveTheme: React.FC<
-  React.ComponentProps<typeof RadixTheme>
-> = ({ children, ...props }) => {
+export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = ({
+  children,
+  ...props
+}) => {
   // TODO: this isn't needed when in an IDE
   const { isDarkMode, toggle } = useDarkMode();
   const Icon = isDarkMode ? MoonIcon : SunIcon;
@@ -24,10 +29,8 @@ export const InteractiveTheme: React.FC<
       </IconButton>
       {/** TODO: remove this in production */}
       {/** use cmd + c to open and close */}
-      <ThemePanel defaultOpen={false} />
+      {/* <ThemePanel defaultOpen={false} /> */}
       {children}
     </RadixTheme>
   );
 };
-
-export const Theme = RadixTheme;

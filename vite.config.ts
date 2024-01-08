@@ -57,8 +57,5 @@ export const LIB_CONFIG: UserConfig = {
       name: "RefactChat",
       fileName: "chat",
     },
-    // rollupOptions: {
-    //   external: ["react/jsx-runtime"],
-    // },
   },
 };
