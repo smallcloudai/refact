@@ -1,0 +1,4 @@
+.radix-themes {
+    /** see https://www.radix-ui.com/themes/docs/theme/token-reference for variables to over-ride */
+    --default-font-family: 'Space Grotesk',sans-serif;
+}
