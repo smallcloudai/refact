@@ -17,17 +17,23 @@ const ContextFile: React.FC<{ name: string; children: string }> = ({
 }) => {
   return (
     <Text size="2" title={props.children}>
-      <pre>📎 {name}</pre>
+      📎 {name}
     </Text>
   );
 };
 
 const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({ files }) => {
-  return files.map((file, index) => (
-    <ContextFile key={index} name={file.file_name}>
-      {file.file_content}
-    </ContextFile>
-  ));
+  return (
+    <pre>
+      <Flex gap="4" wrap="wrap">
+        {files.map((file, index) => (
+          <ContextFile key={index} name={file.file_name}>
+            {file.file_content}
+          </ContextFile>
+        ))}
+      </Flex>
+    </pre>
+  );
 };
 
 const PlaceHolderText: React.FC = () => (

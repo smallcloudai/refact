@@ -23,7 +23,12 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
       justify="between"
       grow="1"
       p={{
-        initial: "9",
+        initial: "1",
+        xs: "2",
+        sm: "3",
+        md: "4",
+        lg: "5",
+        xl: "6",
       }}
       style={{
         ...props.style,

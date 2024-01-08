@@ -5,10 +5,10 @@ import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
 
-export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = ({
-  children,
-  ...props
-}) => {
+export const InteractiveTheme: React.FC<
+  React.ComponentProps<typeof RadixTheme>
+> = ({ children, ...props }) => {
+  // TODO: this isn't needed when in an IDE
   const { isDarkMode, toggle } = useDarkMode();
   const Icon = isDarkMode ? MoonIcon : SunIcon;
   return (
@@ -29,3 +29,5 @@ export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = ({
     </RadixTheme>
   );
 };
+
+export const Theme = RadixTheme;
