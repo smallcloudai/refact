@@ -8,7 +8,6 @@ import os
 import json
 import httpx
 
-
 __all__ = ["LspProxy"]
 
 
