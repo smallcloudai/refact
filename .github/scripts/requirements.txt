@@ -1,2 +1,0 @@
-git+https://github.com/smallcloudai/flash-attention@feat/alibi
-git+https://github.com/smallcloudai/vllm@refact_model_deps

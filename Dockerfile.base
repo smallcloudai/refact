@@ -1,0 +1,13 @@
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+ENV INSTALL_OPTIONAL=TRUE
+ENV FLASH_ATTENTION_FORCE_BUILD=TRUE
+RUN apt-get update
+RUN DEBIAN_FRONTEND="noninteractive" TZ=Etc/UTC apt-get install -y git python3 python3-pip python3-packaging \
+    && rm -rf /var/lib/{apt,dpkg,cache,log} \
+
+RUN pip install --no-cache-dir torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+
+RUN pip install ninja
+
+RUN MAX_JOBS=8 pip install -v git+https://github.com/smallcloudai/flash-attention@feat/alibi
+RUN MAX_JOBS=8 pip install -v git+https://github.com/smallcloudai/vllm@refact_model_deps
