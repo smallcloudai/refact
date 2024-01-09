@@ -1,4 +1,6 @@
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+# syntax = devthefuture/dockerfile-x
+
+INCLUDE Dockerfile.base
 
 RUN apt-get update
 RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
@@ -17,29 +19,8 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
 RUN echo "export PATH=/usr/local/cuda/bin:\$PATH" > /etc/profile.d/50-smc.sh
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
-# torch
-RUN pip install --no-cache-dir torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
 # auto-gptq
 RUN pip install auto-gptq==0.6.0 --extra-index-url https://huggingface.github.io/autogptq-index/whl/cu118/
-
-# linguist requisites
-RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y \
-    expect \
-    ruby-full \
-    ruby-bundler \
-    build-essential \
-    cmake \
-    pkg-config \
-    libicu-dev \
-    zlib1g-dev \
-    libcurl4-openssl-dev \
-    libssl-dev
-RUN git clone https://github.com/smallcloudai/linguist.git /tmp/linguist \
-    && cd /tmp/linguist \
-    && bundle install \
-    && rake build_gem
-ENV PATH="${PATH}:/tmp/linguist/bin"
 
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packaging
 
