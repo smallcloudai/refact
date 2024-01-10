@@ -25,7 +25,11 @@ export { customRender as render };
 
 export function postMessage(data: unknown) {
   return window.dispatchEvent(
-    new MessageEvent("message", { source: window, origin: "*", data }),
+    new MessageEvent("message", {
+      source: window,
+      origin: window.location.origin,
+      data,
+    }),
   );
 }
 

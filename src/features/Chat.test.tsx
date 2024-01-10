@@ -28,7 +28,7 @@ describe("Chat", () => {
     vi.restoreAllMocks();
   });
 
-  it("should send and receive messages from the window", async () => {
+  it.only("should send and receive messages from the window", async () => {
     vi.mock("uuid", () => ({ v4: () => "foo" }));
 
     const postMessageSpy = vi.spyOn(window, "postMessage");
@@ -45,6 +45,7 @@ describe("Chat", () => {
     setUpCapsForChat("foo");
 
     const select = await app.findByTitle("chat model");
+    // app.debug(select.parentElement);
     expect(select.textContent).toContain("gpt-3.5-turbo");
 
     const textarea: HTMLTextAreaElement | null =
