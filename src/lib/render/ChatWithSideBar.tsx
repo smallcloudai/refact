@@ -4,6 +4,7 @@ import { Theme } from "../../components/Theme/index.ts";
 import { Flex } from "@radix-ui/themes";
 import { HistorySideBar } from "../../features/HistorySideBar.tsx";
 import { Chat } from "../../features/Chat.tsx";
+import "./web.css";
 
 export const ChatWithSideBar: React.FC = () => {
   useEventBusForHost();
