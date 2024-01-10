@@ -9,7 +9,7 @@ import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
 
-export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = ({
+const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = ({
   children,
   ...props
 }) => {
@@ -34,3 +34,5 @@ export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = ({
     </RadixTheme>
   );
 };
+
+export { RadixTheme as BaseTheme, Theme };

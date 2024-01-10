@@ -5,7 +5,10 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "strict": true
+    "strict": true,
+    "paths": {
+      "*": ["node_modules/*"]
+    }
   },
   "include": ["vite.config.ts", "vite.library.config.ts"]
 }

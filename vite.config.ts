@@ -4,27 +4,22 @@ import { PluginOption, UserConfig, defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import eslint from "vite-plugin-eslint";
 import { coverageConfigDefaults } from "vitest/config";
+import dts from "vite-plugin-dts";
 
 // https://vitejs.dev/config/
 /** @type {import('vite').UserConfig} */
-
-const DEFAULT_CONFIG = defineConfig(({ command, mode }) => {
-  const plugins: PluginOption[] = [react()];
-  if (command !== "serve") {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    plugins.push(eslint() as PluginOption);
-  }
-
-  return {
+export default defineConfig(({ command, mode }) => {
+  const CONFIG: UserConfig = {
     // Build the webpage
     define: {
       "process.env.NODE_ENV": JSON.stringify(mode),
     },
+    mode,
     build: {
-      outDir: "dist/webpage",
+      emptyOutDir: true,
+      outDir: "dist",
     },
-    plugins,
-
+    plugins: [react()],
     server: {
       proxy: {
         "/v1": process.env.REFACT_LSP_URL ?? "http://127.0.0.1:8001",
@@ -42,20 +37,25 @@ const DEFAULT_CONFIG = defineConfig(({ command, mode }) => {
       modules: {},
     },
   };
+
+  if (command !== "serve") {
+    CONFIG.mode = "production";
+    CONFIG.define = { "process.env.NODE_ENV": "'production'" };
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    CONFIG.plugins?.push([
+      eslint() as PluginOption,
+      dts({ rollupTypes: true }),
+    ]);
+    CONFIG.build = {
+      outDir: "dist",
+      lib: {
+        // TODO: make entry an  object
+        entry: path.resolve(__dirname, "src/lib/index.ts"),
+        name: "RefactChat",
+        fileName: "chat",
+      },
+    };
+  }
+
+  return CONFIG;
 });
-
-export default DEFAULT_CONFIG;
-
-export const LIB_CONFIG: UserConfig = {
-  ...DEFAULT_CONFIG,
-  mode: "production",
-  define: { "process.env.NODE_ENV": "'production'" },
-  build: {
-    outDir: "dist/lib",
-    lib: {
-      entry: path.resolve(__dirname, "src/self-hosted-chat.tsx"),
-      name: "RefactChat",
-      fileName: "chat",
-    },
-  },
-};

@@ -52,14 +52,7 @@
 
 [x] should context file be an array of files?
 [x] disable adding a file after a question has been asked
-[ ] custom build for self hosted as it doesn't need dark-mode or an interactive theme
-[ ] add a global variable style sheet "theme" in self-hosted
-
-### TBD
-
-[ ] build an asset for docker (saves installing node on ubunto through nvm)
-[ ] automate adding the chat to docker
-[ ] in the self hosted docker image it seems that it maybe be posable to use the chat as a plugin or web-component, of function
+[x] add a global variable style sheet "theme" in self-hosted
 
 ### EVENTS TODO FOR IDEs
 
@@ -73,3 +66,7 @@
 [ ] back from chat (when in side-bar)
 [ ] open chat in new tab (side bar only)
 [ ] send chat to side bar
+[x] create lib directory for code that becomes a lib
+[ ] configure vite to output multiple entry files (one for web and one for the ide's)
+[x] export events in package.json or from lib
+[ ] remove inline styles

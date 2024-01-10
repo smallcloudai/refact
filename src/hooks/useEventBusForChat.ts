@@ -277,7 +277,9 @@ export const useEventBusForChat = () => {
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
-      if (event.source !== window) {
+      if (event.source !== window || event.origin !== window.location.origin) {
+        // eslint-disable-next-line no-console
+        console.log("CHAT: event source or origin not the same window");
         return;
       }
       if (isActionToChat(event.data)) {

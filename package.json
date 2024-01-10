@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && vite build -c vite.library.config.ts",
+    "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest",
@@ -65,6 +65,7 @@
     "typescript": "^5.2.2",
     "typescript-plugin-css-modules": "^5.0.2",
     "vite": "^5.0.8",
+    "vite-plugin-dts": "^3.7.0",
     "vite-plugin-eslint": "^1.8.1",
     "vitest": "^1.0.4"
   },

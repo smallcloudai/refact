@@ -1,7 +1,7 @@
-import Chat from "./self-hosted-chat";
+import { ChatForWeb } from "./lib";
 
 const element = document.getElementById("refact-chat");
 
 if (element) {
-  Chat(element);
+  ChatForWeb(element);
 }
