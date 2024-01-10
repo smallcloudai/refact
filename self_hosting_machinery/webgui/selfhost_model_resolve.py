@@ -21,22 +21,6 @@ def completion_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]
     return completion_model, ""
 
 
-def embeddings_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]:
-    have_models: List[str] = inference_queue.models_available()
-
-    with open(env.CONFIG_INFERENCE, 'r') as f:
-        data = json.load(f)
-        embedding_model = data.get("embeddings", None)
-
-    if embedding_model is None:
-        return "", f"embedding model is not set"
-
-    if embedding_model not in have_models:
-        return "", f"model is not loaded (1)"
-
-    return embedding_model, ""
-
-
 def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tuple[str, str]:
     # special case for longthink
     if model_name in ["longthink", "gpt3.5", "gpt4"]:

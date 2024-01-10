@@ -37,5 +37,4 @@ class InferenceQueue:
             if j.get("openai_api_enable", False):
                 self._models_available.append('gpt-3.5-turbo')
                 self._models_available.append('gpt-4')
-        self._models_available.append("gte")
         return self._models_available
