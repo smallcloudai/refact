@@ -28,7 +28,7 @@ describe("Chat", () => {
     vi.restoreAllMocks();
   });
 
-  it.only("should send and receive messages from the window", async () => {
+  it("should send and receive messages from the window", async () => {
     vi.mock("uuid", () => ({ v4: () => "foo" }));
 
     const postMessageSpy = vi.spyOn(window, "postMessage");
