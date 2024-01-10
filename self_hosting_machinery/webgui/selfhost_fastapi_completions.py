@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from self_hosting_machinery import env
-from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model, embeddings_resolve_model
+from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
 from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
 from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
@@ -300,16 +300,18 @@ class CompletionsRouter(APIRouter):
         os.environ["OPENAI_API_KEY"] = openai_api_key
 
     async def _coding_assistant_caps(self):
-        # embeddings_default_model, err = embeddings_resolve_model(self._inference_queue) # does not seem to be working
-        embeddings_default_model = "thenlper/gte-base" if "thenlper/gte-base" in self._inference_queue.models_available() else ""
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
         code_chat_default_model = ""
+        embeddings_default_model = ""
         for model_name in models_available:
-            if "chat" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []) \
-                    or model_name in litellm.model_list:
-                code_chat_default_model = model_name
-                break
+            if "chat" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []) or model_name in litellm.model_list:
+                if not code_chat_default_model:
+                    code_chat_default_model = model_name
+            if "embeddings" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []):
+                if not embeddings_default_model:
+                    embeddings_default_model = model_name
+
         return {
             "cloud_name": "Refact Self-Hosted",
             "endpoint_template": "v1/completions",
