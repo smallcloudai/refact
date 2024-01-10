@@ -8,12 +8,11 @@ import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
+import { useConfig } from "../../contexts/config-context";
 
-const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = ({
-  children,
-  ...props
-}) => {
-  // TODO: this isn't needed when in an IDE
+export type ThemeProps = React.ComponentProps<typeof RadixTheme>;
+
+const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
   const { isDarkMode, toggle } = useDarkMode();
   const Icon = isDarkMode ? MoonIcon : SunIcon;
   return (
@@ -35,4 +34,13 @@ const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = ({
   );
 };
 
-export { RadixTheme as BaseTheme, Theme };
+export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = (
+  props,
+) => {
+  const config = useConfig();
+  if (config.host === "web") {
+    return <ThemeWithDarkMode {...props} />;
+  }
+
+  return <RadixTheme {...props} />;
+};

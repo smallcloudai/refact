@@ -10,8 +10,10 @@ import {
   isStopStreamingFromChat,
   isRequestForFileFromChat,
 } from "../events";
+import { useConfig } from "../contexts/config-context";
 
-export function useEventBusForHost(lspUrl?: string) {
+export function useEventBusForHost() {
+  const { lspUrl } = useConfig();
   const { saveChat } = useChatHistory();
   // this needs to be a ref because it is mutated in a useEffect
   const controller = useRef(new AbortController());
