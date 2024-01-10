@@ -3,13 +3,15 @@ import classNames from "classnames";
 import React from "react";
 import styles from "./ScrollArea.module.css";
 
-type ScrollAreaProps = React.ComponentProps<typeof RadixScrollArea>;
-export const ScrollArea: React.FC<
-  ScrollAreaProps & {
-    className?: string;
-    scrollbars?: "vertical" | "horizontal" | "both" | undefined;
-  }
-> = ({ scrollbars, className, ...props }) => {
+export type ScrollAreaProps = React.ComponentProps<typeof RadixScrollArea> & {
+  className?: string;
+  scrollbars?: "vertical" | "horizontal" | "both" | undefined;
+};
+export const ScrollArea: React.FC<ScrollAreaProps> = ({
+  scrollbars,
+  className,
+  ...props
+}) => {
   const isVertical = scrollbars !== undefined && scrollbars === "vertical";
 
   return (

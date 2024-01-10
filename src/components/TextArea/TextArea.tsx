@@ -3,7 +3,7 @@ import { TextArea as RadixTextArea } from "@radix-ui/themes";
 import classNames from "classnames";
 import styles from "./TextArea.module.css";
 
-type TextAreaProps = React.ComponentProps<typeof RadixTextArea> & {
+export type TextAreaProps = React.ComponentProps<typeof RadixTextArea> & {
   className?: string;
 };
 

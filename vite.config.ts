@@ -41,8 +41,8 @@ export default defineConfig(({ command, mode }) => {
   if (command !== "serve") {
     CONFIG.mode = "production";
     CONFIG.define = { "process.env.NODE_ENV": "'production'" };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     CONFIG.plugins?.push([
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       eslint() as PluginOption,
       dts({ rollupTypes: true }),
     ]);
