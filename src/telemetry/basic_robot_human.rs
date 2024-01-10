@@ -56,7 +56,7 @@ fn basetext_to_text_leap_calculations(
     // let real_characters_added = re.replace_all(&added_characters, "").len() as i64 - re.replace_all(&removed_characters, "").len() as i64;
     let human_characters = re.replace_all(&added_characters, "").len() as i64 - rec.robot_characters_acc_baseline;
     debug!("human_characters: +{}; robot_characters: +{}", human_characters, rec.robot_characters_acc_baseline);
-    rec.human_characters += human_characters;
+    rec.human_characters += 0.max(human_characters);
     rec.robot_characters += rec.robot_characters_acc_baseline;
     rec.robot_characters_acc_baseline = 0;
 }
