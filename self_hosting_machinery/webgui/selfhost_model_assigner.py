@@ -147,7 +147,6 @@ class ModelAssigner:
                 },
             },
             "completion": "Refact/1.6B",
-            "embeddings": "thenlper/gte-base",
             "openai_api_enable": False,
         }
         self.models_to_watchdog_configs(default_config)
