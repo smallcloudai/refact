@@ -1,4 +1,5 @@
 use std::io::Write;
+use tokio::task::JoinHandle;
 
 use tracing::{error, info, Level};
 use tracing_appender;
@@ -57,22 +58,27 @@ async fn main() {
             info!("{:>20} {}", k, v);
         }
     }
-
     let mut background_tasks = start_background_tasks(gcx.clone());
-    let lsp_task = spawn_lsp_task(gcx.clone(), cmdline.clone()).await;  // execution stays inside if stdin-stdout
-    if lsp_task.is_some() {
-        background_tasks.push_back(lsp_task.unwrap())
-    }
 
-    let gcx_clone = gcx.clone();
-    let server = http::start_server(gcx_clone, ask_shutdown_receiver);
-    let server_result = server.await;
-    if let Err(e) = server_result {
-        error!("server error: {}", e);
-    } else {
-        info!("clean shutdown");
-    }
+    let should_start_http = cmdline.http_port != 0;
+    let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) || 
+        (cmdline.lsp_port != 0 && cmdline.lsp_stdin_stdout == 0);
 
+    let mut main_handle: Option<JoinHandle<()>> = None;
+    if should_start_http {
+        main_handle = http::start_server(gcx.clone(), ask_shutdown_receiver).await;
+    }
+    if should_start_lsp {
+        if main_handle.is_none() {
+            main_handle = spawn_lsp_task(gcx.clone(), cmdline.clone()).await;
+        } else {
+            background_tasks.push_back(spawn_lsp_task(gcx.clone(), cmdline.clone()).await.unwrap())
+        }
+    }
+    if main_handle.is_some() {
+        let _ = main_handle.unwrap().await;
+    }
+    
     background_tasks.abort().await;
     info!("saving telemetry without sending, so should be quick");
     basic_transmit::basic_telemetry_compress(gcx.clone()).await;
