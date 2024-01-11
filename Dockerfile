@@ -52,8 +52,6 @@ RUN echo "deb https://debian.cassandra.apache.org 41x main" | tee -a /etc/apt/so
 RUN curl https://downloads.apache.org/cassandra/KEYS | apt-key add -
 RUN apt-get update
 RUN apt-get install cassandra -y
-ENV MAX_HEAP_SIZE="2GB"
-ENV HEAP_NEWSIZE="400M"
 
 # refact lsp requisites
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
