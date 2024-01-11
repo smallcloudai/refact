@@ -44,14 +44,6 @@ ENV PATH="${PATH}:/tmp/linguist/bin"
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packaging
 
 # cassandra
-RUN if [ -z "$RUN_BUILT_IN_CASSANDRA" ]; then \
-    apt-get install -y default-jdk wget sudo && \
-    echo "deb https://debian.cassandra.apache.org 41x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list && \
-    curl https://downloads.apache.org/cassandra/KEYS | apt-key add - && \
-    apt-get update && \
-    apt-get install cassandra -y \
-    ; fi
-
 RUN apt-get install -y \
     default-jdk \
     wget \
@@ -60,6 +52,8 @@ RUN echo "deb https://debian.cassandra.apache.org 41x main" | tee -a /etc/apt/so
 RUN curl https://downloads.apache.org/cassandra/KEYS | apt-key add -
 RUN apt-get update
 RUN apt-get install cassandra -y
+ENV MAX_HEAP_SIZE="2GB"
+ENV HEAP_NEWSIZE="400M"
 
 # refact lsp requisites
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
