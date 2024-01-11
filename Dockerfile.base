@@ -1,13 +1,34 @@
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
 ENV INSTALL_OPTIONAL=TRUE
 ENV FLASH_ATTENTION_FORCE_BUILD=TRUE
+ENV MAX_JOBS=8
+
 RUN apt-get update
-RUN DEBIAN_FRONTEND="noninteractive" TZ=Etc/UTC apt-get install -y git python3 python3-pip python3-packaging \
-    && rm -rf /var/lib/{apt,dpkg,cache,log} \
+RUN DEBIAN_FRONTEND="noninteractive" TZ=Etc/UTC apt-get install -y  \
+    git  \
+    python3  \
+    python3-pip  \
+    python3-packaging  \
+    expect \
+    ruby-full \
+    ruby-bundler \
+    build-essential \
+    cmake \
+    pkg-config \
+    libicu-dev \
+    zlib1g-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    && rm -rf /var/lib/{apt,dpkg,cache,log}
+RUN git clone https://github.com/smallcloudai/linguist.git /tmp/linguist \
+    && cd /tmp/linguist \
+    && bundle install \
+    && rake build_gem
+ENV PATH="${PATH}:/tmp/linguist/bin"
 
 RUN pip install --no-cache-dir torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
-
 RUN pip install ninja
+RUN pip install -v git+https://github.com/smallcloudai/flash-attention@feat/alibi
+RUN pip install -v git+https://github.com/smallcloudai/vllm@refact_model_deps
 
-RUN MAX_JOBS=8 pip install -v git+https://github.com/smallcloudai/flash-attention@feat/alibi
-RUN MAX_JOBS=8 pip install -v git+https://github.com/smallcloudai/vllm@refact_model_deps
