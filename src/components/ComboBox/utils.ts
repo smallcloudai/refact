@@ -14,10 +14,16 @@ export function getTriggerOffset(
   return -1;
 }
 
+export type AnchorRect = {
+  x: number;
+  y: number;
+  height: number;
+};
+
 export function getAnchorRect(
   element: HTMLTextAreaElement,
   triggers: string[],
-) {
+): AnchorRect {
   const offset = getTriggerOffset(element, triggers);
   const { left, top, height } = getCaretCoordinates(element, offset + 1);
   const { x, y } = element.getBoundingClientRect();

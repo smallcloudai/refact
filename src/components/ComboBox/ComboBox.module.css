@@ -1,0 +1,19 @@
+.popover {
+  position: relative;
+  z-index: 50;
+  min-width: 180px;
+  max-width: 280px;
+  border-radius: max(var(--radius-2), var(--radius-full));
+}
+
+.popover__scroll {
+  --scrollarea-scrollbar-vertical-margin-right: 2px;
+  max-height: min(var(--popover-available-height, 186px), 186px);
+}
+
+.item {
+  display: flex;
+  cursor: default;
+  align-items: center;
+  justify-content: flex-start;
+}
