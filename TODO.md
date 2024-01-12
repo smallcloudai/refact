@@ -57,7 +57,9 @@
 [x] add a context to configuration options like vecdb, and host can be added at the top level (this will change the layout and enable/disable features like darkmode, and vecdb)
 
 [x] hard code @commands for now but it the future they will be fetched
-[ ] combobox for the @commands
+[x] combobox for the @commands
+[x] add combobox to chat form and maybe pass text-area as a child component
+[ ] remove test commands
 
 ### EVENTS TODO FOR IDEs
 

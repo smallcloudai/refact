@@ -16,6 +16,7 @@ import { ErrorCallout, Callout } from "../Callout";
 import { Select } from "../Select/Select";
 import { FileUpload } from "../FileUpload";
 import { Button } from "@radix-ui/themes";
+import { ComboBox, testCommands } from "../ComboBox";
 
 const CapsSelect: React.FC<{
   value: string;
@@ -112,18 +113,19 @@ export const ChatForm: React.FC<{
         )}
       </Flex>
       {/** TODO: handle being offline */}
+
       <Form
         disabled={isStreaming || !isOnline}
         className={className}
         onSubmit={() => handleSubmit()}
       >
-        <TextArea
-          disabled={isStreaming}
+        <ComboBox
+          commands={testCommands}
           value={value}
-          onChange={(event) => {
-            setValue(() => event.target.value);
-          }}
+          onChange={setValue}
           onKeyUp={handleEnter}
+          placeholder="Type @ for commands"
+          render={(props) => <TextArea disabled={isStreaming} {...props} />}
         />
         <Flex gap="2" className={styles.buttonGroup}>
           {onClose && (

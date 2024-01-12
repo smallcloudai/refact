@@ -17,3 +17,7 @@
   align-items: center;
   justify-content: flex-start;
 }
+
+.item[data-active-item] {
+  background-color: var(--accent-a5);
+}

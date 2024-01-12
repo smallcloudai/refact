@@ -9,19 +9,19 @@ import {
 import { Box } from "@radix-ui/themes";
 import { matchSorter } from "match-sorter";
 import { getAnchorRect, type AnchorRect } from "./utils";
-import { TextArea } from "../TextArea";
 import { ScrollArea } from "../ScrollArea";
 import { Button } from "@radix-ui/themes";
 import classNames from "classnames";
 import styles from "./ComboBox.module.css";
+import { TextAreaProps } from "../TextArea/TextArea";
 
 const Item: React.FC<{
   onClick: React.MouseEventHandler<HTMLDivElement>;
   value: string;
-  children: React.ReactNode;
+  children: React.ReactElement<HTMLTextAreaElement>;
 }> = ({ children, value, onClick }) => {
   return (
-    <Button className={styles.item} variant="ghost" asChild>
+    <Button className={styles.item} variant="ghost" asChild highContrast>
       <ComboboxItem value={value} onClick={onClick} focusOnHover>
         {children}
       </ComboboxItem>
@@ -56,54 +56,22 @@ const Popover: React.FC<
   );
 };
 
-export const ComboBox = () => {
-  const commands = [
-    "@workspace",
-    "@help",
-    "@list",
-    "@web",
-    "@database",
-    "@?",
-    "@longlonglonglong",
-    "@refactor",
-    "@test",
-    "@marc",
-    "@Apple",
-    "@Banana",
-    "@Carrot",
-    "@Dill",
-    "@Elderberries",
-    "@Figs",
-    "@Grapes",
-    "@Honeydew",
-    "@Iced melon",
-    "@Jackfruit",
-    "@Kale",
-    "@Lettuce",
-    "@Mango",
-    "@Nectarines",
-    "@Oranges",
-    "@Pineapple",
-    "@Quince",
-    "@Raspberries",
-    "@Strawberries",
-    "@Turnips",
-    "@Ugli fruit",
-    "@Vanilla beans",
-    "@Watermelon",
-    "@Xigua",
-    "@Yuzu",
-    "@Zucchini",
-  ];
+export const ComboBox: React.FC<{
+  commands: string[];
+  onChange: React.Dispatch<React.SetStateAction<string>>;
+  value: string;
+  onKeyUp: React.KeyboardEventHandler<HTMLTextAreaElement>;
+  placeholder?: string;
+  render: (props: TextAreaProps) => React.ReactElement;
+}> = ({ commands, onKeyUp, placeholder, onChange, value, render }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
-  const [value, setValue] = React.useState("");
   const [trigger, setTrigger] = React.useState<string>("");
 
   const combobox = useComboboxStore();
 
   const matches = matchSorter(commands, trigger, {
     baseSort: (a, b) => (a.index < b.index ? -1 : 1),
-  });
+  }); //.slice(0, 10);
 
   const hasMatches = !!matches.length;
 
@@ -125,13 +93,13 @@ export const ComboBox = () => {
       event.preventDefault();
       const match = matches[0];
       const newInput = value.replace(trigger, match);
-      setValue(newInput);
       combobox.setValue(newInput);
+      onChange(newInput);
       combobox.hide();
     }
   };
 
-  const onChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const maybeCommand = event.target.value.startsWith("@")
       ? event.target.value.split(/\s/)[0]
       : "";
@@ -143,14 +111,14 @@ export const ComboBox = () => {
       setTrigger("");
       combobox.hide();
     }
-    setValue(event.target.value);
+    onChange(event.target.value);
     combobox.setValue(trigger);
   };
 
   const onItemClick = (item: string) => {
     const textarea = ref.current;
     if (!textarea) return;
-    setValue((prevValue) => prevValue.replace(trigger, item + " "));
+    onChange((prevValue) => prevValue.replace(trigger, item + " "));
     setTrigger(() => "");
   };
 
@@ -164,17 +132,15 @@ export const ComboBox = () => {
         showOnKeyDown={false}
         showOnMouseDown={false}
         setValueOnChange={false}
-        render={
-          <TextArea
-            ref={ref}
-            rows={5} // TODO: remove this later
-            placeholder="Type @ for commands"
-            onScroll={combobox.render}
-            onPointerDown={combobox.hide}
-            onChange={onChange}
-            onKeyDown={onKeyDown}
-          />
-        }
+        render={render({
+          ref,
+          placeholder,
+          onScroll: combobox.render,
+          onPointerDown: combobox.hide,
+          onChange: handleChange,
+          onKeyDown: onKeyDown,
+          onKeyUp: onKeyUp,
+        })}
       />
       <Popover
         store={combobox}
@@ -195,30 +161,6 @@ export const ComboBox = () => {
           </Item>
         ))}
       </Popover>
-      {/* <Box asChild>
-        <ComboboxPopover
-          className={styles.popover2}
-          store={combobox}
-          hidden={!hasMatches}
-          unmountOnHide
-          fitViewport
-          getAnchorRect={() => {
-            const textarea = ref.current;
-            if (!textarea) return null;
-            return getAnchorRect(textarea, commands);
-          }}
-        >
-          {matches.map((item, index) => (
-            <Item
-              key={item + "-" + index}
-              value={item}
-              onClick={() => onItemClick(item)}
-            >
-              {item}
-            </Item>
-          ))}
-        </ComboboxPopover>
-      </Box> */}
     </>
   );
 };
