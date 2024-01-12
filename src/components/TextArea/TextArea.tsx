@@ -5,13 +5,19 @@ import styles from "./TextArea.module.css";
 
 export type TextAreaProps = React.ComponentProps<typeof RadixTextArea> & {
   className?: string;
+  value?: string;
 };
 
-export const TextArea: React.FC<TextAreaProps> = (props) => {
-  return (
-    <RadixTextArea
-      {...props}
-      className={classNames(styles.textarea, props.className)}
-    />
-  );
-};
+export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
+  (props, ref) => {
+    return (
+      <RadixTextArea
+        {...props}
+        className={classNames(styles.textarea, props.className)}
+        ref={ref}
+      />
+    );
+  },
+);
+
+TextArea.displayName = "TextArea";

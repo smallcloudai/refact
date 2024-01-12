@@ -54,9 +54,10 @@
 [x] disable adding a file after a question has been asked
 [x] add a global variable style sheet "theme" in self-hosted
 
-[ ] add a context to configuration options like vecdb, and host can be added at the top level (this will change the layout and enable/disable features like darkmode, and vecdb)
+[x] add a context to configuration options like vecdb, and host can be added at the top level (this will change the layout and enable/disable features like darkmode, and vecdb)
 
-[ ] since the app is configurable there's no need for the lib directory
+[x] hard code @commands for now but it the future they will be fetched
+[ ] combobox for the @commands
 
 ### EVENTS TODO FOR IDEs
 

@@ -19,15 +19,18 @@
     "types": "tsc --noEmit"
   },
   "dependencies": {
+    "@ariakit/react": "^0.3.13",
     "@radix-ui/react-icons": "^1.3.0",
     "@radix-ui/react-toolbar": "^1.0.4",
     "@radix-ui/themes": "^2.0.2",
     "classnames": "^2.3.2",
+    "match-sorter": "^6.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^9.0.1",
     "react-syntax-highlighter": "^15.5.0",
     "remark-breaks": "^4.0.0",
+    "textarea-caret": "^3.1.0",
     "usehooks-ts": "^2.9.1",
     "uuid": "^9.0.1"
   },
@@ -45,6 +48,7 @@
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@types/react-syntax-highlighter": "^15.5.11",
+    "@types/textarea-caret": "^3.0.3",
     "@types/wicg-file-system-access": "^2023.10.4",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
