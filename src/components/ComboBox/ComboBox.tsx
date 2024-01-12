@@ -18,7 +18,7 @@ import { TextAreaProps } from "../TextArea/TextArea";
 const Item: React.FC<{
   onClick: React.MouseEventHandler<HTMLDivElement>;
   value: string;
-  children: React.ReactElement<HTMLTextAreaElement>;
+  children: React.ReactNode;
 }> = ({ children, value, onClick }) => {
   return (
     <Button className={styles.item} variant="ghost" asChild highContrast>
