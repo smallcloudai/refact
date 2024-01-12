@@ -21,6 +21,7 @@ import { MARS_ROVER_CHAT, STUB_CAPS_RESPONSE } from "../__fixtures__";
 describe("Chat", () => {
   beforeEach(() => {
     stubResizeObserver();
+    vi.spyOn(window, "postMessage").mockImplementation(postMessage);
   });
 
   afterEach(() => {
