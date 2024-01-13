@@ -149,7 +149,7 @@ pub async fn scratchpad_interaction_not_stream(
 
     } else {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
-            format!("unrecognized response: {:?}", model_says))
+            format!("unrecognized response (1): {:?}", model_says))
         );
     }
 
@@ -365,8 +365,14 @@ fn _push_streaming_json_into_scratchpad(
         }
         value["model"] = json!(model_name.clone());
         Ok(value)
+    } else if let Some(err) = json.get("error") {
+        Err(format!("{}", err))
+    } else if let Some(msg) = json.get("human_readable_message") {
+        Err(format!("{}", msg))
+    } else if let Some(msg) = json.get("detail") {
+        Err(format!("{}", msg))
     } else {
-        Err(format!("unrecognized response: {:?}", json))
+        Err(format!("unrecognized response (2): {:?}", json))
     }
 }
 

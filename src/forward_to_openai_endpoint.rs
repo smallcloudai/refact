@@ -6,6 +6,7 @@ use reqwest_eventsource::EventSource;
 use serde_json::json;
 use crate::call_validation;
 use crate::call_validation::SamplingParameters;
+use tracing::info;
 
 
 pub async fn forward_to_openai_style_endpoint(
@@ -50,11 +51,13 @@ pub async fn forward_to_openai_style_endpoint(
     let response_txt = resp.text().await.map_err(|e|
         format!("reading from socket {}: {}", url, e)
     )?;
-    // info!("forward_to_openai_style_endpoint: {} {}\n{}", url, status_code, response_txt);
     // 400 "client error" is likely a json that we rather accept here, pick up error details as we analyse json fields at the level
     // higher, the most often 400 is no such model.
     if status_code != 200 && status_code != 400 {
         return Err(format!("{} status={} text {}", url, status_code, response_txt));
+    }
+    if status_code != 200 {
+        info!("forward_to_openai_style_endpoint: {} {}\n{}", url, status_code, response_txt);
     }
     Ok(serde_json::from_str(&response_txt).unwrap())
 }

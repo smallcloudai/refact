@@ -69,7 +69,8 @@ pub struct GlobalContext {
     pub lsp_backend_document_state: LSPBackendDocumentState,
 }
 
-pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;
+pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
+
 const CAPS_RELOAD_BACKOFF: u64 = 60;       // seconds
 const CAPS_BACKGROUND_RELOAD: u64 = 3600;  // seconds
 

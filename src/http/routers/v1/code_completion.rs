@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use tokio::sync::RwLock as ARwLock;
 
 use axum::Extension;
 use axum::response::Result;
@@ -11,7 +12,7 @@ use crate::caps;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache;
 use crate::custom_error::ScratchError;
-use crate::global_context::SharedGlobalContext;
+use crate::global_context::GlobalContext;
 use crate::scratchpads;
 
 async fn _lookup_code_completion_scratchpad(
@@ -36,16 +37,20 @@ async fn _lookup_code_completion_scratchpad(
 }
 
 pub async fn handle_v1_code_completion(
-    global_context: SharedGlobalContext,
+    global_context: Arc<ARwLock<GlobalContext>>,
     code_completion_post: &mut CodeCompletionPost,
 ) -> Result<Response<Body>, ScratchError> {
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = _lookup_code_completion_scratchpad(
+    let maybe = _lookup_code_completion_scratchpad(
         caps.clone(),
         &code_completion_post,
-    ).await.map_err(|e| {
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", e))
-    })?;
+    ).await;
+    if maybe.is_err() {
+        // On error, this will also invalidate caps each 10 seconds, allows to overcome empty caps situation
+        let _ = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 10).await;
+        return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", maybe.unwrap_err())))
+    }
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = maybe.unwrap();
     if code_completion_post.parameters.max_new_tokens == 0 {
         code_completion_post.parameters.max_new_tokens = 50;
     }
@@ -102,7 +107,7 @@ pub async fn handle_v1_code_completion(
 }
 
 pub async fn handle_v1_code_completion_web(
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let mut code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
