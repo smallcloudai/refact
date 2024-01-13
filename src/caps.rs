@@ -400,7 +400,7 @@ fn _inherit_r1_from_r0(
     r1.code_chat_models = r1.code_chat_models.clone().into_iter().filter(|(k, _)| r1.running_models.contains(&k)).collect();
 
     for k in r1.running_models.iter() {
-        if !r0.code_completion_models.contains_key(k) &&!r0.code_chat_models.contains_key(k) {
+        if !r1.code_completion_models.contains_key(k) && !r1.code_chat_models.contains_key(k) {
             info!("indicated as running, unknown model {}", k);
         }
     }

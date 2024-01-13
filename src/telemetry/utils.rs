@@ -82,7 +82,7 @@ pub fn get_add_del_chars_from_texts(
             }
         }
     }
-    
+
     (added, removed)
 }
 
@@ -184,7 +184,7 @@ pub fn if_head_tail_equal_return_added_text(
                 let whitespace_only = regex_space_only.is_match(&c.value());
                 if !whitespace_only {
                     if deletion_once.is_empty() {
-                        deletion_once = c.value().clone().to_string();
+                        deletion_once = c.value().to_string();
                         if deletion_once.ends_with("\n") {
                             deletion_once = deletion_once[..deletion_once.len() - 1].to_string();
                         }
@@ -199,7 +199,7 @@ pub fn if_head_tail_equal_return_added_text(
             }
             ChangeTag::Insert => {
                 // info!("+ {}", c.value());
-                let val = c.value().clone();
+                let val = c.value();
                 let whitespace_only = regex_space_only.is_match(&c.value());
 
                 if !allow_add_spaces_once {
