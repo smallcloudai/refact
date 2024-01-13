@@ -39,7 +39,7 @@ pub async fn handle_v1_code_completion(
     global_context: SharedGlobalContext,
     code_completion_post: &mut CodeCompletionPost,
 ) -> Result<Response<Body>, ScratchError> {
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
     let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = _lookup_code_completion_scratchpad(
         caps.clone(),
         &code_completion_post,

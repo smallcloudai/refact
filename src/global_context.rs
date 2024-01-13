@@ -1,4 +1,4 @@
-use tracing::{info, error};
+use tracing::info;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -37,7 +37,7 @@ pub struct CommandLine {
     #[structopt(long, default_value="0", help="Bind 127.0.0.1:<port> and act as an LSP server. This is compatible with having an HTTP server at the same time.")]
     pub lsp_port: u16,
     #[structopt(long, default_value="0", help="Act as an LSP server, use stdin stdout for communication. This is compatible with having an HTTP server at the same time. But it's not compatible with LSP port.")]
-    pub lsp_stdin_stdout: u16,    
+    pub lsp_stdin_stdout: u16,
     #[structopt(long, help="Trust self-signed SSL certificates")]
     pub insecure: bool,
 }
@@ -73,41 +73,26 @@ pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;
 const CAPS_RELOAD_BACKOFF: u64 = 60;       // seconds
 const CAPS_BACKGROUND_RELOAD: u64 = 3600;  // seconds
 
-pub async fn caps_background_reload(
-    global_context: Arc<ARwLock<GlobalContext>>,
-) -> () {
-    loop {
-        let caps_result = crate::caps::load_caps(
-            CommandLine::from_args(),
-            global_context.clone()
-        ).await;
-        match caps_result {
-            Ok(caps) => {
-                let mut global_context_locked = global_context.write().await;
-                global_context_locked.caps = Some(caps);
-                info!("background reload caps successful");
-                write!(std::io::stderr(), "CAPS\n").unwrap();
-            },
-            Err(e) => {
-                error!("failed to load caps: {}", e);
-            }
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(CAPS_BACKGROUND_RELOAD)).await;
-    }
-}
-
 pub async fn try_load_caps_quickly_if_not_present(
     global_context: Arc<ARwLock<GlobalContext>>,
+    max_age_seconds: u64,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, ScratchError> {
-    let caps_last_attempted_ts;
-    {
-        let cx_locked = global_context.write().await;
-        if let Some(caps_arc) = cx_locked.caps.clone() {
-            return Ok(caps_arc.clone());
-        }
-        caps_last_attempted_ts = cx_locked.caps_last_attempted_ts;
-    }
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+    let caps_last_attempted_ts;
+    let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
+    {
+        let mut cx_locked = global_context.write().await;
+        if cx_locked.caps_last_attempted_ts + max_age < now {
+            cx_locked.caps = None;
+            cx_locked.caps_last_attempted_ts = 0;
+            caps_last_attempted_ts = 0;
+        } else {
+            if let Some(caps_arc) = cx_locked.caps.clone() {
+                return Ok(caps_arc.clone());
+            }
+            caps_last_attempted_ts = cx_locked.caps_last_attempted_ts;
+        }
+    }
     if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "server is not reachable, no caps available".to_string()));
     }
@@ -145,6 +130,7 @@ pub async fn look_for_piggyback_fields(
                 if caps_locked.caps_version < new_caps_version {
                     info!("detected biggyback caps version {} is newer than the current version {}", new_caps_version, caps_locked.caps_version);
                     global_context_locked.caps = None;
+                    global_context_locked.caps_last_attempted_ts = 0;
                 }
             }
         }
@@ -161,7 +147,7 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
-    
+
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
         http_client: http_client,

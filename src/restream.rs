@@ -134,12 +134,17 @@ pub async fn scratchpad_interaction_not_stream(
 
     } else if let Some(err) = model_says.get("error") {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
-            format!("model says: {}", err)
+            format!("{}", err)
         ));
 
     } else if let Some(msg) = model_says.get("human_readable_message") {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
-            format!("model says: {}", msg)
+            format!("{}", msg)
+        ));
+
+    } else if let Some(msg) = model_says.get("detail") {
+        return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", msg)
         ));
 
     } else {

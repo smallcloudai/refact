@@ -39,7 +39,7 @@ pub async fn handle_v1_chat(
     let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     )?;
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone()).await?;
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
     let (model_name, scratchpad_name, scratchpad_patch) = _lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,

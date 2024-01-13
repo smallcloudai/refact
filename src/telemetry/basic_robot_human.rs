@@ -68,7 +68,7 @@ pub fn increase_counters_from_finished_snippet(
     text: &String,
     snip: &SnippetTracker,
 ) {
-    info!("snip grey_text: {}", snip.grey_text);
+    // info!("snip grey_text: {}", snip.grey_text);
     let now = chrono::Local::now().timestamp();
     if let Some(rec) = tele_robot_human.iter_mut().find(|stat| stat.uri.eq(uri)) {
         if rec.used_snip_ids.contains(&snip.snippet_telemetry_id) {

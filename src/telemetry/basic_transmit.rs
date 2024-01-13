@@ -100,7 +100,6 @@ pub async fn basic_telemetry_compress(
 pub async fn basic_telemetry_send(
     global_context: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> () {
-    info!("basic telemetry sending starts");
     let caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>;
     let api_key: String;
     let enable_basic_telemetry: bool;   // from command line, will not send anything if false

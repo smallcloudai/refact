@@ -214,9 +214,6 @@ impl LanguageServer for Backend {
         let _ = info!("rust LSP received initialized()");
     }
 
-    // TODO:
-    // textDocument/didClose
-
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         receive_workspace_changes::on_did_open(
             self.gcx.clone(),
@@ -234,20 +231,13 @@ impl LanguageServer for Backend {
         ).await
     }
 
-    async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        self.client
-            .log_message(MessageType::INFO, "{refact-lsp} file saved")
-            .await;
-        let uri = params.text_document.uri.to_string();
-        info!("{uri} saved");
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        let _uri = params.text_document.uri.to_string();
+        // TODO: remove text from memory
     }
 
-    async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        self.client
-            .log_message(MessageType::INFO, "{refact-lsp} file closed")
-            .await;
-        let uri = params.text_document.uri.to_string();
-        info!("{uri} closed");
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        let _uri = params.text_document.uri.to_string();
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -256,10 +246,8 @@ impl LanguageServer for Backend {
     }
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
-        info!("LSP asked for completion");
+        info!("LSP asked for popup completions");
         Ok(Some(CompletionResponse::Array(vec![
-            CompletionItem::new_simple("Hello".to_string(), "Some detail".to_string()),
-            CompletionItem::new_simple("Bye".to_string(), "More detail".to_string()),
         ])))
     }
 }
