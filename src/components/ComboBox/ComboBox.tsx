@@ -67,13 +67,16 @@ export const ComboBox: React.FC<{
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [trigger, setTrigger] = React.useState<string>("");
 
-  const combobox = useComboboxStore();
+  const combobox = useComboboxStore({
+    defaultOpen: false,
+    placement: "top-start",
+  });
 
   const matches = matchSorter(commands, trigger, {
     baseSort: (a, b) => (a.index < b.index ? -1 : 1),
-  }); //.slice(0, 10);
+  });
 
-  const hasMatches = !!matches.length;
+  const hasMatches = trigger && !!matches.length;
 
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
@@ -148,7 +151,7 @@ export const ComboBox: React.FC<{
         getAnchorRect={() => {
           const textarea = ref.current;
           if (!textarea) return null;
-          return getAnchorRect(textarea, commands);
+          return getAnchorRect(textarea, matches);
         }}
       >
         {matches.map((item, index) => (

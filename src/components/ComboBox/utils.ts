@@ -29,7 +29,7 @@ export function getAnchorRect(
   const { x, y } = element.getBoundingClientRect();
   return {
     x: left + x - element.scrollLeft,
-    y: top + y - element.scrollTop,
+    y: top + y - (element.scrollTop + 10),
     height,
   };
 }
