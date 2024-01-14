@@ -224,7 +224,10 @@ class ModelAssigner:
         }
         return j
 
-    @staticmethod
-    def restart_lsp():
-        with open(env.FLAG_RESTART_LSP, "w") as f:
-            f.write("")
+    def config_inference_mtime(self) -> int:
+        if os.path.exists(env.CONFIG_INFERENCE):
+            try:
+                return int(os.path.getmtime(env.CONFIG_INFERENCE))
+            except OSError:
+                return 0
+        return 0

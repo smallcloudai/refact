@@ -6,7 +6,25 @@ from collections import defaultdict
 from self_hosting_machinery import env
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from fastapi import HTTPException
-from typing import Dict, List
+from typing import Dict, List, Any
+import uuid
+
+
+class Ticket:
+    def __init__(self, id_prefix):
+        self.call: Dict[str, Any] = dict()
+        random_guid = str(uuid.uuid4()).replace("-", "")[0:12]
+        self.call["id"] = id_prefix + random_guid
+        self.cancelled: bool = False
+        self.processed_by_infmod_guid: str = ""
+        self.streaming_queue = asyncio.queues.Queue()
+
+    def id(self):
+        return self.call.get("id", None)
+
+    def done(self):
+        if "id" in self.call:
+            del self.call["id"]
 
 
 class InferenceQueue:

@@ -49,4 +49,4 @@ def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tu
         if not model_name or _family(model_name) == _family(have_model):
             return have_model, ""
     else:
-        return "", f"model is not loaded (3)"
+        return "", f"model \"{model_name}\" is not loaded (3)"

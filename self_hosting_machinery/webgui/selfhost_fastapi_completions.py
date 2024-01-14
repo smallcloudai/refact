@@ -8,12 +8,12 @@ import os
 import litellm
 
 from fastapi import APIRouter, Request, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 
 from self_hosting_machinery import env
 from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
 from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
-from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
+from self_hosting_machinery.webgui.selfhost_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
@@ -107,7 +107,7 @@ class ChatContext(NlpSamplingParams):
     function: str = Query(default="chat", regex="^[a-zA-Z0-9_\.\-]+$")
 
 
-async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts):
+async def _completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts, caps_version: int):
     try:
         packets_cnt = 0
         while 1:
@@ -117,6 +117,7 @@ async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen
                 log("TIMEOUT %s" % ticket.id())
                 msg = {"status": "error", "human_readable_message": "timeout"}
             not_seen_resp = copy.deepcopy(msg)
+            not_seen_resp["caps_version"] = caps_version
             if "choices" in not_seen_resp:
                 for i in range(post.n):
                     newtext = not_seen_resp["choices"][i]["text"]
@@ -150,40 +151,6 @@ async def completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen
             # fastapi_stats.stats_accum["stat_api_cancelled"] += 1
             # fastapi_stats.stats_accum["stat_m_" + post.model + "_cancelled"] += 1
         ticket.cancelled = True
-
-
-async def diff_streamer(ticket: Ticket, post: DiffCompletion, timeout, created_ts):
-    try:
-        while 1:
-            try:
-                msg = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
-            except asyncio.TimeoutError:
-                log("TIMEOUT %s" % ticket.id())
-                msg = {"status": "error", "human_readable_message": "timeout"}
-            if not post.stream:
-                if msg.get("status", "") == "in_progress":
-                    continue
-                yield json.dumps(msg)
-                break
-            tmp = json.dumps(msg)
-            yield "data: " + tmp + "\n\n"
-            log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
-            if msg.get("status", "") != "in_progress":
-                break
-        if post.stream:
-            yield "data: [DONE]" + "\n\n"
-        log(red_time(created_ts) + " /finished call %s" % ticket.id())
-        ticket.done()
-        # fastapi_stats.stats_accum[kt] += msg.get("generated_tokens_n", 0)
-        # fastapi_stats.stats_accum[kcomp] += 1
-        # fastapi_stats.stats_lists_accum["stat_latency_" + post.model].append(time.time() - created_ts)
-    finally:
-        if ticket.id() is not None:
-            log("   ***  CANCEL  ***  cancelling %s " % ticket.id() + red_time(created_ts))
-            # fastapi_stats.stats_accum["stat_api_cancelled"] += 1
-            # fastapi_stats.stats_accum["stat_m_" + post.model + "_cancelled"] += 1
-        ticket.cancelled = True
-        ticket.done()
 
 
 async def chat_streamer(ticket: Ticket, timeout, created_ts):
@@ -240,7 +207,6 @@ class CompletionsRouter(APIRouter):
         # API for direct FIM and Chat usage
         self.add_api_route("/v1/login", self._login, methods=["GET"])
         self.add_api_route("/v1/secret-key-activate", self._secret_key_activate, methods=["GET"])
-        self.add_api_route("/v1/contrast", self._contrast, methods=["POST"])
         self.add_api_route("/v1/chat", self._chat, methods=["POST"])
 
         # API for LSP server
@@ -275,10 +241,11 @@ class CompletionsRouter(APIRouter):
                     or model_name in litellm.model_list:
                 code_chat_default_model = model_name
                 break
-        return {
+        config_mtime = self._model_assigner.config_inference_mtime()
+        data = {
             "cloud_name": "Refact Self-Hosted",
-            "endpoint_template": "v1/completions",
-            "endpoint_chat_passthrough": "v1/chat/completions",
+            "endpoint_template": "/v1/completions",
+            "endpoint_chat_passthrough": "/v1/chat/completions",
             "endpoint_style": "openai",
             "telemetry_basic_dest": "/stats/telemetry-basic",
             "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
@@ -291,7 +258,9 @@ class CompletionsRouter(APIRouter):
                 for model in models_available
                 if model in self._model_assigner.models_db
             },
+            "caps_version": config_mtime,
         }
+        return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
     async def _login(self):
         longthink_functions = dict()
@@ -348,10 +317,12 @@ class CompletionsRouter(APIRouter):
     async def _completions(self, post: NlpCompletion, account: str = "user"):
         ticket = Ticket("comp-")
         req = post.clamp()
+        caps_version = self._model_assigner.config_inference_mtime()       # use mtime as a version, if that changes the client will know to refresh caps
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
         if err_msg:
             log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
-            raise HTTPException(status_code=400, detail=err_msg)
+            return Response(status_code=400, content=json.dumps({"detail": err_msg, "caps_version": caps_version}, indent=4), media_type="application/json")
+
         log("%s model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
         req.update({
             "object": "text_completion_req",
@@ -367,56 +338,9 @@ class CompletionsRouter(APIRouter):
         await q.put(ticket)
         seen = [""] * post.n
         return StreamingResponse(
-            completion_streamer(ticket, post, self._timeout, seen, req["created"]),
+            _completion_streamer(ticket, post, self._timeout, seen, req["created"], caps_version=caps_version),
             media_type=("text/event-stream" if post.stream else "application/json"),
         )
-
-    async def _contrast(self, post: DiffCompletion, request: Request, account: str = "user"):
-        if post.function != "diff-anywhere":
-            if post.cursor_file not in post.sources:
-                raise HTTPException(status_code=400, detail="cursor_file='%s' is not in sources=%s" % (post.cursor_file, list(post.sources.keys())))
-            if post.cursor0 < 0 or post.cursor1 < 0:
-                raise HTTPException(status_code=400, detail="cursor0=%d or cursor1=%d is negative" % (post.cursor0, post.cursor1))
-            filetext = post.sources[post.cursor_file]
-            if post.cursor0 > len(filetext) or post.cursor1 > len(filetext):
-                raise HTTPException(status_code=400, detail="cursor0=%d or cursor1=%d is beyond file length=%d" % (post.cursor0, post.cursor1, len(filetext)))
-        for fn, text in post.sources.items():
-            if len(text) > 180*1024:
-                raise HTTPException(status_code=400, detail="file '%s' is too long (%d bytes)" % (fn, len(text)))
-        ticket = Ticket("comp-")
-        if post.function == "infill":
-            model_name, err_msg = completion_resolve_model(self._inference_queue)
-        else:
-            model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
-        if err_msg:
-            log("%s model resolve \"%s\" func \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, post.function, err_msg, account))
-            raise HTTPException(status_code=400, detail=err_msg)
-        log("%s model resolve \"%s\" func \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, post.function, model_name, account))
-        if post.function == "highlight":
-            post.max_tokens = 0
-        req = post.clamp()
-        req.update({
-            "object": "diff_completion_req",
-            "account": account,
-            "model": model_name,
-            "intent": post.intent,
-            "sources": post.sources,
-            "cursor_file": post.cursor_file,
-            "cursor0": post.cursor0,
-            "cursor1": post.cursor1,
-            "function": post.function,
-            "max_edits": post.max_edits,
-            "stream": post.stream,
-        })
-        post_raw = await request.json()
-        if "poi" in post_raw:
-            req["poi"] = post_raw["poi"]
-        ticket.call.update(req)
-        q = self._inference_queue.model_name_to_queue(ticket, model_name)
-        # kt, kcomp = await _model_hit(red, ticket, req, model_name, account)
-        self._id2ticket[ticket.id()] = ticket
-        await q.put(ticket)
-        return StreamingResponse(diff_streamer(ticket, post, self._timeout, req["created"]))
 
     async def _chat(self, post: ChatContext, request: Request, account: str = "user"):
         ticket = Ticket("comp-")
