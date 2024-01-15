@@ -75,6 +75,8 @@ ENV RDMAV_HUGEPAGES_SAFE 0
 
 EXPOSE 8008
 
+COPY database-start.sh /
+RUN chmod +x database-start.sh
 COPY docker-entrypoint.sh /
 RUN chmod +x docker-entrypoint.sh
 
