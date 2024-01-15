@@ -76,7 +76,7 @@ export const ComboBox: React.FC<{
     baseSort: (a, b) => (a.index < b.index ? -1 : 1),
   });
 
-  const hasMatches = trigger && !!matches.length;
+  const hasMatches = !!trigger && !!matches.length;
 
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
