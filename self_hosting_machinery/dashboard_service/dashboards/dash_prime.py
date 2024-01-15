@@ -15,6 +15,7 @@ def robot_human_ratio(robot: int, human: int) -> float:
         return 1
     if robot == 0:
         return 0
+    # in older versions of refact LSP negative values of human metric existed
     if robot + human == 0:
         return 0
     return round(robot / (robot + human), 2)
