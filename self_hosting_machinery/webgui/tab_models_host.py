@@ -51,14 +51,5 @@ class TabHostRouter(APIRouter):
             else:
                 validated["completion"] = ""
 
-        current_embeddings_model = validated.get("embeddings", "")
-        if not current_embeddings_model or current_embeddings_model not in post.model_assign:
-            for info in self._model_assigner.models_info["models"]:
-                if info["has_embeddings"] and info["name"] in post.model_assign:
-                    validated["embeddings"] = info["name"]
-                    break
-            else:
-                validated["embeddings"] = ""
-
         self._model_assigner.models_to_watchdog_configs(validated)
         return JSONResponse("OK")
