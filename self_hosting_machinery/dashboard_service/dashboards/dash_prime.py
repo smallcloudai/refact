@@ -15,6 +15,9 @@ def robot_human_ratio(robot: int, human: int) -> float:
         return 1
     if robot == 0:
         return 0
+    # in older versions of refact LSP negative values of human metric existed
+    if robot + human == 0:
+        return 0
     return round(robot / (robot + human), 2)
 
 
@@ -181,10 +184,10 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
             if lang not in languages:
                 continue
             res_loc[lang] = {
-                "Assistant": (robot := int(group["robot_characters"].sum())),
+                "Refact": (robot := int(group["robot_characters"].sum())),
                 "Human": (human := int(group["human_characters"].sum())),
                 "Total (characters)": robot + human,
-                "A/(A+H)": robot_human_ratio(robot, human),
+                "Refact Impact": robot_human_ratio(robot, human),
                 "Completions": int(group["completions_cnt"].sum()),
                 "Users": int(group["tenant_name"].nunique()),
             }
@@ -194,7 +197,7 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
         res_loc = {
             'data': fmt_vals,
             'columns': ['Language', *res_loc[list(res_loc.keys())[0]].keys()],
-            'title': f"Assistant's impact by language: {date_kind}"
+            'title': f"Refact's impact by language: {date_kind}"
         }
         return res_loc
 
