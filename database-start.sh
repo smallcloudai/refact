@@ -17,6 +17,10 @@ echo "MAX_HEAP_SIZE=2G" >> "$REFACT_CASSANDRA_INCLUDE"
 echo "HEAP_NEWSIZE=400M" >> "$REFACT_CASSANDRA_INCLUDE"
 echo "CASSANDRA_LOG_DIR=$REFACT_CASSANDRA_DIR/log" >> "$REFACT_CASSANDRA_INCLUDE"
 
+if [ ! -z "$(service cassandra status | grep 'could not access pidfile')" ]; then
+    rm /var/run/cassandra/cassandra.pid
+fi
+
 if [ ! -z "$(service cassandra status | grep 'not running')" ]; then
     service cassandra start
     echo "cassandra database started on localhost"
