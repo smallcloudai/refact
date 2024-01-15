@@ -22,7 +22,12 @@ const Item: React.FC<{
 }> = ({ children, value, onClick }) => {
   return (
     <Button className={styles.item} variant="ghost" asChild highContrast>
-      <ComboboxItem value={value} onClick={onClick} focusOnHover>
+      <ComboboxItem
+        value={value}
+        onClick={onClick}
+        focusOnHover
+        clickOnEnter={false}
+      >
         {children}
       </ComboboxItem>
     </Button>
@@ -60,10 +65,10 @@ export const ComboBox: React.FC<{
   commands: string[];
   onChange: React.Dispatch<React.SetStateAction<string>>;
   value: string;
-  onKeyUp: React.KeyboardEventHandler<HTMLTextAreaElement>;
+  onSubmit: React.KeyboardEventHandler<HTMLTextAreaElement>;
   placeholder?: string;
   render: (props: TextAreaProps) => React.ReactElement;
-}> = ({ commands, onKeyUp, placeholder, onChange, value, render }) => {
+}> = ({ commands, onSubmit, placeholder, onChange, value, render }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [trigger, setTrigger] = React.useState<string>("");
 
@@ -87,18 +92,28 @@ export const ComboBox: React.FC<{
   }, [combobox, value]);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // TODO: pressing enter should submit the form
-    // TODO: shift+enter should create a new line
+    const state = combobox.getState();
+
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       combobox.hide();
     }
-    if (trigger && matches.length && event.key === "Tab") {
+
+    if (state.open && event.key === "Tab") {
       event.preventDefault();
-      const match = matches[0];
-      const newInput = value.replace(trigger, match);
+    }
+  };
+
+  const onKeyUp = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const state = combobox.getState();
+    const tabOrEnter = event.key === "Tab" || event.key === "Enter";
+    if (state.open && tabOrEnter && state.activeValue) {
+      event.preventDefault();
+      const newInput = value.replace(trigger, state.activeValue + " ");
       combobox.setValue(newInput);
       onChange(newInput);
       combobox.hide();
+    } else if (event.key === "Enter") {
+      onSubmit(event);
     }
   };
 
@@ -134,15 +149,15 @@ export const ComboBox: React.FC<{
         showOnChange={false}
         showOnKeyDown={false}
         showOnMouseDown={false}
-        setValueOnChange={false}
+        setValueOnChange={true}
         render={render({
           ref,
           placeholder,
           onScroll: combobox.render,
           onPointerDown: combobox.hide,
           onChange: handleChange,
-          onKeyDown: onKeyDown,
           onKeyUp: onKeyUp,
+          onKeyDown: onKeyDown,
         })}
       />
       <Popover
@@ -158,7 +173,11 @@ export const ComboBox: React.FC<{
           <Item
             key={item + "-" + index}
             value={item}
-            onClick={() => onItemClick(item)}
+            onClick={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+              onItemClick(item);
+            }}
           >
             {item}
           </Item>

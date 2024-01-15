@@ -123,7 +123,7 @@ export const ChatForm: React.FC<{
           commands={testCommands}
           value={value}
           onChange={setValue}
-          onKeyUp={handleEnter}
+          onSubmit={handleEnter}
           placeholder="Type @ for commands"
           render={(props) => <TextArea disabled={isStreaming} {...props} />}
         />
