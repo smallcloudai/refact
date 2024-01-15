@@ -108,6 +108,9 @@ def loss_based_filter(
             except InvalidLossValueException as e:
                 files_status_context.reject_file(file, reason=str(e))
                 continue
+            except Exception as e:
+                files_status_context.reject_file(file, reason=str(e))
+                continue
 
             if file_loss > filter_loss_threshold:
                 files_status_context.reject_file(file, reason=f"loss {file_loss:.3f}")
