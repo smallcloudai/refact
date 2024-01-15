@@ -9,7 +9,7 @@ use hyper::{Body, Response, StatusCode};
 use ropey::Rope;
 use tracing::{error, info};
 
-use crate::call_validation::CodeCompletionPost;
+use crate::call_validation::{CodeCompletionPost, validate_post};
 use crate::caps;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache;
@@ -36,24 +36,6 @@ async fn _lookup_code_completion_scratchpad(
     let mut n_ctx = caps_locked.code_completion_n_ctx;
     if n_ctx == 0 { n_ctx = 2048 }
     Ok((model_name, sname.clone(), patch.clone(), n_ctx))
-}
-
-fn validate_post(code_completion_post: CodeCompletionPost) -> Result<(), ScratchError> {
-    let pos = code_completion_post.inputs.cursor.clone();
-    let Some(source) = code_completion_post.inputs.sources.get(&code_completion_post.inputs.cursor.file) else {
-        return Err(ScratchError::new(StatusCode::BAD_REQUEST, "invalid post".to_string()))
-    };
-    let text = Rope::from_str(&*source);
-    let line_number = pos.line as usize;
-    if line_number >= text.len_lines() {
-        return Err(ScratchError::new(StatusCode::BAD_REQUEST, "invalid post".to_string()))
-    } 
-    let line = text.line(line_number);
-    let col = pos.character as usize;
-    if col > line.len_chars() {
-        return Err(ScratchError::new(StatusCode::BAD_REQUEST, "invalid post".to_string()))
-    }
-    Ok(())
 }
 
 pub async fn handle_v1_code_completion(
