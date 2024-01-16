@@ -75,9 +75,9 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
             if request_id in upload_proxy.check_cancelled():
                 return
 
-            files = {"results": json.dumps(
-                self._model.encode(request["inputs"]).tolist()
-            )}
+            files = {
+                "results": json.dumps(self._model.encode(request["inputs"]).tolist()),
+            }
 
             upload_proxy_args["ts_batch_finished"] = time.time()
             finish_reason = 'DONE'
