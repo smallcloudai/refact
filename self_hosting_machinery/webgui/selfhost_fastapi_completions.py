@@ -204,7 +204,7 @@ async def embeddings_streamer(ticket: Ticket, timeout, created_ts):
                 log("TIMEOUT %s" % ticket.id())
                 msg = {"status": "error", "human_readable_message": "timeout"}
 
-            tmp = json.dumps(msg["files"])
+            tmp = json.dumps(msg.get("files", []))
             yield tmp
             log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
             if msg.get("status", "") != "in_progress":
