@@ -50,7 +50,6 @@ class TabHostRouter(APIRouter):
                     break
             else:
                 validated["completion"] = ""
-
         self._model_assigner.models_to_watchdog_configs(validated)
         self._model_assigner.restart_lsp()
         return JSONResponse("OK")
