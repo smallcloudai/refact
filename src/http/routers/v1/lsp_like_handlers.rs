@@ -24,10 +24,10 @@ struct PostDocument {
 
 
 pub async fn handle_v1_lsp_initialize(
-    Extension(_global_context): Extension<SharedGlobalContext>,
+    Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let _post = serde_json::from_slice::<PostInit>(&body_bytes).map_err(|e| {
+    let post = serde_json::from_slice::<PostInit>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
