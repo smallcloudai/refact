@@ -2,6 +2,44 @@ import type { Meta, StoryObj } from "@storybook/react";
 
 import { ChatForm } from "./ChatForm";
 
+const testCommands = [
+  "@workspace",
+  "@help",
+  "@list",
+  "@web",
+  "@database",
+  "@?",
+  "@longlonglonglong",
+  "@refactor",
+  "@test",
+  "@Apple",
+  "@Banana",
+  "@Carrot",
+  "@Dill",
+  "@Elderberries",
+  "@Figs",
+  "@Grapes",
+  "@Honeydew",
+  "@Iced melon",
+  "@Jackfruit",
+  "@Kale",
+  "@Lettuce",
+  "@Mango",
+  "@Nectarines",
+  "@Oranges",
+  "@Pineapple",
+  "@Quince",
+  "@Raspberries",
+  "@Strawberries",
+  "@Turnips",
+  "@Ugli fruit",
+  "@Vanilla beans",
+  "@Watermelon",
+  "@Xigua",
+  "@Yuzu",
+  "@Zucchini",
+];
+
 const noop = () => ({});
 const meta = {
   title: "Chat Form",
@@ -28,6 +66,7 @@ const meta = {
     canChangeModel: true,
     hasContextFile: false,
     handleContextFile: noop,
+    commands: testCommands,
   },
 } satisfies Meta<typeof ChatForm>;
 
