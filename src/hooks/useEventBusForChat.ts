@@ -134,6 +134,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     const default_cap = action.payload.caps.code_chat_default_model;
     const available_caps = Object.keys(action.payload.caps.code_chat_models);
     const error = available_caps.length === 0 ? "No available caps" : null;
+    const rag_commands = action.payload.caps.chat_rag_functions ?? [];
     return {
       ...state,
       error,
@@ -146,6 +147,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         default_cap: default_cap || available_caps[0] || "",
         available_caps,
       },
+      rag_commands,
     };
   }
 
@@ -249,6 +251,7 @@ export type ChatState = {
   streaming: boolean;
   error: string | null;
   caps: ChatCapsState;
+  rag_commands: string[];
 };
 
 function createInitialState(): ChatState {
@@ -267,6 +270,7 @@ function createInitialState(): ChatState {
       default_cap: "",
       available_caps: [],
     },
+    rag_commands: [],
   };
 }
 

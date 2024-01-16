@@ -16,7 +16,7 @@ import { ErrorCallout, Callout } from "../Callout";
 import { Select } from "../Select/Select";
 import { FileUpload } from "../FileUpload";
 import { Button } from "@radix-ui/themes";
-import { ComboBox, testCommands } from "../ComboBox";
+import { ComboBox } from "../ComboBox";
 
 const CapsSelect: React.FC<{
   value: string;
@@ -52,6 +52,7 @@ export const ChatForm: React.FC<{
   onStopStreaming: () => void;
   handleContextFile: () => void;
   hasContextFile: boolean;
+  commands: string[];
 }> = ({
   onSubmit,
   onClose,
@@ -66,6 +67,7 @@ export const ChatForm: React.FC<{
   onStopStreaming,
   handleContextFile,
   hasContextFile,
+  commands,
 }) => {
   const [value, setValue] = React.useState("");
   const isOnline = useIsOnline();
@@ -120,7 +122,7 @@ export const ChatForm: React.FC<{
         onSubmit={() => handleSubmit()}
       >
         <ComboBox
-          commands={testCommands}
+          commands={commands}
           value={value}
           onChange={setValue}
           onSubmit={handleEnter}

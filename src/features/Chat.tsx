@@ -17,7 +17,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     hasContextFile,
   } = useEventBusForChat();
 
-  // TODO: ide's won't need this to be as big as the light dark button won't be there
+  // TODO: ide's won't need this to be as big because the light dark button won't be there
   const LeftRightPadding: Responsive<
     "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
   > = {
@@ -78,6 +78,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         onStopStreaming={stopStreaming}
         handleContextFile={handleContextFile}
         hasContextFile={hasContextFile}
+        commands={state.rag_commands}
       />
     </Flex>
   );

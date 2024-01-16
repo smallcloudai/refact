@@ -188,4 +188,5 @@ export type CapsResponse = {
   telemetry_corrected_snippets_dest: string;
   tokenizer_path_template: string;
   tokenizer_rewrite_path: Record<string, unknown>;
+  chat_rag_functions?: string[];
 };

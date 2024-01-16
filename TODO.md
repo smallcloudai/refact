@@ -60,6 +60,7 @@
 [x] combobox for the @commands
 [x] add combobox to chat form and maybe pass text-area as a child component
 [ ] remove test commands
+[ ] rag commands come from the caps url.
 
 ### EVENTS TODO FOR IDEs
 

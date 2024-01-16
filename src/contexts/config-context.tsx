@@ -1,13 +1,13 @@
 import React, { useContext, createContext } from "react";
 
 export type Config = {
-  vecdb: boolean;
+  rag?: boolean; // TODO: remove this
   host: "web" | "ide"; // | "vscode" | "jetbrains"
   tabbed?: boolean;
   lspUrl?: string;
 };
 
-const ConfigContext = createContext<Config>({ vecdb: false, host: "web" });
+const ConfigContext = createContext<Config>({ host: "web" });
 
 const ConfigProvider: React.FC<{
   children: React.ReactNode;
