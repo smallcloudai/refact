@@ -108,7 +108,7 @@ class ChatContext(NlpSamplingParams):
 
 
 class EmbeddingsStyleOpenAI(BaseModel):
-    input: str
+    input: Union[str, List[str]]
     model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
 
 
@@ -416,43 +416,50 @@ class CompletionsRouter(APIRouter):
         await q.put(ticket)
         return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))
 
-    async def _generate_embeddings(self, account: str, inputs: str, model_name: str):
-        ticket = Ticket("embed-")
+    async def _generate_embeddings(self, account: str, inputs: Union[str, List[str]], model_name: str):
         if model_name not in self._inference_queue.models_available():
             log(f"model {model_name} is not running")
             raise HTTPException(status_code=400, detail=f"model {model_name} is not running")
 
-        req = {
-            "inputs": inputs,
-        }
-        req.update({
-            "id": ticket.id(),
-            "account": account,
-            "object": "embeddings_req",
-            "model": model_name,
-            "stream": True,
-            "created": time.time()
-        })
-        ticket.call.update(req)
-        q = self._inference_queue.model_name_to_queue(ticket, model_name, no_checks=True)
-        self._id2ticket[ticket.id()] = ticket
-        await q.put(ticket)
+        tickets, reqs = [], []
+        inputs = inputs if isinstance(inputs, list) else [inputs]
+        for inp in inputs:
+            ticket = Ticket("embed-")
+            req = {
+                "inputs": inp,
+            }
+            req.update({
+                "id": ticket.id(),
+                "account": account,
+                "object": "embeddings_req",
+                "model": model_name,
+                "stream": True,
+                "created": time.time()
+            })
+            ticket.call.update(req)
+            q = self._inference_queue.model_name_to_queue(ticket, model_name, no_checks=True)
+            self._id2ticket[ticket.id()] = ticket
+            await q.put(ticket)
+            tickets.append(ticket)
+            reqs.append(req)
 
-        results = []
-        async for result in embeddings_streamer(ticket, 60, req["created"]):
-            results.extend(json.loads(result))
-        return results[0]
-
-    async def _embeddings_style_hf(self, post: EmbeddingsStyleOpenAI, request: Request, account: str = "XXX"):
-        embedding = await self._generate_embeddings(account, post.input, post.model)
-        return {
-            "embedding": embedding
-        }
+        for idx, (ticket, req) in enumerate(zip(tickets, reqs)):
+            async for resp in embeddings_streamer(ticket, 60, req["created"]):
+                yield {"embedding": json.loads(resp), "index": idx}
 
     async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request, account: str = "XXX"):
-        embedding = await self._generate_embeddings(account, post.input, post.model)
+        data = [
+            {
+                "embedding": res["embedding"],
+                "index": res["index"],
+                "object": "embedding",
+            }
+            async for res in self._generate_embeddings(account, post.input, post.model)
+        ]
+        data.sort(key=lambda x: x["index"])
+
         return {
-            "data": [{"embedding": embedding, "index": 0, "object": "embedding"}],
+            "data": data,
             "model": post.model,
             "object": "list",
             "usage": {"prompt_tokens": -1, "total_tokens": -1}
