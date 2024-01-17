@@ -19,7 +19,7 @@ use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::receive_workspace_changes;
 use crate::telemetry;
 use crate::telemetry::snippets_collection;
-use crate::vecdb::file_filter::{is_valid_file, retrieve_files_by_proj_folders};
+use crate::vecdb::file_filter::is_valid_file;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 

@@ -31,12 +31,12 @@ pub struct FileVectorizerService {
 async fn cooldown_queue_thread(
     update_request_queue: Arc<Mutex<VecDeque<PathBuf>>>,
     out_queue: Arc<Mutex<VecDeque<PathBuf>>>,
-    status: VecDbStatusRef,
+    _status: VecDbStatusRef,
     cooldown_secs: u64,
 ) {
     let mut last_updated: HashMap<PathBuf, SystemTime> = HashMap::new();
     loop {
-        let (path_maybe, unprocessed_files_count) = {
+        let (path_maybe, _unprocessed_files_count) = {
             let mut queue_locked = update_request_queue.lock().await;
             if !queue_locked.is_empty() {
                 (Some(queue_locked.pop_front().unwrap()), queue_locked.len())

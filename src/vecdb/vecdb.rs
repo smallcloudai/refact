@@ -67,7 +67,7 @@ pub async fn vecdb_background_reload(
 ) {
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
 
         let (cache_dir, cmdline) = {
             let gcx_locked = global_context.read().await;
