@@ -51,8 +51,8 @@ const Popover: React.FC<
       )}
     >
       <ComboboxPopover unmountOnHide fitViewport {...props}>
-        <ScrollArea scrollbars="vertical" className={styles.popover__scroll}>
-          <Box p="1" style={{ overflowY: "hidden" }}>
+        <ScrollArea scrollbars="both" className={styles.popover__scroll}>
+          <Box p="1" style={{ overflowY: "hidden", overflowX: "hidden" }}>
             {children}
           </Box>
         </ScrollArea>

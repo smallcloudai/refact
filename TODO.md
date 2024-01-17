@@ -59,8 +59,11 @@
 [x] hard code @commands for now but it the future they will be fetched
 [x] combobox for the @commands
 [x] add combobox to chat form and maybe pass text-area as a child component
-[ ] remove test commands
+[x] remove test commands
+
 [ ] rag commands come from the caps url.
+
+[ ] ensure vscode api is called only once
 
 ### EVENTS TODO FOR IDEs
 

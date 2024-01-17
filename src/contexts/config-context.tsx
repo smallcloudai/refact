@@ -2,7 +2,7 @@ import React, { useContext, createContext } from "react";
 
 export type Config = {
   rag?: boolean; // TODO: remove this
-  host: "web" | "ide"; // | "vscode" | "jetbrains"
+  host: "web" | "ide" | "vscode" | "jetbrains";
   tabbed?: boolean;
   lspUrl?: string;
 };

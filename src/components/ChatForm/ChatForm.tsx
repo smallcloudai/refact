@@ -126,7 +126,7 @@ export const ChatForm: React.FC<{
           value={value}
           onChange={setValue}
           onSubmit={handleEnter}
-          placeholder="Type @ for commands"
+          placeholder={commands.length > 0 ? "Type @ for commands" : ""}
           render={(props) => <TextArea disabled={isStreaming} {...props} />}
         />
         <Flex gap="2" className={styles.buttonGroup}>

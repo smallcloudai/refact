@@ -9,7 +9,7 @@ const testCommands = [
   "@web",
   "@database",
   "@?",
-  "@longlonglonglong",
+  "@longlonglonglonglonglonglonglonglonglong",
   "@refactor",
   "@test",
   "@Apple",

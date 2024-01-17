@@ -4,8 +4,11 @@ import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
 import { Flex, Responsive } from "@radix-ui/themes";
 import { isChatContextFileMessage } from "../services/refact";
+import { useConfig } from "../contexts/config-context";
 
 export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
+  const { host } = useConfig();
+
   const {
     state,
     askQuestion,
@@ -17,17 +20,19 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     hasContextFile,
   } = useEventBusForChat();
 
-  // TODO: ide's won't need this to be as big because the light dark button won't be there
   const LeftRightPadding: Responsive<
     "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-  > = {
-    initial: "8",
-    // xs: "5",
-    // sm: "6",
-    // md: "7",
-    // lg: "8",
-    xl: "9",
-  };
+  > =
+    host === "web"
+      ? { initial: "8", xl: "9" }
+      : {
+          initial: "2",
+          xs: "2",
+          sm: "4",
+          md: "8",
+          lg: "8",
+          xl: "9",
+        };
 
   const TopBottomPadding: Responsive<
     "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"

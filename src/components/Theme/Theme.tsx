@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Theme as RadixTheme,
   IconButton,
@@ -38,9 +38,17 @@ export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = (
   props,
 ) => {
   const config = useConfig();
+  const [isDarkMode, setDarkMode] = React.useState(false);
+
+  useEffect(() => {
+    const maybeDark = document.body.classList.contains("vscode-dark");
+    setDarkMode(() => maybeDark);
+  }, []);
+
   if (config.host === "web") {
     return <ThemeWithDarkMode {...props} />;
   }
+  // todo make this a hook
 
-  return <RadixTheme {...props} />;
+  return <RadixTheme {...props} appearance={isDarkMode ? "dark" : "inherit"} />;
 };

@@ -14,7 +14,7 @@ export const Select: React.FC<SelectProps> = ({
   ...props
 }) => {
   return (
-    <RadixSelect.Root {...props} onValueChange={onChange}>
+    <RadixSelect.Root {...props} onValueChange={onChange} size="1">
       <RadixSelect.Trigger title={title} />
       <RadixSelect.Content>
         {options.map((option) => {
