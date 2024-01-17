@@ -445,7 +445,13 @@ class CompletionsRouter(APIRouter):
 
         for idx, (ticket, req) in enumerate(zip(tickets, reqs)):
             async for resp in embeddings_streamer(ticket, 60, req["created"]):
-                yield {"embedding": json.loads(resp), "index": idx}
+                resp = json.loads(resp)
+                embedding = []
+                try:
+                    embedding = resp[0]
+                except IndexError:
+                    pass
+                yield {"embedding": embedding, "index": idx}
 
     async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request, account: str = "XXX"):
         data = [
