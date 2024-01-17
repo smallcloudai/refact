@@ -37,21 +37,46 @@ pub struct VecDbCaps {
     functions: Vec<String>,
 }
 
-pub async fn create_vecdb(
+struct VecDbParams {
     default_embeddings_model: String,
     endpoint_embeddings_template: String,
     endpoint_embeddings_style: String,
     size_embeddings: i32,
+}
 
-    cmdline: &CommandLine,
-    cache_dir: &PathBuf,
-) -> Option<VecDb> {
-    let vec_db = match VecDb::init(
+async fn vecdb_test_request(
+    vecdb: &VecDb
+) -> Result<(), String> {
+    let search_result = vecdb.search("".to_string(), 3).await;
+    match search_result {
+        Ok(_) => {
+            Ok(())
+        }
+        Err(_) => {
+            error!("vecdb: test search failed");
+            Err("vecdb: test search failed".to_string())
+        }
+    }
+
+}
+
+async fn create_vecdb(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    background_tasks: &mut BackgroundTasksHolder,
+    vdb_params: VecDbParams,
+) -> Result<(), String> {
+    info!("vecdb: attempting to launch");
+
+    let (cache_dir, cmdline) = {
+        let gcx_locked = global_context.read().await;
+        (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone())
+    };
+    let vec_db_mb = match VecDb::init(
         &cache_dir, cmdline.clone(),
-        size_embeddings, 60, 512, 1024,
-        default_embeddings_model.clone(),
-        endpoint_embeddings_template.clone(),
-        endpoint_embeddings_style.clone(),
+        vdb_params.size_embeddings, 60, 512, 1024,
+        vdb_params.default_embeddings_model,
+        vdb_params.endpoint_embeddings_template,
+        vdb_params.endpoint_embeddings_style,
     ).await {
         Ok(res) => Some(res),
         Err(err) => {
@@ -62,120 +87,100 @@ pub async fn create_vecdb(
                 Also, you can run this to erase your db:
                 `rm -rf ~/.cache/refact/refact_vecdb_cache`
                 After that restart this LSP server or your IDE.", err);
-            None
+            return Err(err);
         }
     };
-    vec_db
+    let vec_db = vec_db_mb.unwrap();
+
+    match vecdb_test_request(&vec_db).await {
+        Ok(_) => {},
+        Err(s) => {return Err(s);}
+    }
+    info!("vecdb: test request complete");
+
+    {
+        let mut gcx_locked = global_context.write().await;
+
+        if let Some(folders) = gcx_locked.lsp_backend_document_state.workspace_folders.clone().read().await.clone() {
+            let mut vec_db_lock = gcx_locked.vec_db.lock().await;
+            if let Some(ref mut db) = *vec_db_lock {
+                db.init_folders(folders).await;
+            }
+        }
+        let mut tasks = vec_db.start_background_tasks().await;
+        tasks.extend(vec![tokio::spawn(vecdb::file_watcher_service::file_watcher_task(global_context.clone()))]);
+        background_tasks.extend(tasks);
+
+        gcx_locked.vec_db = Arc::new(AMutex::new(Some(vec_db)));
+
+    }
+    info!("vecdb: launch complete");
+    Ok(())
 }
+
+async fn proceed_vecdb_reload(
+    global_context: Arc<ARwLock<GlobalContext>>,
+) -> (bool, Option<VecDbParams>) {
+    let caps = match crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await {
+        Ok(caps) => caps,
+        Err(_) => { return (false, None) }
+    };
+
+    let vdb_params = {
+        let caps_locked = caps.read().unwrap();
+        VecDbParams {
+            default_embeddings_model: caps_locked.default_embeddings_model.clone(),
+            endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
+            endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
+            size_embeddings: caps_locked.size_embeddings.clone(),
+        }
+    };
+
+    if vdb_params.default_embeddings_model.is_empty() || vdb_params.endpoint_embeddings_template.is_empty() {
+        error!("vecdb launch failed: default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty()");
+        return (false, None);
+    }
+
+
+    match *global_context.write().await.vec_db.lock().await {
+        None => {}
+        Some(ref db) => {
+            if db.model_name == vdb_params.default_embeddings_model &&
+                db.endpoint_template == vdb_params.endpoint_embeddings_template &&
+                db.endpoint_embeddings_style == vdb_params.endpoint_embeddings_style {
+                return (false, None);
+            }
+        }
+    }
+
+    return (true, Some(vdb_params));
+}
+
 
 pub async fn vecdb_background_reload(
     global_context: Arc<ARwLock<GlobalContext>>,
 ) {
+    let cmd_line = global_context.read().await.cmdline.clone();
+    if !cmd_line.vecdb {
+        return;
+    }
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
+        let (proceed, vdb_params_mb) = proceed_vecdb_reload(global_context.clone()).await;
+        if proceed || vdb_params_mb.is_some() {
+            background_tasks.abort().await;
+            background_tasks = BackgroundTasksHolder::new(vec![]);
+
+            match create_vecdb(
+                global_context.clone(),
+                &mut background_tasks,
+                vdb_params_mb.unwrap(),
+            ).await{
+                Ok(_) => {}
+                Err(err) => {error!("vecdb: reload failed: {}", err);}
+            }
+        }
         tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
-
-        let (cache_dir, cmdline) = {
-            let gcx_locked = global_context.read().await;
-            let cache_dir = gcx_locked.cache_dir.clone();
-            (&cache_dir.clone(), &gcx_locked.cmdline.clone())
-        };
-
-        let caps_mb = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await;
-
-        if caps_mb.is_err() || !cmdline.vecdb {
-            continue;
-        }
-
-        let (
-            default_embeddings_model,
-            endpoint_embeddings_template,
-            endpoint_embeddings_style,
-            size_embeddings,
-        ) = {
-            let caps = caps_mb.unwrap();
-            let caps_locked = caps.read().unwrap();
-            (
-                caps_locked.default_embeddings_model.clone(),
-                caps_locked.endpoint_embeddings_template.clone(),
-                caps_locked.endpoint_embeddings_style.clone(),
-                caps_locked.size_embeddings.clone(),
-            )
-        };
-
-        if default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty() {
-            error!("vecdb launch failed: default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty()");
-            continue;
-        }
-
-
-        match *global_context.write().await.vec_db.lock().await {
-            None => {}
-            Some(ref db) => {
-                if db.model_name == default_embeddings_model &&
-                    db.endpoint_template == endpoint_embeddings_template &&
-                    db.endpoint_embeddings_style == endpoint_embeddings_style {
-                    continue;
-                }
-            }
-        }
-
-        info!("vecdb: attempting to launch");
-
-        background_tasks.abort().await;
-        background_tasks = BackgroundTasksHolder::new(vec![]);
-
-        let vecdb_mb = create_vecdb(
-            default_embeddings_model.clone(),
-            endpoint_embeddings_template,
-            endpoint_embeddings_style,
-            size_embeddings,
-
-            cmdline,
-            cache_dir
-        ).await;
-
-        if vecdb_mb.is_none() {
-            continue;
-        }
-        let vecdb = vecdb_mb.unwrap();
-
-        let search_result = vecdb.search("".to_string(), 3).await;
-        match search_result {
-            Ok(_) => {
-                info!("vecdb: test search complete");
-            }
-            Err(_) => {
-                error!("vecdb: test search failed");
-                continue;
-            }
-        }
-
-        {
-            let mut gcx_locked = global_context.write().await;
-
-            gcx_locked.vec_db = Arc::new(AMutex::new(Some(vecdb)));
-            info!("vecdb is launched successfully");
-
-            background_tasks.extend(match *gcx_locked.vec_db.lock().await {
-                Some(ref db) => {
-                    let mut tasks = db.start_background_tasks().await;
-                    tasks.push(
-                        tokio::spawn(vecdb::file_watcher_service::file_watcher_task(global_context.clone()))
-                    );
-                    tasks
-                }
-                None => vec![]
-            });
-            {
-                if let Some(folders) = gcx_locked.lsp_backend_document_state.workspace_folders.clone().read().await.clone() {
-                    let mut vec_db_lock = gcx_locked.vec_db.lock().await;
-                    if let Some(ref mut db) = *vec_db_lock {
-                        db.init_folders(folders).await;
-                    }
-                }
-            }
-        }
     }
 }
 
