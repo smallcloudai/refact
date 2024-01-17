@@ -34,7 +34,7 @@ pub struct VecDb {
 
 #[derive(Debug, Serialize)]
 pub struct VecDbCaps {
-    chat_rag_functions: Vec<String>,
+    functions: Vec<String>,
 }
 
 pub async fn create_vecdb(
@@ -251,7 +251,7 @@ impl VecDb {
 
     pub async fn caps(&self) -> VecDbCaps {
         VecDbCaps {
-            chat_rag_functions: vec!["@workspace".to_string()],
+            functions: vec!["@workspace".to_string()],
         }
     }
 }
