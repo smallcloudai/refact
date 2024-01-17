@@ -75,15 +75,15 @@ pub async fn vecdb_background_reload(
             (&cache_dir.clone(), &gcx_locked.cmdline.clone())
         };
 
-        let caps_mb = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 10).await;
+        let caps_mb = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await;
 
         if caps_mb.is_err() || !cmdline.vecdb {
             continue;
         }
 
         let (
-            default_embeddings_model, 
-            endpoint_embeddings_template, 
+            default_embeddings_model,
+            endpoint_embeddings_template,
             endpoint_embeddings_style,
             size_embeddings,
         ) = {
@@ -124,7 +124,7 @@ pub async fn vecdb_background_reload(
             endpoint_embeddings_template,
             endpoint_embeddings_style,
             size_embeddings,
-            
+
             cmdline,
             cache_dir
         ).await;
@@ -147,13 +147,6 @@ pub async fn vecdb_background_reload(
 
         {
             let mut gcx_locked = global_context.write().await;
-
-            if let Some(caps) = &mut gcx_locked.caps {
-                caps.write().unwrap().chat_rag_functions = vec![
-                    "@workspace".to_string()
-                ]
-            };
-
             gcx_locked.vec_db = Arc::new(AMutex::new(Some(vecdb)));
             info!("vecdb is launched successfully");
 
