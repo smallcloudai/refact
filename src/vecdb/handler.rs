@@ -34,7 +34,7 @@ impl Debug for VecDBHandler {
 
 pub struct VecDBHandler {
     cache_database: Database,
-    data_database_temp_dir: TempDir,
+    _data_database_temp_dir: TempDir,
     cache_table: Table,
     data_table: Table,
     schema: SchemaRef,
@@ -119,7 +119,7 @@ impl VecDBHandler {
 
         Ok(VecDBHandler {
             cache_database,
-            data_database_temp_dir,
+            _data_database_temp_dir: data_database_temp_dir,
             schema,
             cache_table,
             data_table,
@@ -170,7 +170,7 @@ impl VecDBHandler {
         (records, hashes.into_iter().collect())
     }
 
-    pub async fn get_records_from_data(&mut self, hashes: Vec<String>) -> (Vec<Record>, Vec<String>) {
+    pub async fn _get_records_from_data(&mut self, hashes: Vec<String>) -> (Vec<Record>, Vec<String>) {
         self.get_records(self.data_table.clone(), hashes).await
     }
     pub async fn get_records_from_cache(&mut self, hashes: Vec<String>) -> (Vec<Record>, Vec<String>) {
@@ -192,10 +192,10 @@ impl VecDBHandler {
         }
     }
 
-    pub async fn get_record_from_data(&mut self, hash: String) -> vectordb::error::Result<Record> {
+    pub async fn _get_record_from_data(&mut self, hash: String) -> vectordb::error::Result<Record> {
         self.get_record(self.data_table.clone(), hash).await
     }
-    pub async fn get_record_from_cache(&mut self, hash: String) -> vectordb::error::Result<Record> {
+    pub async fn _get_record_from_cache(&mut self, hash: String) -> vectordb::error::Result<Record> {
         self.get_record(self.cache_table.clone(), hash).await
     }
 

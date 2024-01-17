@@ -1,5 +1,3 @@
-use reqwest;
-use serde::Serialize;
 use tracing::error;
 
 use crate::forward_to_hf_endpoint::get_embedding_hf_style;

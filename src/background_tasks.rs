@@ -5,7 +5,7 @@ use std::vec;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 
-use crate::{global_context, vecdb};
+use crate::vecdb;
 use crate::global_context::GlobalContext;
 use crate::snippets_transmit;
 use crate::telemetry::basic_transmit;
