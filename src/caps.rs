@@ -55,8 +55,6 @@ pub struct CodeAssistantCaps {
     pub running_models: Vec<String>,
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
-    #[serde(default)]
-    pub chat_rag_functions: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]

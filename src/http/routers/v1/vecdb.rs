@@ -64,3 +64,25 @@ pub async fn handle_v1_vecdb_status(
         .body(Body::from(json!(status).to_string()))
         .unwrap())
 }
+
+pub async fn handle_v1_vecdb_caps(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    _: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let caps = {
+        let cx_locked = global_context.read().await;
+        let db = cx_locked.vec_db.lock().await;
+        if let Some(ref db) = *db {
+            db.caps().await
+        } else {
+            return Err(ScratchError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Vector db is not available".to_string()
+            ));
+        }
+    };
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from(json!(caps).to_string()))
+        .unwrap())
+}
