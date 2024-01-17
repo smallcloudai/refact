@@ -103,29 +103,25 @@ pub async fn get_embedding_hf_style(
     let client = reqwest::Client::new();
     let payload = EmbeddingsPayloadHF { inputs: text };
     let url = endpoint_template.clone().replace("$MODEL", &model_name);
-    let api_key_clone = api_key.clone();
 
-    let join_handle = tokio::task::spawn(async move {
-        let maybe_response = client
-            .post(&url)
-            .bearer_auth(api_key_clone.clone())
-            .json(&payload)
-            .send()
-            .await;
+    let maybe_response = client
+        .post(&url)
+        .bearer_auth(api_key.clone())
+        .json(&payload)
+        .send()
+        .await;
 
-        return match maybe_response {
-            Ok(response) => {
-                if response.status().is_success() {
-                    match response.json::<Vec<f32>>().await {
-                        Ok(embedding) => Ok(embedding),
-                        Err(err) => Err(format!("Failed to parse the response: {:?}", err)),
-                    }
-                } else {
-                    Err(format!("Failed to get a response: {:?}", response.status()))
+    match maybe_response {
+        Ok(response) => {
+            if response.status().is_success() {
+                match response.json::<Vec<f32>>().await {
+                    Ok(embedding) => Ok(embedding),
+                    Err(err) => Err(format!("Failed to parse the response: {:?}", err)),
                 }
-            },
-            Err(err) => Err(format!("Failed to send a request: {:?}", err)),
-        }
-    });
-    join_handle.await.unwrap_or_else(|_| Err("Task join error".to_string()))
+            } else {
+                Err(format!("Failed to get a response: {:?}", response.status()))
+            }
+        },
+        Err(err) => Err(format!("Failed to send a request: {:?}", err)),
+    }
 }

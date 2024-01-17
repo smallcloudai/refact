@@ -130,42 +130,36 @@ pub async fn get_embedding_openai_style(
         input: text,
         model: model_name.clone(),
     };
-    let url = endpoint_template.clone();
-    let api_key_clone = api_key.clone();
 
-    let join_handle = tokio::spawn(async move {
-        let maybe_response = client
-            .post(&url)
-            .bearer_auth(api_key_clone.clone())
-            .json(&payload)
-            .send()
-            .await;
+    let maybe_response = client
+        .post(endpoint_template)
+        .bearer_auth(api_key)
+        .json(&payload)
+        .send()
+        .await;
 
-        return match maybe_response {
-            Ok(response) => {
-                if response.status().is_success() {
-                    let response_json = response.json::<serde_json::Value>().await;
+    match maybe_response {
+        Ok(response) => {
+            if response.status().is_success() {
+                let response_json = response.json::<serde_json::Value>().await;
 
-                    match response_json {
-                        Ok(json) => match &json["data"][0]["embedding"] {
-                            serde_json::Value::Array(embedding) => {
-                                let embedding_values: Result<Vec<f32>, _> =
-                                    serde_json::from_value(serde_json::Value::Array(embedding.clone()));
-                                embedding_values.map_err(|err| {
-                                    format!("Failed to parse the response: {:?}", err)
-                                })
-                            }
-                            _ => Err("Response is missing 'data[0].embedding' field or it's not an array".to_string()),
-                        },
-                        Err(err) => Err(format!("Failed to parse the response: {:?}", err)),
-                    }
-                } else {
-                    Err(format!("Failed to get a response: {:?}", response.status()))
+                match response_json {
+                    Ok(json) => match &json["data"][0]["embedding"] {
+                        serde_json::Value::Array(embedding) => {
+                            let embedding_values: Result<Vec<f32>, _> =
+                                serde_json::from_value(serde_json::Value::Array(embedding.clone()));
+                            embedding_values.map_err(|err| {
+                                format!("Failed to parse the response: {:?}", err)
+                            })
+                        }
+                        _ => Err("Response is missing 'data[0].embedding' field or it's not an array".to_string()),
+                    },
+                    Err(err) => Err(format!("Failed to parse the response: {:?}", err)),
                 }
+            } else {
+                Err(format!("Failed to get a response: {:?}", response.status()))
             }
-            Err(err) => Err(format!("Failed to send a request: {:?}", err)),
         }
-    });
-
-    join_handle.await.unwrap_or_else(|_| Err("Task join error".to_string()))
+        Err(err) => Err(format!("Failed to send a request: {:?}", err)),
+    }
 }

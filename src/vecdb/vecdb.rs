@@ -67,16 +67,17 @@ pub async fn vecdb_background_reload(
 ) {
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
-        let (caps_mb, cache_dir, cmdline) = {
+        let (cache_dir, cmdline) = {
             let gcx_locked = global_context.read().await;
-            let caps_mb = gcx_locked.caps.clone();
             let cache_dir = gcx_locked.cache_dir.clone();
-            (caps_mb, &cache_dir.clone(), &gcx_locked.cmdline.clone())
+            (&cache_dir.clone(), &gcx_locked.cmdline.clone())
         };
 
-        if caps_mb.is_none() || !cmdline.vecdb {
+        let caps_mb = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 10).await;
+
+        if caps_mb.is_err() || !cmdline.vecdb {
             continue;
         }
 
@@ -113,7 +114,7 @@ pub async fn vecdb_background_reload(
             }
         }
 
-        info!("attempting to launch vecdb");
+        info!("vecdb: attempting to launch");
 
         background_tasks.abort().await;
         background_tasks = BackgroundTasksHolder::new(vec![]);
@@ -131,6 +132,18 @@ pub async fn vecdb_background_reload(
         if vecdb_mb.is_none() {
             continue;
         }
+        let vecdb = vecdb_mb.unwrap();
+
+        let search_result = vecdb.search("".to_string(), 3).await;
+        match search_result {
+            Ok(_) => {
+                info!("vecdb: test search complete")
+            }
+            Err(_) => {
+                error!("vecdb: test search failed");
+                continue;
+            }
+        }
 
         {
             let mut gcx_locked = global_context.write().await;
@@ -141,8 +154,8 @@ pub async fn vecdb_background_reload(
                 ]
             };
 
-            gcx_locked.vec_db = Arc::new(AMutex::new(vecdb_mb));
-            info!("VECDB is launched successfully");
+            gcx_locked.vec_db = Arc::new(AMutex::new(Some(vecdb)));
+            info!("vecdb is launched successfully");
 
             background_tasks.extend(match *gcx_locked.vec_db.lock().await {
                 Some(ref db) => {
