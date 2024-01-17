@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import {
   ChatMessages,
   ChatResponse,
@@ -37,16 +37,20 @@ declare global {
   }
 }
 
-function postMessage(message: Record<string, unknown>) {
-  const vscode = window.acquireVsCodeApi ? window.acquireVsCodeApi() : null;
-  if (vscode) {
-    vscode.postMessage(message);
+const usePostMessage = () => {
+  const ref = useRef<typeof window.postMessage | undefined>(undefined);
+  if (ref.current) return ref.current;
+  if (window.acquireVsCodeApi) {
+    ref.current = window.acquireVsCodeApi().postMessage;
   } else if (window.postIntellijMessage) {
-    window.postIntellijMessage(message);
+    ref.current = window.postIntellijMessage.bind(this);
   } else {
-    window.postMessage(message, "*");
+    ref.current = (message: Record<string, unknown>) =>
+      window.postMessage(message, "*");
   }
-}
+
+  return ref.current;
+};
 
 function formatChatResponse(
   messages: ChatMessages,
@@ -278,16 +282,24 @@ const initialState = createInitialState();
 
 export const useEventBusForChat = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const postMessage = usePostMessage();
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
-      if (event.source !== window || event.origin !== window.location.origin) {
-        // eslint-disable-next-line no-console
-        console.log("CHAT: event source or origin not the same window");
-        return;
-      }
       if (isActionToChat(event.data)) {
         dispatch(event.data);
+      }
+
+      if (
+        isActionToChat(event.data) &&
+        event.data.payload?.id &&
+        event.data.payload.id === state.chat.id &&
+        isChatDoneStreaming(event.data)
+      ) {
+        postMessage({
+          type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+          payload: state.chat,
+        });
       }
     };
 
@@ -296,7 +308,7 @@ export const useEventBusForChat = () => {
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [state, dispatch]);
+  }, [state, dispatch, postMessage]);
 
   function askQuestion(question: string) {
     const messages = state.chat.messages.concat([["user", question]]);
@@ -347,7 +359,7 @@ export const useEventBusForChat = () => {
     ) {
       requestCaps();
     }
-  }, [state]);
+  }, [state, postMessage]);
 
   function clearError() {
     dispatch({
