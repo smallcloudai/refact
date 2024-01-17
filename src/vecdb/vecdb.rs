@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use serde::Serialize;
 use tracing::info;
 use tokio::sync::Mutex as AMutex;
 use tokio::task::JoinHandle;
@@ -30,6 +31,11 @@ pub struct VecDb {
     endpoint_embeddings_style: String,
 }
 
+
+#[derive(Debug, Serialize)]
+pub struct VecDbCaps {
+    chat_rag_functions: Vec<String>,
+}
 
 pub async fn create_vecdb(
     default_embeddings_model: String,
@@ -98,7 +104,7 @@ pub async fn vecdb_background_reload(
         };
 
         if default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty() {
-            error!("vecd launch failed: default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty()");
+            error!("vecdb launch failed: default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty()");
             continue;
         }
 
@@ -137,7 +143,7 @@ pub async fn vecdb_background_reload(
         let search_result = vecdb.search("".to_string(), 3).await;
         match search_result {
             Ok(_) => {
-                info!("vecdb: test search complete")
+                info!("vecdb: test search complete");
             }
             Err(_) => {
                 error!("vecdb: test search failed");
@@ -147,6 +153,7 @@ pub async fn vecdb_background_reload(
 
         {
             let mut gcx_locked = global_context.write().await;
+
             gcx_locked.vec_db = Arc::new(AMutex::new(Some(vecdb)));
             info!("vecdb is launched successfully");
 
@@ -240,6 +247,12 @@ impl VecDb {
         ).await;
         self.add_or_update_files(files, true).await;
         info!("vecdb: init_folders complete");
+    }
+
+    pub async fn caps(&self) -> VecDbCaps {
+        VecDbCaps {
+            chat_rag_functions: vec!["@workspace".to_string()],
+        }
     }
 }
 

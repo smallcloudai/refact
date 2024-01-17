@@ -20,7 +20,7 @@ use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
 use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_initialize;
 use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_did_change;
 use crate::http::utils::telemetry_wrapper;
-use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
+use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status, handle_v1_vecdb_caps};
 
 pub mod code_completion;
 pub mod chat;
@@ -43,6 +43,7 @@ pub fn make_v1_router() -> Router {
 
         .route("/vdb-search", telemetry_get!(handle_v1_vecdb_search))
         .route("/vdb-status", telemetry_get!(handle_v1_vecdb_status))
+        .route("/vdb-caps", telemetry_get!(handle_v1_vecdb_caps))
 
         .route("/lsp-initialize", telemetry_post!(handle_v1_lsp_initialize))
         .route("/lsp-did-changed", telemetry_post!(handle_v1_lsp_did_change))
