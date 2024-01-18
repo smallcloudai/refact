@@ -304,7 +304,6 @@ export const useEventBusForChat = () => {
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (isActionToChat(event.data)) {
-        console.log(event.data);
         dispatch(event.data);
       }
 

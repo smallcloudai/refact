@@ -66,6 +66,7 @@
 [X] ensure vscode api is called only once
 [ ] vscode specific commands and components
 [ ] export the types for re-use in refact-vscode
+[ ] vscode attach file
 
 ### EVENTS TODO FOR IDEs
 
