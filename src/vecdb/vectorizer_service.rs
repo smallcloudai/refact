@@ -100,7 +100,6 @@ async fn vectorize_thread(
                 }
             }
         };
-        info!("Processing file: {}", path.display());
 
         let split_data = match file_splitter.split(&path).await {
             Ok(data) => data,
@@ -115,8 +114,11 @@ async fn vectorize_thread(
             .collect();
         split_data_filtered = vecdb_handler.try_add_from_cache(split_data_filtered).await;
         drop(vecdb_handler);
-        info!("Retrieving embeddings for {} chunks", split_data_filtered.len());
 
+        let last_30_chars: String = path.display().to_string().chars().rev().take(30).collect::<String>().chars().rev().collect();
+        info!("...{} embeddings todo/total {}/{}", last_30_chars, split_data_filtered.len(), split_data.len());
+
+        // TODO: replace with a batched call?
         let join_handles: Vec<_> = split_data_filtered.into_iter().map(|x| {
             let model_name_clone = model_name.clone();
             let api_key_clone = api_key.clone();
