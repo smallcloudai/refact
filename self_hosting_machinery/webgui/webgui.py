@@ -13,7 +13,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
 from self_hosting_machinery.webgui.selfhost_plugins import PluginsRouter
-from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_fastapi_completions import CompletionsRouter
 from self_hosting_machinery.webgui.selfhost_fastapi_gpu import GPURouter
 from self_hosting_machinery.webgui.tab_server_logs import TabServerLogRouter
@@ -21,13 +20,14 @@ from self_hosting_machinery.webgui.tab_settings import TabSettingsRouter
 from self_hosting_machinery.webgui.tab_upload import TabUploadRouter
 from self_hosting_machinery.webgui.tab_finetune import TabFinetuneRouter
 from self_hosting_machinery.webgui.tab_models_host import TabHostRouter
-from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
+from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue, Ticket
 from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 from self_hosting_machinery.webgui.tab_loras import TabLorasRouter
 from self_hosting_machinery.webgui.selfhost_statistics import TabStatisticsRouter
 
 from self_hosting_machinery.webgui.selfhost_database import RefactDatabase
 from self_hosting_machinery.webgui.selfhost_database import StatisticsService
+from self_hosting_machinery.webgui.selfhost_lsp_proxy import LspProxy
 
 from typing import Dict
 
@@ -93,6 +93,7 @@ class WebGUI(FastAPI):
                 model_assigner=model_assigner),
             TabHostRouter(model_assigner),
             TabSettingsRouter(model_assigner),
+            LspProxy(),
             StaticRouter(),
         ]
 
@@ -103,9 +104,7 @@ class WebGUI(FastAPI):
 
         signal.signal(signal.SIGINT, handle_sigint)
         signal.signal(signal.SIGUSR1, handle_sigint)
-
-        # NOTE: try restart LSP after server started
-        self._model_assigner.restart_lsp()
+        signal.signal(signal.SIGTERM, handle_sigint)
 
         async def init_database():
             await self._database.connect()

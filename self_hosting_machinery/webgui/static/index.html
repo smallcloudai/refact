@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="shortcut icon" href="#">
+  <link rel="icon" type="image/png" href="/favicon.png" />
   <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
   <title>Refact Self Hosting</title>
@@ -65,6 +66,11 @@
       </li>
       {{/unless}}
       {{/each}}
+      {{#unless hamburger}}
+      <li class="nav-item" role="presentation">
+        <button onclick="window.open('/chat', '_blank')" class="nav-link" id="{{id}}" {{#if disabled}}disabled{{/if}}>Chat</button>
+      </li>
+      {{/unless}}
       <div class="d-flex ms-auto">
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
@@ -91,6 +97,11 @@
             </li>
             {{/if}}
             {{/each}}
+            {{#if hamburger}}
+              <li class="nav-item" role="presentation">
+                <button onclick="window.open('/chat', '_blank')" class="nav-link main-tab-button" id="{{id}}-tab">Chat</button>
+              </li>
+            {{/if}}
           </ul>
         </li>
       </div>

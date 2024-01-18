@@ -1,25 +1,14 @@
-name: Build
+name: Release
 on:
-  pull_request:
+  push:
+    tags:
+      - v*
   workflow_dispatch:
 
 jobs:
-  setup-vars:
-    name: Setup variables
+  build:
+    name: Build
     runs-on: ubuntu-latest
-    outputs:
-      now_tag: ${{ steps.set-variables.outputs.now_tag }}
-    steps:
-      - id: set-variables
-        name: Setup variables
-        shell: bash
-        run: |
-          echo "now_tag=RELEASE.$(TZ=UTC date +'%Y-%m-%dT%H-%M-%SZ')" >> "$GITHUB_OUTPUT"
-
-  cicl:
-    name: Cicl
-    runs-on: ubuntu-latest
-    needs: [setup-vars]
     outputs:
       version: ${{ steps.properties.outputs.version }}
       changelog: ${{ steps.properties.outputs.changelog }}
@@ -51,12 +40,19 @@ jobs:
           username: ${{ secrets.GH_USER }}
           password: ${{ secrets.GH_TOKEN }}
 
+      - name: Login to DockerHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build
         uses: docker/build-push-action@v4
         with:
-          push: false
+          push: true
           context: .
           tags: |
-            smallcloud/refact_self_hosting:${{ needs.setup-vars.outputs.now_tag }}
+            smallcloud/refact_self_hosting:${{github.ref_name}}
+            smallcloud/refact_self_hosting:latest
           platforms: |
             linux/amd64

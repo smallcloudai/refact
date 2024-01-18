@@ -34,11 +34,10 @@ On Windows you need to install WSL 2 first, [one guide to do this](https://docs.
 
 Run docker container with following command:
 ```commandline
-docker run -d --rm --gpus all -p 8008:8008 -v refact-perm-storage:/perm_storage -v refact-database:/var/lib/cassandra smallcloud/refact_self_hosting:latest
+docker run -d --rm --gpus all -p 8008:8008 -v refact-perm-storage:/perm_storage smallcloud/refact_self_hosting:latest
 ```
 
 `perm-storage` is a volume that is mounted inside the container. All the configuration files, downloaded weights and logs are stored here.
-`refact-database` is a volume for database where server stores statistics from your users.
 
 To upgrade the docker, delete it using `docker kill XXX` (the volume `perm-storage` will retain your
 data), run `docker pull smallcloud/refact_self_hosting` and run it again.

@@ -40,7 +40,7 @@ def log(*args):
         list_of_files.sort()
         while len(list_of_files) > 20:
             try:
-                os.remove(list_of_files.pop())
+                os.remove(list_of_files.pop(0))
             except OSError:
                 pass
     with open(os.path.join(env.DIR_LOGS, "watchdog_%s.log" % date), "a") as f:

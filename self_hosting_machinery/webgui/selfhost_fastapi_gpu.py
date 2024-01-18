@@ -5,7 +5,7 @@ import asyncio
 
 from fastapi import APIRouter, Query, Request, Header, HTTPException
 
-from self_hosting_machinery.webgui.selfhost_req_queue import Ticket
+from self_hosting_machinery.webgui.selfhost_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 
