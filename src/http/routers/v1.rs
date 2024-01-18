@@ -41,7 +41,7 @@ pub fn make_v1_router() -> Router {
         .route("/caps", telemetry_get!(handle_v1_caps))
         .route("/graceful-shutdown", telemetry_get!(handle_v1_graceful_shutdown))
 
-        .route("/vdb-search", telemetry_get!(handle_v1_vecdb_search))
+        .route("/vdb-search", telemetry_post!(handle_v1_vecdb_search))
         .route("/vdb-status", telemetry_get!(handle_v1_vecdb_status))
         .route("/vdb-caps", telemetry_get!(handle_v1_vecdb_caps))
 
