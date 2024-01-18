@@ -167,7 +167,7 @@ pub async fn vecdb_background_reload(
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
         let (proceed, vdb_params_mb) = proceed_vecdb_reload(global_context.clone()).await;
-        if proceed || vdb_params_mb.is_some() {
+        if proceed && vdb_params_mb.is_some() {
             background_tasks.abort().await;
             background_tasks = BackgroundTasksHolder::new(vec![]);
 
