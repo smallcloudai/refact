@@ -5,6 +5,7 @@ export type Config = {
   host: "web" | "ide" | "vscode" | "jetbrains";
   tabbed?: boolean;
   lspUrl?: string;
+  dev?: boolean;
 };
 
 const ConfigContext = createContext<Config>({ host: "web" });

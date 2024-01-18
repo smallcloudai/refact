@@ -63,7 +63,9 @@
 
 [ ] rag commands come from the caps url.
 
-[ ] ensure vscode api is called only once
+[X] ensure vscode api is called only once
+[ ] vscode specific commands and components
+[ ] export the types for re-use in refact-vscode
 
 ### EVENTS TODO FOR IDEs
 

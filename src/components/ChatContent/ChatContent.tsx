@@ -71,7 +71,7 @@ export const ChatContent: React.FC<{
 
   return (
     <ScrollArea scrollbars="vertical">
-      <Flex grow="1" p="3" pt="0" direction="column" className={styles.content}>
+      <Flex grow="1" direction="column" className={styles.content}>
         {messages.length === 0 && <PlaceHolderText />}
         {messages.map((message, index) => {
           if (isChatContextFileMessage(message)) {

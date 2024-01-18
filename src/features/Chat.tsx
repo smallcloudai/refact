@@ -2,12 +2,18 @@ import React from "react";
 import { ChatForm } from "../components/ChatForm";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
-import { Flex, Responsive } from "@radix-ui/themes";
+import { Flex, Responsive, Button } from "@radix-ui/themes";
 import { isChatContextFileMessage } from "../services/refact";
 import { useConfig } from "../contexts/config-context";
+import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import { useEffectOnce } from "usehooks-ts";
 
 export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
-  const { host } = useConfig();
+  useEffectOnce(() => {
+    sendReadyMessage();
+  });
+
+  const { host, tabbed } = useConfig();
 
   const {
     state,
@@ -18,7 +24,14 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     stopStreaming,
     handleContextFile,
     hasContextFile,
+    backFromChat,
+    openChatInNewTab,
+    sendToSideBar,
+    sendReadyMessage,
   } = useEventBusForChat();
+
+  const maybeSendToSideBar =
+    host === "vscode" && tabbed ? sendToSideBar : undefined;
 
   const LeftRightPadding: Responsive<
     "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
@@ -59,6 +72,17 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         height: "100dvh",
       }}
     >
+      {host === "vscode" && !tabbed && (
+        <Flex gap="2" pb="3">
+          <Button variant="surface" onClick={backFromChat}>
+            <ArrowLeftIcon width="16" height="16" />
+            Back
+          </Button>
+          <Button variant="surface" onClick={openChatInNewTab}>
+            Open In Tab
+          </Button>
+        </Flex>
+      )}
       <ChatContent
         messages={state.chat.messages}
         onRetry={(messages) => sendMessages(messages)}
@@ -84,6 +108,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         handleContextFile={handleContextFile}
         hasContextFile={hasContextFile}
         commands={state.rag_commands}
+        onClose={maybeSendToSideBar}
       />
     </Flex>
   );

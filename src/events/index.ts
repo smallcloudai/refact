@@ -12,6 +12,10 @@ export enum EVENT_NAMES_FROM_CHAT {
   REQUEST_CAPS = "chat_request_caps",
   STOP_STREAMING = "chat_stop_streaming",
   REQUEST_FILES = "chat_request_for_file",
+  BACK_FROM_CHAT = "chat_back_from_chat",
+  OPEN_IN_CHAT_IN_TAB = "open_chat_in_new_tab",
+  SEND_TO_SIDE_BAR = "chat_send_to_sidebar",
+  READY = "chat_ready",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
