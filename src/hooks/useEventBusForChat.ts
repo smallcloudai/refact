@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef } from "react";
 import {
+  ChatContextFile,
   ChatMessages,
   ChatResponse,
   isChatContextFileMessage,
@@ -111,12 +112,28 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (!isThisChat && isRestoreChat(action)) {
+    const messages: ChatMessages = action.payload.messages.map((message) => {
+      if (message[0] === "context_file" && typeof message[1] === "string") {
+        let file: ChatContextFile[] = [];
+        try {
+          file = JSON.parse(message[1]) as ChatContextFile[];
+        } catch {
+          file = [];
+        }
+        return [message[0], file];
+      }
+
+      return message;
+    });
     return {
       ...state,
       waiting_for_response: false,
       streaming: false,
       error: null,
-      chat: action.payload,
+      chat: {
+        ...action.payload,
+        messages,
+      },
     };
   }
 
@@ -287,6 +304,7 @@ export const useEventBusForChat = () => {
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (isActionToChat(event.data)) {
+        console.log(event.data);
         dispatch(event.data);
       }
 
@@ -404,6 +422,34 @@ export const useEventBusForChat = () => {
     }
   }
 
+  function backFromChat() {
+    postMessage({
+      type: EVENT_NAMES_FROM_CHAT.BACK_FROM_CHAT,
+      payload: { id: state.chat.id },
+    });
+  }
+
+  function openChatInNewTab() {
+    postMessage({
+      type: EVENT_NAMES_FROM_CHAT.OPEN_IN_CHAT_IN_TAB,
+      payload: { id: state.chat.id },
+    });
+  }
+
+  function sendToSideBar() {
+    postMessage({
+      type: EVENT_NAMES_FROM_CHAT.SEND_TO_SIDE_BAR,
+      payload: { id: state.chat.id },
+    });
+  }
+
+  function sendReadyMessage() {
+    postMessage({
+      type: EVENT_NAMES_FROM_CHAT.READY,
+      payload: { id: state.chat.id },
+    });
+  }
+
   return {
     state,
     askQuestion,
@@ -413,5 +459,9 @@ export const useEventBusForChat = () => {
     stopStreaming,
     handleContextFile,
     hasContextFile,
+    backFromChat,
+    openChatInNewTab,
+    sendToSideBar,
+    sendReadyMessage,
   };
 };
