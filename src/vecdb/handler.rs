@@ -200,6 +200,10 @@ impl VecDBHandler {
     }
 
     pub async fn try_add_from_cache(&mut self, data: Vec<SplitResult>) -> Vec<SplitResult> {
+        if data.is_empty() {
+            return vec![];
+        }
+
         let hashes = data.iter().map(|x| x.window_text_hash.clone()).collect();
         let (found_records, left_hashes) = self.get_records_from_cache(hashes).await;
         let left_results: Vec<SplitResult> =
