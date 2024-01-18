@@ -118,7 +118,7 @@ async fn create_vecdb(
     Ok(())
 }
 
-async fn proceed_vecdb_reload(
+async fn do_i_need_to_reload_vecdb(
     global_context: Arc<ARwLock<GlobalContext>>,
 ) -> (bool, Option<VecDbParams>) {
     let caps = match crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await {
@@ -166,21 +166,23 @@ pub async fn vecdb_background_reload(
     }
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
-        let (proceed, vdb_params_mb) = proceed_vecdb_reload(global_context.clone()).await;
-        if proceed && vdb_params_mb.is_some() {
+        let (need_reload, vdb_params_mb) = do_i_need_to_reload_vecdb(global_context.clone()).await;
+        if need_reload && vdb_params_mb.is_some() {
             background_tasks.abort().await;
             background_tasks = BackgroundTasksHolder::new(vec![]);
-
             match create_vecdb(
                 global_context.clone(),
                 &mut background_tasks,
                 vdb_params_mb.unwrap(),
-            ).await{
+            ).await {
                 Ok(_) => {}
-                Err(err) => {error!("vecdb: reload failed: {}", err);}
+                Err(err) => {
+                    error!("vecdb: init failed: {}", err);
+                    // global_context.vec_db stays None, the rest of the system continues working
+                }
             }
         }
-        tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
 }
 
