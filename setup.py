@@ -51,7 +51,9 @@ all_refact_packages = {
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
                            "known_models_db", "refact_data_pipeline"],
         data=["webgui/static/*", "webgui/static/components/modals/*",
-              "webgui/static/dashboards/*", "watchdog/watchdog.d/*"]),
+              "webgui/static/dashboards/*", "watchdog/watchdog.d/*",
+              "webgui/static/assets/*",
+              ]),
 }
 
 
