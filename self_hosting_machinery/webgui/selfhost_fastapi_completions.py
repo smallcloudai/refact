@@ -73,28 +73,6 @@ class NlpCompletion(NlpSamplingParams):
     stream: bool = False
 
 
-class POI(BaseModel):
-    filename: str
-    cursor0: int
-    cursor1: int
-    priority: float
-
-
-class DiffCompletion(NlpSamplingParams):
-    model: str = Query(default="", regex="^[a-z/A-Z0-9_\.\-]+$")
-    intent: str
-    sources: Dict[str, str]
-    cursor_file: str
-    cursor0: int
-    cursor1: int
-    function: str = Query(
-        default=Required, regex="^([a-z0-9\.\-]+)$"
-    )
-    max_edits: int = 4
-    stream: bool = False
-    poi: List[POI] = []
-
-
 class ChatMessage(BaseModel):
     role: str
     content: str
