@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 
 from self_hosting_machinery import env
-from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model, embeddings_resolve_model
+from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
 from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
 from self_hosting_machinery.webgui.selfhost_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
