@@ -44,6 +44,8 @@ pub struct CommandLine {
     pub vecdb: bool,
     #[structopt(long, short = "f", default_value = "", help = "The path to jsonl file which contains filtered source files")]
     pub files_set_path: String,
+    #[structopt(long, default_value = "", help = "Vecdb forced path")]
+    pub vecdb_forced_path: String,
 }
 
 

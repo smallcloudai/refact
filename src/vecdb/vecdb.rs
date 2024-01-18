@@ -71,8 +71,12 @@ async fn create_vecdb(
         let gcx_locked = global_context.read().await;
         (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone())
     };
+    let base_dir: PathBuf = match cmdline.vecdb_forced_path.as_str() {
+        "" => cache_dir,
+        path => PathBuf::from(path),
+    };
     let vec_db_mb = match VecDb::init(
-        &cache_dir, cmdline.clone(),
+        &base_dir, cmdline.clone(),
         vdb_params.size_embeddings, 60, 512, 1024,
         vdb_params.default_embeddings_model,
         vdb_params.endpoint_embeddings_template,
