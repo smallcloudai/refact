@@ -89,7 +89,7 @@ def create_train_dataloader(
     return DataLoader(
         dataset,
         batch_size=batch_size * world_size,
-        num_workers=num_workers,
+        num_workers=min(dataset.files_len - 1, num_workers),
         shuffle=False,
         drop_last=True,
         pin_memory=False,
