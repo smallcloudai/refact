@@ -2,6 +2,7 @@ import multiprocessing
 import os
 from typing import Any, Dict
 
+import psutil
 import torch
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
@@ -85,6 +86,10 @@ def create_train_dataloader(
     )
     if dataset.files_len == 0:
         raise RuntimeError("No train files provided")
+
+    mem = psutil.virtual_memory()
+    if mem.total // 2 ** 30 <= 16:  # saving up a bunch of memory for low specs machines (<= 16Gb ram)
+        num_workers = 1
 
     return DataLoader(
         dataset,
