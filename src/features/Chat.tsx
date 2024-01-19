@@ -109,6 +109,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         hasContextFile={hasContextFile}
         commands={state.rag_commands}
         onClose={maybeSendToSideBar}
+        attachFile={state.active_file}
       />
     </Flex>
   );

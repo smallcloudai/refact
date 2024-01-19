@@ -20,6 +20,11 @@ describe("ChatForm", () => {
         handleContextFile={vi.fn}
         hasContextFile={false}
         commands={[]}
+        attachFile={{
+          name: "",
+          can_paste: false,
+          attach: false,
+        }}
       />,
     );
 
@@ -51,6 +56,11 @@ describe("ChatForm", () => {
         handleContextFile={vi.fn}
         hasContextFile={false}
         commands={[]}
+        attachFile={{
+          name: "",
+          can_paste: false,
+          attach: false,
+        }}
       />,
     );
     const textarea = app.container.querySelector("textarea");

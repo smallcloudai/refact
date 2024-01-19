@@ -17,6 +17,7 @@ import { Select } from "../Select/Select";
 import { FileUpload } from "../FileUpload";
 import { Button } from "@radix-ui/themes";
 import { ComboBox } from "../ComboBox";
+import type { ChatState } from "../../hooks";
 
 const CapsSelect: React.FC<{
   value: string;
@@ -53,6 +54,7 @@ export const ChatForm: React.FC<{
   handleContextFile: () => void;
   hasContextFile: boolean;
   commands: string[];
+  attachFile: ChatState["active_file"];
 }> = ({
   onSubmit,
   onClose,
@@ -68,8 +70,10 @@ export const ChatForm: React.FC<{
   handleContextFile,
   hasContextFile,
   commands,
+  attachFile,
 }) => {
   const [value, setValue] = React.useState("");
+
   const isOnline = useIsOnline();
 
   const handleSubmit = () => {
@@ -93,7 +97,11 @@ export const ChatForm: React.FC<{
     <Box mt="1" position="relative">
       {!isOnline && <Callout type="info">Offline</Callout>}
       {canChangeModel && (
-        <FileUpload onClick={handleContextFile} checked={hasContextFile} />
+        <FileUpload
+          fileName={attachFile.name}
+          onClick={handleContextFile}
+          checked={hasContextFile || attachFile.attach}
+        />
       )}
       <Flex>
         {canChangeModel && (

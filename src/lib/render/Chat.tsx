@@ -6,7 +6,11 @@ import { ChatWithOutSideBar } from "./ChatWithoutSideBar.tsx";
 export const Chat: React.FC<Config> = (config) => {
   return (
     <ConfigProvider config={config}>
-      {config.host === "web" ? <ChatWithSideBar /> : <ChatWithOutSideBar />}
+      {config.host === "web" || config.dev ? (
+        <ChatWithSideBar />
+      ) : (
+        <ChatWithOutSideBar />
+      )}
     </ConfigProvider>
   );
 };

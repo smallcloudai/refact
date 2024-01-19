@@ -2,7 +2,7 @@ import React from "react";
 import { Checkbox, Flex, Text } from "@radix-ui/themes";
 
 export const FileUpload: React.FC<{
-  onClick: () => void;
+  onClick: (value: boolean) => void;
   fileName?: string;
   checked: boolean;
 }> = ({ onClick, fileName, checked }) => {
@@ -12,7 +12,7 @@ export const FileUpload: React.FC<{
         <Checkbox
           checked={checked}
           onCheckedChange={() => {
-            onClick();
+            onClick(!checked);
           }}
         />{" "}
         Attach {fileName ?? "a file"}

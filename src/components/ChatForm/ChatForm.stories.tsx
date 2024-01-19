@@ -67,6 +67,11 @@ const meta = {
     hasContextFile: false,
     handleContextFile: noop,
     commands: testCommands,
+    attachFile: {
+      name: "todo.md",
+      can_paste: true,
+      attach: false,
+    },
   },
 } satisfies Meta<typeof ChatForm>;
 

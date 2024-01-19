@@ -61,12 +61,18 @@
 [x] add combobox to chat form and maybe pass text-area as a child component
 [x] remove test commands
 
-[ ] rag commands come from the caps url.
+[x] rag commands come from the caps url.
 
 [X] ensure vscode api is called only once
 [ ] vscode specific commands and components
 [ ] export the types for re-use in refact-vscode
-[ ] vscode attach file
+[x] vscode attach file
+[x] send some info to the chat about the current file open in vscode, probably a REQUEST and RECEIVE file info events
+[ ] new file button
+[ ] paste diff button
+
+[ ] check what happens when the lsp isn't on in vscode
+[ ] in vscode attach shouldn't show if there's no files (like when opening the ide)
 
 ### EVENTS TODO FOR IDEs
 

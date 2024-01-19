@@ -27,7 +27,11 @@ import {
   isReceiveContextFile,
   isRequestForFileFromChat,
   isRemoveContext,
+  isActiveFileInfo,
+  isToggleActiveFile,
+  ToggleActiveFile,
 } from "../events";
+import { useConfig } from "../contexts/config-context";
 
 declare global {
   interface Window {
@@ -257,6 +261,28 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
+  if (isThisChat && isActiveFileInfo(action)) {
+    const { name, can_paste } = action.payload;
+    return {
+      ...state,
+      active_file: {
+        name,
+        can_paste,
+        attach: state.active_file.attach,
+      },
+    };
+  }
+
+  if (isThisChat && isToggleActiveFile(action)) {
+    return {
+      ...state,
+      active_file: {
+        ...state.active_file,
+        attach: action.payload.attach,
+      },
+    };
+  }
+
   return state;
 }
 
@@ -273,6 +299,11 @@ export type ChatState = {
   error: string | null;
   caps: ChatCapsState;
   rag_commands: string[];
+  active_file: {
+    name: string;
+    attach: boolean;
+    can_paste: boolean;
+  };
 };
 
 function createInitialState(): ChatState {
@@ -292,12 +323,19 @@ function createInitialState(): ChatState {
       available_caps: [],
     },
     rag_commands: [],
+
+    active_file: {
+      name: "",
+      attach: false,
+      can_paste: false,
+    },
   };
 }
 
 const initialState = createInitialState();
 
 export const useEventBusForChat = () => {
+  const config = useConfig();
   const [state, dispatch] = useReducer(reducer, initialState);
   const postMessage = usePostMessage();
 
@@ -341,11 +379,12 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
       payload: { id: state.chat.id, disable: true },
     });
-    const payload = {
+    const payload: ChatThread = {
       id: state.chat.id,
       messages: messages,
       title: state.chat.title,
       model: state.chat.model,
+      attach_file: state.active_file.attach,
     };
 
     dispatch({
@@ -407,7 +446,8 @@ export const useEventBusForChat = () => {
     isChatContextFileMessage(message),
   );
 
-  function handleContextFile() {
+  function handleContextFileForWeb() {
+    // TODO: in wed request or remove a file, else toggle the active_file value
     if (hasContextFile) {
       dispatch({
         type: EVENT_NAMES_TO_CHAT.REMOVE_FILES,
@@ -418,6 +458,18 @@ export const useEventBusForChat = () => {
         type: EVENT_NAMES_FROM_CHAT.REQUEST_FILES,
         payload: { id: state.chat.id },
       });
+    }
+  }
+
+  function handleContextFile(toggle?: boolean) {
+    if (config.host === "web") {
+      handleContextFileForWeb();
+    } else {
+      const action: ToggleActiveFile = {
+        type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE,
+        payload: { id: state.chat.id, attach: !!toggle },
+      };
+      dispatch(action);
     }
   }
 

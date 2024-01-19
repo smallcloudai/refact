@@ -16,6 +16,9 @@ export enum EVENT_NAMES_FROM_CHAT {
   OPEN_IN_CHAT_IN_TAB = "open_chat_in_new_tab",
   SEND_TO_SIDE_BAR = "chat_send_to_sidebar",
   READY = "chat_ready",
+  // TODO
+  NEW_FILE = "chat_create_new_file",
+  PASTE_DIFF = "chat_paste_diff",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -32,6 +35,9 @@ export enum EVENT_NAMES_TO_CHAT {
   SET_DISABLE_CHAT = "set_disable_chat",
   RECEIVE_FILES = "receive_context_file",
   REMOVE_FILES = "remove_context_file",
+  // TODO
+  ACTIVE_FILE_INFO = "chat_active_file_info",
+  TOGGLE_ACTIVE_FILE = "chat_toggle_active_file",
 }
 
 export type ChatThread = {
@@ -39,6 +45,7 @@ export type ChatThread = {
   messages: ChatMessages;
   title?: string;
   model: string;
+  attach_file?: boolean;
 };
 interface BaseAction {
   type: EVENT_NAMES_FROM_CHAT | EVENT_NAMES_TO_CHAT;
@@ -129,6 +136,27 @@ export function isActionToChat(action: unknown): action is ActionToChat {
   if (typeof action.type !== "string") return false;
   const EVENT_NAMES: Record<string, string> = { ...EVENT_NAMES_TO_CHAT };
   return Object.values(EVENT_NAMES).includes(action.type);
+}
+
+export interface ToggleActiveFile extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
+  payload: { id: string; attach: boolean };
+}
+
+export function isToggleActiveFile(
+  action: unknown,
+): action is ToggleActiveFile {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
+}
+export interface ActiveFileInfo extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
+  payload: { id: string; name: string; can_paste: boolean };
+}
+
+export function isActiveFileInfo(action: unknown): action is ActiveFileInfo {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
 }
 
 export interface ReceiveContextFile extends ActionToChat {
