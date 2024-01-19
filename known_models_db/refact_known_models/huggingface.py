@@ -229,4 +229,13 @@ huggingface_mini_db = {
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
         "filter_caps": ["chat"],
     },
+    "thenlper/gte-base": {
+        "backend": "transformers",
+        "model_path": "thenlper/gte-base",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {},
+        "T": 512,
+        "filter_caps": ["embeddings"],
+    },
 }

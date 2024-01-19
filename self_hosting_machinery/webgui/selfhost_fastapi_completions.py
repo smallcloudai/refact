@@ -73,28 +73,6 @@ class NlpCompletion(NlpSamplingParams):
     stream: bool = False
 
 
-class POI(BaseModel):
-    filename: str
-    cursor0: int
-    cursor1: int
-    priority: float
-
-
-class DiffCompletion(NlpSamplingParams):
-    model: str = Query(default="", regex="^[a-z/A-Z0-9_\.\-]+$")
-    intent: str
-    sources: Dict[str, str]
-    cursor_file: str
-    cursor0: int
-    cursor1: int
-    function: str = Query(
-        default=Required, regex="^([a-z0-9\.\-]+)$"
-    )
-    max_edits: int = 4
-    stream: bool = False
-    poi: List[POI] = []
-
-
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -105,6 +83,11 @@ class ChatContext(NlpSamplingParams):
     n: int = 1
     model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
     function: str = Query(default="chat", regex="^[a-zA-Z0-9_\.\-]+$")
+
+
+class EmbeddingsStyleOpenAI(BaseModel):
+    input: Union[str, List[str]]
+    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
 
 
 async def _completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts, caps_version: int):
@@ -187,6 +170,33 @@ async def chat_streamer(ticket: Ticket, timeout, created_ts):
         ticket.done()
 
 
+async def embeddings_streamer(ticket: Ticket, timeout, created_ts):
+    try:
+        while 1:
+            try:
+                msg: Dict = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
+                msg['choices'] = msg['choices'][0]
+                msg["files"] = [json.loads(v) for v in msg['choices']['files'].values()]
+                del msg['choices']
+            except asyncio.TimeoutError:
+                log("TIMEOUT %s" % ticket.id())
+                msg = {"status": "error", "human_readable_message": "timeout"}
+
+            tmp = json.dumps(msg.get("files", []))
+            yield tmp
+            log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
+            if msg.get("status", "") != "in_progress":
+                break
+
+        log(red_time(created_ts) + " /finished call %s" % ticket.id())
+        ticket.done()
+    finally:
+        if ticket.id() is not None:
+            log("   ***  CANCEL  ***  cancelling %s" % ticket.id() + red_time(created_ts))
+        ticket.cancelled = True
+        ticket.done()
+
+
 async def error_string_streamer(ticket_id, static_message, account, created_ts):
     yield "data: " + json.dumps(
         {"object": "smc.chat.chunk", "role": "assistant", "delta": static_message, "finish_reason": "END"}) + "\n\n"
@@ -212,6 +222,7 @@ class CompletionsRouter(APIRouter):
         # API for LSP server
         self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
         self.add_api_route("/v1/completions", self._completions, methods=["POST"])
+        self.add_api_route("/v1/embeddings", self._embeddings_style_openai, methods=["POST"])
 
         self.add_api_route("/v1/models", self._models, methods=["GET"])
         self.add_api_route("/v1/chat/completions", self._chat_completions, methods=["POST"])
@@ -236,11 +247,14 @@ class CompletionsRouter(APIRouter):
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
         code_chat_default_model = ""
+        embeddings_default_model = ""
         for model_name in models_available:
-            if "chat" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []) \
-                    or model_name in litellm.model_list:
-                code_chat_default_model = model_name
-                break
+            if "chat" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []) or model_name in litellm.model_list:
+                if not code_chat_default_model:
+                    code_chat_default_model = model_name
+            if "embeddings" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []):
+                if not embeddings_default_model:
+                    embeddings_default_model = model_name
         config_mtime = self._model_assigner.config_inference_mtime()
         data = {
             "cloud_name": "Refact Self-Hosted",
@@ -252,6 +266,12 @@ class CompletionsRouter(APIRouter):
             "running_models": models_available,
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
+
+            "default_embeddings_model": embeddings_default_model,
+            "endpoint_embeddings_template": "v1/embeddings",
+            "endpoint_embeddings_style": "openai",
+            "size_embeddings": 768,
+
             "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
             "tokenizer_rewrite_path": {
                 model: self._model_assigner.models_db[model]["model_path"]
@@ -373,6 +393,61 @@ class CompletionsRouter(APIRouter):
         self._id2ticket[ticket.id()] = ticket
         await q.put(ticket)
         return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))
+
+    async def _generate_embeddings(self, account: str, inputs: Union[str, List[str]], model_name: str):
+        if model_name not in self._inference_queue.models_available():
+            log(f"model {model_name} is not running")
+            raise HTTPException(status_code=400, detail=f"model {model_name} is not running")
+
+        tickets, reqs = [], []
+        inputs = inputs if isinstance(inputs, list) else [inputs]
+        for inp in inputs:
+            ticket = Ticket("embed-")
+            req = {
+                "inputs": inp,
+            }
+            req.update({
+                "id": ticket.id(),
+                "account": account,
+                "object": "embeddings_req",
+                "model": model_name,
+                "stream": True,
+                "created": time.time()
+            })
+            ticket.call.update(req)
+            q = self._inference_queue.model_name_to_queue(ticket, model_name, no_checks=True)
+            self._id2ticket[ticket.id()] = ticket
+            await q.put(ticket)
+            tickets.append(ticket)
+            reqs.append(req)
+
+        for idx, (ticket, req) in enumerate(zip(tickets, reqs)):
+            async for resp in embeddings_streamer(ticket, 60, req["created"]):
+                resp = json.loads(resp)
+                embedding = []
+                try:
+                    embedding = resp[0]
+                except IndexError:
+                    pass
+                yield {"embedding": embedding, "index": idx}
+
+    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request, account: str = "XXX"):
+        data = [
+            {
+                "embedding": res["embedding"],
+                "index": res["index"],
+                "object": "embedding",
+            }
+            async for res in self._generate_embeddings(account, post.input, post.model)
+        ]
+        data.sort(key=lambda x: x["index"])
+
+        return {
+            "data": data,
+            "model": post.model,
+            "object": "list",
+            "usage": {"prompt_tokens": -1, "total_tokens": -1}
+        }
 
     async def _models(self):
         try:
