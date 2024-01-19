@@ -356,7 +356,11 @@ def inform_about_gpu_status():
 
 
 def main_loop_body():
-    create_tracked_jobs_from_configs()
+    try:
+        create_tracked_jobs_from_configs()
+    except FileNotFoundError:
+        log("FileNotFoundError: might be this rare case: os.listdir() returned a file, but it was deleted before we could read it. Start over, this message should disappear next iteration.")
+        return
     for fn, job in tracked.items():
         job.maybe_can_start()
         job.maybe_needs_stop()
