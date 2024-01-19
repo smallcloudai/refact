@@ -40,7 +40,10 @@ class StaticRouter(APIRouter):
         for spath in self.static_folders:
             fn = os.path.join(spath, file_path)
             if os.path.exists(fn):
-                return FileResponse(fn)
+                if fn.endswith(".cjs"):
+                    return FileResponse(fn, media_type="text/javascript")
+                else:
+                    return FileResponse(fn)
         raise HTTPException(404, "Path \"%s\" not found" % file_path)
 
     async def _ping_handler(self):
