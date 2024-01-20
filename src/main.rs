@@ -1,10 +1,8 @@
 use std::io::Write;
 use tokio::task::JoinHandle;
 
-use tracing::{error, info, Level};
+use tracing::info;
 use tracing_appender;
-use std::sync::Arc;
-use tokio::sync::Mutex as AMutex;
 
 use crate::background_tasks::start_background_tasks;
 use crate::lsp::spawn_lsp_task;

@@ -3,20 +3,21 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::Mutex as AMutex;
+use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing::info;
 
 use crate::vecdb::file_splitter::FileSplitter;
-use crate::vecdb::handler::VecDBHandlerRef;
+use crate::vecdb::handler::VecDBHandler;
 use crate::fetch_embedding::try_get_embedding;
 use crate::vecdb::structs::{Record, SplitResult, VecDbStatus, VecDbStatusRef};
 
 #[derive(Debug)]
 pub struct FileVectorizerService {
-    update_request_queue: Arc<Mutex<VecDeque<PathBuf>>>,
-    output_queue: Arc<Mutex<VecDeque<PathBuf>>>,
-    vecdb_handler: VecDBHandlerRef,
+    update_request_queue: Arc<AMutex<VecDeque<PathBuf>>>,
+    output_queue: Arc<AMutex<VecDeque<PathBuf>>>,
+    vecdb_handler: Arc<AMutex<VecDBHandler>>,
     status: VecDbStatusRef,
     cooldown_secs: u64,
     splitter_window_size: usize,
@@ -29,8 +30,8 @@ pub struct FileVectorizerService {
 }
 
 async fn cooldown_queue_thread(
-    update_request_queue: Arc<Mutex<VecDeque<PathBuf>>>,
-    out_queue: Arc<Mutex<VecDeque<PathBuf>>>,
+    update_request_queue: Arc<AMutex<VecDeque<PathBuf>>>,
+    out_queue: Arc<AMutex<VecDeque<PathBuf>>>,
     _status: VecDbStatusRef,
     cooldown_secs: u64,
 ) {
@@ -65,8 +66,8 @@ async fn cooldown_queue_thread(
 
 
 async fn vectorize_thread(
-    queue: Arc<Mutex<VecDeque<PathBuf>>>,
-    vecdb_handler_ref: VecDBHandlerRef,
+    queue: Arc<AMutex<VecDeque<PathBuf>>>,
+    vecdb_handler_ref: Arc<AMutex<VecDBHandler>>,
     status: VecDbStatusRef,
     splitter_window_size: usize,
     splitter_soft_limit: usize,
@@ -187,7 +188,7 @@ async fn vectorize_thread(
     }
 }
 
-async fn cleanup_thread(vecdb_handler: VecDBHandlerRef) {
+async fn cleanup_thread(vecdb_handler: Arc<AMutex<VecDBHandler>>) {
     loop {
         {
             let mut vecdb = vecdb_handler.lock().await;
@@ -199,7 +200,7 @@ async fn cleanup_thread(vecdb_handler: VecDBHandlerRef) {
 
 impl FileVectorizerService {
     pub async fn new(
-        vecdb_handler: VecDBHandlerRef,
+        vecdb_handler: Arc<AMutex<VecDBHandler>>,
         cooldown_secs: u64,
         splitter_window_size: usize,
         splitter_soft_limit: usize,
@@ -209,9 +210,9 @@ impl FileVectorizerService {
         endpoint_embeddings_style: String,
         endpoint_template: String,
     ) -> Self {
-        let update_request_queue = Arc::new(Mutex::new(VecDeque::new()));
-        let output_queue = Arc::new(Mutex::new(VecDeque::new()));
-        let status = Arc::new(Mutex::new(
+        let update_request_queue = Arc::new(AMutex::new(VecDeque::new()));
+        let output_queue = Arc::new(AMutex::new(VecDeque::new()));
+        let status = Arc::new(AMutex::new(
             VecDbStatus {
                 unprocessed_files_count: 0,
                 requests_made_since_start: 0,

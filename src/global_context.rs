@@ -1,5 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
-use tracing::info;
+use tracing::{error, info};
 use std::collections::HashMap;
 use std::future::Future;
 use std::hash::Hasher;
@@ -130,6 +130,7 @@ pub async fn try_load_caps_quickly_if_not_present(
                 Ok(caps)
             },
             Err(e) => {
+                error!("load caps failed: \"{}\"", e);
                 return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("server is not reachable: {}", e)));
             }
         }

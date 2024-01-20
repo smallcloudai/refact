@@ -14,15 +14,14 @@ use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
 use crate::vecdb;
-use crate::vecdb::{file_filter};
-use crate::vecdb::handler::{VecDBHandler, VecDBHandlerRef};
+use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
 use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus};
 
 
 #[derive(Debug)]
 pub struct VecDb {
-    vecdb_handler: VecDBHandlerRef,
+    vecdb_handler: Arc<AMutex<VecDBHandler>>,
     retriever_service: Arc<AMutex<FileVectorizerService>>,
     cmdline: CommandLine,
 
@@ -37,6 +36,7 @@ pub struct VecDbCaps {
     functions: Vec<String>,
 }
 
+#[derive(Debug)]
 struct VecDbParams {
     default_embeddings_model: String,
     endpoint_embeddings_template: String,
@@ -127,7 +127,11 @@ async fn do_i_need_to_reload_vecdb(
 ) -> (bool, Option<VecDbParams>) {
     let caps = match crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await {
         Ok(caps) => caps,
-        Err(_) => { return (false, None) }
+        Err(e) => {
+            // This branch makes caps error disappear, unless we print it right here:
+            info!("vecdb: no caps, will not start or reload vecdb, the error was: {}", e);
+            return (false, None)
+        }
     };
 
     let vdb_params = {
@@ -151,7 +155,8 @@ async fn do_i_need_to_reload_vecdb(
         Some(ref db) => {
             if db.model_name == vdb_params.default_embeddings_model &&
                 db.endpoint_template == vdb_params.endpoint_embeddings_template &&
-                db.endpoint_embeddings_style == vdb_params.endpoint_embeddings_style {
+                db.endpoint_embeddings_style == vdb_params.endpoint_embeddings_style
+            {
                 return (false, None);
             }
         }
