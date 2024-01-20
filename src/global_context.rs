@@ -1,4 +1,4 @@
-use tracing::info;
+use tracing::{error, info};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -118,6 +118,7 @@ pub async fn try_load_caps_quickly_if_not_present(
                 Ok(caps)
             },
             Err(e) => {
+                error!("load caps failed: \"{}\"", e);
                 return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("server is not reachable: {}", e)));
             }
         }

@@ -17,14 +17,13 @@ use futures_util::TryStreamExt;
 use lance::dataset::{WriteMode, WriteParams};
 use log::info;
 use tempfile::{tempdir, TempDir};
-use tokio::sync::Mutex;
+use tokio::sync::Mutex as AMutex;
 use tracing::error;
 use vectordb::database::Database;
 use vectordb::table::Table;
 
 use crate::vecdb::structs::{Record, SplitResult};
 
-pub type VecDBHandlerRef = Arc<Mutex<VecDBHandler>>;
 
 impl Debug for VecDBHandler {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
