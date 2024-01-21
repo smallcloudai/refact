@@ -4,10 +4,8 @@ use tokio::sync::RwLock as ARwLock;
 
 use axum::Extension;
 use axum::response::Result;
-use futures_util::future::ok;
 use hyper::{Body, Response, StatusCode};
-use ropey::Rope;
-use tracing::{error, info};
+use tracing::info;
 
 use crate::call_validation::{CodeCompletionPost, validate_post};
 use crate::caps;

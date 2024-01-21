@@ -7,7 +7,6 @@ use serde_json::json;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 use crate::vecdb::structs::VecdbSearch;
-use tracing::info;
 
 #[derive(Serialize, Deserialize, Clone)]
 struct VecDBPost {
