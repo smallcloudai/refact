@@ -105,7 +105,9 @@ async fn vectorize_thread(
                 None => {
                     // No files left to process
                     if !reported_vecdb_complete {
+                        // you can see "VECDB COMPLETE" sometimes faster vs info! logs, because it's stderr, not sure why that happens, but a bug
                         write!(std::io::stderr(), "VECDB COMPLETE\n").unwrap();
+                        info!("VECDB COMPLETE");  // just to make sure
                         reported_vecdb_complete = true;
                     }
                     tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
