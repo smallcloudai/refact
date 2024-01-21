@@ -277,6 +277,7 @@ impl VecDb {
 #[async_trait]
 impl VecdbSearch for VecDb {
     async fn search(&self, query: String, top_n: usize) -> Result<SearchResult, String> {
+        let t0 = std::time::Instant::now();
         let embedding_mb = fetch_embedding::try_get_embedding(
             &self.endpoint_embeddings_style,
             &self.model_name,
@@ -288,10 +289,16 @@ impl VecdbSearch for VecDb {
         if embedding_mb.is_err() {
             return Err("Failed to get embedding".to_string());
         }
-        let mut binding = self.vecdb_handler.lock().await;
+        info!("search query {:?}, it took {:.3}s to vectorize the query", query, t0.elapsed().as_secs_f64());
 
-        let results = binding.search(embedding_mb.unwrap(), top_n).await.unwrap();
-        binding.update_record_statistic(results.clone()).await;
+        let mut handler_locked = self.vecdb_handler.lock().await;
+        let t1 = std::time::Instant::now();
+        let results = handler_locked.search(embedding_mb.unwrap(), top_n).await.unwrap();
+        info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
+
+        let t2 = std::time::Instant::now();
+        handler_locked.update_record_statistic(results.clone()).await;
+        info!("update_record_statistic {:.3}s", t2.elapsed().as_secs_f64());
         Ok(
             SearchResult {
                 query_text: query,

@@ -17,7 +17,6 @@ use futures_util::TryStreamExt;
 use lance::dataset::{WriteMode, WriteParams};
 use log::info;
 use tempfile::{tempdir, TempDir};
-use tokio::sync::Mutex as AMutex;
 use tracing::error;
 use vectordb::database::Database;
 use vectordb::table::Table;
@@ -425,7 +424,8 @@ impl VecDBHandler {
         }).collect()
     }
 
-    pub async fn search(&mut self, embedding: Vec<f32>, top_n: usize) -> vectordb::error::Result<Vec<Record>> {
+    pub async fn search(&mut self, embedding: Vec<f32>, top_n: usize) -> vectordb::error::Result<Vec<Record>>
+    {
         let query = self.data_table.clone()
             .search(Some(Float32Array::from(embedding.clone())))
             .limit(top_n)
@@ -438,7 +438,9 @@ impl VecDBHandler {
         VecDBHandler::parse_table_iter(record_batch, false, Some(&embedding))
     }
 
-    pub async fn update_record_statistic(&mut self, records: Vec<Record>) {
+    pub async fn update_record_statistic(&mut self, records: Vec<Record>)
+    {
+        // TODO: very slow, 0.8s for db_size=1368, maybe make one update call?
         let now = SystemTime::now();
         for record in records {
             for mut table in vec![self.data_table.clone(), self.cache_table.clone()] {
@@ -451,7 +453,9 @@ impl VecDBHandler {
             self.checkout().await;
         }
     }
-    pub async fn cleanup_old_records(&mut self) -> Result<(), String> {
+
+    pub async fn cleanup_old_records(&mut self) -> Result<(), String>
+    {
         let now = SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap();
         let q = format!("{} - time_last_used > {TWO_WEEKS} AND used_counter < {MIN_LIKES}", now.as_secs());
         self.cache_table.delete(&*q).await.expect("could not delete old records");
