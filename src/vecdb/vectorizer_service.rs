@@ -1,8 +1,9 @@
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::SystemTime;
-
+use std::ops::Div;
+use std::io::Write;
+use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
@@ -11,7 +12,7 @@ use tracing::info;
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::handler::VecDBHandler;
 use crate::fetch_embedding::try_get_embedding;
-use crate::vecdb::structs::{Record, SplitResult, VecDbStatus, VecDbStatusRef};
+use crate::vecdb::structs::{Record, SplitResult, VecDbStatus, VecDbStatusRef, VecdbConstants};
 
 #[derive(Debug)]
 pub struct FileVectorizerService {
@@ -19,14 +20,8 @@ pub struct FileVectorizerService {
     output_queue: Arc<AMutex<VecDeque<PathBuf>>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
     status: VecDbStatusRef,
-    cooldown_secs: u64,
-    splitter_window_size: usize,
-    splitter_soft_limit: usize,
-
-    model_name: String,
+    constants: VecdbConstants,
     api_key: String,
-    endpoint_embeddings_style: String,
-    endpoint_template: String,
 }
 
 async fn cooldown_queue_thread(
@@ -51,16 +46,24 @@ async fn cooldown_queue_thread(
         }
 
         let mut paths_to_process: Vec<PathBuf> = Vec::new();
+        let mut stat_too_new = 0;
+        let mut stat_proceed = 0;
         for (path, time) in &last_updated {
             if time.elapsed().unwrap().as_secs() > cooldown_secs {
                 paths_to_process.push(path.clone());
+                stat_proceed += 1;
+            } else {
+                stat_too_new += 1;
             }
+        }
+        if stat_proceed > 0 || stat_too_new > 0 {
+            info!("cooldown_queue_thread: {} files to process, {} files too new", stat_proceed, stat_too_new);
         }
         for path in paths_to_process {
             last_updated.remove(&path);
             out_queue.lock().await.push_back(path);
         }
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     }
 }
 
@@ -69,18 +72,14 @@ async fn vectorize_thread(
     queue: Arc<AMutex<VecDeque<PathBuf>>>,
     vecdb_handler_ref: Arc<AMutex<VecDBHandler>>,
     status: VecDbStatusRef,
-    splitter_window_size: usize,
-    splitter_soft_limit: usize,
-
-    model_name: String,
+    constants: VecdbConstants,
     api_key: String,
-    endpoint_embeddings_style: String,
-    endpoint_template: String,
-
     max_concurrent_tasks: usize,
 ) {
-    let file_splitter = FileSplitter::new(splitter_window_size, splitter_soft_limit);
+    let file_splitter = FileSplitter::new(constants.splitter_window_size, constants.splitter_soft_limit);
     let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
+    let mut reported_unprocessed: usize = 0;
+    let mut reported_vecdb_complete: bool = false;
 
     loop {
         let (path_maybe, unprocessed_files_count) = {
@@ -91,12 +90,22 @@ async fn vectorize_thread(
                 (None, 0)
             }
         };
+        if (unprocessed_files_count + 99).div(100) != (reported_unprocessed + 99).div(100) {
+            info!("have {} unprocessed files", unprocessed_files_count);
+            reported_unprocessed = unprocessed_files_count;
+        }
         status.lock().await.unprocessed_files_count = unprocessed_files_count;
+        reported_vecdb_complete &= unprocessed_files_count==0;
         let path = {
             match path_maybe {
                 Some(path) => path,
                 None => {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                    // No files left to process
+                    if !reported_vecdb_complete {
+                        write!(std::io::stderr(), "VECDB COMPLETE\n").unwrap();
+                        reported_vecdb_complete = true;
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
                     continue;
                 }
             }
@@ -121,10 +130,10 @@ async fn vectorize_thread(
 
         // TODO: replace with a batched call?
         let join_handles: Vec<_> = split_data_filtered.into_iter().map(|x| {
-            let model_name_clone = model_name.clone();
+            let model_name_clone = constants.model_name.clone();
             let api_key_clone = api_key.clone();
-            let endpoint_embeddings_style_clone = endpoint_embeddings_style.clone();
-            let endpoint_template_clone = endpoint_template.clone();
+            let endpoint_embeddings_style_clone = constants.endpoint_embeddings_style.clone();
+            let endpoint_template_clone = constants.endpoint_embeddings_template.clone();
 
             let semaphore_clone = Arc::clone(&semaphore);
             tokio::spawn(async move {
@@ -166,7 +175,7 @@ async fn vectorize_thread(
                                 start_line: data_res.start_line,
                                 end_line: data_res.end_line,
                                 time_added: SystemTime::now(),
-                                model_name: model_name.clone(),
+                                model_name: constants.model_name.clone(),
                                 distance: -1.0,
                                 used_counter: 0,
                                 time_last_used: now,
@@ -201,14 +210,8 @@ async fn cleanup_thread(vecdb_handler: Arc<AMutex<VecDBHandler>>) {
 impl FileVectorizerService {
     pub async fn new(
         vecdb_handler: Arc<AMutex<VecDBHandler>>,
-        cooldown_secs: u64,
-        splitter_window_size: usize,
-        splitter_soft_limit: usize,
-
-        model_name: String,
+        constants: VecdbConstants,
         api_key: String,
-        endpoint_embeddings_style: String,
-        endpoint_template: String,
     ) -> Self {
         let update_request_queue = Arc::new(AMutex::new(VecDeque::new()));
         let output_queue = Arc::new(AMutex::new(VecDeque::new()));
@@ -225,24 +228,19 @@ impl FileVectorizerService {
             output_queue: output_queue.clone(),
             vecdb_handler: vecdb_handler.clone(),
             status: status.clone(),
-            cooldown_secs,
-            splitter_window_size,
-            splitter_soft_limit,
-
-            model_name,
+            constants,
             api_key,
-            endpoint_embeddings_style,
-            endpoint_template,
         }
     }
 
-    pub async fn start_background_tasks(&self) -> Vec<JoinHandle<()>> {
+    pub async fn start_background_tasks(&self) -> Vec<JoinHandle<()>>
+    {
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
                 self.update_request_queue.clone(),
                 self.output_queue.clone(),
                 self.status.clone(),
-                self.cooldown_secs,
+                self.constants.cooldown_secs,
             )
         );
 
@@ -251,14 +249,8 @@ impl FileVectorizerService {
                 self.output_queue.clone(),
                 self.vecdb_handler.clone(),
                 self.status.clone(),
-                self.splitter_window_size,
-                self.splitter_soft_limit,
-
-                self.model_name.clone(),
+                self.constants.clone(),
                 self.api_key.clone(),
-                self.endpoint_embeddings_style.clone(),
-                self.endpoint_template.clone(),
-
                 4,
             )
         );

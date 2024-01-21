@@ -16,6 +16,17 @@ pub trait VecdbSearch: Send {
     ) -> Result<SearchResult, String>;
 }
 
+#[derive(Debug, Clone)]
+pub struct VecdbConstants {
+    // constant in a sense it cannot be changed without creating a new db
+    pub model_name: String,
+    pub embedding_size: i32,
+    pub endpoint_embeddings_template: String,
+    pub endpoint_embeddings_style: String,
+    pub cooldown_secs: u64,
+    pub splitter_window_size: usize,
+    pub splitter_soft_limit: usize,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VecDbStatus {

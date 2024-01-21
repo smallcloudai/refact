@@ -61,10 +61,9 @@ pub async fn handle_v1_vecdb_status(
             ));
         }
     };
-
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(json!(status).to_string()))
+        .body(Body::from(serde_json::to_string_pretty(&status).unwrap()))
         .unwrap())
 }
 
