@@ -113,6 +113,9 @@ async fn create_vecdb(
                 db.init_folders(folders).await;
             }
         }
+        // FIXME:
+        // Race between file_watcher_task that puts files into the queue and
+        // vectorizer_service that can report empty queue as "vectorization finished"
         let mut tasks = vec_db.start_background_tasks().await;
         tasks.extend(vec![tokio::spawn(vecdb::file_watcher_service::file_watcher_task(global_context.clone()))]);
         background_tasks.extend(tasks);
@@ -270,7 +273,7 @@ impl VecdbSearch for VecDb {
         info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
         for rec in results.iter() {
             let last_30_chars: String = rec.file_path.display().to_string().chars().rev().take(30).collect::<String>().chars().rev().collect();
-            info!("found ...{}:{}-{}, distance: {:.3}", last_30_chars, rec.start_line, rec.end_line, rec.distance);
+            info!("distance {:.3}, found ...{}:{}-{}, ", rec.distance, last_30_chars, rec.start_line, rec.end_line);
         }
         let t2 = std::time::Instant::now();
         handler_locked.update_record_statistic(results.clone()).await;
