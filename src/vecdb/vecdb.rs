@@ -268,7 +268,10 @@ impl VecdbSearch for VecDb {
         let t1 = std::time::Instant::now();
         let results = handler_locked.search(embedding_mb.unwrap(), top_n).await.unwrap();
         info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
-
+        for rec in results.iter() {
+            let last_30_chars: String = rec.file_path.display().to_string().chars().rev().take(30).collect::<String>().chars().rev().collect();
+            info!("found ...{}:{}-{}, distance: {:.3}", last_30_chars, rec.start_line, rec.end_line, rec.distance);
+        }
         let t2 = std::time::Instant::now();
         handler_locked.update_record_statistic(results.clone()).await;
         info!("update_record_statistic {:.3}s", t2.elapsed().as_secs_f64());
