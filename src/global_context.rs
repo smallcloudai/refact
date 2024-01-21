@@ -37,7 +37,7 @@ pub struct CommandLine {
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
-    #[structopt(long, short="p", default_value="8001", help="Bind 127.0.0.1:<port> to listen for HTTP requests, such as /v1/code-completion, /v1/chat, /v1/caps.")]
+    #[structopt(long, short="p", default_value="0", help="Bind 127.0.0.1:<port> to listen for HTTP requests, such as /v1/code-completion, /v1/chat, /v1/caps.")]
     pub http_port: u16,
     #[structopt(long, default_value="", help="End-user client version, such as version of VS Code plugin.")]
     pub enduser_client_version: String,
