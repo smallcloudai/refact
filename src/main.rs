@@ -1,6 +1,5 @@
 use std::io::Write;
 use tokio::task::JoinHandle;
-
 use tracing::info;
 use tracing_appender;
 
@@ -37,11 +36,12 @@ async fn main() {
         tracing_appender::non_blocking(std::io::stderr())
     } else {
         write!(std::io::stderr(), "This rust binary keeps logs as files, rotated daily. Try\ntail -f {}/logs/\nor use --logs-stderr for debugging.\n\n", cache_dir.display()).unwrap();
-        tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::new(
-            tracing_appender::rolling::Rotation::DAILY,
-            cache_dir.join("logs"),
-            "rustbinary",
-        ))
+        tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::builder()
+            .rotation(tracing_appender::rolling::Rotation::DAILY)
+            .filename_prefix("rustbinary")
+            .max_log_files(30)
+            .build(cache_dir.join("logs")).unwrap()
+        )
     };
     let _tracing = tracing_subscriber::fmt()
         // .with_max_level(Level::DEBUG)
