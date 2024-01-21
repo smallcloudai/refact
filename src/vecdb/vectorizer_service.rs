@@ -30,12 +30,14 @@ async fn cooldown_queue_thread(
     _status: VecDbStatusRef,
     cooldown_secs: u64,
 ) {
+    // This function delays vectorization of a file, until mtime is at least cooldown_secs old.
     let mut last_updated: HashMap<PathBuf, SystemTime> = HashMap::new();
     loop {
         let (path_maybe, _unprocessed_files_count) = {
             let mut queue_locked = update_request_queue.lock().await;
+            let queue_len = queue_locked.len();
             if !queue_locked.is_empty() {
-                (Some(queue_locked.pop_front().unwrap()), queue_locked.len())
+                (Some(queue_locked.pop_front().unwrap()), queue_len)
             } else {
                 (None, 0)
             }
@@ -84,8 +86,9 @@ async fn vectorize_thread(
     loop {
         let (path_maybe, unprocessed_files_count) = {
             let mut queue_locked = queue.lock().await;
-            if !queue_locked.is_empty() {
-                (Some(queue_locked.pop_front().unwrap()), queue_locked.len())
+            let queue_len = queue_locked.len();
+            if queue_len > 0 {
+                (Some(queue_locked.pop_front().unwrap()), queue_len)
             } else {
                 (None, 0)
             }
@@ -265,6 +268,7 @@ impl FileVectorizerService {
     }
 
     pub async fn process_file(&self, path: PathBuf, force: bool) {
+        info!("adding single file");
         if !force {
             self.update_request_queue.lock().await.push_back(path);
         } else {
@@ -273,6 +277,7 @@ impl FileVectorizerService {
     }
 
     pub async fn process_files(&self, paths: Vec<PathBuf>, force: bool) {
+        info!("adding {} files", paths.len());
         if !force {
             self.update_request_queue.lock().await.extend(paths);
         } else {

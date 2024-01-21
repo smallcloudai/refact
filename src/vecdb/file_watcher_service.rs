@@ -5,7 +5,7 @@ use futures::{
     channel::mpsc::{channel, Receiver},
     SinkExt, StreamExt,
 };
-use log::info;
+use log::{info, error};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde_json::Value;
 use tokio::fs::File;
@@ -64,7 +64,7 @@ pub async fn file_watcher_task(
     }
     let path = PathBuf::from(maybe_path);
     let load_data = || async {
-        let filenames_data = match parse_jsonl(&path).await {
+        let filenames_vec = match parse_jsonl(&path).await {
             Ok(data) => data,
             Err(_) => {
                 info!("invalid jsonl file: {:?}", path);
@@ -72,13 +72,13 @@ pub async fn file_watcher_task(
             }
         };
         match *global_context.read().await.vec_db.lock().await {
-            Some(ref mut db) => db.add_or_update_files(filenames_data, true).await,
+            Some(ref mut db) => db.add_or_update_files(filenames_vec, true).await,
             None => {}
         };
     };
 
     if watcher.watch(path.as_ref(), RecursiveMode::Recursive).is_err() {
-        info!("file watcher: {:?} is already watching", path);
+        error!("file watcher {:?} failed to start watching", path);
         return;
     }
     load_data().await;
