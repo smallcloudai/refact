@@ -72,6 +72,7 @@ async fn main() {
     }
     if should_start_lsp {
         if main_handle.is_none() {
+            // FIXME: this ignores crate::global_context::block_until_signal , important because now we have a database to corrupt
             main_handle = spawn_lsp_task(gcx.clone(), cmdline.clone()).await;
         } else {
             background_tasks.push_back(spawn_lsp_task(gcx.clone(), cmdline.clone()).await.unwrap())
