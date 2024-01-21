@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use axum::{Extension, http::{StatusCode, Uri}, response::IntoResponse};
 use hyper::Server;
-use tokio::signal;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::{error, info};
@@ -18,35 +17,6 @@ async fn handler_404(path: Uri) -> impl IntoResponse {
     (StatusCode::NOT_FOUND, format!("no handler for {}", path))
 }
 
-
-pub async fn shutdown_signal(ask_shutdown_receiver: std::sync::mpsc::Receiver<String>) {
-    let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-        let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-        let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {
-            info!("SIGINT signal received");
-        },
-        _ = terminate => {},
-        _ = tokio::task::spawn_blocking(move || ask_shutdown_receiver.recv()) => {
-            info!("graceful shutdown to store telemetry");
-        }
-    }
-}
 
 pub async fn start_server(
     global_context: Arc<ARwLock<GlobalContext>>,
@@ -69,7 +39,7 @@ pub async fn start_server(
                 let router = make_refact_http_server().layer(Extension(global_context.clone()));
                 let server = builder
                     .serve(router.into_make_service())
-                    .with_graceful_shutdown(shutdown_signal(ask_shutdown_receiver));
+                    .with_graceful_shutdown(crate::global_context::block_until_signal(ask_shutdown_receiver));
                 let resp = server.await.map_err(|e| format!("HTTP server error: {}", e));
                 if let Err(e) = resp {
                     error!("server error: {}", e);

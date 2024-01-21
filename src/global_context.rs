@@ -5,15 +5,18 @@ use std::sync::{Arc, Mutex};
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
+use std::io::Write;
+use tokio::signal;
+
 use tokenizers::Tokenizer;
 use structopt::StructOpt;
-use std::io::Write;
+use hyper::StatusCode;
+use tower_lsp::lsp_types::WorkspaceFolder;
+
+use crate::custom_error::ScratchError;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::telemetry::telemetry_structs;
-use crate::custom_error::ScratchError;
-use hyper::StatusCode;
-use tower_lsp::lsp_types::WorkspaceFolder;
 use crate::receive_workspace_changes::Document;
 use crate::vecdb::vecdb::VecDb;
 
@@ -145,6 +148,49 @@ pub async fn look_for_piggyback_fields(
     }
 }
 
+pub async fn block_until_signal(ask_shutdown_receiver: std::sync::mpsc::Receiver<String>) {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let sigterm = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+    #[cfg(not(unix))]
+    let sigterm = std::future::pending::<()>();
+
+    #[cfg(unix)]
+    let sigusr1 = async {
+        signal::unix::signal(signal::unix::SignalKind::user_defined1())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+    #[cfg(not(unix))]
+    let sigusr1 = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            info!("SIGINT signal received");
+        },
+        _ = sigterm => {
+            info!("SIGTERM signal received");
+        },
+        _ = sigusr1 => {
+            info!("SIGUSR1 signal received");
+        },
+        _ = tokio::task::spawn_blocking(move || ask_shutdown_receiver.recv()) => {
+            info!("graceful shutdown to store telemetry");
+        }
+    }
+}
+
 pub async fn create_global_context(
     cache_dir: PathBuf,
 ) -> (Arc<ARwLock<GlobalContext>>, std::sync::mpsc::Receiver<String>, CommandLine) {
@@ -155,7 +201,6 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
-
 
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
