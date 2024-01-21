@@ -1,15 +1,15 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::RwLock as StdRwLock;
+use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
+use tracing::{info, error};
 
 use async_trait::async_trait;
 use serde::Serialize;
-use tracing::info;
-use tokio::sync::Mutex as AMutex;
 use tokio::task::JoinHandle;
 use crate::global_context::{CommandLine, GlobalContext};
-use tokio::sync::RwLock as ARwLock;
 use tower_lsp::lsp_types::WorkspaceFolder;
-use tracing::error;
 use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
@@ -17,18 +17,29 @@ use crate::vecdb;
 use crate::vecdb::file_filter;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
-use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus};
+use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants};
 
+fn vecdb_constants(
+    caps: Arc<StdRwLock<crate::caps::CodeAssistantCaps>>,
+) -> VecdbConstants {
+    let caps_locked = caps.read().unwrap();
+    VecdbConstants {
+        model_name: caps_locked.default_embeddings_model.clone(),
+        embedding_size: caps_locked.size_embeddings.clone(),
+        endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
+        endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
+        cooldown_secs: 20,
+        splitter_window_size: 512,
+        splitter_soft_limit: 1024,
+    }
+}
 
 #[derive(Debug)]
 pub struct VecDb {
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
     retriever_service: Arc<AMutex<FileVectorizerService>>,
     cmdline: CommandLine,
-
-    model_name: String,
-    endpoint_template: String,
-    endpoint_embeddings_style: String,
+    constants: VecdbConstants,
 }
 
 
@@ -37,18 +48,10 @@ pub struct VecDbCaps {
     functions: Vec<String>,
 }
 
-#[derive(Debug)]
-struct VecDbParams {
-    default_embeddings_model: String,
-    endpoint_embeddings_template: String,
-    endpoint_embeddings_style: String,
-    size_embeddings: i32,
-}
-
 async fn vecdb_test_request(
     vecdb: &VecDb
 ) -> Result<(), String> {
-    let search_result = vecdb.search("".to_string(), 3).await;
+    let search_result = vecdb.search("test query".to_string(), 3).await;
     match search_result {
         Ok(_) => {
             Ok(())
@@ -64,7 +67,7 @@ async fn vecdb_test_request(
 async fn create_vecdb(
     global_context: Arc<ARwLock<GlobalContext>>,
     background_tasks: &mut BackgroundTasksHolder,
-    vdb_params: VecDbParams,
+    constants: VecdbConstants,
 ) -> Result<(), String> {
     info!("vecdb: attempting to launch");
 
@@ -77,11 +80,9 @@ async fn create_vecdb(
         path => PathBuf::from(path),
     };
     let vec_db_mb = match VecDb::init(
-        &base_dir, cmdline.clone(),
-        vdb_params.size_embeddings, 60, 512, 1024,
-        vdb_params.default_embeddings_model,
-        vdb_params.endpoint_embeddings_template,
-        vdb_params.endpoint_embeddings_style,
+        &base_dir,
+        cmdline.clone(),
+        constants,
     ).await {
         Ok(res) => Some(res),
         Err(err) => {
@@ -119,13 +120,12 @@ async fn create_vecdb(
         gcx_locked.vec_db = Arc::new(AMutex::new(Some(vec_db)));
 
     }
-    info!("vecdb: launch complete");
     Ok(())
 }
 
 async fn do_i_need_to_reload_vecdb(
     global_context: Arc<ARwLock<GlobalContext>>,
-) -> (bool, Option<VecDbParams>) {
+) -> (bool, Option<VecdbConstants>) {
     let caps = match crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await {
         Ok(caps) => caps,
         Err(e) => {
@@ -134,36 +134,26 @@ async fn do_i_need_to_reload_vecdb(
             return (false, None)
         }
     };
+    let consts = vecdb_constants(caps);
 
-    let vdb_params = {
-        let caps_locked = caps.read().unwrap();
-        VecDbParams {
-            default_embeddings_model: caps_locked.default_embeddings_model.clone(),
-            endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
-            endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
-            size_embeddings: caps_locked.size_embeddings.clone(),
-        }
-    };
-
-    if vdb_params.default_embeddings_model.is_empty() || vdb_params.endpoint_embeddings_template.is_empty() {
+    if consts.model_name.is_empty() || consts.endpoint_embeddings_template.is_empty() {
         error!("vecdb launch failed: default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty()");
         return (false, None);
     }
 
-
     match *global_context.write().await.vec_db.lock().await {
         None => {}
         Some(ref db) => {
-            if db.model_name == vdb_params.default_embeddings_model &&
-                db.endpoint_template == vdb_params.endpoint_embeddings_template &&
-                db.endpoint_embeddings_style == vdb_params.endpoint_embeddings_style
+            if db.constants.model_name == consts.model_name &&
+                db.constants.endpoint_embeddings_template == consts.endpoint_embeddings_template &&
+                db.constants.endpoint_embeddings_style == consts.endpoint_embeddings_style
             {
                 return (false, None);
             }
         }
     }
 
-    return (true, Some(vdb_params));
+    return (true, Some(consts));
 }
 
 
@@ -176,14 +166,14 @@ pub async fn vecdb_background_reload(
     }
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
-        let (need_reload, vdb_params_mb) = do_i_need_to_reload_vecdb(global_context.clone()).await;
-        if need_reload && vdb_params_mb.is_some() {
+        let (need_reload, consts) = do_i_need_to_reload_vecdb(global_context.clone()).await;
+        if need_reload && consts.is_some() {
             background_tasks.abort().await;
             background_tasks = BackgroundTasksHolder::new(vec![]);
             match create_vecdb(
                 global_context.clone(),
                 &mut background_tasks,
-                vdb_params_mb.unwrap(),
+                consts.unwrap(),
             ).await {
                 Ok(_) => {}
                 Err(err) => {
@@ -200,40 +190,23 @@ impl VecDb {
     pub async fn init(
         cache_dir: &PathBuf,
         cmdline: CommandLine,
-        embedding_size: i32,
-        cooldown_secs: u64,
-        splitter_window_size: usize,
-        splitter_soft_limit: usize,
-
-        model_name: String,
-        endpoint_template: String,
-        endpoint_embeddings_style: String,
+        constants: VecdbConstants,
     ) -> Result<VecDb, String> {
-        let handler = match VecDBHandler::init(cache_dir, &model_name, embedding_size).await {
+        let handler = match VecDBHandler::init(cache_dir, &constants.model_name, constants.embedding_size).await {
             Ok(res) => res,
             Err(err) => { return Err(err) }
         };
         let vecdb_handler = Arc::new(AMutex::new(handler));
         let retriever_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),
-            cooldown_secs,
-            splitter_window_size,
-            splitter_soft_limit,
-
-            model_name.clone(),
+            constants.clone(),
             cmdline.api_key.clone(),
-            endpoint_embeddings_style.clone(),
-            endpoint_template.clone(),
         ).await));
-
         Ok(VecDb {
             vecdb_handler,
             retriever_service,
             cmdline: cmdline.clone(),
-
-            model_name,
-            endpoint_template,
-            endpoint_embeddings_style,
+            constants: constants.clone(),
         })
     }
 
@@ -279,9 +252,9 @@ impl VecdbSearch for VecDb {
     async fn search(&self, query: String, top_n: usize) -> Result<SearchResult, String> {
         let t0 = std::time::Instant::now();
         let embedding_mb = fetch_embedding::try_get_embedding(
-            &self.endpoint_embeddings_style,
-            &self.model_name,
-            &self.endpoint_template,
+            &self.constants.endpoint_embeddings_style,
+            &self.constants.model_name,
+            &self.constants.endpoint_embeddings_template,
             query.clone(),
             &self.cmdline.api_key,
             3
