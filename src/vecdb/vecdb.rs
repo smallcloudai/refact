@@ -14,6 +14,7 @@ use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
 use crate::vecdb;
+use crate::vecdb::file_filter;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
 use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus};
