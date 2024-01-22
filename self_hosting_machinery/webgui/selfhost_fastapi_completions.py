@@ -233,15 +233,19 @@ class CompletionsRouter(APIRouter):
         self._timeout = timeout
 
     @staticmethod
-    def _interations_env_setup():
+    def _integrations_env_setup():
         inference = {}
         if os.path.exists(env.CONFIG_INFERENCE):
             inference = json.load(open(env.CONFIG_INFERENCE, 'r'))
         integrations = {}
         if os.path.exists(env.CONFIG_INTEGRATIONS):
             integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
-        openai_api_key = integrations.get("openai_api_key", "") if inference.get("openai_api_enable", False) else ""
-        os.environ["OPENAI_API_KEY"] = openai_api_key
+
+        def _integrations_env_setup(env_var_name: str, api_key_name: str, api_enable_name: str):
+            os.environ[env_var_name] = integrations.get(api_key_name, "") if inference.get(api_enable_name, False) else ""
+
+        _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
+        _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
 
     async def _coding_assistant_caps(self):
         models_available = self._inference_queue.models_available(force_read=True)
@@ -483,9 +487,9 @@ class CompletionsRouter(APIRouter):
         if post.model in litellm.model_list:
             async def litellm_streamer(post: ChatContext):
                 try:
-                    self._interations_env_setup()
+                    self._integrations_env_setup()
                     response = await litellm.acompletion(
-                        model=post.model, messages=post.messages, stream=True,
+                        model=post.model, messages=[m.dict() for m in post.messages], stream=True,
                         temperature=post.temperature, top_p=post.top_p, max_tokens=post.max_tokens, stop=post.stop)
                     finish_reason = None
                     async for model_response in response:
@@ -495,7 +499,7 @@ class CompletionsRouter(APIRouter):
                         except json.JSONDecodeError:
                             data = {"choices": [{"finish_reason": finish_reason}]}
                         yield prefix + json.dumps(data) + postfix
-                    # NOTE: DONE neededed by refact-lsp server
+                    # NOTE: DONE needed by refact-lsp server
                     yield prefix + "[DONE]" + postfix
                 except BaseException as e:
                     err_msg = f"litellm error: {e}"

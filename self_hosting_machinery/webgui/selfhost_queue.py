@@ -55,4 +55,7 @@ class InferenceQueue:
             if j.get("openai_api_enable", False):
                 self._models_available.append('gpt-3.5-turbo')
                 self._models_available.append('gpt-4')
+            if j.get("anthropic_api_enable", False):
+                self._models_available.append('claude-instant-1.2')
+                self._models_available.append('claude-2.1')
         return self._models_available
