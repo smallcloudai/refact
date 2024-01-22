@@ -20,7 +20,10 @@ class TabHostModelRec(BaseModel):
 class TabHostModelsAssign(BaseModel):
     model_assign: Dict[str, TabHostModelRec] = {}
     completion: str
+
+    # integrations
     openai_api_enable: bool = False
+    anthropic_api_enable: bool = False
 
 
 class TabHostRouter(APIRouter):

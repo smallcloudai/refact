@@ -1,6 +1,5 @@
 import json
 import os
-import shutil
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -8,7 +7,8 @@ from pydantic import BaseModel
 from pathlib import Path
 from self_hosting_machinery import env
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
-from self_hosting_machinery.webgui.selfhost_webutils import log
+
+from typing import Optional
 
 
 __all__ = ["TabSettingsRouter"]
@@ -19,7 +19,8 @@ class TabSettingsRouter(APIRouter):
         name: str
 
     class Integrations(BaseModel):
-        openai_api_key: str
+        openai_api_key: Optional[str] = None
+        anthropic_api_key: Optional[str] = None
 
     def __init__(self, models_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -41,7 +42,11 @@ class TabSettingsRouter(APIRouter):
 
     async def _tab_settings_integrations_save(self, data: Integrations):
         with open(env.CONFIG_INTEGRATIONS + ".tmp", "w") as f:
-            json.dump(data.dict(), f, indent=4)
+            json.dump({
+                k: v
+                for k, v in data.dict().items()
+                if v is not None
+            }, f, indent=4)
         os.rename(env.CONFIG_INTEGRATIONS + ".tmp", env.CONFIG_INTEGRATIONS)
         self._models_assigner.models_to_watchdog_configs()
         return JSONResponse("OK")

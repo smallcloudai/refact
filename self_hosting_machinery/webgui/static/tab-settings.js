@@ -162,8 +162,9 @@ function throw_int_saved_success_toast(msg) {
     }
 }
 
-function save_openai_api_key() {
+function save_integration_api_keys() {
     const openai_api_key = document.getElementById('openai_api_key');
+    const anthropic_api_key = document.getElementById('anthropic_api_key');
     fetch("/tab-settings-integrations-save", {
         method: "POST",
         headers: {
@@ -171,13 +172,35 @@ function save_openai_api_key() {
         },
         body: JSON.stringify({
             openai_api_key: openai_api_key.getAttribute('data-value'),
+            anthropic_api_key: anthropic_api_key.getAttribute('data-value'),
         })
     })
     .then(function(response) {
         console.log(response);
-        throw_int_saved_success_toast('OpenAI API Key saved')
+        throw_int_saved_success_toast('API Key saved')
         openai_api_key.setAttribute('data-saved-value', openai_api_key.getAttribute('data-value'))
+        anthropic_api_key.setAttribute('data-saved-value', anthropic_api_key.getAttribute('data-value'))
     });
+}
+
+
+function integrations_input_init(element, data) {
+    if (data) {
+        element.value = data
+    }
+    mask_integrations_input(element);
+    element.setAttribute('data-saved-value', element.getAttribute('data-value'))
+    element.addEventListener(
+        'focus', () => unmask_integrations_input(element)
+    )
+    element.addEventListener(
+        'blur', () => {
+            mask_integrations_input(element)
+            if (element.getAttribute('data-value') !== element.getAttribute('data-saved-value')) {
+                save_integration_api_keys();
+            }
+        }
+    )
 }
 
 
@@ -187,23 +210,8 @@ export function tab_settings_integrations_get() {
             return response.json();
         })
         .then(function(data) {
-            const openai_api_key = document.getElementById('openai_api_key');
-            if (data['openai_api_key']) {
-                openai_api_key.value = data['openai_api_key']
-            }
-            mask_integrations_input(openai_api_key);
-            openai_api_key.setAttribute('data-saved-value', openai_api_key.getAttribute('data-value'))
-            openai_api_key.addEventListener(
-                'focus', () => unmask_integrations_input(openai_api_key)
-            )
-            openai_api_key.addEventListener(
-                'blur', () => {
-                    mask_integrations_input(openai_api_key)
-                    if (openai_api_key.getAttribute('data-value') !== openai_api_key.getAttribute('data-saved-value')) {
-                        save_openai_api_key();
-                    }
-                }
-            )
+            integrations_input_init(document.getElementById('openai_api_key'), data['openai_api_key']);
+            integrations_input_init(document.getElementById('anthropic_api_key'), data['anthropic_api_key']);
         });
 }
 

@@ -81,6 +81,13 @@ function render_gpus(gpus) {
     });
 }
 
+function integration_switch_init(integration_checkbox_id, checked) {
+    const enable_switch = document.getElementById(integration_checkbox_id);
+    enable_switch.removeEventListener('change', save_model_assigned);
+    enable_switch.checked = checked;
+    enable_switch.addEventListener('change', save_model_assigned);
+}
+
 function get_models()
 {
     fetch("/tab-host-models-get")
@@ -90,10 +97,10 @@ function get_models()
     .then(function(data) {
         models_data = data;
         render_models_assigned(data.model_assign);
-        const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
-        enable_chat_gpt_switch.removeEventListener('change', save_model_assigned);
-        enable_chat_gpt_switch.checked = models_data['openai_api_enable'];
-        enable_chat_gpt_switch.addEventListener('change', save_model_assigned);
+
+        integration_switch_init('enable_chat_gpt', models_data['openai_api_enable']);
+        integration_switch_init('enable_anthropic', models_data['anthropic_api_enable']);
+
         const more_gpus_notification = document.querySelector('.model-hosting-error');
         if(data.hasOwnProperty('more_models_than_gpus') && data.more_models_than_gpus) {
             more_gpus_notification.classList.remove('d-none');
@@ -114,13 +121,15 @@ function get_models()
 }
 
 function save_model_assigned() {
-    let openai_enable = document.querySelector('#enable_chat_gpt');
+    const openai_enable = document.querySelector('#enable_chat_gpt');
+    const anthropic_enable = document.querySelector('#enable_anthropic');
     const data = {
         model_assign: {
             ...models_data.model_assign,
         },
         completion: models_data.completion ? models_data.completion : "",
-        openai_api_enable: openai_enable.checked
+        openai_api_enable: openai_enable.checked,
+        anthropic_api_enable: anthropic_enable.checked,
     };
     fetch("/tab-host-models-assign", {
         method: "POST",
