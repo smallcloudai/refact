@@ -41,7 +41,7 @@ fn compress_telemetry_network(
 }
 
 pub async fn compress_basic_telemetry_to_file(
-    cx: Arc<ARwLock<global_context::GlobalContext<'_>>>,
+    cx: Arc<ARwLock<global_context::GlobalContext>>,
 ) {
     let now = chrono::Local::now();
     let cache_dir: PathBuf;

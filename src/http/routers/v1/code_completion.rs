@@ -37,7 +37,7 @@ async fn _lookup_code_completion_scratchpad(
 }
 
 pub async fn handle_v1_code_completion(
-    global_context: Arc<ARwLock<GlobalContext<'_>>>,
+    global_context: Arc<ARwLock<GlobalContext>>,
     code_completion_post: &mut CodeCompletionPost,
 ) -> Result<Response<Body>, ScratchError> {
     validate_post(code_completion_post.clone())?;
@@ -110,7 +110,7 @@ pub async fn handle_v1_code_completion(
 }
 
 pub async fn handle_v1_code_completion_web(
-    Extension(global_context): Extension<Arc<ARwLock<GlobalContext<'_>>>>,
+    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let mut code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|

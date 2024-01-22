@@ -117,7 +117,7 @@ fn compress_robot_human(
 }
 
 pub async fn tele_robot_human_compress_to_file(
-    cx: Arc<ARwLock<global_context::GlobalContext<'_>>>,
+    cx: Arc<ARwLock<global_context::GlobalContext>>,
 ) {
     let now = chrono::Local::now();
     let cache_dir: PathBuf;

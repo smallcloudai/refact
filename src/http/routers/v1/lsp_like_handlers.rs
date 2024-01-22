@@ -24,7 +24,7 @@ struct PostDocument {
 
 
 pub async fn handle_v1_lsp_initialize(
-    Extension(global_context): Extension<SharedGlobalContext<'_>>,
+    Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<PostInit>(&body_bytes).map_err(|e| {
@@ -46,7 +46,7 @@ pub async fn handle_v1_lsp_initialize(
 }
 
 pub async fn handle_v1_lsp_did_change(
-    Extension(global_context): Extension<SharedGlobalContext<'_>>,
+    Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<PostDocument>(&body_bytes).map_err(|e| {

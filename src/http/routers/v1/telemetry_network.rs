@@ -8,7 +8,7 @@ use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 
 pub async fn handle_v1_telemetry_network(
-    Extension(global_context): Extension<SharedGlobalContext<'_>>,
+    Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<telemetry_structs::TelemetryNetwork>(&body_bytes).map_err(|e| {

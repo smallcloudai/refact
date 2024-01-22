@@ -19,7 +19,7 @@ async fn handler_404(path: Uri) -> impl IntoResponse {
 
 
 pub async fn start_server(
-    global_context: Arc<ARwLock<GlobalContext<'_>>>,
+    global_context: Arc<ARwLock<GlobalContext>>,
     ask_shutdown_receiver: std::sync::mpsc::Receiver<String>,
 ) -> Option<JoinHandle<()>> {
     let port = global_context.read().await.cmdline.http_port;

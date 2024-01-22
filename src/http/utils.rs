@@ -12,7 +12,7 @@ pub async fn telemetry_wrapper(func: impl Fn(Extension<SharedGlobalContext>, hyp
                                         -> Pin<Box<dyn Future<Output=Result<Response<Body>, ScratchError>> + Send>> ,
                                path: Uri,
                                method: Method,
-                               ex: Extension<SharedGlobalContext<'_>>,
+                               ex: Extension<SharedGlobalContext>,
                                body_bytes: hyper::body::Bytes) -> Result<Response<Body>, ScratchError> {
     info!("{} starts", path);
     let t0 = std::time::Instant::now();

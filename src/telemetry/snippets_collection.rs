@@ -81,7 +81,7 @@ pub struct SnippetAccepted {
 }
 
 pub async fn snippet_accepted(
-    gcx: Arc<ARwLock<global_context::GlobalContext<'_>>>,
+    gcx: Arc<ARwLock<global_context::GlobalContext>>,
     snippet_telemetry_id: u64,
 ) -> bool {
     let tele_storage_arc = gcx.read().await.telemetry.clone();
@@ -97,7 +97,7 @@ pub async fn snippet_accepted(
 
 
 pub async fn sources_changed(
-    gcx: Arc<ARwLock<global_context::GlobalContext<'_>>>,
+    gcx: Arc<ARwLock<global_context::GlobalContext>>,
     uri: &String,
     text: &String,
 ) {

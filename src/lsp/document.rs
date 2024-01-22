@@ -1,14 +1,8 @@
-use std::any::Any;
-use std::arch::aarch64::int32x2_t;
 use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
-use std::sync::Arc;
-use defaultdict::DefaultHashMap;
-use futures_util::SinkExt;
 
 use ropey::Rope;
-use tower::util::Optional;
 use tower_lsp::jsonrpc::{Error, Result};
 use tracing::error;
 use tree_sitter::{Node, Parser, Tree};
@@ -307,21 +301,25 @@ pub struct Document<'a> {
 }
 
 fn search_down<'a>(node: &'a Node<'a>, node_types_: &'a Vec<String>) -> Option<Node<'a>> {
-    let node_types = HashSet::from_iter(node_types_);
-    let mut result: Vec<(Option<Node>, i32)>;
-    
-    fn _helper(node: &Node, current_depth: i32, node_types: &HashSet<String>, result: &mut Vec<(Option<Node>, i32)>) {
+    let node_types = HashSet::from_iter(node_types_.clone());
+    let mut result: Vec<(Option<Node>, i32)> = vec![];
+
+    fn _helper<'a>(node: &'a Node<'a>, current_depth: i32, node_types: &'a HashSet<String>, result: &mut Vec<(Option<Node<'a>>, i32)>) -> Option<Node<'a>> {
         for idx in 0..node.child_count() {
             let child = node.child(idx);
-            let type_name = child.kind().to_string();
-            if node_types.contains(type_name) {
+            let ch = child.unwrap();
+            let type_name = ch.kind().to_string();
+            if node_types.contains(&type_name) {
                 result.push((child, current_depth));
-                child
+                return child;
             } else {
-                _helper(&child.unwrap(), current_depth + 1, node_types, result);
+                let res = _helper(&child.unwrap(), current_depth + 1, node_types, result); 
+                return res;
             }
         }
-    };
+        None
+    }
+    ;
     _helper(node, 1, &node_types, &mut result);
     return if result.len() == 0 {
         None
@@ -333,7 +331,7 @@ fn search_down<'a>(node: &'a Node<'a>, node_types_: &'a Vec<String>) -> Option<N
             }
         }
         m.0
-    }
+    };
 }
 
 fn search_namespace(mut node: Option<Node>, namespace_search_info: Option<TypeDeclarationSearchInfo>, text: &Rope) -> Vec<String> {
@@ -348,7 +346,7 @@ fn search_namespace(mut node: Option<Node>, namespace_search_info: Option<TypeDe
             let name_node = search_down(&real_node, &namespace_search_info.name_node_types);
             if name_node.is_some() {
                 let name_node = name_node.unwrap();
-                let name = text.slice((name_node.start_byte(), name_node.end_byte()));
+                let name = text.slice(name_node.start_byte()..name_node.end_byte());
                 names.push(name.to_string());
             }
         }
@@ -371,8 +369,8 @@ fn get_parent_ids(mut node: Option<Node>, ids: HashSet<usize>) -> Vec<usize> {
     parent_ids
 }
 
-fn extract_definition_symbols(tree: &Tree, config: AstConfig, text: &Rope, path: &Rope) 
-    -> HashMap<usize, SymbolDeclarationStruct> {
+fn extract_definition_symbols(tree: &Tree, config: AstConfig, text: &Rope, path: &Rope)
+                              -> HashMap<usize, SymbolDeclarationStruct> {
     let mut symbols: HashMap<usize, SymbolDeclarationStruct> = HashMap::default();
     // let tmp = tree;
     let mut cursor = tree.walk();
@@ -382,26 +380,27 @@ fn extract_definition_symbols(tree: &Tree, config: AstConfig, text: &Rope, path:
         HashMap::from_iter(config.type_declaration_search_info.clone().iter()
             .map(|f| (f.clone().node_type, f.clone())).collect::<Vec<_>>());
     while !reached_root {
-        if searching_nodes.contains_key(&cursor.node().kind().to_string()) && !(&cursor.node().has_error()) {
-            let type_name = cursor.node().kind().to_string();
-            let search_info = searching_nodes[type_name.clone()];
-            let name_node = search_down(&cursor.node(), search_info.name_node_types);
+        let cursor_node = cursor.node();
+        if searching_nodes.contains_key(&cursor_node.kind().to_string()) && !(&cursor_node.has_error()) {
+            let type_name = cursor_node.kind().to_string();
+            let search_info = searching_nodes.get(&type_name.clone()).unwrap();
+            let name_node = search_down(&cursor_node, &search_info.name_node_types);
             if name_node.is_some() {
                 let node = name_node.unwrap();
-                let name = text.slice((node.start_byte(), node.end_byte())).to_string();
+                let name = text.slice(node.start_byte()..node.end_byte()).to_string();
                 let namespace = search_namespace(name_node, config.namespace_search_info.clone(), text);
-                let parent_ids = get_parent_ids(cursor.node().parent(), HashSet::from_iter(symbols.keys().cloned()));
-                symbols.insert(cursor.node().id(), SymbolDeclarationStruct {
-                    id: cursor.node().id(),
+                let parent_ids = get_parent_ids(cursor_node.parent(), HashSet::from_iter(symbols.keys().cloned()));
+                symbols.insert(cursor_node.id(), SymbolDeclarationStruct {
+                    id: cursor_node.id(),
                     node_type: type_name,
                     name,
-                    content: text.slice((cursor.node().start_byte(), cursor.node().end_byte())).to_string(),
-                    start_point: cursor.node().start_position(),
-                    end_point: cursor.node().end_position(),
+                    content: text.slice(cursor_node.start_byte()..cursor_node.end_byte()).to_string(),
+                    start_point: cursor_node.start_position(),
+                    end_point: cursor_node.end_position(),
                     path: path.to_string(),
                     parent_ids: Some(parent_ids),
                     namespaces_name: Some(namespace),
-                })
+                });
             }
         }
 
@@ -429,17 +428,24 @@ fn extract_definition_symbols(tree: &Tree, config: AstConfig, text: &Rope, path:
 
 fn extract_positions_map(tree: &Tree) -> HashMap<usize, Vec<Node>> {
     let mut cursor = tree.walk();
-    let positions_map: DefaultHashMap<usize, Vec<Node>> = Default::default();
+    let mut positions_map: HashMap<usize, Vec<Node>> = Default::default();
     let mut reached_root = false;
     while !reached_root {
         if cursor.node().child_count() == 0 {
-            positions_map[cursor.node().start_position().row].push(cursor.node())
+            match positions_map.get(&cursor.node().start_position().row) {
+                None => {
+                    positions_map.insert(cursor.node().start_position().row, vec![cursor.node()]);
+                }
+                Some(mut v) => {
+                    v.push(cursor.node());
+                }
+            }
         }
-        
+
         if cursor.goto_first_child() {
             continue;
         }
-        
+
         if cursor.goto_next_sibling() {
             continue;
         }
@@ -454,7 +460,7 @@ fn extract_positions_map(tree: &Tree) -> HashMap<usize, Vec<Node>> {
             }
         }
     }
-    HashMap::from_iter(positions_map.iter())
+    positions_map
 }
 
 const DIGITS: &str = "0123456789";
@@ -473,8 +479,8 @@ fn get_nodes_nearby<'a>(
     filter_empty: bool,
     filter_by_text_duplicate: bool,
 ) -> Vec<Node<'a>> {
-    let mut nodes = vec![];
-    
+    let mut nodes: Vec<Node<'a>> = vec![];
+
     let min_row_idx = max(0, row_idx - row_max_distance);
     let max_row_idx = min(row_idx + row_max_distance, positions_map_rows.len() as i32);
     for idx in min_row_idx..max_row_idx {
@@ -484,12 +490,13 @@ fn get_nodes_nearby<'a>(
             nodes.append(pos_vec.clone().as_mut());
         }
         nodes = nodes.iter().filter(|node| {
-            let text = node.utf8_text(text.to_string().as_ref());
+            let binding = text.to_string();
+            let text = node.utf8_text(binding.as_ref());
             let mut res = true;
             if text.is_err() {
-                false
+                return false;
             }
-            
+
             let text = text.unwrap();
             if filter_num_and_punctuation {
                 res &= !text.chars().all(|c| {
@@ -506,17 +513,18 @@ fn get_nodes_nearby<'a>(
                 res &= text.len() != 0;
             }
             res
-        }).collect();
+        }).cloned().collect();
         if filter_by_text_duplicate {
             let mut texts: HashSet<String> = Default::default();
             let mut filtered_nodes: Vec<Node> = vec![];
             for node in nodes {
-                let text = node.utf8_text(text.to_string().as_ref())?;
-                if texts.contains(text) {
-                    continue
+                if let Ok(text) = node.utf8_text(text.to_string().as_ref()) {
+                    if texts.contains(&text.to_string()) {
+                        continue;
+                    }
+                    texts.insert(text.to_string());
+                    filtered_nodes.push(node);
                 }
-                texts.insert(text.to_string());
-                filtered_nodes.push(node);
             }
             nodes = filtered_nodes;
         }
@@ -524,8 +532,8 @@ fn get_nodes_nearby<'a>(
     nodes
 }
 
-fn extract_all_symbols(positions_map_rows: &HashMap<usize, Vec<Node>>, text: &Rope, config: AstConfig) 
-    -> HashSet<String> {
+fn extract_all_symbols(positions_map_rows: &HashMap<usize, Vec<Node>>, text: &Rope, config: AstConfig)
+                       -> HashSet<String> {
     let nodes = get_nodes_nearby(
         0,
         positions_map_rows.len() as i32,
@@ -534,13 +542,14 @@ fn extract_all_symbols(positions_map_rows: &HashMap<usize, Vec<Node>>, text: &Ro
         config,
         true,
         true,
-        true, 
-        false, 
+        true,
+        false,
         true);
     let mut res: HashSet<String> = Default::default();
     for n in nodes {
-        let text = n.utf8_text(text.to_string().as_ref())?;
-        res.insert(text.to_string());
+        if let Ok(text) = n.utf8_text(text.to_string().as_ref()) {
+            res.insert(text.to_string());
+        }
     }
     res
 }
@@ -564,8 +573,8 @@ impl Document<'_> {
         match &doc.tree {
             None => {}
             Some(tr) => {
-                doc.definition_symbols = Some(extract_definition_symbols(tr, config.clone(), 
-                                                   &doc.text, &doc.path.clone()));
+                doc.definition_symbols = Some(extract_definition_symbols(tr, config.clone(),
+                                                                         &doc.text, &doc.path.clone()));
                 let positions_map_rows = extract_positions_map(tr);
                 doc.all_symbols = Some(extract_all_symbols(&positions_map_rows, &doc.text, config));
                 doc.positions_map_rows = Some(positions_map_rows);

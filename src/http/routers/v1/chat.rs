@@ -33,7 +33,7 @@ async fn _lookup_chat_scratchpad(
 }
 
 pub async fn handle_v1_chat(
-    Extension(global_context): Extension<SharedGlobalContext<'_>>,
+    Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e|

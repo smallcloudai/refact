@@ -13,7 +13,7 @@ const SNIP_NOT_ACCEPTED_TIMEOUT_AFTER : i64 = 30;
 const SNIP_ACCEPTED_NOT_FINISHED_TIMEOUT_AFTER: i64 = 600;
 
 
-pub async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext<'_>>>) {
+pub async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalContext>>) {
     let tele_storage;
     let now = chrono::Local::now().timestamp();
     let enduser_client_version;
@@ -93,7 +93,7 @@ pub async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalConte
 
 
 pub async fn tele_snip_background_task(
-    global_context: Arc<ARwLock<global_context::GlobalContext<'_>>>,
+    global_context: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> () {
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
