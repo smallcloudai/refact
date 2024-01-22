@@ -79,7 +79,7 @@ pub fn on_file_text_changed(
 
 
 pub async fn compress_tele_completion_to_file(
-    cx: Arc<ARwLock<global_context::GlobalContext>>,
+    cx: Arc<ARwLock<global_context::GlobalContext<'_>>>,
 ) {
     let now = chrono::Local::now();
     let cache_dir: PathBuf;

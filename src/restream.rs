@@ -55,7 +55,7 @@ impl Drop for SlowdownScoped {
 
 
 pub async fn scratchpad_interaction_not_stream(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    global_context: Arc<ARwLock<GlobalContext<'_>>>,
     mut scratchpad: Box<dyn ScratchpadAbstract>,
     scope: String,
     prompt: &str,
@@ -172,7 +172,7 @@ pub async fn scratchpad_interaction_not_stream(
 }
 
 pub async fn scratchpad_interaction_stream(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    global_context: Arc<ARwLock<GlobalContext<'_>>>,
     mut scratchpad: Box<dyn ScratchpadAbstract>,
     scope: String,
     prompt: String,

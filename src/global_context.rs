@@ -17,6 +17,11 @@ use crate::custom_error::ScratchError;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::telemetry::telemetry_structs;
+use crate::vecdb_search::VecdbSearch;
+use crate::custom_error::ScratchError;
+use hyper::StatusCode;
+use tower_lsp::lsp_types::WorkspaceFolder;
+use crate::lsp::document::Document;
 use crate::receive_workspace_changes::Document;
 use crate::vecdb::vecdb::VecDb;
 
@@ -57,12 +62,12 @@ pub struct Slowdown {
     pub requests_in_flight: u64,
 }
 
-pub struct LSPBackendDocumentState {
-    pub document_map: Arc<ARwLock<HashMap<String, Document>>>,
+pub struct LSPBackendDocumentState<'a> {
+    pub document_map: Arc<ARwLock<HashMap<String, Document<'a>>>>,
     pub workspace_folders: Arc<ARwLock<Option<Vec<WorkspaceFolder>>>>,
 }
 
-pub struct GlobalContext {
+pub struct GlobalContext<'a> {
     pub cmdline: CommandLine,
     pub http_client: reqwest::Client,
     pub http_client_slowdown: Arc<Mutex<Slowdown>>,
@@ -74,16 +79,16 @@ pub struct GlobalContext {
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
     pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
-    pub lsp_backend_document_state: LSPBackendDocumentState,
+    pub lsp_backend_document_state: LSPBackendDocumentState<'a>,
 }
 
-pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
+pub type SharedGlobalContext<'a> = Arc<ARwLock<GlobalContext<'a>>>;  // TODO: remove this type alias, confusing
 
 const CAPS_RELOAD_BACKOFF: u64 = 60;       // seconds
 const CAPS_BACKGROUND_RELOAD: u64 = 3600;  // seconds
 
 pub async fn try_load_caps_quickly_if_not_present(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    global_context: Arc<ARwLock<GlobalContext<'_>>>,
     max_age_seconds: u64,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, ScratchError> {
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
@@ -128,7 +133,7 @@ pub async fn try_load_caps_quickly_if_not_present(
 }
 
 pub async fn look_for_piggyback_fields(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    global_context: Arc<ARwLock<GlobalContext<'_>>>,
     anything_from_server: &serde_json::Value)
 {
     let mut global_context_locked = global_context.write().await;
@@ -192,7 +197,7 @@ pub async fn block_until_signal(ask_shutdown_receiver: std::sync::mpsc::Receiver
 
 pub async fn create_global_context(
     cache_dir: PathBuf,
-) -> (Arc<ARwLock<GlobalContext>>, std::sync::mpsc::Receiver<String>, CommandLine) {
+) -> (Arc<ARwLock<GlobalContext<'static>>>, std::sync::mpsc::Receiver<String>, CommandLine) {
     let cmdline = CommandLine::from_args();
     let (ask_shutdown_sender, ask_shutdown_receiver) = std::sync::mpsc::channel::<String>();
     let mut http_client_builder = reqwest::Client::builder();

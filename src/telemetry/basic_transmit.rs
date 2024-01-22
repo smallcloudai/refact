@@ -24,7 +24,7 @@ pub async fn send_telemetry_data(
     contents: String,
     telemetry_dest: &String,
     api_key: &String,
-    gcx: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext<'_>>>,
 ) -> Result<(), String>{
     let http_client = gcx.read().await.http_client.clone();
     let resp_maybe = http_client.post(telemetry_dest.clone())
@@ -54,7 +54,7 @@ pub async fn send_telemetry_files_to_mothership(
     dir_sent: PathBuf,
     telemetry_basic_dest: String,
     api_key: String,
-    gcx: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext<'_>>>,
 ) {
     // Send files found in dir_compressed, move to dir_sent if successful.
     let files = sorted_json_files(dir_compressed.clone()).await;
@@ -89,7 +89,7 @@ pub async fn send_telemetry_files_to_mothership(
 }
 
 pub async fn basic_telemetry_compress(
-    global_context: Arc<ARwLock<global_context::GlobalContext>>,
+    global_context: Arc<ARwLock<global_context::GlobalContext<'_>>>,
 ) {
     info!("basic telemetry compression starts");
     basic_network::compress_basic_telemetry_to_file(global_context.clone()).await;
@@ -98,7 +98,7 @@ pub async fn basic_telemetry_compress(
 }
 
 pub async fn basic_telemetry_send(
-    global_context: Arc<ARwLock<global_context::GlobalContext>>,
+    global_context: Arc<ARwLock<global_context::GlobalContext<'_>>>,
 ) -> () {
     let caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>;
     let api_key: String;
@@ -139,7 +139,7 @@ pub async fn basic_telemetry_send(
 }
 
 pub async fn telemetry_background_task(
-    global_context: Arc<ARwLock<global_context::GlobalContext>>,
+    global_context: Arc<ARwLock<global_context::GlobalContext<'_>>>,
 ) -> () {
     tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_TRANSMIT_AFTER_START_SECONDS)).await;
     basic_telemetry_send(global_context.clone()).await;

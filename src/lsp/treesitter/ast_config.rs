@@ -25,6 +25,7 @@ pub mod sql_config;
 pub mod swift_config;
 pub mod ts_config;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AstConfig {
     pub type_declaration_search_info: Vec<TypeDeclarationSearchInfo>,
     pub namespace_search_info: Option<TypeDeclarationSearchInfo>,

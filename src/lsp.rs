@@ -29,7 +29,7 @@ use crate::telemetry::snippets_collection::sources_changed;
 
 mod treesitter;
 mod language_id;
-mod document;
+pub mod document;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -47,8 +47,8 @@ impl Display for APIError {
 
 
 // #[derive(Debug)]  GlobalContext does not implement Debug
-pub struct Backend {
-    pub gcx: Arc<ARwLock<global_context::GlobalContext>>,
+pub struct Backend<'a> {
+    pub gcx: Arc<ARwLock<global_context::GlobalContext<'a>>>,
     pub client: tower_lsp::Client,
 }
 
@@ -115,7 +115,7 @@ pub struct CompletionRes {
     pub created: Option<f32>,
 }
 
-impl Backend {
+impl Backend<'_> {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
         let txt = {
             let document_map = self.gcx.read().await.lsp_backend_document_state.document_map.clone();
@@ -186,7 +186,7 @@ impl Backend {
 
 
 #[tower_lsp::async_trait]
-impl LanguageServer for Backend {
+impl LanguageServer for Backend<'_> {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         info!("LSP client_info {:?}", params.client_info);
         {
@@ -232,6 +232,11 @@ impl LanguageServer for Backend {
         let _ = info!("rust LSP received initialized()");
     }
 
+    async fn shutdown(&self) -> Result<()> {
+        let _ = info!("shutdown");
+        Ok(())
+    }
+
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         receive_workspace_changes::on_did_open(
             self.gcx.clone(),
@@ -247,7 +252,9 @@ impl LanguageServer for Backend {
             &params.text_document.uri.to_string()
         ) {
             Ok(document) => {
-                self.document_map
+                let gc = self.gcx.clone();
+                let gx = gc.write().await;
+                gx.lsp_backend_document_state.document_map
                     .write()
                     .await
                     .insert(uri.clone(), document);
@@ -275,7 +282,9 @@ impl LanguageServer for Backend {
 
         let t0 = Instant::now();
         let uri = params.text_document.uri.to_string();
-        let mut document_map = self.document_map.write().await;
+        let gc = self.gcx.clone();
+        let gx = gc.write().await;
+        let mut document_map = gx.lsp_backend_document_state.document_map.write().await;
         let doc = document_map.get_mut(&uri);
         if let Some(doc) = doc {
             match doc.change(&params.content_changes[0].text).await {
@@ -367,8 +376,8 @@ impl LanguageServer for Backend {
 }
 
 async fn build_lsp_service(
-    gcx: Arc<ARwLock<global_context::GlobalContext>>,
-) -> (LspService::<Backend>, ClientSocket) {
+    gcx: Arc<ARwLock<global_context::GlobalContext<'_>>>,
+) -> (LspService::<Backend<'static>>, ClientSocket) {
     let (lsp_service, socket) = LspService::build(|client| Backend {
         gcx,
         client,
@@ -380,7 +389,7 @@ async fn build_lsp_service(
 }
 
 pub async fn spawn_lsp_task(
-    gcx: Arc<ARwLock<global_context::GlobalContext>>,
+    gcx: Arc<ARwLock<global_context::GlobalContext<'_>>>,
     cmdline: CommandLine
 ) -> Option<JoinHandle<()>> {
     if cmdline.lsp_stdin_stdout == 0 && cmdline.lsp_port > 0 {

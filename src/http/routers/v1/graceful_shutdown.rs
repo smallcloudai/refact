@@ -7,7 +7,7 @@ use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 
 pub async fn handle_v1_graceful_shutdown(
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(global_context): Extension<SharedGlobalContext<'_>>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let gcx_locked = global_context.read().await;

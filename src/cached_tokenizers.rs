@@ -102,7 +102,7 @@ async fn _try_download_tokenizer_file_and_open(
 
 pub async fn cached_tokenizer(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
-    global_context: Arc<ARwLock<GlobalContext>>,
+    global_context: Arc<ARwLock<GlobalContext<'_>>>,
     model_name: String,
 ) -> Result<Arc<StdRwLock<Tokenizer>>, String> {
     let mut cx_locked = global_context.write().await;

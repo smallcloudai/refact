@@ -9,7 +9,7 @@ const MAX_CAPS_AGE: u64 = 10;
 
 
 pub async fn handle_v1_caps(
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(global_context): Extension<SharedGlobalContext<'_>>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let caps_result = crate::global_context::try_load_caps_quickly_if_not_present(

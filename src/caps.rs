@@ -311,7 +311,7 @@ const HF_DEFAULT_CAPS: &str = r#"
 
 pub async fn load_caps(
     cmdline: crate::global_context::CommandLine,
-    global_context: Arc<RwLock<GlobalContext>>,
+    global_context: Arc<RwLock<GlobalContext<'_>>>,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let mut buffer = String::new();
     let mut is_local_file = false;

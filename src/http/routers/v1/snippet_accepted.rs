@@ -16,7 +16,7 @@ struct SnippetAcceptedPostData {
 
 
 pub async fn handle_v1_snippet_accepted(
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(global_context): Extension<SharedGlobalContext<'_>>,
     body_bytes: hyper::body::Bytes
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<SnippetAcceptedPostData>(&body_bytes).map_err(|e| {

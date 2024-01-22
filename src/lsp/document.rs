@@ -1,9 +1,14 @@
 use std::any::Any;
-use std::collections::HashMap;
+use std::arch::aarch64::int32x2_t;
+use std::cmp::{max, min};
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
+use std::sync::Arc;
+use defaultdict::DefaultHashMap;
 use futures_util::SinkExt;
 
 use ropey::Rope;
+use tower::util::Optional;
 use tower_lsp::jsonrpc::{Error, Result};
 use tracing::error;
 use tree_sitter::{Node, Parser, Tree};
@@ -41,7 +46,7 @@ fn internal_error<E: Display>(err: E) -> Error {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeDeclarationSearchInfo {
     pub node_type: String,
     pub name_node_types: Vec<String>,
@@ -289,16 +294,258 @@ fn get_parser(language_id: LanguageId) -> Result<(Parser, AstConfig)> {
     }
 }
 
-pub struct Document {
+pub struct Document<'a> {
     pub(crate) language_id: LanguageId,
     pub(crate) text: Rope,
     pub(crate) path: Rope,
     parser: Parser,
-    pub(crate) tree: Option<Tree>,
     pub(crate) config: AstConfig,
+    pub(crate) tree: Option<Tree>,
+    definition_symbols: Option<HashMap<usize, SymbolDeclarationStruct>>,
+    positions_map_rows: Option<HashMap<usize, Vec<Node<'a>>>>,
+    all_symbols: Option<HashSet<String>>,
 }
 
-impl Document {
+fn search_down<'a>(node: &'a Node<'a>, node_types_: &'a Vec<String>) -> Option<Node<'a>> {
+    let node_types = HashSet::from_iter(node_types_);
+    let mut result: Vec<(Option<Node>, i32)>;
+    
+    fn _helper(node: &Node, current_depth: i32, node_types: &HashSet<String>, result: &mut Vec<(Option<Node>, i32)>) {
+        for idx in 0..node.child_count() {
+            let child = node.child(idx);
+            let type_name = child.kind().to_string();
+            if node_types.contains(type_name) {
+                result.push((child, current_depth));
+                child
+            } else {
+                _helper(&child.unwrap(), current_depth + 1, node_types, result);
+            }
+        }
+    };
+    _helper(node, 1, &node_types, &mut result);
+    return if result.len() == 0 {
+        None
+    } else {
+        let mut m = result[0];
+        for r in result {
+            if r.1 < m.1 {
+                m = r;
+            }
+        }
+        m.0
+    }
+}
+
+fn search_namespace(mut node: Option<Node>, namespace_search_info: Option<TypeDeclarationSearchInfo>, text: &Rope) -> Vec<String> {
+    if namespace_search_info.is_none() {
+        return vec![];
+    }
+    let namespace_search_info = namespace_search_info.unwrap();
+    let mut names: Vec<String> = vec![];
+    while node.is_some() {
+        let real_node = node.unwrap();
+        if real_node.kind().to_string() == namespace_search_info.node_type {
+            let name_node = search_down(&real_node, &namespace_search_info.name_node_types);
+            if name_node.is_some() {
+                let name_node = name_node.unwrap();
+                let name = text.slice((name_node.start_byte(), name_node.end_byte()));
+                names.push(name.to_string());
+            }
+        }
+        node = real_node.parent();
+    }
+    names.reverse();
+    names
+}
+
+fn get_parent_ids(mut node: Option<Node>, ids: HashSet<usize>) -> Vec<usize> {
+    let mut parent_ids = vec![];
+    while node.is_some() {
+        let real_node = node.unwrap();
+        if ids.contains(&real_node.id()) {
+            parent_ids.push(real_node.id());
+        }
+        node = real_node.parent();
+    }
+    parent_ids.reverse();
+    parent_ids
+}
+
+fn extract_definition_symbols(tree: &Tree, config: AstConfig, text: &Rope, path: &Rope) 
+    -> HashMap<usize, SymbolDeclarationStruct> {
+    let mut symbols: HashMap<usize, SymbolDeclarationStruct> = HashMap::default();
+    // let tmp = tree;
+    let mut cursor = tree.walk();
+
+    let mut reached_root = false;
+    let searching_nodes: HashMap<String, TypeDeclarationSearchInfo> =
+        HashMap::from_iter(config.type_declaration_search_info.clone().iter()
+            .map(|f| (f.clone().node_type, f.clone())).collect::<Vec<_>>());
+    while !reached_root {
+        if searching_nodes.contains_key(&cursor.node().kind().to_string()) && !(&cursor.node().has_error()) {
+            let type_name = cursor.node().kind().to_string();
+            let search_info = searching_nodes[type_name.clone()];
+            let name_node = search_down(&cursor.node(), search_info.name_node_types);
+            if name_node.is_some() {
+                let node = name_node.unwrap();
+                let name = text.slice((node.start_byte(), node.end_byte())).to_string();
+                let namespace = search_namespace(name_node, config.namespace_search_info.clone(), text);
+                let parent_ids = get_parent_ids(cursor.node().parent(), HashSet::from_iter(symbols.keys().cloned()));
+                symbols.insert(cursor.node().id(), SymbolDeclarationStruct {
+                    id: cursor.node().id(),
+                    node_type: type_name,
+                    name,
+                    content: text.slice((cursor.node().start_byte(), cursor.node().end_byte())).to_string(),
+                    start_point: cursor.node().start_position(),
+                    end_point: cursor.node().end_position(),
+                    path: path.to_string(),
+                    parent_ids: Some(parent_ids),
+                    namespaces_name: Some(namespace),
+                })
+            }
+        }
+
+        if cursor.goto_first_child() {
+            continue;
+        }
+
+        if cursor.goto_next_sibling() {
+            continue;
+        }
+        let mut retracing = true;
+        while retracing {
+            if !cursor.goto_parent() {
+                retracing = false;
+                reached_root = true;
+            }
+            if cursor.goto_next_sibling() {
+                retracing = false;
+            }
+        }
+    }
+
+    symbols
+}
+
+fn extract_positions_map(tree: &Tree) -> HashMap<usize, Vec<Node>> {
+    let mut cursor = tree.walk();
+    let positions_map: DefaultHashMap<usize, Vec<Node>> = Default::default();
+    let mut reached_root = false;
+    while !reached_root {
+        if cursor.node().child_count() == 0 {
+            positions_map[cursor.node().start_position().row].push(cursor.node())
+        }
+        
+        if cursor.goto_first_child() {
+            continue;
+        }
+        
+        if cursor.goto_next_sibling() {
+            continue;
+        }
+        let mut retracing = true;
+        while retracing {
+            if !cursor.goto_parent() {
+                retracing = false;
+                reached_root = true;
+            }
+            if cursor.goto_next_sibling() {
+                retracing = false;
+            }
+        }
+    }
+    HashMap::from_iter(positions_map.iter())
+}
+
+const DIGITS: &str = "0123456789";
+const PUNCTUATION: &str = r#"#!$%&'"()*+,-./:;<=>?@[\]^_`{|}~"#;
+
+
+fn get_nodes_nearby<'a>(
+    row_idx: i32,
+    row_max_distance: i32,
+    positions_map_rows: &'a HashMap<usize, Vec<Node<'a>>>,
+    text: &'a Rope,
+    config: AstConfig,
+    filter_num_and_punctuation: bool,
+    filter_reserved_words: bool,
+    filter_keywords: bool,
+    filter_empty: bool,
+    filter_by_text_duplicate: bool,
+) -> Vec<Node<'a>> {
+    let mut nodes = vec![];
+    
+    let min_row_idx = max(0, row_idx - row_max_distance);
+    let max_row_idx = min(row_idx + row_max_distance, positions_map_rows.len() as i32);
+    for idx in min_row_idx..max_row_idx {
+        let pos_vec = positions_map_rows.get(&(idx as usize));
+        if pos_vec.is_some() {
+            let pos_vec = pos_vec.unwrap();
+            nodes.append(pos_vec.clone().as_mut());
+        }
+        nodes = nodes.iter().filter(|node| {
+            let text = node.utf8_text(text.to_string().as_ref());
+            let mut res = true;
+            if text.is_err() {
+                false
+            }
+            
+            let text = text.unwrap();
+            if filter_num_and_punctuation {
+                res &= !text.chars().all(|c| {
+                    char::is_numeric(c) && PUNCTUATION.contains(c)
+                });
+            }
+            if filter_reserved_words {
+                res &= (node.kind() != text);
+            }
+            if filter_keywords {
+                res &= config.keywords.contains(&text.to_string());
+            }
+            if filter_empty {
+                res &= text.len() != 0;
+            }
+            res
+        }).collect();
+        if filter_by_text_duplicate {
+            let mut texts: HashSet<String> = Default::default();
+            let mut filtered_nodes: Vec<Node> = vec![];
+            for node in nodes {
+                let text = node.utf8_text(text.to_string().as_ref())?;
+                if texts.contains(text) {
+                    continue
+                }
+                texts.insert(text.to_string());
+                filtered_nodes.push(node);
+            }
+            nodes = filtered_nodes;
+        }
+    }
+    nodes
+}
+
+fn extract_all_symbols(positions_map_rows: &HashMap<usize, Vec<Node>>, text: &Rope, config: AstConfig) 
+    -> HashSet<String> {
+    let nodes = get_nodes_nearby(
+        0,
+        positions_map_rows.len() as i32,
+        positions_map_rows,
+        text,
+        config,
+        true,
+        true,
+        true, 
+        false, 
+        true);
+    let mut res: HashSet<String> = Default::default();
+    for n in nodes {
+        let text = n.utf8_text(text.to_string().as_ref())?;
+        res.insert(text.to_string());
+    }
+    res
+}
+
+impl Document<'_> {
     pub fn open(language_id: &str, text: &str, path: &str) -> Result<Self> {
         let language_id = language_id.into();
         let (mut parser, config) = get_parser(language_id)?;
@@ -308,10 +555,22 @@ impl Document {
             text: Rope::from_str(text),
             path: Rope::from_str(path),
             parser,
-            tree,
-            config,
+            tree: tree.clone(),
+            definition_symbols: None,
+            positions_map_rows: None,
+            config: config.clone(),
+            all_symbols: None,
         };
-        let s = doc.extract_definition_symbols();
+        match &doc.tree {
+            None => {}
+            Some(tr) => {
+                doc.definition_symbols = Some(extract_definition_symbols(tr, config.clone(), 
+                                                   &doc.text, &doc.path.clone()));
+                let positions_map_rows = extract_positions_map(tr);
+                doc.all_symbols = Some(extract_all_symbols(&positions_map_rows, &doc.text, config));
+                doc.positions_map_rows = Some(positions_map_rows);
+            }
+        }
         Ok(doc)
     }
 
@@ -321,29 +580,4 @@ impl Document {
         self.text = rope;
         Ok(())
     }
-
-    fn extract_definition_symbols(&mut self) -> HashMap<String, SymbolDeclarationStruct> {
-        let symbols: HashMap<String, SymbolDeclarationStruct> = HashMap::default();
-        let cursor = (&self).tree.as_mut().unwrap().walk();
-
-        let mut reached_root = false;
-        // let searching_nodes = HashMap::from(
-        //     self.config.type_declaration_search_info.clone().iter()
-        //         .map(|f| (f.node_type, f)).collect());
-        while !reached_root {
-            let s = cursor.node().type_id();
-            let z = 0;
-        //     // cursor.node().type_id()
-        //     if !cursor.node().has_error() {
-        //         let search_info = searching_nodes
-        //         [cursor.node. type ]
-        //         let search_info = searching_nodes
-        //         [cursor.node. type ]
-        //     }
-            reached_root = true;
-        }
-
-        symbols
-    }
-    fn search_down(&mut self, node: Node) {}
 }
