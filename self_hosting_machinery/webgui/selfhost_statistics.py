@@ -70,7 +70,7 @@ class TabStatisticsRouter(APIRouter):
                 async with session.get('http://localhost:8010/dash-prime/plots-data') as resp:
                     resp_json = await resp.json()
             return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
-        except aiohttp.ClientConnectionError as e:
+        except Exception as e:
             return JSONResponse(
                 content={
                     'error': str(e)
@@ -86,7 +86,7 @@ class TabStatisticsRouter(APIRouter):
                 async with session.get('http://localhost:8010/dash-teams/plots-data') as resp:
                     resp_json = await resp.json()
             return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
-        except aiohttp.ClientConnectionError as e:
+        except Exception as e:
             return JSONResponse(
                 content={
                     'error': str(e)
@@ -102,7 +102,7 @@ class TabStatisticsRouter(APIRouter):
                 async with session.post('http://localhost:8010/dash-teams/plots-data', json=data.clamp()) as resp:
                     resp_json = await resp.json()
             return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
-        except aiohttp.ClientConnectionError as e:
+        except Exception as e:
             return JSONResponse(
                 content={
                     'error': str(e)
