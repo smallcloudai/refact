@@ -242,14 +242,22 @@ class DashboardPrimeRouter(APIRouter):
             )
 
         time_start = time.time()
-        data = {
-            "table_lang_comp_stats": table_lang_comp_stats(self._data_tables.robot_human_df),
-            "barplot_rh": barplot_rh(self._data_tables.robot_human_df, self._data_tables.extra),
-            "barplot_completions": barplot_completions(self._data_tables.robot_human_df, self._data_tables.extra),
-            "barplot_users": barplot_users(self._data_tables.robot_human_df, self._data_tables.extra),
-        }
-        print(f"DashboardPrimeRouter._plots_data took: {round(time.time() - time_start, 3)}s")
-        return JSONResponse(
-            content=data,
-            media_type='application/json'
-        )
+        try:
+            data = {
+                "table_lang_comp_stats": table_lang_comp_stats(self._data_tables.robot_human_df),
+                "barplot_rh": barplot_rh(self._data_tables.robot_human_df, self._data_tables.extra),
+                "barplot_completions": barplot_completions(self._data_tables.robot_human_df, self._data_tables.extra),
+                "barplot_users": barplot_users(self._data_tables.robot_human_df, self._data_tables.extra),
+            }
+            print(f"DashboardPrimeRouter._plots_data took: {round(time.time() - time_start, 3)}s")
+            return JSONResponse(
+                content=data,
+                media_type='application/json'
+            )
+
+        except Exception as e:
+            return JSONResponse(
+                content={'error': str(e)},
+                media_type='application/json',
+                status_code=500,
+            )

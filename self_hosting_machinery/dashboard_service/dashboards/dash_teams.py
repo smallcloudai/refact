@@ -84,15 +84,25 @@ class DashboardTeamsRouter(APIRouter):
                 media_type='application/json',
                 status_code=404,
             )
-        time_start = time.time()
-        data = {
-            "teams_data": teams_data(self._data_tables.robot_human_df),
-        }
-        print(f"DashboardTeamsRouter._plots_data took: {round(time.time() - time_start, 3)}s")
-        return JSONResponse(
-            content=data,
-            media_type='application/json'
-        )
+        try:
+            time_start = time.time()
+
+            data = {
+                "teams_data": teams_data(self._data_tables.robot_human_df),
+            }
+
+            print(f"DashboardTeamsRouter._plots_data took: {round(time.time() - time_start, 3)}s")
+            return JSONResponse(
+                content=data,
+                media_type='application/json'
+            )
+
+        except Exception as e:
+            return JSONResponse(
+                content={'error': str(e)},
+                media_type='application/json',
+                status_code=500,
+            )
 
     async def _generate_dashboard(self, post: DashTeamsGenDashData):
         if self._data_tables is None:
@@ -101,16 +111,26 @@ class DashboardTeamsRouter(APIRouter):
                 media_type='application/json',
                 status_code=404,
             )
-        time_start = time.time()
-        data = {
-            "barplot_completions_users": barplot_completions_users(
-                self._data_tables.robot_human_df,
-                self._data_tables.extra,
-                post,
-            ),
-        }
-        print(f"DashboardTeamsRouter._generate_dashboard took: {round(time.time() - time_start, 3)}s")
-        return JSONResponse(
-            content=data,
-            media_type='application/json'
-        )
+        try:
+            time_start = time.time()
+
+            data = {
+                "barplot_completions_users": barplot_completions_users(
+                    self._data_tables.robot_human_df,
+                    self._data_tables.extra,
+                    post,
+                ),
+            }
+
+            print(f"DashboardTeamsRouter._generate_dashboard took: {round(time.time() - time_start, 3)}s")
+            return JSONResponse(
+                content=data,
+                media_type='application/json'
+            )
+
+        except Exception as e:
+            return JSONResponse(
+                content={'error': str(e)},
+                media_type='application/json',
+                status_code=500,
+            )
