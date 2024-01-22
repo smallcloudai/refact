@@ -1,36 +1,88 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import SyntaxHighlighter from "react-syntax-highlighter";
-import { Code } from "@radix-ui/themes";
-import { RightButton } from "../Buttons/Buttons";
+import { Code, Button, Flex } from "@radix-ui/themes";
+import { RightButton, RightButtonGroup } from "../Buttons/";
 import { ScrollArea } from "../ScrollArea";
 import remarkBreaks from "remark-breaks";
 import classNames from "classnames";
 import "./highlightjs.css";
 import styles from "./Markdown.module.css";
+import { useConfig } from "../../contexts/config-context";
 
-const PreTagWithCopyButton: React.FC<
+const PreTagWithButtons: React.FC<
   React.PropsWithChildren<{
-    onClick?: () => void;
+    onCopyClick: () => void;
+    onNewFileClick: () => void;
+    onPasteClick: () => void;
+    canPaste?: boolean;
   }>
-> = ({ children, onClick, ...props }) => {
-  if (!onClick) return <pre {...props}>{children}</pre>;
+> = ({
+  children,
+  onCopyClick,
+  onNewFileClick,
+  onPasteClick,
+  canPaste,
+  ...props
+}) => {
+  const config = useConfig();
 
   return (
     <ScrollArea scrollbars="horizontal">
       <pre {...props}>
-        <RightButton onClick={onClick}>Copy</RightButton>
+        {config.host === "web" ? (
+          <RightButton onClick={onCopyClick}>Copy</RightButton>
+        ) : (
+          <RightButtonGroup direction="column">
+            <Flex gap="1" justify="end">
+              <Button variant="surface" size="1" onClick={onNewFileClick}>
+                New File
+              </Button>
+              <Button size="1" variant="surface" onClick={onCopyClick}>
+                Copy
+              </Button>
+            </Flex>
+            {canPaste && (
+              <Button variant="surface" size="1" onClick={onPasteClick}>
+                Paste
+              </Button>
+            )}
+          </RightButtonGroup>
+        )}
         {children}
       </pre>
     </ScrollArea>
   );
 };
 
-export const Markdown: React.FC<
-  Pick<React.ComponentProps<typeof ReactMarkdown>, "children"> & {
-    onCopyClick?: (str: string) => void;
-  }
-> = ({ children, onCopyClick }) => {
+const PreTagWithoutButtons: React.FC<React.PropsWithChildren> = (props) => {
+  return (
+    <ScrollArea scrollbars="horizontal">
+      <pre {...props} />
+    </ScrollArea>
+  );
+};
+
+type MarkdownWithControls = {
+  onCopyClick?: (str: string) => void;
+  onNewFileClick?: (str: string) => void;
+  onPasteClick?: (str: string) => void;
+  canPaste?: boolean;
+};
+
+export type MarkdownProps = Pick<
+  React.ComponentProps<typeof ReactMarkdown>,
+  "children"
+> &
+  MarkdownWithControls;
+
+export const Markdown: React.FC<MarkdownProps> = ({
+  children,
+  onCopyClick,
+  onNewFileClick,
+  onPasteClick,
+  canPaste,
+}) => {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkBreaks]}
@@ -58,14 +110,31 @@ export const Markdown: React.FC<
             return acc;
           }, "");
 
-          const PreTag: React.FC<React.PropsWithChildren> = (props) => (
-            <PreTagWithCopyButton
-              onClick={() => {
-                if (renderedText && onCopyClick) onCopyClick(renderedText);
-              }}
-              {...props}
-            />
-          );
+          const PreTag: React.FC<React.PropsWithChildren> = (props) => {
+            if (!onCopyClick || !onNewFileClick || !onPasteClick)
+              return <PreTagWithoutButtons {...props} />;
+            return (
+              <PreTagWithButtons
+                canPaste={canPaste}
+                onCopyClick={() => {
+                  if (renderedText) {
+                    onCopyClick(renderedText);
+                  }
+                }}
+                onNewFileClick={() => {
+                  if (renderedText) {
+                    onNewFileClick(renderedText);
+                  }
+                }}
+                onPasteClick={() => {
+                  if (renderedText) {
+                    onPasteClick(renderedText);
+                  }
+                }}
+                {...props}
+              />
+            );
+          };
 
           return match ? (
             <SyntaxHighlighter

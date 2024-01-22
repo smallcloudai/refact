@@ -4,7 +4,7 @@ import {
   ChatMessages,
   isChatContextFileMessage,
 } from "../../services/refact";
-import { Markdown } from "../Markdown";
+import { Markdown, MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
@@ -26,11 +26,15 @@ const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({ files }) => {
   return (
     <pre>
       <Flex gap="4" wrap="wrap">
-        {files.map((file, index) => (
-          <ContextFile key={index} name={file.file_name}>
-            {file.file_content}
-          </ContextFile>
-        ))}
+        {files.map((file, index) => {
+          const lineText =
+            file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
+          return (
+            <ContextFile key={index} name={file.file_name + lineText}>
+              {file.file_content}
+            </ContextFile>
+          );
+        })}
       </Flex>
     </pre>
   );
@@ -40,7 +44,14 @@ const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
 );
 
-const ChatInput: React.FC<{ children: string }> = (props) => {
+type ChatInputProps = Pick<
+  MarkdownProps,
+  "onNewFileClick" | "onPasteClick" | "canPaste"
+> & {
+  children: string;
+};
+
+const ChatInput: React.FC<ChatInputProps> = (props) => {
   // TODO: new file button?
   return (
     <Box p="2" position="relative" width="100%" style={{ maxWidth: "100%" }}>
@@ -51,6 +62,9 @@ const ChatInput: React.FC<{ children: string }> = (props) => {
             console.log("failed to copy to clipboard");
           });
         }}
+        onNewFileClick={props.onNewFileClick}
+        onPasteClick={props.onPasteClick}
+        canPaste={props.canPaste}
       >
         {props.children}
       </Markdown>
@@ -58,11 +72,21 @@ const ChatInput: React.FC<{ children: string }> = (props) => {
   );
 };
 
-export const ChatContent: React.FC<{
-  messages: ChatMessages;
-  onRetry: (question: ChatMessages) => void;
-  isWaiting: boolean;
-}> = ({ messages, onRetry, isWaiting }) => {
+export const ChatContent: React.FC<
+  {
+    messages: ChatMessages;
+    onRetry: (question: ChatMessages) => void;
+    isWaiting: boolean;
+    canPaste: boolean;
+  } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">
+> = ({
+  messages,
+  onRetry,
+  isWaiting,
+  onNewFileClick,
+  onPasteClick,
+  canPaste,
+}) => {
   const ref = React.useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.scrollIntoView &&
@@ -95,7 +119,16 @@ export const ChatContent: React.FC<{
             );
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           } else if (role === "assistant") {
-            return <ChatInput key={index}>{text}</ChatInput>;
+            return (
+              <ChatInput
+                onNewFileClick={onNewFileClick}
+                onPasteClick={onPasteClick}
+                canPaste={canPaste}
+                key={index}
+              >
+                {text}
+              </ChatInput>
+            );
           } else {
             return <Markdown key={index}>{text}</Markdown>;
           }

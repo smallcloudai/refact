@@ -3,3 +3,8 @@
   right: 20px;
   min-width: 50px;
 }
+
+.rightButtonGroup {
+  position: absolute;
+  right: 20px;
+}

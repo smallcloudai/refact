@@ -16,7 +16,6 @@ export enum EVENT_NAMES_FROM_CHAT {
   OPEN_IN_CHAT_IN_TAB = "open_chat_in_new_tab",
   SEND_TO_SIDE_BAR = "chat_send_to_sidebar",
   READY = "chat_ready",
-  // TODO
   NEW_FILE = "chat_create_new_file",
   PASTE_DIFF = "chat_paste_diff",
 }
@@ -35,7 +34,6 @@ export enum EVENT_NAMES_TO_CHAT {
   SET_DISABLE_CHAT = "set_disable_chat",
   RECEIVE_FILES = "receive_context_file",
   REMOVE_FILES = "remove_context_file",
-  // TODO
   ACTIVE_FILE_INFO = "chat_active_file_info",
   TOGGLE_ACTIVE_FILE = "chat_toggle_active_file",
 }
@@ -63,6 +61,30 @@ export function isActionFromChat(action: unknown): action is ActionFromChat {
   if (typeof action.type !== "string") return false;
   const ALL_EVENT_NAMES: Record<string, string> = { ...EVENT_NAMES_FROM_CHAT };
   return Object.values(ALL_EVENT_NAMES).includes(action.type);
+}
+
+export interface NewFileFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.NEW_FILE;
+  payload: {
+    id: string;
+    content: string;
+  };
+}
+export function isNewFileFromChat(action: unknown): action is NewFileFromChat {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.NEW_FILE;
+}
+
+export interface PasteDiffFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.PASTE_DIFF;
+  payload: { id: string; content: string };
+}
+
+export function isPasteDiffFromChat(
+  action: unknown,
+): action is PasteDiffFromChat {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.PASTE_DIFF;
 }
 
 export interface RequestForFileFromChat extends ActionFromChat {
@@ -140,7 +162,7 @@ export function isActionToChat(action: unknown): action is ActionToChat {
 
 export interface ToggleActiveFile extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
-  payload: { id: string; attach: boolean };
+  payload: { id: string; attach_file: boolean };
 }
 
 export function isToggleActiveFile(

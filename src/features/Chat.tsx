@@ -28,6 +28,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     openChatInNewTab,
     sendToSideBar,
     sendReadyMessage,
+    handleNewFileClick,
+    handlePasteDiffClick,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -87,6 +89,9 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         messages={state.chat.messages}
         onRetry={(messages) => sendMessages(messages)}
         isWaiting={state.waiting_for_response}
+        onNewFileClick={handleNewFileClick}
+        onPasteClick={handlePasteDiffClick}
+        canPaste={state.active_file.can_paste}
       />
 
       <ChatForm

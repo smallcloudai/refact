@@ -30,6 +30,8 @@ import {
   isActiveFileInfo,
   isToggleActiveFile,
   ToggleActiveFile,
+  NewFileFromChat,
+  PasteDiffFromChat,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 
@@ -240,9 +242,10 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       waiting_for_response: false,
       chat: {
         ...state.chat,
-        messages: state.chat.messages.concat([
+        messages: [
           ["context_file", action.payload.files],
-        ]),
+          ...state.chat.messages,
+        ],
       },
     };
   }
@@ -278,7 +281,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       ...state,
       active_file: {
         ...state.active_file,
-        attach: action.payload.attach,
+        attach: action.payload.attach_file,
       },
     };
   }
@@ -333,7 +336,7 @@ function createInitialState(): ChatState {
 }
 
 const initialState = createInitialState();
-
+// Maybe use context to avoid prop drilling?
 export const useEventBusForChat = () => {
   const config = useConfig();
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -467,7 +470,7 @@ export const useEventBusForChat = () => {
     } else {
       const action: ToggleActiveFile = {
         type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE,
-        payload: { id: state.chat.id, attach: !!toggle },
+        payload: { id: state.chat.id, attach_file: !!toggle },
       };
       dispatch(action);
     }
@@ -501,6 +504,26 @@ export const useEventBusForChat = () => {
     });
   }
 
+  function handleNewFileClick(value: string) {
+    const action: NewFileFromChat = {
+      type: EVENT_NAMES_FROM_CHAT.NEW_FILE,
+      payload: {
+        id: state.chat.id,
+        content: value,
+      },
+    };
+
+    postMessage(action);
+  }
+
+  function handlePasteDiffClick(value: string) {
+    const action: PasteDiffFromChat = {
+      type: EVENT_NAMES_FROM_CHAT.PASTE_DIFF,
+      payload: { id: state.chat.id, content: value },
+    };
+    postMessage(action);
+  }
+
   return {
     state,
     askQuestion,
@@ -514,5 +537,7 @@ export const useEventBusForChat = () => {
     openChatInNewTab,
     sendToSideBar,
     sendReadyMessage,
+    handleNewFileClick,
+    handlePasteDiffClick,
   };
 };
