@@ -153,6 +153,17 @@ const KNOWN_MODELS: &str = r####"
             "similar_models": [
             ]
         },
+        "claude-instant-1.2": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
+                }
+            },
+            "similar_models": [
+                "claude-2.1"
+            ]
+        },
         "starchat/15b/beta": {
             "n_ctx": 4096,
             "supports_scratchpads": {
