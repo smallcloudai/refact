@@ -179,6 +179,7 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
         return new_row
 
     def extract_stats(df: pd.DataFrame, date_kind: str) -> Dict:
+        cols = ["Refact", "Human", "Total (characters)", "Refact Impact", "Completions", "Users"]
         res_loc = {}
         for lang, group in df.groupby("file_extension"):
             if lang not in languages:
@@ -196,7 +197,7 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
         fmt_vals = [format_row(row) for row in sorted_vals]
         res_loc = {
             'data': fmt_vals,
-            'columns': ['Language', *res_loc[list(res_loc.keys())[0]].keys()],
+            'columns': ['Language', *cols],
             'title': f"Refact's impact by language: {date_kind}"
         }
         return res_loc
