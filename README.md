@@ -34,7 +34,7 @@ On Windows you need to install WSL 2 first, [one guide to do this](https://docs.
 
 Run docker container with following command:
 ```commandline
-docker run -d --rm --gpus all -p 8008:8008 -v refact-perm-storage:/perm_storage smallcloud/refact_self_hosting:latest
+docker run -d --rm --gpus all --shm-size=256m -p 8008:8008 -v refact-perm-storage:/perm_storage smallcloud/refact_self_hosting:latest
 ```
 
 `perm-storage` is a volume that is mounted inside the container. All the configuration files, downloaded weights and logs are stored here.
