@@ -3,6 +3,20 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "files": [
+    "dist",
+    "dist/style.css"
+  ],
+  "main": "dist/refact-chat.umd.cjs",
+  "module": "dist/refact-chat.js",
+  "types": "dist/refact-chat.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smallcloudai/refact-chat-js"
+  },
+  "bugs": {
+    "url": "https://github.com/smallcloudai/refact-chat-js/issues"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
