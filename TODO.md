@@ -73,6 +73,7 @@
 
 [ ] check what happens when the lsp isn't on in vscode
 [ ] in vscode attach shouldn't show if there's no files (like when opening the ide)
+[ ] canceling chat doesn't seems to work (the spinner keeps spinning) :/
 
 ### EVENTS TODO FOR IDEs
 

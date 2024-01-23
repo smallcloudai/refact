@@ -32,6 +32,7 @@ import {
   ToggleActiveFile,
   NewFileFromChat,
   PasteDiffFromChat,
+  ReadyMessage,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 
@@ -498,10 +499,11 @@ export const useEventBusForChat = () => {
   }
 
   function sendReadyMessage() {
-    postMessage({
+    const action: ReadyMessage = {
       type: EVENT_NAMES_FROM_CHAT.READY,
       payload: { id: state.chat.id },
-    });
+    };
+    postMessage(action);
   }
 
   function handleNewFileClick(value: string) {
