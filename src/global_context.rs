@@ -62,8 +62,8 @@ pub struct Slowdown {
     pub requests_in_flight: u64,
 }
 
-pub struct LSPBackendDocumentState<'a> {
-    pub document_map: Arc<ARwLock<HashMap<String, Document<'a>>>>,
+pub struct LSPBackendDocumentState{
+    pub document_map: Arc<ARwLock<HashMap<String, Document>>>,
     pub workspace_folders: Arc<ARwLock<Option<Vec<WorkspaceFolder>>>>,
 }
 
@@ -79,7 +79,7 @@ pub struct GlobalContext {
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
     pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
-    // pub lsp_backend_document_state: LSPBackendDocumentState,
+    pub lsp_backend_document_state: LSPBackendDocumentState,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -218,10 +218,10 @@ pub async fn create_global_context(
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vec_db: Arc::new(AMutex::new(None)),
         ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
-        // lsp_backend_document_state: LSPBackendDocumentState {
-        //     document_map: Arc::new(ARwLock::new(HashMap::new())),
-        //     workspace_folders: Arc::new(ARwLock::new(None)),
-        // },
+        lsp_backend_document_state: LSPBackendDocumentState {
+            document_map: Arc::new(ARwLock::new(HashMap::new())),
+            workspace_folders: Arc::new(ARwLock::new(None)),
+        },
     };
     (Arc::new(ARwLock::new(cx)), ask_shutdown_receiver, cmdline)
 }

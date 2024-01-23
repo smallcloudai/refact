@@ -117,24 +117,24 @@ pub struct CompletionRes {
 
 impl Backend {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
-        // let txt = {
-            // let document_map = self.gcx.read().await.lsp_backend_document_state.document_map.clone();
-            // let document_map = document_map.read().await;
-            // let document = document_map
-            //     .get(params.text_document_position.text_document.uri.as_str());
-            // match document {
-            //     None => {
-            //         return Err(internal_error("document not found"));
-            //     }
-            //     Some(doc) => {
-            //         doc.text.clone()
-            //     }
-            // }
-        // };
+        let txt = {
+            let document_map = self.gcx.read().await.lsp_backend_document_state.document_map.clone();
+            let document_map = document_map.read().await;
+            let document = document_map
+                .get(params.text_document_position.text_document.uri.as_str());
+            match document {
+                None => {
+                    return Err(internal_error("document not found"));
+                }
+                Some(doc) => {
+                    doc.text.clone()
+                }
+            }
+        };
         Ok(CodeCompletionPost {
             inputs: CodeCompletionInputs {
                 sources: HashMap::from([(String::from(&params.text_document_position.text_document.uri.to_string()),
-                                         (&"").to_string())]),
+                                         (&txt).to_string())]),
                 cursor: CursorPosition {
                     file: String::from(&params.text_document_position.text_document.uri.to_string()),
                     line: params.text_document_position.position.line as i32,
@@ -190,8 +190,8 @@ impl LanguageServer for Backend {
         info!("LSP client_info {:?}", params.client_info);
         {
             let gcx_locked = self.gcx.write().await;
-            // *gcx_locked.lsp_backend_document_state.workspace_folders.write().await = params.workspace_folders.clone();
-            // info!("LSP workspace_folders {:?}", gcx_locked.lsp_backend_document_state.workspace_folders);
+            *gcx_locked.lsp_backend_document_state.workspace_folders.write().await = params.workspace_folders.clone();
+            info!("LSP workspace_folders {:?}", gcx_locked.lsp_backend_document_state.workspace_folders);
         }
 
         if let Some(folders) = params.workspace_folders {
@@ -251,12 +251,12 @@ impl LanguageServer for Backend {
             &params.text_document.uri.to_string()
         ) {
             Ok(document) => {
-                // let gc = self.gcx.clone();
-                // let gx = gc.write().await;
-                // gx.lsp_backend_document_state.document_map
-                //     .write()
-                //     .await
-                //     .insert(uri.clone(), document);
+                let gc = self.gcx.clone();
+                let gx = gc.write().await;
+                gx.lsp_backend_document_state.document_map
+                    .write()
+                    .await
+                    .insert(uri.clone(), document);
                 info!("{uri} opened");
             }
             Err(err) => error!("error opening {uri}: {err}"),
@@ -283,25 +283,25 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri.to_string();
         let gc = self.gcx.clone();
         let gx = gc.write().await;
-        // let mut document_map = gx.lsp_backend_document_state.document_map.write().await;
-        // let doc = document_map.get_mut(&uri);
-        // if let Some(doc) = doc {
-        //     match doc.change(&params.content_changes[0].text).await {
-        //         Ok(()) => {
-        //             info!("{} changed, save time: {:?}", uri, t0.elapsed());
-        //             let t1 = Instant::now();
-        //             sources_changed(
-        //                 self.gcx.clone(),
-        //                 &uri,
-        //                 &params.content_changes[0].text,
-        //             ).await;
-        //             info!("{} changed, telemetry time: {:?}", uri, t1.elapsed());
-        //         },
-        //         Err(err) => error!("error when changing {uri}: {err}"),
-        //     }
-        // } else {
-        //     warn!("textDocument/didChange {uri}: document not found");
-        // }
+        let mut document_map = gx.lsp_backend_document_state.document_map.write().await;
+        let doc = document_map.get_mut(&uri);
+        if let Some(doc) = doc {
+            match doc.change(&params.content_changes[0].text).await {
+                Ok(()) => {
+                    info!("{} changed, save time: {:?}", uri, t0.elapsed());
+                    let t1 = Instant::now();
+                    sources_changed(
+                        self.gcx.clone(),
+                        &uri,
+                        &params.content_changes[0].text,
+                    ).await;
+                    info!("{} changed, telemetry time: {:?}", uri, t1.elapsed());
+                },
+                Err(err) => error!("error when changing {uri}: {err}"),
+            }
+        } else {
+            warn!("textDocument/didChange {uri}: document not found");
+        }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {

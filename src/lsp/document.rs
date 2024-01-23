@@ -1,6 +1,8 @@
 use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
+use std::collections::hash_map::Entry;
 use std::fmt::Display;
+use std::sync::Arc;
 
 use ropey::Rope;
 use tower_lsp::jsonrpc::{Error, Result};
@@ -288,39 +290,61 @@ fn get_parser(language_id: LanguageId) -> Result<(Parser, AstConfig)> {
     }
 }
 
-pub struct Document<'a> {
+pub struct AstContext {
+    pub(crate) tree: Arc<Tree>,
+    pub(crate) definition_symbols: HashMap<usize, SymbolDeclarationStruct>,
+    // pub(crate) positions_map_rows: HashMap<usize, Vec<Arc<Node<'a>>>>,
+    pub(crate) all_symbols: HashSet<String>,
+}
+
+impl AstContext {
+    pub fn new(tree: Arc<Tree>, config: AstConfig, rope_text: &Rope, rope_path: &Rope) -> Self {
+        let definition_symbols = extract_definition_symbols(tree.clone(), config.clone(),
+                                                            &rope_text, &rope_path.clone());
+        // let positions_map_rows = extract_positions_map(tree.clone());
+        let all_symbols = extract_all_symbols(tree.clone(), &rope_text, config.clone());
+        return AstContext {
+            tree,
+            definition_symbols,
+            all_symbols,
+        }
+    }
+}
+
+
+pub struct Document {
     pub(crate) language_id: LanguageId,
     pub(crate) text: Rope,
     pub(crate) path: Rope,
     parser: Parser,
-    pub(crate) config: AstConfig,
-    pub(crate) tree: Option<Tree>,
-    definition_symbols: Option<HashMap<usize, SymbolDeclarationStruct>>,
-    positions_map_rows: Option<HashMap<usize, Vec<Node<'a>>>>,
-    all_symbols: Option<HashSet<String>>,
+    pub(crate) ast_config: AstConfig,
+    pub(crate) ast_context: Option<AstContext>
 }
 
 fn search_down<'a>(node: &'a Node<'a>, node_types_: &'a Vec<String>) -> Option<Node<'a>> {
     let node_types = HashSet::from_iter(node_types_.clone());
     let mut result: Vec<(Option<Node>, i32)> = vec![];
 
-    fn _helper<'a>(node: &'a Node<'a>, current_depth: i32, node_types: &'a HashSet<String>, result: &mut Vec<(Option<Node<'a>>, i32)>) -> Option<Node<'a>> {
+    fn _helper<'a>(node: Node<'a>, 
+                   current_depth: i32, 
+                   node_types: HashSet<String>, 
+                   result: &mut Vec<(Option<Node<'a>>, i32)>) -> Option<Node<'a>> {
         for idx in 0..node.child_count() {
             let child = node.child(idx);
             let ch = child.unwrap();
             let type_name = ch.kind().to_string();
-            if node_types.contains(&type_name) {
-                result.push((child, current_depth));
-                return child;
+            return if node_types.contains(&type_name) {
+                result.push((child.clone(), current_depth));
+                child
             } else {
-                let res = _helper(&child.unwrap(), current_depth + 1, node_types, result); 
-                return res;
+                let child = child.unwrap();
+                let res = _helper(child.clone(), current_depth + 1, node_types.clone(), result);
+                res
             }
         }
         None
     }
-    ;
-    _helper(node, 1, &node_types, &mut result);
+    _helper(node.clone(), 1, node_types.clone(), &mut result);
     return if result.len() == 0 {
         None
     } else {
@@ -369,10 +393,9 @@ fn get_parent_ids(mut node: Option<Node>, ids: HashSet<usize>) -> Vec<usize> {
     parent_ids
 }
 
-fn extract_definition_symbols(tree: &Tree, config: AstConfig, text: &Rope, path: &Rope)
+fn extract_definition_symbols(tree: Arc<Tree>, config: AstConfig, text: &Rope, path: &Rope)
                               -> HashMap<usize, SymbolDeclarationStruct> {
     let mut symbols: HashMap<usize, SymbolDeclarationStruct> = HashMap::default();
-    // let tmp = tree;
     let mut cursor = tree.walk();
 
     let mut reached_root = false;
@@ -381,6 +404,8 @@ fn extract_definition_symbols(tree: &Tree, config: AstConfig, text: &Rope, path:
             .map(|f| (f.clone().node_type, f.clone())).collect::<Vec<_>>());
     while !reached_root {
         let cursor_node = cursor.node();
+        let a = cursor_node.kind().to_string();
+        let b = cursor_node.has_error();
         if searching_nodes.contains_key(&cursor_node.kind().to_string()) && !(&cursor_node.has_error()) {
             let type_name = cursor_node.kind().to_string();
             let search_info = searching_nodes.get(&type_name.clone()).unwrap();
@@ -426,42 +451,7 @@ fn extract_definition_symbols(tree: &Tree, config: AstConfig, text: &Rope, path:
     symbols
 }
 
-fn extract_positions_map(tree: &Tree) -> HashMap<usize, Vec<Node>> {
-    let mut cursor = tree.walk();
-    let mut positions_map: HashMap<usize, Vec<Node>> = Default::default();
-    let mut reached_root = false;
-    while !reached_root {
-        if cursor.node().child_count() == 0 {
-            match positions_map.get(&cursor.node().start_position().row) {
-                None => {
-                    positions_map.insert(cursor.node().start_position().row, vec![cursor.node()]);
-                }
-                Some(mut v) => {
-                    v.push(cursor.node());
-                }
-            }
-        }
 
-        if cursor.goto_first_child() {
-            continue;
-        }
-
-        if cursor.goto_next_sibling() {
-            continue;
-        }
-        let mut retracing = true;
-        while retracing {
-            if !cursor.goto_parent() {
-                retracing = false;
-                reached_root = true;
-            }
-            if cursor.goto_next_sibling() {
-                retracing = false;
-            }
-        }
-    }
-    positions_map
-}
 
 const DIGITS: &str = "0123456789";
 const PUNCTUATION: &str = r#"#!$%&'"()*+,-./:;<=>?@[\]^_`{|}~"#;
@@ -532,12 +522,41 @@ fn get_nodes_nearby<'a>(
     nodes
 }
 
-fn extract_all_symbols(positions_map_rows: &HashMap<usize, Vec<Node>>, text: &Rope, config: AstConfig)
+fn extract_all_symbols(tree: Arc<Tree>, text: &Rope, config: AstConfig)
                        -> HashSet<String> {
+    // extract_positions_map start
+    let mut cursor = tree.walk();
+    let mut positions_map: HashMap<usize, Vec<Node>> = Default::default();
+    let mut reached_root = false;
+    while !reached_root {
+        let node = cursor.node();
+        if node.child_count() == 0 {
+            positions_map.entry(node.start_position().row).or_default().push(node);
+        }
+
+        if cursor.goto_first_child() {
+            continue;
+        }
+
+        if cursor.goto_next_sibling() {
+            continue;
+        }
+        let mut retracing = true;
+        while retracing {
+            if !cursor.goto_parent() {
+                retracing = false;
+                reached_root = true;
+            }
+            if cursor.goto_next_sibling() {
+                retracing = false;
+            }
+        }
+    }
+    // extract_positions_map finish
     let nodes = get_nodes_nearby(
         0,
-        positions_map_rows.len() as i32,
-        positions_map_rows,
+        positions_map.len() as i32,
+        &positions_map,
         text,
         config,
         true,
@@ -554,39 +573,76 @@ fn extract_all_symbols(positions_map_rows: &HashMap<usize, Vec<Node>>, text: &Ro
     res
 }
 
-impl Document<'_> {
+// fn extract_positions_map<'a>(tree: Arc<Tree>) -> HashMap<usize, Vec<Arc<Node<'a>>>> {
+//     let mut cursor = tree.walk();
+//     let mut positions_map: HashMap<usize, Vec<Arc<Node>>> = Default::default();
+//     let mut reached_root = false;
+//     while !reached_root {
+//         let node = Arc::new(cursor.node());
+//         if node.child_count() == 0 {
+//             positions_map.entry(node.start_position().row).or_default().push(node);
+//         }
+//     
+//         if cursor.goto_first_child() {
+//             continue;
+//         }
+//     
+//         if cursor.goto_next_sibling() {
+//             continue;
+//         }
+//         let mut retracing = true;
+//         while retracing {
+//             if !cursor.goto_parent() {
+//                 retracing = false;
+//                 reached_root = true;
+//             }
+//             if cursor.goto_next_sibling() {
+//                 retracing = false;
+//             }
+//         }
+//     }
+//     positions_map
+// }
+
+impl Document {
     pub fn open(language_id: &str, text: &str, path: &str) -> Result<Self> {
         let language_id = language_id.into();
         let (mut parser, config) = get_parser(language_id)?;
         let tree = parser.parse(text, None);
-        let mut doc = Document {
-            language_id,
-            text: Rope::from_str(text),
-            path: Rope::from_str(path),
-            parser,
-            tree: tree.clone(),
-            definition_symbols: None,
-            positions_map_rows: None,
-            config: config.clone(),
-            all_symbols: None,
-        };
-        match &doc.tree {
-            None => {}
+        let rope_text = Rope::from_str(text);
+        let rope_path = Rope::from_str(path);
+        match tree {
+            None => {
+                Ok(Document {
+                    language_id,
+                    text: rope_text,
+                    path: rope_path,
+                    parser,
+                    ast_config: config.clone(),
+                    ast_context: None,
+                })
+            }
             Some(tr) => {
-                doc.definition_symbols = Some(extract_definition_symbols(tr, config.clone(),
-                                                                         &doc.text, &doc.path.clone()));
-                let positions_map_rows = extract_positions_map(tr);
-                doc.all_symbols = Some(extract_all_symbols(&positions_map_rows, &doc.text, config));
-                doc.positions_map_rows = Some(positions_map_rows);
+                Ok(Document {
+                    language_id,
+                    text: rope_text.clone(),
+                    path: rope_path.clone(),
+                    parser,
+                    ast_config: config.clone(),
+                    ast_context: Some(AstContext::new(Arc::new(tr), config.clone(), &rope_text, &rope_path)),
+                })
             }
         }
-        Ok(doc)
     }
 
     pub(crate) async fn change(&mut self, text: &str) -> Result<()> {
         let rope = Rope::from_str(text);
-        self.tree = self.parser.parse(text, Some(&self.tree.clone().unwrap()));
-        self.text = rope;
+        self.text = rope.clone();
+        if let Some(ast_context) = self.ast_context.as_mut() {
+            if let Some(tree) = self.parser.parse(text, Option::from(ast_context.tree.as_ref())) {
+                ast_context.tree = Arc::new(tree);
+            }
+        }
         Ok(())
     }
 }
