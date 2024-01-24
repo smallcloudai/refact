@@ -1,5 +1,7 @@
+use std::collections::hash_map::DefaultHasher;
 use tracing::info;
 use std::collections::HashMap;
+use std::hash::Hasher;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::sync::RwLock as StdRwLock;
@@ -42,6 +44,16 @@ pub struct CommandLine {
     pub insecure: bool,
 }
 
+impl CommandLine {
+    fn create_hash(msg: String) -> String {
+        let mut hasher = DefaultHasher::new();;
+        hasher.write(msg.as_bytes());
+        format!("{:x}", hasher.finish())
+    }
+    pub fn get_prefix(&self) -> String {
+        Self::create_hash(format!("{}:{}", self.address_url.clone(), self.api_key.clone()))[..6].to_string()
+    }
+}
 
 pub struct Slowdown {
     // Be nice to cloud/self-hosted, don't flood it

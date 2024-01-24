@@ -123,12 +123,14 @@ pub async fn tele_robot_human_compress_to_file(
     let cache_dir: PathBuf;
     let storage: Arc<StdRwLock<telemetry_structs::Storage>>;
     let enduser_client_version;
+    let file_prefix;
     let mut records = json!([]);
     {
         let cx_locked = cx.read().await;
         storage = cx_locked.telemetry.clone();
         cache_dir = cx_locked.cache_dir.clone();
         enduser_client_version = cx_locked.cmdline.enduser_client_version.clone();
+        file_prefix = cx_locked.cmdline.get_prefix();
 
         let mut storage_locked = storage.write().unwrap();
         for rec in compress_robot_human(&mut storage_locked) {
@@ -146,7 +148,7 @@ pub async fn tele_robot_human_compress_to_file(
     }
     let (dir, _) = utils::telemetry_storage_dirs(&cache_dir).await;
 
-    let fn_rh = dir.join(format!("{}-rh.json", now.format("%Y%m%d-%H%M%S")));
+    let fn_rh = dir.join(format!("{}-{}-rh.json", file_prefix, now.format("%Y%m%d-%H%M%S")));
     let big_json_rh = json!({
         "records": records,
         "ts_start": now.timestamp(),

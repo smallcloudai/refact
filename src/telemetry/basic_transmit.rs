@@ -58,6 +58,10 @@ pub async fn send_telemetry_files_to_mothership(
 ) {
     // Send files found in dir_compressed, move to dir_sent if successful.
     let files = sorted_json_files(dir_compressed.clone()).await;
+    let file_prefix = {
+        let cx = gcx.read().await;
+        cx.cmdline.get_prefix()
+    };
     for path in files {
         let contents_maybe = read_file(path.clone()).await;
         if contents_maybe.is_err() {
@@ -66,7 +70,9 @@ pub async fn send_telemetry_files_to_mothership(
         }
         let contents = contents_maybe.unwrap();
         let path_str = path.to_str().unwrap();
-        if path_str.ends_with("-net.json") || path_str.ends_with("-rh.json") || path_str.ends_with("-comp.json") {
+        let filename = path.file_name().unwrap().to_str().unwrap();
+        if filename.starts_with(&file_prefix) && 
+            (path_str.ends_with("-net.json") || path_str.ends_with("-rh.json") || path_str.ends_with("-comp.json")) {
             info!("sending telemetry file\n{}\nto url\n{}", path.to_str().unwrap(), telemetry_basic_dest);
             let resp = send_telemetry_data(contents, &telemetry_basic_dest,
                                            &api_key, gcx.clone()).await;

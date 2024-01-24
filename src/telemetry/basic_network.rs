@@ -47,16 +47,18 @@ pub async fn compress_basic_telemetry_to_file(
     let cache_dir: PathBuf;
     let storage: Arc<StdRwLock<telemetry_structs::Storage>>;
     let enduser_client_version;
+    let file_prefix;
     {
         let cx_locked = cx.read().await;
         storage = cx_locked.telemetry.clone();
         cache_dir = cx_locked.cache_dir.clone();
         enduser_client_version = cx_locked.cmdline.enduser_client_version.clone();
+        file_prefix = cx_locked.cmdline.get_prefix();
     }
     let (dir, _) = telemetry_storage_dirs(&cache_dir).await;
 
     let records = compress_telemetry_network(storage.clone());
-    let fn_net = dir.join(format!("{}-net.json", now.format("%Y%m%d-%H%M%S")));
+    let fn_net = dir.join(format!("{}-{}-net.json", file_prefix, now.format("%Y%m%d-%H%M%S")));
     let mut big_json_net = json!({
         "records": records,
         "ts_end": now.timestamp(),
