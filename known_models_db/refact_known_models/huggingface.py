@@ -238,4 +238,29 @@ huggingface_mini_db = {
         "T": 512,
         "filter_caps": ["embeddings"],
     },
+    "stable/3b/code": {
+        "backend": "transformers",
+        "model_path": "stabilityai/stable-code-3b",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {
+            "attn_implementation": "flash_attention_2",
+        },
+        "required_memory_mb": 8000,
+        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
+        "filter_caps": ["completion"],
+    },
+    # NOTE: this model family uses tiktoken tokenizer, we cannot use them in refact-lsp for now
+    # "stable/2b/lm": {
+    #     "backend": "transformers",
+    #     "model_path": "stabilityai/stablelm-2-1_6b",
+    #     "diff_scratchpad_class": None,
+    #     "chat_scratchpad_class": None,
+    #     "model_class_kwargs": {
+    #         "attn_implementation": "flash_attention_2",
+    #     },
+    #     "required_memory_mb": 8000,
+    #     "T": 4096,
+    #     "filter_caps": ["chat"],
+    # },
 }
