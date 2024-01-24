@@ -328,21 +328,18 @@ fn search_down<'a>(node: &'a Node<'a>, node_types_: &'a Vec<String>) -> Option<N
     fn _helper<'a>(node: Node<'a>, 
                    current_depth: i32, 
                    node_types: HashSet<String>, 
-                   result: &mut Vec<(Option<Node<'a>>, i32)>) -> Option<Node<'a>> {
+                   result: &mut Vec<(Option<Node<'a>>, i32)>) {
         for idx in 0..node.child_count() {
             let child = node.child(idx);
             let ch = child.unwrap();
             let type_name = ch.kind().to_string();
-            return if node_types.contains(&type_name) {
+            if node_types.contains(&type_name) {
                 result.push((child.clone(), current_depth));
-                child
             } else {
                 let child = child.unwrap();
-                let res = _helper(child.clone(), current_depth + 1, node_types.clone(), result);
-                res
+                _helper(child.clone(), current_depth + 1, node_types.clone(), result);
             }
         }
-        None
     }
     _helper(node.clone(), 1, node_types.clone(), &mut result);
     return if result.len() == 0 {
