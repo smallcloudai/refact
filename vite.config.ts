@@ -6,56 +6,76 @@ import eslint from "vite-plugin-eslint";
 import { coverageConfigDefaults } from "vitest/config";
 import dts from "vite-plugin-dts";
 
+// TODO: remove extra compile step when vscode can run esmodules
+
 // https://vitejs.dev/config/
 /** @type {import('vite').UserConfig} */
-export default defineConfig(({ command, mode }) => {
-  const CONFIG: UserConfig = {
-    // Build the webpage
-    define: {
-      "process.env.NODE_ENV": JSON.stringify(mode),
-    },
-    mode,
-    build: {
-      emptyOutDir: true,
-      outDir: "dist",
-    },
-    plugins: [react()],
-    server: {
-      proxy: {
-        "/v1": process.env.REFACT_LSP_URL ?? "http://127.0.0.1:8001",
+function makeConfig(library: "browser" | "node") {
+  return defineConfig(({ command, mode }) => {
+    const OUT_DIR = library === "browser" ? "dist/chat" : "dist/events";
+    const CONFIG: UserConfig = {
+      // Build the webpage
+      define: {
+        "process.env.NODE_ENV": JSON.stringify(mode),
       },
-    },
-    test: {
-      environment: "jsdom",
-      coverage: {
-        exclude: coverageConfigDefaults.exclude.concat(
-          "**/*.stories.@(js|jsx|mjs|ts|tsx)",
-        ),
+      mode,
+      build: {
+        emptyOutDir: true,
+        outDir: OUT_DIR,
+        copyPublicDir: false,
       },
-    },
-    css: {
-      modules: {},
-    },
-  };
-
-  if (command !== "serve") {
-    CONFIG.mode = "production";
-    CONFIG.define = { "process.env.NODE_ENV": "'production'" };
-    CONFIG.plugins?.push([
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      eslint() as PluginOption,
-      dts({ rollupTypes: true }),
-    ]);
-    CONFIG.build = {
-      outDir: "dist",
-      lib: {
-        // TODO: make entry an  object
-        entry: path.resolve(__dirname, "src/lib/index.ts"),
-        name: "RefactChat",
-        fileName: "chat",
+      plugins: [react()],
+      server: {
+        proxy: {
+          "/v1": process.env.REFACT_LSP_URL ?? "http://127.0.0.1:8001",
+        },
+      },
+      test: {
+        environment: "jsdom",
+        coverage: {
+          exclude: coverageConfigDefaults.exclude.concat(
+            "**/*.stories.@(js|jsx|mjs|ts|tsx)",
+          ),
+        },
+      },
+      css: {
+        modules: {},
       },
     };
-  }
 
-  return CONFIG;
-});
+    if (command !== "serve") {
+      CONFIG.mode = "production";
+      CONFIG.define = { "process.env.NODE_ENV": "'production'" };
+      CONFIG.plugins?.push([
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        eslint() as PluginOption,
+      ]);
+
+      CONFIG.plugins?.push([
+        dts({
+          outDir: OUT_DIR,
+          rollupTypes: true,
+          insertTypesEntry: true,
+        }),
+      ]);
+
+      CONFIG.build = {
+        ...CONFIG.build,
+        lib: {
+          entry:
+            library === "browser"
+              ? path.resolve(__dirname, "src/lib/index.ts")
+              : path.resolve(__dirname, "src/events/index.ts"),
+          name: "RefactChat",
+          fileName: "index",
+        },
+      };
+    }
+
+    return CONFIG;
+  });
+}
+
+export default makeConfig("browser");
+
+export const nodeConfig = makeConfig("node");

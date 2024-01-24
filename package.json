@@ -5,11 +5,22 @@
   "type": "module",
   "files": [
     "dist",
-    "dist/style.css"
+    "dist/chat/style.css"
   ],
-  "main": "dist/refact-chat.umd.cjs",
-  "module": "dist/refact-chat.js",
-  "types": "dist/refact-chat.d.ts",
+  "main": "dist/chat/index.umd.cjs",
+  "module": "dist/chat/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/chat/index.js",
+      "require": "./dist/chat/index.umd.cjs",
+      "types": "./dist/chat/index.d.ts"
+    },
+    "./dist/events": {
+      "import": "./dist/events/index.js",
+      "require": "./dist/events/index.umd.cjs",
+      "types": "./dist/events/index.d.ts"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/smallcloudai/refact-chat-js"
@@ -19,7 +30,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && vite build -c vite.node.config.ts",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest",

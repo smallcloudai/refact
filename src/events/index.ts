@@ -6,6 +6,8 @@ import {
   ChatContextFile,
 } from "../services/refact";
 
+export type * from "../services/refact";
+
 export enum EVENT_NAMES_FROM_CHAT {
   SAVE_CHAT = "save_chat_to_history",
   ASK_QUESTION = "chat_question",
