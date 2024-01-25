@@ -95,7 +95,7 @@ async fn _try_download_tokenizer_file_and_open(
             },
             Err(_) => {}
         }
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        tokio::time::sleep(Duration::from_millis(200)).await;
     }
     Err("can not download tokenizer".parse().unwrap())
 }
