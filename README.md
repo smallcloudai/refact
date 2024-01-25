@@ -39,6 +39,10 @@ when ``
 
 `dev` if dev is true then the component works as it would when `host` is set to web but can display the chat as it would in another host setting.
 
+#### Events
+
+type definitions for events that chat component emits and receives from the host are in `src/events/index.ts` and exported from `dist/events/index.js`
+
 ## How to run
 
 install dependencies: `npm ci`

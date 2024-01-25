@@ -64,12 +64,12 @@
 [x] rag commands come from the caps url.
 
 [X] ensure vscode api is called only once
-[ ] vscode specific commands and components
-[ ] export the types for re-use in refact-vscode
+[x] vscode specific commands and components
+[x] export the types for re-use in refact-vscode
 [x] vscode attach file
 [x] send some info to the chat about the current file open in vscode, probably a REQUEST and RECEIVE file info events
-[ ] new file button
-[ ] paste diff button
+[x] new file button
+[x] paste diff button
 
 [ ] check what happens when the lsp isn't on in vscode
 [ ] in vscode attach shouldn't show if there's no files (like when opening the ide)
@@ -78,17 +78,17 @@
 
 ### EVENTS TODO FOR IDEs
 
-[ ] add missing events
-[ ] open new file
-[ ] diff paste back
-[ ] open chat in new tab
-[ ] send chat to side bar
+[x] add missing events
+[x] open new file
+[x] diff paste back
+[x] open chat in new tab
+[x] send chat to side bar
 [x] stop streaming button
 [x] error handling (done)
-[ ] back from chat (when in side-bar)
-[ ] open chat in new tab (side bar only)
-[ ] send chat to side bar
+[x] back from chat (when in side-bar)
+[x] open chat in new tab (side bar only)
+[x] send chat to side bar
 [x] create lib directory for code that becomes a lib
-[ ] configure vite to output multiple entry files (one for web and one for the ide's)
+[x] configure vite to output multiple entry files (one for web and one for the ide's)
 [x] export events in package.json or from lib
 [ ] remove inline styles
