@@ -1,3 +1,4 @@
+import os
 import logging
 import asyncio
 
@@ -31,6 +32,8 @@ from self_hosting_machinery.webgui.selfhost_login import LoginRouter
 from self_hosting_machinery.webgui.selfhost_database import RefactDatabase
 from self_hosting_machinery.webgui.selfhost_database import StatisticsService
 from self_hosting_machinery.webgui.selfhost_lsp_proxy import LspProxy
+from self_hosting_machinery.webgui.selfhost_login import RefactSession
+from self_hosting_machinery.webgui.selfhost_login import DummySession
 from self_hosting_machinery.webgui.selfhost_login import AdminSession
 
 from typing import Dict, Callable
@@ -42,7 +45,7 @@ class WebGUI(FastAPI):
                  model_assigner: ModelAssigner,
                  database: RefactDatabase,
                  stats_service: StatisticsService,
-                 session: AdminSession,
+                 session: RefactSession,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -70,24 +73,13 @@ class WebGUI(FastAPI):
         class LoginMiddleware(BaseHTTPMiddleware):
 
             def __init__(self,
-                         session: AdminSession,
+                         session: RefactSession,
                          *args, **kwargs):
                 self._session = session
-                self._exclude_routes = [
-                    "/login",
-                    "/coding_assistant_caps.json",
-                    "/v1",
-                    "/infengine-v1",
-                    "/stats/telemetry",
-                    "/chat",
-                    "/assets",  # TODO: this static dir should be renamed soon
-                    "/favicon.png",
-                    "/lsp",  # TODO: this route should pass user's key to work with /v1 endpoints
-                ]
                 super().__init__(*args, **kwargs)
 
             async def dispatch(self, request: Request, call_next: Callable):
-                if any(map(request.url.path.startswith, self._exclude_routes)) \
+                if any(map(request.url.path.startswith, self._session.exclude_routes)) \
                         or self._session.authenticate(request.cookies.get("session_key")):
                     return await call_next(request)
                 return RedirectResponse(url="/login")
@@ -113,7 +105,7 @@ class WebGUI(FastAPI):
             inference_queue: InferenceQueue,
             model_assigner: ModelAssigner,
             stats_service: StatisticsService,
-            session: AdminSession):
+            session: RefactSession):
         return [
             TabLorasRouter(),
             PluginsRouter(),
@@ -175,7 +167,10 @@ if __name__ == "__main__":
     model_assigner = ModelAssigner()
     database = RefactDatabase()
     stats_service = StatisticsService(database)
-    session = AdminSession()
+
+    admin_token = os.environ.get("REFACT_ADMIN_TOKEN", None)
+    session = AdminSession(admin_token) if admin_token is not None else DummySession
+
     app = WebGUI(
         model_assigner=model_assigner,
         database=database,

@@ -13,23 +13,65 @@ from pydantic import Required
 from self_hosting_machinery.webgui import static_folders
 from self_hosting_machinery import env
 
+from typing import List
 
-__all__ = ["LoginRouter"]
+
+__all__ = ["RefactSession", "DummySession", "AdminSession", "LoginRouter"]
 
 
 class Credentials(BaseModel):
     token: str = Query(default=Required)
 
 
-class AdminSession:
+class RefactSession:
 
-    def __init__(self):
-        self._token = os.environ.get("REFACT_ADMIN_TOKEN", "12345")
+    @property
+    def exclude_routes(self) -> List[str]:
+        raise NotImplementedError()
+
+    def authorize(self, token: str) -> str:
+        raise NotImplementedError()
+
+    def authenticate(self, session_key: str) -> bool:
+        raise NotImplementedError()
+
+
+class DummySession(RefactSession):
+
+    @property
+    def exclude_routes(self) -> List[str]:
+        return []
+
+    def authorize(self, token: str) -> str:
+        return ""
+
+    def authenticate(self, session_key: str) -> bool:
+        return True
+
+
+class AdminSession(RefactSession):
+
+    def __init__(self, token: str):
+        self._token = token
         if os.path.exists(env.ADMIN_SESSION_KEY):
             with open(env.ADMIN_SESSION_KEY, "r") as f:
                 self._session_key = f.read()
         else:
             self._session_key = self._generate_session_key()
+
+    @property
+    def exclude_routes(self) -> List[str]:
+        return [
+            "/login",
+            "/coding_assistant_caps.json",
+            "/v1",
+            "/infengine-v1",
+            "/stats/telemetry",
+            "/chat",
+            "/assets",  # TODO: this static dir should be renamed soon
+            "/favicon.png",
+            "/lsp",  # TODO: this route should pass user's key to work with /v1 endpoints
+        ]
 
     @staticmethod
     def _generate_session_key() -> str:
@@ -55,7 +97,7 @@ class AdminSession:
 
 class LoginRouter(APIRouter):
 
-    def __init__(self, session: AdminSession, *args, **kwargs):
+    def __init__(self, session: RefactSession, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._session = session
         self.add_api_route("", self._get_login_page, methods=["GET"])
