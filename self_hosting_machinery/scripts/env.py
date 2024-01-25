@@ -38,6 +38,8 @@ LOG_FILES_REJECTED_SCAN = os.path.join(DIR_CONFIG, "files_rejected_scan.log")
 LOG_FILES_ACCEPTED_FTF = os.path.join(DIR_CONFIG, "files_accepted_ftf.log")
 LOG_FILES_REJECTED_FTF = os.path.join(DIR_CONFIG, "files_rejected_ftf.log")
 
+ADMIN_SESSION_KEY = os.path.join(DIR_CONFIG, "admin_session.key")
+
 FLAG_LAUNCH_PROCESS_UPLOADS = os.path.join(DIR_WATCHDOG_D, "_launch_process_uploaded.flag")
 FLAG_LAUNCH_FINETUNE_FILTER_ONLY = os.path.join(DIR_WATCHDOG_D, "_launch_finetune_filter_only.flag")
 FLAG_LAUNCH_FINETUNE = os.path.join(DIR_WATCHDOG_D, "_launch_finetune.flag")

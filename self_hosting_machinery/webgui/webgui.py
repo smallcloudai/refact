@@ -8,6 +8,8 @@ import uvicorn
 import weakref
 
 from fastapi import FastAPI
+from fastapi.requests import Request
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -24,12 +26,14 @@ from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue, Ticket
 from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 from self_hosting_machinery.webgui.tab_loras import TabLorasRouter
 from self_hosting_machinery.webgui.selfhost_statistics import TabStatisticsRouter
+from self_hosting_machinery.webgui.selfhost_login import LoginRouter
 
 from self_hosting_machinery.webgui.selfhost_database import RefactDatabase
 from self_hosting_machinery.webgui.selfhost_database import StatisticsService
 from self_hosting_machinery.webgui.selfhost_lsp_proxy import LspProxy
+from self_hosting_machinery.webgui.selfhost_login import AdminSession
 
-from typing import Dict
+from typing import Dict, Callable
 
 
 class WebGUI(FastAPI):
@@ -38,16 +42,23 @@ class WebGUI(FastAPI):
                  model_assigner: ModelAssigner,
                  database: RefactDatabase,
                  stats_service: StatisticsService,
+                 session: AdminSession,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._model_assigner = model_assigner
         self._database = database
         self._stats_service = stats_service
+        self._session = session
 
         inference_queue = InferenceQueue()
         id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
-        for router in self._routers_list(id2ticket, inference_queue, self._model_assigner, self._stats_service):
+        for router in self._routers_list(
+                id2ticket,
+                inference_queue,
+                self._model_assigner,
+                self._stats_service,
+                self._session):
             self.include_router(router)
 
         class NoCacheMiddleware(BaseHTTPMiddleware):
@@ -55,6 +66,31 @@ class WebGUI(FastAPI):
                 response = await call_next(request)
                 response.headers["Cache-Control"] = "no-cache"
                 return response
+
+        class LoginMiddleware(BaseHTTPMiddleware):
+
+            def __init__(self,
+                         session: AdminSession,
+                         *args, **kwargs):
+                self._session = session
+                self._exclude_routes = [
+                    "/login",
+                    "/coding_assistant_caps.json",
+                    "/v1",
+                    "/infengine-v1",
+                    "/stats/telemetry",
+                    "/chat",
+                    "/assets",  # TODO: this static dir should be renamed soon
+                    "/favicon.png",
+                    "/lsp",  # TODO: this route should pass user's key to work with /v1 endpoints
+                ]
+                super().__init__(*args, **kwargs)
+
+            async def dispatch(self, request: Request, call_next: Callable):
+                if any(map(request.url.path.startswith, self._exclude_routes)) \
+                        or self._session.authenticate(request.cookies.get("session_key")):
+                    return await call_next(request)
+                return RedirectResponse(url="/login")
 
         self.add_middleware(
             CORSMiddleware,
@@ -64,6 +100,10 @@ class WebGUI(FastAPI):
             allow_headers=["*"],
         )
         self.add_middleware(NoCacheMiddleware)
+        self.add_middleware(
+            LoginMiddleware,
+            session=self._session,
+        )
 
         self.add_event_handler("startup", self._startup_event)
 
@@ -72,10 +112,14 @@ class WebGUI(FastAPI):
             id2ticket: Dict[str, Ticket],
             inference_queue: InferenceQueue,
             model_assigner: ModelAssigner,
-            stats_service: StatisticsService):
+            stats_service: StatisticsService,
+            session: AdminSession):
         return [
             TabLorasRouter(),
             PluginsRouter(),
+            LoginRouter(
+                prefix="/login",
+                session=session),
             TabStatisticsRouter(
                 prefix="/stats",
                 stats_service=stats_service),
@@ -131,10 +175,12 @@ if __name__ == "__main__":
     model_assigner = ModelAssigner()
     database = RefactDatabase()
     stats_service = StatisticsService(database)
+    session = AdminSession()
     app = WebGUI(
         model_assigner=model_assigner,
         database=database,
         stats_service=stats_service,
+        session=session,
         docs_url=None, redoc_url=None)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
