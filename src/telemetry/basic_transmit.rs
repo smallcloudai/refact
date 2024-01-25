@@ -2,6 +2,7 @@ use tracing::{error, info};
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::path::PathBuf;
+use std::time::SystemTime;
 use serde_json::json;
 
 use tokio::sync::RwLock as ARwLock;
@@ -15,6 +16,7 @@ use crate::telemetry::basic_comp_counters;
 use crate::telemetry::utils::{sorted_json_files, read_file, cleanup_old_files, telemetry_storage_dirs};
 
 
+const TELEMETRY_CLEANUP_COOLDOWN_SECONDS: u64 = 3600 * 24 * 30;
 const TELEMETRY_TRANSMIT_AFTER_START_SECONDS: u64 = 60;
 const TELEMETRY_TRANSMIT_EACH_N_SECONDS: u64 = 3600;
 const TELEMETRY_FILES_KEEP: i32 = 128;
@@ -144,11 +146,35 @@ pub async fn basic_telemetry_send(
     cleanup_old_files(dir_sent, TELEMETRY_FILES_KEEP).await;
 }
 
+async fn cleanup_old_telemetry(global_context: Arc<ARwLock<GlobalContext>>) {
+    let cache_dir: PathBuf = {
+        let cx = global_context.write().await;
+        cx.cache_dir.clone()
+    };
+    let (dir_compressed, _) = telemetry_storage_dirs(&cache_dir).await;
+    let files = sorted_json_files(dir_compressed.clone()).await;
+    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+    for file in &files {
+        match tokio::fs::metadata(file).await {
+            Ok(attr) => {
+                if let Ok(time) = attr.modified() {
+                    let time = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+                    if (now - time) > TELEMETRY_CLEANUP_COOLDOWN_SECONDS {
+                        let _ = tokio::fs::remove_file(file).await;
+                    }
+                }
+            }
+            Err(_) => {}
+        }
+    }
+}
+
 pub async fn telemetry_background_task(
     global_context: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> () {
     tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_TRANSMIT_AFTER_START_SECONDS)).await;
     basic_telemetry_send(global_context.clone()).await;
+    cleanup_old_telemetry(global_context.clone()).await;
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_TRANSMIT_EACH_N_SECONDS)).await;
         basic_telemetry_compress(global_context.clone()).await;
