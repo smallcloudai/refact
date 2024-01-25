@@ -6,8 +6,8 @@ export type ChatRole = "user" | "assistant" | "context_file";
 export type ChatContextFile = {
   file_name: string;
   file_content: string;
-  line1?: number;
-  line2?: number;
+  line1: number;
+  line2: number;
 };
 
 interface BaseMessage extends Array<string | ChatContextFile[]> {
