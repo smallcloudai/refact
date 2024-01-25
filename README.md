@@ -1,12 +1,49 @@
 # Refact Chat Js
 
-⚠️ This is a work in progress ⚠️
+Shared component for chat with refact plugins and [refact docker](https://github.com/smallcloudai/refact).
+
+## Usage
+
+Add the bundled package to an html page and pass the selected element and options to `RefactChat.render` function.
+
+```html
+<body>
+  <div id="refact-chat"></div>
+
+  <script src="https://unpkg.com/refact-chat-js@0.0.1/dist/chat/index.umd.cjs"></script>
+
+  <script>
+    window.onload = function () {
+      const root = document.getElementById("refact-chat");
+      RefactChat.render(root, { host: "web" });
+    };
+  </script>
+</body>
+```
+
+### API
+
+#### `RefactChat.render(element, Options)`
+
+- Element - the root element of the chat
+- Options - the options to pass to the chat component
+
+##### `Options`
+
+`host` one of `[web, ide, vscode, jetbrains]`
+when `host` is `web` the chat will be rendered in the browser and the events to and from chat will be handled by the side bar.
+when `host` is `ide`, `vscode` or `jetbrains` events to and from the chat will be handled by the corresponding IDE or code editor via the `postMessage` API.
+when ``
+
+`tabbed` is true or false, default `false`
+
+`dev` if dev is true then the component works as it would when `host` is set to web but can display the chat as it would in another host setting.
 
 ## How to run
 
 install dependencies: `npm ci`
 run [refact-lsp](https://github.com/smallcloudai/refact-lsp)
-run `npm dev` and go to localhost:5173
+run `REFACT_LSP_URL="http://localhost:8001 npm dev` and go to localhost:5173
 
 ### env vars
 

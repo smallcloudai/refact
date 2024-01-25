@@ -6,7 +6,7 @@ import eslint from "vite-plugin-eslint";
 import { coverageConfigDefaults } from "vitest/config";
 import dts from "vite-plugin-dts";
 
-// TODO: remove extra compile step when vscode can run esmodules
+// TODO: remove extra compile step when vscode can run esmodules  https://github.com/microsoft/vscode/issues/130367
 
 // https://vitejs.dev/config/
 /** @type {import('vite').UserConfig} */
