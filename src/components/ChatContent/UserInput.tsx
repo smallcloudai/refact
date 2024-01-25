@@ -27,6 +27,7 @@ export const UserInput: React.FC<{
   return (
     <Card
       variant="classic"
+      m="1"
       style={{
         wordWrap: "break-word",
         wordBreak: "break-word",
