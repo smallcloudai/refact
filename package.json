@@ -41,7 +41,8 @@
     "prepare": "husky install",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "types": "tsc --noEmit"
+    "types": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {},
   "devDependencies": {
