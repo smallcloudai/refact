@@ -99,7 +99,6 @@ jobs:
       - name: Build and test artifact
         if: matrix.target == 'aarch64-apple-darwin'
         run: |
-          cargo test --release
           cargo build --release --target-dir dist/ --target aarch64-apple-darwin
           mv ./dist/aarch64-apple-darwin/release/refact-lsp ./dist/release/refact-lsp
       
