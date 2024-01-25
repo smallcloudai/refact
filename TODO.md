@@ -75,6 +75,7 @@
 [ ] in vscode attach shouldn't show if there's no files (like when opening the ide)
 [ ] canceling chat doesn't seems to work (the spinner keeps spinning) :/
 [x] build the events (+ types) as a dedicated file
+[ ] automate publishing the main branch
 
 ### EVENTS TODO FOR IDEs
 
