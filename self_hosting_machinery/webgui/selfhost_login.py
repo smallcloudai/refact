@@ -25,6 +25,7 @@ class Credentials(BaseModel):
 
 class RefactSession:
 
+    @property
     def exclude_routes(self) -> List[str]:
         raise NotImplementedError()
 
@@ -37,6 +38,7 @@ class RefactSession:
 
 class DummySession(RefactSession):
 
+    @property
     def exclude_routes(self) -> List[str]:
         return []
 
@@ -57,6 +59,7 @@ class AdminSession(RefactSession):
         else:
             self._session_key = self._generate_session_key()
 
+    @property
     def exclude_routes(self) -> List[str]:
         return [
             "/login",

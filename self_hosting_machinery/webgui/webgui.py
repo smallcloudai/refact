@@ -76,10 +76,11 @@ class WebGUI(FastAPI):
                          session: RefactSession,
                          *args, **kwargs):
                 self._session = session
+                self._exclude_routes = set(self._session.exclude_routes)
                 super().__init__(*args, **kwargs)
 
             async def dispatch(self, request: Request, call_next: Callable):
-                if any(map(request.url.path.startswith, self._session.exclude_routes())) \
+                if any(map(request.url.path.startswith, self._exclude_routes)) \
                         or self._session.authenticate(request.cookies.get("session_key")):
                     return await call_next(request)
                 return RedirectResponse(url="/login")
