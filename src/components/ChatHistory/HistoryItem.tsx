@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, Flex, Text, Box } from "@radix-ui/themes";
-import { ChatHistoryItem } from "../../hooks/useChatHistory";
+import type { ChatHistoryItem } from "../../hooks/useChatHistory";
 import { ChatBubbleIcon } from "@radix-ui/react-icons";
 import { CloseButton } from "../Buttons/Buttons";
 
@@ -54,6 +54,8 @@ export const HistoryItem: React.FC<{
           </Flex>
         </button>
       </Card>
+
+      {/**TODO: open in tab button */}
       <CloseButton
         size="1"
         // needs to be smaller

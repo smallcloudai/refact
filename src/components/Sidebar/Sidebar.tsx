@@ -1,24 +1,17 @@
 import React from "react";
 import { Box, Flex, Button } from "@radix-ui/themes";
 import styles from "./sidebar.module.css";
-import { ChatHistoryItem } from "../../hooks/useChatHistory";
-import { HistoryItem } from "./HistoryItem";
-import { ScrollArea } from "../ScrollArea";
+import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 
-export const Sidebar: React.FC<{
-  history: ChatHistoryItem[];
-  onHistoryItemClick: (id: string) => void;
-  onCreateNewChat: () => void;
-  onDeleteHistoryItem: (id: string) => void;
-}> = ({
-  history,
-  onHistoryItemClick,
-  onCreateNewChat,
-  onDeleteHistoryItem,
-}) => {
+export const Sidebar: React.FC<
+  {
+    onCreateNewChat: () => void;
+  } & ChatHistoryProps
+> = ({ history, onHistoryItemClick, onCreateNewChat, onDeleteHistoryItem }) => {
   return (
     <Box className={styles.sidebar}>
-      <Box
+      <Flex
+        direction="column"
         position="fixed"
         left="0"
         bottom="0"
@@ -29,35 +22,18 @@ export const Sidebar: React.FC<{
           width: "inherit",
         }}
       >
-        <ScrollArea scrollbars="vertical">
-          <Flex
-            justify="center"
-            align="center"
-            pt="4"
-            pb="2"
-            mr="1"
-            direction="column"
-          >
-            <Button
-              variant="soft"
-              onClick={onCreateNewChat}
-              style={{
-                marginBottom: "16px",
-              }}
-            >
-              Start a new chat
-            </Button>
-            {history.map((chat) => (
-              <HistoryItem
-                onClick={onHistoryItemClick}
-                onDelete={onDeleteHistoryItem}
-                key={chat.id}
-                chat={chat}
-              />
-            ))}
-          </Flex>
-        </ScrollArea>
-      </Box>
+        <Box ml="auto" mr="auto" mt="4" mb="4">
+          <Button variant="soft" onClick={onCreateNewChat}>
+            Start a new chat
+          </Button>
+        </Box>
+
+        <ChatHistory
+          history={history}
+          onHistoryItemClick={onHistoryItemClick}
+          onDeleteHistoryItem={onDeleteHistoryItem}
+        />
+      </Flex>
     </Box>
   );
 };
