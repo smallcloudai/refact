@@ -233,6 +233,9 @@ class BaseCompletionsRouter(APIRouter):
         self._model_assigner = model_assigner
         self._timeout = timeout
 
+    def _account_from_bearer(self, authorization: str) -> str:
+        raise NotImplementedError()
+
     @staticmethod
     def _integrations_env_setup():
         inference = {}
@@ -287,7 +290,9 @@ class BaseCompletionsRouter(APIRouter):
         }
         return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
-    async def _login(self):
+    async def _login(self, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
+
         longthink_functions = dict()
         longthink_filters = set()
         models_mini_db_extended = {
@@ -333,13 +338,16 @@ class BaseCompletionsRouter(APIRouter):
             "chat-v1-style": 1,
         }
 
-    async def _secret_key_activate(self):
+    async def _secret_key_activate(self, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
         return {
             "retcode": "OK",
             "human_readable_message": "API key verified",
         }
 
-    async def _completions(self, post: NlpCompletion, account: str = "user"):
+    async def _completions(self, post: NlpCompletion, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
+
         ticket = Ticket("comp-")
         req = post.clamp()
         caps_version = self._model_assigner.config_inference_mtime()       # use mtime as a version, if that changes the client will know to refresh caps
@@ -367,7 +375,9 @@ class BaseCompletionsRouter(APIRouter):
             media_type=("text/event-stream" if post.stream else "application/json"),
         )
 
-    async def _chat(self, post: ChatContext, request: Request, account: str = "user"):
+    async def _chat(self, post: ChatContext, request: Request, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+
         ticket = Ticket("comp-")
 
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
@@ -436,7 +446,9 @@ class BaseCompletionsRouter(APIRouter):
                     pass
                 yield {"embedding": embedding, "index": idx}
 
-    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request, account: str = "user"):
+    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request,
+                                       authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
         data = [
             {
                 "embedding": res["embedding"],
@@ -454,7 +466,8 @@ class BaseCompletionsRouter(APIRouter):
             "usage": {"prompt_tokens": -1, "total_tokens": -1}
         }
 
-    async def _models(self):
+    async def _models(self, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get("http://127.0.0.1:8001/v1/caps") as resp:
@@ -482,7 +495,9 @@ class BaseCompletionsRouter(APIRouter):
             "data": data,
         }
 
-    async def _chat_completions(self, post: ChatContext, account: str = "user"):
+    async def _chat_completions(self, post: ChatContext, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+
         prefix, postfix = "data: ", "\n\n"
 
         if post.model in litellm.model_list:
@@ -555,31 +570,3 @@ class CompletionsRouter(BaseCompletionsRouter):
             return self._session.header_authenticate(authorization)
         except BaseException as e:
             raise HTTPException(status_code=401, detail=str(e))
-
-    async def _login(self, authorization: str = Header(None)):
-        self._account_from_bearer(authorization)
-        return await super()._login()
-
-    async def _secret_key_activate(self, authorization: str = Header(None)):
-        self._account_from_bearer(authorization)
-        return await super()._secret_key_activate()
-
-    async def _chat(self, post: ChatContext, request: Request, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
-        return await super()._chat(post, request, account=account)
-
-    async def _completions(self, post: NlpCompletion, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
-        return await super()._completions(post, account=account)
-
-    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
-        return await super()._embeddings_style_openai(post, request, account=account)
-
-    async def _models(self, authorization: str = Header(None)):
-        self._account_from_bearer(authorization)
-        return await super()._models()
-
-    async def _chat_completions(self, post: ChatContext, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
-        return await super()._chat_completions(post, account=account)
