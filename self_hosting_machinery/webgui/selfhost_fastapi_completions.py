@@ -346,7 +346,7 @@ class BaseCompletionsRouter(APIRouter):
         }
 
     async def _completions(self, post: NlpCompletion, authorization: str = Header(None)):
-        self._account_from_bearer(authorization)
+        account = self._account_from_bearer(authorization)
 
         ticket = Ticket("comp-")
         req = post.clamp()
@@ -446,8 +446,7 @@ class BaseCompletionsRouter(APIRouter):
                     pass
                 yield {"embedding": embedding, "index": idx}
 
-    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request,
-                                       authorization: str = Header(None)):
+    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, authorization: str = Header(None)):
         account = self._account_from_bearer(authorization)
         data = [
             {
