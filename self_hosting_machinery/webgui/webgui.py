@@ -118,7 +118,8 @@ class WebGUI(FastAPI):
             CompletionsRouter(
                 id2ticket=id2ticket,
                 inference_queue=inference_queue,
-                model_assigner=model_assigner),
+                model_assigner=model_assigner,
+                session=session),
             GPURouter(
                 prefix="/infengine-v1",
                 id2ticket=id2ticket,

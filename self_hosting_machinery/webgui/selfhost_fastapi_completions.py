@@ -7,7 +7,7 @@ import termcolor
 import os
 import litellm
 
-from fastapi import APIRouter, Request, HTTPException, Query
+from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
 from self_hosting_machinery import env
@@ -17,12 +17,13 @@ from self_hosting_machinery.webgui.selfhost_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
+from self_hosting_machinery.webgui.selfhost_login import RefactSession
 
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union
 
 
-__all__ = ["CompletionsRouter"]
+__all__ = ["BaseCompletionsRouter", "CompletionsRouter"]
 
 
 def clamp(lower, upper, x):
@@ -204,7 +205,7 @@ async def error_string_streamer(ticket_id, static_message, account, created_ts):
     log("  " + red_time(created_ts) + "%s chat static message to %s: %s" % (ticket_id, account, static_message))
 
 
-class CompletionsRouter(APIRouter):
+class BaseCompletionsRouter(APIRouter):
 
     def __init__(self,
                  inference_queue: InferenceQueue,
@@ -435,7 +436,7 @@ class CompletionsRouter(APIRouter):
                     pass
                 yield {"embedding": embedding, "index": idx}
 
-    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request, account: str = "XXX"):
+    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request, account: str = "user"):
         data = [
             {
                 "embedding": res["embedding"],
@@ -541,3 +542,49 @@ class CompletionsRouter(APIRouter):
             response_streamer = chat_completion_streamer(post)
 
         return StreamingResponse(response_streamer, media_type="text/event-stream")
+
+
+class CompletionsRouter(BaseCompletionsRouter):
+
+    def __init__(self, session: RefactSession, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._session = session
+
+    def _account_from_bearer(self, authorization: str) -> str:
+        try:
+            self._session.authorize(authorization)
+            return "user"
+        except Exception as e:
+            raise HTTPException(status_code=401, detail=str(e))
+
+    async def _login(self, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
+        return await super()._login()
+
+    async def _secret_key_activate(self, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
+        return await super()._secret_key_activate()
+
+    async def _chat(self, post: ChatContext, request: Request, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+        return await super()._chat(post, request, account=account)
+
+    async def _coding_assistant_caps(self, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
+        return await super()._coding_assistant_caps()
+
+    async def _completions(self, post: NlpCompletion, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+        return await super()._completions(post, account=account)
+
+    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+        return await super()._embeddings_style_openai(post, request, account=account)
+
+    async def _models(self, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
+        return await super()._models()
+
+    async def _chat_completions(self, post: ChatContext, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+        return await super()._chat_completions(post, account=account)
