@@ -35,6 +35,9 @@ class RefactSession:
     def authenticate(self, session_key: str) -> bool:
         raise NotImplementedError()
 
+    def header_authenticate(self, authorization: str) -> str:
+        raise NotImplementedError()
+
 
 class DummySession(RefactSession):
 
@@ -47,6 +50,9 @@ class DummySession(RefactSession):
 
     def authenticate(self, session_key: str) -> bool:
         return True
+
+    def header_authenticate(self, authorization: str) -> str:
+        return "user"
 
 
 class AdminSession(RefactSession):
@@ -93,6 +99,20 @@ class AdminSession(RefactSession):
         if not isinstance(session_key, str):
             return False
         return session_key == self._session_key
+
+    def header_authenticate(self, authorization: str) -> str:
+        if authorization is None:
+            raise ValueError("Missing authorization header")
+        bearer_hdr = authorization.split(" ")
+        if len(bearer_hdr) != 2 or bearer_hdr[0] != "Bearer":
+            raise ValueError("Invalid authorization header")
+        api_key = bearer_hdr[1]
+        # TODO: this is a hack for chat handler, wee need to pass real user's api key
+        if api_key == "refact-dummy-chat-key":
+            return "refact-chat"
+        if self._token == api_key:
+            return "user"
+        raise ValueError("API key mismatch")
 
 
 class LoginRouter(APIRouter):

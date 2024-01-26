@@ -552,9 +552,8 @@ class CompletionsRouter(BaseCompletionsRouter):
 
     def _account_from_bearer(self, authorization: str) -> str:
         try:
-            self._session.authorize(authorization)
-            return "user"
-        except Exception as e:
+            return self._session.header_authenticate(authorization)
+        except BaseException as e:
             raise HTTPException(status_code=401, detail=str(e))
 
     async def _login(self, authorization: str = Header(None)):
@@ -568,10 +567,6 @@ class CompletionsRouter(BaseCompletionsRouter):
     async def _chat(self, post: ChatContext, request: Request, authorization: str = Header(None)):
         account = self._account_from_bearer(authorization)
         return await super()._chat(post, request, account=account)
-
-    async def _coding_assistant_caps(self, authorization: str = Header(None)):
-        self._account_from_bearer(authorization)
-        return await super()._coding_assistant_caps()
 
     async def _completions(self, post: NlpCompletion, authorization: str = Header(None)):
         account = self._account_from_bearer(authorization)
