@@ -298,11 +298,11 @@ pub struct AstContext {
 }
 
 impl AstContext {
-    pub fn new(tree: Arc<Tree>, config: AstConfig, rope_text: &Rope, rope_path: &Rope) -> Self {
+    pub fn new(tree: Arc<Tree>, config: AstConfig, rope_text: Rope, rope_path: &Rope) -> Self {
         let definition_symbols = extract_definition_symbols(tree.clone(), config.clone(),
-                                                            &rope_text, &rope_path.clone());
+                                                            rope_text.clone(), &rope_path.clone());
         // let positions_map_rows = extract_positions_map(tree.clone());
-        let all_symbols = extract_all_symbols(tree.clone(), &rope_text, config.clone());
+        let all_symbols = extract_all_symbols(tree.clone(), rope_text.clone(), config.clone());
         return AstContext {
             tree,
             definition_symbols,
@@ -355,7 +355,7 @@ fn search_down<'a>(node: &'a Node<'a>, node_types_: &'a Vec<String>) -> Option<N
     };
 }
 
-fn search_namespace(mut node: Option<Node>, namespace_search_info: Option<TypeDeclarationSearchInfo>, text: &Rope) -> Vec<String> {
+fn search_namespace(mut node: Option<Node>, namespace_search_info: Option<TypeDeclarationSearchInfo>, text: Rope) -> Vec<String> {
     if namespace_search_info.is_none() {
         return vec![];
     }
@@ -390,10 +390,24 @@ fn get_parent_ids(mut node: Option<Node>, ids: HashSet<usize>) -> Vec<usize> {
     parent_ids
 }
 
-fn extract_definition_symbols(tree: Arc<Tree>, config: AstConfig, text: &Rope, path: &Rope)
+
+
+fn extract_definition_symbols(tree: Arc<Tree>, config: AstConfig, text: Rope, path: &Rope)
                               -> HashMap<usize, SymbolDeclarationStruct> {
     let mut symbols: HashMap<usize, SymbolDeclarationStruct> = HashMap::default();
     let mut cursor = tree.walk();
+    let q = r#"(function_definition name: (identifier) @function.def)"#;
+    let query = tree_sitter::Query::new(tree_sitter_python::language(), q).unwrap();
+    let mut qcursor = tree_sitter::QueryCursor::new();
+    let zxc = text.to_string();
+    for mat in qcursor.matches(&query, tree.root_node(), text.to_string().as_bytes()) {
+        for capture in mat.captures {
+            let start = capture.node.start_position();
+            let end = capture.node.end_position();
+            let capture_name = &query.capture_names()[capture.index as usize];
+            let z = &query.capture_names()[capture.index as usize];;
+        }
+    }
 
     let mut reached_root = false;
     let searching_nodes: HashMap<String, TypeDeclarationSearchInfo> =
@@ -401,8 +415,6 @@ fn extract_definition_symbols(tree: Arc<Tree>, config: AstConfig, text: &Rope, p
             .map(|f| (f.clone().node_type, f.clone())).collect::<Vec<_>>());
     while !reached_root {
         let cursor_node = cursor.node();
-        let a = cursor_node.kind().to_string();
-        let b = cursor_node.has_error();
         if searching_nodes.contains_key(&cursor_node.kind().to_string()) && !(&cursor_node.has_error()) {
             let type_name = cursor_node.kind().to_string();
             let search_info = searching_nodes.get(&type_name.clone()).unwrap();
@@ -410,7 +422,7 @@ fn extract_definition_symbols(tree: Arc<Tree>, config: AstConfig, text: &Rope, p
             if name_node.is_some() {
                 let node = name_node.unwrap();
                 let name = text.slice(node.start_byte()..node.end_byte()).to_string();
-                let namespace = search_namespace(name_node, config.namespace_search_info.clone(), text);
+                let namespace = search_namespace(name_node, config.namespace_search_info.clone(), text.clone());
                 let parent_ids = get_parent_ids(cursor_node.parent(), HashSet::from_iter(symbols.keys().cloned()));
                 symbols.insert(cursor_node.id(), SymbolDeclarationStruct {
                     id: cursor_node.id(),
@@ -519,7 +531,7 @@ fn get_nodes_nearby<'a>(
     nodes
 }
 
-fn extract_all_symbols(tree: Arc<Tree>, text: &Rope, config: AstConfig)
+fn extract_all_symbols(tree: Arc<Tree>, text: Rope, config: AstConfig)
                        -> HashSet<String> {
     // extract_positions_map start
     let mut cursor = tree.walk();
@@ -554,7 +566,7 @@ fn extract_all_symbols(tree: Arc<Tree>, text: &Rope, config: AstConfig)
         0,
         positions_map.len() as i32,
         &positions_map,
-        text,
+        &text,
         config,
         true,
         true,
@@ -626,7 +638,7 @@ impl Document {
                     path: rope_path.clone(),
                     parser,
                     ast_config: config.clone(),
-                    ast_context: Some(AstContext::new(Arc::new(tr), config.clone(), &rope_text, &rope_path)),
+                    ast_context: Some(AstContext::new(Arc::new(tr), config.clone(), rope_text.clone(), &rope_path)),
                 })
             }
         }
