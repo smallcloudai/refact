@@ -1,5 +1,14 @@
+use std::collections::{HashMap, HashSet};
+use std::iter::Iterator;
+use std::ops::Deref;
+use std::string::ToString;
+use similar::DiffableStr;
+use structopt::lazy_static::lazy_static;
+use tree_sitter::{Parser, Range};
 use crate::lsp::document::TypeDeclarationSearchInfo;
 use crate::lsp::treesitter::ast_config::{AstConfig, Language};
+use crate::lsp::treesitter::index::{DefinitionInfo, Index, SymbolInfo, SymbolType};
+use crate::lsp::treesitter::query_info::QueryInfo;
 
 pub struct PythonConfig;
 
@@ -25,75 +34,194 @@ impl Language for PythonConfig {
         }
     }
 }
-// (#eq? @function.name "%s")
-// ((function_definition name: (identifier) @function.name body: (block) @function.body) @function.declare)
-const PARSER_QUERY_PYTHON_FUNCTION: &str = r#"
 
-(call function: (identifier) @function.used arguments: (argument_list) @function.used_args )
+const PARSER_QUERY_PYTHON_GLOBAL_VARIABLE: QueryInfo = QueryInfo::new(
+    "global_var", 
+    "(module (expression_statement (assignment left: (identifier) @global_var.name) @global_var.declaration))",
+    &["name", "declaration"],
+);
 
-"#;
+const PARSER_QUERY_PYTHON_FUNCTION: QueryInfo = QueryInfo::new(
+    "function",
+    "((function_definition name: (identifier) @function.name) @function.declaration)",
+    &["name", "declaration"],
+);    
+
+const PARSER_QUERY_PYTHON_CLASS: QueryInfo = QueryInfo::new(
+    "class",
+    "((class_definition name: (identifier) @class.name) @class.declaration)",
+    &["name", "declaration"],
+);
+
+const PARSER_QUERY_PYTHON_CALL_FUNCTION: QueryInfo = QueryInfo::new(
+    "call_function",
+    "((call function: (identifier) @call_function.name arguments: (argument_list) @call_function.args))",
+    &["name", "args"],
+);
+
+const PARSER_QUERY_PYTHON_IMPORT_STATEMENT: QueryInfo = QueryInfo::new(
+    "import_statement",
+    "((import_statement name: (dotted_name) @import.name))",
+    &["name"],
+);
+
+const PARSER_QUERY_PYTHON_IMPORT_FROM_STATEMENT: QueryInfo = QueryInfo::new(
+    "import_from_statement",
+    "(import_from_statement module_name: (dotted_name) @module.name)",
+    &["name", "module"],
+);
+
+const PARSER_QUERY_PYTHON_CLASS_METHOD: QueryInfo = QueryInfo::new(
+    "method",
+    "(class_definition (block (function_definition name: (identifier) @method.name) @method.declaration))",
+    &["name", "declaration"],
+);
+
+lazy_static! {
+    static ref PYTHON_ALL_QUERIES: HashMap<&'static str, QueryInfo<'static>> = {
+        let mut m = HashMap::new();
+        m.insert(PARSER_QUERY_PYTHON_GLOBAL_VARIABLE.prefix, PARSER_QUERY_PYTHON_GLOBAL_VARIABLE);
+        m.insert(PARSER_QUERY_PYTHON_FUNCTION.prefix, PARSER_QUERY_PYTHON_FUNCTION);
+        m.insert(PARSER_QUERY_PYTHON_CLASS.prefix, PARSER_QUERY_PYTHON_CLASS);
+        m.insert(PARSER_QUERY_PYTHON_CALL_FUNCTION.prefix, PARSER_QUERY_PYTHON_CALL_FUNCTION);
+        m.insert(PARSER_QUERY_PYTHON_IMPORT_STATEMENT.prefix, PARSER_QUERY_PYTHON_IMPORT_STATEMENT);
+        m.insert(PARSER_QUERY_PYTHON_IMPORT_FROM_STATEMENT.prefix, PARSER_QUERY_PYTHON_IMPORT_FROM_STATEMENT);
+        m.insert(PARSER_QUERY_PYTHON_CLASS_METHOD.prefix, PARSER_QUERY_PYTHON_CLASS_METHOD);
+        m
+    };
+    static ref PARSER_QUERY_PYTHON: String = QueryInfo::compose_query(PYTHON_ALL_QUERIES.deref());
+}
+
+struct Candidate {
+    pub capture_name: String,
+    pub content: String,
+    pub range: Range
+}
+
+fn make_index_from_candidates(candidates: &Vec<Candidate>, query_info: &QueryInfo) -> Index {
+    let mut index = Index {
+        name: Default::default(),
+        used: Default::default(),
+        definition_info: None,
+        children: vec![].into(),
+        symbol_type: SymbolType::GlobalVar,
+    };
+    for c in candidates {
+        let mut split = c.capture_name.split(".");
+        let prefix = split.nth(0).unwrap();
+        let capture_name_wo_pfx = split.nth(0).unwrap();
+        index.symbol_type = prefix.parse().unwrap();
+        assert!(query_info.statement_names.contains(&capture_name_wo_pfx));
+        match capture_name_wo_pfx {
+            "name" => index.name = c.content.clone(),
+            "declaration" => index.definition_info = Some(DefinitionInfo {
+                symbol_info: SymbolInfo { path: Default::default(), range: c.range },
+                text: c.content.clone(),
+            }),
+            &_ => {}
+        }
+    }
+    index
+}
+
+pub fn get_indexes(parser: &mut Parser, code: &str) -> HashMap<String, Index> {
+    let mut indexes: Vec<Index> = Default::default();
+    let tree = parser.parse(code, None).unwrap();
+    let mut qcursor = tree_sitter::QueryCursor::new();
+    let query = tree_sitter::Query::new(tree_sitter_python::language(), &PARSER_QUERY_PYTHON).unwrap();
+    let mut matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
+    let mut candidates: Vec<Candidate> = vec![];
+    for match_ in matches {
+        for capture in match_.captures {
+            let text = code.slice(capture.node.byte_range());
+            let capture_name = &query.capture_names()[capture.index as usize];
+            let prefix = capture_name.split(".").nth(0).unwrap();
+            candidates.push(Candidate {
+                content: text.to_string(),
+                capture_name: capture_name.to_string(),
+                range: capture.node.range(),
+            });
+            if let Some(q_info) = PYTHON_ALL_QUERIES.get(prefix) {
+                if q_info.statement_names.len() == candidates.len() {
+                    let index = make_index_from_candidates(&candidates, q_info);
+                    indexes.push(index);
+                    candidates.clear();
+                }
+            }
+        }
+    }
+    match_indexes(indexes.clone());
+    indexes.into_iter().map(|i| (i.name.clone(), i)).collect()
+}
+
+fn match_indexes(mut indexes: Vec<Index>) {
+    let mut all_methods = indexes.iter().filter(|i| i.symbol_type == SymbolType::Method).map(|x| x.clone()).collect::<Vec<_>>();
+    let mut all_classes = indexes.iter_mut().filter(|i| i.symbol_type == SymbolType::Class).collect::<Vec<_>>();
+    all_classes.sort_by(|x, y| {
+        let xrange = x.definition_info.clone().unwrap().symbol_info.range;
+        let yrange = y.definition_info.clone().unwrap().symbol_info.range;
+        let xb = xrange.end_byte - xrange.start_byte;
+        let yb = yrange.end_byte - yrange.start_byte;
+        xb.partial_cmp(&yb).unwrap()
+    });
+    for class in all_classes {
+        let class_range = class.definition_info.clone().unwrap().symbol_info.range;
+        for method in all_methods.iter().clone() {
+            let method_range = method.definition_info.clone().unwrap().symbol_info.range;
+            if method_range.start_byte >= class_range.start_byte && method_range.end_byte <= class_range.end_byte {
+                class.children.push(method.clone());
+            }
+        }
+    }
+    // all_classes.reverse();
+    let final_classes: Vec<Index> = vec![];
+    {
+        let nested_classes: HashSet<String> = Default::default();
+        for class in all_classes {
+            for nested_class in all_classes.clone() {
+                if class.name == nested_class.name || nested_classes.{
+                    continue
+                }
+            }
+        }
+    }
+    
+}
 
 #[cfg(test)]
 mod tests {
-    use similar::DiffableStr;
-    use tree_sitter::{Point, Range};
-    use crate::lsp::treesitter::ast_config::python_config::PARSER_QUERY_PYTHON_FUNCTION;
+    use crate::lsp::treesitter::ast_config::python_config::get_indexes;
 
     const TEST_CODE: &str = 
-r#"def foo():
+r#"import numpy as np
+  
+global_var = "pip"
+bar = true
+
+class BabyClass:
+    def __init__(self):
+        self.xyi = 2
+class AdultClass:
+    def __init__(self):
+        self.xyi = 2
+        self.zxc = 4
+
+def baz(asd, zxc):
+    pass
+
+@tits
+def foo():
     if bar:
-        def baz():
-            return 2
-        baz(sd)
+        baz(asd, zxc)	
 "#;
 
     #[test]
     fn test_query_python_function() {
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(tree_sitter_python::language()).unwrap();
-        let tree = parser.parse(TEST_CODE, None).unwrap();;
-        let query = tree_sitter::Query::new(tree_sitter_python::language(), PARSER_QUERY_PYTHON_FUNCTION).unwrap();
-        let mut qcursor = tree_sitter::QueryCursor::new();
-        let mut matches = qcursor.matches(&query, tree.root_node(), TEST_CODE.as_bytes());
-        let captures = matches.next().unwrap().captures;
-        // let captures = matches.next().unwrap().captures;
-        // assert_eq!(captures.len(), 3);
-        {
-            let capture = captures[0];
-            let capture_name = &query.capture_names()[capture.index as usize];
-            let text = TEST_CODE.slice(capture.node.byte_range());
-            // assert_eq!(capture.node.range(), Range {
-            //     start_byte: 0,
-            //     end_byte: 36,
-            //     start_point: Point { row: 0, column: 0 },
-            //     end_point: Point { row: 2, column: 13 },
-            // });
-            // assert_eq!(text, "def foo():\n    if bar:\n        baz()");
-        }
-        {
-            let capture = captures[1];
-            let capture_name = &query.capture_names()[capture.index as usize];
-            let text = TEST_CODE.slice(capture.node.byte_range());
-            assert_eq!(capture.node.range(), Range {
-                start_byte: 4,
-                end_byte: 7,
-                start_point: Point { row: 0, column: 4 },
-                end_point: Point { row: 0, column: 7 },
-            });
-            assert_eq!(text, "foo");
-        }
-        {
-            let capture = captures[2];
-            let capture_name = &query.capture_names()[capture.index as usize];
-            let text = TEST_CODE.slice(capture.node.byte_range());
-            assert_eq!(capture.node.range(), Range {
-                start_byte: 15,
-                end_byte: 36,
-                start_point: Point { row: 1, column: 4 },
-                end_point: Point { row: 2, column: 13 },
-            });
-            assert_eq!(text, "if bar:\n        baz()");
-        }
+        let indexes = get_indexes(&mut parser, TEST_CODE);
+        assert_eq!(indexes.len(), 1);
+        assert_eq!(indexes.get("function").unwrap().name, "foo");
     }
     
 }
