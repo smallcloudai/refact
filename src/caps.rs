@@ -122,6 +122,15 @@ const KNOWN_MODELS: &str = r####"
                 "deepseek-coder/1.3b/vllm",
                 "deepseek-coder/5.7b/vllm"
             ]
+        },
+        "stable/3b/code": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "FIM-PSM": {},
+                "FIM-SPM": {}
+            },
+            "default_scratchpad": "FIM-PSM",
+            "similar_models": []
         }
     },
     "code_chat_models": {
