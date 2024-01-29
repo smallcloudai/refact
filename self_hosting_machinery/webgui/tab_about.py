@@ -1,6 +1,5 @@
 import asyncio
 import os.path
-import time
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -45,15 +44,18 @@ class TabAboutRouter(APIRouter):
             log(f"Error while getting 'refact-lsp' version: {e}")
         return "N/A"
 
-    async def _init_version_table(self) -> List[Tuple[str, str, str]]:
+    def _get_build_info(self):
         build_info_filename = "/refact-build-info.txt"
         build_info = dict()
         if os.path.exists(build_info_filename):
             with open(build_info_filename, "r") as f:
                 build_info = dict(line.split() for line in f.readlines())
+        return build_info
+
+    async def _init_version_table(self) -> List[Tuple[str, str, str]]:
+        build_info = self._get_build_info()
         refact_version = await self._get_pip_module_version("refact-self-hosting")
         lsp_version = await self._get_lsp_version()
-        self._last_request = time.time()
         return [
             ("refact", refact_version, build_info.get("refact", "N/A")),
             ("refact-lsp", lsp_version, build_info.get("refact-lsp", "N/A")),
