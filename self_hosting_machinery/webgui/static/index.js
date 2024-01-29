@@ -239,3 +239,20 @@ reset_submit_button.addEventListener('click', () => {
 window.addEventListener("offline", function () {
     general_error("Connection problem. Seems your browser is offline.");
 })
+
+function logout_button_init() {
+    const nav_bar = document.querySelector('.navbar-nav');
+    const logout_button = document.createElement("button");
+    logout_button.classList.add("nav-link");
+    logout_button.innerText = "Logout";
+    nav_bar.appendChild(logout_button);
+    logout_button.addEventListener('click', () => {
+        let session = document.cookie.match(/^(.*;)?\s*session_key\s*=\s*[^;]+(.*)?$/);
+        if (session) {
+            document.cookie = "session_key=; path=/;";
+            window.location.reload();
+        }
+    });
+}
+
+logout_button_init()

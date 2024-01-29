@@ -7,7 +7,7 @@ import termcolor
 import os
 import litellm
 
-from fastapi import APIRouter, Request, HTTPException, Query
+from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
 from self_hosting_machinery import env
@@ -17,12 +17,13 @@ from self_hosting_machinery.webgui.selfhost_queue import Ticket
 from self_hosting_machinery.webgui.selfhost_webutils import log
 from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
 from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
+from self_hosting_machinery.webgui.selfhost_login import RefactSession
 
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union
 
 
-__all__ = ["CompletionsRouter"]
+__all__ = ["BaseCompletionsRouter", "CompletionsRouter"]
 
 
 def clamp(lower, upper, x):
@@ -204,7 +205,7 @@ async def error_string_streamer(ticket_id, static_message, account, created_ts):
     log("  " + red_time(created_ts) + "%s chat static message to %s: %s" % (ticket_id, account, static_message))
 
 
-class CompletionsRouter(APIRouter):
+class BaseCompletionsRouter(APIRouter):
 
     def __init__(self,
                  inference_queue: InferenceQueue,
@@ -231,6 +232,9 @@ class CompletionsRouter(APIRouter):
         self._id2ticket = id2ticket
         self._model_assigner = model_assigner
         self._timeout = timeout
+
+    def _account_from_bearer(self, authorization: str) -> str:
+        raise NotImplementedError()
 
     @staticmethod
     def _integrations_env_setup():
@@ -286,7 +290,9 @@ class CompletionsRouter(APIRouter):
         }
         return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
-    async def _login(self):
+    async def _login(self, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
+
         longthink_functions = dict()
         longthink_filters = set()
         models_mini_db_extended = {
@@ -332,13 +338,16 @@ class CompletionsRouter(APIRouter):
             "chat-v1-style": 1,
         }
 
-    async def _secret_key_activate(self):
+    async def _secret_key_activate(self, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
         return {
             "retcode": "OK",
             "human_readable_message": "API key verified",
         }
 
-    async def _completions(self, post: NlpCompletion, account: str = "user"):
+    async def _completions(self, post: NlpCompletion, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+
         ticket = Ticket("comp-")
         req = post.clamp()
         caps_version = self._model_assigner.config_inference_mtime()       # use mtime as a version, if that changes the client will know to refresh caps
@@ -366,7 +375,9 @@ class CompletionsRouter(APIRouter):
             media_type=("text/event-stream" if post.stream else "application/json"),
         )
 
-    async def _chat(self, post: ChatContext, request: Request, account: str = "user"):
+    async def _chat(self, post: ChatContext, request: Request, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+
         ticket = Ticket("comp-")
 
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
@@ -435,7 +446,8 @@ class CompletionsRouter(APIRouter):
                     pass
                 yield {"embedding": embedding, "index": idx}
 
-    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, request: Request, account: str = "XXX"):
+    async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
         data = [
             {
                 "embedding": res["embedding"],
@@ -453,7 +465,8 @@ class CompletionsRouter(APIRouter):
             "usage": {"prompt_tokens": -1, "total_tokens": -1}
         }
 
-    async def _models(self):
+    async def _models(self, authorization: str = Header(None)):
+        self._account_from_bearer(authorization)
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get("http://127.0.0.1:8001/v1/caps") as resp:
@@ -481,7 +494,9 @@ class CompletionsRouter(APIRouter):
             "data": data,
         }
 
-    async def _chat_completions(self, post: ChatContext, account: str = "user"):
+    async def _chat_completions(self, post: ChatContext, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+
         prefix, postfix = "data: ", "\n\n"
 
         if post.model in litellm.model_list:
@@ -541,3 +556,16 @@ class CompletionsRouter(APIRouter):
             response_streamer = chat_completion_streamer(post)
 
         return StreamingResponse(response_streamer, media_type="text/event-stream")
+
+
+class CompletionsRouter(BaseCompletionsRouter):
+
+    def __init__(self, session: RefactSession, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._session = session
+
+    def _account_from_bearer(self, authorization: str) -> str:
+        try:
+            return self._session.header_authenticate(authorization)
+        except BaseException as e:
+            raise HTTPException(status_code=401, detail=str(e))
