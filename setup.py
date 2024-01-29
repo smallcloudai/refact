@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 from typing import List, Set
 
 setup_package = os.environ.get("SETUP_PACKAGE", None)
-install_optional = os.environ.get("INSTALL_OPTIONAL", "FALSE")
+install_optional = os.environ.get("INSTALL_OPTIONAL", "TRUE")
 
 
 @dataclass
