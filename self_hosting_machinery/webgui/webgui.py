@@ -28,6 +28,7 @@ from self_hosting_machinery.webgui.selfhost_static import StaticRouter
 from self_hosting_machinery.webgui.tab_loras import TabLorasRouter
 from self_hosting_machinery.webgui.selfhost_statistics import TabStatisticsRouter
 from self_hosting_machinery.webgui.selfhost_login import LoginRouter
+from self_hosting_machinery.webgui.tab_version import TabVersionRouter
 
 from self_hosting_machinery.webgui.selfhost_database import RefactDatabase
 from self_hosting_machinery.webgui.selfhost_database import StatisticsService
@@ -131,6 +132,7 @@ class WebGUI(FastAPI):
             TabHostRouter(model_assigner),
             TabSettingsRouter(model_assigner),
             LspProxy(),
+            TabVersionRouter(),
             StaticRouter(),
         ]
 
