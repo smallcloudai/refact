@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
@@ -5,10 +7,11 @@ use reqwest::header::HeaderValue;
 use reqwest_eventsource::EventSource;
 use serde::Serialize;
 use serde_json::json;
-use crate::call_validation;
-use crate::call_validation::SamplingParameters;
+use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
+use crate::call_validation;
+use crate::call_validation::SamplingParameters;
 
 pub async fn forward_to_openai_style_endpoint(
     save_url: &mut String,
@@ -43,10 +46,10 @@ pub async fn forward_to_openai_style_endpoint(
     }
     // When cancelling requests, coroutine ususally gets aborted here on the following line.
     let req = client.post(&url)
-       .headers(headers)
-       .body(data.to_string())
-       .send()
-       .await;
+        .headers(headers)
+        .body(data.to_string())
+        .send()
+        .await;
     let resp = req.map_err(|e| format!("{}", e))?;
     let status_code = resp.status().as_u16();
     let response_txt = resp.text().await.map_err(|e|
@@ -93,8 +96,8 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         data["prompt"] = serde_json::Value::String(prompt.to_string());
     }
     let builder = client.post(&url)
-       .headers(headers)
-       .body(data.to_string());
+        .headers(headers)
+        .body(data.to_string());
     let event_source: EventSource = EventSource::new(builder).map_err(|e|
         format!("can't stream from {}: {}", url, e)
     )?;
@@ -120,19 +123,19 @@ struct EmbeddingsPayloadOpenAI {
 
 
 pub async fn get_embedding_openai_style(
+    client: Arc<AMutex<reqwest::Client>>,
     text: String,
     endpoint_template: &String,
     model_name: &String,
     api_key: &String,
 ) -> Result<Vec<f32>, String> {
-    let client = reqwest::Client::new();
     let payload = EmbeddingsPayloadOpenAI {
         input: text,
         model: model_name.clone(),
     };
     let url = endpoint_template.clone();
     let api_key_clone = api_key.clone();
-    let response = client
+    let response = client.lock().await
         .post(&url)
         .bearer_auth(api_key_clone.clone())
         .json(&payload)
@@ -142,7 +145,7 @@ pub async fn get_embedding_openai_style(
 
     if !response.status().is_success() {
         info!("get_embedding_openai_style: {:?}", response);
-        return Err(format!("get_embedding_openai_style: bad status: {:?}", response.status()))
+        return Err(format!("get_embedding_openai_style: bad status: {:?}", response.status()));
     }
 
     let json = response.json::<serde_json::Value>()

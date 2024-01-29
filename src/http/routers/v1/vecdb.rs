@@ -54,7 +54,12 @@ pub async fn handle_v1_vecdb_status(
 ) -> Result<Response<Body>, ScratchError> {
     let cx_locked = global_context.read().await;
     let status = match *cx_locked.vec_db.lock().await {
-        Some(ref db) => db.get_status().await,
+        Some(ref db) => match db.get_status().await {
+            Ok(status) => status,
+            Err(err) => {
+                return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, err));
+            }
+        },
         None => {
             return Err(ScratchError::new(
                 StatusCode::INTERNAL_SERVER_ERROR, "Vector db is not available".to_string()

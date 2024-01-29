@@ -71,6 +71,7 @@ async fn cooldown_queue_thread(
 
 
 async fn vectorize_thread(
+    client: Arc<AMutex<reqwest::Client>>,
     queue: Arc<AMutex<VecDeque<PathBuf>>>,
     vecdb_handler_ref: Arc<AMutex<VecDBHandler>>,
     status: VecDbStatusRef,
@@ -105,9 +106,14 @@ async fn vectorize_thread(
                 None => {
                     // No files left to process
                     if !reported_vecdb_complete {
+                        reported_vecdb_complete = true;
+                        info!("VECDB Creating index");
+                        match vecdb_handler_ref.lock().await.create_index().await {
+                            Ok(_) => info!("VECDB CREATED INDEX"),
+                            Err(err) => info!("VECDB Error creating index: {}", err)
+                        }
                         write!(std::io::stderr(), "VECDB COMPLETE\n").unwrap();
                         info!("VECDB COMPLETE"); // you can see "VECDB COMPLETE" sometimes faster vs logs
-                        reported_vecdb_complete = true;
                     }
                     tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
                     continue;
@@ -138,6 +144,8 @@ async fn vectorize_thread(
             let api_key_clone = api_key.clone();
             let endpoint_embeddings_style_clone = constants.endpoint_embeddings_style.clone();
             let endpoint_template_clone = constants.endpoint_embeddings_template.clone();
+            let status_clone = Arc::clone(&status);
+            let client_clone = Arc::clone(&client);
 
             let semaphore_clone = Arc::clone(&semaphore);
             tokio::spawn(async move {
@@ -149,13 +157,15 @@ async fn vectorize_thread(
                 };
 
                 let result = try_get_embedding(
+                    client_clone,
                     &endpoint_embeddings_style_clone,
                     &model_name_clone,
                     &endpoint_template_clone,
                     x.window_text.clone(),
                     &api_key_clone,
-                    3,
+                    1,
                 ).await;
+                status_clone.lock().await.requests_made_since_start += 1;
 
                 drop(_permit);
                 Some((x, result))
@@ -169,7 +179,6 @@ async fn vectorize_thread(
                 match result_mb {
                     Ok(result) => {
                         let now = SystemTime::now();
-
                         records.push(
                             Record {
                                 vector: Some(result),
@@ -178,7 +187,7 @@ async fn vectorize_thread(
                                 file_path: data_res.file_path,
                                 start_line: data_res.start_line,
                                 end_line: data_res.end_line,
-                                time_added: SystemTime::now(),
+                                time_added: now,
                                 model_name: constants.model_name.clone(),
                                 distance: -1.0,
                                 used_counter: 0,
@@ -188,6 +197,7 @@ async fn vectorize_thread(
                     }
                     Err(e) => {
                         info!("Error retrieving embeddings for {}: {}", data_res.file_path.to_str().unwrap(), e);
+                        queue.lock().await.push_back(data_res.file_path);  // push it back again
                     }
                 }
             }
@@ -206,6 +216,7 @@ async fn cleanup_thread(vecdb_handler: Arc<AMutex<VecDBHandler>>) {
         {
             let mut vecdb = vecdb_handler.lock().await;
             let _ = vecdb.cleanup_old_records().await;
+            let _ = vecdb.create_index().await;
         }
         tokio::time::sleep(tokio::time::Duration::from_secs(2 * 3600)).await;
     }
@@ -237,8 +248,7 @@ impl FileVectorizerService {
         }
     }
 
-    pub async fn start_background_tasks(&self) -> Vec<JoinHandle<()>>
-    {
+    pub async fn start_background_tasks(&self, vecdb_client: Arc<AMutex<reqwest::Client>>) -> Vec<JoinHandle<()>> {
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
                 self.update_request_queue.clone(),
@@ -250,6 +260,7 @@ impl FileVectorizerService {
 
         let retrieve_thread_handle = tokio::spawn(
             vectorize_thread(
+                vecdb_client.clone(),
                 self.output_queue.clone(),
                 self.vecdb_handler.clone(),
                 self.status.clone(),
@@ -294,7 +305,7 @@ impl FileVectorizerService {
         };
         status.db_cache_size = match self.vecdb_handler.lock().await.cache_size().await {
             Ok(res) => res,
-            Err(err) => return Err(err)
+            Err(err) => return Err(err.to_string())
         };
         Ok(status)
     }
