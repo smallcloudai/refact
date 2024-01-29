@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
@@ -13,12 +14,21 @@ use arrow_array::{FixedSizeListArray, Float32Array, RecordBatch, RecordBatchIter
 use arrow_array::cast::{as_fixed_size_list_array, as_primitive_array, as_string_array};
 use arrow_array::types::{Float32Type, UInt64Type};
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
+use itertools::Itertools;
 use futures_util::TryStreamExt;
 use lance::dataset::{WriteMode, WriteParams};
+use lance_linalg::distance::MetricType;
+use lance_index::vector::ivf::IvfBuildParams;
+use lance::index::vector::pq::PQBuildParams;
 use log::info;
+use rusqlite::{OpenFlags, params, Result};
 use tempfile::{tempdir, TempDir};
+use tokio::fs;
+use tokio::sync::Mutex as AMutex;
+use tokio_rusqlite::Connection;
 use tracing::error;
 use vectordb::database::Database;
+use vectordb::index::vector::IvfPQIndexBuilder;
 use vectordb::table::Table;
 
 use crate::vecdb::structs::{Record, SplitResult};
@@ -31,9 +41,8 @@ impl Debug for VecDBHandler {
 }
 
 pub struct VecDBHandler {
-    cache_database: Database,
+    cache_database: Arc<AMutex<Connection>>,
     _data_database_temp_dir: TempDir,
-    cache_table: Table,
     data_table: Table,
     schema: SchemaRef,
     data_table_hashes: HashSet<String>,
@@ -58,7 +67,7 @@ const MIN_LIKES: i32 = 3;
 impl VecDBHandler {
     pub async fn init(cache_dir: &PathBuf, model_name: &String, embedding_size: i32) -> Result<VecDBHandler, String> {
         let cache_dir_str = match cache_dir.join("refact_vecdb_cache")
-            .join(format!("model_{}_esize_{}",
+            .join(format!("model_{}_esize_{}.sqlite",
                           model_name.replace("/", "_"),
                           embedding_size
             )).to_str() {
@@ -77,8 +86,18 @@ impl VecDBHandler {
             None => return Err(format!("{:?}", "Temp directory is not a valid path")),
         };
 
-        let cache_database = match Database::connect(cache_dir_str.as_str()).await {
-            Ok(db) => db,
+        if !cache_dir.join("refact_vecdb_cache").exists() {
+            match fs::create_dir_all(cache_dir.join("refact_vecdb_cache")).await {
+                Ok(_) => {}
+                Err(e) => return Err(format!("{:?}", e)),
+            }
+        }
+        let cache_database = match Connection::open_with_flags(
+            cache_dir_str, OpenFlags::SQLITE_OPEN_READ_WRITE
+                | OpenFlags::SQLITE_OPEN_CREATE
+                | OpenFlags::SQLITE_OPEN_NO_MUTEX
+                | OpenFlags::SQLITE_OPEN_URI).await {
+            Ok(db) => Arc::new(AMutex::new(db)),
             Err(err) => return Err(format!("{:?}", err))
         };
         let temp_database = match Database::connect(data_database_temp_dir_str).await {
@@ -99,16 +118,31 @@ impl VecDBHandler {
             Field::new("model_name", DataType::Utf8, true),
             Field::new("used_counter", DataType::UInt64, true),
         ]));
-        let cache_table = match cache_database.open_table("data").await {
-            Ok(table) => { table }
-            Err(_) => {
-                let batches_iter = RecordBatchIterator::new(vec![].into_iter().map(Ok), schema.clone());
-                match cache_database.create_table("data", batches_iter, Option::from(WriteParams::default())).await {
-                    Ok(table) => table,
-                    Err(err) => return Err(format!("{:?}", err))
-                }
-            }
-        };
+        match cache_database.lock().await.call(|conn| {
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS data (
+                        vector BLOB,
+                        window_text TEXT NOT NULL,
+                        window_text_hash TEXT NOT NULL,
+                        file_path TEXT NOT NULL,
+                        start_line INTEGER NOT NULL,
+                        end_line INTEGER NOT NULL,
+                        time_added INTEGER NOT NULL,
+                        time_last_used INTEGER NOT NULL,
+                        model_name TEXT NOT NULL,
+                        used_counter INTEGER NOT NULL
+                    )", [],
+            )?;
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_window_text_hash ON data (window_text_hash)",
+                [],
+            )?;
+            Ok(())
+        }).await {
+            Ok(_) => {}
+            Err(err) => return Err(format!("{:?}", err))
+        }
+
         let batches_iter = RecordBatchIterator::new(vec![].into_iter().map(Ok), schema.clone());
         let data_table = match temp_database.create_table("data", batches_iter, Option::from(WriteParams::default())).await {
             Ok(table) => table,
@@ -119,7 +153,6 @@ impl VecDBHandler {
             cache_database,
             _data_database_temp_dir: data_database_temp_dir,
             schema,
-            cache_table,
             data_table,
             data_table_hashes: HashSet::new(),
             embedding_size,
@@ -129,11 +162,192 @@ impl VecDBHandler {
     async fn checkout(&mut self) {
         match self.data_table.checkout_latest().await {
             Ok(table) => { self.data_table = table }
-            Err(err) => error!("Error while checking out data table: {:?}", err)
+            Err(err) => error!("Error while checking out the data table: {:?}", err)
         }
-        match self.cache_table.checkout_latest().await {
-            Ok(table) => { self.cache_table = table }
-            Err(err) => error!("Error while checking out data table: {:?}", err)
+        match self.cache_database.lock().await.call(|connection| {
+            connection.cache_flush()?;
+            Ok({})
+        }).await {
+            Ok(_) => {}
+            Err(err) => error!("Error while flushing cache: {:?}", err)
+        }
+    }
+
+    async fn get_records_from_cache(&mut self, hashes: Vec<String>) -> Result<(Vec<Record>, Vec<String>), String> {
+        let mut hashes_set: HashSet<String> = HashSet::from_iter(hashes.iter().cloned());
+        let placeholders: String = hashes.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
+        let query = format!("SELECT * FROM data WHERE window_text_hash IN ({})", placeholders);
+
+        let records = match self.cache_database.lock().await.call(move |connection| {
+            let mut statement = connection.prepare(&query)?;
+            let params = rusqlite::params_from_iter(hashes.iter());
+            let records = statement.query_map(params, |row| {
+                let vector_blob: Vec<u8> = row.get(0)?;
+                let vector: Vec<f32> = vector_blob
+                    .chunks_exact(4)
+                    .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
+                    .collect();
+
+                let file_path_str: String = row.get(3)?;
+                let file_path = PathBuf::from(file_path_str);
+
+                let time_added_timestamp: i64 = row.get(6)?;
+                let time_added = SystemTime::UNIX_EPOCH + Duration::from_secs(time_added_timestamp as u64);
+
+                let time_last_used_timestamp: i64 = row.get(7)?;
+                let time_last_used = SystemTime::UNIX_EPOCH + Duration::from_secs(time_last_used_timestamp as u64);
+
+                Ok(Record {
+                    vector: Some(vector),
+                    window_text: row.get(1)?,
+                    window_text_hash: row.get(2)?,
+                    file_path: file_path,
+                    start_line: row.get(4)?,
+                    end_line: row.get(5)?,
+                    time_added: time_added,
+                    time_last_used: time_last_used,
+                    model_name: row.get(8)?,
+                    used_counter: row.get(9)?,
+                    distance: -1.0,
+                })
+            })?
+                .filter_map(|row| row.ok())
+                .collect::<Vec<Record>>();
+            Ok(records)
+        }).await {
+            Ok(records) => records,
+            Err(err) => return Err(format!("{:?}", err))
+        };
+
+        for r in &records {
+            hashes_set.remove(&r.window_text_hash);
+        }
+        Ok((records, hashes_set.iter().map(|x| x.clone()).collect()))
+    }
+
+    async fn insert_records_to_cache(&mut self, records: Vec<Record>) -> Result<(), String> {
+        match self.cache_database.lock().await.call(|connection| {
+            let transaction = connection.transaction()?;
+            for record in records {
+                let time_added = record.time_added.duration_since(
+                    SystemTime::UNIX_EPOCH
+                ).unwrap_or(Duration::ZERO)
+                    .as_secs();
+
+                let time_last_used = record.time_last_used.duration_since(
+                    SystemTime::UNIX_EPOCH
+                ).unwrap_or(Duration::ZERO)
+                    .as_secs();
+
+                let vector_as_bytes: Vec<u8> = record.vector.expect(
+                    "An attempt to push vector-less data to cache DB"
+                ).iter()
+                    .flat_map(|&num| num.to_ne_bytes())
+                    .collect();
+
+                match transaction.execute(
+                    "INSERT INTO data (vector, window_text, window_text_hash, \
+                    file_path, start_line, end_line, time_added, \
+                    time_last_used, model_name, used_counter) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                    rusqlite::params![
+                    vector_as_bytes,
+                    record.window_text,
+                    record.window_text_hash,
+                    record.file_path.to_str(),
+                    record.start_line,
+                    record.end_line,
+                    time_added as i64,
+                    time_last_used as i64,
+                    record.model_name,
+                    record.used_counter,
+                ],
+                ) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        info!("Error while inserting record to cache: {:?}", err);
+                        continue;
+                    }
+                }
+            }
+            match transaction.commit() {
+                Ok(_) => Ok(()),
+                Err(err) => Err(err.into())
+            }
+        }).await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(format!("{:?}", err))
+        }
+    }
+
+    async fn remove_records_from_cache(&mut self, file_path: String) -> Result<(), String> {
+        match self.cache_database.lock().await.call(move |connection| {
+            match connection.execute(
+                "DELETE FROM data WHERE file_path = ?1",
+                params![file_path],
+            ) {
+                Ok(_) => Ok(()),
+                Err(err) => Err(err.into())
+            }
+        }).await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(format!("{:?}", err))
+        }
+    }
+
+    async fn update_cache_records(&mut self, records: Vec<Record>) -> Result<(), String> {
+        let now = SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or(Duration::ZERO)
+            .as_secs();
+        match self.cache_database.lock().await.call(move |connection| {
+            let transaction = connection.transaction()?;
+            for record in records {
+                match transaction.execute(
+                    "UPDATE data SET time_last_used = ?, used_counter = ? WHERE window_text_hash = ?",
+                    params![
+                    now,
+                    record.used_counter,
+                    record.window_text_hash,
+                ],
+                ) {
+                    Ok(_) => {}
+                    Err(_) => {
+                        continue;
+                    }
+                };
+            }
+            match transaction.commit() {
+                Ok(_) => Ok(()),
+                Err(err) => Err(err.into())
+            }
+        }).await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(format!("{:?}", err))
+        }
+    }
+
+    async fn delete_old_records_from_cache(&mut self) -> Result<(), String> {
+        let now = SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or(Duration::ZERO)
+            .as_secs();
+
+        match self.cache_database.lock().await.call(move |connection| {
+            let transaction = connection.transaction()?;
+
+            transaction.execute(
+                "DELETE FROM data WHERE (?1 - time_last_used > ?2) AND (used_counter < ?3)",
+                params![now, TWO_WEEKS, MIN_LIKES],
+            )?;
+
+            transaction.execute(
+                "DELETE FROM data WHERE (?1 - time_last_used > ?2)",
+                params![now, ONE_MONTH],
+            )?;
+
+            transaction.commit()?;
+            Ok({})
+        }).await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(format!("{:?}", err))
         }
     }
 
@@ -145,56 +359,14 @@ impl VecDBHandler {
     }
 
     pub async fn cache_size(&self) -> Result<usize, String> {
-        match self.cache_table.count_rows().await {
-            Ok(size) => Ok(size),
-            Err(err) => Err(format!("{:?}", err))
-        }
-    }
-
-    async fn get_records(&mut self, table: Table, _hashes: Vec<String>) -> (Vec<Record>, Vec<String>) {
-        let mut hashes: HashSet<String> = HashSet::from_iter(_hashes);
-        let q = hashes.iter().map(|x| format!("'{}'", x)).collect::<Vec<String>>().join(", ");
-        let records = table
-            .filter(format!("window_text_hash in ({})", q))
-            .execute()
-            .await.unwrap()
-            .try_collect::<Vec<_>>()
-            .await.unwrap();
-        let record_batch = concat_batches(&self.schema, &records).unwrap();
-        let records = VecDBHandler::parse_table_iter(record_batch, true, None).unwrap();
-        for r in &records {
-            hashes.remove(&r.window_text_hash);
-        }
-        (records, hashes.into_iter().collect())
-    }
-
-    pub async fn _get_records_from_data(&mut self, hashes: Vec<String>) -> (Vec<Record>, Vec<String>) {
-        self.get_records(self.data_table.clone(), hashes).await
-    }
-    pub async fn get_records_from_cache(&mut self, hashes: Vec<String>) -> (Vec<Record>, Vec<String>) {
-        self.get_records(self.cache_table.clone(), hashes).await
-    }
-
-    async fn get_record(&mut self, table: Table, hash: String) -> vectordb::error::Result<Record> {
-        let records = table
-            .filter(format!("window_text_hash == '{}'", hash))
-            .execute()
-            .await?
-            .try_collect::<Vec<_>>()
-            .await?;
-        let record_batch = concat_batches(&self.schema, &records)?;
-        let records = VecDBHandler::parse_table_iter(record_batch, true, None)?;
-        match records.get(0) {
-            Some(x) => Ok(x.clone()),
-            None => Err(vectordb::error::Error::Lance { message: format!("No record found for hash: {}", hash) })
-        }
-    }
-
-    pub async fn _get_record_from_data(&mut self, hash: String) -> vectordb::error::Result<Record> {
-        self.get_record(self.data_table.clone(), hash).await
-    }
-    pub async fn _get_record_from_cache(&mut self, hash: String) -> vectordb::error::Result<Record> {
-        self.get_record(self.cache_table.clone(), hash).await
+        self.cache_database.lock().await.call(move |connection| {
+            let mut stmt = connection.prepare("SELECT COUNT(*) FROM data")?;
+            let count: usize = stmt.query_row([], |row| row.get(0))?;
+            Ok(count)
+        }).await
+            .map_err(|e| {
+                e.to_string()
+            })
     }
 
     pub async fn try_add_from_cache(&mut self, data: Vec<SplitResult>) -> Vec<SplitResult> {
@@ -203,7 +375,13 @@ impl VecDBHandler {
         }
 
         let hashes = data.iter().map(|x| x.window_text_hash.clone()).collect();
-        let (found_records, left_hashes) = self.get_records_from_cache(hashes).await;
+        let (found_records, left_hashes) = match self.get_records_from_cache(hashes).await {
+            Ok(records) => records,
+            Err(err) => {
+                info!("Error while getting values from cache: {:?}", err);
+                return vec![];
+            }
+        };
         let left_results: Vec<SplitResult> =
             data.into_iter().filter(|x| left_hashes.contains(&x.window_text_hash)).collect();
 
@@ -280,7 +458,7 @@ impl VecDBHandler {
             )],
             self.schema.clone(),
         );
-        let cache_batches_iter = RecordBatchIterator::new(
+        RecordBatchIterator::new(
             vec![RecordBatch::try_new(
                 self.schema.clone(),
                 vec![
@@ -300,13 +478,7 @@ impl VecDBHandler {
         );
 
         if add_to_cache {
-            let cache_res = self.cache_table.add(
-                cache_batches_iter, Option::from(WriteParams {
-                    mode: WriteMode::Append,
-                    ..Default::default()
-                }),
-            );
-            match cache_res.await {
+            match self.insert_records_to_cache(records).await {
                 Ok(_) => {}
                 Err(err) => return Err(format!("{:?}", err))
             };
@@ -334,23 +506,41 @@ impl VecDBHandler {
             Some(res) => res
         };
 
-        // valerii: In documentation I found no way to preprocess strings to prevent SQL injections
-        match self.cache_table.delete(
-            format!("(file_path = \"{}\")", file_path_str).as_str()  // TODO: Prevent a possible sql injection here
-        ).await {
+        match self.remove_records_from_cache(file_path_str.to_string()).await {
             Ok(_) => {}
             Err(err) => {
-                info!("Error while deleting from cache: {:?}", err);
+                info!("Error while deleting from cache table: {:?}", err);
             }
         }
+        // valerii: In documentation I found no way to preprocess strings to prevent SQL injections
         match self.data_table.delete(
             format!("(file_path = \"{}\")", file_path_str).as_str()  // TODO: Prevent a possible sql injection here
         ).await {
             Ok(_) => {}
             Err(err) => {
-                info!("Error while deleting from cache: {:?}", err);
+                info!("Error while deleting from data table: {:?}", err);
             }
         }
+    }
+
+    pub async fn create_index(&mut self) -> vectordb::error::Result<()> {
+        let size = self.size().await.unwrap_or(0);
+        if size == 0 {
+            return Err(vectordb::error::Error::Lance {
+                message: "The vector database is empty".to_string(),
+            }.into());
+        }
+        self.data_table.create_index(
+            IvfPQIndexBuilder::default()
+                .column("vector".to_owned())
+                .index_name("index".to_owned())
+                .metric_type(MetricType::Cosine)
+                .ivf_params(IvfBuildParams {
+                    num_partitions: min(size, 512),
+                    ..IvfBuildParams::default()
+                })
+                .replace(true)
+        ).await
     }
 
     pub fn contains(&self, hash: &str) -> bool {
@@ -424,9 +614,14 @@ impl VecDBHandler {
         }).collect()
     }
 
-    pub async fn search(&mut self, embedding: Vec<f32>, top_n: usize) -> vectordb::error::Result<Vec<Record>>
-    {
-        let query = self.data_table.clone()
+    pub async fn search(
+        &mut self,
+        embedding: Vec<f32>,
+        top_n: usize
+    ) -> vectordb::error::Result<Vec<Record>> {
+        let query = self
+            .data_table
+            .clone()
             .search(Some(Float32Array::from(embedding.clone())))
             .limit(top_n)
             .use_index(true)
@@ -435,133 +630,43 @@ impl VecDBHandler {
             .try_collect::<Vec<_>>()
             .await?;
         let record_batch = concat_batches(&self.schema, &query)?;
-        VecDBHandler::parse_table_iter(record_batch, false, Some(&embedding))
-    }
-
-    pub async fn update_record_statistic(&mut self, records: Vec<Record>)
-    {
-        // TODO: very slow, 0.8s for db_size=1368, maybe make one update call?
-        let now = SystemTime::now();
-        for record in records {
-            for mut table in vec![self.data_table.clone(), self.cache_table.clone()] {
-                let _ = table.update(Some(format!("window_text_hash == '{}'", record.window_text_hash.clone()).as_str()),
-                                     vec![
-                                         ("used_counter", &(&record.used_counter + 1).to_string()),
-                                         ("time_last_used", &*now.elapsed().unwrap().as_secs().to_string()),
-                                     ]).await.unwrap();
+        match VecDBHandler::parse_table_iter(record_batch, false, Some(&embedding)) {
+            Ok(records) => {
+                let filtered: Vec<Record> = records
+                    .into_iter()
+                    .sorted_unstable_by(|a, b| {
+                        a.distance
+                            .partial_cmp(&b.distance)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                    .collect();
+                Ok(filtered)
             }
-            self.checkout().await;
+            Err(err) => Err(err),
         }
     }
 
-    pub async fn cleanup_old_records(&mut self) -> Result<(), String>
-    {
+    pub async fn update_record_statistic(&mut self, records: Vec<Record>) {
+        match self.update_cache_records(records).await {
+            Ok(_) => {}
+            Err(err) => {
+                info!("Error while deleting from data table: {:?}", err);
+            }
+        }
+    }
+
+    pub async fn cleanup_old_records(&mut self) -> Result<(), String> {
+        info!("VECDB: Cleaning up old records");
+
         let now = SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap();
         let q = format!("{} - time_last_used > {TWO_WEEKS} AND used_counter < {MIN_LIKES}", now.as_secs());
-        self.cache_table.delete(&*q).await.expect("could not delete old records");
         self.data_table.delete(&*q).await.expect("could not delete old records");
-        self.checkout().await;
 
         let q = format!("{} - time_last_used > {ONE_MONTH}", now.as_secs());
-        self.cache_table.delete(&*q).await.expect("could not delete old records");
         self.data_table.delete(&*q).await.expect("could not delete old records");
+
+        self.delete_old_records_from_cache().await.expect("could not delete old records");
         self.checkout().await;
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::time::SystemTime;
-
-    use tempfile::tempdir;
-    use tokio;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_init() {
-        let temp_dir = tempdir().unwrap();
-        let embedding_size = 2;
-        let mut handler = VecDBHandler::init(
-            temp_dir.path().to_path_buf(),
-            embedding_size,
-        ).await;
-        assert_eq!(handler.size().await, 0);
-    }
-
-    #[tokio::test]
-    async fn test_add_or_update() {
-        let temp_dir = tempdir().unwrap();
-        let embedding_size = 2;
-        let mut handler = VecDBHandler::init(
-            temp_dir.path().to_path_buf(),
-            embedding_size,
-        ).await;
-        let expected_size = 1;
-
-        // Prepare a sample record
-        let records = vec![
-            Record {
-                vector: Some(vec![1.0, 2.0]), // Example values
-                window_text: "sample text".to_string(),
-                window_text_hash: "hash1".to_string(),
-                file_path: PathBuf::from("/path/to/file"),
-                start_line: 1,
-                end_line: 2,
-                time_added: SystemTime::now(),
-                time_last_used: SystemTime::now(),
-                model_name: "model1".to_string(),
-                used_counter: 0,
-                distance: 1.0,
-            },
-        ];
-
-        // Call add_or_update
-        handler.add_or_update(records, true).await.unwrap();
-
-        // Validate the records
-        assert_eq!(handler.size().await, expected_size);
-    }
-
-    #[tokio::test]
-    async fn test_search() {
-        let temp_dir = tempdir().unwrap();
-        let embedding_size = 4;
-        let mut handler = VecDBHandler::init(
-            temp_dir.path().to_path_buf(),
-            embedding_size,
-        ).await;
-        let top_n = 1;
-
-        let time_added = SystemTime::now();
-        let records = vec![
-            Record {
-                vector: Some(vec![1.0, 2.0, 3.0, 4.0]),
-                window_text: "test text".to_string(),
-                window_text_hash: "hash2".to_string(),
-                file_path: PathBuf::from("/path/to/another/file"),
-                start_line: 3,
-                end_line: 4,
-                time_added: time_added,
-                time_last_used: time_added,
-                model_name: "model2".to_string(),
-                used_counter: 0,
-                distance: 1.0,
-            },
-        ];
-        handler.add_or_update(records, true).await.unwrap();
-
-        let query_embedding = vec![1.0, 2.0, 3.0, 4.0];
-        let results = handler.search(query_embedding, top_n).await.unwrap();
-
-        assert!(!results.is_empty());
-        assert_eq!(results[0].window_text, "test text");
-        assert_eq!(results[0].window_text_hash, "hash2");
-        assert_eq!(results[0].file_path, PathBuf::from("/path/to/another/file"));
-        assert_eq!(results[0].start_line, 3);
-        assert_eq!(results[0].end_line, 4);
-        assert_eq!(results[0].model_name, "model2");
-        assert_eq!(results[0].distance, 1.0);
     }
 }

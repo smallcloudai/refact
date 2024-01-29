@@ -34,8 +34,8 @@ fn vecdb_constants(
     }
 }
 
-#[derive(Debug)]
 pub struct VecDb {
+    vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
     retriever_service: Arc<AMutex<FileVectorizerService>>,
     cmdline: CommandLine,
@@ -61,7 +61,6 @@ async fn vecdb_test_request(
             Err("vecdb: test search failed".to_string())
         }
     }
-
 }
 
 async fn create_vecdb(
@@ -206,6 +205,7 @@ impl VecDb {
             cmdline.api_key.clone(),
         ).await));
         Ok(VecDb {
+            vecdb_emb_client: Arc::new(AMutex::new(reqwest::Client::new())),
             vecdb_handler,
             retriever_service,
             cmdline: cmdline.clone(),
@@ -215,7 +215,7 @@ impl VecDb {
 
     pub async fn start_background_tasks(&self) -> Vec<JoinHandle<()>> {
         info!("vecdb: start_background_tasks");
-        return self.retriever_service.lock().await.start_background_tasks().await;
+        return self.retriever_service.lock().await.start_background_tasks(self.vecdb_emb_client.clone()).await;
     }
 
     pub async fn add_or_update_file(&mut self, file_path: PathBuf, force: bool) {
@@ -255,12 +255,13 @@ impl VecdbSearch for VecDb {
     async fn search(&self, query: String, top_n: usize) -> Result<SearchResult, String> {
         let t0 = std::time::Instant::now();
         let embedding_mb = fetch_embedding::try_get_embedding(
+            self.vecdb_emb_client.clone(),
             &self.constants.endpoint_embeddings_style,
             &self.constants.model_name,
             &self.constants.endpoint_embeddings_template,
             query.clone(),
             &self.cmdline.api_key,
-            3
+            5
         ).await;
         if embedding_mb.is_err() {
             return Err("Failed to get embedding".to_string());

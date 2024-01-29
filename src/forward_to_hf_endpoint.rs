@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
@@ -5,6 +7,8 @@ use reqwest::header::HeaderValue;
 use reqwest_eventsource::EventSource;
 use serde::Serialize;
 use serde_json::json;
+use tokio::sync::Mutex as AMutex;
+
 use crate::call_validation::SamplingParameters;
 
 // Idea: use USER_AGENT
@@ -48,7 +52,10 @@ pub async fn forward_to_hf_style_endpoint(
     if status_code != 200 {
         return Err(format!("{} status={} text {}", url, status_code, response_txt));
     }
-    Ok(serde_json::from_str(&response_txt).unwrap())    // FIXME: unwrap
+    Ok(match serde_json::from_str(&response_txt) {
+        Ok(json) => json,
+        Err(e) => return Err(format!("{}: {}", url, e)),
+    })
 }
 
 
@@ -79,8 +86,8 @@ pub async fn forward_to_hf_style_endpoint_streaming(
     });
 
     let builder = client.post(&url)
-       .headers(headers)
-       .body(data.to_string());
+        .headers(headers)
+        .body(data.to_string());
     let event_source: EventSource = EventSource::new(builder).map_err(|e|
         format!("can't stream from {}: {}", url, e)
     )?;
@@ -95,16 +102,16 @@ struct EmbeddingsPayloadHF {
 
 
 pub async fn get_embedding_hf_style(
+    client: Arc<AMutex<reqwest::Client>>,
     text: String,
     endpoint_template: &String,
     model_name: &String,
     api_key: &String,
 ) -> Result<Vec<f32>, String> {
-    let client = reqwest::Client::new();
     let payload = EmbeddingsPayloadHF { inputs: text };
     let url = endpoint_template.clone().replace("$MODEL", &model_name);
 
-    let maybe_response = client
+    let maybe_response = client.lock().await
         .post(&url)
         .bearer_auth(api_key.clone())
         .json(&payload)
@@ -121,7 +128,7 @@ pub async fn get_embedding_hf_style(
             } else {
                 Err(format!("Failed to get a response: {:?}", response.status()))
             }
-        },
+        }
         Err(err) => Err(format!("Failed to send a request: {:?}", err)),
     }
 }

@@ -62,7 +62,6 @@ pub struct LSPBackendDocumentState {
     pub workspace_folders: Arc<ARwLock<Option<Vec<WorkspaceFolder>>>>,
 }
 
-// #[derive(Debug)]
 pub struct GlobalContext {
     pub cmdline: CommandLine,
     pub http_client: reqwest::Client,
