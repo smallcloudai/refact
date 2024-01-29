@@ -37,8 +37,9 @@ RUN apt-get install cassandra -y
 # refact lsp requisites
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 ENV PATH="${PATH}:/root/.cargo/bin"
-RUN git clone https://github.com/smallcloudai/refact-lsp.git /tmp/refact-lsp \
-    && cd /tmp/refact-lsp \
+RUN git clone https://github.com/smallcloudai/refact-lsp.git /tmp/refact-lsp
+RUN echo "refact-lsp $(git -C /tmp/refact-lsp rev-parse HEAD)" >> /refact-build-info.txt
+RUN cd /tmp/refact-lsp \
     && cargo install --path . \
     && rm -rf /tmp/refact-lsp
 
@@ -46,6 +47,7 @@ ENV INSTALL_OPTIONAL=TRUE
 ENV FLASH_ATTENTION_FORCE_BUILD=TRUE
 ENV MAX_JOBS=8
 COPY . /tmp/app
+RUN echo "refact $(git -C /tmp/app rev-parse HEAD)" >> /refact-build-info.txt
 RUN pip install ninja
 RUN pip install /tmp/app -v --no-build-isolation && rm -rf /tmp/app
 
