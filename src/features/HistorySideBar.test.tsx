@@ -95,7 +95,7 @@ describe("HistorySideBar", () => {
       restoreButtonText.parentElement?.parentElement?.nextElementSibling
         ?.children[0];
     expect(deleteButton).not.toBeNull();
-    app.debug(deleteButton);
+
     if (deleteButton) {
       await user.click(deleteButton);
     }
