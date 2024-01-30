@@ -11,6 +11,7 @@ use tokenizers::Tokenizer;
 use ropey::Rope;
 use tracing::info;
 use async_trait::async_trait;
+use serde_json::Value;
 
 use crate::completion_cache;
 use crate::telemetry::telemetry_structs;
@@ -285,7 +286,7 @@ impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for SingleFileFIM<T> {
         });
         Ok((ans, finished))
     }
-    fn response_spontaneous(&mut self) -> Result<serde_json::Value, String> {
+    fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
         return Err("".to_string());
     }
 }

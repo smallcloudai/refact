@@ -42,6 +42,11 @@ pub struct VecDb {
     constants: VecdbConstants,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct FileSearchResult {
+    pub file_path: String,
+    pub file_text: String,
+}
 
 #[derive(Debug, Serialize)]
 pub struct VecDbCaps {
@@ -158,7 +163,6 @@ async fn do_i_need_to_reload_vecdb(
     return (true, Some(consts));
 }
 
-
 pub async fn vecdb_background_reload(
     global_context: Arc<ARwLock<GlobalContext>>,
 ) {
@@ -218,7 +222,7 @@ impl VecDb {
         return self.retriever_service.lock().await.start_background_tasks(self.vecdb_emb_client.clone()).await;
     }
 
-    pub async fn add_or_update_file(&mut self, file_path: PathBuf, force: bool) {
+    pub async fn add_or_update_file(&self, file_path: PathBuf, force: bool) {
         self.retriever_service.lock().await.process_file(file_path, force).await;
     }
 
@@ -239,7 +243,16 @@ impl VecDb {
             folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
         ).await;
         self.add_or_update_files(files, true).await;
-        info!("vecdb: init_folders complete");
+        info!("init_folders complete");
+    }
+
+    pub async fn get_indexed_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {
+        return self.vecdb_handler.lock().await.get_indexed_file_paths().await;
+    }
+
+    pub async fn get_file_orig_text(&self, file_path: String) -> FileSearchResult {
+        let text = self.vecdb_handler.lock().await.get_file_orig_text(file_path.clone()).await;
+        FileSearchResult { file_path, file_text: text }
     }
 
     pub async fn caps(&self) -> VecDbCaps {
@@ -270,7 +283,10 @@ impl VecdbSearch for VecDb {
 
         let mut handler_locked = self.vecdb_handler.lock().await;
         let t1 = std::time::Instant::now();
-        let results = handler_locked.search(embedding_mb.unwrap(), top_n).await.unwrap();
+        let results = match handler_locked.search(embedding_mb.unwrap(), top_n).await {
+            Ok(res) => res,
+            Err(_) => {return  Err("error during search occurred".to_string()) },
+        };
         info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
         for rec in results.iter() {
             let last_30_chars: String = rec.file_path.display().to_string().chars().rev().take(30).collect::<String>().chars().rev().collect();

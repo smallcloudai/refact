@@ -106,6 +106,10 @@ async fn vectorize_thread(
                 None => {
                     // No files left to process
                     if !reported_vecdb_complete {
+                        let t0 = std::time::Instant::now();
+                        vecdb_handler_ref.lock().await.update_indexed_file_paths().await;
+                        info!("update_indexed_file_paths: it took {:.3}s", t0.elapsed().as_secs_f64());
+
                         reported_vecdb_complete = true;
                         info!("VECDB Creating index");
                         match vecdb_handler_ref.lock().await.create_index().await {
@@ -308,5 +312,13 @@ impl FileVectorizerService {
             Err(err) => return Err(err.to_string())
         };
         Ok(status)
+    }
+
+    pub async fn get_all_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {
+        return self.vecdb_handler.lock().await.get_indexed_file_paths().await;
+    }
+
+    pub async fn get_file_orig_text(&self, file_path: String) -> String {
+        return self.vecdb_handler.lock().await.get_file_orig_text(file_path).await;
     }
 }

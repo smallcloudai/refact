@@ -202,7 +202,7 @@ impl LanguageServer for Backend {
 
         if let Some(folders) = params.workspace_folders {
             match *self.gcx.read().await.vec_db.lock().await {
-                Some(ref db) => db.init_folders(folders).await,
+                Some(ref mut db) => db.init_folders(folders).await,
                 None => {},
             };
         }
@@ -326,7 +326,7 @@ impl LanguageServer for Backend {
             .filter(|x| is_valid_file(&x))
             .collect();
         match *self.gcx.read().await.vec_db.lock().await {
-            Some(ref mut db) => db.add_or_update_files(files, false).await,
+            Some(ref db) => db.add_or_update_files(files, false).await,
             None => {}
         };
     }

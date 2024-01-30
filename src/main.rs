@@ -25,6 +25,7 @@ mod background_tasks;
 mod receive_workspace_changes;
 mod vecdb;
 mod fetch_embedding;
+mod at_commands;
 
 
 #[tokio::main]

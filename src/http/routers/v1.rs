@@ -21,6 +21,7 @@ use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_initialize;
 use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_did_change;
 use crate::http::utils::telemetry_wrapper;
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status, handle_v1_vecdb_caps};
+use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview};
 
 pub mod code_completion;
 pub mod chat;
@@ -30,6 +31,7 @@ pub mod caps;
 pub mod graceful_shutdown;
 pub mod lsp_like_handlers;
 pub mod vecdb;
+mod at_commands;
 
 pub fn make_v1_router() -> Router {
     Router::new()
@@ -44,6 +46,8 @@ pub fn make_v1_router() -> Router {
         .route("/vdb-search", telemetry_post!(handle_v1_vecdb_search))
         .route("/vdb-status", telemetry_get!(handle_v1_vecdb_status))
         .route("/vdb-caps", telemetry_get!(handle_v1_vecdb_caps))
+        .route("/at-command-completion", telemetry_post!(handle_v1_command_completion))
+        .route("/at-command-preview", telemetry_post!(handle_v1_command_preview))
 
         .route("/lsp-initialize", telemetry_post!(handle_v1_lsp_initialize))
         .route("/lsp-did-changed", telemetry_post!(handle_v1_lsp_did_change))
