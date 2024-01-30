@@ -10,15 +10,15 @@ export interface ActionsToSideBar {
   type: EVENT_NAMES_TO_SIDE_BAR;
 }
 
-export function isActionsToSideBar(
-  action: unknown,
-): action is ActionsToSideBar {
+export function isActionToSideBar(action: unknown): action is ActionsToSideBar {
   if (!action) return false;
   if (typeof action !== "object") return false;
   if (!("type" in action)) return false;
   if (typeof action.type !== "string") return false;
-  if (action.type in EVENT_NAMES_TO_SIDE_BAR) return true;
-  return false;
+  const ALL_EVENT_NAMES: Record<string, string> = {
+    ...EVENT_NAMES_TO_SIDE_BAR,
+  };
+  return Object.values(ALL_EVENT_NAMES).includes(action.type);
 }
 
 export interface ReceiveChatHistory extends ActionsToSideBar {
@@ -29,7 +29,7 @@ export interface ReceiveChatHistory extends ActionsToSideBar {
 export function isReceiveChatHistory(
   action: unknown,
 ): action is ReceiveChatHistory {
-  if (!isActionsToSideBar(action)) return false;
+  if (!isActionToSideBar(action)) return false;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   return action.type === EVENT_NAMES_TO_SIDE_BAR.RECEIVE_CHAT_HISTORY;
 }
@@ -39,6 +39,8 @@ export enum EVENT_NAMES_FROM_SIDE_BAR {
   OPEN_CHAT_IN_SIDEBAR = "sidebar_open_chat_in_sidebar",
   OPEN_IN_CHAT_IN_TAB = "sidebar_open_chat_in_tab",
   DELETE_HISTORY_ITEM = "sidebar_delete_history_item",
+  REQUEST_CHAT_HISTORY = "sidebar_request_chat_history",
+  CREATE_NEW_CHAT = "sidebar_create_new_chat",
 }
 
 export interface ActionFromSidebar {
@@ -52,8 +54,10 @@ export function isActionFromSidebar(
   if (typeof action !== "object") return false;
   if (!("type" in action)) return false;
   if (typeof action.type !== "string") return false;
-  if (action.type in EVENT_NAMES_FROM_SIDE_BAR) return true;
-  return false;
+  const ALL_EVENT_NAMES: Record<string, string> = {
+    ...EVENT_NAMES_FROM_SIDE_BAR,
+  };
+  return Object.values(ALL_EVENT_NAMES).includes(action.type);
 }
 
 export interface SidebarReady extends ActionFromSidebar {
@@ -99,4 +103,26 @@ export function isDeleteChatHistory(
 ): action is DeleteHistoryItem {
   if (!isActionFromSidebar(action)) return false;
   return action.type === EVENT_NAMES_FROM_SIDE_BAR.DELETE_HISTORY_ITEM;
+}
+
+export interface RequestChatHistory extends ActionFromSidebar {
+  type: EVENT_NAMES_FROM_SIDE_BAR.REQUEST_CHAT_HISTORY;
+}
+
+export function isRequestChatHistory(
+  action: unknown,
+): action is RequestChatHistory {
+  if (!isActionFromSidebar(action)) return false;
+  return action.type === EVENT_NAMES_FROM_SIDE_BAR.REQUEST_CHAT_HISTORY;
+}
+
+export interface CreateNewChatFromSidebar extends ActionFromSidebar {
+  type: EVENT_NAMES_FROM_SIDE_BAR.CREATE_NEW_CHAT;
+}
+
+export function isCreateNewChatFromSidebar(
+  action: unknown,
+): action is CreateNewChatFromSidebar {
+  if (!isActionFromSidebar(action)) return false;
+  return action.type === EVENT_NAMES_FROM_SIDE_BAR.CREATE_NEW_CHAT;
 }
