@@ -28,7 +28,7 @@ impl Language for PythonConfig {
                 "__del__", "__iter__", "__reversed__", "__cmp__", "__lt__", "__gt__", "__le__", "__ge__", "__all__",
                 "__format__", "__sizeof__", "__str__", "__repr__", "__hash__", "__cmp__", "__lt__", "__gt__",
                 "__call__", "Dict", "List", "Tuple", "Set", "Dict", "String", "Bytes", "Bytes", "self", "str", "dict",
-                "int", "float", "str", "bool", "None", "bytes", "bytes"
+                "int", "float", "str", "bool", "None", "bytes", "bytes",
             ].iter().map(|s| s.to_string()).collect(),
             keywords_types: vec![].iter().map(|s: &&str| s.to_string()).collect(),
         }
@@ -36,16 +36,16 @@ impl Language for PythonConfig {
 }
 
 const PARSER_QUERY_PYTHON_GLOBAL_VARIABLE: QueryInfo = QueryInfo::new(
-    "global_var", 
+    "global_var",
     "(module (expression_statement (assignment left: (identifier) @global_var.name) @global_var.declaration))",
     &["name", "declaration"],
 );
 
 const PARSER_QUERY_PYTHON_FUNCTION: QueryInfo = QueryInfo::new(
     "function",
-    "((function_definition name: (identifier) @function.name) @function.declaration)",
+    "(module ((function_definition name: (identifier) @function.name) @function.declaration))",
     &["name", "declaration"],
-);    
+);
 
 const PARSER_QUERY_PYTHON_CLASS: QueryInfo = QueryInfo::new(
     "class",
@@ -95,7 +95,7 @@ lazy_static! {
 struct Candidate {
     pub capture_name: String,
     pub content: String,
-    pub range: Range
+    pub range: Range,
 }
 
 fn make_index_from_candidates(candidates: &Vec<Candidate>, query_info: &QueryInfo) -> Index {
@@ -154,7 +154,7 @@ pub fn get_indexes(parser: &mut Parser, code: &str) -> HashMap<String, Index> {
     indexes.into_iter().map(|i| (i.name.clone(), i)).collect()
 }
 
-fn match_indexes(mut indexes: Vec<Index>) {
+fn match_indexes(mut indexes: Vec<Index>) -> Vec<Index> {
     let mut all_methods = indexes.iter().filter(|i| i.symbol_type == SymbolType::Method).map(|x| x.clone()).collect::<Vec<_>>();
     let mut all_classes = indexes.iter_mut().filter(|i| i.symbol_type == SymbolType::Class).collect::<Vec<_>>();
     all_classes.sort_by(|x, y| {
@@ -164,36 +164,63 @@ fn match_indexes(mut indexes: Vec<Index>) {
         let yb = yrange.end_byte - yrange.start_byte;
         xb.partial_cmp(&yb).unwrap()
     });
-    for class in all_classes {
-        let class_range = class.definition_info.clone().unwrap().symbol_info.range;
-        for method in all_methods.iter().clone() {
-            let method_range = method.definition_info.clone().unwrap().symbol_info.range;
-            if method_range.start_byte >= class_range.start_byte && method_range.end_byte <= class_range.end_byte {
-                class.children.push(method.clone());
-            }
-        }
-    }
-    // all_classes.reverse();
-    let final_classes: Vec<Index> = vec![];
     {
-        let nested_classes: HashSet<String> = Default::default();
-        for class in all_classes {
-            for nested_class in all_classes.clone() {
-                if class.name == nested_class.name || nested_classes.{
-                    continue
+        let mut matched_methods: HashSet<usize> = Default::default();
+        for class in &mut all_classes {
+            let class_range = class.definition_info.clone().unwrap().symbol_info.range;
+            for (idx, method) in all_methods.iter().clone().enumerate() {
+                if matched_methods.contains(&idx) {
+                    continue;
+                }
+                let method_range = method.definition_info.clone().unwrap().symbol_info.range;
+                if method_range.start_byte >= class_range.start_byte && method_range.end_byte <= class_range.end_byte {
+                    class.children.push(method.clone());
+                    matched_methods.insert(idx);
                 }
             }
         }
     }
-    
+    let mut final_classes: Vec<Index> = vec![];
+    {
+        let copy_all_classes: Vec<Index> = all_classes.iter_mut().map(|x| x.clone()).collect();
+        let mut check_all = false;
+        let mut nested_classes: HashSet<String> = Default::default();
+        while !check_all {
+            check_all = true;
+            let len_classes = all_classes.len();
+            for class_idx in 0..len_classes {
+                let class = &mut all_classes[class_idx];
+                if nested_classes.contains(&class.name.clone()) {
+                    continue;
+                }
+                for class_idx2 in 0..len_classes {
+                    let nested_class = copy_all_classes[class_idx2].clone();
+                    if class.name == nested_class.name || nested_classes.contains(&nested_class.name) {
+                        continue;
+                    }
+                    let class_range = class.definition_info.clone().unwrap().symbol_info.range;
+                    let nested_class_range = nested_class.definition_info.clone().unwrap().symbol_info.range;
+                    if nested_class_range.start_byte >= class_range.start_byte && nested_class_range.end_byte <= class_range.end_byte {
+                        class.children.push(nested_class.clone());
+                        nested_classes.insert(nested_class.name.clone());
+                        check_all &= false;
+                    }
+                }
+            }
+        }
+        final_classes = all_classes.iter_mut()
+            .filter(|x| !nested_classes.contains(&x.name.clone()))
+            .map(|x| x.clone()).collect();
+    }
+    final_classes
 }
 
 #[cfg(test)]
 mod tests {
     use crate::lsp::treesitter::ast_config::python_config::get_indexes;
 
-    const TEST_CODE: &str = 
-r#"import numpy as np
+    const TEST_CODE: &str =
+        r#"import numpy as np
   
 global_var = "pip"
 bar = true
@@ -205,6 +232,9 @@ class AdultClass:
     def __init__(self):
         self.xyi = 2
         self.zxc = 4
+    class NestedClass:
+        def __init__(self):
+            self.c = 2
 
 def baz(asd, zxc):
     pass
@@ -223,6 +253,5 @@ def foo():
         assert_eq!(indexes.len(), 1);
         assert_eq!(indexes.get("function").unwrap().name, "foo");
     }
-    
 }
 
