@@ -34,10 +34,8 @@ const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
   );
 };
 
-export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = (
-  props,
-) => {
-  const config = useConfig();
+export const Theme: React.FC<ThemeProps> = (props) => {
+  const { host, themeProps } = useConfig();
   const [isDarkMode, setDarkMode] = React.useState(false);
 
   useEffect(() => {
@@ -45,10 +43,16 @@ export const Theme: React.FC<React.ComponentProps<typeof RadixTheme>> = (
     setDarkMode(() => maybeDark);
   }, []);
 
-  if (config.host === "web") {
-    return <ThemeWithDarkMode {...props} />;
+  if (host === "web") {
+    return <ThemeWithDarkMode {...themeProps} {...props} />;
   }
   // todo make this a hook
 
-  return <RadixTheme {...props} appearance={isDarkMode ? "dark" : "inherit"} />;
+  return (
+    <RadixTheme
+      {...themeProps}
+      {...props}
+      appearance={isDarkMode ? "dark" : "inherit"}
+    />
+  );
 };

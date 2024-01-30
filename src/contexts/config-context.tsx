@@ -1,4 +1,5 @@
 import React, { useContext, createContext } from "react";
+import { ThemeProps } from "../components/Theme";
 
 export type Config = {
   rag?: boolean; // TODO: remove this
@@ -6,10 +7,12 @@ export type Config = {
   tabbed?: boolean;
   lspUrl?: string;
   dev?: boolean;
+  themeProps?: ThemeProps;
 };
 
 const ConfigContext = createContext<Config>({ host: "web" });
 
+// TODO: add theme props, and configure vscode to grey
 const ConfigProvider: React.FC<{
   children: React.ReactNode;
   config: Config;
