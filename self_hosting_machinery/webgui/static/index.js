@@ -241,14 +241,22 @@ window.addEventListener("offline", function () {
 })
 
 function logout_button_init() {
+    const session = () => {
+        return document.cookie.match(/^(.*;)?\s*session_key\s*=\s*[^;]+(.*)?$/);
+    }
     const nav_bar = document.querySelector('.navbar-nav');
     const logout_button = document.createElement("button");
     logout_button.classList.add("nav-link");
+    logout_button.setAttribute("id", "logout-button");
     logout_button.innerText = "Logout";
+    if (session()) {
+        logout_button.style.display = "";
+    } else {
+        logout_button.style.display = "none";
+    }
     nav_bar.appendChild(logout_button);
     logout_button.addEventListener('click', () => {
-        let session = document.cookie.match(/^(.*;)?\s*session_key\s*=\s*[^;]+(.*)?$/);
-        if (session) {
+        if (session()) {
             document.cookie = "session_key=; path=/;";
             window.location.reload();
         }
