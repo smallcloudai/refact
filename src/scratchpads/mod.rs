@@ -10,7 +10,7 @@ pub mod chat_llama2;
 pub mod chat_passthrough;
 pub mod chat_utils_deltadelta;
 pub mod chat_utils_limit_history;
-mod chat_utils_rag;
+pub mod chat_utils_rag;
 
 use crate::call_validation::CodeCompletionPost;
 use crate::call_validation::ChatPost;
@@ -52,25 +52,23 @@ pub async fn create_code_completion_scratchpad<T>(
     Ok(result)
 }
 
-pub async fn create_chat_scratchpad<T>(
+pub async fn create_chat_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     model_name_for_tokenizer: String,
     post: ChatPost,
     scratchpad_name: &str,
     scratchpad_patch: &serde_json::Value,
-    vecdb_search: Arc<AMutex<Option<T>>>,
-) -> Result<Box<dyn ScratchpadAbstract>, String>
-    where T: VecdbSearch + 'static + Sync {
+) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
     if scratchpad_name == "CHAT-GENERIC" {
-        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context, model_name_for_tokenizer).await?;
-        result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc, post, vecdb_search));
+        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
+        result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc, post, global_context.clone()));
     } else if scratchpad_name == "CHAT-LLAMA2" {
-        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context, model_name_for_tokenizer).await?;
-        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post, vecdb_search));
+        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
+        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post, global_context.clone()));
     } else if scratchpad_name == "PASSTHROUGH" {
-        result = Box::new(chat_passthrough::ChatPassthrough::new(post, vecdb_search));
+        result = Box::new(chat_passthrough::ChatPassthrough::new(post, global_context.clone()));
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }

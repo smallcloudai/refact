@@ -196,12 +196,11 @@ pub async fn scratchpad_interaction_stream(
             loop {
                 let value_maybe = scratch.response_spontaneous();
                 if let Ok(value) = value_maybe {
-                    if value == json!(null) {
-                        break;
+                    for el in value {
+                        let value_str = format!("data: {}\n\n", serde_json::to_string(&el).unwrap());
+                        info!("yield: {:?}", value_str);
+                        yield Result::<_, String>::Ok(value_str);
                     }
-                    let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
-                    info!("yield: {:?}", value_str);
-                    yield Result::<_, String>::Ok(value_str);
                 } else {
                     let err_str = value_maybe.unwrap_err();
                     error!("response_spontaneous error: {}", err_str);

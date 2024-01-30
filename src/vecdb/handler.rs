@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
-
+use tokio::sync::Mutex as AMutex;
 use arrow::array::ArrayData;
 use arrow::buffer::Buffer;
 use arrow::compute::concat_batches;
@@ -24,7 +24,6 @@ use log::info;
 use rusqlite::{OpenFlags, params, Result};
 use tempfile::{tempdir, TempDir};
 use tokio::fs;
-use tokio::sync::Mutex as AMutex;
 use tokio_rusqlite::Connection;
 use tracing::error;
 use vectordb::database::Database;
@@ -47,6 +46,7 @@ pub struct VecDBHandler {
     schema: SchemaRef,
     data_table_hashes: HashSet<String>,
     embedding_size: i32,
+    indexed_file_paths: Arc<AMutex<Vec<PathBuf>>>,
 }
 
 fn cosine_similarity(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
@@ -156,6 +156,7 @@ impl VecDBHandler {
             data_table,
             data_table_hashes: HashSet::new(),
             embedding_size,
+            indexed_file_paths: Arc::new(AMutex::new(vec![])),
         })
     }
 
@@ -367,6 +368,51 @@ impl VecDBHandler {
             .map_err(|e| {
                 e.to_string()
             })
+    }
+
+    pub async fn select_all_file_paths(&self) -> Vec<PathBuf> {
+        let mut file_paths: HashSet<PathBuf> = HashSet::new();
+        let records: Vec<RecordBatch> = self.data_table
+            .filter(format!("file_path in (select file_path from data)"))
+            .execute()
+            .await.unwrap()
+            .try_collect::<Vec<_>>()
+            .await.unwrap();
+
+        for rec_batch in records {
+            for record in VecDBHandler::parse_table_iter(rec_batch, false, None).unwrap() {
+                file_paths.insert(record.file_path.clone());
+            }
+        }
+        return file_paths.into_iter().collect();
+    }
+
+    pub async fn get_file_orig_text(&mut self, file_path: String) -> String{
+        let batches: Vec<RecordBatch> = self.data_table
+            .filter(format!("file_path == '{}'", file_path))
+            .execute()
+            .await.unwrap()
+            .try_collect::<Vec<_>>()
+            .await.unwrap();
+
+        let mut records = vec![];
+        for rec_batch in batches {
+            for record in VecDBHandler::parse_table_iter(rec_batch, false, None).unwrap() {
+                records.push((record.start_line, record.end_line, record.window_text));
+            }
+        }
+        records.sort_by(|a, b| a.1.cmp(&b.1));
+        let text: String = records.into_iter().map(|rec| rec.2).collect::<Vec<_>>().join("\n");
+        text
+    }
+
+    pub async fn update_indexed_file_paths(&mut self) {
+        let res = self.select_all_file_paths().await;
+        self.indexed_file_paths = Arc::new(AMutex::new(res));
+    }
+
+    pub async fn get_indexed_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {
+        return self.indexed_file_paths.clone();
     }
 
     pub async fn try_add_from_cache(&mut self, data: Vec<SplitResult>) -> Vec<SplitResult> {
