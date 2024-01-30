@@ -34,16 +34,9 @@ pub struct SymbolInfo {
 }
 
 #[derive(Clone)]
-pub struct DefinitionInfo {
-    pub symbol_info: SymbolInfo,
-    pub text: String,
-}
-
-#[derive(Clone)]
 pub struct Index {
     pub name: String,
-    pub used: HashMap<PathBuf, SymbolInfo>,
-    pub definition_info: Option<DefinitionInfo>,
+    pub definition_info: SymbolInfo,
     pub children: Vec<Index>,
     pub symbol_type: SymbolType
 }
@@ -51,10 +44,6 @@ pub struct Index {
 impl Index {
     pub fn merge(&mut self, other: &mut Index) {
         self.children.append(&mut other.children);
-        if self.definition_info.is_none() {
-            self.definition_info = other.definition_info.clone();
-        }
-        self.used.extend(other.used.clone());
     }
     
 }
