@@ -1,7 +1,7 @@
 const CHAT_URL = `/v1/chat`;
 const CAPS_URL = `/v1/caps`;
 
-export type ChatRole = "user" | "assistant" | "context_file";
+export type ChatRole = "user" | "assistant" | "context_file" | "system";
 
 export type ChatContextFile = {
   file_name: string;
@@ -27,6 +27,11 @@ export interface UserMessage extends BaseMessage {
 
 export interface AssistantMessage extends BaseMessage {
   0: "assistant";
+  1: string;
+}
+
+export interface SystemMessage extends BaseMessage {
+  0: "system";
   1: string;
 }
 
@@ -116,6 +121,7 @@ export function sendChat(
     cache: "no-cache",
     referrer: "no-referrer",
     signal: abortController.signal,
+    credentials: "same-origin",
   });
 }
 
@@ -126,6 +132,7 @@ export async function getCaps(lspUrl?: string): Promise<CapsResponse> {
 
   const response = await fetch(capsEndpoint, {
     method: "GET",
+    credentials: "same-origin",
     headers: {
       accept: "application/json",
     },
