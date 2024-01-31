@@ -1,12 +1,16 @@
-from fastapi import APIRouter
-from starlette.requests import Request
-from starlette.responses import StreamingResponse
-from starlette.background import BackgroundTask
-from fastapi import APIRouter
-from self_hosting_machinery import env
 import os
 import json
 import httpx
+
+from fastapi import APIRouter
+from fastapi.exceptions import HTTPException
+
+from starlette.requests import Request
+from starlette.responses import StreamingResponse
+from starlette.background import BackgroundTask
+
+from self_hosting_machinery import env
+from self_hosting_machinery.webgui.selfhost_login import RefactSession
 
 __all__ = ["LspProxy"]
 
@@ -26,12 +30,23 @@ def get_lsp_url() -> str:
 
 class LspProxy(APIRouter):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, session: RefactSession, *args, **kwargs):
         super().__init__(*args, **kwargs)
         super().add_route("/lsp/v1/caps", self._reverse_proxy, methods=["GET"])
-        super().add_route("/lsp/v1/chat", self._reverse_proxy, methods=["POST"])
+        super().add_route("/lsp/v1/chat", self._reverse_proxy_chat, methods=["POST"])
         lsp_address = get_lsp_url()
+        self._session = session
         self._client = httpx.AsyncClient(base_url=lsp_address)
+
+    def _account_from_bearer(self, authorization: str) -> str:
+        try:
+            return self._session.header_authenticate(authorization)
+        except BaseException as e:
+            raise HTTPException(status_code=401, detail=str(e))
+
+    async def _reverse_proxy_chat(self, request: Request):
+        account = self._account_from_bearer(request.headers.get("Authorization", None))
+        return await self._reverse_proxy(request)
 
     async def _reverse_proxy(self, request: Request):
         path = request.url.path.replace("/lsp", "")
@@ -47,6 +62,3 @@ class LspProxy(APIRouter):
             headers=rp_resp.headers,
             background=BackgroundTask(rp_resp.aclose),
         )
-
-
-
