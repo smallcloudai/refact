@@ -8,6 +8,7 @@ use crate::call_validation::{ChatMessage, ContextFile};
 use crate::vecdb::structs::{Record, VecdbSearch};
 
 
+#[derive(Debug)]
 pub struct AtWorkspace {
     pub name: String,
     pub params: Vec<Arc<AMutex<AtParamKind>>>,

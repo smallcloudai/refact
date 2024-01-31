@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use itertools::Itertools;
 use strsim::jaro_winkler;
 
+#[derive(Debug)]
 pub struct AtParamFilePath {
     pub name: String,
 }
