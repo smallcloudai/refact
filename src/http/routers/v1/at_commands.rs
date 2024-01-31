@@ -71,7 +71,8 @@ pub async fn handle_v1_command_preview(
     let context = AtCommandsContext::new(global_context.clone()).await;
     let post = serde_json::from_slice::<CommandPreviewPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-    let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&post.query, &context).await;
+    let mut query = post.query.clone();
+    let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &context).await;
     if valid_commands.is_empty() {
         return Err(ScratchError::new(StatusCode::OK, "no valid commands in query".to_string()));
     }
