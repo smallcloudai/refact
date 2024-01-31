@@ -47,17 +47,10 @@ export function useEventBusForSidebar() {
     });
   };
 
-  const onCreateNewChat = () => {
-    postMessage({
-      type: EVENT_NAMES_FROM_SIDE_BAR.CREATE_NEW_CHAT,
-    });
-  };
-
   return {
     history,
     onOpenChatInSIdeBar,
     onDeleteHistoryItem,
     onOpenChatInTab,
-    onCreateNewChat,
   };
 }

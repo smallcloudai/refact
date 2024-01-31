@@ -1,5 +1,5 @@
 import React from "react";
-import { Flex, Button } from "@radix-ui/themes";
+import { Flex, Box } from "@radix-ui/themes";
 import { ScrollArea } from "../ScrollArea";
 import { HistoryItem } from "./HistoryItem";
 import type { ChatHistoryItem } from "../../hooks/useChatHistory";
@@ -9,7 +9,6 @@ export type ChatHistoryProps = {
   onHistoryItemClick: (id: string) => void;
   onDeleteHistoryItem: (id: string) => void;
   onOpenChatInTab?: (id: string) => void;
-  onCreateNewChat: () => void;
 };
 
 export const ChatHistory: React.FC<ChatHistoryProps> = ({
@@ -17,17 +16,16 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({
   onHistoryItemClick,
   onDeleteHistoryItem,
   onOpenChatInTab,
-  onCreateNewChat,
 }) => {
   return (
-    <>
-      <Flex mt="4" mb="4">
-        <Button variant="outline" ml="auto" mr="auto" onClick={onCreateNewChat}>
-          Start a new chat
-        </Button>
-      </Flex>
+    <Box
+      style={{
+        overflow: "hidden",
+      }}
+      pb="2"
+    >
       <ScrollArea scrollbars="vertical">
-        <Flex justify="center" align="center" pb="2" mr="1" direction="column">
+        <Flex justify="center" align="center" pl="2" pr="2" direction="column">
           {history.map((chat) => (
             <HistoryItem
               onClick={onHistoryItemClick}
@@ -39,6 +37,6 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({
           ))}
         </Flex>
       </ScrollArea>
-    </>
+    </Box>
   );
 };

@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex } from "@radix-ui/themes";
+import { Box, Flex, Button } from "@radix-ui/themes";
 import styles from "./sidebar.module.css";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 
@@ -16,20 +16,24 @@ export const Sidebar: React.FC<
         left="0"
         bottom="0"
         top="0"
-        pr="2"
-        pl="2"
         style={{
-          // TODO: copy this to vscode
-          zIndex: 1,
-          overflowX: "hidden",
           width: "inherit",
         }}
       >
+        <Flex mt="4" mb="4">
+          <Button
+            variant="outline"
+            ml="auto"
+            mr="auto"
+            onClick={onCreateNewChat}
+          >
+            Start a new chat
+          </Button>
+        </Flex>
         <ChatHistory
           history={history}
           onHistoryItemClick={onHistoryItemClick}
           onDeleteHistoryItem={onDeleteHistoryItem}
-          onCreateNewChat={onCreateNewChat}
         />
       </Flex>
     </Box>
