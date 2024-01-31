@@ -96,7 +96,7 @@ pub async fn handle_v1_command_preview(
         .unwrap())
 }
 
-fn get_line_with_cursor(query: &String, mut cursor: i64) -> Result<(String, i64, i64), ScratchError> {
+fn get_line_with_cursor(query: &String, cursor: i64) -> Result<(String, i64, i64), ScratchError> {
     let mut cursor_rel = cursor;
     for line in query.lines() {
         let line_length = line.len() as i64;

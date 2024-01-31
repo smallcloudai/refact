@@ -8,6 +8,7 @@ use crate::at_commands::utils::compose_context_file_msg_from_result;
 use crate::call_validation::{ChatMessage, ContextFile};
 use crate::vecdb::vecdb::FileSearchResult;
 
+#[derive(Debug)]
 pub struct AtFile {
     pub name: String,
     pub params: Vec<Arc<AMutex<AtParamKind>>>,

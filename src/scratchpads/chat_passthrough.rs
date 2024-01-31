@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use serde_json::Value;
-use tokio::sync::Mutex as AMutex;
 use tracing::{error, info};
 use tokio::sync::RwLock as ARwLock;
 
@@ -11,7 +10,6 @@ use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history_in_bytes;
 use crate::scratchpads::chat_utils_rag::{chat_functions_middleware, HasVecdbResults};
-use crate::vecdb::structs::VecdbSearch;
 
 const DEBUG: bool = true;
 

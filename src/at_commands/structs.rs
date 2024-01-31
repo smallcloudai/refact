@@ -41,6 +41,7 @@ pub trait AtParam {
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String>;
 }
 
+#[derive(Debug)]
 pub struct AtCommandCall {
     pub command: Arc<AMutex<AtCommandKind>>,
     pub args: Vec<String>,
@@ -55,6 +56,7 @@ impl AtCommandCall {
     }
 }
 
+#[derive(Debug)]
 pub enum AtCommandKind {
     AtWorkspace(AtWorkspace),
     AtFile(AtFile),
@@ -96,6 +98,8 @@ impl AtCommand for AtCommandKind {
         }
     }
 }
+
+#[derive(Debug)]
 pub enum AtParamKind {
     AtParamFilePath(AtParamFilePath),
 }

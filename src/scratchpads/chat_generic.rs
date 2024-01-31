@@ -4,7 +4,6 @@ use std::sync::RwLock;
 use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
-use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
@@ -15,7 +14,6 @@ use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::chat_utils_rag::{chat_functions_middleware, HasVecdbResults};
-use crate::vecdb::structs::VecdbSearch;
 
 const DEBUG: bool = true;
 

@@ -1,5 +1,7 @@
 use serde_json::{json, Value};
 use crate::at_commands::structs::{AtCommand, AtCommandCall, AtCommandsContext};
+use tracing::info;
+
 
 pub fn compose_context_file_msg_from_result(
     in_json: &Value,
@@ -35,8 +37,10 @@ pub async fn find_valid_at_commands_in_query(
             None => continue,
         };
         if !cmd.lock().await.can_execute(&q_cmd_args, context).await {
+            info!("command {:?} is not executable with arguments {:?}", q_cmd, q_cmd_args);
             continue;
         }
+        info!("command {:?} is perfectly good", q_cmd);
         results.push(AtCommandCall::new(cmd.clone(), q_cmd_args.clone()));
     }
     results
