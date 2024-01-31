@@ -131,7 +131,7 @@ class WebGUI(FastAPI):
                 model_assigner=model_assigner),
             TabHostRouter(model_assigner),
             TabSettingsRouter(model_assigner),
-            LspProxy(),
+            LspProxy(session=session),
             TabAboutRouter(),
             StaticRouter(),
         ]
