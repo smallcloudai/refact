@@ -22,7 +22,6 @@ use crate::lsp::document::Document;
 
 use crate::telemetry;
 use crate::receive_workspace_changes;
-use crate::telemetry;
 use crate::vecdb::file_filter::is_valid_file;
 
 use crate::telemetry::snippets_collection::sources_changed;
@@ -231,11 +230,6 @@ impl LanguageServer for Backend {
         let _ = info!("rust LSP received initialized()");
     }
 
-    async fn shutdown(&self) -> Result<()> {
-        let _ = info!("shutdown");
-        Ok(())
-    }
-
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         receive_workspace_changes::on_did_open(
             self.gcx.clone(),
@@ -243,25 +237,6 @@ impl LanguageServer for Backend {
             &params.text_document.text,
             &params.text_document.language_id
         ).await;
-
-        let uri = params.text_document.uri.to_string();
-        match Document::open(
-            &params.text_document.language_id,
-            &params.text_document.text,
-            &params.text_document.uri.to_string()
-        ) {
-            Ok(document) => {
-                let gc = self.gcx.clone();
-                let gx = gc.write().await;
-                gx.lsp_backend_document_state.document_map
-                    .write()
-                    .await
-                    .insert(uri.clone(), document);
-                info!("{uri} opened");
-            }
-            Err(err) => error!("error opening {uri}: {err}"),
-        }
-        info!("{uri} opened");
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {

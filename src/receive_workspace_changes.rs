@@ -4,7 +4,7 @@ use std::time::Instant;
 use ropey::Rope;
 
 use tokio::sync::RwLock as ARwLock;
-use tracing::info;
+use tracing::{error, info};
 
 use crate::global_context;
 use crate::lsp::document::Document;
@@ -35,6 +35,25 @@ pub async fn on_did_open(
     // }
     let last_30_chars: String = uri.chars().rev().take(30).collect::<String>().chars().rev().collect();
     info!("opened ...{}", last_30_chars);
+
+    let uri = uri.to_string();
+    match Document::open(
+        &language_id,
+        &text,
+        &uri.to_string()
+    ) {
+        Ok(document) => {
+            let gc = gcx.clone();
+            let gx = gc.write().await;
+            gx.lsp_backend_document_state.document_map
+                .write()
+                .await
+                .insert(uri.clone(), document);
+            info!("{uri} opened");
+        }
+        Err(err) => error!("error opening {uri}: {err}"),
+    }
+    info!("{uri} opened");
 }
 
 pub async fn on_did_change(
