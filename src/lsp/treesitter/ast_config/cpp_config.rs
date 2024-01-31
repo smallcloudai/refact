@@ -52,7 +52,8 @@ impl Language for CppConfig {
     }
 }
 
-const CPP_PARSER_QUERY_GLOBAL_VARIABLE: &str = "";
+const CPP_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(translation_unit (declaration declarator: (init_declarator)) @global_variable)\n\
+(namespace_definition (declaration_list (declaration (init_declarator)) @global_variable))";
 const CPP_PARSER_QUERY_FUNCTION: &str = "((function_definition declarator: (function_declarator)) @function)";
 const CPP_PARSER_QUERY_CLASS: &str = "((class_specifier name: (type_identifier)) @class)\n((struct_specifier name: (type_identifier)) @struct)";
 // const CPP_PARSER_QUERY_CLASS: &str = "";
@@ -74,28 +75,6 @@ lazy_static! {
         m.join("\n")
     };
 }
-
-// fn get_index_from_class(node: &Node) -> Index {
-//     let range = node.range();
-//     let a = {
-//         let parent_node = node.parent();
-//         let namespaces: Vec<String> = vec![];
-//         while parent_node.is_some() {
-//             let parent = parent_node.unwrap();
-//             let node_type = parent_node.type_id();
-//             //     match node_type {
-//             //         TypeId { .. } => {} 
-//             //     }
-//         }
-//         namespaces
-//     };
-//     Index {
-//         name: "".to_string(),
-//         definition_info: SymbolInfo { path: Default::default(), range },
-//         children: vec![],
-//         symbol_type: SymbolType::GlobalVar,
-//     }
-// }
 
 fn get_namespace(mut parent: Option<Node>, text: &str) -> Vec<String> {
     let mut namespaces: Vec<String> = vec![];
@@ -186,6 +165,32 @@ fn get_function_name_and_scope(mut parent: Node, text: &str) -> (String, Vec<Str
     ("".parse().unwrap(), vec![])
 }
 
+fn get_variable_name(mut parent: Node, text: &str) -> String {
+    for i in 0..parent.child_count() {
+        if let Some(child) = parent.child(i) {
+            let kind = child.kind();
+            match kind {
+                "init_declarator" => {
+                    for i in 0..child.child_count() {
+                        if let Some(child) = child.child(i) {
+                            let kind = child.kind();
+                            match kind {
+                                "identifier" => {
+                                    let name = text.slice(child.byte_range());
+                                    return name.to_string();
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    return "".to_string();
+}
+
 pub fn get_indexes(parser: &mut Parser, code: &str, path: PathBuf) -> HashMap<String, Index> {
     let mut indexes: HashMap<String, Index> = Default::default();
     let tree: Tree = parser.parse(code, None).unwrap();
@@ -214,7 +219,6 @@ pub fn get_indexes(parser: &mut Parser, code: &str, path: PathBuf) -> HashMap<St
                 }
                 "function" => {
                     let range = capture.node.range();
-                    let text = code.slice(capture.node.byte_range());
                     let mut namespaces = get_namespace(Some(capture.node), code);
                     let (name, scopes) = get_function_name_and_scope(capture.node.clone(), code);
                     namespaces.extend(scopes);
@@ -228,7 +232,23 @@ pub fn get_indexes(parser: &mut Parser, code: &str, path: PathBuf) -> HashMap<St
                                        name: name,
                                        definition_info: SymbolInfo { path: path.clone(), range },
                                        children: vec![],
-                                       symbol_type: SymbolType::Class,
+                                       symbol_type: SymbolType::Function,
+                                   });
+                }
+                "global_variable" => {
+                    let range = capture.node.range();
+                    let mut namespaces = get_namespace(Some(capture.node), code);
+                    let name = get_variable_name(capture.node, code);
+                    let mut key = path.to_str().unwrap().to_string();
+                    namespaces.iter().for_each(|ns| {
+                        key += format!("::{}", ns).as_str();
+                    });
+                    indexes.insert(key,
+                                   Index {
+                                       name: name,
+                                       definition_info: SymbolInfo { path: path.clone(), range },
+                                       children: vec![],
+                                       symbol_type: SymbolType::GlobalVar,
                                    });
                 }
                 &_ => {}
@@ -247,12 +267,13 @@ mod tests {
         r#"
 #include <iostream>
 using namespace std;
-
+ 
+int b = 0;
  
 struct asd {};
-namespace internal { 
-template <typename T> struct Array {
-class Nest{};
+namespace internal {
+int a = 0;
+template <typename T> class Array {
 private:
     T* ptr;
     int size;
@@ -261,23 +282,25 @@ public:
     Array(T arr[], int s);
     void print();
 };
+}
  
-template <typename T> asd<T>::Array<T>::Array(T arr[], int s)
+template <typename T> Array<T>::Array(T arr[], int s)
 {
     ptr = new T[s];
     size = s;
     for (int i = 0; i < size; i++)
         ptr[i] = arr[i];
 }
- 
-template <typename T> void Array<T>::print()
+void print() {
+}
+template <typename T> void asd<T>::Array<T>::print()
 {
     for (int i = 0; i < size; i++)
         cout << " " << *(ptr + i);
     cout << endl;
 }
-}
- 
+ Array<int> as(arr, 5);
+ Array<int> as = Array<int>(arr, 5);
 int main()
 {
     int arr[5] = { 1, 2, 3, 4, 5 };
