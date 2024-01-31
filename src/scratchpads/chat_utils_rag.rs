@@ -1,9 +1,9 @@
 use std::sync::Arc;
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
 use crate::at_commands::structs::{AtCommand, AtCommandsContext};
 
-use crate::call_validation::ChatPost;
+use crate::call_validation::{ChatMessage, ChatPost};
 use crate::global_context::GlobalContext;
 
 
@@ -14,11 +14,11 @@ pub async fn chat_functions_middleware(
     has_vecdb: &mut HasVecdbResults,
 ) {
     let context = AtCommandsContext::new(global_context.clone()).await;
-    let query = &post.messages.last().unwrap().content.clone(); // latest_msg_cont
-    let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&query, &context).await;
+    let mut query = post.messages.last().unwrap().content.clone(); // latest_msg_cont
+    let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &context).await;
 
     for cmd in valid_commands {
-        match cmd.command.lock().await.execute(query, &cmd.args, top_n, &context).await {
+        match cmd.command.lock().await.execute(&query, &cmd.args, top_n, &context).await {
             Ok((msgs, in_json)) => {
                 post.messages.extend(msgs);
                 has_vecdb.push_in_json(in_json);
@@ -26,6 +26,12 @@ pub async fn chat_functions_middleware(
             Err(_) => {}
         }
     }
+    let msg = ChatMessage{
+        role: "user".to_string(),
+        content: query,
+    };
+    post.messages.push(msg.clone());
+    has_vecdb.push_in_json(json!(msg));
 }
 
 pub struct HasVecdbResults {
