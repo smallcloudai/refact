@@ -1,10 +1,11 @@
 import React from "react";
 import { Flex, Button } from "@radix-ui/themes";
-import { useCookies } from 'react-cookie';
-import { useState, useEffect } from 'react';
+// import { useCookies } from "react-cookie";
+import { useState } from "react";
 import { ScrollArea } from "../ScrollArea";
 import { HistoryItem } from "./HistoryItem";
 import type { ChatHistoryItem } from "../../hooks/useChatHistory";
+import { useApiKey } from "../../hooks";
 
 export type ChatHistoryProps = {
   history: ChatHistoryItem[];
@@ -14,17 +15,39 @@ export type ChatHistoryProps = {
   onCreateNewChat: () => void;
 };
 
+// const useCookieApiKey = () => {
+//   const [cookies, setCookie] = useCookies<"api_key", { api_key: string }>([
+//     "api_key",
+//   ]);
+
+//   const maybeApiKey =
+//     cookies.api_key && typeof cookies.api_key === "string"
+//       ? cookies.api_key
+//       : "";
+//   const [value, setValue] = useState<string>(maybeApiKey);
+
+//   useEffect(() => {
+//     setValue((cookies.api_key ?? "") as string);
+//   }, [cookies.api_key]);
+
+//   return {
+//     value,
+//     setCookie,
+//     setValue,
+//   };
+// };
+
 const ApiKeyInput = () => {
-  const [cookies, setCookie] = useCookies(['api_key']);
-  const [value, setValue] = useState((cookies.api_key || '') as string);
-
-  useEffect(() => {
-    setValue((cookies.api_key || '') as string);
-  }, [cookies.api_key]);
-
+  const [apiKey, setApiKey] = useApiKey();
+  const [value, setValue] = useState<string>(apiKey);
   const handleBlur = () => {
-    setCookie('api_key', value);
+    setApiKey(value);
   };
+
+  // const { value, setCookie, setValue } = useCookieApiKey();
+  // const handleBlur = () => {
+  //   setCookie("api_key", value);
+  // };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
