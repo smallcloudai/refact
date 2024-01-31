@@ -1,17 +1,14 @@
 use serde::{Deserialize, Serialize};
-use tracing::{error, info};
-use serde_json::json;
+use tracing::info;
 use std::sync::Arc;
-use std::path::PathBuf;
 use std::collections::HashMap;
-use std::sync::RwLock as StdRwLock;
 
 use tokio::sync::RwLock as ARwLock;
 
 use crate::global_context;
 use crate::telemetry::utils;
-use crate::telemetry::telemetry_structs;
 use crate::telemetry::telemetry_structs::{SnippetTracker, TeleCompletionAccum};
+use crate::telemetry::utils::compress_tele_records_to_file;
 
 
 pub fn create_data_accumulator_for_finished_snippet(
@@ -54,24 +51,17 @@ pub fn on_file_text_changed(
         if !comp.uri.eq(uri) || comp.finished_ts != 0 {
             continue;
         }
-        // let remaining_percent = utils::unchanged_percentage_approx(&comp.init_file_text, text, &comp.init_grey_text);
-        // error!("Remaining percent={} for snip:\n{}", remaining_percent, comp.init_grey_text);
-        // error!("snippet: {}; from_created={}s", comp.init_grey_text, now - comp.created_ts);
         if comp.created_ts + 30 < now && comp.created_ts + 90 > now && comp.after_30s_remaining == -1. {
             comp.after_30s_remaining = utils::unchanged_percentage_approx(&comp.init_file_text, text, &comp.init_grey_text);
-            // error!("30s: Remaining percent={} for snip:\n{}", comp.after_30s_remaining, comp.init_grey_text);
         }
         else if comp.created_ts + 90 < now && comp.created_ts + 180 > now && comp.after_90s_remaining == -1. {
             comp.after_90s_remaining = utils::unchanged_percentage_approx(&comp.init_file_text, text, &comp.init_grey_text);
-            // error!("90s: Remaining percent={} for snip:\n{}", comp.after_90s_remaining, comp.init_grey_text);
         }
         else if comp.created_ts + 180 < now && comp.created_ts + 360 > now && comp.after_180s_remaining == -1. {
             comp.after_180s_remaining = utils::unchanged_percentage_approx(&comp.init_file_text, text, &comp.init_grey_text);
-            // error!("180s: Remaining percent={} for snip:\n{}", comp.after_180s_remaining, comp.init_grey_text);
         }
         else if comp.created_ts + 360 < now && comp.after_360s_remaining == -1. {
             comp.after_360s_remaining = utils::unchanged_percentage_approx(&comp.init_file_text, text, &comp.init_grey_text);
-            // error!("360s: Remaining percent={} for snip:\n{}", comp.after_360s_remaining, comp.init_grey_text);
             comp.finished_ts = now;
         }
     }
@@ -81,46 +71,17 @@ pub fn on_file_text_changed(
 pub async fn compress_tele_completion_to_file(
     cx: Arc<ARwLock<global_context::GlobalContext>>,
 ) {
-    let now = chrono::Local::now();
-    let cache_dir: PathBuf;
-    let storage: Arc<StdRwLock<telemetry_structs::Storage>>;
-    let enduser_client_version;
-    let file_prefix;
-    let mut records = json!([]);
-    {
-        let cx_locked = cx.read().await;
-        storage = cx_locked.telemetry.clone();
-        cache_dir = cx_locked.cache_dir.clone();
-        enduser_client_version = cx_locked.cmdline.enduser_client_version.clone();
-        file_prefix = cx_locked.cmdline.get_prefix();
-
-        let mut storage_locked = storage.write().unwrap();
-        for rec in compress_into_counters(&storage_locked.snippet_data_accumulators) {
-            let json_dict = serde_json::to_value(rec).unwrap();
-            records.as_array_mut().unwrap().push(json_dict);
-        }
-        storage_locked.snippet_data_accumulators.clear();
+    let mut records = vec![];
+    for rec in compress_into_counters(&cx.read().await.telemetry.read().unwrap().snippet_data_accumulators) {
+        let json_dict = serde_json::to_value(rec).unwrap();
+        records.push(json_dict);
     }
-    if records.as_array().unwrap().is_empty() {
-        info!("no completion telemetry to save");
-        return;
-    }
-
-    let (dir, _) = utils::telemetry_storage_dirs(&cache_dir).await;
-
-    let fn_comp = dir.join(format!("{}-{}-comp.json", file_prefix, now.format("%Y%m%d-%H%M%S")));
-    let big_json = json!({
-        "records": records,
-        "ts_start": now.timestamp(),
-        "ts_end": now.timestamp(),
-        "teletype": "comp_counters",
-        "enduser_client_version": enduser_client_version,
-    });
-    info!("completion telemetry save \"{}\"", fn_comp.to_str().unwrap());
-    let io_result = utils::file_save(fn_comp.clone(), big_json).await;
-    if io_result.is_err() {
-        error!("error: {}", io_result.err().unwrap());
-    }
+    match compress_tele_records_to_file(cx.clone(), records, "comp_counters".to_string(), "comp".to_string()).await {
+        Ok(_) => {
+            cx.write().await.telemetry.write().unwrap().snippet_data_accumulators.clear();
+        },
+        Err(_) => {}
+    };
 }
 
 

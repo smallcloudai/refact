@@ -3,7 +3,7 @@ use std::sync::RwLock as StdRwLock;
 use serde::{Serialize, Deserialize};
 
 use tokio::sync::RwLock as ARwLock;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::global_context;
 use crate::completion_cache;
@@ -104,6 +104,7 @@ pub async fn sources_changed(
     let tele_storage = gcx.read().await.telemetry.clone();
     let mut storage_locked = tele_storage.write().unwrap();
 
+    storage_locked.last_seen_file_texts.insert(uri.clone(), text.clone());
     basic_robot_human::create_robot_human_record_if_not_exists(&mut storage_locked.tele_robot_human, uri, text);
 
     let mut accepted_snippets = vec![];
@@ -145,9 +146,8 @@ pub async fn sources_changed(
         }
     }
 
-
     for snip in accepted_snippets {
-        basic_robot_human::increase_counters_from_finished_snippet(&mut storage_locked.tele_robot_human, uri, text, &snip);
+        basic_robot_human::increase_counters_from_finished_snippet(&mut storage_locked, uri, text, &snip);
         basic_comp_counters::create_data_accumulator_for_finished_snippet(&mut storage_locked.snippet_data_accumulators, uri, &snip);
     }
     basic_comp_counters::on_file_text_changed(&mut storage_locked.snippet_data_accumulators, uri, text);

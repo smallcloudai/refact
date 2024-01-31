@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::call_validation::CodeCompletionInputs;
@@ -12,6 +13,7 @@ pub struct Storage {
     pub tele_snippets: Vec<SnippetTracker>,
     pub tele_snippet_next_id: u64,
     pub snippet_data_accumulators: Vec<TeleCompletionAccum>,
+    pub last_seen_file_texts: HashMap<String, String>,
 }
 
 impl Storage {
@@ -23,6 +25,7 @@ impl Storage {
             tele_snippets: Vec::new(),
             tele_snippet_next_id: 100,
             snippet_data_accumulators: Vec::new(),
+            last_seen_file_texts: HashMap::new(),
         }
     }
 }

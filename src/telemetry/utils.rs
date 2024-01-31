@@ -1,11 +1,15 @@
 use tracing::{error, info};
 use std::path::PathBuf;
+use std::sync::Arc;
 use regex::Regex;
+use serde_json::{json, Value};
 
 use tokio::io::AsyncWriteExt;
 use tokio::io::AsyncReadExt;
+use tokio::sync::RwLock as ARwLock;
 
 use similar::{ChangeTag, TextDiff};
+use crate::global_context;
 
 
 pub async fn telemetry_storage_dirs(cache_dir: &PathBuf) -> (PathBuf, PathBuf) {
@@ -14,6 +18,47 @@ pub async fn telemetry_storage_dirs(cache_dir: &PathBuf) -> (PathBuf, PathBuf) {
     let dir2 = cache_dir.join("telemetry").join("sent");
     tokio::fs::create_dir_all(dir2.clone()).await.unwrap_or_else(|_| {});
     (dir, dir2)
+}
+
+pub async fn compress_tele_records_to_file(
+    cx: Arc<ARwLock<global_context::GlobalContext>>,
+    records: Vec<Value>,
+    teletype: String,
+    teletype_short: String,
+) -> Result<(), String>{
+    if records.is_empty() {
+        info!("no records to save for {} (telemetry)", teletype);
+        return Err("empty records".to_string());
+    }
+    let now = chrono::Local::now();
+    let (cache_dir, enduser_client_version, file_prefix) = {
+        let cx_locked = cx.read().await;
+        (
+            cx_locked.cache_dir.clone(),
+            cx_locked.cmdline.enduser_client_version.clone(),
+            cx_locked.cmdline.get_prefix(),
+        )
+    };
+    let (dir_compressed, _) = telemetry_storage_dirs(&cache_dir).await;
+
+    let file_name = dir_compressed.join(format!("{}-{}-{}.json", file_prefix, now.format("%Y%m%d-%H%M%S"), teletype_short));
+    let big_json_rh = json!({
+        "records": json!(records),
+        "ts_start": now.timestamp(),
+        "ts_end": now.timestamp(),
+        "teletype": teletype,
+        "enduser_client_version": enduser_client_version,
+    });
+    return match file_save(file_name.clone(), big_json_rh).await {
+        Ok(_) => {
+            info!("{} telemetry save \"{}\"", teletype, file_name.to_str().unwrap());
+            Ok(())
+        },
+        Err(e) => {
+            error!("error saving {} telemetry: {}", teletype,  e);
+            Err(e)
+        },
+    };
 }
 
 pub fn get_add_del_from_texts(
@@ -104,7 +149,6 @@ pub async fn cleanup_old_files(
             // info!("leave_alone telemetry file: {}", path.to_str().unwrap());
             continue;
         }
-        info!("removing old telemetry file: {}", path.to_str().unwrap());
         tokio::fs::remove_file(path).await.unwrap_or_else(|e| {
             error!("error removing old telemetry file: {}", e);
             // better to continue deleting, not much we can do

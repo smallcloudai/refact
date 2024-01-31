@@ -37,6 +37,11 @@ pub async fn on_did_open(
     *document_map_locked
         .entry(uri.clone())
         .or_insert(Document::new("unknown".to_owned(), Rope::new())) = Document::new(language_id.clone(), rope);
+    telemetry::snippets_collection::sources_changed(
+        gcx.clone(),
+        uri,
+        text,
+    ).await;
     let last_30_chars: String = uri.chars().rev().take(30).collect::<String>().chars().rev().collect();
     info!("opened ...{}", last_30_chars);
 }
