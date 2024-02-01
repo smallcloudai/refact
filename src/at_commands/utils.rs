@@ -8,14 +8,8 @@ pub fn compose_context_file_msg_from_result(
 ) -> Value {
     let in_json_string = in_json.to_string();
     return json!({
-        "choices": [{
-            "delta": {
-                "content": in_json_string,
-                "role": "context_file"
-            },
-            "finish_reason": null,
-            "index": 0
-        }],
+        "content": in_json_string,
+        "role": "context_file",
     });
 }
 
