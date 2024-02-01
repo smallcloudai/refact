@@ -1,6 +1,6 @@
 use tracing::{error, info};
 use std::sync::{Arc, Mutex};
-use tokio::sync::RwLock as ARwLock;
+use tokio::sync::{AcquireError, RwLock as ARwLock, Semaphore, SemaphorePermit};
 use reqwest_eventsource::Event;
 use serde_json::json;
 use futures::StreamExt;
@@ -14,44 +14,6 @@ use crate::custom_error::ScratchError;
 use crate::call_validation::SamplingParameters;
 use crate::telemetry::telemetry_structs;
 use crate::global_context::GlobalContext;
-use crate::global_context::Slowdown;
-
-
-struct SlowdownScoped {
-    slowdown_arc: Arc<Mutex<Slowdown>>,
-}
-
-impl SlowdownScoped {
-    fn new(slowdown_arc: Arc<Mutex<Slowdown>>) -> Self {
-        let mut slowdown_locked = slowdown_arc.lock().unwrap();
-        slowdown_locked.requests_in_flight += 1;
-        // info!("slowdown_scoped new");
-        Self {
-            slowdown_arc: slowdown_arc.clone()
-        }
-    }
-
-    async fn be_nice_slow_down(&mut self) {
-        loop {
-            {
-                let slowdown_locked = self.slowdown_arc.lock().unwrap();
-                if slowdown_locked.requests_in_flight <= 1 {   // one is this object itself
-                    break;
-                }
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        }
-    }
-}
-
-impl Drop for SlowdownScoped {
-    fn drop(&mut self) {
-        let mut slowdown_locked = self.slowdown_arc.lock().unwrap();
-        slowdown_locked.requests_in_flight -= 1;
-        // info!("slowdown_scoped /drop\n");
-    }
-}
-
 
 pub async fn scratchpad_interaction_not_stream(
     global_context: Arc<ARwLock<GlobalContext>>,
@@ -64,15 +26,14 @@ pub async fn scratchpad_interaction_not_stream(
     parameters: &SamplingParameters,
 ) -> Result<Response<Body>, ScratchError> {
     let t2 = std::time::SystemTime::now();
-    let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage, slowdown_arc) = {
+    let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage, mut slowdown_arc) = {
         let cx = global_context.write().await;
         let caps = cx.caps.clone().unwrap();
         let caps_locked = caps.read().unwrap();
         (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), caps_locked.endpoint_chat_passthrough.clone(), cx.telemetry.clone(), cx.http_client_slowdown.clone())
     };
     let mut save_url: String = String::new();
-    let mut slowdown_scoped = SlowdownScoped::new(slowdown_arc.clone());
-    slowdown_scoped.be_nice_slow_down().await;
+    let permit = slowdown_arc.acquire().await;
     let model_says = if endpoint_style == "hf" {
         forward_to_hf_endpoint::forward_to_hf_style_endpoint(
             &mut save_url,
@@ -190,8 +151,7 @@ pub async fn scratchpad_interaction_stream(
             (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), caps_locked.endpoint_chat_passthrough.clone(), cx.telemetry.clone(), cx.http_client_slowdown.clone())
         };
         let mut save_url: String = String::new();
-        let mut slowdown_scoped = SlowdownScoped::new(slowdown_arc.clone());
-        slowdown_scoped.be_nice_slow_down().await;
+        let permit = slowdown_arc.acquire().await;
         loop {
             let event_source_maybe = if endpoint_style == "hf" {
                 forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(

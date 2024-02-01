@@ -1,21 +1,24 @@
 use std::collections::hash_map::DefaultHasher;
 use tracing::info;
 use std::collections::HashMap;
+use std::future::Future;
 use std::hash::Hasher;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::sync::RwLock as StdRwLock;
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{AcquireError, Mutex as AMutex, Semaphore, SemaphorePermit};
 use tokio::sync::RwLock as ARwLock;
 use tokenizers::Tokenizer;
 use structopt::StructOpt;
 use std::io::Write;
+use async_trait::async_trait;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::telemetry::telemetry_structs;
 use crate::vecdb_search::VecdbSearch;
 use crate::custom_error::ScratchError;
 use hyper::StatusCode;
+use tokio::sync::mpsc::Permit;
 use tower_lsp::lsp_types::WorkspaceFolder;
 use crate::receive_workspace_changes::Document;
 
@@ -55,11 +58,6 @@ impl CommandLine {
     }
 }
 
-pub struct Slowdown {
-    // Be nice to cloud/self-hosted, don't flood it
-    pub requests_in_flight: u64,
-}
-
 pub struct LSPBackendDocumentState {
     pub document_map: Arc<ARwLock<HashMap<String, Document>>>,
     pub workspace_folders: Arc<ARwLock<Option<Vec<WorkspaceFolder>>>>,
@@ -69,7 +67,7 @@ pub struct LSPBackendDocumentState {
 pub struct GlobalContext {
     pub cmdline: CommandLine,
     pub http_client: reqwest::Client,
-    pub http_client_slowdown: Arc<Mutex<Slowdown>>,
+    pub http_client_slowdown: Arc<Semaphore>,
     pub cache_dir: PathBuf,
     pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
     pub caps_last_attempted_ts: u64,
@@ -163,8 +161,8 @@ pub async fn create_global_context(
 
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
-        http_client: http_client,
-        http_client_slowdown: Arc::new(Mutex::new(Slowdown { requests_in_flight: 0 })),
+        http_client,
+        http_client_slowdown: Arc::new(Semaphore::new(2)),
         cache_dir,
         caps: None,
         caps_last_attempted_ts: 0,
