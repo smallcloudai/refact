@@ -13,7 +13,7 @@ use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
-use crate::scratchpads::chat_utils_rag::{chat_functions_middleware, HasVecdbResults};
+use crate::scratchpads::chat_utils_rag::{run_at_commands, HasVecdbResults};
 
 const DEBUG: bool = true;
 
@@ -73,7 +73,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        chat_functions_middleware(self.global_context.clone(), &mut self.post, 6, &mut self.has_vecdb_results).await;
+        run_at_commands(self.global_context.clone(), &mut self.post, 6, &mut self.has_vecdb_results).await;
 
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, self.post.parameters.max_new_tokens, context_size, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());

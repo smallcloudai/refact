@@ -62,6 +62,7 @@ pub enum AtCommandKind {
     AtFile(AtFile),
 }
 
+// TODO: remove this, replace with dyn AtCommand
 #[async_trait]
 impl AtCommand for AtCommandKind {
     fn name(&self) -> &String {
@@ -84,6 +85,7 @@ impl AtCommand for AtCommandKind {
             AtCommandKind::AtFile(file) => file.are_args_valid(args, context).await,
         }
     }
+
     async fn can_execute(&self, args: &Vec<String>, context: &AtCommandsContext) -> bool {
         match self {
             AtCommandKind::AtWorkspace(workspace) => workspace.can_execute(args, context).await,
