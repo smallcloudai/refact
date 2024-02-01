@@ -1,5 +1,7 @@
 const CHAT_URL = `/v1/chat`;
 const CAPS_URL = `/v1/caps`;
+const AT_COMMAND_COMPLETION = "/v1/at-command-completion";
+const AT_COMMAND_PREVIEW = "/v1/at-command-preview";
 
 export type ChatRole = "user" | "assistant" | "context_file" | "system";
 
@@ -197,3 +199,116 @@ export type CapsResponse = {
   tokenizer_rewrite_path: Record<string, unknown>;
   chat_rag_functions?: string[];
 };
+
+interface Replace {
+  0: number;
+  1: number;
+}
+
+export type CommandCompletionResponse = {
+  completions: string[];
+  replace: Replace;
+  is_cmd_executable: false;
+};
+
+function isCommandCompletionResponse(
+  json: unknown,
+): json is CommandCompletionResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("completions" in json)) return false;
+  if (!("replace" in json)) return false;
+  if (!("is_cmd_executable" in json)) return false;
+  return true;
+}
+
+export async function getAtCommandCompletion(
+  query: string,
+  cursor: number,
+  number: number,
+  lspUrl?: string,
+): Promise<CommandCompletionResponse> {
+  const completionEndpoint = lspUrl
+    ? `${lspUrl.replace(/\/*$/, "")}${AT_COMMAND_COMPLETION}`
+    : AT_COMMAND_COMPLETION;
+
+  const response = await fetch(completionEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query, cursor, top_n: number }),
+  });
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
+  const json: unknown = await response.json();
+  if (!isCommandCompletionResponse(json)) {
+    throw new Error("Invalid response from completion");
+  }
+
+  return json;
+}
+
+export type CommandPreviewResponse = {
+  messages: {
+    choices: {
+      delta: {
+        content: {
+          file_content: string;
+          file_name: string;
+        };
+        role: "content_file";
+      };
+      finish_reason: null;
+      index: number;
+    }[];
+  }[];
+};
+
+function isCommandPreviewResponse(
+  json: unknown,
+): json is CommandPreviewResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("messages" in json)) return false;
+  if (!Array.isArray(json.messages)) return false;
+  if (!("choices" in json.messages[0])) return false;
+  return true;
+}
+
+export async function getAtCommandPreview(
+  query: string,
+  lspUrl?: string,
+): Promise<{ file_name: string; file_content: string }> {
+  const previewEndpoint = lspUrl
+    ? `${lspUrl.replace(/\/*$/, "")}${AT_COMMAND_PREVIEW}`
+    : AT_COMMAND_PREVIEW;
+
+  const response = await fetch(previewEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    redirect: "follow",
+    cache: "no-cache",
+    referrer: "no-referrer",
+    credentials: "same-origin",
+    body: JSON.stringify({ query }),
+  });
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
+  const json: unknown = await response.json();
+
+  if (!isCommandPreviewResponse(json)) {
+    throw new Error("Invalid response from command preview");
+  }
+  const { file_name, file_content } = json.messages[0].choices[0].delta.content;
+
+  return { file_name, file_content };
+}

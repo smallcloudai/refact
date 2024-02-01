@@ -60,7 +60,7 @@ const Popover: React.FC<
     </Box>
   );
 };
-
+// TODO: force this open when there are commands
 export const ComboBox: React.FC<{
   commands: string[];
   onChange: React.Dispatch<React.SetStateAction<string>>;

@@ -30,6 +30,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     sendReadyMessage,
     handleNewFileClick,
     handlePasteDiffClick,
+    requestCommandsCompletion,
+    setSelectedCommand,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -113,6 +115,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         handleContextFile={handleContextFile}
         hasContextFile={hasContextFile}
         commands={state.rag_commands}
+        requestCommandsCompletion={requestCommandsCompletion}
+        setSelectedCommand={setSelectedCommand}
         onClose={maybeSendToSideBar}
         attachFile={state.active_file}
       />

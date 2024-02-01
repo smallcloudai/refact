@@ -55,6 +55,7 @@ export const ChatForm: React.FC<{
   hasContextFile: boolean;
   commands: ChatState["rag_commands"];
   attachFile: ChatState["active_file"];
+  setSelectedCommand: (command: string) => void;
   requestCommandsCompletion: (
     query: string,
     cursor: number,
@@ -76,7 +77,8 @@ export const ChatForm: React.FC<{
   hasContextFile,
   commands,
   attachFile,
-  // requestCommandsCompletion,
+  requestCommandsCompletion,
+  setSelectedCommand,
 }) => {
   const [value, setValue] = React.useState("");
 
@@ -91,6 +93,28 @@ export const ChatForm: React.FC<{
   };
 
   const handleEnter = useOnPressedEnter(handleSubmit);
+
+  const handleChange = (command: React.SetStateAction<string>) => {
+    setValue(command);
+
+    const str = typeof command === "function" ? command(value) : command;
+
+    if (
+      str.endsWith(" ") &&
+      commands.available_commands.includes(str.slice(0, -1))
+    ) {
+      setSelectedCommand(str);
+    } else {
+      setSelectedCommand("");
+    }
+
+    // TODO: get the  cursor position
+    // Does order matter here?
+    if (str.startsWith("@")) {
+      requestCommandsCompletion(str, str.length);
+    }
+    // set selected command if value ends with space and is in commands
+  };
   if (error) {
     return (
       <ErrorCallout mt="2" onClick={clearError} timeout={null}>
@@ -98,6 +122,8 @@ export const ChatForm: React.FC<{
       </ErrorCallout>
     );
   }
+
+  // console.log({ commands });
 
   return (
     <Box mt="1" position="relative">
@@ -136,11 +162,19 @@ export const ChatForm: React.FC<{
         onSubmit={() => handleSubmit()}
       >
         <ComboBox
-          commands={commands.available_commands}
+          // maybe add a ref for cursor position?
+          commands={commands.available_commands.map(
+            (c) => commands.selected_command + c,
+          )}
           value={value}
-          onChange={setValue}
-          onSubmit={handleEnter}
-          placeholder={commands.length > 0 ? "Type @ for commands" : ""}
+          onChange={handleChange}
+          onSubmit={(event) => {
+            // console.log("submit", event);
+            handleEnter(event);
+          }}
+          placeholder={
+            commands.available_commands.length > 0 ? "Type @ for commands" : ""
+          }
           render={(props) => <TextArea disabled={isStreaming} {...props} />}
         />
         <Flex gap="2" className={styles.buttonGroup}>

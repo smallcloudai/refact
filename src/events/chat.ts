@@ -41,6 +41,7 @@ export enum EVENT_NAMES_TO_CHAT {
   TOGGLE_ACTIVE_FILE = "chat_toggle_active_file",
   RECEIVE_AT_COMMAND_COMPLETION = "chat_receive_at_command_completion",
   RECEIVE_AT_COMMAND_PREVIEW = "chat_receive_at_command_preview",
+  SET_SELECTED_AT_COMMAND = "chat_set_selected_command",
 }
 
 export type ChatThread = {
@@ -216,6 +217,19 @@ export function isReceiveAtCommandPreview(
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW;
 }
+
+export interface SetSelectedAtCommand extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND;
+  payload: { id: string; command: string };
+}
+
+export function isSetSelectedAtCommand(
+  action: unknown,
+): action is SetSelectedAtCommand {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND;
+}
+
 export interface ToggleActiveFile extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
   payload: { id: string; attach_file: boolean };

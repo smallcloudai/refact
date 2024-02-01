@@ -36,6 +36,8 @@ import {
   ReadyMessage,
   RequestAtCommandCompletion,
   isReceiveAtCommandCompletion,
+  SetSelectedAtCommand,
+  isSetSelectedAtCommand,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
@@ -273,6 +275,18 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       rag_commands: {
         ...state.rag_commands,
         available_commands: action.payload.completions,
+        // arguments: args,
+        is_cmd_executable: action.payload.is_cmd_executable,
+      },
+    };
+  }
+
+  if (isThisChat && isSetSelectedAtCommand(action)) {
+    return {
+      ...state,
+      rag_commands: {
+        ...state.rag_commands,
+        selected_command: action.payload.command,
       },
     };
   }
@@ -538,6 +552,14 @@ export const useEventBusForChat = () => {
     postMessage(action);
   }
 
+  function setSelectedCommand(command: string) {
+    const action: SetSelectedAtCommand = {
+      type: EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND,
+      payload: { id: state.chat.id, command },
+    };
+    postMessage(action);
+  }
+
   useEffectOnce(() => {
     requestCommandsCompletion("@", 1);
   });
@@ -558,5 +580,6 @@ export const useEventBusForChat = () => {
     handleNewFileClick,
     handlePasteDiffClick,
     requestCommandsCompletion,
+    setSelectedCommand,
   };
 };
