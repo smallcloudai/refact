@@ -59,7 +59,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
         run_at_commands(self.global_context.clone(), &mut self.post, 6, &mut self.has_vecdb_results).await;
         let limited_msgs: Vec<ChatMessage> = limit_messages_history_in_bytes(&self.post.messages, self.limit_bytes, &self.default_system_message)?;
-        info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", &limited_msgs.len(), &limited_msgs.len());
+        info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", &self.post.messages.len(), &limited_msgs.len());
         let mut filtered_msgs: Vec<ChatMessage> = Vec::<ChatMessage>::new();
         for msg in &limited_msgs {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" {
