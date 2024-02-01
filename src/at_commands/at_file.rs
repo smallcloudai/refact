@@ -1,10 +1,9 @@
 use std::sync::Arc;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::json;
 use crate::at_commands::structs::{AtCommand, AtCommandsContext, AtParam, AtParamKind};
 use crate::at_commands::at_params::AtParamFilePath;
 use tokio::sync::Mutex as AMutex;
-use crate::at_commands::utils::compose_context_file_msg_from_result;
 use crate::call_validation::{ChatMessage, ContextFile};
 use crate::vecdb::vecdb::FileSearchResult;
 
@@ -23,24 +22,6 @@ impl AtFile {
             ],
         }
     }
-}
-
-fn search2messages(result: &FileSearchResult) -> Vec<ChatMessage> {
-    // TODO: change to context_file, encode json including line1 line2
-    vec![ChatMessage {
-        role: "user".to_string(),
-        content: format!("FILENAME:\n{}\nTEXT:\n{}\n", result.file_path, result.file_text)
-    }]
-}
-
-fn search2json(result: &FileSearchResult) -> Value {
-    let cf = ContextFile {
-        file_name: result.file_path.clone().rsplit("/").next().unwrap_or(&result.file_path).to_string(),
-        file_content: result.file_text.clone(),
-        line1: 0,
-        line2: result.file_text.lines().count() as i32,
-    };
-    compose_context_file_msg_from_result(&serde_json::to_value(&vec![cf]).unwrap_or(json!(null)))
 }
 
 #[async_trait]
@@ -67,7 +48,7 @@ impl AtCommand for AtFile {
         return true;
     }
 
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ChatMessage>, Value), String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String> {
         let can_execute = self.can_execute(args, context).await;
         match *context.global_context.read().await.vec_db.lock().await {
             Some(ref db) => {
@@ -78,11 +59,18 @@ impl AtCommand for AtFile {
                     Some(x) => x,
                     None => return Err("no file path".to_string()),
                 };
-                let search_result = db.get_file_orig_text(file_path.clone()).await;
-                Ok((
-                    search2messages(&search_result),
-                    search2json(&search_result)
-                ))
+                let path_and_text: FileSearchResult = db.get_file_orig_text(file_path.clone()).await;
+                let mut vector_of_context_file: Vec<ContextFile> = vec![];
+                vector_of_context_file.push(ContextFile {
+                    file_name: path_and_text.file_path,
+                    file_content: path_and_text.file_text.clone(),
+                    line1: 0,
+                    line2: path_and_text.file_text.lines().count() as i32,
+                });
+                Ok(ChatMessage {
+                    role: "context_file".to_string(),
+                    content: json!(vector_of_context_file).to_string(),
+                })
             }
             None => Err("vecdb is not available".to_string())
         }
