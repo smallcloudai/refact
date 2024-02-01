@@ -53,8 +53,13 @@ export const ChatForm: React.FC<{
   onStopStreaming: () => void;
   handleContextFile: () => void;
   hasContextFile: boolean;
-  commands: string[];
+  commands: ChatState["rag_commands"];
   attachFile: ChatState["active_file"];
+  requestCommandsCompletion: (
+    query: string,
+    cursor: number,
+    number?: number,
+  ) => void;
 }> = ({
   onSubmit,
   onClose,
@@ -71,6 +76,7 @@ export const ChatForm: React.FC<{
   hasContextFile,
   commands,
   attachFile,
+  // requestCommandsCompletion,
 }) => {
   const [value, setValue] = React.useState("");
 
@@ -130,7 +136,7 @@ export const ChatForm: React.FC<{
         onSubmit={() => handleSubmit()}
       >
         <ComboBox
-          commands={commands}
+          commands={commands.available_commands}
           value={value}
           onChange={setValue}
           onSubmit={handleEnter}

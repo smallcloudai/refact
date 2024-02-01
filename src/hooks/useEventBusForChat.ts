@@ -1,4 +1,5 @@
 import { useEffect, useReducer } from "react";
+import { useEffectOnce } from "usehooks-ts";
 import {
   ChatContextFile,
   ChatMessages,
@@ -33,6 +34,8 @@ import {
   NewFileFromChat,
   PasteDiffFromChat,
   ReadyMessage,
+  RequestAtCommandCompletion,
+  isReceiveAtCommandCompletion,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
@@ -139,7 +142,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     const default_cap = action.payload.caps.code_chat_default_model;
     const available_caps = Object.keys(action.payload.caps.code_chat_models);
     const error = available_caps.length === 0 ? "No available caps" : null;
-    const rag_commands = action.payload.caps.chat_rag_functions ?? [];
+    // const rag_commands = action.payload.caps.chat_rag_functions ?? [];
     return {
       ...state,
       error,
@@ -152,7 +155,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         default_cap: default_cap || available_caps[0] || "",
         available_caps,
       },
-      rag_commands,
+      // rag_commands,
     };
   }
 
@@ -264,6 +267,16 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
+  if (isThisChat && isReceiveAtCommandCompletion(action)) {
+    return {
+      ...state,
+      rag_commands: {
+        ...state.rag_commands,
+        available_commands: action.payload.completions,
+      },
+    };
+  }
+
   return state;
 }
 
@@ -279,7 +292,12 @@ export type ChatState = {
   streaming: boolean;
   error: string | null;
   caps: ChatCapsState;
-  rag_commands: string[];
+  rag_commands: {
+    available_commands: string[];
+    selected_command: string;
+    arguments: string[];
+    is_cmd_executable: boolean;
+  };
   active_file: {
     name: string;
     attach: boolean;
@@ -303,7 +321,12 @@ function createInitialState(): ChatState {
       default_cap: "",
       available_caps: [],
     },
-    rag_commands: [],
+    rag_commands: {
+      available_commands: [],
+      selected_command: "",
+      arguments: [],
+      is_cmd_executable: false,
+    },
 
     active_file: {
       name: "",
@@ -503,6 +526,22 @@ export const useEventBusForChat = () => {
     postMessage(action);
   }
 
+  function requestCommandsCompletion(
+    query: string,
+    cursor: number,
+    number = 5,
+  ) {
+    const action: RequestAtCommandCompletion = {
+      type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
+      payload: { id: state.chat.id, query, cursor, number },
+    };
+    postMessage(action);
+  }
+
+  useEffectOnce(() => {
+    requestCommandsCompletion("@", 1);
+  });
+
   return {
     state,
     askQuestion,
@@ -518,5 +557,6 @@ export const useEventBusForChat = () => {
     sendReadyMessage,
     handleNewFileClick,
     handlePasteDiffClick,
+    requestCommandsCompletion,
   };
 };

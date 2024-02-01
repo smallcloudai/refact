@@ -1,5 +1,11 @@
 import { useEffect, useRef } from "react";
-import { sendChat, getCaps, ChatContextFile } from "../services/refact";
+import {
+  sendChat,
+  getCaps,
+  ChatContextFile,
+  getAtCommandCompletion,
+  getAtCommandPreview,
+} from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
   EVENT_NAMES_TO_CHAT,
@@ -9,6 +15,10 @@ import {
   isRequestCapsFromChat,
   isStopStreamingFromChat,
   isRequestForFileFromChat,
+  isRequestAtCommandCompletion,
+  isRequestAtCommandPreview,
+  ReceiveAtCommandCompletion,
+  ReceiveAtCommandPreview,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 
@@ -117,6 +127,41 @@ export function useEventBusForHost() {
               },
               "*",
             );
+          });
+      }
+
+      if (isRequestAtCommandCompletion(event.data)) {
+        const { id, query, cursor, number } = event.data.payload;
+        getAtCommandCompletion(query, cursor, number, lspUrl)
+          .then((res) => {
+            const message: ReceiveAtCommandCompletion = {
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION,
+              payload: { id, ...res },
+            };
+
+            window.postMessage(message, "*");
+          })
+          .catch((error) => {
+            // TODO: handle  error
+            // eslint-disable-next-line no-console
+            console.error(error);
+          });
+      }
+
+      if (isRequestAtCommandPreview(event.data)) {
+        const { id, query } = event.data.payload;
+        getAtCommandPreview(query, lspUrl)
+          .then((res) => {
+            const message: ReceiveAtCommandPreview = {
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW,
+              payload: { id, ...res },
+            };
+            window.postMessage(message, "*");
+          })
+          .catch((error) => {
+            // TODO: handle error
+            // eslint-disable-next-line no-console
+            console.error(error);
           });
       }
     };

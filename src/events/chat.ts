@@ -4,6 +4,7 @@ import {
   CapsResponse,
   isCapsResponse,
   ChatContextFile,
+  CommandCompletionResponse,
 } from "../services/refact";
 
 export enum EVENT_NAMES_FROM_CHAT {
@@ -18,6 +19,8 @@ export enum EVENT_NAMES_FROM_CHAT {
   READY = "chat_ready",
   NEW_FILE = "chat_create_new_file",
   PASTE_DIFF = "chat_paste_diff",
+  REQUEST_AT_COMMAND_COMPLETION = "chat_request_at_command_completion",
+  REQUEST_AT_COMMAND_PREVIEW = "chat_request_at_command_preview",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -36,6 +39,8 @@ export enum EVENT_NAMES_TO_CHAT {
   REMOVE_FILES = "remove_context_file",
   ACTIVE_FILE_INFO = "chat_active_file_info",
   TOGGLE_ACTIVE_FILE = "chat_toggle_active_file",
+  RECEIVE_AT_COMMAND_COMPLETION = "chat_receive_at_command_completion",
+  RECEIVE_AT_COMMAND_PREVIEW = "chat_receive_at_command_preview",
 }
 
 export type ChatThread = {
@@ -68,6 +73,29 @@ export function isActionFromChat(action: unknown): action is ActionFromChat {
   return Object.values(ALL_EVENT_NAMES).includes(action.type);
 }
 
+export interface RequestAtCommandCompletion extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
+  payload: { id: string; query: string; cursor: number; number: number };
+}
+
+export function isRequestAtCommandCompletion(
+  action: unknown,
+): action is RequestAtCommandCompletion {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
+}
+
+export interface RequestAtCommandPreview extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW;
+  payload: { id: string; query: string };
+}
+
+export function isRequestAtCommandPreview(
+  action: unknown,
+): action is RequestAtCommandPreview {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW;
+}
 export interface NewFileFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.NEW_FILE;
   payload: {
@@ -165,6 +193,29 @@ export function isActionToChat(action: unknown): action is ActionToChat {
   return Object.values(EVENT_NAMES).includes(action.type);
 }
 
+export interface ReceiveAtCommandCompletion extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
+  payload: { id: string } & CommandCompletionResponse;
+}
+
+export function isReceiveAtCommandCompletion(
+  action: unknown,
+): action is ReceiveAtCommandCompletion {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
+}
+
+export interface ReceiveAtCommandPreview extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW;
+  payload: { id: string; file_content: string; file_name: string };
+}
+
+export function isReceiveAtCommandPreview(
+  action: unknown,
+): action is ReceiveAtCommandPreview {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW;
+}
 export interface ToggleActiveFile extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
   payload: { id: string; attach_file: boolean };
