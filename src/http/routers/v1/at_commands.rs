@@ -4,7 +4,7 @@ use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use itertools::Itertools;
-use serde_json::{Value};
+use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
 use strsim::jaro_winkler;
 use crate::at_commands::structs::{AtCommand, AtCommandsContext, AtParam};
@@ -80,8 +80,8 @@ pub async fn handle_v1_command_preview(
     let mut preview_msgs = vec![];
     for cmd in valid_commands {
         match cmd.command.lock().await.execute(&post.query, &cmd.args, 5, &context).await {
-            Ok((_, in_json)) => {
-                preview_msgs.push(in_json);
+            Ok(msg) => {
+                preview_msgs.push(json!(msg));
             },
             Err(_) => {}
         }

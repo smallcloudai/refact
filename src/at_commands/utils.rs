@@ -1,17 +1,6 @@
-use serde_json::{json, Value};
 use crate::at_commands::structs::{AtCommand, AtCommandCall, AtCommandsContext};
 use tracing::info;
 
-
-pub fn compose_context_file_msg_from_result(
-    in_json: &Value,
-) -> Value {
-    let in_json_string = in_json.to_string();
-    return json!({
-        "content": in_json_string,
-        "role": "context_file",
-    });
-}
 
 pub async fn find_valid_at_commands_in_query(
     query: &mut String,

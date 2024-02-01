@@ -20,9 +20,9 @@ pub async fn run_at_commands(
 
     for cmd in valid_commands {
         match cmd.command.lock().await.execute(&query, &cmd.args, top_n, &context).await {
-            Ok((msgs, in_json)) => {
-                post.messages.extend(msgs);
-                has_vecdb.push_in_json(in_json);
+            Ok(msg) => {
+                post.messages.push(msg.clone());
+                has_vecdb.push_in_json(json!(msg));
             },
             Err(_) => {}
         }

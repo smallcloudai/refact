@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use async_trait::async_trait;
-use serde_json::Value;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::at_commands_dict;
 use tokio::sync::RwLock as ARwLock;
@@ -31,7 +30,7 @@ pub trait AtCommand: Send + Sync {
     fn params(&self) -> &Vec<Arc<AMutex<AtParamKind>>>;
     async fn are_args_valid(&self, args: &Vec<String>, context: &AtCommandsContext) -> Vec<bool>;
     async fn can_execute(&self, args: &Vec<String>, context: &AtCommandsContext) -> bool;
-    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ChatMessage>, Value), String>;
+    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String>;
 }
 
 #[async_trait]
@@ -93,7 +92,7 @@ impl AtCommand for AtCommandKind {
         }
     }
 
-    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ChatMessage>, Value), String> {
+    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String> {
         match self {
             AtCommandKind::AtWorkspace(workspace) => workspace.execute(query, args, top_n, context).await,
             AtCommandKind::AtFile(file) => file.execute(query, args, top_n, context).await,

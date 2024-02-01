@@ -1,4 +1,4 @@
-import requests, json
+import requests, json, termcolor
 
 
 my_prompt = """
@@ -30,8 +30,8 @@ An examples of commands:
 
 🔍FILE repo1/test_file.cpp
 
-In the [GENERATE_DOCUMENTATION_STEP] you have to generate a comprehensive context-aware explanation of the 🔥code.
-Don't explain line-by-line, rather answer the questions "why it exists", "how does it fit into broader context".
+In the [GENERATE_DOCUMENTATION_STEP] you have to generate an explanation of the 🔥code.
+Answer questions "why it exists", "how does it fit into broader context". Don't explain line-by-line. Don't explain class data fields.
 """
 
 to_explain = """pub struct DeltaDeltaChatStreamer {
@@ -43,7 +43,7 @@ to_explain = """pub struct DeltaDeltaChatStreamer {
 }
 """
 
-messages = [
+initial_messages = [
 {"role": "system", "content": my_prompt},
 {"role": "user", "content":
     "[ORIGINAL_CODE_STEP]\n" +
@@ -97,14 +97,45 @@ def ask_chat(messages):
     return messages_back
 
 
-import termcolor
-for msgdict in messages:
-    role = termcolor.colored(msgdict["role"], "blue")
-    content = termcolor.colored(msgdict["content"], "green")
-    print(role, content)
+def rewrite_assistant_says_to_at_commands(ass):
+    out = ""
+    for s in ass.splitlines():
+        s = s.strip()
+        if not s:
+            continue
+        if s.startswith("🔍SEARCH"):
+            out += "@workspace " + s[8:] + "\n"
+        if s.startswith("🔍FILE"):
+            out += "@file " + s[6:] + "\n"
+    return out
 
-messages_back = ask_chat(messages)
-for msgdict in messages_back:
-    role = termcolor.colored(msgdict["role"], "blue")
-    content = termcolor.colored(msgdict["content"], "red")
-    print(role, content)
+
+def dialog_turn(messages):
+    for msgdict in messages:
+        print(termcolor.colored(msgdict["role"], "blue"))
+        print(termcolor.colored(msgdict["content"], "green"))
+    messages_back = ask_chat(messages)
+    for msgdict in messages_back:
+        print(termcolor.colored(msgdict["role"], "blue"))
+        print(termcolor.colored(msgdict["content"], "red"))
+    assistant_says = messages_back[-1]["content"]
+    messages_without_last_user = messages[:-1]
+    next_step_messages = messages_without_last_user + messages_back
+    automated_new_user = rewrite_assistant_says_to_at_commands(assistant_says)
+    if not automated_new_user:
+        return next_step_messages, False
+    automated_new_user += "[GENERATE_DOCUMENTATION_STEP]"
+    next_step_messages.append({"role": "user", "content": automated_new_user})
+    return next_step_messages, True
+
+
+def do_all():
+    messages = initial_messages.copy()
+    for step in range(2):
+        print("-"*40, "STEP%02d" % step, "-"*40)
+        messages, need_automated_post = dialog_turn(messages)
+        if not need_automated_post:
+            break
+
+
+do_all()

@@ -1,9 +1,8 @@
 use std::sync::Arc;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::json;
 use crate::at_commands::structs::{AtCommand, AtCommandsContext, AtParam, AtParamKind};
 use tokio::sync::Mutex as AMutex;
-use crate::at_commands::utils::compose_context_file_msg_from_result;
 use crate::call_validation::{ChatMessage, ContextFile};
 use crate::vecdb::structs::{Record, VecdbSearch};
 
@@ -23,33 +22,20 @@ impl AtWorkspace {
     }
 }
 
-fn record2chat_message(record: &Record) -> ChatMessage {
+fn results2message(results: &Vec<Record>) -> ChatMessage {
+    let mut vector_of_context_file: Vec<ContextFile> = vec![];
+    for r in results {
+        vector_of_context_file.push(ContextFile {
+            file_name: r.file_path.to_str().unwrap().to_string(),
+            file_content: r.window_text.clone(),
+            line1: r.start_line as i32,
+            line2: r.end_line as i32,
+        });
+    }
     ChatMessage {
         role: "context_file".to_string(),
-        content: json!(ContextFile {
-            file_name: record.file_path.to_str().unwrap().to_string(), //.rsplit('/').next().unwrap_or(&record.file_path.to_str().unwrap()).to_string(),
-            file_content: record.window_text.clone(),
-            line1: record.start_line as i32,
-            line2: record.end_line as i32,
-        }).to_string()
+        content: json!(vector_of_context_file).to_string(),
     }
-}
-
-fn search2messages(results: &Vec<Record>) -> Vec<ChatMessage> {
-    let mut messages = vec![];
-    for r in results {
-        messages.push(record2chat_message(r));
-    }
-    messages
-}
-
-pub fn search2json(
-    results: &Vec<Record>
-) -> Value {
-    let context_files: Vec<ChatMessage> = results
-        .iter()
-        .map(|x| { record2chat_message(x) }).collect();
-    compose_context_file_msg_from_result(&serde_json::to_value(&context_files).unwrap_or(json!(null)))
 }
 
 #[async_trait]
@@ -57,10 +43,12 @@ impl AtCommand for AtWorkspace {
     fn name(&self) -> &String {
         &self.name
     }
+
     fn params(&self) -> &Vec<Arc<AMutex<AtParamKind>>>
     {
         &self.params
     }
+
     async fn are_args_valid(&self, args: &Vec<String>, context: &AtCommandsContext) -> Vec<bool> {
         let mut results = Vec::new();
         for (arg, param) in args.iter().zip(self.params.iter()) {
@@ -70,24 +58,21 @@ impl AtCommand for AtWorkspace {
         results
     }
 
-    async fn can_execute(&self, args: &Vec<String>, context: &AtCommandsContext) -> bool {
-        if self.are_args_valid(args, context).await.iter().any(|&x| x == false) || args.len() != self.params.len() {
-            return false;
-        }
+    async fn can_execute(&self, _args: &Vec<String>, _context: &AtCommandsContext) -> bool {
         return true;
     }
 
-    async fn execute(&self, query: &String, _args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ChatMessage>, Value), String> {
+    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String> {
         match *context.global_context.read().await.vec_db.lock().await {
             Some(ref db) => {
-                let search_result = db.search(query.clone(), top_n).await?;
+                let mut db_query = args.join(" ");
+                if db_query.is_empty() {
+                    db_query = query.clone();
+                }
+                let search_result = db.search(db_query, top_n).await?;
                 let mut results = search_result.results.clone();
                 results.dedup_by(|a, b| a.file_path == b.file_path && a.window_text == b.window_text);
-
-                Ok((
-                    search2messages(&results),
-                    search2json(&results)
-                ))
+                Ok(results2message(&results))
             }
             None => Err("vecdb is not available".to_string())
         }
