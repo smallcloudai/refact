@@ -286,6 +286,7 @@ impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for SingleFileFIM<T> {
         });
         Ok((ans, finished))
     }
+
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
         return Err("".to_string());
     }

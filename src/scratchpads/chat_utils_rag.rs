@@ -7,12 +7,13 @@ use crate::call_validation::{ChatMessage, ChatPost};
 use crate::global_context::GlobalContext;
 
 
-pub async fn chat_functions_middleware(
+pub async fn run_at_commands(
     global_context: Arc<ARwLock<GlobalContext>>,
     post: &mut ChatPost,
     top_n: usize,
     has_vecdb: &mut HasVecdbResults,
 ) {
+    // TODO: don't operate on `post`, return a copy of the messages
     let context = AtCommandsContext::new(global_context.clone()).await;
     let mut query = post.messages.last().unwrap().content.clone(); // latest_msg_cont
     let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &context).await;
@@ -28,7 +29,7 @@ pub async fn chat_functions_middleware(
     }
     let msg = ChatMessage{
         role: "user".to_string(),
-        content: query,
+        content: query,  // stream back to the user, without commands
     };
     post.messages.push(msg.clone());
     has_vecdb.push_in_json(json!(msg));
@@ -47,7 +48,6 @@ impl HasVecdbResults {
         }
     }
 }
-
 
 impl HasVecdbResults {
     pub fn push_in_json(&mut self, value: Value) {

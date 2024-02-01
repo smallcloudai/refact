@@ -9,7 +9,7 @@ use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParamet
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history_in_bytes;
-use crate::scratchpads::chat_utils_rag::{chat_functions_middleware, HasVecdbResults};
+use crate::scratchpads::chat_utils_rag::{run_at_commands, HasVecdbResults};
 
 const DEBUG: bool = true;
 
@@ -56,7 +56,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         _context_size: usize,
         _sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        chat_functions_middleware(self.global_context.clone(), &mut self.post, 6, &mut self.has_vecdb_results).await;
+        run_at_commands(self.global_context.clone(), &mut self.post, 6, &mut self.has_vecdb_results).await;
 
         let limited_msgs: Vec<ChatMessage> = limit_messages_history_in_bytes(&self.post.messages, self.limit_bytes, &self.default_system_message)?;
         info!("chat passthrough {} messages -> {} messages after applying limits and possibly adding the default system message", &limited_msgs.len(), &limited_msgs.len());
@@ -130,6 +130,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         });
         Ok((ans, finished))
     }
+
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
         return self.has_vecdb_results.response_streaming();
     }

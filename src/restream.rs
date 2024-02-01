@@ -193,7 +193,7 @@ pub async fn scratchpad_interaction_stream(
         let mut slowdown_scoped = SlowdownScoped::new(slowdown_arc.clone());
         slowdown_scoped.be_nice_slow_down().await;
         loop {
-            loop {
+            {
                 let value_maybe = scratch.response_spontaneous();
                 if let Ok(value) = value_maybe {
                     for el in value {
@@ -207,7 +207,6 @@ pub async fn scratchpad_interaction_stream(
                     let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
                     yield Result::<_, String>::Ok(value_str);
                 }
-                break;
             }
 
             let event_source_maybe = if endpoint_style == "hf" {
