@@ -17,6 +17,7 @@ use crate::global_context::GlobalContext;
 struct CommandCompletionPost {
     query: String,
     cursor: i64,
+    top_n: usize,
 }
 #[derive(Serialize, Deserialize, Clone)]
 struct CommandCompletionResponse {
@@ -43,14 +44,15 @@ pub async fn handle_v1_command_completion(
     let post = serde_json::from_slice::<CommandCompletionPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    let (query_line_val, cursor_rel, cursor_line_start) = get_line_with_cursor(&post.query, post.cursor.clone())?;
+    let (query_line_val, cursor_rel, cursor_line_start) = get_line_with_cursor(&post.query, post.cursor)?;
     let query_line_val = query_line_val.chars().take(cursor_rel as usize).collect::<String>();
     // info!(query_line_val);
+    // info!("cursor_rel: {}, cursor_line_start: {}", cursor_rel, cursor_line_start);
     let query_line = QueryLine::new(query_line_val, cursor_rel, cursor_line_start);
     // for arg in query_line.args.iter() {
     //     info!("value: {}, focused: {}, type_name: {}; pos1: {}; pos2: {}", arg.value, arg.focused, arg.type_name, arg.pos1, arg.pos2);
     // }
-    let (completions, is_cmd_executable, pos1, pos2) = command_completion(&query_line, &context).await?;
+    let (completions, is_cmd_executable, pos1, pos2) = command_completion(&query_line, &context, post.cursor, post.top_n).await?;
 
     let response = CommandCompletionResponse {
         completions: completions.clone(),
@@ -115,6 +117,8 @@ fn get_line_with_cursor(query: &String, cursor: i64) -> Result<(String, i64, i64
 async fn command_completion(
     query_line: &QueryLine,
     context: &AtCommandsContext,
+    cursor_abs: i64,
+    top_n: usize,
 ) -> Result<(Vec<String>, bool, i64, i64), ScratchError> {    // returns ([possible, completions], good_as_it_is)
     let q_cmd = match query_line.command() {
         Some(x) => x,
@@ -127,7 +131,7 @@ async fn command_completion(
             if !q_cmd.focused {
                 return Err(ScratchError::new(StatusCode::OK, "incorrect command given".to_string()));
             }
-            return Ok((command_completion_options(&q_cmd.value, &context, 5).await, false, q_cmd.pos1, q_cmd.pos2));
+            return Ok((command_completion_options(&q_cmd.value, &context, top_n).await, false, q_cmd.pos1, q_cmd.pos2));
         }
     };
     if cmd.lock().await.can_execute(&query_line.get_args().iter().map(|x|x.value.clone()).collect(), context).await {
@@ -138,12 +142,20 @@ async fn command_completion(
         let is_valid = param.lock().await.is_value_valid(&arg.value, context).await;
         if !is_valid {
             return if arg.focused {
-                Ok((param.lock().await.complete(&arg.value, context, 5).await, false, arg.pos1, arg.pos2))
+                Ok((param.lock().await.complete(&arg.value, context, top_n).await, false, arg.pos1, arg.pos2))
             } else {
                 Err(ScratchError::new(StatusCode::OK, "invalid parameter".to_string()))
             }
         }
-
+    }
+    // if command is not focused, and the argument is empty we should make suggestions
+    if !q_cmd.focused {
+        match cmd.lock().await.params().get(query_line.get_args().len()) {
+            Some(param) => {
+                return Ok((param.lock().await.complete(&"".to_string(), context, top_n).await, false, cursor_abs, cursor_abs));
+            },
+            None => {}
+        }
     }
 
     return Ok((vec![], false, -1, -1));

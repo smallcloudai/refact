@@ -60,7 +60,13 @@ fn parse_args_from_line(line: &String) -> Vec<QueryLineArg> {
             args.push(QueryLineArg{
                 value: value.clone(),
                 pos1,
-                pos2: idx,
+                pos2: {
+                    if ch.to_string() != " " {
+                        idx
+                    } else {
+                        idx - 1
+                    }
+                },
                 focused: false,
                 type_name: {
                     if value.starts_with("@") {
