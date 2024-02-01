@@ -1,4 +1,5 @@
-use crate::at_commands::structs::{AtCommand, AtCommandCall, AtCommandsContext};
+use std::sync::Arc;
+use crate::at_commands::structs::{AtCommandCall, AtCommandsContext};
 use tracing::info;
 
 
@@ -26,7 +27,7 @@ pub async fn find_valid_at_commands_in_query(
             continue;
         }
         info!("command {:?} is perfectly good", q_cmd);
-        results.push(AtCommandCall::new(cmd.clone(), q_cmd_args.clone()));
+        results.push(AtCommandCall::new(Arc::clone(&cmd), q_cmd_args.clone()));
         valid_command_lines.push(idx);
     }
     // remove the lines that are valid commands from query
