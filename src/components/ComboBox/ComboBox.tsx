@@ -122,6 +122,7 @@ export const ComboBox: React.FC<{
     const state = combobox.getState();
     const tabOrEnter = event.key === "Tab" || event.key === "Enter";
     if (state.open && tabOrEnter && state.activeValue) {
+      setTrigger(state.activeValue + " ");
       const newInput = value.replace(trigger, state.activeValue + " ");
       combobox.setValue(newInput);
       onChange(newInput);
@@ -151,8 +152,9 @@ export const ComboBox: React.FC<{
   const onItemClick = (item: string) => {
     const textarea = ref.current;
     if (!textarea) return;
-    onChange(selectedCommand ? item + " " : item);
-    setTrigger(() => "");
+    const command = selectedCommand ? item : item + " ";
+    onChange(command);
+    setTrigger(() => command);
   };
 
   return (
@@ -194,7 +196,7 @@ export const ComboBox: React.FC<{
               onItemClick(item);
             }}
           >
-            {item}
+            {item.slice(selectedCommand.length)}
           </Item>
         ))}
       </Popover>
