@@ -1,4 +1,4 @@
-use crate::at_commands::structs::{AtCommandsContext, AtParam};
+use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
 use async_trait::async_trait;
 use itertools::Itertools;
 use strsim::jaro_winkler;

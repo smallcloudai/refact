@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
-use crate::at_commands::structs::{AtCommand, AtCommandsContext};
+use crate::at_commands::at_commands::AtCommandsContext;
 
 use crate::call_validation::{ChatMessage, ChatPost};
 use crate::global_context::GlobalContext;
