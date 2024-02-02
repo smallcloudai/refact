@@ -76,9 +76,10 @@
 [ ] canceling chat doesn't seems to work (the spinner keeps spinning) :/
 [x] build the events (+ types) as a dedicated file
 [ ] automate publishing the main branch
-[ ] export the chat history component
-[ ] add vscode specific button for opening the history in a tab
+[x] export the chat history component
+[x] add vscode specific button for opening the history in a tab
 [ ] should be monotype font on tooltip (will require adding a custom tooltip)
+[ ] command completion combobox interactions
 
 ### EVENTS TODO FOR IDEs
 

@@ -100,20 +100,18 @@ export const ChatForm: React.FC<{
     const str = typeof command === "function" ? command(value) : command;
 
     if (
+      !commands.selected_command &&
       str.endsWith(" ") &&
       commands.available_commands.includes(str.slice(0, -1))
     ) {
       setSelectedCommand(str);
-    } else {
+    } else if (!str.startsWith(commands.selected_command)) {
       setSelectedCommand("");
     }
 
-    // TODO: get the  cursor position
-    // Does order matter here?
     if (str.startsWith("@")) {
       requestCommandsCompletion(str, str.length);
     }
-    // set selected command if value ends with space and is in commands
   };
   if (error) {
     return (
@@ -122,8 +120,6 @@ export const ChatForm: React.FC<{
       </ErrorCallout>
     );
   }
-
-  // console.log({ commands });
 
   return (
     <Box mt="1" position="relative">
@@ -162,14 +158,13 @@ export const ChatForm: React.FC<{
         onSubmit={() => handleSubmit()}
       >
         <ComboBox
-          // maybe add a ref for cursor position?
-          commands={commands.available_commands.map(
-            (c) => commands.selected_command + c,
-          )}
+          //TODO: maybe add a ref for cursor position?
+          commands={commands.available_commands}
+          commandArguments={commands.arguments}
+          selectedCommand={commands.selected_command}
           value={value}
           onChange={handleChange}
           onSubmit={(event) => {
-            // console.log("submit", event);
             handleEnter(event);
           }}
           placeholder={

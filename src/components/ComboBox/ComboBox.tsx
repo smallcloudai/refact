@@ -60,24 +60,39 @@ const Popover: React.FC<
     </Box>
   );
 };
-// TODO: force this open when there are commands
+
 export const ComboBox: React.FC<{
   commands: string[];
+  commandArguments: string[];
+  selectedCommand: string;
   onChange: React.Dispatch<React.SetStateAction<string>>;
   value: string;
   onSubmit: React.KeyboardEventHandler<HTMLTextAreaElement>;
   placeholder?: string;
   render: (props: TextAreaProps) => React.ReactElement;
-}> = ({ commands, onSubmit, placeholder, onChange, value, render }) => {
+}> = ({
+  commands,
+  onSubmit,
+  placeholder,
+  onChange,
+  value,
+  render,
+  selectedCommand,
+  commandArguments,
+}) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
-  const [trigger, setTrigger] = React.useState<string>("");
+  const [trigger, setTrigger] = React.useState<string>(selectedCommand);
+
+  const commandsWithArguments = selectedCommand
+    ? commandArguments.map((arg) => selectedCommand + arg)
+    : commands;
 
   const combobox = useComboboxStore({
     defaultOpen: false,
     placement: "top-start",
   });
 
-  const matches = matchSorter(commands, trigger, {
+  const matches = matchSorter(commandsWithArguments, trigger, {
     baseSort: (a, b) => (a.index < b.index ? -1 : 1),
   });
 
@@ -107,7 +122,6 @@ export const ComboBox: React.FC<{
     const state = combobox.getState();
     const tabOrEnter = event.key === "Tab" || event.key === "Enter";
     if (state.open && tabOrEnter && state.activeValue) {
-      event.preventDefault();
       const newInput = value.replace(trigger, state.activeValue + " ");
       combobox.setValue(newInput);
       onChange(newInput);
@@ -119,7 +133,7 @@ export const ComboBox: React.FC<{
 
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const maybeCommand = event.target.value.startsWith("@")
-      ? event.target.value.split(/\s/)[0]
+      ? event.target.value.split(/\n/)[0]
       : "";
 
     if (maybeCommand && event.target.selectionEnd <= maybeCommand.length) {
@@ -129,6 +143,7 @@ export const ComboBox: React.FC<{
       setTrigger("");
       combobox.hide();
     }
+
     onChange(event.target.value);
     combobox.setValue(trigger);
   };
@@ -136,7 +151,7 @@ export const ComboBox: React.FC<{
   const onItemClick = (item: string) => {
     const textarea = ref.current;
     if (!textarea) return;
-    onChange((prevValue) => prevValue.replace(trigger, item + " "));
+    onChange(selectedCommand ? item + " " : item);
     setTrigger(() => "");
   };
 

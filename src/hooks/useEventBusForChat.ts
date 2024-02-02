@@ -270,12 +270,17 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isThisChat && isReceiveAtCommandCompletion(action)) {
+    const selectedCommand = state.rag_commands.selected_command;
+    const availableCommands = selectedCommand
+      ? state.rag_commands.available_commands
+      : action.payload.completions;
+    const args = selectedCommand ? action.payload.completions : [];
     return {
       ...state,
       rag_commands: {
         ...state.rag_commands,
-        available_commands: action.payload.completions,
-        // arguments: args,
+        available_commands: availableCommands,
+        arguments: args,
         is_cmd_executable: action.payload.is_cmd_executable,
       },
     };
