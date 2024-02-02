@@ -13,7 +13,7 @@
   </body>
   <script>
       window.onload = function() {
-          RefactChat(document.getElementById("refact-chat"), "lsp")
+          RefactChat.render(document.getElementById("refact-chat"), {host: "web", lspUrl: "lsp"})
       }
   </script>
 </html>
