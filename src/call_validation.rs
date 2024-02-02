@@ -171,7 +171,6 @@ mod tests {
         };
         assert!(validate_post(post).is_err());
     }
-    
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -180,6 +179,7 @@ pub struct ContextFile {
     pub file_content: String,
     pub line1: i32,
     pub line2: i32,
+    pub usefullness: f32,  // the higher the better
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
