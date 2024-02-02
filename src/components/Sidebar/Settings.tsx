@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Flex,
   IconButton,
@@ -16,34 +16,35 @@ import {
 import { GearIcon } from "@radix-ui/react-icons";
 import { useApiKey } from "../../hooks";
 
-export const Settings: React.FC<{
-  onClick?: React.MouseEventHandler<HTMLButtonElement>;
-}> = ({ onClick }) => {
+export const Settings: React.FC = () => {
   const [apiKey, setApiKey] = useApiKey();
+  const [keyValue, setValue] = React.useState(apiKey);
+  const [open, setOpen] = React.useState(false);
+
+  useEffect(() => {
+    setValue(apiKey);
+  }, [apiKey, open]);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setApiKey(keyValue);
+    setOpen(false);
+  };
 
   return (
     <Flex p="4">
-      <Dialog.Root>
+      <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger>
-          <IconButton variant="outline" onClick={onClick}>
+          <IconButton variant="outline">
             <GearIcon />
           </IconButton>
         </Dialog.Trigger>
 
-        <Dialog.Content>
+        <Dialog.Content onOpenAutoFocus={(event) => event.preventDefault()}>
           <Dialog.Title>Settings</Dialog.Title>
           <Dialog.Description>Change chat settings</Dialog.Description>
-          <Flex asChild>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                const data = new FormData(event.currentTarget);
-                const key = data.get("apiKey");
-                if (key && typeof key === "string") {
-                  setApiKey(key);
-                }
-              }}
-            >
+          <Flex asChild pt="4">
+            <form onSubmit={handleSubmit}>
               <label style={{ width: "100%" }}>
                 <Text as="div" size="2" mb="1" weight="bold">
                   API Key
@@ -51,7 +52,8 @@ export const Settings: React.FC<{
                 <TextField.Input
                   name="apiKey"
                   type="text"
-                  defaultValue={apiKey}
+                  value={keyValue}
+                  onChange={(event) => setValue(event.target.value)}
                   placeholder="Enter your refact api key"
                 />
               </label>
@@ -64,7 +66,9 @@ export const Settings: React.FC<{
               </Button>
             </Dialog.Close>
             <Dialog.Close>
-              <Button type="submit">Save</Button>
+              <Button onClick={() => setApiKey(keyValue)} type="submit">
+                Save
+              </Button>
             </Dialog.Close>
           </Flex>
         </Dialog.Content>

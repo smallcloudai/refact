@@ -1,11 +1,19 @@
+import { useState, useEffect } from "react";
 import * as ApiKey from "../utils/ApiKey";
 
 export function useApiKey(): [string, (value: string) => void] {
-  const maybeCookie = ApiKey.getApiKey();
+  const maybeKey = ApiKey.getApiKey();
+  const [key, setKey] = useState(maybeKey);
+  useEffect(() => {
+    const apiKey = ApiKey.getApiKey();
+    setKey(apiKey);
+  }, []);
 
-  const setCookie = (value: string) => {
+  const setApiKey = (value: string) => {
+    console.log("set key: ", value);
     ApiKey.setApiKey(value);
+    setKey(value);
   };
 
-  return [maybeCookie, setCookie];
+  return [key, setApiKey];
 }
