@@ -59,7 +59,7 @@ def ask_chat(messages):
             "messages": messages,
             "temperature": 0.1,
             "max_tokens": 300,
-            "model": "gpt-3.5-turbo",
+            "model": "gpt-3.5-turbo-0125",
         },
         headers={
             "Content-Type": "application/json",
@@ -67,13 +67,9 @@ def ask_chat(messages):
         },
         timeout=60,
     )
-    # data: {"choices":[{"delta":{"content":"The","role":"assistant"},"finish_reason":null,"index":0}],"created":1706779319.409,"model":"gpt-3.5-turbo"}
-    # data: {"choices":[{"delta":{"content":" code","role":"assistant"},"finish_reason":null,"index":0}],"created":1706779319.409,"model":"gpt-3.5-turbo"}
-    # Collect all delta/content from the response
     messages_back = []
     accum_content = ""
     accum_role = ""
-    # print(response.text)
     for x in response.text.splitlines():
         if not x.strip():
             continue
@@ -118,6 +114,7 @@ def dialog_turn(messages):
     for msgdict in messages_back:
         print(termcolor.colored(msgdict["role"], "blue"))
         print(termcolor.colored(msgdict["content"], "red"))
+
     assistant_says = messages_back[-1]["content"]
     messages_without_last_user = messages[:-1]
     next_step_messages = messages_without_last_user + messages_back
@@ -139,3 +136,17 @@ def do_all():
 
 
 do_all()
+
+
+
+
+
+def do_less():
+    messages = [
+    {"role": "user", "content": "@workspace DeltaDeltaChatStreamer\n@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\nHello world"}
+    ]
+    messages_back = ask_chat(messages)
+    print(messages_back)
+
+
+# do_less()
