@@ -79,6 +79,8 @@
 [ ] export the chat history component
 [ ] add vscode specific button for opening the history in a tab
 [ ] should be monotype font on tooltip (will require adding a custom tooltip)
+[ ] update readme with the new features/options
+[x] uninstall react-cookie and delete code comments
 
 ### EVENTS TODO FOR IDEs
 

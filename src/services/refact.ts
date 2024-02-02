@@ -1,3 +1,4 @@
+import { getApiKey } from "../utils/ApiKey";
 const CHAT_URL = `/v1/chat`;
 const CAPS_URL = `/v1/caps`;
 
@@ -106,8 +107,10 @@ export function sendChat(
     stream: true,
   });
 
+  const apiKey = getApiKey();
   const headers = {
     "Content-Type": "application/json",
+    ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
   };
   const chatEndpoint = lspUrl
     ? `${lspUrl.replace(/\/*$/, "")}${CHAT_URL}`
