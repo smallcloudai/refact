@@ -3,13 +3,8 @@ import { ChatHistory } from "../components/ChatHistory";
 import { useEventBusForSidebar } from "../hooks";
 
 export const HistoryList: React.FC = () => {
-  const {
-    history,
-    onDeleteHistoryItem,
-    onOpenChatInSIdeBar,
-    onOpenChatInTab,
-    onCreateNewChat,
-  } = useEventBusForSidebar();
+  const { history, onDeleteHistoryItem, onOpenChatInSIdeBar, onOpenChatInTab } =
+    useEventBusForSidebar();
 
   return (
     <ChatHistory
@@ -17,7 +12,6 @@ export const HistoryList: React.FC = () => {
       onDeleteHistoryItem={onDeleteHistoryItem}
       onHistoryItemClick={onOpenChatInSIdeBar}
       onOpenChatInTab={onOpenChatInTab}
-      onCreateNewChat={onCreateNewChat}
     />
   );
 };

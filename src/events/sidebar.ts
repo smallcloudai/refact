@@ -40,7 +40,7 @@ export enum EVENT_NAMES_FROM_SIDE_BAR {
   OPEN_IN_CHAT_IN_TAB = "sidebar_open_chat_in_tab",
   DELETE_HISTORY_ITEM = "sidebar_delete_history_item",
   REQUEST_CHAT_HISTORY = "sidebar_request_chat_history",
-  CREATE_NEW_CHAT = "sidebar_create_new_chat",
+  // CREATE_NEW_CHAT = "sidebar_create_new_chat",
 }
 
 export interface ActionFromSidebar {
@@ -116,13 +116,13 @@ export function isRequestChatHistory(
   return action.type === EVENT_NAMES_FROM_SIDE_BAR.REQUEST_CHAT_HISTORY;
 }
 
-export interface CreateNewChatFromSidebar extends ActionFromSidebar {
-  type: EVENT_NAMES_FROM_SIDE_BAR.CREATE_NEW_CHAT;
-}
+// export interface CreateNewChatFromSidebar extends ActionFromSidebar {
+//   type: EVENT_NAMES_FROM_SIDE_BAR.CREATE_NEW_CHAT;
+// }
 
-export function isCreateNewChatFromSidebar(
-  action: unknown,
-): action is CreateNewChatFromSidebar {
-  if (!isActionFromSidebar(action)) return false;
-  return action.type === EVENT_NAMES_FROM_SIDE_BAR.CREATE_NEW_CHAT;
-}
+// export function isCreateNewChatFromSidebar(
+//   action: unknown,
+// ): action is CreateNewChatFromSidebar {
+//   if (!isActionFromSidebar(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_SIDE_BAR.CREATE_NEW_CHAT;
+// }
