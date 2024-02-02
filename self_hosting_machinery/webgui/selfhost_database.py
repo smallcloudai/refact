@@ -3,7 +3,7 @@ import asyncio
 import uuid
 import logging
 
-from typing import List, Dict, Any, Optional
+from typing import Optional
 from datetime import datetime
 
 from cassandra.cluster import Cluster, Session
@@ -14,6 +14,8 @@ from cassandra.auth import PlainTextAuthProvider
 from cassandra.cqlengine import columns, connection
 from cassandra.cqlengine.management import sync_table
 from cassandra.cqlengine.models import Model
+
+from self_hosting_machinery.webgui.selfhost_webutils import log
 
 
 os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
@@ -150,8 +152,8 @@ class RefactDatabase:
                 self._conn_registered = True
                 break
             except NoHostAvailable:
-                logging.warning(f"No database available on {self._database_host}:{self._database_port}, "
-                                f"sleep for 10 seconds...")
+                log(f"No database available on {self._database_host}:{self._database_port}, "
+                    f"sleep for 10 seconds...")
                 await asyncio.sleep(10)
 
         self._create_and_set_keyspace()

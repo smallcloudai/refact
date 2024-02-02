@@ -1,4 +1,3 @@
-import logging
 import os
 import time
 from itertools import chain
@@ -24,6 +23,8 @@ from self_hosting_machinery import env
 
 from typing import Dict, Any, Union, Optional
 
+from self_hosting_machinery.inference import log
+from self_hosting_machinery.inference import logger
 from self_hosting_machinery.inference.inference_base import find_param_by_name
 from self_hosting_machinery.inference.lora_loader_mixin import LoraLoaderMixin
 
@@ -65,7 +66,7 @@ class FeedScratchoadCriteria(StoppingCriteria):
             # for tok, logprob in sorted(logprobs.items(), key=lambda x: -x[-1]):
             #     text += " %i %s" % (tok, _format(self.tokenizer.decode([tok]), "yellow"))
             #     text += " %0.2f%%" % (100 * math.exp(logprob))
-            logging.getLogger("MODEL").info("%6.1fms %s" % (1000 * (time.time() - self.t0), text))
+            log("%6.1fms %s" % (1000 * (time.time() - self.t0), text))
         self.scratchpad.after_token_selection(None, token)
         return bool(self.scratchpad.finish_reason)
 
@@ -148,7 +149,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         self._device = "cuda:0"
         for local_files_only in [True, False]:
             try:
-                logging.getLogger("MODEL").info("loading model local_files_only=%i" % local_files_only)
+                log("loading model local_files_only=%i" % local_files_only)
                 self._tokenizer = AutoTokenizer.from_pretrained(
                     self._model_dict["model_path"], cache_dir=self.cache_dir, trust_remote_code=True,
                     local_files_only=local_files_only,
@@ -202,7 +203,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         except ImportError:
             raise ImportError("please install refact_data_pipeline")
         if self._model_name not in supported_models.config:
-            logging.getLogger("MODEL").error(f"Skipping embeddings dumping for the model {self._model_name}")
+            logger.error(f"Skipping embeddings dumping for the model {self._model_name}")
             return
         model_cfg = supported_models.config[self._model_name]
         for name in chain(model_cfg["freeze_exceptions_mapping"]["wte"],
@@ -225,11 +226,11 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
             param.data.copy_(weights)
 
     def _prepare_scratchpad(self, request: Dict[str, Any]):
-        def logger(*args):
+        def debug_logger(*args):
             if not DEBUG:
                 return
             s = " ".join([str(a) for a in args])
-            logging.getLogger("MODEL").info(s)
+            log(s)
 
         object_type = request["object"]
         assert object_type in ["diff_completion_req", "text_completion_req", "chat_completion_req"]
@@ -240,12 +241,12 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         else:
             Scratchpad = ScratchpadHuggingfaceCompletion
 
-        scratchpad = Scratchpad(tokenizer=self._tokenizer, logger=logger, **request)
+        scratchpad = Scratchpad(tokenizer=self._tokenizer, logger=debug_logger, **request)
         T = self._tokenizer.max_len_single_sentence
         if not isinstance(T, int) or T <= 0 or T > 4096:
             T = 2048
         p = scratchpad.prompt(T)
-        logger("prompt %i tokens, max_new_tokens %i" % (len(p), request["max_tokens"]))
+        debug_logger("prompt %i tokens, max_new_tokens %i" % (len(p), request["max_tokens"]))
         if len(p) == 0:
             raise RuntimeError("empty tokens prompt")
 
@@ -293,5 +294,5 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
                 status="completed"
             )
         except Exception as e:
-            logging.getLogger("MODEL").error(e)
-            logging.getLogger("MODEL").error(traceback.format_exc())
+            logger.error(e)
+            logger.error(traceback.format_exc())

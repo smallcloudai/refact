@@ -1,7 +1,6 @@
 import os
 import time
 import json
-import logging
 
 import torch
 import traceback
@@ -10,6 +9,8 @@ from typing import Dict, Any
 
 from self_hosting_machinery import env
 from sentence_transformers import SentenceTransformer
+from self_hosting_machinery.inference import log
+from self_hosting_machinery.inference import logger
 from self_hosting_machinery.inference import InferenceBase
 from self_hosting_machinery.inference.lora_loader_mixin import LoraLoaderMixin
 
@@ -32,7 +33,7 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
         for local_files_only in [True, False]:
             try:
                 # WARNING: this may not work if you have no access to the web as it may try to download tokenizer
-                logging.getLogger("MODEL").info("loading model local_files_only=%i" % local_files_only)
+                log("loading model local_files_only=%i" % local_files_only)
                 if local_files_only:
                     self._model = SentenceTransformer(
                         os.path.join(self.cache_dir, self._model_dir),
@@ -91,5 +92,5 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
             )
 
         except Exception as e: # noqa
-            logging.getLogger("MODEL").error(e)
-            logging.getLogger("MODEL").error(traceback.format_exc())
+            logger.error(e)
+            logger.error(traceback.format_exc())

@@ -36,6 +36,7 @@ from self_hosting_machinery.webgui.selfhost_lsp_proxy import LspProxy
 from self_hosting_machinery.webgui.selfhost_login import RefactSession
 from self_hosting_machinery.webgui.selfhost_login import DummySession
 from self_hosting_machinery.webgui.selfhost_login import AdminSession
+from self_hosting_machinery import init_logger
 
 from typing import Dict, Callable
 
@@ -161,11 +162,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", default=8008, type=int)
     args = parser.parse_args()
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s WEBUI %(message)s',
-        datefmt='%Y%m%d %H:%M:%S',
-        handlers=[logging.StreamHandler(stream=sys.stderr)])
+    init_logger("WEBUI")
 
     model_assigner = ModelAssigner()
     database = RefactDatabase()
