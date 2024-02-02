@@ -10,7 +10,6 @@ export function useApiKey(): [string, (value: string) => void] {
   }, []);
 
   const setApiKey = (value: string) => {
-    console.log("set key: ", value);
     ApiKey.setApiKey(value);
     setKey(value);
   };
