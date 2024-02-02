@@ -27,6 +27,7 @@ mod vecdb;
 mod fetch_embedding;
 mod at_commands;
 mod nicer_logs;
+mod ast;
 
 
 #[tokio::main]

@@ -18,7 +18,6 @@ use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPos
 use crate::global_context;
 use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
-use crate::lsp::document::Document;
 
 use crate::telemetry;
 use crate::receive_workspace_changes;
@@ -26,14 +25,6 @@ use crate::vecdb::file_filter::is_valid_file;
 
 use crate::telemetry::snippets_collection::sources_changed;
 
-mod treesitter;
-mod language_id;
-pub mod document;
-mod ast_index;
-mod ast_search_engine;
-mod ast_index_service;
-mod structs;
-mod ast_module;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -44,13 +35,13 @@ struct APIError {
 }
 
 impl Display for APIError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.error)
     }
 }
 
 
-// #[derive(Debug)]
+// #[derive(Debug)]  GlobalContext does not implement Debug
 pub struct Backend {
     pub gcx: Arc<ARwLock<global_context::GlobalContext>>,
     pub client: tower_lsp::Client,
@@ -188,6 +179,7 @@ impl Backend {
     }
  }
 
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
@@ -241,7 +233,7 @@ impl LanguageServer for Backend {
             &params.text_document.uri.to_string(),
             &params.text_document.text,
             &params.text_document.language_id
-        ).await;
+        ).await
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {

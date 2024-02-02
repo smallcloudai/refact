@@ -1,14 +1,27 @@
-use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::time::Instant;
 use ropey::Rope;
 
 use tokio::sync::RwLock as ARwLock;
-use tracing::{error, info};
+use tracing::info;
 
 use crate::global_context;
-use crate::lsp::document::Document;
 use crate::telemetry;
+
+
+
+#[derive(Debug)]
+pub struct Document {
+    #[allow(dead_code)]
+    pub language_id: String,
+    pub text: Rope,
+}
+
+impl Document {
+    pub fn new(language_id: String, text: Rope) -> Self {
+        Self { language_id, text }
+    }
+}
 
 
 pub async fn on_did_open(
@@ -18,21 +31,12 @@ pub async fn on_did_open(
     language_id: &String,
 ) {
     let gcx_locked = gcx.read().await;
-    // let document_map = &gcx_locked.lsp_backend_document_state.document_map;
-    // let mut document_map_locked = document_map.write().await;
-    // match Document::open(language_id, text, uri) {
-    //     Ok(doc) => {
-    //         match document_map_locked.entry(uri.clone()) {
-    //             Entry::Occupied(mut entry) => {
-    //                 entry.insert(doc);
-    //             }
-    //             Entry::Vacant(entry) => {
-    //                 entry.insert(doc);
-    //             }
-    //         }
-    //     }
-    //     Err(_) => {}
-    // }
+    let document_map = &gcx_locked.lsp_backend_document_state.document_map;
+    let rope = ropey::Rope::from_str(&text);
+    let mut document_map_locked = document_map.write().await;
+    *document_map_locked
+        .entry(uri.clone())
+        .or_insert(Document::new("unknown".to_owned(), Rope::new())) = Document::new(language_id.clone(), rope);
     let last_30_chars: String = uri.chars().rev().take(30).collect::<String>().chars().rev().collect();
     info!("opened ...{}", last_30_chars);
 
@@ -51,7 +55,7 @@ pub async fn on_did_open(
                 .insert(uri.clone(), document);
             info!("{uri} opened");
         }
-        Err(err) => error!("error opening {uri}: {err}"),
+        Err(err) => info!("error opening {uri}: {err}"),
     }
     info!("{uri} opened");
 }
@@ -64,23 +68,13 @@ pub async fn on_did_change(
     let t0 = Instant::now();
     {
         let gcx_locked = gcx.read().await;
-        // let document_map = &gcx_locked.lsp_backend_document_state.document_map;
-        // let mut document_map_locked = document_map.write().await;
-        // 
-        // let doc = document_map_locked.entry(uri.clone());
-        // match doc {
-        //     Entry::Occupied(entry) => {
-        //         entry.into_mut().change(text).await.expect("TODO: panic message");
-        //     }
-        //     Entry::Vacant(entry) => {
-        //         match Document::open("python", text, uri) {
-        //             Ok(d) => {
-        //                 entry.insert(d);
-        //             }
-        //             Err(_) => {}
-        //         }
-        //     }
-        // }
+        let document_map = &gcx_locked.lsp_backend_document_state.document_map;
+        let rope = ropey::Rope::from_str(&text);
+        let mut document_map_locked = document_map.write().await;
+        let doc = document_map_locked
+            .entry(uri.clone())
+            .or_insert(Document::new("unknown".to_owned(), Rope::new()));
+        doc.text = rope;
     }
     telemetry::snippets_collection::sources_changed(
         gcx.clone(),

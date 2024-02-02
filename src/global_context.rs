@@ -12,12 +12,13 @@ use tokenizers::Tokenizer;
 use structopt::StructOpt;
 use hyper::StatusCode;
 use tower_lsp::lsp_types::WorkspaceFolder;
+use crate::ast::ast_module::AstModule;
 
 use crate::custom_error::ScratchError;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::telemetry::telemetry_structs;
-use crate::lsp::document::Document;
+use crate::receive_workspace_changes::Document;
 use crate::vecdb::vecdb::VecDb;
 
 
