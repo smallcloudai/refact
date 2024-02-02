@@ -65,6 +65,7 @@ impl AtCommand for AtFile {
                     file_content: path_and_text.file_text.clone(),
                     line1: 0,
                     line2: path_and_text.file_text.lines().count() as i32,
+                    usefullness: 100.0,
                 });
                 Ok(ChatMessage {
                     role: "context_file".to_string(),

@@ -23,12 +23,14 @@ impl AtWorkspace {
 
 fn results2message(results: &Vec<Record>) -> ChatMessage {
     let mut vector_of_context_file: Vec<ContextFile> = vec![];
-    for r in results {
+    for i in 0..results.len() {
+        let r = &results[i];
         vector_of_context_file.push(ContextFile {
             file_name: r.file_path.to_str().unwrap().to_string(),
             file_content: r.window_text.clone(),
             line1: r.start_line as i32,
             line2: r.end_line as i32,
+            usefullness: 100.0 / ((i + 1) as f32),
         });
     }
     ChatMessage {
