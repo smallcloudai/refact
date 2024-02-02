@@ -1,5 +1,6 @@
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::call_validation::ChatMessage;
+use tracing::info;
 
 
 pub fn limit_messages_history(
@@ -73,6 +74,7 @@ pub fn limit_messages_history_in_bytes(
     }
     for i in (0..messages.len()).rev() {
         let bytes = messages[i].content.len();
+        info!("limit_messages_history_in_bytes: message{}, bytes_used={} += {}", i, bytes_used, bytes);
         if !message_take[i] {
             if bytes_used + bytes < bytes_limit {
                 message_take[i] = true;
