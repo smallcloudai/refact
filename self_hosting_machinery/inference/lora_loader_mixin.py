@@ -79,6 +79,7 @@ class LoraLoaderMixin:
             self.load_checkpoint(lora_checkpoint_dir, reinstall_lora=True)
             self._lora_checkpoint_dir = lora_checkpoint_dir
             self._lora_on = True
+            log("using lora %s" % lora_checkpoint_dir)
         elif self._lora_on and self._lora_checkpoint_dir != lora_checkpoint_dir:
             try:
                 self.load_checkpoint(lora_checkpoint_dir, reinstall_lora=False)
@@ -89,9 +90,8 @@ class LoraLoaderMixin:
                 self._lora_checkpoint_dir = ""
                 self._lora_on = False
                 self.load_checkpoint(lora_checkpoint_dir, reinstall_lora=True)
-                self._lora_checkpoint_dir = lora_checkpoint_dir
-                self._lora_on = True
-        if lora_checkpoint_dir:
+            self._lora_checkpoint_dir = lora_checkpoint_dir
+            self._lora_on = True
             log("using lora %s" % lora_checkpoint_dir)
 
     def lora_switch_according_to_config(self):
