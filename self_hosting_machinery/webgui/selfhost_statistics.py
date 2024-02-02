@@ -84,7 +84,7 @@ class TabStatisticsRouter(APIRouter):
                     "retcode": "OK",
                     "data": [
                         {
-                            "id": r["id"],
+                            "id": 0,
                             "tenant_name": r["tenant_name"],
                             "ts_reported": int(r["ts_reported"].timestamp()),
                             "ip": r["ip"],
