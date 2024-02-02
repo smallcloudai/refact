@@ -80,6 +80,7 @@ pub fn limit_messages_history_in_bytes(
                 message_take[i] = true;
                 bytes_used += bytes;
             } else {
+                info!("limit_messages_history_in_bytes: overflow, drop message {} and before", i);
                 break;
             }
         }
