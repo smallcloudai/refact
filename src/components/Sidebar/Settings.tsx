@@ -35,7 +35,7 @@ export const Settings: React.FC = () => {
     <Flex p="4">
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger>
-          <IconButton variant="outline">
+          <IconButton variant="outline" title="Settings">
             <GearIcon />
           </IconButton>
         </Dialog.Trigger>
