@@ -73,6 +73,7 @@ pub struct GlobalContext {
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
+    pub ast_module: Arc<AMutex<AstModule>>,
     pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
     pub lsp_backend_document_state: LSPBackendDocumentState,
 }
@@ -200,6 +201,12 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
+    let ast_module = match AstModule::init(cmdline.clone()) {
+        Ok(module) => Arc::new(AMutex::new(module)),
+        Err(err) => {
+            error!("failed to init ast module: {}", err);
+        }
+    };
 
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
@@ -212,6 +219,7 @@ pub async fn create_global_context(
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vec_db: Arc::new(AMutex::new(None)),
+        ast_module,
         ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
         lsp_backend_document_state: LSPBackendDocumentState {
             document_map: Arc::new(ARwLock::new(HashMap::new())),

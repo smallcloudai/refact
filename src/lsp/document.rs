@@ -30,7 +30,7 @@ use crate::lsp::treesitter::ast_config::php_config::PhpConfig;
 use crate::lsp::treesitter::ast_config::python_config::PythonConfig;
 use crate::lsp::treesitter::ast_config::sql_config::SqlConfig;
 use crate::lsp::treesitter::ast_config::ts_config::TSConfig;
-use crate::lsp::treesitter::symbol_declaration_struct::SymbolDeclarationStruct;
+use crate::lsp::structs::SymbolDeclarationStruct;
 
 fn internal_error<E: Display>(err: E) -> Error {
     let err_msg = err.to_string();
@@ -325,9 +325,9 @@ fn search_down<'a>(node: &'a Node<'a>, node_types_: &'a Vec<String>) -> Option<N
     let node_types = HashSet::from_iter(node_types_.clone());
     let mut result: Vec<(Option<Node>, i32)> = vec![];
 
-    fn _helper<'a>(node: Node<'a>, 
-                   current_depth: i32, 
-                   node_types: HashSet<String>, 
+    fn _helper<'a>(node: Node<'a>,
+                   current_depth: i32,
+                   node_types: HashSet<String>,
                    result: &mut Vec<(Option<Node<'a>>, i32)>) {
         for idx in 0..node.child_count() {
             let child = node.child(idx);

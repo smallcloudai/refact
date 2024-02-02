@@ -29,6 +29,11 @@ use crate::telemetry::snippets_collection::sources_changed;
 mod treesitter;
 mod language_id;
 pub mod document;
+mod ast_index;
+mod ast_search_engine;
+mod ast_index_service;
+mod structs;
+mod ast_module;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 

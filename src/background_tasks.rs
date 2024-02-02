@@ -5,7 +5,7 @@ use std::vec;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 
-use crate::vecdb;
+use crate::{vecdb};
 use crate::global_context::GlobalContext;
 use crate::snippets_transmit;
 use crate::telemetry::basic_transmit;
@@ -41,10 +41,13 @@ impl BackgroundTasksHolder {
     }
 }
 
-pub fn start_background_tasks(global_context: Arc<ARwLock<GlobalContext>>) -> BackgroundTasksHolder {
-    BackgroundTasksHolder::new(vec![
+pub async fn start_background_tasks(global_context: Arc<ARwLock<GlobalContext>>) -> BackgroundTasksHolder {
+    let mut holder = BackgroundTasksHolder::new(vec![
         tokio::spawn(basic_transmit::telemetry_background_task(global_context.clone())),
         tokio::spawn(snippets_transmit::tele_snip_background_task(global_context.clone())),
         tokio::spawn(vecdb::vecdb::vecdb_background_reload(global_context.clone())),
-    ])
+        tokio::spawn(global_context),
+    ]);
+    holder.extend(global_context.clone().read().await.ast_module.start_background_tasks());
+    holder
 }

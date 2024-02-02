@@ -62,7 +62,7 @@ async fn main() {
             info!("{:>20} {}", k, v);
         }
     }
-    let mut background_tasks = start_background_tasks(gcx.clone());
+    let mut background_tasks = start_background_tasks(gcx.clone()).await;
 
     let should_start_http = cmdline.http_port != 0;
     let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||

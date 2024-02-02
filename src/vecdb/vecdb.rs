@@ -33,7 +33,7 @@ fn vecdb_constants(
         splitter_window_size: 512,
         splitter_soft_limit: 1024,
     }
-}
+    }
 
 pub struct VecDb {
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
