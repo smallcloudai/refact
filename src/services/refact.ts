@@ -1,3 +1,4 @@
+import { getApiKey } from "../utils/ApiKey";
 const CHAT_URL = `/v1/chat`;
 const CAPS_URL = `/v1/caps`;
 
@@ -85,19 +86,6 @@ export type ChatResponse = {
   id: string;
 };
 
-const getCookieValue = (name: string) => {
-  const cookies = document.cookie.split(';');
-
-  for (const cookie of cookies) {
-    const [cookieName, cookieValue] = cookie.split('=');
-    if (cookieName.trim() === name) {
-      return cookieValue.trim();
-    }
-  }
-
-  return null;
-};
-
 export function sendChat(
   messages: ChatMessages,
   model: string,
@@ -119,10 +107,10 @@ export function sendChat(
     stream: true,
   });
 
-  const apiKey = getCookieValue('api_key') ?? '';
+  const apiKey = getApiKey();
   const headers = {
     "Content-Type": "application/json",
-    "Authorization": "Bearer " + apiKey,
+    ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
   };
   const chatEndpoint = lspUrl
     ? `${lspUrl.replace(/\/*$/, "")}${CHAT_URL}`

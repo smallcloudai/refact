@@ -1,11 +1,11 @@
-import Cookies from "js-cookie";
+import * as ApiKey from "../utils/ApiKey";
 
-export function useApiKey() {
-  const maybeCookie = Cookies.get("api_key") ?? "";
+export function useApiKey(): [string, (value: string) => void] {
+  const maybeCookie = ApiKey.getApiKey();
 
   const setCookie = (value: string) => {
-    Cookies.set("api_key", value);
+    ApiKey.setApiKey(value);
   };
 
-  return [maybeCookie, setCookie] as const;
+  return [maybeCookie, setCookie];
 }

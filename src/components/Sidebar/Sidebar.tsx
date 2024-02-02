@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Flex, Button } from "@radix-ui/themes";
 import styles from "./sidebar.module.css";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
+import { Settings } from "./Settings";
 
 export const Sidebar: React.FC<
   {
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<
           onHistoryItemClick={onHistoryItemClick}
           onDeleteHistoryItem={onDeleteHistoryItem}
         />
+        <Settings />
       </Flex>
     </Box>
   );
