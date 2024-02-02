@@ -17,6 +17,7 @@ from cassandra.cqlengine.models import Model
 
 
 os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
+# maybe we should use aiocassandra instead of cassandra
 
 
 def init_model(
