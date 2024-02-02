@@ -57,7 +57,8 @@ impl ScratchpadAbstract for ChatPassthrough {
         _sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
-        run_at_commands(self.global_context.clone(), &mut self.post, 6, &mut self.has_vecdb_results).await;
+        let top_n = 6;
+        run_at_commands(self.global_context.clone(), &mut self.post, top_n, &mut self.has_vecdb_results).await;
         let limited_msgs: Vec<ChatMessage> = limit_messages_history_in_bytes(&self.post.messages, self.limit_bytes, &self.default_system_message)?;
         info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", &self.post.messages.len(), &limited_msgs.len());
         let mut filtered_msgs: Vec<ChatMessage> = Vec::<ChatMessage>::new();
@@ -83,12 +84,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&filtered_msgs).unwrap();
         if DEBUG {
             for msg in &filtered_msgs {
-                let mut last_30_chars: String = msg.content.chars().take(30).collect();
-                if last_30_chars.len() == 30 {
-                    last_30_chars.push_str("...");
-                }
-                last_30_chars = last_30_chars.replace("\n", "\\n");
-                info!("filtered message role={} {}", msg.role, &last_30_chars);
+                info!("filtered message role={} {}", msg.role, crate::nicer_logs::first_n_chars(&msg.content, 40));
             }
         }
         Ok(prompt.to_string())

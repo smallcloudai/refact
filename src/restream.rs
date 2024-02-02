@@ -7,6 +7,7 @@ use futures::StreamExt;
 use async_stream::stream;
 use hyper::{Body, Response, StatusCode};
 
+use crate::nicer_logs;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::forward_to_hf_endpoint;
 use crate::forward_to_openai_endpoint;
@@ -158,7 +159,7 @@ pub async fn scratchpad_interaction_stream(
                 if let Ok(value) = value_maybe {
                     for el in value {
                         let value_str = format!("data: {}\n\n", serde_json::to_string(&el).unwrap());
-                        info!("yield: {:?}", value_str);
+                        info!("yield: {:?}", nicer_logs::first_n_chars(&value_str, 40));
                         yield Result::<_, String>::Ok(value_str);
                     }
                 } else {
