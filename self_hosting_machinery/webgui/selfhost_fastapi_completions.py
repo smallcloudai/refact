@@ -5,6 +5,7 @@ import asyncio
 import aiohttp
 import termcolor
 import os
+import re
 import litellm
 
 from fastapi import APIRouter, Request, HTTPException, Query, Header
@@ -91,6 +92,13 @@ class EmbeddingsStyleOpenAI(BaseModel):
     model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
 
 
+def _mask_emails(text: str, mask: str = "***") -> str:
+    masked_text = text
+    for m in re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', text):
+        masked_text = masked_text.replace(m, mask)
+    return masked_text
+
+
 async def _completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, seen, created_ts, caps_version: int):
     try:
         packets_cnt = 0
@@ -102,15 +110,19 @@ async def _completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, see
                 msg = {"status": "error", "human_readable_message": "timeout"}
             not_seen_resp = copy.deepcopy(msg)
             not_seen_resp["caps_version"] = caps_version
+            is_final_msg = msg.get("status", "") != "in_progress"
             if "choices" in not_seen_resp:
                 for i in range(post.n):
                     newtext = not_seen_resp["choices"][i]["text"]
                     if newtext.startswith(seen[i]):
-                        l = len(seen[i])
-                        tmp = not_seen_resp["choices"][i]["text"]
-                        not_seen_resp["choices"][i]["text"] = tmp[l:]
-                        if post.stream:
-                            seen[i] = tmp
+                        delta = newtext[len(seen[i]):]
+                        if " " not in delta and not is_final_msg:
+                            not_seen_resp["choices"][i]["text"] = ""
+                            continue
+                        else:
+                            not_seen_resp["choices"][i]["text"] = _mask_emails(delta)
+                            if post.stream:
+                                seen[i] = newtext
                     else:
                         log("ooops seen doesn't work, might be infserver's fault")
             if not post.stream:
@@ -120,7 +132,7 @@ async def _completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, see
                 break
             yield "data: " + json.dumps(not_seen_resp) + "\n\n"
             packets_cnt += 1
-            if msg.get("status", "") != "in_progress":
+            if is_final_msg:
                 break
         if post.stream:
             yield "data: [DONE]" + "\n\n"
