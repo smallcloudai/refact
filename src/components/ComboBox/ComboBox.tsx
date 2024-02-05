@@ -1,70 +1,10 @@
 import React from "react";
-import {
-  useComboboxStore,
-  Combobox,
-  ComboboxPopover,
-  ComboboxItem,
-  type ComboboxStore,
-} from "@ariakit/react";
-import { Box } from "@radix-ui/themes";
+import { useComboboxStore, Combobox } from "@ariakit/react";
 import { matchSorter } from "match-sorter";
-import {
-  getAnchorRect,
-  replaceValue,
-  // getTriggerOffset,
-  type AnchorRect,
-} from "./utils";
-import { ScrollArea } from "../ScrollArea";
-import { Button } from "@radix-ui/themes";
-import classNames from "classnames";
-import styles from "./ComboBox.module.css";
-import { TextAreaProps } from "../TextArea/TextArea";
-
-const Item: React.FC<{
-  onClick: React.MouseEventHandler<HTMLDivElement>;
-  value: string;
-  children: React.ReactNode;
-}> = ({ children, value, onClick }) => {
-  return (
-    <Button className={styles.item} variant="ghost" asChild highContrast>
-      <ComboboxItem
-        value={value}
-        onClick={onClick}
-        focusOnHover
-        clickOnEnter={false}
-      >
-        {children}
-      </ComboboxItem>
-    </Button>
-  );
-};
-
-const Popover: React.FC<
-  React.PropsWithChildren & {
-    store: ComboboxStore;
-    hidden: boolean;
-    getAnchorRect: (anchor: HTMLElement | null) => AnchorRect | null;
-  }
-> = ({ children, ...props }) => {
-  return (
-    <Box
-      asChild
-      className={classNames(
-        "rt-PopperContent",
-        "rt-HoverCardContent",
-        styles.popover,
-      )}
-    >
-      <ComboboxPopover unmountOnHide fitViewport {...props}>
-        <ScrollArea scrollbars="both" className={styles.popover__scroll}>
-          <Box p="1" style={{ overflowY: "hidden", overflowX: "hidden" }}>
-            {children}
-          </Box>
-        </ScrollArea>
-      </ComboboxPopover>
-    </Box>
-  );
-};
+import { getAnchorRect, replaceValue } from "./utils";
+import type { TextAreaProps } from "../TextArea/TextArea";
+import { Item } from "./Item";
+import { Popover } from "./Popover";
 
 export type ComboBoxProps = {
   commands: string[];
