@@ -17,6 +17,8 @@ const App = (props: Partial<ComboBoxProps>) => {
     onSubmit: onSubmitSpy,
     placeholder: "Type @ for commands",
     render: (props: TextAreaProps) => <TextArea {...props} />,
+    commandIsExecutable: false,
+    executeCommand: () => ({}),
     ...props,
   };
 
@@ -37,9 +39,6 @@ describe("ComboBox", () => {
     await user.click(argumentsButton);
     const result = app.getByRole("combobox");
     expect(result.textContent).toBe("foo\n@file /bar");
-    // await user.type(result, "{Enter}");
-    // // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    // expect(submitSpy.mock.lastCall[0].target.value).toBe("foo\n@file /bar\n");
   });
 
   test.skip("deleting over arguments of a command", async () => {
@@ -89,6 +88,7 @@ describe("ComboBox", () => {
     expect(app.getByRole("combobox").textContent).toEqual("@file ");
   });
 
+  // TODO: flaky test, sometimes `@f@file hello @file /foo`
   test("multiple commands", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
@@ -98,13 +98,66 @@ describe("ComboBox", () => {
     await user.type(textarea, " hello @");
     await user.keyboard("{Enter}");
     await user.keyboard("{Enter}");
-    app.debug();
     expect(app.getByRole("combobox").textContent).toEqual(
       "@file /foo hello @file /foo",
     );
   });
 
-  test.todo("executable commands");
-  test.todo("typing executable command and pressing space");
-  test.todo("submit");
+  test("clicking on an executable command", async () => {
+    const executableSpy = vi.fn();
+    const { user, ...app } = render(
+      <App commandIsExecutable executeCommand={executableSpy} />,
+    );
+    const textarea = app.getByRole("combobox");
+    await user.type(textarea, "@");
+
+    const commandButton = app.getByText("@file");
+    await user.click(commandButton);
+
+    expect(executableSpy).toHaveBeenCalledWith("@file ");
+  });
+
+  test("execute command when pressing enter", async () => {
+    const executableSpy = vi.fn();
+    const { user, ...app } = render(
+      <App commandIsExecutable executeCommand={executableSpy} />,
+    );
+    const textarea = app.getByRole("combobox");
+    await user.type(textarea, "@fi{Enter}");
+    expect(executableSpy).toHaveBeenCalledWith("@file ");
+  });
+
+  test("execute command when pressing tab", async () => {
+    const executableSpy = vi.fn();
+    const { user, ...app } = render(
+      <App commandIsExecutable executeCommand={executableSpy} />,
+    );
+    const textarea = app.getByRole("combobox");
+    await user.type(textarea, "@fi{Tab}");
+    expect(executableSpy).toHaveBeenCalledWith("@file ");
+  });
+
+  test("typing executable command and pressing space", async () => {
+    const executableSpy = vi.fn();
+    const { user, ...app } = render(
+      <App commandIsExecutable executeCommand={executableSpy} />,
+    );
+    const textarea = app.getByRole("combobox");
+    await user.type(textarea, "@file{Space}");
+    expect(executableSpy).toHaveBeenCalledWith("@file ");
+  });
+
+  test.only("submit when pressing enter", async () => {
+    const onSubmitSpy = vi.fn();
+    const { user, ...app } = render(<App onSubmit={onSubmitSpy} />);
+    const textarea = app.getByRole("combobox");
+    await user.type(textarea, "hello{Enter}");
+
+    expect(onSubmitSpy).toHaveBeenCalled();
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const event = onSubmitSpy.mock.lastCall[0];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect(event.target.value).toEqual("hello\n");
+  });
 });
