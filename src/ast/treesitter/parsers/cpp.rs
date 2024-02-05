@@ -8,7 +8,7 @@ use tree_sitter::{LanguageError, Node, Parser, Query, QueryCapture, Range, Tree}
 
 use crate::ast::treesitter::index::{Index, SymbolInfo, SymbolType};
 use crate::ast::treesitter::parsers::{internal_error, Language, LanguageParser, ParserError};
-use crate::ast::treesitter::structs::{FunctionCallInfo, StaticInfo, StaticType, VariableInfo};
+use crate::ast::treesitter::structs::{FunctionCallInfo, StaticInfo, StaticType, UsageSymbolInfo, VariableInfo};
 
 pub struct CppConfig;
 
@@ -352,14 +352,12 @@ impl LanguageParser for CppParser {
         }
         Ok(indexes)
     }
-    fn parse_usages(&mut self, code: &str) -> Result<(Vec<VariableInfo>, Vec<FunctionCallInfo>, Vec<StaticInfo>), String> {
+    fn parse_usages(&mut self, code: &str) -> Result<(Vec<dyn UsageSymbolInfo>), String> {
         let tree: Tree = match self.parser.parse(code, None) {
             Some(tree) => tree,
             None => return Err("Parse error".to_string()),
         };
-        let mut vars: Vec<VariableInfo> = Default::default();
-        let mut calls: Vec<FunctionCallInfo> = Default::default();
-        let mut statics: Vec<StaticInfo> = Default::default();
+        let mut usages: Vec<dyn UsageSymbolInfo> = vec![];
         let mut qcursor = tree_sitter::QueryCursor::new();
         let query = Query::new(tree_sitter_cpp::language(), &**CPP_PARSER_QUERY_FIND_ALL).unwrap();
         let mut matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
@@ -368,25 +366,25 @@ impl LanguageParser for CppParser {
                 0 => {
                     match get_variable(match_.captures, &query, code) {
                         None => {}
-                        Some(var) => { vars.push(var) }
+                        Some(var) => { usages.push(var) }
                     }
                 }
                 1 => {
                     match get_call(match_.captures, &query, code) {
                         None => {}
-                        Some(var) => { calls.push(var) }
+                        Some(var) => { usages.push(var) }
                     }
                 }
                 2 => {
                     match get_static(match_.captures, &query, code) {
                         None => {}
-                        Some(var) => { statics.push(var) }
+                        Some(var) => { usages.push(var) }
                     }
                 }
                 _ => {}
             }
         }
-        Ok((vars, calls, statics))
+        Ok(usages)
     }
 }
 
