@@ -31,6 +31,9 @@ describe("ChatForm", () => {
           can_paste: false,
           attach: false,
         }}
+        setSelectedCommand={() => ({})}
+        executeCommand={() => ({})}
+        // setSelectedCommand={() => ({})}
       />,
     );
 
@@ -73,6 +76,8 @@ describe("ChatForm", () => {
           can_paste: false,
           attach: false,
         }}
+        setSelectedCommand={() => ({})}
+        executeCommand={() => ({})}
       />,
     );
     const textarea = app.container.querySelector("textarea");

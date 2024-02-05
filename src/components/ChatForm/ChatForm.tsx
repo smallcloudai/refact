@@ -60,6 +60,8 @@ export const ChatForm: React.FC<{
     cursor: number,
     number?: number,
   ) => void;
+  setSelectedCommand: (command: string) => void;
+  executeCommand: (command: string) => void;
 }> = ({
   onSubmit,
   onClose,
@@ -77,6 +79,8 @@ export const ChatForm: React.FC<{
   commands,
   attachFile,
   requestCommandsCompletion,
+  setSelectedCommand,
+  executeCommand,
 }) => {
   const [value, setValue] = React.useState("");
 
@@ -94,22 +98,6 @@ export const ChatForm: React.FC<{
 
   const handleChange = (command: React.SetStateAction<string>) => {
     setValue(command);
-
-    // const str = typeof command === "function" ? command(value) : command;
-
-    // if (
-    //   !commands.selected_command &&
-    //   str.endsWith(" ") &&
-    //   commands.available_commands.includes(str.slice(0, -1))
-    // ) {
-    //   setSelectedCommand(str);
-    // } else if (!str.startsWith(commands.selected_command)) {
-    //   setSelectedCommand("");
-    // }
-
-    // if (str.startsWith("@")) {
-    //   requestCommandsCompletion(str, str.length);
-    // }
   };
   if (error) {
     return (
@@ -168,6 +156,10 @@ export const ChatForm: React.FC<{
             commands.available_commands.length > 0 ? "Type @ for commands" : ""
           }
           render={(props) => <TextArea disabled={isStreaming} {...props} />}
+          executeCommand={executeCommand}
+          commandIsExecutable={commands.is_cmd_executable}
+          selectedCommand={commands.selected_command}
+          setSelectedCommand={setSelectedCommand}
         />
         <Flex gap="2" className={styles.buttonGroup}>
           {onClose && (

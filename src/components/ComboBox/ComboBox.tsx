@@ -21,6 +21,8 @@ export type ComboBoxProps = {
   ) => void;
   executeCommand: (command: string) => void;
   commandIsExecutable: boolean;
+  setSelectedCommand: (command: string) => void;
+  selectedCommand: string;
 };
 
 export const ComboBox: React.FC<ComboBoxProps> = ({
@@ -34,9 +36,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   requestCommandsCompletion,
   executeCommand,
   commandIsExecutable,
+  setSelectedCommand,
+  selectedCommand,
 }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
-  const [selectedCommand, setSelectedCommand] = React.useState("");
+  // const [selectedCommand, setSelectedCommand] = React.useState("");
   const [trigger, setTrigger] = React.useState<string>("");
 
   const commandsOrArguments = selectedCommand
@@ -54,13 +58,20 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   const hasMatches = !!trigger && !!matches.length;
 
+  // TODO: this might work well
+  React.useEffect(() => {
+    if (commandIsExecutable) {
+      executeCommand(trigger);
+    }
+  }, [trigger, commandIsExecutable, executeCommand]);
+
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
   }, [combobox, hasMatches]);
 
   React.useEffect(() => {
     combobox.render();
-  }, [combobox, value]);
+  }, [combobox, value, commandsOrArguments]);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const state = combobox.getState();
@@ -106,12 +117,14 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       setTrigger(command);
       onChange(newInput);
 
-      if (commandIsExecutable) {
-        executeCommand(command);
-      }
+      // if (commandIsExecutable) {
+      //   executeCommand(command);
+      // }
 
       setSelectedCommand(selectedCommand ? "" : command);
       requestCommandsCompletion(command, command.length);
+      // second box isn't selected by default,
+      // combobox.show();
     }
 
     if (event.key === "Space" && state.open && commands.includes(trigger)) {
@@ -120,9 +133,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       onChange(newInput);
       combobox.setValue(trigger + " ");
       setTrigger(trigger + " ");
-      if (commandIsExecutable) {
-        executeCommand(trigger + " ");
-      }
+      // if (commandIsExecutable) {
+      //   executeCommand(trigger + " ");
+      // }
       // combobox.hide();
     }
   };
@@ -157,9 +170,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       const nextValue = `${start}${command}${end}`;
       onChange(nextValue);
 
-      if (commandIsExecutable) {
-        executeCommand(command);
-      }
+      // if (commandIsExecutable) {
+      //   executeCommand(command);
+      // }
 
       if (selectedCommand) {
         // arguments

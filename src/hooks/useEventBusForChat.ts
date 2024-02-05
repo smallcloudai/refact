@@ -2,6 +2,7 @@ import { useEffect, useReducer } from "react";
 import { useEffectOnce } from "usehooks-ts";
 import {
   ChatContextFile,
+  ChatContextFileMessage,
   ChatMessages,
   ChatResponse,
   isChatContextFileMessage,
@@ -38,6 +39,8 @@ import {
   isReceiveAtCommandCompletion,
   SetSelectedAtCommand,
   isSetSelectedAtCommand,
+  RequestAtCommandPreview,
+  isReceiveAtCommandPreview,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
@@ -292,6 +295,27 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       rag_commands: {
         ...state.rag_commands,
         selected_command: action.payload.command,
+      },
+    };
+  }
+
+  if (isThisChat && isReceiveAtCommandPreview(action)) {
+    const message: ChatContextFileMessage = [
+      "context_file",
+      [
+        {
+          file_name: action.payload.file_name,
+          file_content: action.payload.file_content,
+          line1: 1,
+          line2: action.payload.file_content.split("\n").length + 1,
+        },
+      ],
+    ];
+    return {
+      ...state,
+      chat: {
+        ...state.chat,
+        messages: [...state.chat.messages, message],
       },
     };
   }
@@ -565,6 +589,15 @@ export const useEventBusForChat = () => {
     postMessage(action);
   }
 
+  function executeCommand(command: string) {
+    const action: RequestAtCommandPreview = {
+      type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW,
+      payload: { id: state.chat.id, query: command },
+    };
+    console.log("executeCommand: ", action);
+    postMessage(action);
+  }
+
   useEffectOnce(() => {
     requestCommandsCompletion("@", 1);
   });
@@ -586,5 +619,6 @@ export const useEventBusForChat = () => {
     handlePasteDiffClick,
     requestCommandsCompletion,
     setSelectedCommand,
+    executeCommand,
   };
 };

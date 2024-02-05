@@ -6,9 +6,10 @@ import { TextArea, type TextAreaProps } from "../TextArea";
 
 const App = (props: Partial<ComboBoxProps>) => {
   const [value, setValue] = React.useState<string>(props.value ?? "");
+  const [selectedCommand, setSelectedCommand] = React.useState<string>("");
   const requestCompletionSpy = vi.fn();
   const onSubmitSpy = vi.fn();
-  const defaultProps = {
+  const defaultProps: ComboBoxProps = {
     commands: ["@file"],
     requestCommandsCompletion: requestCompletionSpy,
     commandArguments: ["/foo", "/bar"],
@@ -19,6 +20,8 @@ const App = (props: Partial<ComboBoxProps>) => {
     render: (props: TextAreaProps) => <TextArea {...props} />,
     commandIsExecutable: false,
     executeCommand: () => ({}),
+    selectedCommand,
+    setSelectedCommand,
     ...props,
   };
 
@@ -88,7 +91,7 @@ describe("ComboBox", () => {
     expect(app.getByRole("combobox").textContent).toEqual("@file ");
   });
 
-  // TODO: flaky test, sometimes `@f@file hello @file /foo`
+  // TODO: flaky test, sometimes `@f@file hello @file /foo` it could be because the second combobox is't active by default
   test("multiple commands", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");

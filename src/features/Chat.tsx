@@ -32,6 +32,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     handlePasteDiffClick,
     requestCommandsCompletion,
     setSelectedCommand,
+    executeCommand,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -119,6 +120,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         setSelectedCommand={setSelectedCommand}
         onClose={maybeSendToSideBar}
         attachFile={state.active_file}
+        executeCommand={executeCommand}
       />
     </Flex>
   );
