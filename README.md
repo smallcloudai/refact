@@ -21,7 +21,7 @@ This repo consists Refact WebUI for fine-tuning and self-hosting of code models,
 - [x] Use models for code completion and chat inside Refact plugins
 - [x] Model sharding
 - [x] Host several small models on one GPU
-- [x] Use OpenAI keys to connect GPT-models for chat
+- [x] Use OpenAI and Anthropic keys to connect GPT-models for chat
 
 ![self-hosting-refact](https://github.com/smallcloudai/refact/assets/5008686/18e48b42-b638-4606-bde0-cadd47fd26e7)
 
@@ -126,6 +126,7 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 | [mixtral/8x7b/instruct-v0.1](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1)         |            | +    |             |
 | [deepseek-coder/6.7b/instruct](https://huggingface.co/TheBloke/deepseek-coder-6.7B-instruct-GPTQ) |            | +    |             |
 | [deepseek-coder/33b/instruct](https://huggingface.co/deepseek-ai/deepseek-coder-33b-instruct)     |            | +    |             |
+| [stable/3b/code](https://huggingface.co/stabilityai/stable-code-3b)                               | +          |      |             |
 
 ## Usage
 
