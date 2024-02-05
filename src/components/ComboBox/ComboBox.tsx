@@ -8,7 +8,12 @@ import {
 } from "@ariakit/react";
 import { Box } from "@radix-ui/themes";
 import { matchSorter } from "match-sorter";
-import { getAnchorRect, type AnchorRect } from "./utils";
+import {
+  getAnchorRect,
+  replaceValue,
+  // getTriggerOffset,
+  type AnchorRect,
+} from "./utils";
 import { ScrollArea } from "../ScrollArea";
 import { Button } from "@radix-ui/themes";
 import classNames from "classnames";
@@ -61,29 +66,36 @@ const Popover: React.FC<
   );
 };
 
-export const ComboBox: React.FC<{
+export type ComboBoxProps = {
   commands: string[];
   commandArguments: string[];
-  selectedCommand: string;
-  onChange: React.Dispatch<React.SetStateAction<string>>;
+  onChange: (value: string) => void;
   value: string;
   onSubmit: React.KeyboardEventHandler<HTMLTextAreaElement>;
   placeholder?: string;
   render: (props: TextAreaProps) => React.ReactElement;
-}> = ({
+  requestCommandsCompletion: (
+    query: string,
+    cursor: number,
+    number?: number,
+  ) => void;
+};
+
+export const ComboBox: React.FC<ComboBoxProps> = ({
   commands,
   onSubmit,
   placeholder,
   onChange,
   value,
   render,
-  selectedCommand,
   commandArguments,
+  requestCommandsCompletion,
 }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
-  const [trigger, setTrigger] = React.useState<string>(selectedCommand);
+  const [selectedCommand, setSelectedCommand] = React.useState("");
+  const [trigger, setTrigger] = React.useState<string>("");
 
-  const commandsWithArguments = selectedCommand
+  const commandsOrArguments = selectedCommand
     ? commandArguments.map((arg) => selectedCommand + arg)
     : commands;
 
@@ -92,7 +104,7 @@ export const ComboBox: React.FC<{
     placement: "top-start",
   });
 
-  const matches = matchSorter(commandsWithArguments, trigger, {
+  const matches = matchSorter(commandsOrArguments, trigger, {
     baseSort: (a, b) => (a.index < b.index ? -1 : 1),
   });
 
@@ -116,46 +128,94 @@ export const ComboBox: React.FC<{
     if (state.open && event.key === "Tab") {
       event.preventDefault();
     }
+
+    if (event.key === "@" && !state.open && !selectedCommand) {
+      setTrigger(event.key);
+      combobox.setValue("");
+      combobox.show();
+    }
   };
 
   const onKeyUp = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!ref.current) return;
+
     const state = combobox.getState();
+    if (!state.activeValue) return;
+
     const tabOrEnter = event.key === "Tab" || event.key === "Enter";
-    if (state.open && tabOrEnter && state.activeValue) {
-      setTrigger(state.activeValue + " ");
-      const newInput = value.replace(trigger, state.activeValue + " ");
-      combobox.setValue(newInput);
+    const command = selectedCommand
+      ? state.activeValue
+      : state.activeValue + " ";
+    const newInput = replaceValue(ref.current, trigger, command);
+
+    if (state.open && tabOrEnter && command) {
+      event.preventDefault();
+      event.stopPropagation();
+      combobox.setValue(command);
+
+      setTrigger(command);
       onChange(newInput);
-      combobox.hide();
-    } else if (event.key === "Enter") {
+
+      setSelectedCommand(selectedCommand ? "" : command);
+      requestCommandsCompletion(command, command.length);
+    } else if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      requestCommandsCompletion("@", 1);
       onSubmit(event);
+      combobox.hide();
+    }
+
+    if (event.key === "Space" && state.open && commands.includes(trigger)) {
+      event.preventDefault();
+      event.stopPropagation();
+      onChange(newInput);
+      combobox.setValue(trigger + " ");
+      setTrigger(trigger + " ");
+      // combobox.hide();
     }
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const maybeCommand = event.target.value.startsWith("@")
-      ? event.target.value.split(/\n/)[0]
-      : "";
-
-    if (maybeCommand && event.target.selectionEnd <= maybeCommand.length) {
-      setTrigger(maybeCommand);
-      combobox.show();
-    } else {
-      setTrigger("");
-      combobox.hide();
-    }
+    const maybeTrigger = event.target.value
+      .substring(
+        event.target.selectionStart - (trigger.length + 1),
+        event.target.selectionStart,
+      )
+      .trim();
 
     onChange(event.target.value);
-    combobox.setValue(trigger);
+
+    if (maybeTrigger && combobox.getState().open) {
+      combobox.setValue(maybeTrigger);
+      setTrigger(maybeTrigger);
+      combobox.show();
+    }
   };
 
-  const onItemClick = (item: string) => {
-    const textarea = ref.current;
-    if (!textarea) return;
-    const command = selectedCommand ? item : item + " ";
-    onChange(command);
-    setTrigger(() => command);
-  };
+  const onItemClick =
+    (item: string) => (event: React.MouseEvent<HTMLDivElement>) => {
+      event.stopPropagation();
+      event.preventDefault();
+      const textarea = ref.current;
+      if (!textarea) return;
+      const command = selectedCommand ? item : item + " ";
+      const { selectionStart, selectionEnd } = textarea;
+      const start = value.substring(0, selectionStart - trigger.length);
+      const end = value.substring(selectionStart, selectionEnd);
+      const nextValue = `${start}${command}${end}`;
+      onChange(nextValue);
+      if (selectedCommand) {
+        setSelectedCommand("");
+        requestCommandsCompletion("@", 1);
+        setTrigger("@");
+        combobox.hide();
+      } else {
+        setSelectedCommand(command);
+        requestCommandsCompletion(command, command.length);
+        setTrigger(command);
+      }
+    };
 
   return (
     <>
@@ -183,18 +243,14 @@ export const ComboBox: React.FC<{
         getAnchorRect={() => {
           const textarea = ref.current;
           if (!textarea) return null;
-          return getAnchorRect(textarea, matches);
+          return getAnchorRect(textarea, trigger);
         }}
       >
         {matches.map((item, index) => (
           <Item
             key={item + "-" + index}
             value={item}
-            onClick={(event) => {
-              event.stopPropagation();
-              event.preventDefault();
-              onItemClick(item);
-            }}
+            onClick={onItemClick(item)}
           >
             {item.slice(selectedCommand.length)}
           </Item>

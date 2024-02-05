@@ -37,6 +37,7 @@ function makeConfig(library: "browser" | "node") {
             "**/*.stories.@(js|jsx|mjs|ts|tsx)",
           ),
         },
+        setupFiles: ["./src/utils/test-setup.ts"],
       },
       css: {
         modules: {},

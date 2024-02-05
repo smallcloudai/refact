@@ -55,7 +55,6 @@ export const ChatForm: React.FC<{
   hasContextFile: boolean;
   commands: ChatState["rag_commands"];
   attachFile: ChatState["active_file"];
-  setSelectedCommand: (command: string) => void;
   requestCommandsCompletion: (
     query: string,
     cursor: number,
@@ -78,7 +77,6 @@ export const ChatForm: React.FC<{
   commands,
   attachFile,
   requestCommandsCompletion,
-  setSelectedCommand,
 }) => {
   const [value, setValue] = React.useState("");
 
@@ -97,21 +95,21 @@ export const ChatForm: React.FC<{
   const handleChange = (command: React.SetStateAction<string>) => {
     setValue(command);
 
-    const str = typeof command === "function" ? command(value) : command;
+    // const str = typeof command === "function" ? command(value) : command;
 
-    if (
-      !commands.selected_command &&
-      str.endsWith(" ") &&
-      commands.available_commands.includes(str.slice(0, -1))
-    ) {
-      setSelectedCommand(str);
-    } else if (!str.startsWith(commands.selected_command)) {
-      setSelectedCommand("");
-    }
+    // if (
+    //   !commands.selected_command &&
+    //   str.endsWith(" ") &&
+    //   commands.available_commands.includes(str.slice(0, -1))
+    // ) {
+    //   setSelectedCommand(str);
+    // } else if (!str.startsWith(commands.selected_command)) {
+    //   setSelectedCommand("");
+    // }
 
-    if (str.startsWith("@")) {
-      requestCommandsCompletion(str, str.length);
-    }
+    // if (str.startsWith("@")) {
+    //   requestCommandsCompletion(str, str.length);
+    // }
   };
   if (error) {
     return (
@@ -158,10 +156,9 @@ export const ChatForm: React.FC<{
         onSubmit={() => handleSubmit()}
       >
         <ComboBox
-          //TODO: maybe add a ref for cursor position?
           commands={commands.available_commands}
+          requestCommandsCompletion={requestCommandsCompletion}
           commandArguments={commands.arguments}
-          selectedCommand={commands.selected_command}
           value={value}
           onChange={handleChange}
           onSubmit={(event) => {

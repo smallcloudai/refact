@@ -2,12 +2,12 @@ import getCaretCoordinates from "textarea-caret";
 
 export function getTriggerOffset(
   element: HTMLTextAreaElement,
-  triggers: string[],
+  trigger: string,
 ) {
   const { value, selectionStart } = element;
   for (let i = selectionStart; i >= 0; i--) {
     const char = value[i];
-    if (char && triggers.includes(char)) {
+    if (char && trigger === char) {
       return i;
     }
   }
@@ -22,14 +22,27 @@ export type AnchorRect = {
 
 export function getAnchorRect(
   element: HTMLTextAreaElement,
-  triggers: string[],
+  trigger: string,
 ): AnchorRect {
-  const offset = getTriggerOffset(element, triggers);
+  const offset = getTriggerOffset(element, trigger);
   const { left, top, height } = getCaretCoordinates(element, offset + 1);
   const { x, y } = element.getBoundingClientRect();
   return {
     x: left + x - element.scrollLeft,
-    y: top + y - (element.scrollTop + 10),
+    y: top + y - element.scrollTop,
     height,
   };
+}
+
+export function replaceValue(
+  element: HTMLTextAreaElement,
+  trigger: string,
+  command: string,
+) {
+  const start = element.value.substring(
+    0,
+    element.selectionStart - trigger.length,
+  );
+  const end = element.value.substring(element.selectionStart);
+  return `${start}${command}${end}`;
 }

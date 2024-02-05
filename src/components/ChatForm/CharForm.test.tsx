@@ -19,7 +19,13 @@ describe("ChatForm", () => {
         canChangeModel={false}
         handleContextFile={vi.fn}
         hasContextFile={false}
-        commands={[]}
+        commands={{
+          available_commands: [],
+          selected_command: "",
+          arguments: [],
+          is_cmd_executable: false,
+        }}
+        requestCommandsCompletion={() => ({})}
         attachFile={{
           name: "",
           can_paste: false,
@@ -33,7 +39,7 @@ describe("ChatForm", () => {
     expect(textarea).not.toBeNull();
     if (textarea) {
       await user.type(textarea, "hello");
-      await user.type(textarea, "{enter}");
+      await user.type(textarea, "{Enter}");
     }
 
     expect(fakeOnSubmit).toHaveBeenCalled();
@@ -55,7 +61,13 @@ describe("ChatForm", () => {
         canChangeModel={false}
         handleContextFile={vi.fn}
         hasContextFile={false}
-        commands={[]}
+        commands={{
+          available_commands: [],
+          selected_command: "",
+          arguments: [],
+          is_cmd_executable: false,
+        }}
+        requestCommandsCompletion={() => ({})}
         attachFile={{
           name: "",
           can_paste: false,
