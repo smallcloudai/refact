@@ -102,7 +102,7 @@ describe("ComboBox", () => {
     await user.keyboard("{Enter}");
     await user.keyboard("{Enter}");
     expect(app.getByRole("combobox").textContent).toEqual(
-      "@file /foo hello @file /foo",
+      "@file /foo hello \n@file /foo",
     );
   });
 

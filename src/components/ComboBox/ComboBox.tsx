@@ -71,7 +71,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useEffect(() => {
     combobox.render();
-  }, [combobox, value, commandsOrArguments]);
+  }, [combobox, value]);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const state = combobox.getState();
@@ -164,10 +164,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       const textarea = ref.current;
       if (!textarea) return;
       const command = selectedCommand ? item : item + " ";
-      const { selectionStart, selectionEnd } = textarea;
-      const start = value.substring(0, selectionStart - trigger.length);
-      const end = value.substring(selectionStart, selectionEnd);
-      const nextValue = `${start}${command}${end}`;
+      const nextValue = replaceValue(textarea, trigger, command);
       onChange(nextValue);
 
       // if (commandIsExecutable) {
@@ -184,6 +181,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         setSelectedCommand(command);
         requestCommandsCompletion(command, command.length);
         setTrigger(command);
+        // combobox.hide();
       }
     };
 

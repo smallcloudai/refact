@@ -6,9 +6,17 @@ import { Card } from "@radix-ui/themes";
 
 const App: React.FC<ComboBoxProps> = (props) => {
   const [value, setValue] = React.useState<string>("");
+  const [selectedCommand, setSelectedCommand] = React.useState<string>("");
   return (
     <Card size="5" m="8">
-      <ComboBox {...props} value={value} onChange={setValue} />
+      <ComboBox
+        {...props}
+        value={value}
+        onChange={setValue}
+        selectedCommand={selectedCommand}
+        setSelectedCommand={setSelectedCommand}
+        executeCommand={() => console.log("execute command")}
+      />
     </Card>
   );
 };

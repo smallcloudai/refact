@@ -44,5 +44,7 @@ export function replaceValue(
     element.selectionStart - trigger.length,
   );
   const end = element.value.substring(element.selectionStart);
-  return `${start}${command}${end}`;
+  const maybeNewLineAfterStart =
+    start.length && !start.endsWith("\n") ? "\n" : "";
+  return `${start}${maybeNewLineAfterStart}${command}${end}`;
 }
