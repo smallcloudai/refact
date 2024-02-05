@@ -147,7 +147,7 @@ describe("ComboBox", () => {
     expect(executableSpy).toHaveBeenCalledWith("@file ");
   });
 
-  test.only("submit when pressing enter", async () => {
+  test("submit when pressing enter", async () => {
     const onSubmitSpy = vi.fn();
     const { user, ...app } = render(<App onSubmit={onSubmitSpy} />);
     const textarea = app.getByRole("combobox");
