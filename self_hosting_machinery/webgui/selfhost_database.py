@@ -233,6 +233,30 @@ class StatisticsService:
             "ts_reported": datetime.now(),
         })
 
+    def get_robot_human_for_account(self, account: str) -> List[Dict[str, Any]]:
+        prep = self.session.prepare(
+            'select * from telemetry_robot_human where tenant_name = ? ALLOW FILTERING'
+        )
+        records = []
+        # streaming from DB works weirdly, goes into a deadlock
+        for r in self.session.execute(prep, (account, )):
+            records.append({
+                "id": 0,
+                "tenant_name": r["tenant_name"],
+                "ts_reported": int(r["ts_reported"].timestamp()),
+                "ip": r["ip"],
+                "enduser_client_version": r["enduser_client_version"],
+                "completions_cnt": r["completions_cnt"],
+                "file_extension": r["file_extension"],
+                "human_characters": r["human_characters"],
+                "model": r["model"],
+                "robot_characters": r["robot_characters"],
+                "teletype": r["teletype"],
+                "ts_start": r["ts_start"],
+                "ts_end": r["ts_end"],
+            })
+        return records
+
     @property
     def session(self) -> Session:
         return self._database.session

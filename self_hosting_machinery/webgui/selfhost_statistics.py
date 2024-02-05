@@ -43,11 +43,6 @@ class DashTeamsGenDashData(BaseModel):
         }
 
 
-# format has to be the same as we have in the cloud, that's why the key goes to the data
-class RHStatsData(BaseModel):
-    key: str
-
-
 class TabStatisticsRouter(APIRouter):
 
     def __init__(
@@ -63,42 +58,22 @@ class TabStatisticsRouter(APIRouter):
             },
             media_type='application/json',
             status_code=500)
-        self.add_api_route('/rh-stats', self._rh_stats, methods=["POST"])
+        self.add_api_route('/rh-stats', self._rh_stats, methods=["GET"])
         self.add_api_route("/telemetry-basic", self._telemetry_basic, methods=["POST"])
         self.add_api_route("/telemetry-snippets", self._telemetry_snippets, methods=["POST"])
         self.add_api_route('/dash-prime', self._dash_prime_get, methods=['GET'])
         self.add_api_route('/dash-teams', self._dash_teams_get, methods=['GET'])
         self.add_api_route('/dash-teams', self._dash_teams_post, methods=['POST'])
 
-    async def _rh_stats(self, data: RHStatsData, request: Request, account: str = "user"):
+    async def _rh_stats(self, account: str = "user"):
         if not self._stats_service.is_ready:
             raise HTTPException(status_code=500, detail="Statistics service is not ready, waiting for database connection")
 
         def streamer():
-            prep = self._stats_service.session.prepare(
-                'select * from telemetry_robot_human where tenant_name = ? ALLOW FILTERING'
-            )
-            # streaming from DB works weirdly, goes into a deadlock
-            for records_batch in chunked(list(self._stats_service.session.execute(prep, (account,))), 100):
+            for records_batch in chunked(self._stats_service.get_robot_human_for_account(account), 100):
                 yield json.dumps({
                     "retcode": "OK",
-                    "data": [
-                        {
-                            "id": 0,
-                            "tenant_name": r["tenant_name"],
-                            "ts_reported": int(r["ts_reported"].timestamp()),
-                            "ip": r["ip"],
-                            "enduser_client_version": r["enduser_client_version"],
-                            "completions_cnt": r["completions_cnt"],
-                            "file_extension": r["file_extension"],
-                            "human_characters": r["human_characters"],
-                            "model": r["model"],
-                            "robot_characters": r["robot_characters"],
-                            "teletype": r["teletype"],
-                            "ts_start": r["ts_start"],
-                            "ts_end": r["ts_end"],
-                        } for r in records_batch
-                    ]
+                    "data": records_batch
                 }) + '\n'
 
         try:
