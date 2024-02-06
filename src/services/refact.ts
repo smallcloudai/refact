@@ -80,12 +80,32 @@ export type ChatChoice = {
   index: number;
 };
 
-export type ChatResponse = {
-  choices: ChatChoice[];
-  created: number;
-  model: string;
+export type ChatUserMessageResponse = {
   id: string;
+  role: "user";
+  content: string;
 };
+
+export function isChatUserMessageResponse(
+  json: unknown,
+): json is ChatUserMessageResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("id" in json)) return false;
+  if (!("content" in json)) return false;
+  if (!("role" in json)) return false;
+  if (json.role !== "user") return false;
+  return true;
+}
+
+export type ChatResponse =
+  | {
+      choices: ChatChoice[];
+      created: number;
+      model: string;
+      id: string;
+    }
+  | ChatUserMessageResponse;
 
 export function sendChat(
   messages: ChatMessages,

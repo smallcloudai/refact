@@ -40,6 +40,8 @@ import {
   isSetSelectedAtCommand,
   RequestAtCommandPreview,
   isReceiveAtCommandPreview,
+  isRemoveLastUserMessage,
+  isChatUserMessageResponse,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
@@ -48,6 +50,20 @@ function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
 ): ChatMessages {
+  if (isChatUserMessageResponse(response)) {
+    if (messages.length === 0) {
+      return [[response.role, response.content]];
+    }
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage[0] === "user") {
+      const before = messages.slice(0, messages.length - 1);
+      return before.concat([
+        [response.role, lastMessage[1] + response.content],
+      ]);
+    }
+    return [...messages, [response.role, response.content]];
+  }
+
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (cur.delta.role === "context_file") {
       return acc.concat([[cur.delta.role, cur.delta.content]]);
@@ -303,6 +319,29 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         selected_command: "",
         is_cmd_executable: false,
         available_commands: [],
+      },
+    };
+  }
+
+  if (isThisChat && isRemoveLastUserMessage(action)) {
+    let lastUserMessageIndex = state.chat.messages.length - 1;
+    let foundUserMessage = false;
+    for (; lastUserMessageIndex >= 0; lastUserMessageIndex--) {
+      const message = state.chat.messages[lastUserMessageIndex];
+      if (message[0] === "user") {
+        foundUserMessage = true;
+        break;
+      }
+    }
+
+    const messages = foundUserMessage
+      ? state.chat.messages.filter((_, i) => i !== lastUserMessageIndex)
+      : state.chat.messages;
+    return {
+      ...state,
+      chat: {
+        ...state.chat,
+        messages,
       },
     };
   }

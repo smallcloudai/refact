@@ -43,6 +43,7 @@ export enum EVENT_NAMES_TO_CHAT {
   RECEIVE_AT_COMMAND_COMPLETION = "chat_receive_at_command_completion",
   RECEIVE_AT_COMMAND_PREVIEW = "chat_receive_at_command_preview",
   SET_SELECTED_AT_COMMAND = "chat_set_selected_command",
+  REMOVE_LAST_USER_MESSAGE = "chat_remove_last_user_message",
 }
 
 export type ChatThread = {
@@ -193,6 +194,18 @@ export function isActionToChat(action: unknown): action is ActionToChat {
   if (typeof action.type !== "string") return false;
   const EVENT_NAMES: Record<string, string> = { ...EVENT_NAMES_TO_CHAT };
   return Object.values(EVENT_NAMES).includes(action.type);
+}
+
+export interface RemoveLastUserMessage extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.REMOVE_LAST_USER_MESSAGE;
+  payload: { id: string };
+}
+
+export function isRemoveLastUserMessage(
+  action: unknown,
+): action is RemoveLastUserMessage {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.REMOVE_LAST_USER_MESSAGE;
 }
 
 export interface ReceiveAtCommandCompletion extends ActionToChat {
