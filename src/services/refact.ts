@@ -252,37 +252,39 @@ export async function getAtCommandCompletion(
   return json;
 }
 
-export type CommandPreviewResponse = {
-  messages: {
-    choices: {
-      delta: {
-        content: {
-          file_content: string;
-          file_name: string;
-        };
-        role: "content_file";
-      };
-      finish_reason: null;
-      index: number;
-    }[];
-  }[];
+type CommandPreviewContent = {
+  content: string;
+  role: "context_file";
+};
+export type ResponseFromCommandPreview = {
+  messages: CommandPreviewContent[];
 };
 
 function isCommandPreviewResponse(
   json: unknown,
-): json is CommandPreviewResponse {
+): json is ResponseFromCommandPreview {
   if (!json) return false;
   if (typeof json !== "object") return false;
   if (!("messages" in json)) return false;
   if (!Array.isArray(json.messages)) return false;
-  if (!("choices" in json.messages[0])) return false;
+  if (!json.messages.length) return false;
+
+  const firstMessage: unknown = json.messages[0];
+  if (!firstMessage) return false;
+  if (typeof firstMessage !== "object") return false;
+  if (!("role" in firstMessage)) return false;
+  if (firstMessage.role !== "context_file") return false;
+  if (!("content" in firstMessage)) return false;
+  if (typeof firstMessage.content !== "string") return false;
+
   return true;
 }
 
 export async function getAtCommandPreview(
   query: string,
   lspUrl?: string,
-): Promise<{ file_name: string; file_content: string }> {
+): Promise<ChatContextFileMessage[]> {
+  // check this
   const previewEndpoint = lspUrl
     ? `${lspUrl.replace(/\/*$/, "")}${AT_COMMAND_PREVIEW}`
     : AT_COMMAND_PREVIEW;
@@ -308,7 +310,13 @@ export async function getAtCommandPreview(
   if (!isCommandPreviewResponse(json)) {
     throw new Error("Invalid response from command preview");
   }
-  const { file_name, file_content } = json.messages[0].choices[0].delta.content;
 
-  return { file_name, file_content };
+  const jsonMessages = json.messages.map<ChatContextFileMessage>(
+    ({ role, content }) => {
+      const fileData = JSON.parse(content) as ChatContextFile[];
+      return [role, fileData];
+    },
+  );
+
+  return jsonMessages;
 }

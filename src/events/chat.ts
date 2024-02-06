@@ -5,6 +5,7 @@ import {
   isCapsResponse,
   ChatContextFile,
   CommandCompletionResponse,
+  ChatContextFileMessage,
 } from "../services/refact";
 
 export enum EVENT_NAMES_FROM_CHAT {
@@ -208,7 +209,7 @@ export function isReceiveAtCommandCompletion(
 
 export interface ReceiveAtCommandPreview extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW;
-  payload: { id: string; file_content: string; file_name: string };
+  payload: { id: string; preview: ChatContextFileMessage[] };
 }
 
 export function isReceiveAtCommandPreview(

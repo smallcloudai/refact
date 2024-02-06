@@ -2,7 +2,6 @@ import { useEffect, useReducer } from "react";
 import { useEffectOnce } from "usehooks-ts";
 import {
   ChatContextFile,
-  ChatContextFileMessage,
   ChatMessages,
   ChatResponse,
   isChatContextFileMessage,
@@ -147,7 +146,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     const default_cap = action.payload.caps.code_chat_default_model;
     const available_caps = Object.keys(action.payload.caps.code_chat_models);
     const error = available_caps.length === 0 ? "No available caps" : null;
-    // const rag_commands = action.payload.caps.chat_rag_functions ?? [];
+
     return {
       ...state,
       error,
@@ -160,7 +159,6 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         default_cap: default_cap || available_caps[0] || "",
         available_caps,
       },
-      // rag_commands,
     };
   }
 
@@ -176,12 +174,6 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isThisChat && isChatDoneStreaming(action)) {
-    // note: should avoid side effects in reducer :/
-    postMessage({
-      type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-      payload: state.chat,
-    });
-
     return {
       ...state,
       waiting_for_response: false,
@@ -300,22 +292,17 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isThisChat && isReceiveAtCommandPreview(action)) {
-    const message: ChatContextFileMessage = [
-      "context_file",
-      [
-        {
-          file_name: action.payload.file_name,
-          file_content: action.payload.file_content,
-          line1: 1,
-          line2: action.payload.file_content.split("\n").length + 1,
-        },
-      ],
-    ];
     return {
       ...state,
       chat: {
         ...state.chat,
-        messages: [...state.chat.messages, message],
+        messages: [...state.chat.messages, ...action.payload.preview],
+      },
+      rag_commands: {
+        ...state.rag_commands,
+        selected_command: "",
+        is_cmd_executable: false,
+        available_commands: [],
       },
     };
   }
@@ -594,7 +581,6 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW,
       payload: { id: state.chat.id, query: command },
     };
-    console.log("executeCommand: ", action);
     postMessage(action);
   }
 

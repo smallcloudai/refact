@@ -34,6 +34,8 @@ export function useEventBusForHost() {
         return;
       }
 
+      // console.log(event.data);
+
       if (isStopStreamingFromChat(event.data)) {
         controller.current.abort();
         controller.current = new AbortController();
@@ -154,7 +156,7 @@ export function useEventBusForHost() {
           .then((res) => {
             const message: ReceiveAtCommandPreview = {
               type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW,
-              payload: { id, ...res },
+              payload: { id, preview: res },
             };
             window.postMessage(message, "*");
           })
