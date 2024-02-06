@@ -11,6 +11,7 @@ curl http://127.0.0.1:8001/v1/code-completion -k \
     "multiline": true
   },
   "stream": false,
+  "no_cache": true,
   "parameters": {
     "temperature": 0.1,
     "max_new_tokens": 20

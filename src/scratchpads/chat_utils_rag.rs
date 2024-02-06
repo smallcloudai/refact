@@ -84,7 +84,7 @@ pub fn postprocess_at_results(
     // 5. Encode back into a single message
     let mut processed_messages: Vec<ChatMessage> = vec![];
     let message = ChatMessage {
-        role: "user".to_string(),
+        role: "context_file".to_string(),
         content: serde_json::to_string(&merged).unwrap(),
     };
     processed_messages.push(message);
