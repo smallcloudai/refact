@@ -69,7 +69,7 @@ pub struct ParserError {
 }
 
 
-pub trait LanguageParser {
+pub trait LanguageParser: Send {
     fn parse_declarations(&mut self, code: &str, path: &PathBuf) -> Result<HashMap<String, SymbolDeclarationStruct>, String>;
 
     fn parse_usages(&mut self, code: &str) -> Result<(Vec<Box<dyn UsageSymbolInfo + 'static>>), String>;

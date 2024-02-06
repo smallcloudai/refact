@@ -22,7 +22,7 @@ pub struct Range {
 
 pub trait UsageSymbolInfo {
     fn dump_path(&self) -> String;
-    fn distance_to_cursor(&self, cursor: Point) -> usize;
+    fn distance_to_cursor(&self, cursor: &Point) -> usize;
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -39,7 +39,7 @@ impl UsageSymbolInfo for VariableInfo {
             None => self.name.clone(),
         }
     }
-    fn distance_to_cursor(&self, cursor: Point) -> usize {
+    fn distance_to_cursor(&self, cursor: &Point) -> usize {
         cursor.row.abs_diff(self.range.start_point.row)
     }
 }
@@ -58,7 +58,7 @@ impl UsageSymbolInfo for FunctionCallInfo {
             None => self.name.clone(),
         }
     }
-    fn distance_to_cursor(&self, cursor: Point) -> usize {
+    fn distance_to_cursor(&self, cursor: &Point) -> usize {
         cursor.row.abs_diff(self.range.start_point.row)
     }
 }
@@ -80,7 +80,7 @@ impl UsageSymbolInfo for StaticInfo {
     fn dump_path(&self) -> String {
         format!("{}", self.data)
     }
-    fn distance_to_cursor(&self, cursor: Point) -> usize {
+    fn distance_to_cursor(&self, cursor: &Point) -> usize {
         cursor.row.abs_diff(self.range.start_point.row)
     }
 }

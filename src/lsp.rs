@@ -3,8 +3,6 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use std::time::Instant;
-use tracing::log::warn;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use tokio::sync::RwLock as ARwLock;
@@ -18,13 +16,9 @@ use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPos
 use crate::global_context;
 use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
-
-use crate::telemetry;
 use crate::receive_workspace_changes;
+use crate::telemetry;
 use crate::vecdb::file_filter::is_valid_file;
-
-use crate::telemetry::snippets_collection::sources_changed;
-
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -249,31 +243,7 @@ impl LanguageServer for Backend {
             self.gcx.clone(),
             &params.text_document.uri.to_string(),
             &params.content_changes[0].text
-        ).await;
-
-        let t0 = Instant::now();
-        let uri = params.text_document.uri.to_string();
-        let gc = self.gcx.clone();
-        let gx = gc.write().await;
-        let mut document_map = gx.lsp_backend_document_state.document_map.write().await;
-        let doc = document_map.get_mut(&uri);
-        if let Some(doc) = doc {
-            match doc.change(&params.content_changes[0].text).await {
-                Ok(()) => {
-                    info!("{} changed, save time: {:?}", uri, t0.elapsed());
-                    let t1 = Instant::now();
-                    sources_changed(
-                        self.gcx.clone(),
-                        &uri,
-                        &params.content_changes[0].text,
-                    ).await;
-                    info!("{} changed, telemetry time: {:?}", uri, t1.elapsed());
-                },
-                Err(err) => error!("error when changing {uri}: {err}"),
-            }
-        } else {
-            warn!("textDocument/didChange {uri}: document not found");
-        }
+        ).await
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
