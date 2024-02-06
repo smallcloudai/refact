@@ -133,15 +133,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       setTrigger(commandIsExecutable ? "" : command);
       onChange(newInput);
 
-      // if (commandIsExecutable) {
-      //   executeCommand(command);
-      // }
-
       setSelectedCommand(selectedCommand ? "" : command);
       requestCommandsCompletion(command, command.length);
-      // second box isn't selected by default,
-      // combobox.show();
-      // maybeExecute(command);
     }
 
     if (event.key === "Space" && state.open && commands.includes(trigger)) {
@@ -150,11 +143,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       onChange(newInput);
       combobox.setValue(trigger + " ");
       setTrigger(trigger + " ");
-      // maybeExecute(trigger + " ");
-      // if (commandIsExecutable) {
-      //   executeCommand(trigger + " ");
-      // }
-      // combobox.hide();
+      setSelectedCommand(trigger + " ");
     }
   };
 
@@ -179,34 +168,25 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     (item: string) => (event: React.MouseEvent<HTMLDivElement>) => {
       event.stopPropagation();
       event.preventDefault();
-      // console.log("item click");
       const textarea = ref.current;
       if (!textarea) return;
       const command = selectedCommand ? item : item + " ";
-      const nextValue = replaceValue(textarea, trigger, command);
-      onChange(nextValue);
-
-      // if (commandIsExecutable) {
-      //   executeCommand(command);
-      // }
 
       if (selectedCommand) {
         // arguments
         setSelectedCommand("");
         setTrigger(command);
         requestCommandsCompletion(command, command.length);
-        // setTrigger("@");
-
         combobox.hide();
       } else {
         setSelectedCommand(command);
         requestCommandsCompletion(command, command.length);
         setTrigger(command);
-        // combobox.hide();
       }
-    };
 
-  // console.log(combobox.getState());
+      const nextValue = replaceValue(textarea, trigger, command);
+      onChange(nextValue);
+    };
 
   return (
     <>

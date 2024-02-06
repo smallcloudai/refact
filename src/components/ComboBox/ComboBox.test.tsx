@@ -7,10 +7,25 @@ import { TextArea, type TextAreaProps } from "../TextArea";
 const App = (props: Partial<ComboBoxProps>) => {
   const [value, setValue] = React.useState<string>(props.value ?? "");
   const [selectedCommand, setSelectedCommand] = React.useState<string>("");
+  const [commandIsExecutable, setCommandIsExecutable] =
+    React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (
+      selectedCommand === "@workspace " ||
+      selectedCommand === "@file /bar" ||
+      selectedCommand === "@file /foo"
+    ) {
+      setCommandIsExecutable(true);
+    } else {
+      setCommandIsExecutable(false);
+    }
+  }, [selectedCommand, value]);
+
   const requestCompletionSpy = vi.fn();
   const onSubmitSpy = vi.fn();
   const defaultProps: ComboBoxProps = {
-    commands: ["@file"],
+    commands: ["@file", "@workspace"],
     requestCommandsCompletion: requestCompletionSpy,
     commandArguments: ["/foo", "/bar"],
     value: value,
@@ -18,7 +33,7 @@ const App = (props: Partial<ComboBoxProps>) => {
     onSubmit: onSubmitSpy,
     placeholder: "Type @ for commands",
     render: (props: TextAreaProps) => <TextArea {...props} />,
-    commandIsExecutable: false,
+    commandIsExecutable,
     executeCommand: () => ({}),
     selectedCommand,
     setSelectedCommand,
@@ -108,46 +123,39 @@ describe("ComboBox", () => {
 
   test("clicking on an executable command", async () => {
     const executableSpy = vi.fn();
-    const { user, ...app } = render(
-      <App commandIsExecutable executeCommand={executableSpy} />,
-    );
+    const { user, ...app } = render(<App executeCommand={executableSpy} />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@");
 
-    const commandButton = app.getByText("@file");
+    const commandButton = app.getByText("@workspace");
     await user.click(commandButton);
 
-    expect(executableSpy).toHaveBeenCalledWith("@file ");
+    expect(executableSpy).toHaveBeenCalledWith("@workspace ");
   });
 
   test("execute command when pressing enter", async () => {
     const executableSpy = vi.fn();
-    const { user, ...app } = render(
-      <App commandIsExecutable executeCommand={executableSpy} />,
-    );
+    const { user, ...app } = render(<App executeCommand={executableSpy} />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@fi{Enter}");
-    expect(executableSpy).toHaveBeenCalledWith("@file ");
+    await user.type(textarea, "@wo{Enter}");
+    app.debug();
+    expect(executableSpy).toHaveBeenCalledWith("@workspace ");
   });
 
   test("execute command when pressing tab", async () => {
     const executableSpy = vi.fn();
-    const { user, ...app } = render(
-      <App commandIsExecutable executeCommand={executableSpy} />,
-    );
+    const { user, ...app } = render(<App executeCommand={executableSpy} />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@fi{Tab}");
-    expect(executableSpy).toHaveBeenCalledWith("@file ");
+    await user.type(textarea, "@wo{Tab}");
+    expect(executableSpy).toHaveBeenCalledWith("@workspace ");
   });
 
   test("typing executable command and pressing space", async () => {
     const executableSpy = vi.fn();
-    const { user, ...app } = render(
-      <App commandIsExecutable executeCommand={executableSpy} />,
-    );
+    const { user, ...app } = render(<App executeCommand={executableSpy} />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@file{Space}");
-    expect(executableSpy).toHaveBeenCalledWith("@file ");
+    await user.type(textarea, "@workspace{Space}");
+    expect(executableSpy).toHaveBeenCalledWith("@workspace ");
   });
 
   test("submit when pressing enter", async () => {
