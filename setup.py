@@ -46,7 +46,7 @@ all_refact_packages = {
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
                   "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.6.0", "accelerate",
                   "termcolor", "torch", "transformers==4.36.2", "bitsandbytes", "safetensors", "peft", "triton",
-                  "torchinfo", "mpi4py", "deepspeed==0.12.6", "cassandra_driver==3.28.0", "pandas>=2.0.3", "litellm",
+                  "torchinfo", "mpi4py", "deepspeed==0.12.6", "scyllapy==1.3.0", "pandas>=2.0.3", "litellm",
                   "sentence-transformers", "huggingface-hub>=0.19.3"],
         optional=["ninja", "flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",

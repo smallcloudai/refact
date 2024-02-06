@@ -1,24 +1,21 @@
 import json
-import asyncio
 
 from typing import List, Any, Dict
 
-import aiohttp
 from more_itertools import chunked
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from fastapi import APIRouter, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
 
-from self_hosting_machinery.webgui.selfhost_database import StatisticsService
-from self_hosting_machinery.webgui.selfhost_database import TelemetryNetwork
-from self_hosting_machinery.webgui.selfhost_database import TelemetrySnippets
-from self_hosting_machinery.webgui.selfhost_database import TelemetryRobotHuman
-from self_hosting_machinery.webgui.selfhost_database import TelemetryCompCounters
+from self_hosting_machinery.dashboards.dash_prime import dashboard_prime
+from self_hosting_machinery.dashboards.dash_teams import teams_data, dashboard_teams
+from self_hosting_machinery.webgui.selfhost_database import StatisticsService, ScyllaBatchInserter
 from self_hosting_machinery.webgui.selfhost_login import RefactSession
+from self_hosting_machinery.dashboards.utils import compose_data_frames
 
 
-__all__ = ["BaseTabStatisticsRouter", "TabStatisticsRouter"]
+__all__ = ["BaseTabStatisticsRouter", "TabStatisticsRouter", "DashTeamsGenDashData"]
 
 
 class TelemetryBasicData(BaseModel):
@@ -40,11 +37,6 @@ class TelemetryBasicData(BaseModel):
 
 class DashTeamsGenDashData(BaseModel):
     users_selected: List[str]
-
-    def clamp(self) -> Dict[str, Any]:
-        return {
-            "users_selected": self.users_selected,
-        }
 
 
 class BaseTabStatisticsRouter(APIRouter):
@@ -77,8 +69,12 @@ class BaseTabStatisticsRouter(APIRouter):
         if not self._stats_service.is_ready:
             raise HTTPException(status_code=500, detail="Statistics service is not ready, waiting for database connection")
 
-        def streamer():
-            for records_batch in chunked(self._stats_service.get_robot_human_for_account(account), 100):
+        async def streamer():
+            records = []
+            async for r in self._stats_service.get_robot_human_for_account(account):
+                records.append(r)
+
+            for records_batch in chunked(records, 100):
                 yield json.dumps({
                     "retcode": "OK",
                     "data": records_batch
@@ -92,50 +88,59 @@ class BaseTabStatisticsRouter(APIRouter):
     async def _dash_prime_get(self):
         if not self._stats_service.is_ready:
             return self._stats_service_not_available_response
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get('http://localhost:8010/dash-prime/plots-data') as resp:
-                    resp_json = await resp.json()
-            return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
-        except aiohttp.ClientConnectionError as e:
+
+        data_tables = await compose_data_frames(self._stats_service)
+
+        if data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
-                content={
-                    'error': str(e)
-                },
+                content={"error": "users sent no statistics so far"},
                 media_type='application/json',
-                status_code=500)
+                status_code=404,
+            )
+
+        data = dashboard_prime(data_tables)
+        return JSONResponse(
+            content=data,
+            media_type='application/json'
+        )
 
     async def _dash_teams_get(self):
         if not self._stats_service.is_ready:
             return self._stats_service_not_available_response
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get('http://localhost:8010/dash-teams/plots-data') as resp:
-                    resp_json = await resp.json()
-            return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
-        except aiohttp.ClientConnectionError as e:
-            return JSONResponse(
-                content={
-                    'error': str(e)
-                },
-                media_type='application/json',
-                status_code=500)
 
-    async def _dash_teams_post(self, data: DashTeamsGenDashData):
+        data_tables = await compose_data_frames(self._stats_service)
+
+        if data_tables.robot_human_df.empty or not data_tables.extra:
+            return JSONResponse(
+                content={"error": "users sent no statistics so far"},
+                media_type='application/json',
+                status_code=404,
+            )
+
+        data = teams_data(data_tables)
+        return JSONResponse(
+            content=data,
+            media_type='application/json'
+        )
+
+    async def _dash_teams_post(self, post: DashTeamsGenDashData):
         if not self._stats_service.is_ready:
             return self._stats_service_not_available_response
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post('http://localhost:8010/dash-teams/plots-data', json=data.clamp()) as resp:
-                    resp_json = await resp.json()
-            return JSONResponse(content=resp_json, media_type='application/json', status_code=resp.status)
-        except aiohttp.ClientConnectionError as e:
+
+        data_tables = await compose_data_frames(self._stats_service)
+
+        if data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
-                content={
-                    'error': str(e)
-                },
+                content={"error": "users sent no statistics so far"},
                 media_type='application/json',
-                status_code=500)
+                status_code=404,
+            )
+
+        data = dashboard_teams(data_tables, post.users_selected)
+        return JSONResponse(
+            content=data,
+            media_type='application/json'
+        )
 
     async def _telemetry_basic(self, data: TelemetryBasicData, request: Request, authorization: str = Header(None)):
         account = self._account_from_bearer(authorization)
@@ -146,61 +151,64 @@ class BaseTabStatisticsRouter(APIRouter):
         ip = request.client.host
         clamp = data.clamp()
 
-        for record in clamp['records']:
-            await asyncio.sleep(0)
-            if clamp['teletype'] == 'network':
-                self._stats_service.network_insert(
-                    TelemetryNetwork(
-                        tenant_name=account,
-                        ip=ip,
-                        enduser_client_version=clamp['enduser_client_version'],
-                        counter=record['counter'],
-                        error_message=record['error_message'],
-                        scope=record['scope'],
-                        success=record['success'],
-                        url=record['url'],
-                        teletype=clamp['teletype'],
-                        ts_start=clamp['ts_start'],
-                        ts_end=clamp['ts_end']
+        async with ScyllaBatchInserter(self._stats_service) as inserter:
+            for record in clamp['records']:
+                if clamp['teletype'] == 'network':
+                    await inserter.insert(
+                        dict(
+                            tenant_name=account,
+                            ip=ip,
+                            enduser_client_version=clamp['enduser_client_version'],
+                            counter=record['counter'],
+                            error_message=record['error_message'],
+                            scope=record['scope'],
+                            success=record['success'],
+                            url=record['url'],
+                            teletype=clamp['teletype'],
+                            ts_start=clamp['ts_start'],
+                            ts_end=clamp['ts_end']
+                        ),
+                        to="net"
                     )
-                )
-            elif clamp['teletype'] == 'robot_human':
-                self._stats_service.robot_human_insert(
-                    TelemetryRobotHuman(
-                        tenant_name=account,
-                        ip=ip,
-                        enduser_client_version=clamp['enduser_client_version'],
+                elif clamp['teletype'] == 'robot_human':
+                    await inserter.insert(
+                        dict(
+                            tenant_name=account,
+                            ip=ip,
+                            enduser_client_version=clamp['enduser_client_version'],
 
-                        completions_cnt=record['completions_cnt'],
-                        file_extension=record['file_extension'],
-                        human_characters=record['human_characters'],
-                        model=record['model'],
-                        robot_characters=record['robot_characters'],
+                            completions_cnt=record['completions_cnt'],
+                            file_extension=record['file_extension'],
+                            human_characters=record['human_characters'],
+                            model=record['model'],
+                            robot_characters=record['robot_characters'],
 
-                        teletype=clamp['teletype'],
-                        ts_end=clamp['ts_end'],
-                        ts_start=clamp['ts_start'],
+                            teletype=clamp['teletype'],
+                            ts_end=clamp['ts_end'],
+                            ts_start=clamp['ts_start'],
+                        ),
+                        to="rh"
                     )
-                )
-            elif clamp['teletype'] == 'comp_counters':
-                self._stats_service.comp_counters_insert(
-                    TelemetryCompCounters(
-                        tenant_name=account,
-                        ip=ip,
-                        enduser_client_version=clamp['enduser_client_version'],
+                elif clamp['teletype'] == 'comp_counters':
+                    await inserter.insert(
+                        dict(
+                            tenant_name=account,
+                            ip=ip,
+                            enduser_client_version=clamp['enduser_client_version'],
 
-                        counters_json_text=json.dumps({
-                            k: v for k, v in record.items() if k.startswith('after')
-                        }),
-                        file_extension=record['file_extension'],
-                        model=record['model'],
-                        multiline=record['multiline'],
+                            counters_json_text=json.dumps({
+                                k: v for k, v in record.items() if k.startswith('after')
+                            }),
+                            file_extension=record['file_extension'],
+                            model=record['model'],
+                            multiline=record['multiline'],
 
-                        teletype=clamp['teletype'],
-                        ts_start=clamp['ts_start'],
-                        ts_end=clamp['ts_end']
+                            teletype=clamp['teletype'],
+                            ts_start=clamp['ts_start'],
+                            ts_end=clamp['ts_end']
+                        ),
+                        to="comp"
                     )
-                )
 
         return JSONResponse({"retcode": "OK"})
 
@@ -212,30 +220,30 @@ class BaseTabStatisticsRouter(APIRouter):
 
         ip = request.client.host
         clamp = data.clamp()
-        if not clamp['records']:
-            return JSONResponse({"retcode": "OK"})
 
-        for record in clamp['records']:
-            self._stats_service.snippets_insert(
-                TelemetrySnippets(
-                    tenant_name=account,
-                    ip=ip,
-                    enduser_client_version=clamp['enduser_client_version'],
-                    model=record['model'],
-                    corrected_by_user=record['corrected_by_user'],
-                    remaining_percentage=record['remaining_percentage'],
-                    created_ts=record['created_ts'],
-                    accepted_ts=record['created_ts'],
-                    finished_ts=record['finished_ts'],
-                    grey_text=record['grey_text'],
-                    cursor_character=record['inputs']['cursor']['character'],
-                    cursor_file=record['inputs']['cursor']['file'],
-                    cursor_line=record['inputs']['cursor']['line'],
-                    multiline=record['inputs']['multiline'],
-                    sources=json.dumps(record['inputs']['sources']),
-                    teletype=clamp['teletype']
+        async with ScyllaBatchInserter(self._stats_service) as inserter:
+            for record in clamp['records']:
+                await inserter.insert(
+                    dict(
+                        tenant_name=account,
+                        ip=ip,
+                        enduser_client_version=clamp['enduser_client_version'],
+                        model=record['model'],
+                        corrected_by_user=record['corrected_by_user'],
+                        remaining_percentage=record['remaining_percentage'],
+                        created_ts=record['created_ts'],
+                        accepted_ts=record['created_ts'],
+                        finished_ts=record['finished_ts'],
+                        grey_text=record['grey_text'],
+                        cursor_character=record['inputs']['cursor']['character'],
+                        cursor_file=record['inputs']['cursor']['file'],
+                        cursor_line=record['inputs']['cursor']['line'],
+                        multiline=record['inputs']['multiline'],
+                        sources=json.dumps(record['inputs']['sources']),
+                        teletype=clamp['teletype']
+                    ),
+                    to="snip"
                 )
-            )
 
         return JSONResponse({"retcode": "OK"})
 

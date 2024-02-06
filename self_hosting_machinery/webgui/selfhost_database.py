@@ -1,120 +1,216 @@
 import os
-import asyncio
 import uuid
 import logging
+import asyncio
 
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Dict, Any, Iterable, List, Union, AsyncIterator
 
-from cassandra.cluster import Cluster, Session
-from cassandra.cluster import NoHostAvailable
-from cassandra.cluster import DCAwareRoundRobinPolicy
-from cassandra.auth import PlainTextAuthProvider
-
-from cassandra.cqlengine import columns, connection
-from cassandra.cqlengine.management import sync_table
-from cassandra.cqlengine.models import Model
+from more_itertools import chunked
+from scyllapy import Scylla, InlineBatch, ExecutionProfile, Consistency, SerialConsistency
+from scyllapy.query_builder import Insert, Select
 
 
 os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
-# maybe we should use aiocassandra instead of cassandra
 
 
-def init_model(
-        model_cls,
-        keyspace: str,
-        connection: str,  # noqa;
-):
-    model_cls.__keyspace__ = keyspace
-    model_cls.__connection__ = connection
-    sync_table(model_cls, keyspaces=[keyspace], connections=[connection])
-    return model_cls
+class ScyllaModel:
+    INSERT_BSIZE: int = 128
+
+    def __init__(self, *args, **kwargs):
+        self.is_ready = False
+
+    async def init(self, session: Scylla) -> None:
+        await session.execute(self.create_table_query())
+        self.is_ready = True
+
+    async def count(self, session: Scylla) -> int:
+        query = f"SELECT COUNT(*) FROM {self.name}"
+        result = await session.execute(query)
+        return result.first()["count"]
+
+    async def insert(self, session: Scylla, data: Iterable[Dict]) -> None:
+        for data_b in chunked(data, self.INSERT_BSIZE):
+            batch = InlineBatch()
+            for row in data_b:
+                i = Insert(self.name)
+                [i.set(k, v) for k, v in row.items()]
+                i.add_to_batch(batch)
+            await session.batch(batch)
+
+    @property
+    def name(self) -> str:
+        raise NotImplementedError()
+
+    def create_table_query(self) -> str:
+        raise NotImplementedError()
 
 
-class UsersAccessControl(Model):
-    account = columns.Text(primary_key=True)
-    team = columns.Text()
-    api_key = columns.Text()
+class ScyllaBatchInserter:
+    def __init__(
+            self,
+            scylla_service: Any,
+            b_size: int = 128
+    ):
+        self._scylla_service = scylla_service
+        self._b_size = b_size
+        self._cache = {}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        for to, data in self._cache.items():
+            await self._scylla_service.insert(data=data, to=to)
+
+    async def insert(self, data: Union[Dict, Iterable[Dict]], to: str) -> None:
+        data = [data] if not isinstance(data, list) else data
+        for d in data:
+            self._cache.setdefault(to, []).append(d)
+            if len(self._cache[to]) >= self._b_size:
+                await self._insert_records(self._cache[to], to)
+
+    async def _insert_records(self, data: List[Dict], to: str):
+        await self._scylla_service.insert(data=data, to=to)
+        self._cache[to] = []
 
 
-class TelemetryNetwork(Model):
-    id = columns.Text(primary_key=True)
-    tenant_name = columns.Text()
-    team = columns.Text(default="")
-    ts_reported = columns.DateTime()
-    ip = columns.Text()
-    enduser_client_version = columns.Text()
+class UsersAccessControl(ScyllaModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    counter = columns.Integer()
-    error_message = columns.Text()
-    scope = columns.Text()
-    success = columns.Boolean()
-    url = columns.Text()
+    @property
+    def name(self) -> str:
+        return "users_access_control"
 
-    teletype = columns.Text()
-    ts_start = columns.Integer()
-    ts_end = columns.Integer()
-
-
-class TelemetrySnippets(Model):
-    id = columns.Text(primary_key=True)
-    tenant_name = columns.Text()
-    team = columns.Text(default="")
-    ts_reported = columns.DateTime()
-    ip = columns.Text()
-    enduser_client_version = columns.Text()
-
-    model = columns.Text()
-    corrected_by_user = columns.Text()
-    remaining_percentage = columns.Float()
-    created_ts = columns.Integer()
-    accepted_ts = columns.Integer()
-    finished_ts = columns.Integer()
-    grey_text = columns.Text()
-    cursor_character = columns.Integer()
-    cursor_file = columns.Text()
-    cursor_line = columns.Integer()
-    multiline = columns.Boolean()
-    sources = columns.Text()
-
-    teletype = columns.Text()
+    def create_table_query(self) -> str:
+        return """
+            CREATE TABLE IF NOT EXISTS users_access_control (
+                account text PRIMARY KEY,
+                team text,
+                api_key text
+            );
+        """
 
 
-class TelemetryRobotHuman(Model):
-    id = columns.Text(primary_key=True)
-    tenant_name = columns.Text()
-    team = columns.Text(default="")
-    ts_reported = columns.DateTime()
-    ip = columns.Text()
-    enduser_client_version = columns.Text()
+class TelemetryNetwork(ScyllaModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    completions_cnt = columns.Integer()
-    file_extension = columns.Text()
-    human_characters = columns.Integer()
-    model = columns.Text()
-    robot_characters = columns.Integer()
+    @property
+    def name(self) -> str:
+        return "telemetry_network"
 
-    teletype = columns.Text()
-    ts_start = columns.Integer()
-    ts_end = columns.Integer()
+    def create_table_query(self) -> str:
+        return """
+            CREATE TABLE IF NOT EXISTS telemetry_network (
+                id text PRIMARY KEY,
+                tenant_name text,
+                team text,
+                ts_reported timestamp,
+                ip text,
+                enduser_client_version text,
+                counter int,
+                error_message text,
+                scope text,
+                success boolean,
+                url text,
+                teletype text,
+                ts_start int,
+                ts_end int
+            );
+        """
 
 
-class TelemetryCompCounters(Model):
-    id = columns.Text(primary_key=True)
-    tenant_name = columns.Text()
-    team = columns.Text(default="")
-    ts_reported = columns.DateTime()
-    ip = columns.Text()
-    enduser_client_version = columns.Text()
+class TelemetrySnippets(ScyllaModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    counters_json_text = columns.Text()
-    file_extension = columns.Text()
-    model = columns.Text()
-    multiline = columns.Boolean()
+    @property
+    def name(self) -> str:
+        return "telemetry_snippets"
 
-    teletype = columns.Text()
-    ts_end = columns.Integer()
-    ts_start = columns.Integer()
+    def create_table_query(self) -> str:
+        return """
+            CREATE TABLE IF NOT EXISTS telemetry_snippets (
+                id text PRIMARY KEY,
+                tenant_name text,
+                team text,
+                ts_reported timestamp,
+                ip text,
+                enduser_client_version text,
+                model text,
+                corrected_by_user text,
+                remaining_percentage float,
+                created_ts int,
+                accepted_ts int,
+                finished_ts int,
+                grey_text text,
+                cursor_character int,
+                cursor_file text,
+                cursor_line int,
+                multiline boolean,
+                sources text,
+                teletype text
+            );
+        """
+
+
+class TelemetryRobotHuman(ScyllaModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @property
+    def name(self) -> str:
+        return "telemetry_robot_human"
+
+    def create_table_query(self) -> str:
+        return """
+            CREATE TABLE IF NOT EXISTS telemetry_robot_human (
+                id text PRIMARY KEY,
+                tenant_name text,
+                team text,
+                ts_reported timestamp,
+                ip text,
+                enduser_client_version text,
+                completions_cnt int,
+                file_extension text,
+                human_characters int,
+                model text,
+                robot_characters int,
+                teletype text,
+                ts_start int,
+                ts_end int
+            );
+        """
+
+
+class TelemetryCompCounters(ScyllaModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @property
+    def name(self) -> str:
+        return "telemetry_comp_counters"
+
+    def create_table_query(self) -> str:
+        return """
+            CREATE TABLE IF NOT EXISTS telemetry_comp_counters (
+                id text PRIMARY KEY,
+                tenant_name text,
+                team text,
+                ts_reported timestamp,
+                ip text,
+                enduser_client_version text,
+                counters_json_text text,
+                file_extension text,
+                model text,
+                multiline boolean,
+                teletype text,
+                ts_end int,
+                ts_start int
+            );
+        """
 
 
 class DisableLogger:
@@ -128,42 +224,14 @@ class DisableLogger:
 
 class RefactDatabase:
     KEYSPACE = os.environ.get("REFACT_KEYSPACE", "smc")
-    CONN_NAME = "refactdb_connection"
 
     def __init__(self):
-        # NOTE: this is a hack to wait for a db to be ready
         self._session = None
-        self._cluster = None
-        self._conn_registered = False
-
-    async def connect(self):
-        while True:
-            try:
-                auth_provider = PlainTextAuthProvider(
-                    username="cassandra", password="cassandra")
-                self._cluster = Cluster(
-                    contact_points=[self._database_host],
-                    port=self._database_port, auth_provider=auth_provider, protocol_version=4,
-                    load_balancing_policy=DCAwareRoundRobinPolicy(local_dc='datacenter1'))
-                with DisableLogger():
-                    self._session = self._cluster.connect()
-                connection.register_connection(self.CONN_NAME, session=self._session)
-                self._conn_registered = True
-                break
-            except NoHostAvailable:
-                logging.warning(f"No database available on {self._database_host}:{self._database_port}, "
-                                f"sleep for 10 seconds...")
-                await asyncio.sleep(10)
-
-        self._create_and_set_keyspace()
-
-    def __del__(self):
-        if self._session:
-            self._session.shutdown()
-        if self._cluster:
-            self._cluster.shutdown()
-        if self._conn_registered:
-            connection.unregister_connection(self.CONN_NAME)
+        self._query_profile = ExecutionProfile(
+            consistency=Consistency.LOCAL_ONE,
+            serial_consistency=SerialConsistency.LOCAL_SERIAL,
+            request_timeout=5
+        )
 
     @property
     def _database_host(self) -> str:
@@ -173,15 +241,38 @@ class RefactDatabase:
     def _database_port(self) -> int:
         return int(os.environ.get("REFACT_DATABASE_PORT", 9042))
 
-    def _create_and_set_keyspace(self):
-        self._session.execute(f"""
-            CREATE KEYSPACE IF NOT EXISTS {self.KEYSPACE}
+    async def connect(self):
+        # NOTE: this is a hack to wait for a db to be ready
+        while True:
+            try:
+                self._session = Scylla(
+                    contact_points=[f"{self._database_host}:{self._database_port}"],
+                    username="cassandra",
+                    password="cassandra",
+                    default_execution_profile=self._query_profile,
+                )
+                await self._session.startup()
+                break
+            except Exception as e:
+                logging.warning(f"No database available on {self._database_host}:{self._database_port}; error: {e} "
+                                f"sleep for 10 seconds...")
+                await asyncio.sleep(10)
+
+        await self._create_keyspace_if_not_exists(self.KEYSPACE)
+        await self.session.use_keyspace(self.KEYSPACE)
+
+    def __del__(self):
+        if self._session:
+            asyncio.shield(self._session.shutdown())
+
+    async def _create_keyspace_if_not_exists(self, keyspace: str) -> None:
+        await self._session.execute(f"""
+            CREATE KEYSPACE IF NOT EXISTS {keyspace}
             WITH replication = {{ 'class': 'SimpleStrategy', 'replication_factor': '2' }}
         """)
-        self._session.set_keyspace(self.KEYSPACE)
 
     @property
-    def session(self) -> Session:
+    def session(self) -> Scylla:
         return self._session
 
 
@@ -189,58 +280,52 @@ class StatisticsService:
 
     def __init__(self, database: RefactDatabase):
         self._database: RefactDatabase = database
-        self._net: Optional[Model] = None
-        self._snip: Optional[Model] = None
-        self._rh: Optional[Model] = None
-        self._comp: Optional[Model] = None
+        self._net: ScyllaModel = TelemetryNetwork()
+        self._snip: ScyllaModel = TelemetrySnippets()
+        self._rh: ScyllaModel = TelemetryRobotHuman()
+        self._comp: ScyllaModel = TelemetryCompCounters()
 
-    def init_models(self):
-        assert self._database.session is not None
-        self._net = init_model(TelemetryNetwork, self._database.KEYSPACE, self._database.CONN_NAME)
-        self._snip = init_model(TelemetrySnippets, self._database.KEYSPACE, self._database.CONN_NAME)
-        self._rh = init_model(TelemetryRobotHuman, self._database.KEYSPACE, self._database.CONN_NAME)
-        self._comp = init_model(TelemetryCompCounters, self._database.KEYSPACE, self._database.CONN_NAME)
+    async def init_models(self):
+        await self._net.init(self.session)
+        await self._snip.init(self.session)
+        await self._rh.init(self.session)
+        await self._comp.init(self.session)
 
     @property
     def is_ready(self) -> bool:
-        return self._comp is not None
+        return all([
+            self._net.is_ready,
+            self._snip.is_ready,
+            self._rh.is_ready,
+            self._comp.is_ready,
+        ])
 
-    def network_insert(self, telemetry_network: TelemetryNetwork):
-        self._net.create(**{
-            **telemetry_network._as_dict(),
-            "id": str(uuid.uuid1()),
-            "ts_reported": datetime.now(),
-        })
-
-    def snippets_insert(self, telemetry_snippets: TelemetrySnippets):
-        self._snip.create(**{
-            **telemetry_snippets._as_dict(),
-            "id": str(uuid.uuid1()),
-            "ts_reported": datetime.now(),
-        })
-
-    def robot_human_insert(self, telemetry_robot_human: TelemetryRobotHuman):
-        self._rh.create(**{
-            **telemetry_robot_human._as_dict(),
-            "id": str(uuid.uuid1()),
-            "ts_reported": datetime.now(),
-        })
-
-    def comp_counters_insert(self, telemetry_comp_counters: TelemetryCompCounters):
-        self._comp.create(**{
-            **telemetry_comp_counters._as_dict(),
-            "id": str(uuid.uuid1()),
-            "ts_reported": datetime.now(),
-        })
-
-    def get_robot_human_for_account(self, account: str) -> List[Dict[str, Any]]:
-        prep = self.session.prepare(
-            'select * from telemetry_robot_human where tenant_name = ? ALLOW FILTERING'
+    async def insert(self, data: Iterable[Dict], to: str) -> None:
+        data: Iterable[Dict[str, Any]] = (
+            {
+                "id": str(uuid.uuid1()),
+                "ts_reported": datetime.now(),
+                **d,
+            } for d in data
         )
-        records = []
-        # streaming from DB works weirdly, goes into a deadlock
-        for r in self.session.execute(prep, (account, )):
-            records.append({
+        if to == "net":
+            await self._net.insert(self.session, data)
+        elif to == "snip":
+            await self._snip.insert(self.session, data)
+        elif to == "rh":
+            await self._rh.insert(self.session, data)
+        elif to == "comp":
+            await self._comp.insert(self.session, data)
+        else:
+            raise NotImplementedError(f"cannot insert to {to}; type {to} does not exist")
+
+    async def get_robot_human_for_account(self, account: str) -> AsyncIterator[Dict]:
+        rows = await Select("telemetry_robot_human")\
+            .where("tenant_name =?", [account])\
+            .allow_filtering()\
+            .execute(self.session, paged=True)
+        async for r in rows:
+            yield {
                 "id": 0,
                 "tenant_name": r["tenant_name"],
                 "ts_reported": int(r["ts_reported"].timestamp()),
@@ -254,9 +339,34 @@ class StatisticsService:
                 "teletype": r["teletype"],
                 "ts_start": r["ts_start"],
                 "ts_end": r["ts_end"],
+            }
+
+    async def select_rh_from_ts(self, ts: int) -> List[Dict]:
+        records = []
+        rows = await Select("telemetry_robot_human")\
+            .where("ts_end >= ?", [ts])\
+            .allow_filtering()\
+            .execute(self.session, paged=True)
+        async for r in rows:
+            records.append({
+                "tenant_name": r["tenant_name"],
+                "team": r["team"],
+                "completions_cnt": r["completions_cnt"],
+                "file_extension": r["file_extension"],
+                "human_characters": r["human_characters"],
+                "model": r["model"],
+                "robot_characters": r["robot_characters"],
+                "ts_end": r["ts_end"],
             })
         return records
 
+    async def select_users_to_team(self) -> Dict[str, str]:
+        res = {}
+        rows = await Select("users_access_control").execute(self.session, paged=True)
+        async for r in rows:
+            res[r["account"]] = r["team"]
+        return res
+
     @property
-    def session(self) -> Session:
+    def session(self) -> Scylla:
         return self._database.session
