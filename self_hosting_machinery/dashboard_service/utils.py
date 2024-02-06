@@ -181,9 +181,6 @@ def retrieve_all_data_tables(session) -> StatsDataTables:
     robot_human_df = robot_human_df_from_ts(session, timestamp_start_of_year)
     # comp_counters_df = comp_counters_df_from_ts(stats_service, timestamp_start_of_year)
 
-    if robot_human_df.empty:
-        raise NoDataInDatabase("No data in database!")
-
     # network_df['dt_end'] = pd.to_datetime(network_df['ts_end'], unit='s')
     robot_human_df['dt_end'] = pd.to_datetime(robot_human_df['ts_end'], unit='s')
     # comp_counters_df['dt_end'] = pd.to_datetime(comp_counters_df['ts_end'], unit='s')
