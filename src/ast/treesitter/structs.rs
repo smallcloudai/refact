@@ -99,6 +99,7 @@ pub enum SymbolType {
     GlobalVar,
     Function,
     Class,
+    Enum,
     Method,
     Unknown,
 }

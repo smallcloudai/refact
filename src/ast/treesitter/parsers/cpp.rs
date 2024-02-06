@@ -12,7 +12,9 @@ use crate::ast::treesitter::structs::{SymbolDeclarationStruct, SymbolInfo, Symbo
 const CPP_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(translation_unit (declaration declarator: (init_declarator)) @global_variable)\n\
 (namespace_definition (declaration_list (declaration (init_declarator)) @global_variable))";
 const CPP_PARSER_QUERY_FUNCTION: &str = "((function_definition declarator: (function_declarator)) @function)";
-const CPP_PARSER_QUERY_CLASS: &str = "((class_specifier name: (type_identifier)) @class)\n((struct_specifier name: (type_identifier)) @struct)";
+const CPP_PARSER_QUERY_CLASS: &str = "((class_specifier name: (type_identifier)) @class)\n\
+((struct_specifier name: (type_identifier)) @struct)\n\
+((enum_specifier (_)) @enum)";
 // const CPP_PARSER_QUERY_CLASS: &str = "";
 const CPP_PARSER_QUERY_CALL_FUNCTION: &str = "";
 const CPP_PARSER_QUERY_IMPORT_STATEMENT: &str = "";
@@ -182,6 +184,48 @@ fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<
     Some(var)
 }
 
+fn get_enum_name_and_all_values(parent: Node, text: &str) -> (String, Vec<String>) {
+    let mut name: String = Default::default();
+    let mut values: Vec<String> = vec![];
+    for i in 0..parent.child_count() {
+        if let Some(child) = parent.child(i) {
+            let kind = child.kind();
+            match kind {
+                "type_identifier" => {
+                    name = text.slice(child.byte_range()).to_string();
+                }
+                "enumerator_list" => {
+                    for i in 0..child.child_count() {
+                        if let Some(child) = child.child(i) {
+                            let kind = child.kind();
+                            match kind {
+                                "enumerator" => {
+                                    for i in 0..child.child_count() {
+                                        if let Some(child) = child.child(i) {
+                                            let kind = child.kind();
+                                            match kind {
+                                                "identifier" => {
+                                                    let text = text.slice(child.byte_range());
+                                                    values.push(text.to_string());
+                                                    break;
+                                                }
+                                                _ => {}
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    (name, values)
+}
+
 const CPP_PARSER_QUERY_FIND_VARIABLES: &str = r#"((declaration type: [
 (template_type name: (type_identifier) @variable_type)
 (primitive_type) @variable_type
@@ -253,6 +297,27 @@ impl LanguageParser for CppParser {
                                            symbol_type: SymbolType::Class,
                                            meta_path: "".to_string(),
                                        });
+                    }
+                    "enum" => {
+                        let range = capture.node.range();
+                        let mut namespaces = get_namespace(Some(capture.node), code);
+                        let (enum_name, values) = get_enum_name_and_all_values(capture.node, code);
+                        namespaces.push(enum_name);
+                        let mut key = path.to_str().unwrap().to_string();
+                        namespaces.iter().for_each(|ns| {
+                            key += format!("::{}", ns).as_str();
+                        });
+                        values.iter().for_each(|value| {
+                            let key = format!("{}::{}", key, value);
+                            indexes.insert(key.clone(),
+                                           SymbolDeclarationStruct {
+                                               name: value.clone(),
+                                               definition_info: SymbolInfo { path: path.clone(), range },
+                                               children: vec![],
+                                               symbol_type: SymbolType::Enum,
+                                               meta_path: key,
+                                           });
+                        });
                     }
                     "function" => {
                         let range = capture.node.range();
@@ -341,7 +406,11 @@ mod tests {
         r#"
 #include <iostream>
 using namespace std;
- 
+
+enum TestEnum {
+val1 = 1,val2
+};
+
 int b = 0;
 
 // comment
