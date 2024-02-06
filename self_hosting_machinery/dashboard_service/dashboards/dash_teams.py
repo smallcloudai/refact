@@ -7,7 +7,7 @@ import pandas as pd
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from self_hosting_machinery.dashboard_service.utils import StatsDataTables
+from self_hosting_machinery.dashboard_service.utils import StatsDataTablesCache
 from self_hosting_machinery.webgui.selfhost_statistics import DashTeamsGenDashData
 from self_hosting_machinery.dashboard_service.dashboards.dash_prime import barplot_completions, barplot_rh
 
@@ -69,7 +69,7 @@ def barplot_completions_users(
 class DashboardTeamsRouter(APIRouter):
     def __init__(
             self,
-            data_tables: Optional[StatsDataTables] = None,
+            data_tables: StatsDataTablesCache,
             *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -78,38 +78,40 @@ class DashboardTeamsRouter(APIRouter):
         self.add_api_route("/plots-data", self._generate_dashboard, methods=["POST"])
 
     async def _plots_data(self):
-        if self._data_tables is None:
-            return JSONResponse(
-                content={"error": "users sent no statistics so far"},
-                media_type='application/json',
-                status_code=404,
-            )
-        time_start = time.time()
-        data = {
-            "teams_data": teams_data(self._data_tables.robot_human_df),
-        }
-        print(f"DashboardTeamsRouter._plots_data took: {round(time.time() - time_start, 3)}s")
+        with self._data_tables as data_tables:
+            if data_tables.robot_human_df.empty:
+                return JSONResponse(
+                    content={"error": "users sent no statistics so far"},
+                    media_type='application/json',
+                    status_code=404,
+                )
+            time_start = time.time()
+            data = {
+                "teams_data": teams_data(self._data_tables.robot_human_df),
+            }
+            print(f"DashboardTeamsRouter._plots_data took: {round(time.time() - time_start, 3)}s")
         return JSONResponse(
             content=data,
             media_type='application/json'
         )
 
     async def _generate_dashboard(self, post: DashTeamsGenDashData):
-        if self._data_tables is None:
-            return JSONResponse(
-                content={"error": "users sent no statistics so far"},
-                media_type='application/json',
-                status_code=404,
-            )
-        time_start = time.time()
-        data = {
-            "barplot_completions_users": barplot_completions_users(
-                self._data_tables.robot_human_df,
-                self._data_tables.extra,
-                post,
-            ),
-        }
-        print(f"DashboardTeamsRouter._generate_dashboard took: {round(time.time() - time_start, 3)}s")
+        with self._data_tables as data_tables:
+            if data_tables.robot_human_df.empty:
+                return JSONResponse(
+                    content={"error": "users sent no statistics so far"},
+                    media_type='application/json',
+                    status_code=404,
+                )
+            time_start = time.time()
+            data = {
+                "barplot_completions_users": barplot_completions_users(
+                    self._data_tables.robot_human_df,
+                    self._data_tables.extra,
+                    post,
+                ),
+            }
+            print(f"DashboardTeamsRouter._generate_dashboard took: {round(time.time() - time_start, 3)}s")
         return JSONResponse(
             content=data,
             media_type='application/json'

@@ -1,32 +1,86 @@
 import copy
+import time
+
 import pandas as pd
 
 from datetime import datetime
-from typing import Dict, Any
-from dataclasses import dataclass
+from typing import Dict, Any, Optional, Union
+from dataclasses import dataclass, field
 
 from self_hosting_machinery.webgui.selfhost_database import StatisticsService
 
 
 @dataclass
 class StatsDataTables:
-    network_df: pd.DataFrame
-    robot_human_df: pd.DataFrame
-    comp_counters_df: pd.DataFrame
-    extra: Dict
+    network_df: Optional[pd.DataFrame] = pd.DataFrame()
+    robot_human_df: Optional[pd.DataFrame] = pd.DataFrame()
+    comp_counters_df: Optional[pd.DataFrame] = pd.DataFrame()
+    extra: Optional[Dict] = field(default_factory=dict)
+
+
+class StatsDataTablesCache:
+    def __init__(
+            self,
+            session,
+            clear_cache_when_done: bool = True
+    ):
+        self._session = session
+        self._stats_data_tables: Optional[StatsDataTables] = None
+        self._clear_cache_when_done = clear_cache_when_done
+
+    def __enter__(self):
+        self._load_into_cache_if_empty()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._clear_cache_when_done:
+            self.clear_cache()
+
+    def _get_attribute(self, attr: str) -> Union[pd.DataFrame, Dict]:
+        self._load_into_cache_if_empty()
+        return getattr(self._stats_data_tables, attr)
+
+    @property
+    def network_df(self) -> pd.DataFrame:
+        return self._get_attribute('network_df')
+
+    @property
+    def robot_human_df(self) -> pd.DataFrame:
+        return self._get_attribute('robot_human_df')
+
+    @property
+    def comp_counters_df(self) -> pd.DataFrame:
+        return self._get_attribute('comp_counters_df')
+
+    @property
+    def extra(self) -> Dict:
+        return self._get_attribute('extra')
+
+    def _cache_is_empty(self) -> bool:
+        return self._stats_data_tables is None
+
+    def clear_cache(self):
+        self._stats_data_tables = None
+
+    def _load_into_cache_if_empty(self):
+        if not self._cache_is_empty():
+            return
+        time_start = time.time()
+        self._stats_data_tables = retrieve_all_data_tables(self._session)
+        print(f"stats data tables loaded in {time.time() - time_start:.3f}s")
 
 
 class NoDataInDatabase(Exception):
     pass
 
 
-def network_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.DataFrame:
-    prep = stats_service.session.prepare(
+def network_df_from_ts(session, ts: int) -> pd.DataFrame:
+    prep = session.prepare(
         "SELECT * FROM telemetry_network WHERE ts_end >= ? ALLOW FILTERING"
     )
 
     def fetch_records():
-        for record in stats_service.session.execute(
+        for record in session.execute(
                 prep, (ts,)
         ):
             yield {
@@ -48,26 +102,26 @@ def network_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.DataFram
     return pd.DataFrame(fetch_records())
 
 
-def try_get_user_to_team_dict(stats_service: StatisticsService) -> Dict[str, str]:
+def try_get_user_to_team_dict(session) -> Dict[str, str]:
     res = {}
     try:
-        prep = stats_service.session.prepare(
+        prep = session.prepare(
             "SELECT * FROM users_access_control"
         )
-        for record in stats_service.session.execute(prep):
+        for record in session.execute(prep):
             res.setdefault(record["account"], record["team"])
     except Exception:
         pass
     return res
 
 
-def robot_human_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.DataFrame:
-    prep = stats_service.session.prepare(
+def robot_human_df_from_ts(session, ts: int) -> pd.DataFrame:
+    prep = session.prepare(
         "SELECT * FROM telemetry_robot_human WHERE ts_end >= ? ALLOW FILTERING"
     )
 
     def fetch_records():
-        for record in stats_service.session.execute(
+        for record in session.execute(
                 prep, (ts,)
         ):
             yield {
@@ -89,13 +143,13 @@ def robot_human_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.Data
     return pd.DataFrame(fetch_records())
 
 
-def comp_counters_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.DataFrame:
-    prep = stats_service.session.prepare(
+def comp_counters_df_from_ts(session, ts: int) -> pd.DataFrame:
+    prep = session.prepare(
         "SELECT * FROM telemetry_comp_counters WHERE ts_end >= ? ALLOW FILTERING"
     )
 
     def fetch_records():
-        for record in stats_service.session.execute(
+        for record in session.execute(
                 prep, (ts,)
         ):
             yield {
@@ -116,49 +170,47 @@ def comp_counters_df_from_ts(stats_service: StatisticsService, ts: int) -> pd.Da
     return pd.DataFrame(fetch_records())
 
 
-def retrieve_all_data_tables(stats_service: StatisticsService) -> StatsDataTables:
+def retrieve_all_data_tables(session) -> StatsDataTables:
     current_year = datetime.now().year
     start_of_year = datetime(current_year, 1, 1, 0, 0, 0, 0)
     timestamp_start_of_year = int(start_of_year.timestamp())
-    user_to_team_dict = try_get_user_to_team_dict(stats_service)
+    user_to_team_dict = try_get_user_to_team_dict(session)
 
     extra = {}
-    network_df = network_df_from_ts(stats_service, timestamp_start_of_year)
-    robot_human_df = robot_human_df_from_ts(stats_service, timestamp_start_of_year)
-    comp_counters_df = comp_counters_df_from_ts(stats_service, timestamp_start_of_year)
+    # network_df = network_df_from_ts(stats_service, timestamp_start_of_year)
+    robot_human_df = robot_human_df_from_ts(session, timestamp_start_of_year)
+    # comp_counters_df = comp_counters_df_from_ts(stats_service, timestamp_start_of_year)
 
-    if network_df.empty or robot_human_df.empty or comp_counters_df.empty:
+    if robot_human_df.empty:
         raise NoDataInDatabase("No data in database!")
 
-    network_df['dt_end'] = pd.to_datetime(network_df['ts_end'], unit='s')
+    # network_df['dt_end'] = pd.to_datetime(network_df['ts_end'], unit='s')
     robot_human_df['dt_end'] = pd.to_datetime(robot_human_df['ts_end'], unit='s')
-    comp_counters_df['dt_end'] = pd.to_datetime(comp_counters_df['ts_end'], unit='s')
+    # comp_counters_df['dt_end'] = pd.to_datetime(comp_counters_df['ts_end'], unit='s')
 
-    network_df['team'] = network_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
+    # network_df['team'] = network_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
     robot_human_df['team'] = robot_human_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
-    comp_counters_df['team'] = comp_counters_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
+    # comp_counters_df['team'] = comp_counters_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
 
-    network_df.sort_values(by='dt_end', inplace=True)
+    # network_df.sort_values(by='dt_end', inplace=True)
     robot_human_df.sort_values(by='dt_end', inplace=True)
-    comp_counters_df.sort_values(by='dt_end', inplace=True)
+    # comp_counters_df.sort_values(by='dt_end', inplace=True)
 
     extra["week_n_to_fmt"] = {
         week_n: datetime.strftime(group["dt_end"].iloc[0], "%b %d")
-        for week_n, group in network_df.groupby(network_df['dt_end'].dt.isocalendar().week)
+        for week_n, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.isocalendar().week)
     }
     extra["day_to_fmt"] = [
         datetime.strftime(group["dt_end"].iloc[0], "%b %d")
-        for date, group in network_df.groupby(network_df['dt_end'].dt.date)
+        for date, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.date)
     ]
     extra["month_to_fmt"] = {
         month_n: datetime.strftime(group["dt_end"].iloc[0], "%b")
-        for month_n, group in network_df.groupby(network_df['dt_end'].dt.month)
+        for month_n, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.month)
     }
 
     return StatsDataTables(
-        network_df=network_df,
         robot_human_df=robot_human_df,
-        comp_counters_df=comp_counters_df,
         extra=extra,
     )
 

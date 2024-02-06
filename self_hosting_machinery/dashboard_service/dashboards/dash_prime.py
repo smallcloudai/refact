@@ -1,13 +1,13 @@
 import time
 
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import pandas as pd
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from self_hosting_machinery.dashboard_service.utils import StatsDataTables, complete_date_axis
+from self_hosting_machinery.dashboard_service.utils import StatsDataTablesCache, complete_date_axis
 
 
 def robot_human_ratio(robot: int, human: int) -> float:
@@ -226,7 +226,7 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
 class DashboardPrimeRouter(APIRouter):
     def __init__(
             self,
-            data_tables: Optional[StatsDataTables],
+            data_tables: StatsDataTablesCache,
             *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -234,21 +234,22 @@ class DashboardPrimeRouter(APIRouter):
         self.add_api_route("/plots-data", self._plots_data, methods=["GET"])
 
     async def _plots_data(self):
-        if self._data_tables is None:
-            return JSONResponse(
-                content={"error": "users sent no statistics so far"},
-                media_type='application/json',
-                status_code=404,
-            )
+        with self._data_tables as data_tables:
+            if data_tables.robot_human_df.empty:
+                return JSONResponse(
+                    content={"error": "users sent no statistics so far"},
+                    media_type='application/json',
+                    status_code=404,
+                )
 
-        time_start = time.time()
-        data = {
-            "table_lang_comp_stats": table_lang_comp_stats(self._data_tables.robot_human_df),
-            "barplot_rh": barplot_rh(self._data_tables.robot_human_df, self._data_tables.extra),
-            "barplot_completions": barplot_completions(self._data_tables.robot_human_df, self._data_tables.extra),
-            "barplot_users": barplot_users(self._data_tables.robot_human_df, self._data_tables.extra),
-        }
-        print(f"DashboardPrimeRouter._plots_data took: {round(time.time() - time_start, 3)}s")
+            time_start = time.time()
+            data = {
+                "table_lang_comp_stats": table_lang_comp_stats(self._data_tables.robot_human_df),
+                "barplot_rh": barplot_rh(self._data_tables.robot_human_df, self._data_tables.extra),
+                "barplot_completions": barplot_completions(self._data_tables.robot_human_df, self._data_tables.extra),
+                "barplot_users": barplot_users(self._data_tables.robot_human_df, self._data_tables.extra),
+            }
+            print(f"DashboardPrimeRouter._plots_data took: {round(time.time() - time_start, 3)}s")
         return JSONResponse(
             content=data,
             media_type='application/json'
