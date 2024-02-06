@@ -66,7 +66,12 @@ const meta = {
     canChangeModel: true,
     hasContextFile: false,
     handleContextFile: noop,
-    commands: testCommands,
+    commands: {
+      available_commands: testCommands,
+      selected_command: "",
+      arguments: [],
+      is_cmd_executable: false,
+    },
     attachFile: {
       name: "todo.md",
       can_paste: true,
