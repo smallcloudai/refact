@@ -15,7 +15,7 @@ const App: React.FC<ComboBoxProps> = (props) => {
         onChange={setValue}
         selectedCommand={selectedCommand}
         setSelectedCommand={setSelectedCommand}
-        executeCommand={() => console.log("execute command")}
+        executeCommand={() => ({})}
       />
     </Card>
   );
@@ -33,8 +33,6 @@ export const Default: StoryObj<typeof ComboBox> = {
     commands: ["@file"],
     requestCommandsCompletion: () => ({}),
     commandArguments: ["/foo", "/bar"],
-    // value: value,
-    // onChange: () => ({}),
     onSubmit: () => ({}),
     placeholder: "Type @ for commands",
     render: (props) => <TextArea {...props} />,
