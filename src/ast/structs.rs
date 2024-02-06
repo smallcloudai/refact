@@ -34,5 +34,5 @@ pub struct SearchResult {
     pub file_path: PathBuf,
     #[serde(with = "PointDef")]
     pub cursor: Point,
-    pub search_results: Vec<SymbolDeclarationStruct>,
+    pub search_results: Vec<SymbolsSearchResultStruct>,
 }
