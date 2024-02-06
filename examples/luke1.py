@@ -1,4 +1,5 @@
-import requests, json, termcolor
+import termcolor
+import chat_with_at_command
 
 
 my_prompt = """
@@ -52,46 +53,6 @@ initial_messages = [
     "[PROVIDE_COMMANDS_STEP]\n"},
 ]
 
-def ask_chat(messages):
-    response = requests.post(
-        "http://127.0.0.1:8001/v1/chat",
-        json={
-            "messages": messages,
-            "temperature": 0.1,
-            "max_tokens": 300,
-            "model": "gpt-3.5-turbo-0125",
-        },
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": "Bearer XXX",
-        },
-        timeout=60,
-    )
-    messages_back = []
-    accum_content = ""
-    accum_role = ""
-    for x in response.text.splitlines():
-        if not x.strip():
-            continue
-        if not x.startswith("data: "):
-            print(x)
-            print("ERROR: unexpected response format")
-            continue
-        if x[6:].startswith("[DONE]"):
-            break
-        j = json.loads(x[6:])
-        if "choices" in j:
-            # streaming
-            choice0 = j["choices"][0]
-            accum_role = choice0["delta"]["role"]
-            accum_content += choice0["delta"]["content"]
-        else:
-            # content/role without streaming, replacing the last user message
-            messages_back.append({"role": j["role"], "content": j["content"]})
-    if accum_role:
-        messages_back.append({"role": accum_role, "content": accum_content})
-    return messages_back
-
 
 def rewrite_assistant_says_to_at_commands(ass):
     out = ""
@@ -110,10 +71,10 @@ def dialog_turn(messages):
     for msgdict in messages:
         print(termcolor.colored(msgdict["role"], "blue"))
         print(termcolor.colored(msgdict["content"], "green"))
-    messages_back = ask_chat(messages)
+    messages_back = chat_with_at_command.ask_chat(messages)
     for msgdict in messages_back:
         print(termcolor.colored(msgdict["role"], "blue"))
-        print(termcolor.colored(msgdict["content"], "red"))
+        print(termcolor.colored(msgdict["content"], "white"))
 
     assistant_says = messages_back[-1]["content"]
     messages_without_last_user = messages[:-1]
@@ -137,16 +98,3 @@ def do_all():
 
 do_all()
 
-
-
-
-
-def do_less():
-    messages = [
-    {"role": "user", "content": "@workspace DeltaDeltaChatStreamer\n@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\nHello world"}
-    ]
-    messages_back = ask_chat(messages)
-    print(messages_back)
-
-
-# do_less()
