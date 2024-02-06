@@ -15,6 +15,7 @@ use crate::background_tasks::BackgroundTasksHolder;
 use crate::fetch_embedding;
 use crate::vecdb;
 use crate::vecdb::file_filter;
+use crate::vecdb::file_watcher_service::read_and_load_jsonl;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
 use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants};
@@ -117,15 +118,16 @@ async fn create_vecdb(
                 db.init_folders(folders).await;
             }
         }
-        // FIXME:
-        // Race between file_watcher_task that puts files into the queue and
-        // vectorizer_service that can report empty queue as "vectorization finished"
-        let mut tasks = vec_db.start_background_tasks().await;
-        tasks.extend(vec![tokio::spawn(vecdb::file_watcher_service::file_watcher_task(global_context.clone()))]);
-        background_tasks.extend(tasks);
+        let files_set_path = PathBuf::from(gcx_locked.cmdline.files_set_path.clone());
+        read_and_load_jsonl(&files_set_path, &vec_db).await;
 
+        let mut tasks = vec_db.start_background_tasks().await;
         gcx_locked.vec_db = Arc::new(AMutex::new(Some(vec_db)));
 
+        tasks.extend(vec![
+            tokio::spawn(vecdb::file_watcher_service::file_watcher_task(files_set_path, global_context.clone()))
+        ]);
+        background_tasks.extend(tasks);
     }
     Ok(())
 }
