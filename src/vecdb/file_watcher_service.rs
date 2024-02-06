@@ -14,6 +14,7 @@ use tokio::io::BufReader;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::global_context::GlobalContext;
+use crate::vecdb::vecdb::VecDb;
 
 fn make_async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
     let (mut tx, rx) = channel(1);
@@ -53,35 +54,40 @@ async fn parse_jsonl(path: &PathBuf) -> Result<Vec<PathBuf>, String> {
     Ok(paths)
 }
 
+pub async fn read_and_load_jsonl(
+    files_set_path: &PathBuf,
+    vec_db: &VecDb
+) {
+    let filenames_vec = match parse_jsonl(&files_set_path).await {
+        Ok(data) => data,
+        Err(_) => {
+            info!("invalid jsonl file: {:?}", files_set_path);
+            vec![]
+        }
+    };
+    vec_db.add_or_update_files(filenames_vec, true).await;
+}
+
 pub async fn file_watcher_task(
+    files_set_path: PathBuf,
     global_context: Arc<ARwLock<GlobalContext>>,
 ) -> () {
     let (mut watcher, mut rx) = make_async_watcher().expect("Failed to make file watcher");
-    let maybe_path = global_context.read().await.cmdline.files_set_path.clone();
-    if maybe_path.is_empty() {
-        info!("files_set_path is empty: no files to watch");
+    if files_set_path.to_str().unwrap_or("").is_empty() {
+        info!("files_set_path is empty. Exiting.");
         return;
     }
-    let path = PathBuf::from(maybe_path);
     let load_data = || async {
-        let filenames_vec = match parse_jsonl(&path).await {
-            Ok(data) => data,
-            Err(_) => {
-                info!("invalid jsonl file: {:?}", path);
-                vec![]
-            }
-        };
         match *global_context.read().await.vec_db.lock().await {
-            Some(ref mut db) => db.add_or_update_files(filenames_vec, true).await,
+            Some(ref mut db) => read_and_load_jsonl(&files_set_path, db).await,
             None => {}
-        };
+        }
     };
 
-    if watcher.watch(path.as_ref(), RecursiveMode::Recursive).is_err() {
-        error!("file watcher {:?} failed to start watching", path);
+    if watcher.watch(&files_set_path, RecursiveMode::Recursive).is_err() {
+        error!("file watcher {:?} failed to start watching", files_set_path);
         return;
     }
-    load_data().await;
     while let Some(res) = rx.next().await {
         match res {
             Ok(event) => {
@@ -89,13 +95,13 @@ pub async fn file_watcher_task(
                     EventKind::Any => {}
                     EventKind::Access(_) => {}
                     EventKind::Create(_) => {
-                        info!("file {:?} was created", path)
+                        info!("file {:?} was created", files_set_path)
                     }
                     EventKind::Modify(_) => {
                         load_data().await;
                     }
                     EventKind::Remove(_) => {
-                        info!("file {:?} was removed", path)
+                        info!("file {:?} was removed", files_set_path)
                         // TODO: should we remove everything inside the database?
                     }
                     EventKind::Other => {}
