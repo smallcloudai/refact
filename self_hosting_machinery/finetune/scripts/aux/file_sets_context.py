@@ -95,3 +95,4 @@ class FileSetsContext:
         traces.log("-" * 40 + "TEST SET" + "-" * 40)
         for file in test_files:
             traces.log(file["path"])
+        traces.log("\n")
