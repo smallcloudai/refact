@@ -4,11 +4,10 @@ use std::path::PathBuf;
 
 use lazy_static::lazy_static;
 use similar::DiffableStr;
-use tree_sitter::{LanguageError, Node, Parser, Query, QueryCapture, Range, Tree};
+use tree_sitter::{Node, Parser, Query, QueryCapture, Tree};
 
-use crate::ast::treesitter::index::{Index, SymbolInfo, SymbolType};
 use crate::ast::treesitter::parsers::{internal_error, Language, LanguageParser, ParserError};
-use crate::ast::treesitter::structs::{FunctionCallInfo, StaticInfo, StaticType, UsageSymbolInfo, VariableInfo};
+use crate::ast::treesitter::structs::{FunctionCallInfo, Point, Range, StaticInfo, StaticType, SymbolDeclarationStruct, SymbolInfo, SymbolType, UsageSymbolInfo, VariableInfo};
 
 pub struct CppConfig;
 
@@ -35,6 +34,21 @@ lazy_static! {
         m.push(CPP_PARSER_QUERY_CLASS_METHOD);
         m.join("\n")
     };
+}
+
+fn convert_range(range: tree_sitter::Range) -> Range {
+    Range {
+        start_byte: range.start_byte,
+        end_byte: range.end_byte,
+        start_point: Point {
+            row: range.start_point.row,
+            column: range.start_point.column,
+        },
+        end_point: Point {
+            row: range.end_point.row,
+            column: range.end_point.column,
+        }
+    }
 }
 
 fn get_namespace(mut parent: Option<Node>, text: &str) -> Vec<String> {
@@ -167,7 +181,7 @@ pub fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Opt
         let capture_name = &query.capture_names()[capture.index as usize];
         match capture_name.as_str() {
             "variable" => {
-                var.range = capture.node.range();
+                var.range = convert_range(capture.node.range())
             }
             "variable_name" => {
                 let text = code.slice(capture.node.byte_range());
@@ -196,12 +210,13 @@ pub fn get_call(captures: &[QueryCapture], query: &Query, code: &str) -> Option<
             start_point: Default::default(),
             end_point: Default::default(),
         },
+        caller_type_name: None,
     };
     for capture in captures {
         let capture_name = &query.capture_names()[capture.index as usize];
         match capture_name.as_str() {
             "call" => {
-                var.range = capture.node.range();
+                var.range = convert_range(capture.node.range())
             }
             "call_name" => {
                 let text = code.slice(capture.node.byte_range());
@@ -223,14 +238,16 @@ pub fn get_static(captures: &[QueryCapture], query: &Query, code: &str) -> Optio
         return match capture_name.as_str() {
             "comment" => {
                 Some(StaticInfo {
+                    data: "".to_string(),
                     static_type: StaticType::Comment,
-                    range: capture.node.range(),
+                    range: convert_range(capture.node.range())
                 })
             }
             "string_literal" => {
                 Some(StaticInfo {
+                    data: "".to_string(),
                     static_type: StaticType::Literal,
-                    range: capture.node.range(),
+                    range: convert_range(capture.node.range())
                 })
             }
             &_ => {
@@ -283,8 +300,8 @@ impl CppParser {
 }
 
 impl LanguageParser for CppParser {
-    fn parse_declarations(&mut self, code: &str, path: &PathBuf) -> Result<HashMap<String, Index>, String> {
-        let mut indexes: HashMap<String, Index> = Default::default();
+    fn parse_declarations(&mut self, code: &str, path: &PathBuf) -> Result<HashMap<String, SymbolDeclarationStruct>, String> {
+        let mut indexes: HashMap<String, SymbolDeclarationStruct> = Default::default();
         let tree: Tree = match self.parser.parse(code, None) {
             Some(tree) => tree,
             None => return Err("Parse error".to_string()),
@@ -305,11 +322,12 @@ impl LanguageParser for CppParser {
                             key += format!("::{}", ns).as_str();
                         });
                         indexes.insert(key,
-                                       Index {
+                                       SymbolDeclarationStruct {
                                            name: class_name,
-                                           definition_info: SymbolInfo { path: path.clone(), range },
+                                           definition_info: SymbolInfo { path: path.clone(), range: convert_range(range) },
                                            children: vec![],
                                            symbol_type: SymbolType::Class,
+                                           meta_path: "".to_string(),
                                        });
                     }
                     "function" => {
@@ -323,11 +341,12 @@ impl LanguageParser for CppParser {
                             key += format!("::{}", ns).as_str();
                         });
                         indexes.insert(key,
-                                       Index {
+                                       SymbolDeclarationStruct {
                                            name,
-                                           definition_info: SymbolInfo { path: path.clone(), range },
+                                           definition_info: SymbolInfo { path: path.clone(), range: convert_range(range) },
                                            children: vec![],
                                            symbol_type: SymbolType::Function,
+                                           meta_path: "".to_string(),
                                        });
                     }
                     "global_variable" => {
@@ -339,11 +358,12 @@ impl LanguageParser for CppParser {
                             key += format!("::{}", ns).as_str();
                         });
                         indexes.insert(key,
-                                       Index {
+                                       SymbolDeclarationStruct {
                                            name,
-                                           definition_info: SymbolInfo { path: path.clone(), range },
+                                           definition_info: SymbolInfo { path: path.clone(), range: convert_range(range) },
                                            children: vec![],
                                            symbol_type: SymbolType::GlobalVar,
+                                           meta_path: "".to_string(),
                                        });
                     }
                     &_ => {}
@@ -352,33 +372,30 @@ impl LanguageParser for CppParser {
         }
         Ok(indexes)
     }
-    fn parse_usages(&mut self, code: &str) -> Result<(Vec<dyn UsageSymbolInfo>), String> {
+    fn parse_usages(&mut self, code: &str) -> Result<Vec<Box<dyn UsageSymbolInfo + 'static>>, String> {
         let tree: Tree = match self.parser.parse(code, None) {
             Some(tree) => tree,
             None => return Err("Parse error".to_string()),
         };
-        let mut usages: Vec<dyn UsageSymbolInfo> = vec![];
+        let mut usages: Vec<Box<dyn UsageSymbolInfo>> = vec![];
         let mut qcursor = tree_sitter::QueryCursor::new();
         let query = Query::new(tree_sitter_cpp::language(), &**CPP_PARSER_QUERY_FIND_ALL).unwrap();
         let mut matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
         for match_ in matches {
             match match_.pattern_index {
                 0 => {
-                    match get_variable(match_.captures, &query, code) {
-                        None => {}
-                        Some(var) => { usages.push(var) }
+                    if let Some(var) = get_variable(match_.captures, &query, code) {
+                        usages.push(Box::new(var));
                     }
                 }
                 1 => {
-                    match get_call(match_.captures, &query, code) {
-                        None => {}
-                        Some(var) => { usages.push(var) }
+                    if let Some(var) = get_call(match_.captures, &query, code) {
+                        usages.push(Box::new(var));
                     }
                 }
                 2 => {
-                    match get_static(match_.captures, &query, code) {
-                        None => {}
-                        Some(var) => { usages.push(var) }
+                    if let Some(var) = get_static(match_.captures, &query, code) {
+                        usages.push(Box::new(var));
                     }
                 }
                 _ => {}
@@ -448,9 +465,10 @@ int main()
 
     #[test]
     fn test_query_cpp_function() {
-        let mut parser = CppParser::new();
+        let mut parser = CppParser::new().expect("CppParser::new");
+        let path = PathBuf::from("test.cpp");
         let zxc = parser.parse_usages(TEST_CODE);
-        let indexes = parser.parse_declarations(TEST_CODE, PathBuf::from("test.cpp").as_ref());
+        let indexes = parser.parse_declarations(TEST_CODE, &path).unwrap();
         assert_eq!(indexes.len(), 1);
         // assert_eq!(indexes.get("function").unwrap().name, "foo");
     }

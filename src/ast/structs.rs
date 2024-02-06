@@ -1,27 +1,36 @@
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
-use tree_sitter::Point;
+use std::str::FromStr;
 
+use serde::{Deserialize, Serialize};
+
+use crate::ast::treesitter::structs::{Point, SymbolDeclarationStruct};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SymbolDeclarationStruct {
-    pub id: usize,
-    pub node_type: String,
-    pub name: String,
+pub struct UsageSearchResultStruct {
+    pub symbol_path: String,
+    pub dist_to_cursor: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SymbolsSearchResultStruct {
+    pub symbol_path: String,
     pub content: String,
-    pub start_point: Point,
-    pub end_point: Point,
-    pub path: String,
-    pub parent_ids: Option<Vec<usize>>,
-    pub namespaces_name: Option<Vec<String>>,
-    pub meta_path: String
+    pub lev_dist_to_query: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CursorUsagesResult {
+    pub query_text: String,
+    pub file_path: PathBuf,
+    pub cursor: Point,
+    pub search_results: Vec<UsageSearchResultStruct>,
 }
 
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SearchResult {
     pub query_text: String,
-    pub filename: PathBuf,
+    pub file_path: PathBuf,
     pub cursor: Point,
     pub search_results: Vec<SymbolDeclarationStruct>,
 }

@@ -4,9 +4,8 @@ use std::path::PathBuf;
 
 use tracing::error;
 
-use crate::ast::treesitter::index::Index;
 use crate::ast::treesitter::language_id::LanguageId;
-use crate::ast::treesitter::structs::{FunctionCallInfo, StaticInfo, VariableInfo};
+use crate::ast::treesitter::structs::{FunctionCallInfo, StaticInfo, SymbolDeclarationStruct, UsageSymbolInfo, VariableInfo};
 
 pub mod cpp;
 
@@ -71,9 +70,9 @@ pub struct ParserError {
 
 
 pub trait LanguageParser {
-    fn parse_declarations(&mut self, code: &str, path: &PathBuf) -> Result<HashMap<String, Index>, String>;
+    fn parse_declarations(&mut self, code: &str, path: &PathBuf) -> Result<HashMap<String, SymbolDeclarationStruct>, String>;
 
-    fn parse_usages(&mut self, code: &str) -> Result<(Vec<VariableInfo>, Vec<FunctionCallInfo>, Vec<StaticInfo>), String>;
+    fn parse_usages(&mut self, code: &str) -> Result<(Vec<Box<dyn UsageSymbolInfo + 'static>>), String>;
 }
 
 fn internal_error<E: Display>(err: E) -> ParserError {
@@ -84,19 +83,23 @@ fn internal_error<E: Display>(err: E) -> ParserError {
     }
 }
 
-fn get_parser(language_id: LanguageId) -> Result<dyn LanguageParser, ParserError> {
+fn get_parser(language_id: LanguageId) -> Result<Box<dyn LanguageParser + 'static>, ParserError> {
     match language_id {
-        LanguageId::Cpp => cpp::CppParser::new(),
+        LanguageId::Cpp => {
+            let parser = cpp::CppParser::new()?;
+            Ok(Box::new(parser))
+        },
         _ => Err(ParserError { message: "Unsupported language id".to_string() }),
     }
 }
 
-pub fn get_parser_by_filename(filename: &PathBuf) -> Result<dyn LanguageParser, ParserError> {
+
+pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguageParser + 'static>, ParserError> {
     let suffix = filename.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
     match suffix.as_str() {
         "cpp" | "cc" | "cxx" | "c++" | "c" | "h" | "hpp" | "hxx" | "hh" => get_parser(LanguageId::Cpp),
         "inl" | "inc" | "tpp" | "tpl" => get_parser(LanguageId::Cpp),
-        _ => ParserError { message: "Unsupported file extension".to_string() },
+        _ => Err(ParserError { message: "Unsupported filename suffix".to_string() }),
     }
 }
 

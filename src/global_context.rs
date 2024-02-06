@@ -202,12 +202,9 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
-    let ast_module = match AstModule::init(cmdline.clone()) {
-        Ok(module) => Arc::new(AMutex::new(module)),
-        Err(err) => {
-            error!("failed to init ast module: {}", err);
-        }
-    };
+    let ast_module = Arc::new(AMutex::new(AstModule::init(cmdline.clone()).await.expect(
+        "Failed to initialize ast module"
+    )));
 
     let cx = GlobalContext {
         cmdline: cmdline.clone(),

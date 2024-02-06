@@ -46,8 +46,7 @@ pub async fn start_background_tasks(global_context: Arc<ARwLock<GlobalContext>>)
         tokio::spawn(basic_transmit::telemetry_background_task(global_context.clone())),
         tokio::spawn(snippets_transmit::tele_snip_background_task(global_context.clone())),
         tokio::spawn(vecdb::vecdb::vecdb_background_reload(global_context.clone())),
-        tokio::spawn(global_context),
     ]);
-    holder.extend(global_context.clone().read().await.ast_module.start_background_tasks());
+    holder.extend(global_context.clone().read().await.ast_module.lock().await.start_background_tasks().await);
     holder
 }

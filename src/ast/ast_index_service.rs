@@ -11,7 +11,6 @@ use tracing::info;
 
 use crate::ast::ast_index::AstIndex;
 
-#[derive(Debug)]
 pub struct AstIndexService {
     update_request_queue: Arc<AMutex<VecDeque<PathBuf>>>,
     output_queue: Arc<AMutex<VecDeque<PathBuf>>>,
@@ -111,7 +110,7 @@ async fn ast_processing_thread(
 const COOLDOWN_SECS: u64 = 20;
 
 impl AstIndexService {
-    pub async fn init(
+    pub fn init(
         ast_index: Arc<AMutex<AstIndex>>
     ) -> Self {
         let update_request_queue = Arc::new(AMutex::new(VecDeque::new()));
@@ -123,7 +122,7 @@ impl AstIndexService {
         }
     }
 
-    pub async fn start_background_tasks(&self) -> Vec<JoinHandle<()>> {
+    pub async fn start_background_tasks(&mut self) -> Vec<JoinHandle<()>> {
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
                 self.update_request_queue.clone(),

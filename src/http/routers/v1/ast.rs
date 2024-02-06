@@ -27,18 +27,13 @@ pub async fn handle_v1_ast_search(
     })?;
 
     let cx_locked = global_context.read().await;
-    let search_res = match *cx_locked.ast_module.lock().await {
-        Some(ref ast) => ast.search(
-            PathBuf::from(post.filename),
-            Point::new(post.row, post.column),
-            post.top_n,
-        ).await,
-        None => {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Vector db is not available".to_string(),
-            ));
-        }
-    };
+    let ast = cx_locked.ast_module.lock().await;
+    // let search_res = ast.search(
+    //     PathBuf::from(post.filename),
+    //     Point::new(post.row, post.column),
+    //     post.top_n,
+    // ).await;
+    let search_res: Result<Vec<usize>, String> = Ok(vec![]);
     match search_res {
         Ok(search_res) => {
             let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {

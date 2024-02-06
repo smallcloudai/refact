@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::Serialize;
+use tokio::fs::read_to_string;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
@@ -32,19 +33,9 @@ impl AstModule {
     pub async fn init(
         cmdline: CommandLine,
     ) -> Result<AstModule, String> {
-        let ast_index = match AstIndex::init().await {
-            Ok(res) => Arc::new(AMutex::new(res)),
-            Err(err) => { return Err(err); }
-        };
-        let ast_search_engine = match AstSearchEngine::init(ast_index.clone()).await {
-            Ok(res) => Arc::new(AMutex::new(res)),
-            Err(err) => { return Err(err); }
-        };
-        let ast_index_service = match AstIndexService::init(ast_index.clone()).await {
-            Ok(res) => Arc::new(AMutex::new(res)),
-            Err(err) => { return Err(err); }
-        };
-
+        let ast_index = Arc::new(AMutex::new(AstIndex::init()));
+        let ast_search_engine = Arc::new(AMutex::new(AstSearchEngine::init(ast_index.clone())));
+        let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(ast_index.clone())));
         Ok(AstModule {
             ast_index_service,
             ast_index,
@@ -70,32 +61,76 @@ impl AstModule {
         self.ast_index.lock().await.remove(file_path).await;
     }
 
-    async fn search(
-        &mut self,
-        filename: &PathBuf,
-        cursor: Point,
-        top_n: usize
-    ) -> Result<SearchResult, String> {
-        let t0 = std::time::Instant::now();
-
-        let mut handler_locked = self.ast_search_engine.lock().await;
-        let results = match handler_locked.search(query, filename, cursor).await {
-            Ok(res) => res,
-            Err(_) => { return Err("error during search occurred".to_string()); }
-        };
-        for rec in results.iter() {
-            let last_30_chars: String = rec.file_path.display().to_string().chars().rev().take(30).collect::<String>().chars().rev().collect();
-            info!("distance {:.3}, found ...{}:{}-{}, ", rec.distance, last_30_chars, rec.start_line, rec.end_line);
-        }
-        info!("ast search query {:?}, took {:.3}s", query, t0.elapsed().as_secs_f64());
-
-        Ok(
-            SearchResult {
-                query_text: query.to_string(),
-                filename: filename.clone(),
-                cursor: cursor,
-                search_results: results,
-            }
-        )
-    }
+    // async fn search_by_cursor(
+    //     &mut self,
+    //     file_path: &PathBuf,
+    //     cursor: Point,
+    //     top_n: usize
+    // ) -> Result<SearchResult, String> {
+    //     let t0 = std::time::Instant::now();
+    //
+    //     let text = match read_to_string(file_path).await {
+    //         Ok(s) => s,
+    //         Err(e) => return Err(e.to_string())
+    //     };
+    //
+    //     let mut handler_locked = self.ast_search_engine.lock().await;
+    //     let usage_results = match handler_locked.parse_near_cursor(
+    //
+    //     ).await {
+    //
+    //     };
+    //
+    //     let results = match handler_locked.search(text, file_path, cursor).await {
+    //         Ok(res) => res,
+    //         Err(_) => { return Err("error during search occurred".to_string()); }
+    //     };
+    //     for rec in results.iter() {
+    //         let last_30_chars: String = rec.file_path.display().to_string().chars().rev().take(30).collect::<String>().chars().rev().collect();
+    //         info!("distance {:.3}, found ...{}:{}-{}, ", rec.distance, last_30_chars, rec.start_line, rec.end_line);
+    //     }
+    //     info!("ast search query {:?}, took {:.3}s", query, t0.elapsed().as_secs_f64());
+    //
+    //     Ok(
+    //         SearchResult {
+    //             query_text: query.to_string(),
+    //             filename: filename.clone(),
+    //             cursor: cursor,
+    //             search_results: results,
+    //         }
+    //     )
+    // }
+    //
+    // async fn search_by_symbol_str(
+    //     &mut self,
+    //     symbol: String,
+    //     top_n: usize
+    // ) -> Result<SearchResult, String> {
+    //     let t0 = std::time::Instant::now();
+    //
+    //     let text = match read_to_string(file_path).await {
+    //         Ok(s) => s,
+    //         Err(e) => return Err(e.to_string())
+    //     };
+    //
+    //     let mut handler_locked = self.ast_search_engine.lock().await;
+    //     let results = match handler_locked.search(text, file_path, cursor).await {
+    //         Ok(res) => res,
+    //         Err(_) => { return Err("error during search occurred".to_string()); }
+    //     };
+    //     for rec in results.iter() {
+    //         let last_30_chars: String = rec.file_path.display().to_string().chars().rev().take(30).collect::<String>().chars().rev().collect();
+    //         info!("distance {:.3}, found ...{}:{}-{}, ", rec.distance, last_30_chars, rec.start_line, rec.end_line);
+    //     }
+    //     info!("ast search query {:?}, took {:.3}s", query, t0.elapsed().as_secs_f64());
+    //
+    //     Ok(
+    //         SearchResult {
+    //             query_text: query.to_string(),
+    //             filename: filename.clone(),
+    //             cursor: cursor,
+    //             search_results: results,
+    //         }
+    //     )
+    // }
 }
