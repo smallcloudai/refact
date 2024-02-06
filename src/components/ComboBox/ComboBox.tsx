@@ -72,6 +72,14 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     requestCommandsCompletion,
   ]);
 
+  React.useEffect(() => {
+    if (trigger) {
+      requestCommandsCompletion(trigger, trigger.length);
+    } else {
+      requestCommandsCompletion("@", 1);
+    }
+  }, [trigger, requestCommandsCompletion]);
+
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
   }, [combobox, hasMatches]);
