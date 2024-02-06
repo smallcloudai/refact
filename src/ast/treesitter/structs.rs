@@ -4,19 +4,24 @@ use std::str::FromStr;
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
+use tree_sitter::{Range, Point};
 
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
-pub struct Point {
+#[serde(remote = "tree_sitter::Point")]
+pub(crate) struct PointDef {
     pub row: usize,
     pub column: usize,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
-pub struct Range {
+#[serde(remote = "tree_sitter::Range")]
+pub(crate) struct RangeDef {
     pub start_byte: usize,
     pub end_byte: usize,
+    #[serde(with = "PointDef")]
     pub start_point: Point,
+    #[serde(with = "PointDef")]
     pub end_point: Point,
 }
 
@@ -28,6 +33,7 @@ pub trait UsageSymbolInfo {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VariableInfo {
     pub name: String,
+    #[serde(with = "RangeDef")]
     pub range: Range,
     pub type_name: Option<String>,
 }
@@ -47,6 +53,7 @@ impl UsageSymbolInfo for VariableInfo {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FunctionCallInfo {
     pub name: String,
+    #[serde(with = "RangeDef")]
     pub range: Range,
     pub caller_type_name: Option<String>,
 }
@@ -73,6 +80,7 @@ pub enum StaticType {
 pub struct StaticInfo {
     pub data: String,
     pub static_type: StaticType,
+    #[serde(with = "RangeDef")]
     pub range: Range,
 }
 
@@ -112,6 +120,7 @@ impl FromStr for SymbolType {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SymbolInfo {
     pub path: PathBuf,
+    #[serde(with = "RangeDef")]
     pub range: Range,
 }
 
@@ -122,12 +131,6 @@ pub struct SymbolDeclarationStruct {
     pub children: Vec<SymbolDeclarationStruct>,
     pub symbol_type: SymbolType,
     pub meta_path: String
-}
-
-impl SymbolDeclarationStruct {
-    pub fn merge(&mut self, other: &mut SymbolDeclarationStruct) {
-        self.children.append(&mut other.children);
-    }
 }
 
 impl SymbolDeclarationStruct {

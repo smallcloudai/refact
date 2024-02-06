@@ -1,16 +1,13 @@
-use std::any::Any;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use lazy_static::lazy_static;
 use similar::DiffableStr;
-use tree_sitter::{Node, Parser, Query, QueryCapture, Tree};
+use tree_sitter::{Node, Parser, Query, QueryCapture, Range, Tree};
 
-use crate::ast::treesitter::parsers::{internal_error, Language, LanguageParser, ParserError};
-use crate::ast::treesitter::structs::{FunctionCallInfo, Point, Range, StaticInfo, StaticType, SymbolDeclarationStruct, SymbolInfo, SymbolType, UsageSymbolInfo, VariableInfo};
-
-pub struct CppConfig;
-
+use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
+use crate::ast::treesitter::parsers::utils::{get_call, get_static};
+use crate::ast::treesitter::structs::{SymbolDeclarationStruct, SymbolInfo, SymbolType, UsageSymbolInfo, VariableInfo};
 
 const CPP_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(translation_unit (declaration declarator: (init_declarator)) @global_variable)\n\
 (namespace_definition (declaration_list (declaration (init_declarator)) @global_variable))";
@@ -36,25 +33,9 @@ lazy_static! {
     };
 }
 
-fn convert_range(range: tree_sitter::Range) -> Range {
-    Range {
-        start_byte: range.start_byte,
-        end_byte: range.end_byte,
-        start_point: Point {
-            row: range.start_point.row,
-            column: range.start_point.column,
-        },
-        end_point: Point {
-            row: range.end_point.row,
-            column: range.end_point.column,
-        }
-    }
-}
-
 fn get_namespace(mut parent: Option<Node>, text: &str) -> Vec<String> {
     let mut namespaces: Vec<String> = vec![];
     while parent.is_some() {
-        let a = parent.unwrap().kind();
         match parent.unwrap().kind() {
             "namespace_definition" => {
                 let children_len = parent.unwrap().child_count();
@@ -86,7 +67,7 @@ fn get_namespace(mut parent: Option<Node>, text: &str) -> Vec<String> {
     namespaces
 }
 
-fn get_function_name_and_scope_req(mut parent: Node, text: &str) -> (String, Vec<String>) {
+fn get_function_name_and_scope_req(parent: Node, text: &str) -> (String, Vec<String>) {
     let mut scope: Vec<String> = Default::default();
     let mut name: String = String::new();
     for i in 0..parent.child_count() {
@@ -111,7 +92,7 @@ fn get_function_name_and_scope_req(mut parent: Node, text: &str) -> (String, Vec
     (name, scope)
 }
 
-fn get_function_name_and_scope(mut parent: Node, text: &str) -> (String, Vec<String>) {
+fn get_function_name_and_scope(parent: Node, text: &str) -> (String, Vec<String>) {
     for i in 0..parent.child_count() {
         if let Some(child) = parent.child(i) {
             let kind = child.kind();
@@ -140,7 +121,7 @@ fn get_function_name_and_scope(mut parent: Node, text: &str) -> (String, Vec<Str
     ("".parse().unwrap(), vec![])
 }
 
-fn get_variable_name(mut parent: Node, text: &str) -> String {
+fn get_variable_name(parent: Node, text: &str) -> String {
     for i in 0..parent.child_count() {
         if let Some(child) = parent.child(i) {
             let kind = child.kind();
@@ -166,7 +147,7 @@ fn get_variable_name(mut parent: Node, text: &str) -> String {
     return "".to_string();
 }
 
-pub fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
+fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
     let mut var = VariableInfo {
         name: "".to_string(),
         range: Range {
@@ -181,7 +162,7 @@ pub fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Opt
         let capture_name = &query.capture_names()[capture.index as usize];
         match capture_name.as_str() {
             "variable" => {
-                var.range = convert_range(capture.node.range())
+                var.range = capture.node.range()
             }
             "variable_name" => {
                 let text = code.slice(capture.node.byte_range());
@@ -199,63 +180,6 @@ pub fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Opt
     }
 
     Some(var)
-}
-
-pub fn get_call(captures: &[QueryCapture], query: &Query, code: &str) -> Option<FunctionCallInfo> {
-    let mut var = FunctionCallInfo {
-        name: "".to_string(),
-        range: Range {
-            start_byte: 0,
-            end_byte: 0,
-            start_point: Default::default(),
-            end_point: Default::default(),
-        },
-        caller_type_name: None,
-    };
-    for capture in captures {
-        let capture_name = &query.capture_names()[capture.index as usize];
-        match capture_name.as_str() {
-            "call" => {
-                var.range = convert_range(capture.node.range())
-            }
-            "call_name" => {
-                let text = code.slice(capture.node.byte_range());
-                var.name = text.to_string();
-            }
-            &_ => {}
-        }
-    }
-    if var.name.is_empty() {
-        return None;
-    }
-    Some(var)
-}
-
-pub fn get_static(captures: &[QueryCapture], query: &Query, code: &str) -> Option<StaticInfo> {
-    let text = code.slice(captures[0].node.byte_range());
-    for capture in captures {
-        let capture_name = &query.capture_names()[capture.index as usize];
-        return match capture_name.as_str() {
-            "comment" => {
-                Some(StaticInfo {
-                    data: "".to_string(),
-                    static_type: StaticType::Comment,
-                    range: convert_range(capture.node.range())
-                })
-            }
-            "string_literal" => {
-                Some(StaticInfo {
-                    data: "".to_string(),
-                    static_type: StaticType::Literal,
-                    range: convert_range(capture.node.range())
-                })
-            }
-            &_ => {
-                None
-            }
-        };
-    }
-    None
 }
 
 const CPP_PARSER_QUERY_FIND_VARIABLES: &str = r#"((declaration type: [
@@ -308,14 +232,14 @@ impl LanguageParser for CppParser {
         };
         let mut qcursor = tree_sitter::QueryCursor::new();
         let query = Query::new(tree_sitter_cpp::language(), &**CPP_PARSER_QUERY).unwrap();
-        let mut matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
+        let matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
         for match_ in matches {
             for capture in match_.captures {
                 let capture_name = &query.capture_names()[capture.index as usize];
                 match capture_name.as_str() {
                     "class" | "struct" => {
                         let range = capture.node.range();
-                        let mut namespaces = get_namespace(Some(capture.node), code);
+                        let namespaces = get_namespace(Some(capture.node), code);
                         let class_name = namespaces.last().unwrap().clone();
                         let mut key = path.to_str().unwrap().to_string();
                         namespaces.iter().for_each(|ns| {
@@ -324,7 +248,7 @@ impl LanguageParser for CppParser {
                         indexes.insert(key,
                                        SymbolDeclarationStruct {
                                            name: class_name,
-                                           definition_info: SymbolInfo { path: path.clone(), range: convert_range(range) },
+                                           definition_info: SymbolInfo { path: path.clone(), range },
                                            children: vec![],
                                            symbol_type: SymbolType::Class,
                                            meta_path: "".to_string(),
@@ -340,13 +264,13 @@ impl LanguageParser for CppParser {
                         namespaces.iter().for_each(|ns| {
                             key += format!("::{}", ns).as_str();
                         });
-                        indexes.insert(key,
+                        indexes.insert(key.clone(),
                                        SymbolDeclarationStruct {
                                            name,
-                                           definition_info: SymbolInfo { path: path.clone(), range: convert_range(range) },
+                                           definition_info: SymbolInfo { path: path.clone(), range },
                                            children: vec![],
                                            symbol_type: SymbolType::Function,
-                                           meta_path: "".to_string(),
+                                           meta_path: key,
                                        });
                     }
                     "global_variable" => {
@@ -354,16 +278,17 @@ impl LanguageParser for CppParser {
                         let mut namespaces = get_namespace(Some(capture.node), code);
                         let name = get_variable_name(capture.node, code);
                         let mut key = path.to_str().unwrap().to_string();
+                        namespaces.push(name.clone());
                         namespaces.iter().for_each(|ns| {
                             key += format!("::{}", ns).as_str();
                         });
-                        indexes.insert(key,
+                        indexes.insert(key.clone(),
                                        SymbolDeclarationStruct {
                                            name,
-                                           definition_info: SymbolInfo { path: path.clone(), range: convert_range(range) },
+                                           definition_info: SymbolInfo { path: path.clone(), range },
                                            children: vec![],
                                            symbol_type: SymbolType::GlobalVar,
-                                           meta_path: "".to_string(),
+                                           meta_path: key,
                                        });
                     }
                     &_ => {}
@@ -380,7 +305,7 @@ impl LanguageParser for CppParser {
         let mut usages: Vec<Box<dyn UsageSymbolInfo>> = vec![];
         let mut qcursor = tree_sitter::QueryCursor::new();
         let query = Query::new(tree_sitter_cpp::language(), &**CPP_PARSER_QUERY_FIND_ALL).unwrap();
-        let mut matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
+        let matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
         for match_ in matches {
             match match_.pattern_index {
                 0 => {

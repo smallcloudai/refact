@@ -1,16 +1,15 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::string::FromUtf8Error;
 
 use fst::{Set, set, Streamer};
 use fst::automaton::Levenshtein;
+use futures::stream::{self, StreamExt};
 use itertools::Itertools;
 use sorted_vec::SortedVec;
 use strsim::normalized_levenshtein;
 use tokio::fs::read_to_string;
-use crate::ast::structs::SymbolsSearchResultStruct;
-use futures::stream::{self, StreamExt};
 
+use crate::ast::structs::SymbolsSearchResultStruct;
 use crate::ast::treesitter::parsers::{get_parser_by_filename, LanguageParser};
 use crate::ast::treesitter::structs::SymbolDeclarationStruct;
 

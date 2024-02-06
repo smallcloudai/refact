@@ -1,9 +1,9 @@
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+use tree_sitter::Point;
 
-use crate::ast::treesitter::structs::{Point, SymbolDeclarationStruct};
+use crate::ast::treesitter::structs::{PointDef, SymbolDeclarationStruct};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UsageSearchResultStruct {
@@ -22,6 +22,7 @@ pub struct SymbolsSearchResultStruct {
 pub struct CursorUsagesResult {
     pub query_text: String,
     pub file_path: PathBuf,
+    #[serde(with = "PointDef")]
     pub cursor: Point,
     pub search_results: Vec<UsageSearchResultStruct>,
 }
@@ -31,6 +32,7 @@ pub struct CursorUsagesResult {
 pub struct SearchResult {
     pub query_text: String,
     pub file_path: PathBuf,
+    #[serde(with = "PointDef")]
     pub cursor: Point,
     pub search_results: Vec<SymbolDeclarationStruct>,
 }

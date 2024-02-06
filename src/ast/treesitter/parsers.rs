@@ -5,9 +5,11 @@ use std::path::PathBuf;
 use tracing::error;
 
 use crate::ast::treesitter::language_id::LanguageId;
-use crate::ast::treesitter::structs::{FunctionCallInfo, StaticInfo, SymbolDeclarationStruct, UsageSymbolInfo, VariableInfo};
+use crate::ast::treesitter::structs::{SymbolDeclarationStruct, UsageSymbolInfo};
 
 pub mod cpp;
+pub mod python;
+mod utils;
 
 
 // Legacy
@@ -72,7 +74,7 @@ pub struct ParserError {
 pub trait LanguageParser: Send {
     fn parse_declarations(&mut self, code: &str, path: &PathBuf) -> Result<HashMap<String, SymbolDeclarationStruct>, String>;
 
-    fn parse_usages(&mut self, code: &str) -> Result<(Vec<Box<dyn UsageSymbolInfo + 'static>>), String>;
+    fn parse_usages(&mut self, code: &str) -> Result<Vec<Box<dyn UsageSymbolInfo + 'static>>, String>;
 }
 
 fn internal_error<E: Display>(err: E) -> ParserError {
@@ -89,6 +91,10 @@ fn get_parser(language_id: LanguageId) -> Result<Box<dyn LanguageParser + 'stati
             let parser = cpp::CppParser::new()?;
             Ok(Box::new(parser))
         },
+        LanguageId::Python => {
+            let parser = python::PythonParser::new()?;
+            Ok(Box::new(parser))
+        }
         _ => Err(ParserError { message: "Unsupported language id".to_string() }),
     }
 }
@@ -99,6 +105,7 @@ pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguagePars
     match suffix.as_str() {
         "cpp" | "cc" | "cxx" | "c++" | "c" | "h" | "hpp" | "hxx" | "hh" => get_parser(LanguageId::Cpp),
         "inl" | "inc" | "tpp" | "tpl" => get_parser(LanguageId::Cpp),
+        "py" | "pyo" | "py3" | "pyx" => get_parser(LanguageId::Python),
         _ => Err(ParserError { message: "Unsupported filename suffix".to_string() }),
     }
 }

@@ -2,19 +2,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::Serialize;
-use tokio::fs::read_to_string;
 use tokio::sync::Mutex as AMutex;
-use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
-use tracing::{error, info};
-use tree_sitter::Point;
+use tracing::info;
 
-use crate::background_tasks::BackgroundTasksHolder;
-use crate::global_context::{CommandLine, GlobalContext};
 use crate::ast::ast_index::AstIndex;
 use crate::ast::ast_index_service::AstIndexService;
 use crate::ast::ast_search_engine::AstSearchEngine;
-use crate::ast::structs::SearchResult;
+use crate::global_context::CommandLine;
 
 pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
@@ -58,7 +53,7 @@ impl AstModule {
     }
 
     pub async fn remove_file(&self, file_path: &PathBuf) {
-        self.ast_index.lock().await.remove(file_path).await;
+        let _ = self.ast_index.lock().await.remove(file_path).await;
     }
 
     // async fn search_by_cursor(

@@ -3,11 +3,11 @@ use std::sync::Arc;
 
 use log::info;
 use tokio::sync::Mutex as AMutex;
+use tree_sitter::Point;
 
 use crate::ast::ast_index::AstIndex;
 use crate::ast::structs::{CursorUsagesResult, SymbolsSearchResultStruct, UsageSearchResultStruct};
 use crate::ast::treesitter::parsers::get_parser_by_filename;
-use crate::ast::treesitter::structs::{Point, SymbolDeclarationStruct};
 
 pub struct AstSearchEngine {
     ast_index: Arc<AMutex<AstIndex>>,
@@ -26,7 +26,7 @@ impl AstSearchEngine {
         file_path: &PathBuf,
         code: &str,
         cursor: Point,
-    ) -> Result<(Vec<CursorUsagesResult>), String> {
+    ) -> Result<Vec<CursorUsagesResult>, String> {
         let mut parser = match get_parser_by_filename(file_path) {
             Ok(parser) => parser,
             Err(err) => {

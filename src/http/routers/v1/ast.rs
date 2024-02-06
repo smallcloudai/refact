@@ -1,14 +1,10 @@
-use std::path::PathBuf;
-
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
-use tree_sitter::Point;
 
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::vecdb::structs::VecdbSearch;
 
 #[derive(Serialize, Deserialize, Clone)]
 struct AstPost {
