@@ -3,7 +3,8 @@ import requests, json, termcolor
 
 initial_messages = [
 {"role": "user", "content":
-    "@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\n" +
+    "@workspace definition of DeltaDeltaChatStreamer\n" +
+    # "@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\n" +
     "summarize the code in one paragraph"
 },
 ]
@@ -49,9 +50,17 @@ def ask_chat(messages):
     return messages_back
 
 
+def example_single_response():
+    messages_back = ask_chat(initial_messages)
+    for msgdict in messages_back:
+        print(termcolor.colored(msgdict["role"], "blue"))
+        if msgdict["role"] == "context_file":
+            for x in json.loads(msgdict["content"]):
+                print("%s:%i-%i" % (x["file_name"], x["line1"], x["line2"]))
+        else:
+            print(termcolor.colored(msgdict["content"], "white"))
 
-messages_back = ask_chat(initial_messages)
-for msgdict in messages_back:
-    print(termcolor.colored(msgdict["role"], "blue"))
-    print(termcolor.colored(msgdict["content"], "white"))
+
+if __name__ == "__main__":
+    example_single_response()
 
