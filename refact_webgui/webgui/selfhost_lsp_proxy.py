@@ -34,6 +34,8 @@ class LspProxy(APIRouter):
         super().__init__(*args, **kwargs)
         super().add_route("/lsp/v1/caps", self._reverse_proxy, methods=["GET"])
         super().add_route("/lsp/v1/chat", self._reverse_proxy_chat, methods=["POST"])
+        super().add_route("/lsp/v1/at-command-completion", self._reverse_proxy, methods=["POST"])
+        super().add_route("/lsp/v1/at-command-preview", self._reverse_proxy, methods=["POST"])
         lsp_address = get_lsp_url()
         self._session = session
         self._client = httpx.AsyncClient(base_url=lsp_address)
