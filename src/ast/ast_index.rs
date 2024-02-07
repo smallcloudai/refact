@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use fst::{Set, set, Streamer};
-use fst::automaton::{Levenshtein, Str, Subsequence};
+use fst::automaton::Subsequence;
 use sorted_vec::SortedVec;
 use strsim::normalized_levenshtein;
 use tokio::fs::read_to_string;

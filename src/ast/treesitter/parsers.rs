@@ -96,7 +96,9 @@ fn get_parser(language_id: LanguageId) -> Result<Box<dyn LanguageParser + 'stati
             let parser = python::PythonParser::new()?;
             Ok(Box::new(parser))
         }
-        _ => Err(ParserError { message: "Unsupported language id".to_string() }),
+        other => Err(ParserError {
+            message: "Unsupported language id: ".to_string() + &other.to_string()
+        }),
     }
 }
 
@@ -108,7 +110,7 @@ pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguagePars
         "inl" | "inc" | "tpp" | "tpl" => get_parser(LanguageId::Cpp),
         "py" | "pyo" | "py3" | "pyx" => get_parser(LanguageId::Python),
         "java" => get_parser(LanguageId::Java),
-        _ => Err(ParserError { message: "Unsupported filename suffix".to_string() }),
+        other => Err(ParserError { message: "Unsupported filename suffix: ".to_string() + &other }),
     }
 }
 
