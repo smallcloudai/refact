@@ -39,6 +39,8 @@ export function replaceValue(
   trigger: string,
   command: string,
 ) {
+  console.log("\n### replaceValue ###\n");
+
   const start = element.value.substring(
     0,
     element.selectionStart - trigger.length,
@@ -46,7 +48,20 @@ export function replaceValue(
   const end = element.value.substring(element.selectionStart);
   const maybeNewLineAfterStart =
     start.length && !start.endsWith("\n") ? "\n" : "";
-  return `${start}${maybeNewLineAfterStart}${command}${end}`;
+  const result = `${start}${maybeNewLineAfterStart}${command}${end}`;
+  console.log({
+    element,
+    command,
+    elementValue: element.value,
+    selectionStart: element.selectionStart,
+    trigger,
+    triggerLength: trigger.length,
+    start,
+    maybeNewLineAfterStart,
+    end,
+    result,
+  });
+  return result;
 }
 
 export function detectCommand(element: HTMLTextAreaElement): string {
