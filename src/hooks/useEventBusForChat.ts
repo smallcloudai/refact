@@ -96,6 +96,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       ...state,
       waiting_for_response: false,
       streaming: true,
+      previous_message_length: messages.length,
       chat: {
         ...state.chat,
         messages,
@@ -133,6 +134,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       waiting_for_response: false,
       streaming: false,
       error: null,
+      previous_message_length: messages.length,
       chat: {
         ...action.payload,
         messages,
@@ -356,21 +358,10 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isThisChat && isRemoveLastUserMessage(action)) {
-    let lastUserMessageIndex = state.chat.messages.length - 1;
-    let foundUserMessage = false;
-    for (; lastUserMessageIndex >= 0; lastUserMessageIndex--) {
-      const message = state.chat.messages[lastUserMessageIndex];
-      if (message[0] === "user") {
-        foundUserMessage = true;
-        break;
-      }
-    }
-
-    // TODO: also remove context_file
-
-    const messages = foundUserMessage
-      ? state.chat.messages.filter((_, i) => i !== lastUserMessageIndex)
-      : state.chat.messages;
+    const messages = state.chat.messages.slice(
+      0,
+      state.previous_message_length,
+    );
     return {
       ...state,
       chat: {
@@ -393,6 +384,7 @@ export type ChatState = {
   chat: ChatThread;
   waiting_for_response: boolean;
   streaming: boolean;
+  previous_message_length: number;
   error: string | null;
   caps: ChatCapsState;
   rag_commands: {
@@ -413,6 +405,7 @@ function createInitialState(): ChatState {
     streaming: false,
     waiting_for_response: false,
     error: null,
+    previous_message_length: 0,
     chat: {
       id: uuidv4(),
       messages: [],
@@ -556,7 +549,6 @@ export const useEventBusForChat = () => {
   );
 
   function handleContextFileForWeb() {
-    // TODO: in wed request or remove a file, else toggle the active_file value
     if (hasContextFile) {
       dispatch({
         type: EVENT_NAMES_TO_CHAT.REMOVE_FILES,
