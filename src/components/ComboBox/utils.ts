@@ -50,7 +50,7 @@ export function replaceValue(
     start.length && !start.endsWith("\n") ? "\n" : "";
   const result = `${start}${maybeNewLineAfterStart}${command}${end}`;
   console.log({
-    element,
+    // element,
     command,
     elementValue: element.value,
     selectionStart: element.selectionStart,
