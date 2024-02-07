@@ -65,10 +65,6 @@ function formatChatResponse(
     }
     return [...messages, [response.role, response.content]];
   }
-  // choices is undefined
-
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  // if (!response.choices) return [];
 
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (cur.delta.role === "context_file") {
