@@ -39,12 +39,11 @@ async fn main() {
         tracing_appender::non_blocking(std::io::stderr())
     } else {
         write!(std::io::stderr(), "This rust binary keeps logs as files, rotated daily. Try\ntail -f {}/logs/\nor use --logs-stderr for debugging.\n\n", cache_dir.display()).unwrap();
-        tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::new(
-            tracing_appender::rolling::Rotation::DAILY, cache_dir.join("logs"), "rustbinary")
-            // .rotation(tracing_appender::rolling::Rotation::DAILY)
-            // .filename_prefix("rustbinary")
-            // .max_log_files(30)
-            // .build(cache_dir.join("logs")).unwrap()
+        tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::builder()
+            .rotation(tracing_appender::rolling::Rotation::DAILY)
+            .filename_prefix("rustbinary")
+            .max_log_files(30)
+            .build(cache_dir.join("logs")).unwrap()
         )
     };
     let _tracing = tracing_subscriber::fmt()
@@ -64,7 +63,7 @@ async fn main() {
             info!("{:>20} {}", k, v);
         }
     }
-    let mut background_tasks = start_background_tasks(gcx.clone()).await;
+    let mut background_tasks = start_background_tasks(gcx.clone());
 
     let should_start_http = cmdline.http_port != 0;
     let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||
@@ -74,6 +73,7 @@ async fn main() {
     if should_start_http {
         main_handle = http::start_server(gcx.clone(), ask_shutdown_receiver).await;
     }
+    background_tasks.extend(gcx.clone().read().await.ast_module.lock().await.start_background_tasks().await);
     if should_start_lsp {
         if main_handle.is_none() {
             // FIXME: this ignores crate::global_context::block_until_signal , important because now we have a database to corrupt

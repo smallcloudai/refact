@@ -43,7 +43,7 @@ impl AstModule {
     }
 
     pub async fn start_background_tasks(&self) -> Vec<JoinHandle<()>> {
-        info!("vecdb: start_background_tasks");
+        info!("ast module: start_background_tasks");
         return self.ast_index_service.lock().await.start_background_tasks().await;
     }
 
