@@ -83,6 +83,7 @@
 [ ] maybe add optimistic cache for queries to lsp?
 [x] remove context latest context files from chat when sending a message
 [x] small but in command deletion, type @fi tab delete delete then tab
+[ ] workspace being run twice ? or adding extra files
 
 ### EVENTS TODO FOR IDEs
 
