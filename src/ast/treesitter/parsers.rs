@@ -9,6 +9,7 @@ use crate::ast::treesitter::structs::{SymbolDeclarationStruct, UsageSymbolInfo};
 
 pub mod cpp;
 pub mod python;
+pub mod java;
 mod utils;
 
 
@@ -106,6 +107,7 @@ pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguagePars
         "cpp" | "cc" | "cxx" | "c++" | "c" | "h" | "hpp" | "hxx" | "hh" => get_parser(LanguageId::Cpp),
         "inl" | "inc" | "tpp" | "tpl" => get_parser(LanguageId::Cpp),
         "py" | "pyo" | "py3" | "pyx" => get_parser(LanguageId::Python),
+        "java" => get_parser(LanguageId::Java),
         _ => Err(ParserError { message: "Unsupported filename suffix".to_string() }),
     }
 }
