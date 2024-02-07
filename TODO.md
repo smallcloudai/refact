@@ -80,6 +80,7 @@
 [x] add vscode specific button for opening the history in a tab
 [ ] should be monotype font on tooltip (will require adding a custom tooltip)
 [ ] command completion combobox interactions
+[ ] add optimistic cache for queries to lsp
 
 ### EVENTS TODO FOR IDEs
 

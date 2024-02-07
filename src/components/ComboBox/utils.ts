@@ -48,3 +48,12 @@ export function replaceValue(
     start.length && !start.endsWith("\n") ? "\n" : "";
   return `${start}${maybeNewLineAfterStart}${command}${end}`;
 }
+
+export function detectCommand(element: HTMLTextAreaElement): string {
+  const start = element.value.substring(0, element.selectionStart);
+  if (start.length === 0) return "";
+  const maybeCommandIndex = start.lastIndexOf("@");
+  if (maybeCommandIndex < 0) return "";
+  const maybeCommand = start.substring(maybeCommandIndex);
+  return maybeCommand;
+}

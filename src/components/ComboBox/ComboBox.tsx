@@ -1,7 +1,7 @@
 import React from "react";
 import { useComboboxStore, Combobox } from "@ariakit/react";
 import { matchSorter } from "match-sorter";
-import { getAnchorRect, replaceValue } from "./utils";
+import { getAnchorRect, replaceValue, detectCommand } from "./utils";
 import type { TextAreaProps } from "../TextArea/TextArea";
 import { Item } from "./Item";
 import { Popover } from "./Popover";
@@ -62,15 +62,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       executeCommand(trigger);
       setTrigger("");
       setSelectedCommand("");
-      requestCommandsCompletion("@", 1);
     }
-  }, [
-    trigger,
-    commandIsExecutable,
-    executeCommand,
-    setSelectedCommand,
-    requestCommandsCompletion,
-  ]);
+  }, [trigger, commandIsExecutable, executeCommand, setSelectedCommand]);
 
   React.useEffect(() => {
     if (trigger) {
@@ -109,7 +102,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
     if (event.key === "@" && !state.open && !selectedCommand) {
       setTrigger(event.key);
-      requestCommandsCompletion("@", 1);
       combobox.setValue("");
       combobox.show();
     }
@@ -142,7 +134,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       onChange(newInput);
 
       setSelectedCommand(selectedCommand ? "" : command);
-      requestCommandsCompletion(command, command.length);
     }
 
     if (event.key === "Space" && state.open && commands.includes(trigger)) {
@@ -152,6 +143,18 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       combobox.setValue(trigger + " ");
       setTrigger(trigger + " ");
       setSelectedCommand(trigger + " ");
+    }
+
+    if (event.key === "Backspace") {
+      const maybeCommandWithArguments = detectCommand(ref.current);
+      const [command, _args] = maybeCommandWithArguments.split(" ");
+      if (command) {
+        setSelectedCommand(command + " ");
+        setTrigger(maybeCommandWithArguments);
+      } else {
+        setTrigger("");
+        setSelectedCommand("");
+      }
     }
   };
 
@@ -184,11 +187,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         // arguments
         setSelectedCommand("");
         setTrigger(command);
-        requestCommandsCompletion(command, command.length);
         combobox.hide();
       } else {
         setSelectedCommand(command);
-        requestCommandsCompletion(command, command.length);
         setTrigger(command);
       }
 

@@ -46,8 +46,7 @@ const App = (props: Partial<ComboBoxProps>) => {
 describe("ComboBox", () => {
   afterEach(cleanup);
   test("type @ and select command and arguments by clicking", async () => {
-    const submitSpy = vi.fn();
-    const { user, ...app } = render(<App onSubmit={submitSpy} />);
+    const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "foo{Shift>}{Enter}{/Shift}@");
     const commandButton = app.getByText("@file");
@@ -59,26 +58,18 @@ describe("ComboBox", () => {
     expect(result.textContent).toBe("foo\n@file /bar");
   });
 
-  test.skip("deleting over arguments of a command", async () => {
+  test("deleting while typing a command", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "foo {Shift>}{Enter}{/Shift}@");
-    const commandButton = app.getByText("@file");
-
-    await user.click(commandButton);
-    const argumentsButton = app.getByText("/bar");
-    await user.click(argumentsButton);
-    expect(app.queryByText("/bar")).toBeNull();
+    await user.type(textarea, "@");
+    await user.keyboard("{Tab}");
+    await user.keyboard("{Tab}");
+    expect(textarea.textContent).toEqual("@file /foo");
+    await user.keyboard("{Backspace}");
+    expect(app.queryByText("/foo")).not.toBeNull();
+    await user.keyboard("{Backspace}");
     await user.keyboard("{Backspace}");
     expect(app.queryByText("/bar")).not.toBeNull();
-    await user.keyboard(
-      "{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}",
-    );
-    expect(app.queryByText("@file")).not.toBeNull();
-    await user.keyboard(
-      "{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}",
-    );
-    expect(app.queryByText("@file")).toBeNull();
   });
 
   test("completes when pressing tab", async () => {
@@ -138,7 +129,6 @@ describe("ComboBox", () => {
     const { user, ...app } = render(<App executeCommand={executableSpy} />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@wo{Enter}");
-    app.debug();
     expect(executableSpy).toHaveBeenCalledWith("@workspace ");
   });
 
