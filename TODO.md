@@ -79,11 +79,15 @@
 [x] export the chat history component
 [x] add vscode specific button for opening the history in a tab
 [ ] should be monotype font on tooltip (will require adding a custom tooltip)
+
 [x] command completion combobox interactions
 [ ] maybe add optimistic cache for queries to lsp?
 [x] remove context latest context files from chat when sending a message
 [x] small but in command deletion, type @fi tab delete delete then tab
 [ ] workspace being run twice ? or adding extra files
+[ ] update readme with the new features/options
+[x] uninstall react-cookie and delete code comments
+
 
 ### EVENTS TODO FOR IDEs
 

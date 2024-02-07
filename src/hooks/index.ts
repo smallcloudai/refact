@@ -4,3 +4,4 @@ export * from "./useEventBusForHost";
 export * from "./useIsOnline";
 export * from "./useOnPressedEnter";
 export * from "./useEventBusForSidebar";
+export * from "./useApiKey";
