@@ -17,6 +17,7 @@ use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::telemetry;
 use crate::receive_workspace_changes;
+use crate::telemetry::snippets_collection;
 
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -62,6 +63,11 @@ pub struct CompletionParams1 {
     // pub model: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SnippetAcceptedParams {
+    snippet_telemetry_id: u64,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TestHeadTailAddedText {
     pub text_a: String,
@@ -102,6 +108,11 @@ pub struct CompletionRes {
     pub snippet_telemetry_id: u32,
     pub model: String,
     pub created: Option<f32>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct SuccessRes {
+    pub success: bool,
 }
 
 impl Backend {
@@ -156,6 +167,11 @@ impl Backend {
         let value = serde_json::from_str::<CompletionRes>(s.as_str()).map_err(|e| internal_error(e))?;
 
         Ok(value)
+    }
+
+    pub async fn accept_snippet(&self, params: SnippetAcceptedParams) -> Result<SuccessRes> {
+        let success = snippets_collection::snippet_accepted(self.gcx.clone(), params.snippet_telemetry_id).await;
+        Ok(SuccessRes { success })
     }
 
     pub async fn test_if_head_tail_equal_return_added_text(&self, params: TestHeadTailAddedText) -> Result<TestHeadTailAddedTextRes> {
@@ -260,6 +276,7 @@ async fn build_lsp_service(
         client,
     })
         .custom_method("refact/getCompletions", Backend::get_completions)
+        .custom_method("refact/acceptCompletion", Backend::accept_snippet)
         .custom_method("refact/test_if_head_tail_equal_return_added_text", Backend::test_if_head_tail_equal_return_added_text)
         .finish();
     (lsp_service, socket)
