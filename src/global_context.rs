@@ -45,6 +45,8 @@ pub struct CommandLine {
     pub lsp_stdin_stdout: u16,
     #[structopt(long, help="Trust self-signed SSL certificates")]
     pub insecure: bool,
+    #[structopt(long, short="v", help="Verbose logging, lots of output")]
+    pub verbose: bool,
 }
 
 impl CommandLine {

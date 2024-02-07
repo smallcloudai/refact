@@ -42,7 +42,7 @@ async fn main() {
         ))
     };
     let _tracing = tracing_subscriber::fmt()
-        // .with_max_level(Level::DEBUG)
+        .with_max_level(if cmdline.verbose {Level::DEBUG} else {Level::INFO})
         .with_writer(logs_writer)
         .with_target(true)
         .with_line_number(true)
