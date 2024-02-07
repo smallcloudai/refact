@@ -15,7 +15,7 @@ pub struct UsageSearchResultStruct {
 pub struct SymbolsSearchResultStruct {
     pub symbol_declaration: SymbolDeclarationStruct,
     pub content: String,
-    pub lev_dist_to_query: f32,
+    pub dist_to_query: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

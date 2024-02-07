@@ -91,7 +91,7 @@ impl AstModule {
             Err(_) => { return Err("error during search occurred".to_string()); }
         };
         for rec in results.iter() {
-            info!("distance {:.3}, found ...{}, ", rec.lev_dist_to_query, rec.symbol_declaration.meta_path);
+            info!("distance {:.3}, found ...{}, ", rec.dist_to_query, rec.symbol_declaration.meta_path);
         }
         Ok(
             AstCursorSearchResult {
