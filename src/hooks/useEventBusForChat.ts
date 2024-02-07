@@ -51,17 +51,7 @@ function formatChatResponse(
 ): ChatMessages {
   if (isChatUserMessageResponse(response)) {
     if (response.role === "context_file") {
-      return [[response.role, JSON.parse(response.content)]];
-    }
-    if (messages.length === 0) {
-      return [[response.role, response.content]];
-    }
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage[0] === response.role) {
-      const before = messages.slice(0, messages.length - 1);
-      return before.concat([
-        [response.role, lastMessage[1] + response.content],
-      ]);
+      return [...messages, [response.role, JSON.parse(response.content)]];
     }
     return [...messages, [response.role, response.content]];
   }
@@ -87,6 +77,9 @@ function formatChatResponse(
 function reducer(state: ChatState, action: ActionToChat): ChatState {
   const isThisChat =
     action.payload?.id && action.payload.id === state.chat.id ? true : false;
+
+  console.log(action.type);
+  console.log({ state, action });
 
   if (isThisChat && isSetDisableChat(action)) {
     return {
@@ -336,6 +329,8 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       }
     }
 
+    // TODO: also remove context_file
+
     const messages = foundUserMessage
       ? state.chat.messages.filter((_, i) => i !== lastUserMessageIndex)
       : state.chat.messages;
@@ -413,6 +408,8 @@ export const useEventBusForChat = () => {
   const config = useConfig();
   const [state, dispatch] = useReducer(reducer, initialState);
   const postMessage = usePostMessage();
+
+  console.log({ state });
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
