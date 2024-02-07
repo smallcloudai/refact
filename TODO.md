@@ -87,7 +87,7 @@
 [ ] workspace being run twice ? or adding extra files
 [ ] update readme with the new features/options
 [x] uninstall react-cookie and delete code comments
-
+[ ] fix flaky test for multiple commands
 
 ### EVENTS TODO FOR IDEs
 
