@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useCallback } from "react";
 import {
   ChatContextFile,
+  ChatContextFileMessage,
   ChatMessages,
   ChatResponse,
   isChatContextFileMessage,
@@ -303,11 +304,47 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isThisChat && isReceiveAtCommandPreview(action)) {
+    const lastMessage = state.chat.messages[state.chat.messages.length - 1];
+    if (state.chat.messages.length === 0 || lastMessage[0] !== "context_file") {
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          messages: [...state.chat.messages, ...action.payload.preview],
+        },
+        rag_commands: {
+          ...state.rag_commands,
+          selected_command: "",
+          is_cmd_executable: false,
+          available_commands: [],
+        },
+      };
+    }
+
+    const start = state.chat.messages.slice(0, -1);
+    const filesInPreview = action.payload.preview.reduce<ChatContextFile[]>(
+      (acc, curr) => {
+        return [...acc, ...curr[1]];
+      },
+      lastMessage[1],
+    );
+
+    const fileNames = new Set();
+    const uniqueFilesInPreview = filesInPreview.filter((file) => {
+      if (fileNames.has(file.file_name)) {
+        return false;
+      }
+      fileNames.add(file.file_name);
+      return true;
+    });
+
+    const end: ChatContextFileMessage = [lastMessage[0], uniqueFilesInPreview];
+
     return {
       ...state,
       chat: {
         ...state.chat,
-        messages: [...state.chat.messages, ...action.payload.preview],
+        messages: [...start, end],
       },
       rag_commands: {
         ...state.rag_commands,

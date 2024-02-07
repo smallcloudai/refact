@@ -79,8 +79,10 @@
 [x] export the chat history component
 [x] add vscode specific button for opening the history in a tab
 [ ] should be monotype font on tooltip (will require adding a custom tooltip)
-[ ] command completion combobox interactions
+[x] command completion combobox interactions
 [ ] add optimistic cache for queries to lsp
+[x] remove context latest context files from chat when sending a message
+[ ] small but in command deletion, type @fi tab delete delete then tab
 
 ### EVENTS TODO FOR IDEs
 
