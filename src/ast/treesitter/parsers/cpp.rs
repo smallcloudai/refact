@@ -187,39 +187,21 @@ fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<
 fn get_enum_name_and_all_values(parent: Node, text: &str) -> (String, Vec<String>) {
     let mut name: String = Default::default();
     let mut values: Vec<String> = vec![];
-    for i in 0..parent.child_count() {
-        if let Some(child) = parent.child(i) {
-            let kind = child.kind();
-            match kind {
-                "type_identifier" => {
-                    name = text.slice(child.byte_range()).to_string();
+    let mut qcursor = tree_sitter::QueryCursor::new();
+    let query = Query::new(tree_sitter_cpp::language(), "((enum_specifier name: (type_identifier) @name (_ (_ (identifier) @element))))").unwrap();
+    let matches = qcursor.matches(&query, parent, text.as_bytes());
+    for match_ in matches {
+        for capture in match_.captures {
+            let capture_name = &query.capture_names()[capture.index as usize];
+            match capture_name.as_str() {
+                "name" => {
+                    name = text.slice(capture.node.byte_range()).to_string();
                 }
-                "enumerator_list" => {
-                    for i in 0..child.child_count() {
-                        if let Some(child) = child.child(i) {
-                            let kind = child.kind();
-                            match kind {
-                                "enumerator" => {
-                                    for i in 0..child.child_count() {
-                                        if let Some(child) = child.child(i) {
-                                            let kind = child.kind();
-                                            match kind {
-                                                "identifier" => {
-                                                    let text = text.slice(child.byte_range());
-                                                    values.push(text.to_string());
-                                                    break;
-                                                }
-                                                _ => {}
-                                            }
-                                        }
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
+                "element" => {
+                    let text = text.slice(capture.node.byte_range());
+                    values.push(text.to_string());
                 }
-                _ => {}
+                &_ => {} 
             }
         }
     }
@@ -289,13 +271,13 @@ impl LanguageParser for CppParser {
                         namespaces.iter().for_each(|ns| {
                             key += format!("::{}", ns).as_str();
                         });
-                        indexes.insert(key,
+                        indexes.insert(key.clone(),
                                        SymbolDeclarationStruct {
                                            name: class_name,
                                            definition_info: SymbolInfo { path: path.clone(), range },
                                            children: vec![],
                                            symbol_type: SymbolType::Class,
-                                           meta_path: "".to_string(),
+                                           meta_path: key,
                                        });
                     }
                     "enum" => {
