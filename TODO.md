@@ -80,9 +80,9 @@
 [x] add vscode specific button for opening the history in a tab
 [ ] should be monotype font on tooltip (will require adding a custom tooltip)
 [x] command completion combobox interactions
-[ ] add optimistic cache for queries to lsp
+[ ] maybe add optimistic cache for queries to lsp?
 [x] remove context latest context files from chat when sending a message
-[ ] small but in command deletion, type @fi tab delete delete then tab
+[x] small but in command deletion, type @fi tab delete delete then tab
 
 ### EVENTS TODO FOR IDEs
 
