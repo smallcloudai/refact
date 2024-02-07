@@ -16,7 +16,7 @@ const ContextFile: React.FC<{ name: string; children: string }> = ({
   ...props
 }) => {
   return (
-    <Text size="2" title={props.children}>
+    <Text size="2" title={props.children} className={styles.file}>
       📎 {name}
     </Text>
   );

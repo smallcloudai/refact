@@ -1,3 +1,10 @@
 .content {
   /* max-width: calc(100% - 12px); */
 }
+
+.file {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+}
