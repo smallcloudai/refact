@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -114,14 +115,16 @@ impl AstIndex {
 
         let mut filtered_search_results: Vec<(SymbolDeclarationStruct, f32)> = filtered_found_keys
             .into_iter()
-            .map(|key| (key.clone(), jaro_winkler(query, key.meta_path.as_str()) as f32))
+            .map(|key| (key.clone(),
+                        (jaro_winkler(query, key.meta_path.as_str()) as f32).max(0.001) +
+                            (jaro_winkler(query, key.name.as_str()) as f32).max(0.001)))
             .collect();
         filtered_search_results.sort_by(|(key_1, dist_1), (key_2, dist_2)|
             dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
         );
 
         let mut search_results: Vec<SymbolsSearchResultStruct> = vec![];
-        for (key, dist) in filtered_search_results.into_iter().take(top_n) {
+        for (key, dist) in filtered_search_results.into_iter().rev().take(top_n) {
             let content = match key.get_content().await {
                 Ok(content) => content,
                 Err(err) => {
