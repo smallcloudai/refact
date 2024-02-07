@@ -79,9 +79,6 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   const isThisChat =
     action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
-  console.log(action.type);
-  console.log({ state, action });
-
   if (isThisChat && isSetDisableChat(action)) {
     return {
       ...state,
@@ -438,8 +435,6 @@ export const useEventBusForChat = () => {
   const config = useConfig();
   const [state, dispatch] = useReducer(reducer, initialState);
   const postMessage = usePostMessage();
-
-  console.log({ state });
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
