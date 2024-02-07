@@ -149,8 +149,10 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       const maybeCommandWithArguments = detectCommand(ref.current);
       const [command, _args] = maybeCommandWithArguments.split(" ");
       if (command) {
-        setSelectedCommand(command + " ");
+        const isFullCommand = commands.includes(command);
+        setSelectedCommand(isFullCommand ? command + " " : "");
         setTrigger(maybeCommandWithArguments);
+        combobox.show();
       } else {
         setTrigger("");
         setSelectedCommand("");

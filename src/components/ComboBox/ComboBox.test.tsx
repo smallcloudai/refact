@@ -72,6 +72,18 @@ describe("ComboBox", () => {
     expect(app.queryByText("/bar")).not.toBeNull();
   });
 
+  test("delete part of a command and press tab", async () => {
+    const { user, ...app } = render(<App />);
+    const textarea = app.getByRole("combobox");
+    await user.type(textarea, "@");
+    await user.keyboard("{Tab}");
+    expect(textarea.textContent).toEqual("@file ");
+    await user.type(textarea, "{Backspace}{BackSpace}");
+    expect(textarea.textContent).toEqual("@fil");
+    await user.keyboard("{Tab}");
+    expect(textarea.textContent).toEqual("@file ");
+  });
+
   test("completes when pressing tab", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
