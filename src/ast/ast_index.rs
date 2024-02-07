@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use fst::{Set, set, Streamer};
-use fst::automaton::Levenshtein;
-use futures::stream::{self, StreamExt};
-use itertools::Itertools;
+use fst::automaton::{Levenshtein, Str, Subsequence};
 use sorted_vec::SortedVec;
 use strsim::normalized_levenshtein;
 use tokio::fs::read_to_string;
+use tokio::task;
 
 use crate::ast::structs::SymbolsSearchResultStruct;
 use crate::ast::treesitter::parsers::{get_parser_by_filename, LanguageParser};
@@ -67,7 +67,7 @@ impl AstIndex {
                 let name = match String::from_utf8(name_vec.to_vec()) {
                     Ok(name) => name,
                     Err(_) => {
-                        continue
+                        continue;
                     }
                 };
                 self.nodes.remove(&name);
@@ -82,49 +82,46 @@ impl AstIndex {
         top_n: usize,
         exception_filename: Option<PathBuf>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
-        let lev = match Levenshtein::new(query, 3) {
-            Ok(lev) => lev,
-            Err(e) => return Err(format!("Error creating Levenshtein: {}", e)),
-        };
-        let mut stream_builder = set::OpBuilder::new();
-        for (_, set) in &self.nodes_indexes {
-            stream_builder = stream_builder.add(set.search(&lev));
-        }
-
-        let mut stream = stream_builder.union();
-        let mut found_keys = vec![];
-        while let Some(key) = stream.next() {
-            match String::from_utf8(key.to_vec()) {
-                Ok(key) => found_keys.push(key),
-                Err(_) => {}
+        let nodes_indexes = self.nodes_indexes.clone();
+        let nodes = Arc::new(self.nodes.clone());
+        let query_str = query.to_string();
+        let found_keys = task::spawn_blocking(move || {
+            let matcher = Subsequence::new(query_str.as_str());
+            let mut stream_builder = set::OpBuilder::new();
+            for (_, set) in &nodes_indexes {
+                stream_builder = stream_builder.add(set.search(matcher.clone()));
             }
-        }
+
+            let mut stream = stream_builder.union();
+            let mut found_keys = Vec::new();
+            while let Some(key) = stream.next() {
+                if let Ok(key_str) = String::from_utf8(key.to_vec()) {
+                    found_keys.push(key_str);
+                }
+            }
+            found_keys
+        })
+            .await
+            .map_err(|e| format!("Error processing stream: {}", e))?;
+
+        let exception_filename = exception_filename.unwrap_or_default();
         let filtered_found_keys = found_keys
             .iter()
-            .unique()
-            .filter_map(|k| self.nodes.get(k))
-            .filter(|k| k.definition_info.path == exception_filename.clone().unwrap_or(PathBuf::default()))
+            .filter_map(|k| nodes.get(k))
+            .filter(|k| k.definition_info.path != exception_filename)
             .collect::<Vec<_>>();
 
-        let futures = filtered_found_keys.clone()
-            .into_iter()
-            .map(|k| async {
-                let content = k.get_content().await.unwrap(); // TODO fix this
-                Ok(SymbolsSearchResultStruct {
-                    symbol_path: k.meta_path.clone(),
-                    content,
-                    lev_dist_to_query: normalized_levenshtein(query, k.meta_path.as_str()) as f32,
-                })
+        let mut search_results: Vec<SymbolsSearchResultStruct> = vec![];
+        for key in filtered_found_keys {
+            let content = key.get_content().await.map_err(|e| format!("Error getting content for {}: {}", key.meta_path.as_str(), e))?;
+            search_results.push(SymbolsSearchResultStruct {
+                symbol_declaration: key.clone(),
+                content,
+                lev_dist_to_query: normalized_levenshtein(query, key.meta_path.as_str()) as f32,
             });
+        }
 
-        let mut symbols: Vec<_> = stream::iter(futures)
-            .buffer_unordered(filtered_found_keys.len())
-            .filter_map(|res: Result<SymbolsSearchResultStruct, String>| async { res.ok() })
-            .collect()
-            .await;
-
-        symbols.sort_by(|a, b| a.lev_dist_to_query.partial_cmp(&b.lev_dist_to_query).unwrap_or(std::cmp::Ordering::Equal));
-        Ok(symbols.into_iter().take(top_n).collect())
-
+        search_results.sort_by(|a, b| a.lev_dist_to_query.partial_cmp(&b.lev_dist_to_query).unwrap_or(std::cmp::Ordering::Equal));
+        Ok(search_results.into_iter().take(top_n).collect())
     }
 }

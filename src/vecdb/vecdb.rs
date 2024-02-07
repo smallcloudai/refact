@@ -245,7 +245,7 @@ impl VecDb {
             folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
         ).await;
         self.add_or_update_files(files, true).await;
-        info!("init_folders complete");
+        info!("vecdb: init_folders complete");
     }
 
     pub async fn get_indexed_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {

@@ -11,7 +11,7 @@ use hyper::Response;
 use crate::{telemetry_get, telemetry_post};
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::http::routers::v1::ast::handle_v1_ast_search;
+use crate::http::routers::v1::ast::{handle_v1_ast_cursor_search, handle_v1_ast_query_search};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::chat::handle_v1_chat;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion_web;
@@ -54,5 +54,6 @@ pub fn make_v1_router() -> Router {
         .route("/lsp-initialize", telemetry_post!(handle_v1_lsp_initialize))
         .route("/lsp-did-changed", telemetry_post!(handle_v1_lsp_did_change))
 
-        .route("/ast-search", telemetry_post!(handle_v1_ast_search))
+        .route("/ast-cursor-search", telemetry_post!(handle_v1_ast_cursor_search))
+        .route("/ast-query-search", telemetry_post!(handle_v1_ast_query_search))
 }

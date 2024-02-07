@@ -13,7 +13,7 @@ pub struct UsageSearchResultStruct {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SymbolsSearchResultStruct {
-    pub symbol_path: String,
+    pub symbol_declaration: SymbolDeclarationStruct,
     pub content: String,
     pub lev_dist_to_query: f32,
 }
@@ -29,10 +29,16 @@ pub struct CursorUsagesResult {
 
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SearchResult {
+pub struct AstCursorSearchResult {
     pub query_text: String,
     pub file_path: PathBuf,
     #[serde(with = "PointDef")]
     pub cursor: Point,
+    pub search_results: Vec<SymbolsSearchResultStruct>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AstQuerySearchResult {
+    pub query_text: String,
     pub search_results: Vec<SymbolsSearchResultStruct>,
 }

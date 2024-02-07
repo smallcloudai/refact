@@ -185,7 +185,10 @@ impl LanguageServer for Backend {
         }
 
         if let Some(folders) = params.workspace_folders {
-            match *self.gcx.read().await.vec_db.lock().await {
+            let binding = self.gcx.read().await;
+            let ast_module = binding.ast_module.lock().await;
+            ast_module.init_folders(folders.clone()).await;
+            match *binding.vec_db.lock().await {
                 Some(ref mut db) => db.init_folders(folders).await,
                 None => {},
             };
@@ -233,7 +236,10 @@ impl LanguageServer for Backend {
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
-            match *self.gcx.read().await.vec_db.lock().await {
+            let binding = self.gcx.read().await;
+            let ast_module = binding.ast_module.lock().await;
+            ast_module.add_or_update_file(file_path.clone(), false).await;
+            match *binding.vec_db.lock().await {
                 Some(ref mut db) => db.add_or_update_file(file_path, false).await,
                 None => {}
             };
@@ -253,7 +259,10 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri.to_string();
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
-            match *self.gcx.read().await.vec_db.lock().await {
+            let binding = self.gcx.read().await;
+            let ast_module = binding.ast_module.lock().await;
+            ast_module.add_or_update_file(file_path.clone(), false).await;
+            match *binding.vec_db.lock().await {
                 Some(ref mut db) => db.add_or_update_file(file_path, false).await,
                 None => {}
             };
@@ -268,7 +277,10 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri.to_string();
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
-            match *self.gcx.read().await.vec_db.lock().await {
+            let binding = self.gcx.read().await;
+            let ast_module = binding.ast_module.lock().await;
+            ast_module.add_or_update_file(file_path.clone(), false).await;
+            match *binding.vec_db.lock().await {
                 Some(ref mut db) => db.add_or_update_file(file_path, false).await,
                 None => {}
             };
@@ -293,7 +305,12 @@ impl LanguageServer for Backend {
             .map(|x| PathBuf::from(x.uri.replace("file://", "")))
             .filter(|x| is_valid_file(&x));
 
-        match *self.gcx.read().await.vec_db.lock().await {
+        let binding = self.gcx.read().await;
+        let ast_module = binding.ast_module.lock().await;
+        for file in files.clone() {
+            ast_module.remove_file(&file).await;
+        }
+        match *binding.vec_db.lock().await {
             Some(ref mut db) => {
                 for file in files {
                     db.remove_file(&file).await;
@@ -304,12 +321,15 @@ impl LanguageServer for Backend {
     }
 
     async fn did_create_files(&self, params: CreateFilesParams) {
-        let files = params.files
+        let files: Vec<PathBuf> = params.files
             .into_iter()
             .map(|x| PathBuf::from(x.uri.replace("file://", "")))
             .filter(|x| is_valid_file(&x))
             .collect();
-        match *self.gcx.read().await.vec_db.lock().await {
+        let binding = self.gcx.read().await;
+        let ast_module = binding.ast_module.lock().await;
+        ast_module.add_or_update_files(files.clone(), false).await;
+        match *binding.vec_db.lock().await {
             Some(ref db) => db.add_or_update_files(files, false).await,
             None => {}
         };

@@ -1,3 +1,4 @@
+use std::io;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -135,10 +136,10 @@ pub struct SymbolDeclarationStruct {
 }
 
 impl SymbolDeclarationStruct {
-    pub async fn get_content(&self) -> Option<String> {
-        let content = read_to_string(&self.definition_info.path).await.ok()?;
+    pub async fn get_content(&self) -> io::Result<String> {
+        let content = read_to_string(&self.definition_info.path).await?;
         let text = Rope::from_str(content.as_str());
-        Some(text
+        Ok(text
             .slice(text.line_to_char(self.definition_info.range.start_point.row)..
                 text.line_to_char(self.definition_info.range.end_point.row))
             .to_string())
