@@ -43,7 +43,7 @@ const App = (props: Partial<ComboBoxProps>) => {
   return <ComboBox {...defaultProps} />;
 };
 
-describe("ComboBox", () => {
+describe.only("ComboBox", () => {
   afterEach(cleanup);
   test("type @ and select command and arguments by clicking", async () => {
     const { user, ...app } = render(<App />);

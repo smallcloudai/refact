@@ -123,9 +123,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     const tabOrEnter = event.key === "Tab" || event.key === "Enter";
     const activeValue = state.activeValue ?? "";
     const command = selectedCommand ? activeValue : activeValue + " ";
-    const newInput = replaceValue(ref.current, trigger, command);
+    // const newInput = replaceValue(ref.current, trigger, command);
 
     if (state.open && tabOrEnter && command) {
+      const newInput = replaceValue(ref.current, trigger, command);
+
       event.preventDefault();
       event.stopPropagation();
       combobox.setValue(command);
@@ -137,6 +139,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     }
 
     if (event.key === "Space" && state.open && commands.includes(trigger)) {
+      const newInput = replaceValue(ref.current, trigger, command);
+
       event.preventDefault();
       event.stopPropagation();
       onChange(newInput);
