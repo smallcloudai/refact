@@ -33,7 +33,7 @@
     "build": "tsc && vite build && vite build -c vite.node.config.ts",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "test": "vitest --allowOnly",
+    "test": "vitest",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage",
     "format:check": "prettier . --check",

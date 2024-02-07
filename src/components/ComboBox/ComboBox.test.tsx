@@ -43,7 +43,7 @@ const App = (props: Partial<ComboBoxProps>) => {
   return <ComboBox {...defaultProps} />;
 };
 
-describe.only("ComboBox", () => {
+describe("ComboBox", () => {
   afterEach(cleanup);
   test("type @ and select command and arguments by clicking", async () => {
     const { user, ...app } = render(<App />);
@@ -109,13 +109,14 @@ describe.only("ComboBox", () => {
     expect(app.getByRole("combobox").textContent).toEqual("@file ");
   });
 
-  // TODO: flaky test, sometimes `@f\n@file hello @file /foo` it could be because the second combobox is't active by default
-  test.only("multiple commands", async () => {
+  // TODO: flaky test, sometimes `@f\n@file hello @file /foo` it could be because the second combobox doesn't have an active value by default
+  test.skip.each(Array.from({ length: 20 }))("multiple commands", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@fi{Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file ");
+    await user.type(textarea, "@fi");
     await user.keyboard("{Enter}");
+    expect(app.getByRole("combobox").textContent).toEqual("@file ");
+    // await user.type(textarea, "{Enter}");
     await user.type(textarea, " hello @");
     await user.keyboard("{Enter}");
     await user.keyboard("{Enter}");
