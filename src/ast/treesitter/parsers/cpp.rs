@@ -14,7 +14,8 @@ const CPP_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(translation_unit (declaration d
 const CPP_PARSER_QUERY_FUNCTION: &str = "((function_definition declarator: (function_declarator)) @function)";
 const CPP_PARSER_QUERY_CLASS: &str = "((class_specifier name: (type_identifier)) @class)\n\
 ((struct_specifier name: (type_identifier)) @struct)\n\
-((enum_specifier (_)) @enum)";
+((enum_specifier name: (type_identifier)) @enum)\n\
+((declaration type: (enum_specifier)) @enum)";
 // const CPP_PARSER_QUERY_CLASS: &str = "";
 const CPP_PARSER_QUERY_CALL_FUNCTION: &str = "";
 const CPP_PARSER_QUERY_IMPORT_STATEMENT: &str = "";
@@ -188,7 +189,9 @@ fn get_enum_name_and_all_values(parent: Node, text: &str) -> (String, Vec<String
     let mut name: String = Default::default();
     let mut values: Vec<String> = vec![];
     let mut qcursor = tree_sitter::QueryCursor::new();
-    let query = Query::new(tree_sitter_cpp::language(), "((enum_specifier name: (type_identifier) @name (_ (_ (identifier) @element))))").unwrap();
+    let query = Query::new(tree_sitter_cpp::language(), 
+                           "(enum_specifier name: (type_identifier) @name (_ (_ (identifier) @element)))\
+                           ((declaration type: (enum_specifier (_ (_ (identifier) @element))) declarator: (identifier) @name))").unwrap();
     let matches = qcursor.matches(&query, parent, text.as_bytes());
     for match_ in matches {
         for capture in match_.captures {
@@ -389,9 +392,13 @@ mod tests {
 #include <iostream>
 using namespace std;
 
-enum TestEnum {
+enum TestEnum2 {
 val1 = 1,val2
 };
+
+enum {
+val1 = 1,val2
+} TestEnum;
 
 int b = 0;
 
