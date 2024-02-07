@@ -82,7 +82,7 @@ export type ChatChoice = {
 
 export type ChatUserMessageResponse = {
   id: string;
-  role: "user";
+  role: "user" | "context_file";
   content: string;
 };
 
@@ -94,8 +94,7 @@ export function isChatUserMessageResponse(
   if (!("id" in json)) return false;
   if (!("content" in json)) return false;
   if (!("role" in json)) return false;
-  if (json.role !== "user") return false;
-  return true;
+  return json.role === "user" || json.role === "context_file";
 }
 
 export type ChatResponse =

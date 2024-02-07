@@ -1,5 +1,4 @@
-import { useEffect, useReducer } from "react";
-import { useEffectOnce } from "usehooks-ts";
+import { useEffect, useReducer, useCallback } from "react";
 import {
   ChatContextFile,
   ChatMessages,
@@ -51,11 +50,14 @@ function formatChatResponse(
   response: ChatResponse,
 ): ChatMessages {
   if (isChatUserMessageResponse(response)) {
+    if (response.role === "context_file") {
+      return [[response.role, JSON.parse(response.content)]];
+    }
     if (messages.length === 0) {
       return [[response.role, response.content]];
     }
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage[0] === "user") {
+    if (lastMessage[0] === response.role) {
       const before = messages.slice(0, messages.length - 1);
       return before.concat([
         [response.role, lastMessage[1] + response.content],
@@ -63,6 +65,10 @@ function formatChatResponse(
     }
     return [...messages, [response.role, response.content]];
   }
+  // choices is undefined
+
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // if (!response.choices) return [];
 
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (cur.delta.role === "context_file") {
@@ -595,17 +601,16 @@ export const useEventBusForChat = () => {
     postMessage(action);
   }
 
-  function requestCommandsCompletion(
-    query: string,
-    cursor: number,
-    number = 5,
-  ) {
-    const action: RequestAtCommandCompletion = {
-      type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
-      payload: { id: state.chat.id, query, cursor, number },
-    };
-    postMessage(action);
-  }
+  const requestCommandsCompletion = useCallback(
+    function (query: string, cursor: number, number = 5) {
+      const action: RequestAtCommandCompletion = {
+        type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
+        payload: { id: state.chat.id, query, cursor, number },
+      };
+      postMessage(action);
+    },
+    [state.chat.id, postMessage],
+  );
 
   function setSelectedCommand(command: string) {
     const action: SetSelectedAtCommand = {
@@ -622,10 +627,6 @@ export const useEventBusForChat = () => {
     };
     postMessage(action);
   }
-
-  useEffectOnce(() => {
-    requestCommandsCompletion("@", 1);
-  });
 
   return {
     state,
