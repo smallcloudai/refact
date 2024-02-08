@@ -45,7 +45,7 @@ impl AtParam for AtParamFilePath {
                             } else {
                                 f.file_name().unwrap().to_str().unwrap()
                             },
-                            &value.to_string()
+                            &value.to_string(),
                         )
                     )
                 });
@@ -59,5 +59,44 @@ impl AtParam for AtParamFilePath {
             }
             None => vec![]
         }
+    }
+}
+
+
+#[derive(Debug)]
+pub struct AtParamSymbolPathQuery {
+    pub name: String,
+}
+
+impl AtParamSymbolPathQuery {
+    pub fn new() -> Self {
+        Self {
+            name: "symbol_path".to_string()
+        }
+    }
+}
+
+#[async_trait]
+impl AtParam for AtParamSymbolPathQuery {
+    fn name(&self) -> &String {
+        &self.name
+    }
+    async fn is_value_valid(&self, value: &String, context: &AtCommandsContext) -> bool {
+        return true
+    }
+    async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
+        let ast_module_ptr = context.global_context.read().await.ast_module.clone();
+        let ast_module = ast_module_ptr.lock().await;
+        let index_paths = ast_module.get_indexed_symbol_paths().await;
+        let mapped_paths = index_paths.iter().map(|f| {
+            (f, jaro_winkler(f, &value.to_string()))
+        });
+        let sorted_paths = mapped_paths
+            .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
+            .rev()
+            .map(|(path, _)| path.clone())
+            .take(top_n)
+            .collect::<Vec<String>>();
+        return sorted_paths;
     }
 }

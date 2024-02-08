@@ -15,7 +15,7 @@ pub struct UsageSearchResultStruct {
 pub struct SymbolsSearchResultStruct {
     pub symbol_declaration: SymbolDeclarationStruct,
     pub content: String,
-    pub dist_to_query: f32,
+    pub sim_to_query: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -41,4 +41,10 @@ pub struct AstCursorSearchResult {
 pub struct AstQuerySearchResult {
     pub query_text: String,
     pub search_results: Vec<SymbolsSearchResultStruct>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FileReferencesResult {
+    pub file_path: PathBuf,
+    pub symbols: Vec<SymbolDeclarationStruct>
 }

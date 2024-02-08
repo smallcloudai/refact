@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
 
+use log::debug;
 use tokio::sync::Mutex as AMutex;
 use tokio::task::JoinHandle;
 use tracing::info;
@@ -22,7 +23,6 @@ async fn cooldown_queue_thread(
     out_queue: Arc<AMutex<VecDeque<PathBuf>>>,
     cooldown_secs: u64,
 ) {
-    // This function delays vectorization of a file, until mtime is at least cooldown_secs old.
     let mut last_updated: HashMap<PathBuf, SystemTime> = HashMap::new();
     loop {
         let (path_maybe, _unprocessed_files_count) = {
@@ -51,7 +51,7 @@ async fn cooldown_queue_thread(
             }
         }
         if stat_proceed > 0 || stat_too_new > 0 {
-            info!("cooldown_queue_thread: {} files to process, {} files too new", stat_proceed, stat_too_new);
+            info!("{} files to process, {} files too new", stat_proceed, stat_too_new);
         }
         for path in paths_to_process {
             last_updated.remove(&path);
@@ -80,7 +80,7 @@ async fn ast_processing_thread(
             }
         };
         if (unprocessed_files_count + 99).div(100) != (reported_unprocessed + 99).div(100) {
-            info!("have {} unprocessed files", unprocessed_files_count);
+            info!("{} unprocessed files", unprocessed_files_count);
             reported_unprocessed = unprocessed_files_count;
         }
         reported_astindex_complete &= unprocessed_files_count == 0;
@@ -90,8 +90,11 @@ async fn ast_processing_thread(
                 None => {
                     if !reported_astindex_complete {
                         reported_astindex_complete = true;
-                        write!(std::io::stderr(), "AST BULDING COMPLETE\n").unwrap();
-                        info!("AST BULDING COMPLETE");
+                        write!(
+                            std::io::stderr(),
+                            "AST index building complete\n"
+                        ).unwrap();
+                        info!("AST index building complete");
                     }
                     tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
                     continue;
@@ -100,7 +103,7 @@ async fn ast_processing_thread(
         };
         match ast_index.lock().await.add_or_update(&path).await {
             Err(e) => {
-                info!("Error adding/updating records in VecDB: {}", e);
+                info!("Error adding/updating records in AST index: {}", e);
             }
             _ => {}
         }
@@ -142,7 +145,7 @@ impl AstIndexService {
     }
 
     pub async fn process_file(&self, path: PathBuf, force: bool) {
-        info!("adding to ast index a single file");
+        debug!("Adding to AST index a single file");
         if !force {
             self.update_request_queue.lock().await.push_back(path);
         } else {
@@ -151,7 +154,7 @@ impl AstIndexService {
     }
 
     pub async fn process_files(&self, paths: Vec<PathBuf>, force: bool) {
-        info!("adding to ast index {} files", paths.len());
+        debug!("Adding to AST index {} files", paths.len());
         if !force {
             self.update_request_queue.lock().await.extend(paths);
         } else {

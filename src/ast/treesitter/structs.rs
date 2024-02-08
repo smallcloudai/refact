@@ -95,7 +95,7 @@ impl UsageSymbolInfo for StaticInfo {
 }
 
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub enum SymbolType {
     GlobalVar,
     Function,

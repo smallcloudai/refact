@@ -12,7 +12,8 @@ use tree_sitter::Point;
 use crate::ast::ast_index::AstIndex;
 use crate::ast::ast_index_service::AstIndexService;
 use crate::ast::ast_search_engine::AstSearchEngine;
-use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult};
+use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileReferencesResult};
+use crate::ast::treesitter::structs::SymbolDeclarationStruct;
 use crate::global_context::CommandLine;
 use crate::vecdb::file_filter;
 
@@ -91,7 +92,7 @@ impl AstModule {
             Err(_) => { return Err("error during search occurred".to_string()); }
         };
         for rec in results.iter() {
-            info!("distance {:.3}, found ...{}, ", rec.dist_to_query, rec.symbol_declaration.meta_path);
+            info!("distance {:.3}, found ...{}, ", rec.sim_to_query, rec.symbol_declaration.meta_path);
         }
         Ok(
             AstCursorSearchResult {
@@ -104,7 +105,7 @@ impl AstModule {
     }
 
     pub async fn search_by_symbol_path(
-        &mut self,
+        &self,
         symbol_path: String,
         top_n: usize
     ) -> Result<AstQuerySearchResult, String> {
@@ -121,5 +122,24 @@ impl AstModule {
                 ),
             Err(e) => Err(e.to_string())
         }
+    }
+
+    pub async fn get_file_references(&self, file_path: PathBuf) -> Result<FileReferencesResult, String> {
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked  = ast_index.lock().await;
+        let symbols = match ast_index_locked.get_symbols_by_file_path(&file_path) {
+            Ok(s) => s,
+            Err(err) => { return Err(format!("Error: {}", err)) }
+        };
+        Ok(FileReferencesResult {
+            file_path: file_path.clone(),
+            symbols,
+        })
+    }
+
+    pub async fn get_indexed_symbol_paths(&self) -> Vec<String> {
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked  = ast_index.lock().await;
+        ast_index_locked.get_indexed_symbol_paths()
     }
 }

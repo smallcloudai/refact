@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use fst::{Set, set, Streamer};
 use fst::automaton::Subsequence;
-use log::info;
+use log::{debug, info};
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
 use tokio::fs::read_to_string;
@@ -82,8 +82,8 @@ impl AstIndex {
         Ok(())
     }
 
-    pub async fn remove(&mut self, filename: &PathBuf) -> Result<(), String> {
-        if let Some(meta_names) = self.nodes_indexes.remove(filename) {
+    pub async fn remove(&mut self, file_path: &PathBuf) -> Result<(), String> {
+        if let Some(meta_names) = self.nodes_indexes.remove(file_path) {
             while let Some(name_vec) = meta_names.stream().next() {
                 let name = match String::from_utf8(name_vec.to_vec()) {
                     Ok(name) => name,
@@ -101,7 +101,7 @@ impl AstIndex {
         &self,
         query: &str,
         top_n: usize,
-        exception_filename: Option<PathBuf>,
+        exception_filename: Option<PathBuf>
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         let query_str = query.to_string();
         let found_keys = make_a_query(&self.nodes_indexes, query_str.as_str());
@@ -116,28 +116,57 @@ impl AstIndex {
         let mut filtered_search_results: Vec<(SymbolDeclarationStruct, f32)> = filtered_found_keys
             .into_iter()
             .map(|key| (key.clone(),
-                        (jaro_winkler(query, key.meta_path.as_str()) as f32).max(0.001) +
-                            (jaro_winkler(query, key.name.as_str()) as f32).max(0.001)))
+                        (jaro_winkler(query, key.meta_path.as_str()) as f32).max(f32::MIN_POSITIVE) *
+                            (jaro_winkler(query, key.name.as_str()) as f32).max(f32::MIN_POSITIVE)))
             .collect();
         filtered_search_results.sort_by(|(key_1, dist_1), (key_2, dist_2)|
             dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
         );
 
         let mut search_results: Vec<SymbolsSearchResultStruct> = vec![];
-        for (key, dist) in filtered_search_results.into_iter().rev().take(top_n) {
+        for (key, dist) in filtered_search_results
+            .into_iter()
+            .rev()
+            .take(top_n) {
             let content = match key.get_content().await {
                 Ok(content) => content,
                 Err(err) => {
-                    info!("Error getting content: {}", err);
+                    info!("Error opening the file {:?}: {}", key.definition_info.path, err);
                     continue;
                 }
             };
             search_results.push(SymbolsSearchResultStruct {
                 symbol_declaration: key.clone(),
                 content: content,
-                dist_to_query: dist,
+                sim_to_query: dist,
             });
         }
         Ok(search_results)
+    }
+
+    pub fn get_symbols_by_file_path(&self, file_path: &PathBuf) -> Result<Vec<SymbolDeclarationStruct>, String> {
+        let mut result: Vec<SymbolDeclarationStruct> = vec![];
+        if let Some(meta_names) = self.nodes_indexes.get(file_path) {
+            while let Some(name_vec) = meta_names.stream().next() {
+                let name = match String::from_utf8(name_vec.to_vec()) {
+                    Ok(name) => name,
+                    Err(_) => {
+                        continue;
+                    }
+                };
+                match self.nodes.get(&name) {
+                    None => {
+                        continue
+                    }
+                    Some(s) => result.push(s.clone())
+                }
+            }
+
+        }
+        return Err(format!("File {} not found in the AST index", file_path.display()));
+    }
+
+    pub fn get_indexed_symbol_paths(&self) -> Vec<String> {
+        self.nodes.iter().map(|(path, s)| path.clone()).collect()
     }
 }
