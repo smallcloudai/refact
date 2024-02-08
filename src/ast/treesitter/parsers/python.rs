@@ -204,7 +204,7 @@ impl LanguageParser for PythonParser {
                                            name: class_name,
                                            definition_info: SymbolInfo { path: path.clone(), range },
                                            children: vec![],
-                                           symbol_type: SymbolType::GlobalVar,
+                                           symbol_type: SymbolType::Class,
                                            meta_path: key,
                                            language: LanguageId::from(capture.node.language()),
                                        });
@@ -223,7 +223,7 @@ impl LanguageParser for PythonParser {
                                            name,
                                            definition_info: SymbolInfo { path: path.clone(), range },
                                            children: vec![],
-                                           symbol_type: SymbolType::GlobalVar,
+                                           symbol_type: SymbolType::Function,
                                            meta_path: key,
                                            language: LanguageId::from(capture.node.language()),
                                        });
@@ -260,7 +260,7 @@ impl LanguageParser for PythonParser {
         };
         let mut usages: Vec<Box<dyn UsageSymbolInfo>> = vec![];
         let mut qcursor = tree_sitter::QueryCursor::new();
-        let query = Query::new(tree_sitter_python::language(), &**PYTHON_PARSER_QUERY_FIND_ALL).unwrap();
+        let query = Query::new(language(), &**PYTHON_PARSER_QUERY_FIND_ALL).unwrap();
         let matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
         for match_ in matches {
             match match_.pattern_index {
