@@ -29,6 +29,7 @@ pub(crate) struct RangeDef {
 pub trait UsageSymbolInfo {
     fn dump_path(&self) -> String;
     fn distance_to_cursor(&self, cursor: &Point) -> usize;
+    fn type_str(&self) -> String;
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -42,12 +43,16 @@ pub struct VariableInfo {
 impl UsageSymbolInfo for VariableInfo {
     fn dump_path(&self) -> String {
         match self.type_name.as_ref() {
-            Some(t) => format!("{}::{}", self.name, t),
+            Some(t) => format!("{}::{}", t, self.name),
             None => self.name.clone(),
         }
     }
     fn distance_to_cursor(&self, cursor: &Point) -> usize {
         cursor.row.abs_diff(self.range.start_point.row)
+    }
+
+    fn type_str(&self) -> String {
+        String::from("variable_info")
     }
 }
 
@@ -68,6 +73,9 @@ impl UsageSymbolInfo for FunctionCallInfo {
     }
     fn distance_to_cursor(&self, cursor: &Point) -> usize {
         cursor.row.abs_diff(self.range.start_point.row)
+    }
+    fn type_str(&self) -> String {
+        String::from("function_call_info")
     }
 }
 
@@ -91,6 +99,9 @@ impl UsageSymbolInfo for StaticInfo {
     }
     fn distance_to_cursor(&self, cursor: &Point) -> usize {
         cursor.row.abs_diff(self.range.start_point.row)
+    }
+    fn type_str(&self) -> String {
+        String::from("static_info")
     }
 }
 

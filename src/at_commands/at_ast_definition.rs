@@ -1,15 +1,14 @@
-use std::path::PathBuf;
 use std::sync::Arc;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::sync::Mutex as AMutex;
+
+use crate::ast::structs::AstQuerySearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_params::AtParamSymbolPathQuery;
-use tokio::sync::Mutex as AMutex;
-use crate::ast::structs::{AstQuerySearchResult, FileReferencesResult};
-use crate::call_validation::{ChatMessage, ContextFile, SymbolDeclaration};
-use crate::vecdb::vecdb::FileSearchResult;
-
+use crate::call_validation::{ChatMessage, SymbolDeclaration};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SimplifiedSymbolDeclarationStruct {
@@ -38,7 +37,7 @@ async fn results2message(result: &AstQuerySearchResult) -> ChatMessage {
             content: content,
             line1: res.symbol_declaration.definition_info.range.start_point.row,
             line2: res.symbol_declaration.definition_info.range.end_point.row,
-            usefullness: res.sim_to_query
+            usefullness: res.sim_to_query,
         });
     }
     ChatMessage {
@@ -80,7 +79,7 @@ impl AtCommand for AtAstDefinition {
         results
     }
 
-    async fn can_execute(&self, args: &Vec<String>, context: &AtCommandsContext) -> bool {
+    async fn can_execute(&self, _: &Vec<String>, _: &AtCommandsContext) -> bool {
         return true;
     }
 

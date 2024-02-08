@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use async_trait::async_trait;
+use crate::at_commands::at_ast_definition::AtAstDefinition;
 use crate::global_context::GlobalContext;
 
 use crate::at_commands::at_file::AtFile;
@@ -58,6 +59,7 @@ pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand 
     return HashMap::from([
         ("@workspace".to_string(), Arc::new(AMutex::new(Box::new(AtWorkspace::new()) as Box<dyn AtCommand + Send>))),
         ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
+        ("@ast_definition".to_string(), Arc::new(AMutex::new(Box::new(AtAstDefinition::new()) as Box<dyn AtCommand + Send>))),
         ("@ast_reference".to_string(), Arc::new(AMutex::new(Box::new(AtAstReferences::new()) as Box<dyn AtCommand + Send>))),
     ]);
 }

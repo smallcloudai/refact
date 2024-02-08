@@ -13,7 +13,6 @@ use crate::ast::ast_index::AstIndex;
 use crate::ast::ast_index_service::AstIndexService;
 use crate::ast::ast_search_engine::AstSearchEngine;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileReferencesResult};
-use crate::ast::treesitter::structs::SymbolDeclarationStruct;
 use crate::global_context::CommandLine;
 use crate::vecdb::file_filter;
 
@@ -83,7 +82,7 @@ impl AstModule {
         };
 
         let mut handler_locked = self.ast_search_engine.lock().await;
-        let results = match handler_locked.search(
+        let (results, cursor_symbols) = match handler_locked.search(
             file_path,
             text.as_str(),
             cursor,
@@ -99,6 +98,7 @@ impl AstModule {
                 query_text: text.to_string(),
                 file_path: file_path.clone(),
                 cursor: cursor,
+                cursor_symbols: cursor_symbols,
                 search_results: results,
             }
         )

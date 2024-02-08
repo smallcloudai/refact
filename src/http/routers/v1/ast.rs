@@ -30,7 +30,7 @@ pub async fn handle_v1_ast_cursor_search(
     })?;
 
     let cx_locked = global_context.read().await;
-    let mut ast = cx_locked.ast_module.lock().await;
+    let ast = cx_locked.ast_module.lock().await;
     let search_res = ast.search_by_cursor(
         &PathBuf::from(post.filename),
         Point::new(post.row, post.column),
@@ -60,7 +60,7 @@ pub async fn handle_v1_ast_query_search(
     })?;
 
     let cx_locked = global_context.read().await;
-    let mut ast = cx_locked.ast_module.lock().await;
+    let ast = cx_locked.ast_module.lock().await;
     let search_res = ast.search_by_symbol_path(
         post.query,
         post.top_n

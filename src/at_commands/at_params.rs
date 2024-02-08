@@ -81,7 +81,7 @@ impl AtParam for AtParamSymbolPathQuery {
     fn name(&self) -> &String {
         &self.name
     }
-    async fn is_value_valid(&self, value: &String, context: &AtCommandsContext) -> bool {
+    async fn is_value_valid(&self, _: &String, _: &AtCommandsContext) -> bool {
         return true
     }
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {

@@ -1,16 +1,15 @@
-use std::cmp::max;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use fst::{Set, set, Streamer};
 use fst::automaton::Subsequence;
-use log::{debug, info};
+use log::info;
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
 use tokio::fs::read_to_string;
 
 use crate::ast::structs::SymbolsSearchResultStruct;
-use crate::ast::treesitter::parsers::{get_parser_by_filename, LanguageParser};
+use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolDeclarationStruct;
 
 pub struct AstIndex {
@@ -101,7 +100,7 @@ impl AstIndex {
         &self,
         query: &str,
         top_n: usize,
-        exception_filename: Option<PathBuf>
+        exception_filename: Option<PathBuf>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         let query_str = query.to_string();
         let found_keys = make_a_query(&self.nodes_indexes, query_str.as_str());
@@ -119,7 +118,7 @@ impl AstIndex {
                         (jaro_winkler(query, key.meta_path.as_str()) as f32).max(f32::MIN_POSITIVE) *
                             (jaro_winkler(query, key.name.as_str()) as f32).max(f32::MIN_POSITIVE)))
             .collect();
-        filtered_search_results.sort_by(|(key_1, dist_1), (key_2, dist_2)|
+        filtered_search_results.sort_by(|(_, dist_1), (_, dist_2)|
             dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
         );
 
@@ -156,17 +155,16 @@ impl AstIndex {
                 };
                 match self.nodes.get(&name) {
                     None => {
-                        continue
+                        continue;
                     }
                     Some(s) => result.push(s.clone())
                 }
             }
-
         }
         return Err(format!("File {} not found in the AST index", file_path.display()));
     }
 
     pub fn get_indexed_symbol_paths(&self) -> Vec<String> {
-        self.nodes.iter().map(|(path, s)| path.clone()).collect()
+        self.nodes.iter().map(|(path, _)| path.clone()).collect()
     }
 }

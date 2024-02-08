@@ -9,6 +9,7 @@ use crate::ast::treesitter::structs::{PointDef, SymbolDeclarationStruct};
 pub struct UsageSearchResultStruct {
     pub symbol_path: String,
     pub dist_to_cursor: usize,
+    pub type_str: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -34,6 +35,7 @@ pub struct AstCursorSearchResult {
     pub file_path: PathBuf,
     #[serde(with = "PointDef")]
     pub cursor: Point,
+    pub cursor_symbols: Vec<UsageSearchResultStruct>,
     pub search_results: Vec<SymbolsSearchResultStruct>,
 }
 
