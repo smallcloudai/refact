@@ -134,20 +134,28 @@ async fn command_completion(
             return Ok((command_completion_options(&q_cmd.value, &context, top_n).await, false, q_cmd.pos1, q_cmd.pos2));
         }
     };
-    if cmd.lock().await.can_execute(&query_line.get_args().iter().map(|x|x.value.clone()).collect(), context).await {
-        return Ok((vec![], true, -1, -1));
-    }
+
+    let can_execute = cmd.lock().await.can_execute(&query_line.get_args().iter().map(|x|x.value.clone()).collect(), context).await;
 
     for (arg, param) in query_line.get_args().iter().zip(cmd.lock().await.params()) {
-        let is_valid = param.lock().await.is_value_valid(&arg.value, context).await;
+        let param_locked = param.lock().await;
+        let is_valid = param_locked.is_value_valid(&arg.value, context).await;
         if !is_valid {
             return if arg.focused {
-                Ok((param.lock().await.complete(&arg.value, context, top_n).await, false, arg.pos1, arg.pos2))
+                Ok((param_locked.complete(&arg.value, context, top_n).await, can_execute, arg.pos1, arg.pos2))
             } else {
                 Err(ScratchError::new(StatusCode::OK, "invalid parameter".to_string()))
             }
         }
+        if is_valid && arg.focused && param_locked.complete_if_valid() {
+            return Ok((param_locked.complete(&arg.value, context, top_n).await, can_execute, arg.pos1, arg.pos2));
+        }
     }
+
+    if can_execute {
+        return Ok((vec![], true, -1, -1));
+    }
+
     // if command is not focused, and the argument is empty we should make suggestions
     if !q_cmd.focused {
         match cmd.lock().await.params().get(query_line.get_args().len()) {

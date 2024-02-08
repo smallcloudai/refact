@@ -61,6 +61,9 @@ impl AtParam for AtParamFilePath {
             None => vec![]
         }
     }
+    fn complete_if_valid(&self) -> bool {
+        false
+    }
 }
 
 
@@ -101,5 +104,8 @@ impl AtParam for AtParamSymbolPathQuery {
             .take(top_n)
             .collect::<Vec<String>>();
         return sorted_paths;
+    }
+    fn complete_if_valid(&self) -> bool {
+        true
     }
 }
