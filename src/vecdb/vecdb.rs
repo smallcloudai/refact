@@ -292,7 +292,7 @@ impl VecdbSearch for VecDb {
         info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
         for rec in results.iter() {
             let last_30_chars = crate::nicer_logs::last_n_chars(&rec.file_path.display().to_string(), 30);
-            info!("distance {:.3}, found ...{}:{}-{}, ", rec.distance, last_30_chars, rec.start_line, rec.end_line);
+            info!("distance {:.3}, found {}:{}-{}, ", rec.distance, last_30_chars, rec.start_line, rec.end_line);
         }
         let t2 = std::time::Instant::now();
         handler_locked.update_record_statistic(results.clone()).await;
