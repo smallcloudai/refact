@@ -23,6 +23,7 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({
         overflow: "hidden",
       }}
       pb="2"
+      grow="1"
     >
       <ScrollArea scrollbars="vertical">
         <Flex justify="center" align="center" pl="2" pr="2" direction="column">
