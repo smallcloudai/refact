@@ -49,11 +49,11 @@ impl AtCommand for AtFile {
 
     async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String> {
         let can_execute = self.can_execute(args, context).await;
+        if !can_execute {
+            return Err("incorrect arguments".to_string());
+        }
         match *context.global_context.read().await.vec_db.lock().await {
             Some(ref db) => {
-                if !can_execute {
-                    return Err("incorrect arguments".to_string());
-                }
                 let file_path = match args.get(0) {
                     Some(x) => x,
                     None => return Err("no file path".to_string()),

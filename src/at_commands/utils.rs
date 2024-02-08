@@ -1,6 +1,7 @@
 use std::sync::Arc;
-use crate::at_commands::at_commands::{AtCommandCall, AtCommandsContext};
+use crate::at_commands::at_commands::{AtCommandCall, AtCommandsContext, AtParam};
 use tracing::info;
+use tokio::sync::Mutex as AMutex;
 
 
 pub async fn find_valid_at_commands_in_query(
@@ -22,10 +23,15 @@ pub async fn find_valid_at_commands_in_query(
             Some(x) => x,
             None => continue,
         };
-        if !cmd.lock().await.can_execute(&q_cmd_args, context).await {
-            info!("command {:?} is not executable with arguments {:?}", q_cmd, q_cmd_args);
-            continue;
-        }
+        let can_execute = cmd.lock().await.can_execute(&q_cmd_args, context).await;
+        let q_cmd_args = match correct_arguments_if_needed(cmd.lock().await.params(), &q_cmd_args, can_execute, context).await {
+            Ok(x) => x,
+            Err(e) => {
+                info!("command {:?} is not executable with arguments {:?}; error: {:?}", q_cmd, q_cmd_args, e);
+                continue;
+            }
+        };
+
         info!("command {:?} is perfectly good", q_cmd);
         results.push(AtCommandCall::new(Arc::clone(&cmd), q_cmd_args.clone()));
         valid_command_lines.push(idx);
@@ -36,4 +42,37 @@ pub async fn find_valid_at_commands_in_query(
         .map(|(_idx, line)| line)
         .collect::<Vec<_>>().join("\n");
     results
+}
+
+pub async fn correct_arguments_if_needed(
+    params: &Vec<Arc<AMutex<dyn AtParam>>>,
+    args: &Vec<String>,
+    can_execute: bool,
+    context: &AtCommandsContext,
+) -> Result<Vec<String>, String> {
+    if can_execute {
+        return Ok(args.clone());
+    }
+    if params.len() != args.len() {
+        return Err(format!("incorrect number of arguments: {} given; {} required", args.len(), params.len()));
+    }
+    let mut args_new = vec![];
+    for (param, arg) in params.iter().zip(args.iter()) {
+        let param = param.lock().await;
+        if param.is_value_valid(arg, context).await {
+            args_new.push(arg.clone());
+            continue;
+        }
+        let completion = param.complete(arg, context, 1).await;
+        let arg_completed = match completion.get(0) {
+            Some(x) => x,
+            None => return Err(format!("arg '{}' is not valid and correction failed", arg)),
+        };
+        if !param.is_value_valid(arg_completed, context).await {
+            return Err(format!("arg '{}' is not valid and correction failed", arg));
+        }
+        info!("arg '{}' is corrected as '{}'", arg, arg_completed);
+        args_new.push(arg_completed.clone());
+    }
+    Ok(args_new)
 }
