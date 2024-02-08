@@ -1,44 +1,12 @@
 import React, { useEffect } from "react";
-import {
-  ChatContextFile,
-  ChatMessages,
-  isChatContextFileMessage,
-} from "../../services/refact";
+import { ChatMessages, isChatContextFileMessage } from "../../services/refact";
 import { Markdown, MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
-
-const ContextFile: React.FC<{ name: string; children: string }> = ({
-  name,
-  ...props
-}) => {
-  return (
-    <Text size="2" title={props.children} className={styles.file}>
-      📎 {name}
-    </Text>
-  );
-};
-
-const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({ files }) => {
-  return (
-    <pre>
-      <Flex gap="4" wrap="wrap">
-        {files.map((file, index) => {
-          const lineText =
-            file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
-          return (
-            <ContextFile key={index} name={file.file_name + lineText}>
-              {file.file_content}
-            </ContextFile>
-          );
-        })}
-      </Flex>
-    </pre>
-  );
-};
+import { ContextFiles } from "./ContextFiles";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
