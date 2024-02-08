@@ -248,7 +248,6 @@ impl LanguageServer for Backend {
                 None => {}
             };
         }
-
         receive_workspace_changes::on_did_change(
             self.gcx.clone(),
             &params.text_document.uri.to_string(),
