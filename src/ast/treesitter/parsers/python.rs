@@ -6,6 +6,8 @@ use std::string::ToString;
 use similar::DiffableStr;
 use structopt::lazy_static::lazy_static;
 use tree_sitter::{Node, Parser, Query, QueryCapture, Range, Tree};
+use tree_sitter_python::language;
+use crate::ast::treesitter::language_id::LanguageId;
 
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
 use crate::ast::treesitter::parsers::utils::{get_call, get_function_name, get_static};
@@ -60,7 +62,7 @@ impl PythonParser {
     pub fn new() -> Result<PythonParser, ParserError> {
         let mut parser = Parser::new();
         parser
-            .set_language(tree_sitter_python::language())
+            .set_language(language())
             .map_err(internal_error)?;
         Ok(PythonParser { parser })
     }
@@ -204,6 +206,7 @@ impl LanguageParser for PythonParser {
                                            children: vec![],
                                            symbol_type: SymbolType::GlobalVar,
                                            meta_path: key,
+                                           language: LanguageId::from(capture.node.language()),
                                        });
                     }
                     "function" => {
@@ -222,6 +225,7 @@ impl LanguageParser for PythonParser {
                                            children: vec![],
                                            symbol_type: SymbolType::GlobalVar,
                                            meta_path: key,
+                                           language: LanguageId::from(capture.node.language()),
                                        });
                     }
                     "global_variable" => {
@@ -240,6 +244,7 @@ impl LanguageParser for PythonParser {
                                            children: vec![],
                                            symbol_type: SymbolType::GlobalVar,
                                            meta_path: key,
+                                           language: LanguageId::from(capture.node.language()),
                                        });
                     }
                     &_ => {}

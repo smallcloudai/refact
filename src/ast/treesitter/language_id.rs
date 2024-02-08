@@ -1,7 +1,9 @@
+use std::any::Any;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use tree_sitter::Language;
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) enum LanguageId {
     Apex,
     Bash,
@@ -131,5 +133,19 @@ impl From<&str> for LanguageId {
 impl From<String> for LanguageId {
     fn from(value: String) -> Self {
         Self::from(value.as_str())
+    }
+}
+
+impl From<Language> for LanguageId {
+    fn from(value: Language) -> Self {
+        if value == tree_sitter_cpp::language() {
+            Self::Cpp
+        } else if value == tree_sitter_python::language() {
+            Self::Python
+        } else if value == tree_sitter_java::language() {
+            Self::Java
+        } else {
+            Self::Unknown
+        }
     }
 }

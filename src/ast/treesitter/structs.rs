@@ -6,6 +6,7 @@ use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
 use tree_sitter::{Range, Point};
+use crate::ast::treesitter::language_id::LanguageId;
 
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
@@ -25,6 +26,8 @@ pub(crate) struct RangeDef {
     #[serde(with = "PointDef")]
     pub end_point: Point,
 }
+
+
 
 pub trait UsageSymbolInfo {
     fn dump_path(&self) -> String;
@@ -143,7 +146,8 @@ pub struct SymbolDeclarationStruct {
     pub definition_info: SymbolInfo,
     pub children: Vec<SymbolDeclarationStruct>,
     pub symbol_type: SymbolType,
-    pub meta_path: String
+    pub meta_path: String,
+    pub language: LanguageId,
 }
 
 impl SymbolDeclarationStruct {

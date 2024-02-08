@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use lazy_static::lazy_static;
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Query, QueryCapture, Range, Tree};
+use tree_sitter_cpp::language;
+use crate::ast::treesitter::language_id::LanguageId;
 
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
 use crate::ast::treesitter::parsers::utils::{get_call, get_static};
@@ -246,7 +248,7 @@ impl CppParser {
     pub fn new() -> Result<CppParser, ParserError> {
         let mut parser = Parser::new();
         parser
-            .set_language(tree_sitter_cpp::language())
+            .set_language(language())
             .map_err(internal_error)?;
         Ok(CppParser { parser })
     }
@@ -281,6 +283,7 @@ impl LanguageParser for CppParser {
                                            children: vec![],
                                            symbol_type: SymbolType::Class,
                                            meta_path: key,
+                                           language: LanguageId::from(capture.node.language()),
                                        });
                     }
                     "enum" => {
@@ -301,6 +304,7 @@ impl LanguageParser for CppParser {
                                                children: vec![],
                                                symbol_type: SymbolType::Enum,
                                                meta_path: key,
+                                               language: LanguageId::from(capture.node.language())
                                            });
                         });
                     }
@@ -321,6 +325,7 @@ impl LanguageParser for CppParser {
                                            children: vec![],
                                            symbol_type: SymbolType::Function,
                                            meta_path: key,
+                                           language: LanguageId::from(capture.node.language())
                                        });
                     }
                     "global_variable" => {
@@ -339,6 +344,7 @@ impl LanguageParser for CppParser {
                                            children: vec![],
                                            symbol_type: SymbolType::GlobalVar,
                                            meta_path: key,
+                                           language: LanguageId::from(capture.node.language())
                                        });
                     }
                     &_ => {}
@@ -382,7 +388,10 @@ impl LanguageParser for CppParser {
 
 #[cfg(test)]
 mod tests {
+    use std::any::Any;
     use std::path::PathBuf;
+    use tree_sitter::Language;
+    use crate::ast::treesitter::language_id::LanguageId;
 
     use crate::ast::treesitter::parsers::cpp::CppParser;
     use crate::ast::treesitter::parsers::LanguageParser;
@@ -452,7 +461,7 @@ int main()
         let path = PathBuf::from("test.cpp");
         let zxc = parser.parse_usages(TEST_CODE);
         let indexes = parser.parse_declarations(TEST_CODE, &path).unwrap();
-        // assert_eq!(indexes.len(), 1);
+        assert_eq!(indexes.len(), 1);
         // assert_eq!(indexes.get("function").unwrap().name, "foo");
     }
 }
