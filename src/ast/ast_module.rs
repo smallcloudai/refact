@@ -62,7 +62,7 @@ impl AstModule {
             folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
         ).await;
         self.add_or_update_files(files, true).await;
-        info!("ast: init_folders complete");
+        info!("init_folders complete");
     }
 
     pub async fn remove_file(&self, file_path: &PathBuf) {
@@ -73,7 +73,8 @@ impl AstModule {
         &self,
         file_path: &PathBuf,
         code: &str,
-        cursor: Point
+        cursor: Point,
+        top_n: usize
     ) -> Result<AstCursorSearchResult, String> {
         let t0 = std::time::Instant::now();
 
@@ -82,6 +83,7 @@ impl AstModule {
             file_path,
             code,
             cursor,
+            top_n
         ).await {
             Ok(res) => res,
             Err(_) => { return Err("error during search occurred".to_string()); }
@@ -109,13 +111,17 @@ impl AstModule {
         let ast_index = self.ast_index.clone();
         let ast_index_locked  = ast_index.lock().await;
         match ast_index_locked.search(symbol_path.as_str(), top_n, None).await {
-            Ok(results) =>
+            Ok(results) => {
+                for r in results.iter() {
+                    info!("distance {:.3}, found ...{}, ", r.sim_to_query, r.symbol_declaration.meta_path);
+                }
                 Ok(
                     AstQuerySearchResult {
                         query_text: symbol_path,
                         search_results: results,
                     }
-                ),
+                )
+            },
             Err(e) => Err(e.to_string())
         }
     }

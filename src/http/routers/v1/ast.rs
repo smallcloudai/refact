@@ -15,6 +15,7 @@ struct AstCursorSearchPost {
     filename: String,
     row: usize,
     column: usize,
+    top_n: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -40,7 +41,7 @@ pub async fn handle_v1_ast_cursor_search(
                 Err(e) => { return Err(ScratchError::new(StatusCode::BAD_REQUEST, e.to_string())); }
             };
             ast.search_by_cursor(
-                &filename, code.as_str(), Point::new(post.row, post.column),
+                &filename, code.as_str(), Point::new(post.row, post.column), post.top_n,
             ).await
         }
         None => {

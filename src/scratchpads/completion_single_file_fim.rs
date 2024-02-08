@@ -301,7 +301,7 @@ async fn ast_search(
     max_context_size: usize
 ) -> (String, i32){
     let search_result = ast_module.search_by_cursor(
-        file_path, code, cursor
+        file_path, code, cursor, 5
     ).await;
 
     let init_cfc_text = "Here are some relevant code fragments from other files of the repo:\n\n";
