@@ -102,7 +102,9 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         canChangeModel={
           state.chat.messages.filter(
             (message) => !isChatContextFileMessage(message),
-          ).length === 0 && !state.streaming
+          ).length === 0 &&
+          !state.streaming &&
+          state.files_in_preview.length === 0
         }
         error={state.error}
         clearError={clearError}
@@ -121,6 +123,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         onClose={maybeSendToSideBar}
         attachFile={state.active_file}
         executeCommand={executeCommand}
+        filesInPreview={state.files_in_preview}
       />
     </Flex>
   );

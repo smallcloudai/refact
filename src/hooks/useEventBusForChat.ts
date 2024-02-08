@@ -94,6 +94,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       waiting_for_response: false,
       streaming: true,
       previous_message_length: messages.length,
+      files_in_preview: [],
       chat: {
         ...state.chat,
         messages,
@@ -303,29 +304,11 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isThisChat && isReceiveAtCommandPreview(action)) {
-    const lastMessage = state.chat.messages[state.chat.messages.length - 1];
-    if (state.chat.messages.length === 0 || lastMessage[0] !== "context_file") {
-      return {
-        ...state,
-        chat: {
-          ...state.chat,
-          messages: [...state.chat.messages, ...action.payload.preview],
-        },
-        rag_commands: {
-          ...state.rag_commands,
-          selected_command: "",
-          is_cmd_executable: false,
-          available_commands: [],
-        },
-      };
-    }
-
-    const start = state.chat.messages.slice(0, -1);
     const filesInPreview = action.payload.preview.reduce<ChatContextFile[]>(
       (acc, curr) => {
         return [...acc, ...curr[1]];
       },
-      lastMessage[1],
+      state.files_in_preview,
     );
 
     const fileNames = new Set();
@@ -336,15 +319,9 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       fileNames.add(file.file_name);
       return true;
     });
-
-    const end: ChatContextFileMessage = [lastMessage[0], uniqueFilesInPreview];
-
     return {
       ...state,
-      chat: {
-        ...state.chat,
-        messages: [...start, end],
-      },
+      files_in_preview: uniqueFilesInPreview,
       rag_commands: {
         ...state.rag_commands,
         selected_command: "",
@@ -390,6 +367,7 @@ export type ChatState = {
     arguments: string[];
     is_cmd_executable: boolean;
   };
+  files_in_preview: ChatContextFile[];
   active_file: {
     name: string;
     attach: boolean;
@@ -403,6 +381,7 @@ function createInitialState(): ChatState {
     waiting_for_response: false,
     error: null,
     previous_message_length: 0,
+    files_in_preview: [],
     chat: {
       id: uuidv4(),
       messages: [],
@@ -463,7 +442,13 @@ export const useEventBusForChat = () => {
   }, [state, dispatch, postMessage]);
 
   function askQuestion(question: string) {
-    const messages = state.chat.messages.concat([["user", question]]);
+    const filesInPreview: ChatContextFileMessage[] =
+      state.files_in_preview.length > 0
+        ? [["context_file", state.files_in_preview]]
+        : [];
+    const messages = state.chat.messages
+      .concat(filesInPreview)
+      .concat([["user", question]]);
     sendMessages(messages);
   }
 
@@ -642,6 +627,9 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW,
       payload: { id: state.chat.id, query: command },
     };
+    if (!state.chat.model) {
+      setChatModel(state.caps.default_cap);
+    }
     postMessage(action);
   }
 

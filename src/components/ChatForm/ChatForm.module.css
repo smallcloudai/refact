@@ -19,3 +19,12 @@
   position: relative;
   flex-shrink: 0;
 }
+
+.file {
+  display: block;
+  margin: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+}

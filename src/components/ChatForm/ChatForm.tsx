@@ -18,6 +18,8 @@ import { FileUpload } from "../FileUpload";
 import { Button } from "@radix-ui/themes";
 import { ComboBox } from "../ComboBox";
 import type { ChatState } from "../../hooks";
+import { ChatContextFile } from "../../services/refact";
+import { FilesPreview } from "./FilesPreview";
 
 const CapsSelect: React.FC<{
   value: string;
@@ -62,6 +64,7 @@ export const ChatForm: React.FC<{
   ) => void;
   setSelectedCommand: (command: string) => void;
   executeCommand: (command: string) => void;
+  filesInPreview: ChatContextFile[];
 }> = ({
   onSubmit,
   onClose,
@@ -81,6 +84,7 @@ export const ChatForm: React.FC<{
   requestCommandsCompletion,
   setSelectedCommand,
   executeCommand,
+  filesInPreview,
 }) => {
   const [value, setValue] = React.useState("");
 
@@ -143,6 +147,8 @@ export const ChatForm: React.FC<{
         className={className}
         onSubmit={() => handleSubmit()}
       >
+        <FilesPreview files={filesInPreview} />
+
         <ComboBox
           commands={commands.available_commands}
           requestCommandsCompletion={requestCommandsCompletion}

@@ -87,7 +87,12 @@
 [ ] workspace being run twice ? or adding extra files
 [ ] update readme with the new features/options
 [x] uninstall react-cookie and delete code comments
-[ ] fix flaky test for multiple commands
+[x] fix flaky test for multiple commands
+[ ] figure out why the combobox is sometimes not removing the input trigger
+[x] add temp file storage when the user uses @ commands
+[x] set the model when using @ commands
+[x] prevent the user from changing the model when there are temp files
+[ ] add new line after command
 
 ### EVENTS TODO FOR IDEs
 
