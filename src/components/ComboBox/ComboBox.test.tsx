@@ -109,21 +109,22 @@ describe("ComboBox", () => {
     expect(app.getByRole("combobox").textContent).toEqual("@file ");
   });
 
-  // TODO: flaky test, sometimes `@f\n@file hello @file /foo` it could be because the second combobox doesn't have an active value by default
-  test.skip.each(Array.from({ length: 20 }))("multiple commands", async () => {
+  test("multiple commands", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@fi");
+    await user.type(textarea, "@f{Enter}");
+    await user.keyboard("/{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo");
     await user.keyboard("{Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file ");
-    // await user.type(textarea, "{Enter}");
-    await user.type(textarea, " hello @");
-    await user.keyboard("{Enter}");
-    await user.keyboard("{Enter}");
+    await user.type(textarea, "@wo{Enter}");
     expect(app.getByRole("combobox").textContent).toEqual(
-      "@file /foo hello \n@file /foo",
+      "@file /foo\n@workspace ",
     );
   });
+
+  test.todo(
+    "typing command and pressing tab or enter twice, should complete the command and argument",
+  );
 
   test("clicking on an executable command", async () => {
     const executableSpy = vi.fn();
