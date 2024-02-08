@@ -111,11 +111,12 @@ async fn vectorize_thread(
                         info!("update_indexed_file_paths: it took {:.3}s", t0.elapsed().as_secs_f64());
 
                         reported_vecdb_complete = true;
-                        info!("VECDB Creating index");
-                        match vecdb_handler_ref.lock().await.create_index().await {
-                            Ok(_) => info!("VECDB CREATED INDEX"),
-                            Err(err) => info!("VECDB Error creating index: {}", err)
-                        }
+                        // By the time we do not create index 'cause it hurts quality of retrieval
+                        // info!("VECDB Creating index");
+                        // match vecdb_handler_ref.lock().await.create_index().await {
+                        //     Ok(_) => info!("VECDB CREATED INDEX"),
+                        //     Err(err) => info!("VECDB Error creating index: {}", err)
+                        // }
                         write!(std::io::stderr(), "VECDB COMPLETE\n").unwrap();
                         info!("VECDB COMPLETE"); // you can see "VECDB COMPLETE" sometimes faster vs logs
                     }
@@ -220,7 +221,8 @@ async fn cleanup_thread(vecdb_handler: Arc<AMutex<VecDBHandler>>) {
         {
             let mut vecdb = vecdb_handler.lock().await;
             let _ = vecdb.cleanup_old_records().await;
-            let _ = vecdb.create_index().await;
+            // By the time we do not create index 'cause it hurts quality of retrieval
+            // let _ = vecdb.create_index().await;
         }
         tokio::time::sleep(tokio::time::Duration::from_secs(2 * 3600)).await;
     }

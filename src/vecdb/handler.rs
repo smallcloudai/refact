@@ -572,9 +572,7 @@ impl VecDBHandler {
     pub async fn create_index(&mut self) -> vectordb::error::Result<()> {
         let size = self.size().await.unwrap_or(0);
         if size == 0 {
-            return Err(vectordb::error::Error::Lance {
-                message: "The vector database is empty".to_string(),
-            }.into());
+            return Ok(());
         }
         self.data_table.create_index(
             IvfPQIndexBuilder::default()
