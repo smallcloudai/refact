@@ -117,7 +117,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         if DEBUG {
             // info!("llama2 chat vdb_suggestion {:?}", vdb_suggestion);
             info!("llama2 chat prompt\n{}", prompt);
-            info!("llama2 chat re-encode whole prompt again gives {} tokes", self.t.count_tokens(prompt.as_str())?);
+            info!("llama2 chat re-encode whole prompt again gives {} tokens", self.t.count_tokens(prompt.as_str())?);
         }
         Ok(prompt)
     }

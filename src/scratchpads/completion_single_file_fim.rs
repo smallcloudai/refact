@@ -203,7 +203,7 @@ impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for SingleFileFIM<T> {
         if DEBUG {
             info!("cursor position\n{:?}", self.post.inputs.cursor);
             info!("prompt\n{}", prompt);
-            info!("re-encode whole prompt again gives {} tokes", self.t.count_tokens(prompt.as_str())?);
+            info!("re-encode whole prompt again gives {} tokens", self.t.count_tokens(prompt.as_str())?);
         }
         Ok(prompt)
     }
