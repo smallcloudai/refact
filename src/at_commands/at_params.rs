@@ -1,7 +1,7 @@
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
 use async_trait::async_trait;
 use itertools::Itertools;
-use strsim::jaro_winkler;
+use strsim::normalized_damerau_levenshtein;
 
 #[derive(Debug)]
 pub struct AtParamFilePath {
@@ -39,7 +39,7 @@ impl AtParam for AtParamFilePath {
                 let mapped_paths = index_file_paths.iter().map(|f| {
                     (
                         f,
-                        jaro_winkler(
+                        normalized_damerau_levenshtein(
                             if value.starts_with("/") {
                                 f.to_str().unwrap()
                             } else {
