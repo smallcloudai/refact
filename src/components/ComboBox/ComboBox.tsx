@@ -60,12 +60,27 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useEffect(() => {
     if (trigger && commandIsExecutable) {
+      const sliceAt = (startPosition ?? 0) + trigger.length;
+      if (value[sliceAt + 1] !== "\n") {
+        const start = value.substring(0, sliceAt);
+        const end = value.substring(sliceAt);
+        const nextValue = `${start}\n${end}`;
+        onChange(nextValue);
+      }
       executeCommand(trigger);
       setTrigger("");
       setSelectedCommand("");
       setStartPosition(null);
     }
-  }, [trigger, commandIsExecutable, executeCommand, setSelectedCommand]);
+  }, [
+    trigger,
+    commandIsExecutable,
+    executeCommand,
+    setSelectedCommand,
+    startPosition,
+    value,
+    onChange,
+  ]);
 
   React.useEffect(() => {
     if (trigger) {

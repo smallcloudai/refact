@@ -84,7 +84,7 @@
 [ ] maybe add optimistic cache for queries to lsp?
 [x] remove context latest context files from chat when sending a message
 [x] small but in command deletion, type @fi tab delete delete then tab
-[ ] workspace being run twice ? or adding extra files
+[x] workspace being run twice ? or adding extra files
 [ ] update readme with the new features/options
 [x] uninstall react-cookie and delete code comments
 [x] fix flaky test for multiple commands
@@ -92,7 +92,7 @@
 [x] add temp file storage when the user uses @ commands
 [x] set the model when using @ commands
 [x] prevent the user from changing the model when there are temp files
-[ ] add new line after command
+[x] add new line after command
 [x] add flex grow to history list
 
 ### EVENTS TODO FOR IDEs
