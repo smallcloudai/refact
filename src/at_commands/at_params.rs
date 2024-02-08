@@ -1,7 +1,8 @@
-use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
 use async_trait::async_trait;
 use itertools::Itertools;
 use strsim::normalized_damerau_levenshtein;
+
+use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
 
 #[derive(Debug)]
 pub struct AtParamFilePath {
@@ -82,12 +83,14 @@ impl AtParam for AtParamSymbolPathQuery {
         &self.name
     }
     async fn is_value_valid(&self, _: &String, _: &AtCommandsContext) -> bool {
-        return true
+        return true;
     }
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
         let ast_module_ptr = context.global_context.read().await.ast_module.clone();
-        let ast_module = ast_module_ptr.lock().await;
-        let index_paths = ast_module.get_indexed_symbol_paths().await;
+        let index_paths = match *ast_module_ptr.lock().await {
+            Some(ref ast) => ast.get_indexed_symbol_paths().await,
+            None => vec![]
+        };
         let mapped_paths = index_paths.iter().map(|f| {
             (f, jaro_winkler(f, &value.to_string()))
         });

@@ -73,7 +73,10 @@ async fn main() {
     if should_start_http {
         main_handle = http::start_server(gcx.clone(), ask_shutdown_receiver).await;
     }
-    background_tasks.extend(gcx.clone().read().await.ast_module.lock().await.start_background_tasks().await);
+    match *gcx.clone().read().await.ast_module.lock().await {
+        Some(ref ast) => background_tasks.extend(ast.start_background_tasks().await),
+        None => ()
+    };
     if should_start_lsp {
         if main_handle.is_none() {
             // FIXME: this ignores crate::global_context::block_until_signal , important because now we have a database to corrupt

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::call_validation::CodeCompletionPost;
@@ -12,6 +13,8 @@ use ropey::Rope;
 use tracing::info;
 use async_trait::async_trait;
 use serde_json::Value;
+use tree_sitter::Point;
+use crate::ast::ast_module::AstModule;
 
 use crate::completion_cache;
 use crate::telemetry::telemetry_structs;
@@ -22,7 +25,7 @@ const DEBUG: bool = false;
 
 
 #[derive(Debug)]
-pub struct SingleFileFIM<T> {
+pub struct SingleFileFIM {
     pub t: HasTokenizerAndEot,
     pub post: CodeCompletionPost,
     pub order: String,
@@ -31,23 +34,23 @@ pub struct SingleFileFIM<T> {
     pub fim_middle: String,
     pub data4cache: completion_cache::CompletionSaveToCache,
     pub data4snippet: snippets_collection::SaveSnippet,
-    pub vecdb_search: Arc<AMutex<Option<T>>>,
+    pub ast_module: Arc<AMutex<Option<AstModule>>>,
 }
 
-impl<T: Send + Sync + VecdbSearch> SingleFileFIM<T> {
+impl SingleFileFIM {
     pub fn new(
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: CodeCompletionPost,
         order: String,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
         tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
-        vecdb_search: Arc<AMutex<Option<T>>>,
-    ) -> Self where T: VecdbSearch + Send {
+        ast_module: Arc<AMutex<Option<AstModule>>>,
+    ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
         let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
         SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(),
             fim_suffix: String::new(), fim_middle: String::new(), data4cache, data4snippet,
-            vecdb_search
+            ast_module
         }
     }
 
@@ -62,7 +65,7 @@ impl<T: Send + Sync + VecdbSearch> SingleFileFIM<T> {
 
 
 #[async_trait]
-impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for SingleFileFIM<T> {
+impl ScratchpadAbstract for SingleFileFIM {
     fn apply_model_adaptation_patch(
         &mut self,
         patch: &serde_json::Value,
@@ -106,22 +109,19 @@ impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for SingleFileFIM<T> {
         let text = Rope::from_str(&*source);
 
         let pos = &self.post.inputs.cursor;
+        let file_path = PathBuf::from(self.post.inputs.cursor.file.clone());
         let mut before_iter = text.lines_at(pos.line as usize).reversed();
         let mut after_iter = text.lines_at(pos.line as usize + 1);
-        let (extra_context, mut tokens_used) = match *self.vecdb_search.lock().await {
-            Some(ref db) => {
-                match self.post.no_cache || self.post.inputs.multiline {
-                    true => {
-                        let text_near_cursor = get_context_near_cursor(&text, pos.line as usize, 20);
-                        search_vecdb(
-                            db,
-                            self.t.clone(),
-                            text_near_cursor,
-                            (limit as f32 * 0.5) as usize
-                        ).await
-                    }
-                    false => (String::new(), 0)
-                }
+        let (extra_context, mut tokens_used) = match *self.ast_module.lock().await {
+            Some(ref ast) => {
+                ast_search(
+                    ast,
+                    &file_path,
+                    &source,
+                    Point { row: pos.line as usize, column: pos.character as usize },
+                    self.t.clone(),
+                    (limit as f32 * 0.5) as usize,
+                ).await
             }
             None => (String::new(), 0)
         };
@@ -292,56 +292,34 @@ impl<T: Send + Sync + VecdbSearch> ScratchpadAbstract for SingleFileFIM<T> {
     }
 }
 
-fn get_context_near_cursor(text: &Rope, line_pos: usize, max_lines_count: usize) -> String {
-    let mut before_iter = text.lines_at(line_pos).reversed();
-    let mut after_iter = text.lines_at(line_pos + 1);
-
-    let mut before = vec![];
-    let mut after = vec![];
-    let mut before_line = before_iter.next();
-    let mut after_line = after_iter.next();
-
-    while (before.len() + after.len() < max_lines_count) && (before_line.is_some() || after_line.is_some()) {
-        if let Some(before_line) = before_iter.next() {
-            before.push(before_line.as_str().unwrap_or(""));
-        }
-        if let Some(after_line) = after_iter.next() {
-            after.push(after_line.as_str().unwrap_or(""));
-        }
-        before_line = before_iter.next();
-        after_line = after_iter.next();
-    }
-
-    let before_str = before.into_iter().rev().collect::<Vec<_>>().join("");
-    let after_str = after.join("");
-
-    return format!("{}{}", before_str, after_str);
-}
-
-async fn search_vecdb<T>(
-    vecdb_search: &T,
+async fn ast_search(
+    ast_module: &AstModule,
+    file_path: &PathBuf,
+    code: &str,
+    cursor: Point,
     tokenizer: HasTokenizerAndEot,
-    text_near_cursor: String,
     max_context_size: usize
-) -> (String, i32) where T: VecdbSearch + Send {
-    let search_result = vecdb_search.search(text_near_cursor, 20).await;
+) -> (String, i32){
+    let search_result = ast_module.search_by_cursor(
+        file_path, code, cursor
+    ).await;
 
     let init_cfc_text = "Here are some relevant code fragments from other files of the repo:\n\n";
     let mut tokens_used = tokenizer.count_tokens(init_cfc_text).expect(
         "Tokenization has failed"
     );
-
     match search_result {
         Ok(res) => {
-            if res.results.is_empty() {
+            if res.search_results.is_empty() {
                 return ("".to_string(), tokens_used);
             }
 
             let mut final_text_vec: Vec<String> = vec![init_cfc_text.to_string()];
-            for res in res.results {
+            for res in res.search_results {
                 let text: String = format!(
                     "The below code fragment is found in {}\n{}\n\n",
-                    res.file_path.to_str().unwrap_or(""), res.window_text
+                    res.symbol_declaration.meta_path,
+                    res.symbol_declaration.get_content().await.unwrap_or("".to_string())
                 );
                 tokens_used += tokenizer.count_tokens(&text).expect(
                     "Tokenization has failed"

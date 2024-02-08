@@ -186,8 +186,10 @@ impl LanguageServer for Backend {
 
         if let Some(folders) = params.workspace_folders {
             let binding = self.gcx.read().await;
-            let ast_module = binding.ast_module.lock().await;
-            ast_module.init_folders(folders.clone()).await;
+            match *binding.ast_module.lock().await {
+                Some(ref mut ast) => ast.init_folders(folders.clone()).await,
+                None => {},
+            };
             match *binding.vec_db.lock().await {
                 Some(ref mut db) => db.init_folders(folders).await,
                 None => {},
@@ -237,8 +239,10 @@ impl LanguageServer for Backend {
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
             let binding = self.gcx.read().await;
-            let ast_module = binding.ast_module.lock().await;
-            ast_module.add_or_update_file(file_path.clone(), false).await;
+            match *binding.ast_module.lock().await {
+                Some(ref mut ast) => ast.add_or_update_file(file_path.clone(), false).await,
+                None => {},
+            };
             match *binding.vec_db.lock().await {
                 Some(ref mut db) => db.add_or_update_file(file_path, false).await,
                 None => {}
@@ -260,8 +264,10 @@ impl LanguageServer for Backend {
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
             let binding = self.gcx.read().await;
-            let ast_module = binding.ast_module.lock().await;
-            ast_module.add_or_update_file(file_path.clone(), false).await;
+            match *binding.ast_module.lock().await {
+                Some(ref mut ast) => ast.add_or_update_file(file_path.clone(), false).await,
+                None => {},
+            };
             match *binding.vec_db.lock().await {
                 Some(ref mut db) => db.add_or_update_file(file_path, false).await,
                 None => {}
@@ -278,8 +284,10 @@ impl LanguageServer for Backend {
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
             let binding = self.gcx.read().await;
-            let ast_module = binding.ast_module.lock().await;
-            ast_module.add_or_update_file(file_path.clone(), false).await;
+            match *binding.ast_module.lock().await {
+                Some(ref mut ast) => ast.add_or_update_file(file_path.clone(), false).await,
+                None => {},
+            };
             match *binding.vec_db.lock().await {
                 Some(ref mut db) => db.add_or_update_file(file_path, false).await,
                 None => {}
@@ -306,10 +314,14 @@ impl LanguageServer for Backend {
             .filter(|x| is_valid_file(&x));
 
         let binding = self.gcx.read().await;
-        let ast_module = binding.ast_module.lock().await;
-        for file in files.clone() {
-            ast_module.remove_file(&file).await;
-        }
+        match *binding.ast_module.lock().await {
+            Some(ref mut ast) => {
+                for file in files.clone() {
+                    ast.remove_file(&file).await;
+                }
+            },
+            None => {},
+        };
         match *binding.vec_db.lock().await {
             Some(ref mut db) => {
                 for file in files {
@@ -327,8 +339,10 @@ impl LanguageServer for Backend {
             .filter(|x| is_valid_file(&x))
             .collect();
         let binding = self.gcx.read().await;
-        let ast_module = binding.ast_module.lock().await;
-        ast_module.add_or_update_files(files.clone(), false).await;
+        match *binding.ast_module.lock().await {
+            Some(ref mut ast) => ast.add_or_update_files(files.clone(), false).await,
+            None => {},
+        };
         match *binding.vec_db.lock().await {
             Some(ref db) => db.add_or_update_files(files, false).await,
             None => {}

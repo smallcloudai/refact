@@ -1,8 +1,10 @@
 use std::path::PathBuf;
+
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
+use tokio::fs::read_to_string;
 use tree_sitter::Point;
 
 use crate::custom_error::ScratchError;
@@ -12,7 +14,7 @@ use crate::global_context::SharedGlobalContext;
 struct AstCursorSearchPost {
     filename: String,
     row: usize,
-    column: usize
+    column: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -30,11 +32,23 @@ pub async fn handle_v1_ast_cursor_search(
     })?;
 
     let cx_locked = global_context.read().await;
-    let ast = cx_locked.ast_module.lock().await;
-    let search_res = ast.search_by_cursor(
-        &PathBuf::from(post.filename),
-        Point::new(post.row, post.column),
-    ).await;
+    let search_res = match *cx_locked.ast_module.lock().await {
+        Some(ref ast) => {
+            let filename = PathBuf::from(post.filename);
+            let code = match read_to_string(filename.clone()).await {
+                Ok(s) => s,
+                Err(e) => { return Err(ScratchError::new(StatusCode::BAD_REQUEST, e.to_string())); }
+            };
+            ast.search_by_cursor(
+                &filename, code.as_str(), Point::new(post.row, post.column),
+            ).await
+        }
+        None => {
+            return Err(ScratchError::new(
+                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+            ));
+        }
+    };
     match search_res {
         Ok(search_res) => {
             let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
@@ -60,11 +74,20 @@ pub async fn handle_v1_ast_query_search(
     })?;
 
     let cx_locked = global_context.read().await;
-    let ast = cx_locked.ast_module.lock().await;
-    let search_res = ast.search_by_symbol_path(
-        post.query,
-        post.top_n
-    ).await;
+    let search_res = match *cx_locked.ast_module.lock().await {
+        Some(ref ast) => {
+            ast.search_by_symbol_path(
+                post.query,
+                post.top_n,
+            ).await
+        }
+        None => {
+            return Err(ScratchError::new(
+                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+            ));
+        }
+    };
+
     match search_res {
         Ok(search_res) => {
             let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {

@@ -12,6 +12,7 @@ use crate::ast::structs::SymbolsSearchResultStruct;
 use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolDeclarationStruct;
 
+#[derive(Debug)]
 pub struct AstIndex {
     nodes: HashMap<String, SymbolDeclarationStruct>,
     nodes_indexes: HashMap<PathBuf, Set<Vec<u8>>>,

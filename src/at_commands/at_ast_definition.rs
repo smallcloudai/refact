@@ -92,11 +92,15 @@ impl AtCommand for AtAstDefinition {
             Some(x) => x,
             None => return Err("no symbol path".to_string()),
         };
-        let ast_module_ptr = context.global_context.read().await.ast_module.clone();
-        let ast_module = ast_module_ptr.lock().await;
-        match ast_module.search_by_symbol_path(symbol_path.clone(), 1).await {
-            Ok(res) => Ok(results2message(&res).await),
-            Err(err) => Err(err)
-        }
+        let binding = context.global_context.read().await;
+        let x = match *binding.ast_module.lock().await {
+            Some(ref ast) => {
+                match ast.search_by_symbol_path(symbol_path.clone(), 1).await {
+                    Ok(res) => Ok(results2message(&res).await),
+                    Err(err) => Err(err)
+                }
+            }
+            None => Err("Ast module is not available".to_string())
+        }; x
     }
 }

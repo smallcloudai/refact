@@ -77,11 +77,15 @@ impl AtCommand for AtAstReferences {
             None => return Err("no file path".to_string()),
         };
 
-        let ast_module_ptr = context.global_context.read().await.ast_module.clone();
-        let ast_module = ast_module_ptr.lock().await;
-        match ast_module.get_file_references(PathBuf::from(file_path)).await {
-            Ok(res) => Ok(results2message(&res)),
-            Err(err) => Err(err)
-        }
+        let binding = context.global_context.read().await;
+        let x = match *binding.ast_module.lock().await {
+            Some(ref ast) => {
+                match ast.get_file_references(PathBuf::from(file_path)).await {
+                    Ok(res) => Ok(results2message(&res)),
+                    Err(err) => Err(err)
+                }
+            }
+            None => Err("Ast module is not available".to_string())
+        }; x
     }
 }

@@ -74,7 +74,7 @@ pub struct GlobalContext {
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
-    pub ast_module: Arc<AMutex<AstModule>>,
+    pub ast_module: Arc<AMutex<Option<AstModule>>>,
     pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
     pub lsp_backend_document_state: LSPBackendDocumentState,
 }
@@ -202,8 +202,10 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
-    let ast_module = Arc::new(AMutex::new(AstModule::init(cmdline.clone()).await.expect(
-        "Failed to initialize ast module"
+    let ast_module = Arc::new(AMutex::new(Some(
+        AstModule::init(cmdline.clone()).await.expect(
+            "Failed to initialize ast module"
+        )
     )));
 
     let cx = GlobalContext {

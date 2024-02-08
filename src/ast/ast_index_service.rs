@@ -12,6 +12,7 @@ use tracing::info;
 
 use crate::ast::ast_index::AstIndex;
 
+#[derive(Debug)]
 pub struct AstIndexService {
     update_request_queue: Arc<AMutex<VecDeque<PathBuf>>>,
     output_queue: Arc<AMutex<VecDeque<PathBuf>>>,

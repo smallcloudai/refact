@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::Serialize;
-use tokio::fs::read_to_string;
 use tokio::sync::Mutex as AMutex;
 use tokio::task::JoinHandle;
 use tower_lsp::lsp_types::WorkspaceFolder;
@@ -16,6 +15,7 @@ use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileRefer
 use crate::global_context::CommandLine;
 use crate::vecdb::file_filter;
 
+#[derive(Debug)]
 pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
     ast_index: Arc<AMutex<AstIndex>>,
@@ -72,19 +72,15 @@ impl AstModule {
     pub async fn search_by_cursor(
         &self,
         file_path: &PathBuf,
+        code: &str,
         cursor: Point
     ) -> Result<AstCursorSearchResult, String> {
         let t0 = std::time::Instant::now();
 
-        let text = match read_to_string(file_path).await {
-            Ok(s) => s,
-            Err(e) => return Err(e.to_string())
-        };
-
         let mut handler_locked = self.ast_search_engine.lock().await;
         let (results, cursor_symbols) = match handler_locked.search(
             file_path,
-            text.as_str(),
+            code,
             cursor,
         ).await {
             Ok(res) => res,
@@ -95,7 +91,7 @@ impl AstModule {
         }
         Ok(
             AstCursorSearchResult {
-                query_text: text.to_string(),
+                query_text: code.to_string(),
                 file_path: file_path.clone(),
                 cursor: cursor,
                 cursor_symbols: cursor_symbols,

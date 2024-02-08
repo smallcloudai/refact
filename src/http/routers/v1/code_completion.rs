@@ -79,7 +79,7 @@ pub async fn handle_v1_code_completion(
         }
     }
 
-    let vecdb_search = global_context.read().await.vec_db.clone();
+    let ast_module = global_context.read().await.ast_module.clone();
     let mut scratchpad = scratchpads::create_code_completion_scratchpad(
         global_context.clone(),
         caps,
@@ -89,7 +89,7 @@ pub async fn handle_v1_code_completion(
         &scratchpad_patch,
         cache_arc.clone(),
         tele_storage.clone(),
-        vecdb_search
+        ast_module
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;

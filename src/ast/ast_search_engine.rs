@@ -9,6 +9,7 @@ use crate::ast::ast_index::AstIndex;
 use crate::ast::structs::{CursorUsagesResult, SymbolsSearchResultStruct, UsageSearchResultStruct};
 use crate::ast::treesitter::parsers::get_parser_by_filename;
 
+#[derive(Debug)]
 pub struct AstSearchEngine {
     ast_index: Arc<AMutex<AstIndex>>,
 }
