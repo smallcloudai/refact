@@ -33,6 +33,7 @@ describe("ChatForm", () => {
         }}
         setSelectedCommand={() => ({})}
         executeCommand={() => ({})}
+        filesInPreview={[]}
         // setSelectedCommand={() => ({})}
       />,
     );
@@ -78,6 +79,7 @@ describe("ChatForm", () => {
         }}
         setSelectedCommand={() => ({})}
         executeCommand={() => ({})}
+        filesInPreview={[]}
       />,
     );
     const textarea = app.container.querySelector("textarea");

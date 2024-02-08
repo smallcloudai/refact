@@ -77,6 +77,7 @@ const meta = {
       can_paste: true,
       attach: false,
     },
+    filesInPreview: [],
   },
 } satisfies Meta<typeof ChatForm>;
 
