@@ -128,7 +128,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         }
         if DEBUG {
             info!("chat prompt\n{}", prompt);
-            info!("chat re-encode whole prompt again gives {} tokes", self.t.count_tokens(prompt.as_str())?);
+            info!("chat re-encode whole prompt again gives {} tokens", self.t.count_tokens(prompt.as_str())?);
         }
         Ok(prompt)
     }
