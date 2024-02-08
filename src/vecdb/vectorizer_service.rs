@@ -111,14 +111,14 @@ async fn vectorize_thread(
                         info!("update_indexed_file_paths: it took {:.3}s", t0.elapsed().as_secs_f64());
 
                         reported_vecdb_complete = true;
-                        // By the time we do not create index 'cause it hurts quality of retrieval
+                        // For now we do not create index 'cause it hurts quality of retrieval
                         // info!("VECDB Creating index");
                         // match vecdb_handler_ref.lock().await.create_index().await {
                         //     Ok(_) => info!("VECDB CREATED INDEX"),
                         //     Err(err) => info!("VECDB Error creating index: {}", err)
                         // }
                         write!(std::io::stderr(), "VECDB COMPLETE\n").unwrap();
-                        info!("VECDB COMPLETE"); // you can see "VECDB COMPLETE" sometimes faster vs logs
+                        info!("VECDB COMPLETE"); // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
                     }
                     tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
                     continue;
@@ -202,7 +202,7 @@ async fn vectorize_thread(
                     }
                     Err(e) => {
                         info!("Error retrieving embeddings for {}: {}", data_res.file_path.to_str().unwrap(), e);
-                        queue.lock().await.push_back(data_res.file_path);  // push it back again
+                        // queue.lock().await.push_back(data_res.file_path);  // push it back again
                     }
                 }
             }
