@@ -14,8 +14,12 @@ export const FilesPreview: React.FC<{ files: ChatContextFile[] }> = ({
           file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
         return (
           <pre key={file.file_name + i} className={styles.file}>
-            <Text size="1" title={file.file_content}>
-              📎 {file.file_name}
+            <Text
+              size="1"
+              title={file.file_content}
+              className={styles.fileName}
+            >
+              📎 {file.file_name.replace("/home/user", "~")}
               {lineText}
             </Text>
           </pre>
