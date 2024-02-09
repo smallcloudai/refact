@@ -42,6 +42,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [trigger, setTrigger] = React.useState<string>("");
   const [startPosition, setStartPosition] = React.useState<null | number>(null);
+  const [wasDelete, setWasDelete] = React.useState<boolean>(false);
 
   const commandsOrArguments = selectedCommand
     ? commandArguments.map((arg) => selectedCommand + arg)
@@ -64,7 +65,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       trigger &&
       commandIsExecutable &&
       selectedCommand &&
-      value[sliceAt + 1] !== "\n"
+      value[sliceAt + 1] !== "\n" &&
+      !wasDelete
     ) {
       const start = value.substring(0, sliceAt);
       const end = value.substring(sliceAt);
@@ -87,6 +89,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     value,
     onChange,
     selectedCommand,
+    wasDelete,
   ]);
 
   React.useEffect(() => {
@@ -186,6 +189,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     }
 
     if (event.key === "Backspace") {
+      setWasDelete(true);
       const maybeCommand = detectCommand(ref.current);
 
       if (maybeCommand !== null) {
@@ -199,6 +203,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         setTrigger("");
         setSelectedCommand("");
       }
+    } else if (wasDelete) {
+      setWasDelete(false);
     }
   };
 
