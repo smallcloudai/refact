@@ -52,7 +52,7 @@ async fn cooldown_queue_thread(
             }
         }
         if stat_proceed > 0 || stat_too_new > 0 {
-            info!("{} files to process, {} files too new", stat_proceed, stat_too_new);
+            debug!("{} files to process, {} files too new", stat_proceed, stat_too_new);
         }
         for path in paths_to_process {
             last_updated.remove(&path);

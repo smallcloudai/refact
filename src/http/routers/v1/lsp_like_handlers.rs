@@ -59,12 +59,12 @@ pub async fn handle_v1_lsp_did_change(
     })?;
     let path = PathBuf::from(post.uri.path());
     let binding = global_context.read().await;
-    match *binding.ast_module.lock().await {
-        Some(ref mut ast) => ast.add_or_update_file(path.clone(), false).await,
+    match *binding.vec_db.lock().await {
+        Some(ref mut db) => db.add_or_update_file(path.clone(), false).await,
         None => {}
     };
-    match *binding.vec_db.lock().await {
-        Some(ref mut db) => db.add_or_update_file(path, false).await,
+    match *binding.ast_module.lock().await {
+        Some(ref mut ast) => ast.add_or_update_file(path, false).await,
         None => {}
     };
     receive_workspace_changes::on_did_change(
