@@ -64,7 +64,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     if (
       trigger &&
       commandIsExecutable &&
-      selectedCommand &&
       value[sliceAt + 1] !== "\n" &&
       !wasDelete
     ) {
