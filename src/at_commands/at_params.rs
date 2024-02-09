@@ -95,7 +95,7 @@ impl AtParam for AtParamSymbolPathQuery {
             None => vec![]
         };
         let mapped_paths = index_paths.iter().map(|f| {
-            (f, jaro_winkler(f, &value.to_string()))
+            (f, normalized_damerau_levenshtein(f, &value.to_string()))
         });
         let sorted_paths = mapped_paths
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
