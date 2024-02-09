@@ -19,7 +19,7 @@ export const FilesPreview: React.FC<{ files: ChatContextFile[] }> = ({
               title={file.file_content}
               className={styles.fileName}
             >
-              📎 {file.file_name.replace("/home/user", "~")}
+              📎 {file.file_name.replace(/^\/home\/user/, "~")}
               {lineText}
             </Text>
           </pre>
