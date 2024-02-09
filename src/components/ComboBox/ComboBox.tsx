@@ -91,7 +91,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useEffect(() => {
     if (trigger) {
-      console.log({ trigger });
       requestCommandsCompletion(trigger, trigger.length);
     } else {
       requestCommandsCompletion("@", 1);
