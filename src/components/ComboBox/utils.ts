@@ -56,11 +56,17 @@ export function replaceValue(
   return result;
 }
 
-export function detectCommand(element: HTMLTextAreaElement): string {
+export function detectCommand(element: HTMLTextAreaElement): {
+  command: string;
+  startPosition: number;
+} | null {
   const start = element.value.substring(0, element.selectionStart);
-  if (start.length === 0) return "";
+  if (start.length === 0) return null;
   const maybeCommandIndex = start.lastIndexOf("@");
-  if (maybeCommandIndex < 0) return "";
+  if (maybeCommandIndex < 0) return null;
   const maybeCommand = start.substring(maybeCommandIndex);
-  return maybeCommand;
+  return {
+    command: maybeCommand,
+    startPosition: maybeCommandIndex,
+  };
 }

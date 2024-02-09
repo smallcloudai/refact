@@ -59,14 +59,20 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const hasMatches = !!trigger && !!matches.length;
 
   React.useEffect(() => {
+    const sliceAt = (startPosition ?? 0) + trigger.length;
+    if (
+      trigger &&
+      commandIsExecutable &&
+      selectedCommand &&
+      value[sliceAt + 1] !== "\n"
+    ) {
+      const start = value.substring(0, sliceAt);
+      const end = value.substring(sliceAt);
+      const nextValue = `${start}\n${end}`;
+      onChange(nextValue);
+    }
+
     if (trigger && commandIsExecutable) {
-      const sliceAt = (startPosition ?? 0) + trigger.length;
-      if (value[sliceAt + 1] !== "\n") {
-        const start = value.substring(0, sliceAt);
-        const end = value.substring(sliceAt);
-        const nextValue = `${start}\n${end}`;
-        onChange(nextValue);
-      }
       executeCommand(trigger);
       setTrigger("");
       setSelectedCommand("");
@@ -80,10 +86,12 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     startPosition,
     value,
     onChange,
+    selectedCommand,
   ]);
 
   React.useEffect(() => {
     if (trigger) {
+      console.log({ trigger });
       requestCommandsCompletion(trigger, trigger.length);
     } else {
       requestCommandsCompletion("@", 1);
@@ -179,12 +187,14 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     }
 
     if (event.key === "Backspace") {
-      const maybeCommandWithArguments = detectCommand(ref.current);
-      const [command, _args] = maybeCommandWithArguments.split(" ");
-      if (command) {
+      const maybeCommand = detectCommand(ref.current);
+
+      if (maybeCommand !== null) {
+        const [command, _args] = maybeCommand.command.split(" ");
         const isFullCommand = commands.includes(command);
         setSelectedCommand(isFullCommand ? command + " " : "");
-        setTrigger(maybeCommandWithArguments);
+        setTrigger(maybeCommand.command);
+        setStartPosition(maybeCommand.startPosition);
         combobox.show();
       } else {
         setTrigger("");
