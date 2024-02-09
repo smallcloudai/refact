@@ -84,7 +84,8 @@ impl AstIndex {
 
     pub async fn remove(&mut self, file_path: &PathBuf) -> Result<(), String> {
         if let Some(meta_names) = self.nodes_indexes.remove(file_path) {
-            while let Some(name_vec) = meta_names.stream().next() {
+            let mut stream = meta_names.stream();
+            while let Some(name_vec) = stream.next() {
                 let name = match String::from_utf8(name_vec.to_vec()) {
                     Ok(name) => name,
                     Err(_) => {
@@ -147,7 +148,8 @@ impl AstIndex {
     pub fn get_symbols_by_file_path(&self, file_path: &PathBuf) -> Result<Vec<SymbolDeclarationStruct>, String> {
         let mut result: Vec<SymbolDeclarationStruct> = vec![];
         if let Some(meta_names) = self.nodes_indexes.get(file_path) {
-            while let Some(name_vec) = meta_names.stream().next() {
+            let mut stream = meta_names.stream();
+            while let Some(name_vec) = stream.next() {
                 let name = match String::from_utf8(name_vec.to_vec()) {
                     Ok(name) => name,
                     Err(_) => {
@@ -161,8 +163,9 @@ impl AstIndex {
                     Some(s) => result.push(s.clone())
                 }
             }
+            return Ok(result);
         }
-        return Err(format!("File {} not found in the AST index", file_path.display()));
+        return Err(format!("File {} is not found in the AST index", file_path.display()));
     }
 
     pub fn get_indexed_symbol_paths(&self) -> Vec<String> {

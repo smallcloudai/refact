@@ -75,7 +75,7 @@ pub struct AtParamSymbolPathQuery {
 impl AtParamSymbolPathQuery {
     pub fn new() -> Self {
         Self {
-            name: "symbol_path".to_string()
+            name: "context_file".to_string()
         }
     }
 }

@@ -44,7 +44,7 @@ async fn results2message(result: &AstQuerySearchResult) -> ChatMessage {
         });
     }
     ChatMessage {
-        role: "symbol_file".to_string(),
+        role: "symbol_declaration".to_string(),
         content: json!(symbols).to_string(),
     }
 }

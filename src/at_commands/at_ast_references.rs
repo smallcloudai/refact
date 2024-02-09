@@ -22,7 +22,7 @@ fn results2message(result: &FileReferencesResult) -> ChatMessage {
         }
     }).collect();
     ChatMessage {
-        role: "context_file".to_string(),
+        role: "simplified_symbol_declaration".to_string(),
         content: json!(simplified_symbols).to_string(),
     }
 }

@@ -107,7 +107,9 @@ pub async fn run_at_commands(
     for cmd in valid_commands {
         match cmd.command.lock().await.execute(&query, &cmd.args, top_n, &context).await {
             Ok(msg) => {
-                messages_for_postprocessing.push(msg);
+                if msg.role == "context_file" {
+                    messages_for_postprocessing.push(msg);
+                }
             },
             Err(_) => {}
         }

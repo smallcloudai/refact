@@ -24,6 +24,12 @@ struct AstQuerySearchPost {
     top_n: usize,
 }
 
+
+#[derive(Serialize, Deserialize, Clone)]
+struct AstReferencesPost {
+    filename: String
+}
+
 pub async fn handle_v1_ast_cursor_search(
     Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
@@ -81,6 +87,42 @@ pub async fn handle_v1_ast_query_search(
                 post.query,
                 post.top_n,
             ).await
+        }
+        None => {
+            return Err(ScratchError::new(
+                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+            ));
+        }
+    };
+
+    match search_res {
+        Ok(search_res) => {
+            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
+                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
+            })?;
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(json_string))
+                .unwrap())
+        }
+        Err(e) => {
+            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
+        }
+    }
+}
+
+pub async fn handle_v1_ast_references(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<AstReferencesPost>(&body_bytes).map_err(|e| {
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+
+    let cx_locked = global_context.read().await;
+    let search_res = match *cx_locked.ast_module.lock().await {
+        Some(ref ast) => {
+            ast.get_file_references(PathBuf::from(post.filename)).await
         }
         None => {
             return Err(ScratchError::new(
