@@ -9,6 +9,8 @@ use crate::ast::structs::AstQuerySearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_params::AtParamSymbolPathQuery;
 use crate::call_validation::{ChatMessage, SymbolDeclaration};
+use tracing::info;
+
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SimplifiedSymbolDeclarationStruct {
@@ -19,6 +21,7 @@ struct SimplifiedSymbolDeclarationStruct {
 }
 
 async fn results2message(result: &AstQuerySearchResult) -> ChatMessage {
+    info!("results2message {:?}", result);
     let mut symbols = vec![];
     for res in &result.search_results {
         let file_path: String = res.symbol_declaration.meta_path
@@ -88,6 +91,7 @@ impl AtCommand for AtAstDefinition {
         if !can_execute {
             return Err("incorrect arguments".to_string());
         }
+        info!("execute @ast_definition {:?}", args);
         let symbol_path = match args.get(0) {
             Some(x) => x,
             None => return Err("no symbol path".to_string()),

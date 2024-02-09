@@ -99,6 +99,7 @@ pub async fn run_at_commands(
 ) {
     // TODO: don't operate on `post`, return a copy of the messages
     let context = AtCommandsContext::new(global_context.clone()).await;
+    // TODO: delete the last, not just take the last
     let mut query = post.messages.last().unwrap().content.clone(); // latest_msg_cont
     let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &context).await;
 
