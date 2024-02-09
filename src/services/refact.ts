@@ -233,7 +233,7 @@ export type CommandCompletionResponse = {
   is_cmd_executable: false;
 };
 
-function isCommandCompletionResponse(
+export function isCommandCompletionResponse(
   json: unknown,
 ): json is CommandCompletionResponse {
   if (!json) return false;
@@ -243,13 +243,22 @@ function isCommandCompletionResponse(
   if (!("is_cmd_executable" in json)) return false;
   return true;
 }
+export type DetailMessage = {
+  detail: string;
+};
+export function isDetailMessage(json: unknown): json is DetailMessage {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("detail" in json)) return false;
+  return true;
+}
 
 export async function getAtCommandCompletion(
   query: string,
   cursor: number,
   number: number,
   lspUrl?: string,
-): Promise<CommandCompletionResponse> {
+): Promise<CommandCompletionResponse | DetailMessage> {
   const completionEndpoint = lspUrl
     ? `${lspUrl.replace(/\/*$/, "")}${AT_COMMAND_COMPLETION}`
     : AT_COMMAND_COMPLETION;
@@ -267,7 +276,7 @@ export async function getAtCommandCompletion(
   }
 
   const json: unknown = await response.json();
-  if (!isCommandCompletionResponse(json)) {
+  if (!isCommandCompletionResponse(json) && !isDetailMessage(json)) {
     throw new Error("Invalid response from completion");
   }
 
@@ -282,14 +291,15 @@ export type ResponseFromCommandPreview = {
   messages: CommandPreviewContent[];
 };
 
-function isCommandPreviewResponse(
+export function isCommandPreviewResponse(
   json: unknown,
 ): json is ResponseFromCommandPreview {
   if (!json) return false;
   if (typeof json !== "object") return false;
   if (!("messages" in json)) return false;
   if (!Array.isArray(json.messages)) return false;
-  if (!json.messages.length) return false;
+
+  if (!json.messages.length) return true;
 
   const firstMessage: unknown = json.messages[0];
   if (!firstMessage) return false;
@@ -305,7 +315,7 @@ function isCommandPreviewResponse(
 export async function getAtCommandPreview(
   query: string,
   lspUrl?: string,
-): Promise<ChatContextFileMessage[]> {
+): Promise<ChatContextFileMessage[] | DetailMessage> {
   // check this
   const previewEndpoint = lspUrl
     ? `${lspUrl.replace(/\/*$/, "")}${AT_COMMAND_PREVIEW}`
@@ -329,8 +339,12 @@ export async function getAtCommandPreview(
 
   const json: unknown = await response.json();
 
-  if (!isCommandPreviewResponse(json)) {
+  if (!isCommandPreviewResponse(json) && !isDetailMessage(json)) {
     throw new Error("Invalid response from command preview");
+  }
+
+  if (isDetailMessage(json)) {
+    return json;
   }
 
   const jsonMessages = json.messages.map<ChatContextFileMessage>(

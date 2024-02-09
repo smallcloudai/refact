@@ -5,6 +5,7 @@ import {
   ChatContextFile,
   getAtCommandCompletion,
   getAtCommandPreview,
+  isDetailMessage,
 } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
@@ -137,6 +138,7 @@ export function useEventBusForHost() {
         const { id, query, cursor, number } = event.data.payload;
         getAtCommandCompletion(query, cursor, number, lspUrl)
           .then((res) => {
+            if (isDetailMessage(res)) return;
             const message: ReceiveAtCommandCompletion = {
               type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION,
               payload: { id, ...res },
@@ -145,7 +147,6 @@ export function useEventBusForHost() {
             window.postMessage(message, "*");
           })
           .catch((error) => {
-            // TODO: handle  error
             // eslint-disable-next-line no-console
             console.error(error);
           });
@@ -155,6 +156,7 @@ export function useEventBusForHost() {
         const { id, query } = event.data.payload;
         getAtCommandPreview(query, lspUrl)
           .then((res) => {
+            if (isDetailMessage(res)) return;
             const message: ReceiveAtCommandPreview = {
               type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW,
               payload: { id, preview: res },
@@ -162,7 +164,6 @@ export function useEventBusForHost() {
             window.postMessage(message, "*");
           })
           .catch((error) => {
-            // TODO: handle error
             // eslint-disable-next-line no-console
             console.error(error);
           });
