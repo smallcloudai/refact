@@ -294,12 +294,12 @@ impl FileVectorizerService {
         }
     }
 
-    pub async fn process_files(&self, paths: Vec<PathBuf>, force: bool) {
+    pub async fn process_files(&self, paths: &Vec<PathBuf>, force: bool) {
         info!("adding {} files", paths.len());
         if !force {
-            self.update_request_queue.lock().await.extend(paths);
+            self.update_request_queue.lock().await.extend(paths.clone());
         } else {
-            self.output_queue.lock().await.extend(paths);
+            self.output_queue.lock().await.extend(paths.clone());
         }
     }
 

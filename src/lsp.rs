@@ -339,11 +339,11 @@ impl LanguageServer for Backend {
             .collect();
         let binding = self.gcx.read().await;
         match *binding.ast_module.lock().await {
-            Some(ref mut ast) => ast.add_or_update_files(files.clone(), false).await,
+            Some(ref mut ast) => ast.add_or_update_files(&files, false).await,
             None => {},
         };
         match *binding.vec_db.lock().await {
-            Some(ref db) => db.add_or_update_files(files, false).await,
+            Some(ref db) => db.add_or_update_files(&files, false).await,
             None => {}
         };
     }

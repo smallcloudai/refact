@@ -33,7 +33,7 @@ fn vecdb_constants(
         splitter_window_size: 512,
         splitter_soft_limit: 1024,
     }
-    }
+}
 
 pub struct VecDb {
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
@@ -228,7 +228,7 @@ impl VecDb {
         self.vectorizer_service.lock().await.process_file(file_path, force).await;
     }
 
-    pub async fn add_or_update_files(&self, file_paths: Vec<PathBuf>, force: bool) {
+    pub async fn add_or_update_files(&self, file_paths: &Vec<PathBuf>, force: bool) {
         self.vectorizer_service.lock().await.process_files(file_paths, force).await;
     }
 
@@ -244,7 +244,7 @@ impl VecDb {
         let files = file_filter::retrieve_files_by_proj_folders(
             folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
         ).await;
-        self.add_or_update_files(files, true).await;
+        self.add_or_update_files(&files, true).await;
         info!("vecdb: init_folders complete");
     }
 

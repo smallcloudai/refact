@@ -65,7 +65,7 @@ pub async fn read_and_load_jsonl(
             vec![]
         }
     };
-    vec_db.add_or_update_files(filenames_vec, true).await;
+    vec_db.add_or_update_files(&filenames_vec, true).await;
 }
 
 pub async fn file_watcher_task(

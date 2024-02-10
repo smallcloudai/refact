@@ -53,7 +53,7 @@ impl AstModule {
         self.ast_index_service.lock().await.process_file(file_path, force).await;
     }
 
-    pub async fn add_or_update_files(&self, file_paths: Vec<PathBuf>, force: bool) {
+    pub async fn add_or_update_files(&self, file_paths: &Vec<PathBuf>, force: bool) {
         self.ast_index_service.lock().await.process_files(file_paths, force).await;
     }
 
@@ -61,8 +61,8 @@ impl AstModule {
         let files = file_filter::retrieve_files_by_proj_folders(
             folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
         ).await;
-        self.add_or_update_files(files, true).await;
-        info!("init_folders complete");
+        self.add_or_update_files(&files, true).await;
+        info!("init_folders complete, added {} files", files.len());
     }
 
     pub async fn remove_file(&self, file_path: &PathBuf) {
@@ -91,6 +91,7 @@ impl AstModule {
         for rec in results.iter() {
             info!("distance {:.3}, found ...{}, ", rec.sim_to_query, rec.symbol_declaration.meta_path);
         }
+        info!("search_by_cursor time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
         Ok(
             AstCursorSearchResult {
                 query_text: code.to_string(),

@@ -37,11 +37,11 @@ pub async fn handle_v1_lsp_initialize(
     ).await;
     let binding = global_context.read().await;
     match *binding.vec_db.lock().await {
-        Some(ref mut db) => db.add_or_update_files(files.clone(), true).await,
+        Some(ref mut db) => db.add_or_update_files(&files, true).await,
         None => {}
     };
     match *binding.ast_module.lock().await {
-        Some(ref mut ast) => ast.add_or_update_files(files, true).await,
+        Some(ref mut ast) => ast.add_or_update_files(&files, true).await,
         None => {}
     };
     Ok(Response::builder()
