@@ -148,15 +148,6 @@ impl AstIndexService {
         return vec![cooldown_queue_join_handle, retrieve_thread_handle];
     }
 
-    pub async fn process_file(&self, path: PathBuf, force: bool) {
-        debug!("Adding to AST index a single file");
-        if !force {
-            self.update_request_queue.lock().await.push_back(path);
-        } else {
-            self.output_queue.lock().await.push_back(path);
-        }
-    }
-
     pub async fn process_files(&self, paths: &Vec<PathBuf>, force: bool) {
         debug!("Adding to AST index {} files", paths.len());
         if !force {

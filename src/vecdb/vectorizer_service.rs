@@ -285,15 +285,6 @@ impl FileVectorizerService {
         return vec![cooldown_queue_join_handle, retrieve_thread_handle, cleanup_thread_handle];
     }
 
-    pub async fn process_file(&self, path: PathBuf, force: bool) {
-        info!("adding single file");
-        if !force {
-            self.update_request_queue.lock().await.push_back(path);
-        } else {
-            self.output_queue.lock().await.push_back(path);
-        }
-    }
-
     pub async fn process_files(&self, paths: &Vec<PathBuf>, force: bool) {
         info!("adding {} files", paths.len());
         if !force {

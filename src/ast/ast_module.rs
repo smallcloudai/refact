@@ -49,10 +49,6 @@ impl AstModule {
         return self.ast_index_service.lock().await.start_background_tasks().await;
     }
 
-    pub async fn add_or_update_file(&self, file_path: PathBuf, force: bool) {
-        self.ast_index_service.lock().await.process_file(file_path, force).await;
-    }
-
     pub async fn add_or_update_files(&self, file_paths: &Vec<PathBuf>, force: bool) {
         self.ast_index_service.lock().await.process_files(file_paths, force).await;
     }
@@ -89,7 +85,7 @@ impl AstModule {
             Err(_) => { return Err("error during search occurred".to_string()); }
         };
         for rec in results.iter() {
-            info!("distance {:.3}, found ...{}, ", rec.sim_to_query, rec.symbol_declaration.meta_path);
+            info!("distance {:.3}, found {}, ", rec.sim_to_query, rec.symbol_declaration.meta_path);
         }
         info!("search_by_cursor time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
         Ok(
@@ -114,8 +110,9 @@ impl AstModule {
         match ast_index_locked.search(symbol_path.as_str(), top_n, None).await {
             Ok(results) => {
                 for r in results.iter() {
-                    info!("distance {:.3}, found ...{}, ", r.sim_to_query, r.symbol_declaration.meta_path);
+                    info!("distance {:.3}, found {}, ", r.sim_to_query, r.symbol_declaration.meta_path);
                 }
+                info!("search_by_symbol_path time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(
                     AstQuerySearchResult {
                         query_text: symbol_path,

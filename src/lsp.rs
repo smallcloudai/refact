@@ -240,11 +240,11 @@ impl LanguageServer for Backend {
         if is_valid_file(&file_path) {
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
-                Some(ref mut ast) => ast.add_or_update_file(file_path.clone(), false).await,
+                Some(ref mut ast) => ast.add_or_update_files(&vec![file_path.clone()], false).await,
                 None => {},
             };
             match *binding.vec_db.lock().await {
-                Some(ref mut db) => db.add_or_update_file(file_path, false).await,
+                Some(ref mut db) => db.add_or_update_files(&vec![file_path.clone()], false).await,
                 None => {}
             };
         }
@@ -264,11 +264,11 @@ impl LanguageServer for Backend {
         if is_valid_file(&file_path) {
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
-                Some(ref mut ast) => ast.add_or_update_file(file_path.clone(), false).await,
+                Some(ref mut ast) => ast.add_or_update_files(&vec![file_path.clone()], false).await,
                 None => {},
             };
             match *binding.vec_db.lock().await {
-                Some(ref mut db) => db.add_or_update_file(file_path, false).await,
+                Some(ref mut db) => db.add_or_update_files(&vec![file_path.clone()], false).await,
                 None => {}
             };
         }
@@ -284,11 +284,11 @@ impl LanguageServer for Backend {
         if is_valid_file(&file_path) {
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
-                Some(ref mut ast) => ast.add_or_update_file(file_path.clone(), false).await,
+                Some(ref mut ast) => ast.add_or_update_files(&vec![file_path.clone()], false).await,
                 None => {},
             };
             match *binding.vec_db.lock().await {
-                Some(ref mut db) => db.add_or_update_file(file_path, false).await,
+                Some(ref mut db) => db.add_or_update_files(&vec![file_path.clone()], false).await,
                 None => {}
             };
         }

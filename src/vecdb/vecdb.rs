@@ -224,10 +224,6 @@ impl VecDb {
         return self.vectorizer_service.lock().await.start_background_tasks(self.vecdb_emb_client.clone()).await;
     }
 
-    pub async fn add_or_update_file(&self, file_path: PathBuf, force: bool) {
-        self.vectorizer_service.lock().await.process_file(file_path, force).await;
-    }
-
     pub async fn add_or_update_files(&self, file_paths: &Vec<PathBuf>, force: bool) {
         self.vectorizer_service.lock().await.process_files(file_paths, force).await;
     }
