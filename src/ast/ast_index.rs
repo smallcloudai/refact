@@ -47,7 +47,7 @@ impl AstIndex {
         }
     }
 
-    pub async fn add_or_update(&mut self, file_path: &PathBuf) -> Result<(), String> {
+    pub async fn add_or_update(&mut self, file_path: &PathBuf) -> Result<SortedVec<String>, String> {
         let mut parser = match get_parser_by_filename(file_path) {
             Ok(parser) => parser,
             Err(err) => {
@@ -79,7 +79,7 @@ impl AstIndex {
             Err(e) => return Err(format!("Error creating set: {}", e)),
         };
         self.nodes_indexes.insert(file_path.clone(), meta_names_set);
-        Ok(())
+        Ok(meta_names)
     }
 
     pub async fn remove(&mut self, file_path: &PathBuf) -> Result<(), String> {

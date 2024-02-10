@@ -81,7 +81,7 @@ async fn ast_processing_thread(
             }
         };
         if (unprocessed_files_count + 99).div(100) != (reported_unprocessed + 99).div(100) {
-            info!("{} unprocessed files", unprocessed_files_count);
+            info!("have {} unprocessed files", unprocessed_files_count);
             reported_unprocessed = unprocessed_files_count;
         }
         reported_astindex_complete &= unprocessed_files_count == 0;
@@ -106,7 +106,10 @@ async fn ast_processing_thread(
             Err(e) => {
                 info!("Error adding/updating records in AST index: {}", e);
             }
-            _ => {}
+            Ok(definitions_vector) => {
+                let last_30_chars = crate::nicer_logs::last_n_chars(&path.display().to_string(), 30);
+                info!("parse {}, added {} definitions", last_30_chars, definitions_vector.len());
+            }
         }
     }
 }

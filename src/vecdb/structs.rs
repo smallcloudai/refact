@@ -1,11 +1,9 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::SystemTime;
-
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
+
 
 #[async_trait]
 pub trait VecdbSearch: Send {
@@ -35,8 +33,6 @@ pub struct VecDbStatus {
     pub db_size: usize,
     pub db_cache_size: usize,
 }
-
-pub type VecDbStatusRef = Arc<Mutex<VecDbStatus>>;
 
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

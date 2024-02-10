@@ -12,14 +12,14 @@ use tracing::info;
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::handler::VecDBHandler;
 use crate::fetch_embedding::try_get_embedding;
-use crate::vecdb::structs::{Record, SplitResult, VecDbStatus, VecDbStatusRef, VecdbConstants};
+use crate::vecdb::structs::{Record, SplitResult, VecDbStatus, VecdbConstants};
 
 #[derive(Debug)]
 pub struct FileVectorizerService {
     update_request_queue: Arc<AMutex<VecDeque<PathBuf>>>,
     output_queue: Arc<AMutex<VecDeque<PathBuf>>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
-    status: VecDbStatusRef,
+    status: Arc<AMutex<VecDbStatus>>,
     constants: VecdbConstants,
     api_key: String,
 }
@@ -27,7 +27,7 @@ pub struct FileVectorizerService {
 async fn cooldown_queue_thread(
     update_request_queue: Arc<AMutex<VecDeque<PathBuf>>>,
     out_queue: Arc<AMutex<VecDeque<PathBuf>>>,
-    _status: VecDbStatusRef,
+    _status: Arc<AMutex<VecDbStatus>>,
     cooldown_secs: u64,
 ) {
     // This function delays vectorization of a file, until mtime is at least cooldown_secs old.
@@ -74,7 +74,7 @@ async fn vectorize_thread(
     client: Arc<AMutex<reqwest::Client>>,
     queue: Arc<AMutex<VecDeque<PathBuf>>>,
     vecdb_handler_ref: Arc<AMutex<VecDBHandler>>,
-    status: VecDbStatusRef,
+    status: Arc<AMutex<VecDbStatus>>,
     constants: VecdbConstants,
     api_key: String,
     max_concurrent_tasks: usize,
@@ -140,8 +140,8 @@ async fn vectorize_thread(
         split_data_filtered = vecdb_handler.try_add_from_cache(split_data_filtered).await;
         drop(vecdb_handler);
 
-        let last_30_chars: String = path.display().to_string().chars().rev().take(30).collect::<String>().chars().rev().collect();
-        info!("...{} embeddings todo/total {}/{}", last_30_chars, split_data_filtered.len(), split_data.len());
+        let last_30_chars = crate::nicer_logs::last_n_chars(&path.display().to_string(), 30);
+        info!("embeddings {} todo/total {}/{}", last_30_chars, split_data_filtered.len(), split_data.len());
 
         // TODO: replace with a batched call?
         let join_handles: Vec<_> = split_data_filtered.into_iter().map(|x| {
@@ -314,13 +314,5 @@ impl FileVectorizerService {
             Err(err) => return Err(err.to_string())
         };
         Ok(status)
-    }
-
-    pub async fn get_all_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {
-        return self.vecdb_handler.lock().await.get_indexed_file_paths().await;
-    }
-
-    pub async fn get_file_orig_text(&self, file_path: String) -> String {
-        return self.vecdb_handler.lock().await.get_file_orig_text(file_path).await;
     }
 }
