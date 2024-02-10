@@ -4,7 +4,6 @@ use std::sync::Arc;
 use serde::Serialize;
 use tokio::sync::Mutex as AMutex;
 use tokio::task::JoinHandle;
-use tower_lsp::lsp_types::WorkspaceFolder;
 use tracing::info;
 use tree_sitter::Point;
 
@@ -13,7 +12,7 @@ use crate::ast::ast_index_service::AstIndexService;
 use crate::ast::ast_search_engine::AstSearchEngine;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileReferencesResult};
 use crate::global_context::CommandLine;
-use crate::vecdb::file_filter;
+
 
 #[derive(Debug)]
 pub struct AstModule {
@@ -53,16 +52,8 @@ impl AstModule {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(file_paths, force).await;
     }
 
-    pub async fn init_folders(&self, folders: Vec<WorkspaceFolder>) {
-        // TODO: this will not work when files change. Need a real file watcher.
-        let files = file_filter::retrieve_files_by_proj_folders(
-            folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
-        ).await;
-        self.ast_indexer_enqueue_files(&files, true).await;
-        info!("init_folders complete, added {} files", files.len());
-    }
-
     pub async fn remove_file(&self, file_path: &PathBuf) {
+        // TODO: will not work if the same file is in the indexer queue
         let _ = self.ast_index.lock().await.remove(file_path).await;
     }
 

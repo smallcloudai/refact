@@ -13,12 +13,12 @@ use crate::receive_workspace_changes;
 use crate::vecdb::file_filter::retrieve_files_by_proj_folders;
 
 #[derive(Serialize, Deserialize, Clone)]
-struct PostInit {
+struct LspLikeInit {
     pub project_roots: Vec<Url>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct PostDocument {
+struct LspLikeDidChange {
     pub uri: Url,
     pub text: String,
 }
@@ -28,7 +28,7 @@ pub async fn handle_v1_lsp_initialize(
     Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<PostInit>(&body_bytes).map_err(|e| {
+    let post = serde_json::from_slice::<LspLikeInit>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
@@ -54,7 +54,7 @@ pub async fn handle_v1_lsp_did_change(
     Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<PostDocument>(&body_bytes).map_err(|e| {
+    let post = serde_json::from_slice::<LspLikeDidChange>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let path = PathBuf::from(post.uri.path());

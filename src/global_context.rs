@@ -2,6 +2,7 @@ use tracing::{error, info};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
@@ -11,7 +12,6 @@ use tokio::signal;
 use tokenizers::Tokenizer;
 use structopt::StructOpt;
 use hyper::StatusCode;
-use tower_lsp::lsp_types::WorkspaceFolder;
 use crate::ast::ast_module::AstModule;
 
 use crate::custom_error::ScratchError;
@@ -46,21 +46,20 @@ pub struct CommandLine {
     pub insecure: bool,
     #[structopt(long, help="Whether to use a vector database")]
     pub vecdb: bool,
-    #[structopt(long, short = "f", default_value = "", help = "The path to jsonl file which contains filtered source files")]
-    pub files_set_path: String,
-    #[structopt(long, default_value = "", help = "Vecdb forced path")]
+    #[structopt(long, short = "f", default_value = "", help = "A path to jsonl file with {\"path\": ...}, add files will immediately go to vecdb and ast")]
+    pub files_jsonl_path: String,
+    #[structopt(long, default_value = "", help = "Vecdb storage path")]
     pub vecdb_forced_path: String,
 }
-
 
 pub struct Slowdown {
     // Be nice to cloud/self-hosted, don't flood it
     pub requests_in_flight: u64,
 }
 
-pub struct LSPBackendDocumentState{
+pub struct DocumentsState {
+    pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub document_map: Arc<ARwLock<HashMap<String, Document>>>,
-    pub workspace_folders: Arc<ARwLock<Option<Vec<WorkspaceFolder>>>>,
 }
 
 pub struct GlobalContext {
@@ -76,7 +75,7 @@ pub struct GlobalContext {
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
     pub ast_module: Arc<AMutex<Option<AstModule>>>,
     pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
-    pub lsp_backend_document_state: LSPBackendDocumentState,
+    pub documents_state: DocumentsState,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -221,9 +220,9 @@ pub async fn create_global_context(
         vec_db: Arc::new(AMutex::new(None)),
         ast_module,
         ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
-        lsp_backend_document_state: LSPBackendDocumentState {
+        documents_state: DocumentsState {
+            workspace_folders: Arc::new(StdMutex::new(vec![])),
             document_map: Arc::new(ARwLock::new(HashMap::new())),
-            workspace_folders: Arc::new(ARwLock::new(None)),
         },
     };
     (Arc::new(ARwLock::new(cx)), ask_shutdown_receiver, cmdline)

@@ -109,26 +109,19 @@ async fn create_vecdb(
     }
     info!("vecdb: test request complete");
 
+    let files_jsonl_path = PathBuf::from(global_context.read().await.cmdline.files_jsonl_path.clone());
+    read_and_load_jsonl(&files_jsonl_path, &vec_db).await;
+    let mut tasks = vec_db.start_background_tasks().await;
+    tasks.extend(vec![
+        tokio::spawn(vecdb::file_watcher_service::file_watcher_task(files_jsonl_path, global_context.clone()))
+    ]);
+    background_tasks.extend(tasks);
+
     {
         let mut gcx_locked = global_context.write().await;
-
-        if let Some(folders) = gcx_locked.lsp_backend_document_state.workspace_folders.clone().read().await.clone() {
-            let mut vec_db_lock = gcx_locked.vec_db.lock().await;
-            if let Some(ref mut db) = *vec_db_lock {
-                db.init_folders(folders).await;
-            }
-        }
-        let files_set_path = PathBuf::from(gcx_locked.cmdline.files_set_path.clone());
-        read_and_load_jsonl(&files_set_path, &vec_db).await;
-
-        let mut tasks = vec_db.start_background_tasks().await;
         gcx_locked.vec_db = Arc::new(AMutex::new(Some(vec_db)));
-
-        tasks.extend(vec![
-            tokio::spawn(vecdb::file_watcher_service::file_watcher_task(files_set_path, global_context.clone()))
-        ]);
-        background_tasks.extend(tasks);
     }
+
     Ok(())
 }
 
@@ -183,7 +176,9 @@ pub async fn vecdb_background_reload(
                 &mut background_tasks,
                 consts.unwrap(),
             ).await {
-                Ok(_) => {}
+                Ok(_) => {
+                    crate::receive_workspace_changes::enqueue_all_files(global_context.clone()).await;
+                }
                 Err(err) => {
                     error!("vecdb: init failed: {}", err);
                     // global_context.vec_db stays None, the rest of the system continues working
@@ -234,15 +229,6 @@ impl VecDb {
 
     pub async fn get_status(&self) -> Result<VecDbStatus, String> {
         self.vectorizer_service.lock().await.status().await
-    }
-
-    pub async fn init_folders(&self, folders: Vec<WorkspaceFolder>) {
-        // TODO: this will not work when files change. Need a real file watcher.
-        let files = file_filter::retrieve_files_by_proj_folders(
-            folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
-        ).await;
-        self.vectorizer_enqueue_files(&files, true).await;
-        info!("vecdb: init_folders complete");
     }
 
     pub async fn get_indexed_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {

@@ -107,10 +107,9 @@ pub struct CompletionRes {
 impl Backend {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
         let txt = {
-            let document_map = self.gcx.read().await.lsp_backend_document_state.document_map.clone();
+            let document_map = self.gcx.read().await.documents_state.document_map.clone();  // Arc::ARwLock
             let document_map = document_map.read().await;
-            let document = document_map
-                .get(params.text_document_position.text_document.uri.as_str());
+            let document = document_map.get(params.text_document_position.text_document.uri.as_str());
             match document {
                 None => {
                     return Err(internal_error("document not found"));
@@ -178,23 +177,18 @@ impl Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         info!("LSP client_info {:?}", params.client_info);
+        let mut folders: Vec<PathBuf> = vec![];
+        if let Some(nonzero_folders) = params.workspace_folders {
+            folders = nonzero_folders.iter().map(|x| PathBuf::from(x.uri.path())).collect();
+        }
         {
             let gcx_locked = self.gcx.write().await;
-            *gcx_locked.lsp_backend_document_state.workspace_folders.write().await = params.workspace_folders.clone();
-            info!("LSP workspace_folders {:?}", gcx_locked.lsp_backend_document_state.workspace_folders);
+            *gcx_locked.documents_state.workspace_folders.lock().unwrap() = folders.clone();
+            info!("LSP workspace_folders {:?}", folders);
         }
-
-        if let Some(folders) = params.workspace_folders {
-            let binding = self.gcx.read().await;
-            match *binding.ast_module.lock().await {
-                Some(ref mut ast) => ast.init_folders(folders.clone()).await,
-                None => {},
-            };
-            match *binding.vec_db.lock().await {
-                Some(ref mut db) => db.init_folders(folders).await,
-                None => {},
-            };
-        }
+        receive_workspace_changes::on_workspaces_init(
+            self.gcx.clone(),
+        ).await;
 
         let completion_options: CompletionOptions;
         completion_options = CompletionOptions {
@@ -238,6 +232,8 @@ impl LanguageServer for Backend {
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
+            // TODO: lock held too long
+            // TODO: move to receive_workspace_changes
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
                 Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()], false).await,
@@ -262,6 +258,8 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri.to_string();
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
+            // TODO: lock held too long
+            // TODO: move to receive_workspace_changes
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
                 Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()], false).await,
@@ -282,6 +280,8 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri.to_string();
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
+            // TODO: lock held too long
+            // TODO: move to receive_workspace_changes
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
                 Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()], false).await,
@@ -312,6 +312,8 @@ impl LanguageServer for Backend {
             .map(|x| PathBuf::from(x.uri.replace("file://", "")))
             .filter(|x| is_valid_file(&x));
 
+        // TODO: lock held too long
+        // TODO: move to receive_workspace_changes
         let binding = self.gcx.read().await;
         match *binding.ast_module.lock().await {
             Some(ref mut ast) => {
@@ -337,6 +339,8 @@ impl LanguageServer for Backend {
             .map(|x| PathBuf::from(x.uri.replace("file://", "")))
             .filter(|x| is_valid_file(&x))
             .collect();
+        // TODO: lock held too long
+        // TODO: move to receive_workspace_changes
         let binding = self.gcx.read().await;
         match *binding.ast_module.lock().await {
             Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files, false).await,

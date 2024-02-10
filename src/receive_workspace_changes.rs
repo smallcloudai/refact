@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 use ropey::Rope;
@@ -7,6 +8,7 @@ use tracing::info;
 
 use crate::global_context;
 use crate::telemetry;
+use crate::vecdb::file_filter;
 
 
 
@@ -23,45 +25,76 @@ impl Document {
     }
 }
 
+pub async fn enqueue_all_files(
+    gcx: Arc<ARwLock<global_context::GlobalContext>>,
+) {
+    let folders: Vec<PathBuf> = {
+        let cx_locked = gcx.read().await;
+        let x = cx_locked.documents_state.workspace_folders.lock().unwrap().clone();
+        x
+    };
+    info!("enqueue_all_files started files search with {} workspace folders", folders.len());
+    let files = file_filter::retrieve_files_by_proj_folders(folders).await;
+    info!("enqueue_all_files found {} files", files.len());
+    let (ast_module, vecdb_module) = {
+        let cx_locked = gcx.read().await;
+        (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
+    };
+    match *ast_module.lock().await {
+        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files, false).await,
+        None => {},
+    };
+    match *vecdb_module.lock().await {
+        Some(ref mut db) => db.vectorizer_enqueue_files(&files, false).await,
+        None => {},
+    };
+}
+
+pub async fn on_workspaces_init(
+    gcx: Arc<ARwLock<global_context::GlobalContext>>,
+) {
+    // TODO: this will not work when files change. Need a real file watcher.
+    enqueue_all_files(gcx.clone()).await;
+}
 
 pub async fn on_did_open(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
-    uri: &String,
+    fpath: &String,
     text: &String,
     language_id: &String,
 ) {
     let gcx_locked = gcx.read().await;
-    let document_map = &gcx_locked.lsp_backend_document_state.document_map;
+    let document_map = &gcx_locked.documents_state.document_map;
     let rope = ropey::Rope::from_str(&text);
     let mut document_map_locked = document_map.write().await;
     *document_map_locked
-        .entry(uri.clone())
+        .entry(fpath.clone())
         .or_insert(Document::new("unknown".to_owned(), Rope::new())) = Document::new(language_id.clone(), rope);
-    let last_30_chars: String = uri.chars().rev().take(30).collect::<String>().chars().rev().collect();
-    info!("opened ...{}", last_30_chars);
+    let last_30_chars: String = crate::nicer_logs::last_n_chars(fpath, 30);
+    info!("opened {}", last_30_chars);
 }
 
 pub async fn on_did_change(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
-    uri: &String,
+    fpath: &String,
     text: &String,
 ) {
     let t0 = Instant::now();
     {
         let gcx_locked = gcx.read().await;
-        let document_map = &gcx_locked.lsp_backend_document_state.document_map;
+        let document_map = &gcx_locked.documents_state.document_map;
         let rope = ropey::Rope::from_str(&text);
         let mut document_map_locked = document_map.write().await;
         let doc = document_map_locked
-            .entry(uri.clone())
+            .entry(fpath.clone())
             .or_insert(Document::new("unknown".to_owned(), Rope::new()));
         doc.text = rope;
     }
     telemetry::snippets_collection::sources_changed(
         gcx.clone(),
-        uri,
+        fpath,
         text,
     ).await;
-    let last_30_chars: String = uri.chars().rev().take(30).collect::<String>().chars().rev().collect();
-    info!("changed ...{}, total time {:?}", last_30_chars, t0.elapsed());
+    let last_30_chars: String = crate::nicer_logs::last_n_chars(fpath, 30);
+    info!("changed {}, total time {:.3}s", last_30_chars, t0.elapsed().as_secs_f32());
 }

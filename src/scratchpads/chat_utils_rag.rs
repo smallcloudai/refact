@@ -18,7 +18,7 @@ pub fn postprocess_at_results(
     // 1. Decode all
     let mut cxfile_list: Vec<ContextFile> = vec![];
     for msg in messages {
-        cxfile_list.extend(serde_json::from_str::<Vec<ContextFile>>(&msg.content).unwrap());
+        cxfile_list.extend(serde_json::from_str::<Vec<ContextFile>>(&msg.content).unwrap()); // TODO: this unwrap() is not good
     }
     // 2. Sort by usefullness
     cxfile_list.sort_by(|a, b| {
