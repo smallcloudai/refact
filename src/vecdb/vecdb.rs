@@ -38,7 +38,7 @@ fn vecdb_constants(
 pub struct VecDb {
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
-    retriever_service: Arc<AMutex<FileVectorizerService>>,
+    vectorizer_service: Arc<AMutex<FileVectorizerService>>,
     cmdline: CommandLine,
     constants: VecdbConstants,
 }
@@ -205,7 +205,7 @@ impl VecDb {
             Err(err) => { return Err(err) }
         };
         let vecdb_handler = Arc::new(AMutex::new(handler));
-        let retriever_service = Arc::new(AMutex::new(FileVectorizerService::new(
+        let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),
             constants.clone(),
             cmdline.api_key.clone(),
@@ -213,7 +213,7 @@ impl VecDb {
         Ok(VecDb {
             vecdb_emb_client: Arc::new(AMutex::new(reqwest::Client::new())),
             vecdb_handler,
-            retriever_service,
+            vectorizer_service,
             cmdline: cmdline.clone(),
             constants: constants.clone(),
         })
@@ -221,15 +221,15 @@ impl VecDb {
 
     pub async fn start_background_tasks(&self) -> Vec<JoinHandle<()>> {
         info!("vecdb: start_background_tasks");
-        return self.retriever_service.lock().await.start_background_tasks(self.vecdb_emb_client.clone()).await;
+        return self.vectorizer_service.lock().await.start_background_tasks(self.vecdb_emb_client.clone()).await;
     }
 
     pub async fn add_or_update_file(&self, file_path: PathBuf, force: bool) {
-        self.retriever_service.lock().await.process_file(file_path, force).await;
+        self.vectorizer_service.lock().await.process_file(file_path, force).await;
     }
 
     pub async fn add_or_update_files(&self, file_paths: Vec<PathBuf>, force: bool) {
-        self.retriever_service.lock().await.process_files(file_paths, force).await;
+        self.vectorizer_service.lock().await.process_files(file_paths, force).await;
     }
 
     pub async fn remove_file(&self, file_path: &PathBuf) {
@@ -237,7 +237,7 @@ impl VecDb {
     }
 
     pub async fn get_status(&self) -> Result<VecDbStatus, String> {
-        self.retriever_service.lock().await.status().await
+        self.vectorizer_service.lock().await.status().await
     }
 
     pub async fn init_folders(&self, folders: Vec<WorkspaceFolder>) {
