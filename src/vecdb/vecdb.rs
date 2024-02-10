@@ -224,8 +224,8 @@ impl VecDb {
         return self.vectorizer_service.lock().await.start_background_tasks(self.vecdb_emb_client.clone()).await;
     }
 
-    pub async fn add_or_update_files(&self, file_paths: &Vec<PathBuf>, force: bool) {
-        self.vectorizer_service.lock().await.process_files(file_paths, force).await;
+    pub async fn vectorizer_enqueue_files(&self, file_paths: &Vec<PathBuf>, force: bool) {
+        self.vectorizer_service.lock().await.vectorizer_enqueue_files(file_paths, force).await;
     }
 
     pub async fn remove_file(&self, file_path: &PathBuf) {
@@ -237,10 +237,11 @@ impl VecDb {
     }
 
     pub async fn init_folders(&self, folders: Vec<WorkspaceFolder>) {
+        // TODO: this will not work when files change. Need a real file watcher.
         let files = file_filter::retrieve_files_by_proj_folders(
             folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
         ).await;
-        self.add_or_update_files(&files, true).await;
+        self.vectorizer_enqueue_files(&files, true).await;
         info!("vecdb: init_folders complete");
     }
 

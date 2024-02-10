@@ -285,7 +285,7 @@ impl FileVectorizerService {
         return vec![cooldown_queue_join_handle, retrieve_thread_handle, cleanup_thread_handle];
     }
 
-    pub async fn process_files(&self, paths: &Vec<PathBuf>, force: bool) {
+    pub async fn vectorizer_enqueue_files(&self, paths: &Vec<PathBuf>, force: bool) {
         info!("adding {} files", paths.len());
         if !force {
             self.update_request_queue.lock().await.extend(paths.clone());

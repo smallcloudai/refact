@@ -49,15 +49,16 @@ impl AstModule {
         return self.ast_index_service.lock().await.start_background_tasks().await;
     }
 
-    pub async fn add_or_update_files(&self, file_paths: &Vec<PathBuf>, force: bool) {
-        self.ast_index_service.lock().await.process_files(file_paths, force).await;
+    pub async fn ast_indexer_enqueue_files(&self, file_paths: &Vec<PathBuf>, force: bool) {
+        self.ast_index_service.lock().await.ast_indexer_enqueue_files(file_paths, force).await;
     }
 
     pub async fn init_folders(&self, folders: Vec<WorkspaceFolder>) {
+        // TODO: this will not work when files change. Need a real file watcher.
         let files = file_filter::retrieve_files_by_proj_folders(
             folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
         ).await;
-        self.add_or_update_files(&files, true).await;
+        self.ast_indexer_enqueue_files(&files, true).await;
         info!("init_folders complete, added {} files", files.len());
     }
 
