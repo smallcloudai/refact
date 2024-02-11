@@ -44,12 +44,16 @@ pub struct CommandLine {
     pub lsp_stdin_stdout: u16,
     #[structopt(long, help="Trust self-signed SSL certificates")]
     pub insecure: bool,
-    #[structopt(long, help="Whether to use a vector database")]
+    #[structopt(long, help="Use AST. For it to start working, give it a jsonl files list or LSP workspace folders.")]
+    pub ast: bool,
+    #[structopt(long, help="Use vector database. Give it a jsonl files list or LSP workspace folders, and also caps need to have an embedding model.")]
     pub vecdb: bool,
-    #[structopt(long, short = "f", default_value = "", help = "A path to jsonl file with {\"path\": ...}, add files will immediately go to vecdb and ast")]
+    #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to vecdb and ast")]
     pub files_jsonl_path: String,
-    #[structopt(long, default_value = "", help = "Vecdb storage path")]
+    #[structopt(long, default_value="", help="Vecdb storage path")]
     pub vecdb_forced_path: String,
+    #[structopt(long, short="w", default_value="", help="Workspace folder to find files for vecdb and AST. An LSP or HTTP request can override this later.")]
+    pub workspace_folder: String,
 }
 
 pub struct Slowdown {
@@ -73,7 +77,7 @@ pub struct GlobalContext {
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
-    pub ast_module: Arc<AMutex<Option<AstModule>>>,
+    pub ast_module: Arc<AMutex<Option<AstModule>>>,   // TODO: don't use AMutex, use StdMutex
     pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
 }
@@ -201,12 +205,13 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
-    let ast_module = Arc::new(AMutex::new(Some(
-        AstModule::init(cmdline.clone()).await.expect(
-            "Failed to initialize ast module"
-        )
-    )));
-
+    let ast_module = if cmdline.ast {
+        Arc::new(AMutex::new(Some(
+            AstModule::init(cmdline.clone()).await.expect("Failed to initialize ast module")
+        )))
+    } else {
+        Arc::new(AMutex::new(None))
+    };
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
         http_client: http_client,
@@ -221,7 +226,7 @@ pub async fn create_global_context(
         ast_module,
         ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState {
-            workspace_folders: Arc::new(StdMutex::new(vec![])),
+            workspace_folders: if cmdline.workspace_folder.is_empty() { Arc::new(StdMutex::new(vec![])) } else { Arc::new(StdMutex::new(vec![PathBuf::from(cmdline.workspace_folder.clone())])) },
             document_map: Arc::new(ARwLock::new(HashMap::new())),
         },
     };

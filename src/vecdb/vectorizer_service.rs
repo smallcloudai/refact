@@ -254,7 +254,7 @@ impl FileVectorizerService {
         }
     }
 
-    pub async fn start_background_tasks(&self, vecdb_client: Arc<AMutex<reqwest::Client>>) -> Vec<JoinHandle<()>> {
+    pub async fn vecdb_start_background_tasks(&self, vecdb_client: Arc<AMutex<reqwest::Client>>) -> Vec<JoinHandle<()>> {
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
                 self.update_request_queue.clone(),

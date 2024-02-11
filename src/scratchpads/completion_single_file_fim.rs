@@ -19,7 +19,7 @@ use crate::ast::ast_module::AstModule;
 use crate::completion_cache;
 use crate::telemetry::telemetry_structs;
 use crate::telemetry::snippets_collection;
-use crate::vecdb::structs::VecdbSearch;
+
 
 const DEBUG: bool = false;
 

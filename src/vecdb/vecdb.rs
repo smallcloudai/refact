@@ -9,12 +9,10 @@ use async_trait::async_trait;
 use serde::Serialize;
 use tokio::task::JoinHandle;
 use crate::global_context::{CommandLine, GlobalContext};
-use tower_lsp::lsp_types::WorkspaceFolder;
 use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
 use crate::vecdb;
-use crate::vecdb::file_filter;
 use crate::vecdb::file_watcher_service::read_and_load_jsonl;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
@@ -35,11 +33,12 @@ fn vecdb_constants(
     }
 }
 
+#[derive(Debug)]
 pub struct VecDb {
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
     vectorizer_service: Arc<AMutex<FileVectorizerService>>,
-    cmdline: CommandLine,
+    cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy 
     constants: VecdbConstants,
 }
 
@@ -111,7 +110,7 @@ async fn create_vecdb(
 
     let files_jsonl_path = PathBuf::from(global_context.read().await.cmdline.files_jsonl_path.clone());
     read_and_load_jsonl(&files_jsonl_path, &vec_db).await;
-    let mut tasks = vec_db.start_background_tasks().await;
+    let mut tasks = vec_db.vecdb_start_background_tasks().await;
     tasks.extend(vec![
         tokio::spawn(vecdb::file_watcher_service::file_watcher_task(files_jsonl_path, global_context.clone()))
     ]);
@@ -214,9 +213,9 @@ impl VecDb {
         })
     }
 
-    pub async fn start_background_tasks(&self) -> Vec<JoinHandle<()>> {
+    pub async fn vecdb_start_background_tasks(&self) -> Vec<JoinHandle<()>> {
         info!("vecdb: start_background_tasks");
-        return self.vectorizer_service.lock().await.start_background_tasks(self.vecdb_emb_client.clone()).await;
+        return self.vectorizer_service.lock().await.vecdb_start_background_tasks(self.vecdb_emb_client.clone()).await;
     }
 
     pub async fn vectorizer_enqueue_files(&self, file_paths: &Vec<PathBuf>, force: bool) {

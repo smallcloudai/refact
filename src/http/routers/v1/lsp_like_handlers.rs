@@ -10,7 +10,6 @@ use url::Url;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 use crate::receive_workspace_changes;
-use crate::vecdb::file_filter::retrieve_files_by_proj_folders;
 
 #[derive(Serialize, Deserialize, Clone)]
 struct LspLikeInit {
@@ -31,22 +30,12 @@ pub async fn handle_v1_lsp_initialize(
     let post = serde_json::from_slice::<LspLikeInit>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-
-    let files = retrieve_files_by_proj_folders(
-        post.project_roots.iter().map(|x| PathBuf::from(x.path())).collect()
-    ).await;
-    let binding = global_context.read().await;
-    match *binding.vec_db.lock().await {
-        Some(ref mut db) => db.vectorizer_enqueue_files(&files, true).await,
-        None => {}
-    };
-    match *binding.ast_module.lock().await {
-        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files, true).await,
-        None => {}
-    };
+    let folders: Vec<PathBuf> = post.project_roots.iter().map(|x| PathBuf::from(x.path())).collect();
+    *global_context.write().await.documents_state.workspace_folders.lock().unwrap() = folders;
+    let files_count = receive_workspace_changes::on_workspaces_init(global_context).await;
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(json!({"success": 1}).to_string()))
+        .body(Body::from(json!({"success": 1, "files_found": files_count}).to_string()))
         .unwrap())
 }
 
@@ -58,15 +47,6 @@ pub async fn handle_v1_lsp_did_change(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let path = PathBuf::from(post.uri.path());
-    let binding = global_context.read().await;
-    match *binding.vec_db.lock().await {
-        Some(ref mut db) => db.vectorizer_enqueue_files(&vec![path.clone()], false).await,
-        None => {}
-    };
-    match *binding.ast_module.lock().await {
-        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![path.clone()], false).await,
-        None => {}
-    };
     receive_workspace_changes::on_did_change(
         global_context.clone(),
         &post.uri.to_string(),

@@ -19,7 +19,7 @@ pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
     ast_index: Arc<AMutex<AstIndex>>,
     ast_search_engine: Arc<AMutex<AstSearchEngine>>,
-    cmdline: CommandLine,
+    // cmdline -- take from command line what's needed, don't store a copy 
 }
 
 #[derive(Debug, Serialize)]
@@ -30,7 +30,7 @@ pub struct VecDbCaps {
 
 impl AstModule {
     pub async fn init(
-        cmdline: CommandLine,
+        _cmdline: CommandLine,
     ) -> Result<AstModule, String> {
         let ast_index = Arc::new(AMutex::new(AstIndex::init()));
         let ast_search_engine = Arc::new(AMutex::new(AstSearchEngine::init(ast_index.clone())));
@@ -39,13 +39,11 @@ impl AstModule {
             ast_index_service,
             ast_index,
             ast_search_engine,
-            cmdline,
         })
     }
 
-    pub async fn start_background_tasks(&self) -> Vec<JoinHandle<()>> {
-        info!("ast module: start_background_tasks");
-        return self.ast_index_service.lock().await.start_background_tasks().await;
+    pub async fn ast_start_background_tasks(&self) -> Vec<JoinHandle<()>> {
+        return self.ast_index_service.lock().await.ast_start_background_tasks().await;
     }
 
     pub async fn ast_indexer_enqueue_files(&self, file_paths: &Vec<PathBuf>, force: bool) {

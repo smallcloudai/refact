@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use log::debug;
 use tokio::sync::Mutex as AMutex;
 use tokio::task::JoinHandle;
 use tracing::info;
@@ -24,6 +23,7 @@ async fn cooldown_queue_thread(
     out_queue: Arc<AMutex<VecDeque<PathBuf>>>,
     cooldown_secs: u64,
 ) {
+    // TODO: remove, don't need cooldown for AST
     let mut last_updated: HashMap<PathBuf, SystemTime> = HashMap::new();
     loop {
         let (path_maybe, _unprocessed_files_count) = {
@@ -52,7 +52,7 @@ async fn cooldown_queue_thread(
             }
         }
         if stat_proceed > 0 || stat_too_new > 0 {
-            debug!("{} files to process, {} files too new", stat_proceed, stat_too_new);
+            info!("{} files to process, {} files too new", stat_proceed, stat_too_new);
         }
         for path in paths_to_process {
             last_updated.remove(&path);
@@ -63,7 +63,7 @@ async fn cooldown_queue_thread(
 }
 
 
-async fn ast_processing_thread(
+async fn ast_indexer_thread(
     queue: Arc<AMutex<VecDeque<PathBuf>>>,
     ast_index: Arc<AMutex<AstIndex>>,
 ) {
@@ -129,7 +129,9 @@ impl AstIndexService {
         }
     }
 
-    pub async fn start_background_tasks(&mut self) -> Vec<JoinHandle<()>> {
+    pub async fn ast_start_background_tasks(&mut self) -> Vec<JoinHandle<()>> {
+        // TODO: don't need cooldown for AST
+        // TODO: read file text from memory, found in receive_workspace_changes
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
                 self.update_request_queue.clone(),
@@ -137,19 +139,17 @@ impl AstIndexService {
                 COOLDOWN_SECS,
             )
         );
-
-        let retrieve_thread_handle = tokio::spawn(
-            ast_processing_thread(
+        let indexer_handle = tokio::spawn(
+            ast_indexer_thread(
                 self.output_queue.clone(),
                 self.ast_index.clone(),
             )
         );
-
-        return vec![cooldown_queue_join_handle, retrieve_thread_handle];
+        return vec![cooldown_queue_join_handle, indexer_handle];
     }
 
     pub async fn ast_indexer_enqueue_files(&self, paths: &Vec<PathBuf>, force: bool) {
-        debug!("Adding to AST index {} files", paths.len());
+        info!("Adding to AST index {} files", paths.len());
         if !force {
             self.update_request_queue.lock().await.extend(paths.clone());
         } else {

@@ -63,20 +63,22 @@ async fn main() {
             info!("{:>20} {}", k, v);
         }
     }
-    let mut background_tasks = start_background_tasks(gcx.clone());
+    let mut background_tasks = start_background_tasks(gcx.clone()).await;
+    // background tasks are telemetry and vector db, that will spontaneously start if the downloaded caps
+    // and command line parameters are right
 
     let should_start_http = cmdline.http_port != 0;
     let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||
         (cmdline.lsp_port != 0 && cmdline.lsp_stdin_stdout == 0);
 
+    // not really needed, but it's nice to have an error message sooner if there's one
+    let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
+    receive_workspace_changes::enqueue_all_files(gcx.clone()).await;
+
     let mut main_handle: Option<JoinHandle<()>> = None;
     if should_start_http {
         main_handle = http::start_server(gcx.clone(), ask_shutdown_receiver).await;
     }
-    match *gcx.clone().read().await.ast_module.lock().await {
-        Some(ref ast) => background_tasks.extend(ast.start_background_tasks().await),
-        None => ()
-    };
     if should_start_lsp {
         if main_handle.is_none() {
             // FIXME: this ignores crate::global_context::block_until_signal , important because now we have a database to corrupt
