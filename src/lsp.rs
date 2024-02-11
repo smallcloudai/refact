@@ -236,7 +236,7 @@ impl LanguageServer for Backend {
             // TODO: move to files_in_workspace
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
-                Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()], false).await,
+                Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()]).await,
                 None => {},
             };
             match *binding.vec_db.lock().await {
@@ -262,7 +262,7 @@ impl LanguageServer for Backend {
             // TODO: move to files_in_workspace
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
-                Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()], false).await,
+                Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()]).await,
                 None => {},
             };
             match *binding.vec_db.lock().await {
@@ -284,7 +284,7 @@ impl LanguageServer for Backend {
             // TODO: move to files_in_workspace
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
-                Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()], false).await,
+                Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()]).await,
                 None => {},
             };
             match *binding.vec_db.lock().await {
@@ -343,7 +343,7 @@ impl LanguageServer for Backend {
         // TODO: move to files_in_workspace
         let binding = self.gcx.read().await;
         match *binding.ast_module.lock().await {
-            Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files, false).await,
+            Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files).await,
             None => {},
         };
         match *binding.vec_db.lock().await {

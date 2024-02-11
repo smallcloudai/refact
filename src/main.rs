@@ -64,9 +64,9 @@ async fn main() {
             info!("{:>20} {}", k, v);
         }
     }
+    files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone()).await;
     let mut background_tasks = start_background_tasks(gcx.clone()).await;
-    // background tasks are telemetry and vector db, that will spontaneously start if the downloaded caps
-    // and command line parameters are right
+    // vector db will spontaneously start if the downloaded caps and command line parameters are right
 
     let should_start_http = cmdline.http_port != 0;
     let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||
@@ -74,7 +74,6 @@ async fn main() {
 
     // not really needed, but it's nice to have an error message sooner if there's one
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
-    files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone()).await;
 
     let mut main_handle: Option<JoinHandle<()>> = None;
     if should_start_http {

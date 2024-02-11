@@ -1,14 +1,12 @@
-import subprocess
+import os, subprocess
 
 cmdline = [
     "target/debug/refact-lsp",
     "--address-url", "Refact",
-    "--api-key", "aaabbbxxxyyy",
+    "--api-key", os.environ["SMALLCLOUD_API_KEY"],
     "--http-port", "8001",
-    # "--lsp-port", "8002",
-    # "--logs-stderr",
     "--files-jsonl-path", "hurray.jsonl",
-    # "--vecdb",
+    "--ast",
     ]
 print(" ".join(cmdline))
 
@@ -20,7 +18,7 @@ def start_rust():
             exit(1)
         line = rust.stderr.readline().decode("utf-8").strip()
         print("RUST", line)
-        if line == "CAPS":
+        if line == "AST COMPLETED":
             break
     return rust
 

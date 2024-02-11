@@ -31,7 +31,7 @@ pub async fn enqueue_all_files_from_jsonl(
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
     match *ast_module.lock().await {
-        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files, false).await,
+        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files).await,
         None => {},
     };
     match *vecdb_module.lock().await {

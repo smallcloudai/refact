@@ -41,7 +41,7 @@ pub async fn enqueue_all_files_from_workspace_folders(
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
     match *ast_module.lock().await {
-        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files, false).await,
+        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files).await,
         None => {
             info!("ast_module is None");
         },
@@ -99,7 +99,7 @@ pub async fn on_did_change(
     //     None => {}
     // };
     // match *binding.ast_module.lock().await {
-    //     Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![path.clone()], false).await,
+    //     Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![path.clone()]).await,
     //     None => {}
     // };
     telemetry::snippets_collection::sources_changed(

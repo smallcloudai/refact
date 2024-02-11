@@ -50,7 +50,7 @@ impl AstModule {
             ast_index,
             ast_search_engine,
         };
-        me.ast_indexer_enqueue_files(&files, true).await;
+        me.ast_indexer_enqueue_files(&files).await;
         Ok(me)
     }
 
@@ -58,8 +58,8 @@ impl AstModule {
         return self.ast_index_service.lock().await.ast_start_background_tasks().await;
     }
 
-    pub async fn ast_indexer_enqueue_files(&self, file_paths: &Vec<PathBuf>, force: bool) {
-        self.ast_index_service.lock().await.ast_indexer_enqueue_files(file_paths, force).await;
+    pub async fn ast_indexer_enqueue_files(&self, file_paths: &Vec<PathBuf>) {
+        self.ast_index_service.lock().await.ast_indexer_enqueue_files(file_paths).await;
     }
 
     pub async fn remove_file(&self, file_path: &PathBuf) {
