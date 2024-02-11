@@ -22,7 +22,7 @@ mod telemetry;
 mod lsp;
 mod http;
 mod background_tasks;
-mod receive_workspace_changes;
+mod files_in_workspace;
 mod vecdb;
 mod fetch_embedding;
 mod at_commands;
@@ -73,7 +73,7 @@ async fn main() {
 
     // not really needed, but it's nice to have an error message sooner if there's one
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
-    receive_workspace_changes::enqueue_all_files(gcx.clone()).await;
+    files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone()).await;
 
     let mut main_handle: Option<JoinHandle<()>> = None;
     if should_start_http {

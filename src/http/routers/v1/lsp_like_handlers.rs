@@ -9,7 +9,7 @@ use url::Url;
 
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::receive_workspace_changes;
+use crate::files_in_workspace;
 
 #[derive(Serialize, Deserialize, Clone)]
 struct LspLikeInit {
@@ -32,7 +32,7 @@ pub async fn handle_v1_lsp_initialize(
     })?;
     let folders: Vec<PathBuf> = post.project_roots.iter().map(|x| PathBuf::from(x.path())).collect();
     *global_context.write().await.documents_state.workspace_folders.lock().unwrap() = folders;
-    let files_count = receive_workspace_changes::on_workspaces_init(global_context).await;
+    let files_count = files_in_workspace::on_workspaces_init(global_context).await;
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(json!({"success": 1, "files_found": files_count}).to_string()))
@@ -47,7 +47,7 @@ pub async fn handle_v1_lsp_did_change(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let path = PathBuf::from(post.uri.path());
-    receive_workspace_changes::on_did_change(
+    files_in_workspace::on_did_change(
         global_context.clone(),
         &post.uri.to_string(),
         &post.text,

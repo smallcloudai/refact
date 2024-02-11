@@ -18,7 +18,7 @@ use crate::custom_error::ScratchError;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::telemetry::telemetry_structs;
-use crate::receive_workspace_changes::Document;
+use crate::files_in_workspace::Document;
 use crate::vecdb::vecdb::VecDb;
 
 

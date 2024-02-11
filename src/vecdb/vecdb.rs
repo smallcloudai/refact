@@ -176,7 +176,7 @@ pub async fn vecdb_background_reload(
                 consts.unwrap(),
             ).await {
                 Ok(_) => {
-                    crate::receive_workspace_changes::enqueue_all_files(global_context.clone()).await;
+                    crate::files_in_workspace::enqueue_all_files_from_workspace_folders(global_context.clone()).await;
                 }
                 Err(err) => {
                     error!("vecdb: init failed: {}", err);

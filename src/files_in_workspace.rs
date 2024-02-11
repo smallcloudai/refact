@@ -25,7 +25,7 @@ impl Document {
     }
 }
 
-pub async fn enqueue_all_files(
+pub async fn enqueue_all_files_from_workspace_folders(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> i32 {
     let folders: Vec<PathBuf> = {
@@ -58,7 +58,7 @@ pub async fn on_workspaces_init(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> i32 {
     // TODO: this will not work when files change. Need a real file watcher.
-    enqueue_all_files(gcx.clone()).await
+    enqueue_all_files_from_workspace_folders(gcx.clone()).await
 }
 
 pub async fn on_did_open(

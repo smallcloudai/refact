@@ -16,7 +16,7 @@ use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPos
 use crate::global_context;
 use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
-use crate::receive_workspace_changes;
+use crate::files_in_workspace;
 use crate::telemetry;
 use crate::vecdb::file_filter::is_valid_file;
 
@@ -186,7 +186,7 @@ impl LanguageServer for Backend {
             *gcx_locked.documents_state.workspace_folders.lock().unwrap() = folders.clone();
             info!("LSP workspace_folders {:?}", folders);
         }
-        receive_workspace_changes::on_workspaces_init(
+        files_in_workspace::on_workspaces_init(
             self.gcx.clone(),
         ).await;
 
@@ -221,7 +221,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        receive_workspace_changes::on_did_open(
+        files_in_workspace::on_did_open(
             self.gcx.clone(),
             &params.text_document.uri.to_string(),
             &params.text_document.text,
@@ -233,7 +233,7 @@ impl LanguageServer for Backend {
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
             // TODO: lock held too long
-            // TODO: move to receive_workspace_changes
+            // TODO: move to files_in_workspace
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
                 Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()], false).await,
@@ -244,7 +244,7 @@ impl LanguageServer for Backend {
                 None => {}
             };
         }
-        receive_workspace_changes::on_did_change(
+        files_in_workspace::on_did_change(
             self.gcx.clone(),
             &params.text_document.uri.to_string(),
             &params.content_changes[0].text
@@ -259,7 +259,7 @@ impl LanguageServer for Backend {
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
             // TODO: lock held too long
-            // TODO: move to receive_workspace_changes
+            // TODO: move to files_in_workspace
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
                 Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()], false).await,
@@ -281,7 +281,7 @@ impl LanguageServer for Backend {
         let file_path = PathBuf::from(params.text_document.uri.path());
         if is_valid_file(&file_path) {
             // TODO: lock held too long
-            // TODO: move to receive_workspace_changes
+            // TODO: move to files_in_workspace
             let binding = self.gcx.read().await;
             match *binding.ast_module.lock().await {
                 Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()], false).await,
@@ -313,7 +313,7 @@ impl LanguageServer for Backend {
             .filter(|x| is_valid_file(&x));
 
         // TODO: lock held too long
-        // TODO: move to receive_workspace_changes
+        // TODO: move to files_in_workspace
         let binding = self.gcx.read().await;
         match *binding.ast_module.lock().await {
             Some(ref mut ast) => {
@@ -340,7 +340,7 @@ impl LanguageServer for Backend {
             .filter(|x| is_valid_file(&x))
             .collect();
         // TODO: lock held too long
-        // TODO: move to receive_workspace_changes
+        // TODO: move to files_in_workspace
         let binding = self.gcx.read().await;
         match *binding.ast_module.lock().await {
             Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files, false).await,
