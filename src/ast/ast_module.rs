@@ -3,15 +3,16 @@ use std::sync::Arc;
 
 use serde::Serialize;
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
-use tracing::info;
+use tracing::{info, error};
 use tree_sitter::Point;
 
+use crate::global_context::GlobalContext;
 use crate::ast::ast_index::AstIndex;
 use crate::ast::ast_index_service::AstIndexService;
 use crate::ast::ast_search_engine::AstSearchEngine;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileReferencesResult};
-use crate::global_context::CommandLine;
 
 
 #[derive(Debug)]
@@ -29,17 +30,28 @@ pub struct VecDbCaps {
 
 
 impl AstModule {
-    pub async fn init(
-        _cmdline: CommandLine,
+    pub async fn ast_indexer_init(
+        global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Result<AstModule, String> {
         let ast_index = Arc::new(AMutex::new(AstIndex::init()));
         let ast_search_engine = Arc::new(AMutex::new(AstSearchEngine::init(ast_index.clone())));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(ast_index.clone())));
-        Ok(AstModule {
+
+        let files_jsonl_path = global_context.read().await.cmdline.files_jsonl_path.clone();
+        let files = match crate::files_in_jsonl::parse_jsonl(&files_jsonl_path).await {
+            Ok(lst) => lst,
+            Err(err) => {
+                error!("failed to parse {}: {}", files_jsonl_path, err);
+                vec![]
+            }
+        };
+        let me = AstModule {
             ast_index_service,
             ast_index,
             ast_search_engine,
-        })
+        };
+        me.ast_indexer_enqueue_files(&files, true).await;
+        Ok(me)
     }
 
     pub async fn ast_start_background_tasks(&self) -> Vec<JoinHandle<()>> {

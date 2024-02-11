@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use fst::{Set, set, Streamer};
 use fst::automaton::Subsequence;
-use log::info;
+use tracing::info;
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
 use tokio::fs::read_to_string;

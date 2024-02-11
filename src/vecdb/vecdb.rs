@@ -13,7 +13,6 @@ use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
 use crate::vecdb;
-use crate::vecdb::file_watcher_service::read_and_load_jsonl;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
 use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants};
@@ -108,12 +107,16 @@ async fn create_vecdb(
     }
     info!("vecdb: test request complete");
 
-    let files_jsonl_path = PathBuf::from(global_context.read().await.cmdline.files_jsonl_path.clone());
-    read_and_load_jsonl(&files_jsonl_path, &vec_db).await;
-    let mut tasks = vec_db.vecdb_start_background_tasks().await;
-    tasks.extend(vec![
-        tokio::spawn(vecdb::file_watcher_service::file_watcher_task(files_jsonl_path, global_context.clone()))
-    ]);
+    let files_jsonl_path = global_context.read().await.cmdline.files_jsonl_path.clone();
+    let files = match crate::files_in_jsonl::parse_jsonl(&files_jsonl_path).await {
+        Ok(lst) => lst,
+        Err(err) => {
+            error!("failed to parse {}: {}", files_jsonl_path, err);
+            vec![]
+        }
+    };
+    vec_db.vectorizer_enqueue_files(&files, true).await;
+    let tasks = vec_db.vecdb_start_background_tasks().await;
     background_tasks.extend(tasks);
 
     {

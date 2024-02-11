@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use itertools::Itertools;
-use log::info;
+use tracing::info;
 use tokio::sync::Mutex as AMutex;
 use tree_sitter::Point;
 

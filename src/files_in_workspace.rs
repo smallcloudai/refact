@@ -33,14 +33,13 @@ pub async fn enqueue_all_files_from_workspace_folders(
         let x = cx_locked.documents_state.workspace_folders.lock().unwrap().clone();
         x
     };
-    info!("enqueue_all_files started files search with {} workspace folders", folders.len());
+    info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
     let files = file_filter::retrieve_files_by_proj_folders(folders).await;
-    info!("enqueue_all_files found {} files", files.len());
+    info!("enqueue_all_files_from_workspace_folders found {} files", files.len());
     let (ast_module, vecdb_module) = {
         let cx_locked = gcx.read().await;
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
-    info!("ast={:?} vecdb_module={:?}", ast_module, vecdb_module);
     match *ast_module.lock().await {
         Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files, false).await,
         None => {

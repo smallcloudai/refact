@@ -51,5 +51,11 @@ pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>) -> Backgro
         Some(ref ast) => bg.extend(ast.ast_start_background_tasks().await),
         None => ()
     };
+    let files_jsonl_path = gcx.clone().read().await.cmdline.files_jsonl_path.clone();
+    if !files_jsonl_path.is_empty() {
+        bg.extend(vec![
+            tokio::spawn(crate::files_in_jsonl::reload_if_jsonl_changes_background_task(gcx.clone()))
+        ]);
+    }
     bg
 }

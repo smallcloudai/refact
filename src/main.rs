@@ -23,6 +23,7 @@ mod lsp;
 mod http;
 mod background_tasks;
 mod files_in_workspace;
+mod files_in_jsonl;
 mod vecdb;
 mod fetch_embedding;
 mod at_commands;

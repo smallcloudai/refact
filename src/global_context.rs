@@ -205,13 +205,6 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
-    let ast_module = if cmdline.ast {
-        Arc::new(AMutex::new(Some(
-            AstModule::init(cmdline.clone()).await.expect("Failed to initialize ast module")
-        )))
-    } else {
-        Arc::new(AMutex::new(None))
-    };
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
         http_client: http_client,
@@ -223,12 +216,19 @@ pub async fn create_global_context(
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vec_db: Arc::new(AMutex::new(None)),
-        ast_module,
+        ast_module: Arc::new(AMutex::new(None)),
         ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState {
             workspace_folders: if cmdline.workspace_folder.is_empty() { Arc::new(StdMutex::new(vec![])) } else { Arc::new(StdMutex::new(vec![PathBuf::from(cmdline.workspace_folder.clone())])) },
             document_map: Arc::new(ARwLock::new(HashMap::new())),
         },
     };
-    (Arc::new(ARwLock::new(cx)), ask_shutdown_receiver, cmdline)
+    let gcx = Arc::new(ARwLock::new(cx));
+    if cmdline.ast {
+        let ast_module = Arc::new(AMutex::new(Some(
+            AstModule::ast_indexer_init(gcx.clone()).await.expect("Failed to initialize ast module")
+        )));
+        gcx.write().await.ast_module = ast_module;
+    }
+    (gcx, ask_shutdown_receiver, cmdline)
 }

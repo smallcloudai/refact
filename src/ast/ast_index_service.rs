@@ -131,7 +131,7 @@ impl AstIndexService {
 
     pub async fn ast_start_background_tasks(&mut self) -> Vec<JoinHandle<()>> {
         // TODO: don't need cooldown for AST
-        // TODO: read file text from memory, found in receive_workspace_changes
+        // TODO: read file text from memory, text can be found in files_in_workspace
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
                 self.update_request_queue.clone(),

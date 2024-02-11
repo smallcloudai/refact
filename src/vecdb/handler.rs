@@ -20,7 +20,7 @@ use lance::dataset::{WriteMode, WriteParams};
 use lance_linalg::distance::MetricType;
 use lance_index::vector::ivf::IvfBuildParams;
 use lance::index::vector::pq::PQBuildParams;
-use log::info;
+use tracing::info;
 use rusqlite::{OpenFlags, params, Result};
 use tempfile::{tempdir, TempDir};
 use tokio::fs;
