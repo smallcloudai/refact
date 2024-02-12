@@ -1,6 +1,7 @@
 use similar::DiffableStr;
 use tree_sitter::{Node, Query, QueryCapture, Range};
-use crate::ast::treesitter::structs::{FunctionCallInfo, StaticInfo, StaticType};
+
+use crate::ast::treesitter::structs::{FunctionCallInfo, StaticInfo, StaticType, VariableInfo};
 
 pub(crate) fn get_function_name(parent: Node, text: &str) -> String {
     for i in 0..parent.child_count() {
@@ -16,6 +17,41 @@ pub(crate) fn get_function_name(parent: Node, text: &str) -> String {
         }
     }
     return "".to_string();
+}
+
+pub(crate) fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
+    let mut var = VariableInfo {
+        name: "".to_string(),
+        range: Range {
+            start_byte: 0,
+            end_byte: 0,
+            start_point: Default::default(),
+            end_point: Default::default(),
+        },
+        type_name: None,
+    };
+    for capture in captures {
+        let capture_name = &query.capture_names()[capture.index as usize];
+        match capture_name.as_str() {
+            "variable" => {
+                var.range = capture.node.range()
+            }
+            "variable_name" => {
+                let text = code.slice(capture.node.byte_range());
+                var.name = text.to_string();
+            }
+            "variable_type" => {
+                let text = code.slice(capture.node.byte_range());
+                var.type_name = Some(text.to_string());
+            }
+            &_ => {}
+        }
+    }
+    if var.name.is_empty() {
+        return None;
+    }
+
+    Some(var)
 }
 
 pub(crate) fn get_call(captures: &[QueryCapture], query: &Query, code: &str) -> Option<FunctionCallInfo> {
@@ -57,14 +93,14 @@ pub(crate) fn get_static(captures: &[QueryCapture], query: &Query, code: &str) -
                 Some(StaticInfo {
                     data: text.to_string(),
                     static_type: StaticType::Comment,
-                    range: capture.node.range()
+                    range: capture.node.range(),
                 })
             }
             "string_literal" => {
                 Some(StaticInfo {
                     data: text.to_string(),
                     static_type: StaticType::Literal,
-                    range: capture.node.range()
+                    range: capture.node.range(),
                 })
             }
             &_ => {

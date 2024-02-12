@@ -1,15 +1,10 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
-
 use lazy_static::lazy_static;
 use similar::DiffableStr;
-use tree_sitter::{Node, Parser, Query, QueryCapture, Range, Tree};
+use tree_sitter::{Node, Parser, Query, QueryCapture, Range};
 use tree_sitter_cpp::language;
-use crate::ast::treesitter::language_id::LanguageId;
 
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
-use crate::ast::treesitter::parsers::utils::{get_call, get_static};
-use crate::ast::treesitter::structs::{SymbolDeclarationStruct, SymbolInfo, SymbolType, UsageSymbolInfo, VariableInfo};
+use crate::ast::treesitter::structs::{UsageSymbolInfo, VariableInfo};
 
 const CPP_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(translation_unit (declaration declarator: (init_declarator)) @global_variable)\n\
 (namespace_definition (declaration_list (declaration (init_declarator)) @global_variable))";
@@ -38,40 +33,6 @@ lazy_static! {
     };
 }
 
-fn get_namespace(mut parent: Option<Node>, text: &str) -> Vec<String> {
-    let mut namespaces: Vec<String> = vec![];
-    while parent.is_some() {
-        match parent.unwrap().kind() {
-            "namespace_definition" => {
-                let children_len = parent.unwrap().child_count();
-                for i in 0..children_len {
-                    if let Some(child) = parent.unwrap().child(i) {
-                        if child.kind() == "namespace_identifier" {
-                            namespaces.push(text.slice(child.byte_range()).to_string());
-                            break;
-                        }
-                    }
-                }
-            }
-            "class_specifier" | "struct_specifier" => {
-                let children_len = parent.unwrap().child_count();
-                for i in 0..children_len {
-                    if let Some(child) = parent.unwrap().child(i) {
-                        if child.kind() == "type_identifier" {
-                            namespaces.push(text.slice(child.byte_range()).to_string());
-                            break;
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-        parent = parent.unwrap().parent();
-    }
-    namespaces.reverse();
-    namespaces
-}
-
 fn get_function_name_and_scope_req(parent: Node, text: &str) -> (String, Vec<String>) {
     let mut scope: Vec<String> = Default::default();
     let mut name: String = String::new();
@@ -95,61 +56,6 @@ fn get_function_name_and_scope_req(parent: Node, text: &str) -> (String, Vec<Str
         }
     }
     (name, scope)
-}
-
-fn get_function_name_and_scope(parent: Node, text: &str) -> (String, Vec<String>) {
-    for i in 0..parent.child_count() {
-        if let Some(child) = parent.child(i) {
-            let kind = child.kind();
-            match kind {
-                "function_declarator" => {
-                    for i in 0..child.child_count() {
-                        if let Some(child) = child.child(i) {
-                            let kind = child.kind();
-                            match kind {
-                                "identifier" => {
-                                    let name = text.slice(child.byte_range());
-                                    return (name.to_string(), vec![]);
-                                }
-                                "qualified_identifier" => {
-                                    return get_function_name_and_scope_req(child, text);
-                                }
-                                &_ => {}
-                            }
-                        }
-                    }
-                }
-                &_ => {}
-            }
-        }
-    }
-    ("".parse().unwrap(), vec![])
-}
-
-fn get_variable_name(parent: Node, text: &str) -> String {
-    for i in 0..parent.child_count() {
-        if let Some(child) = parent.child(i) {
-            let kind = child.kind();
-            match kind {
-                "init_declarator" => {
-                    for i in 0..child.child_count() {
-                        if let Some(child) = child.child(i) {
-                            let kind = child.kind();
-                            match kind {
-                                "identifier" => {
-                                    let name = text.slice(child.byte_range());
-                                    return name.to_string();
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-    return "".to_string();
 }
 
 fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
@@ -185,32 +91,6 @@ fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<
     }
 
     Some(var)
-}
-
-fn get_enum_name_and_all_values(parent: Node, text: &str) -> (String, Vec<String>) {
-    let mut name: String = Default::default();
-    let mut values: Vec<String> = vec![];
-    let mut qcursor = tree_sitter::QueryCursor::new();
-    let query = Query::new(tree_sitter_cpp::language(), 
-                           "(enum_specifier name: (type_identifier) @name (_ (_ (identifier) @element)))\
-                           ((declaration type: (enum_specifier (_ (_ (identifier) @element))) declarator: (identifier) @name))").unwrap();
-    let matches = qcursor.matches(&query, parent, text.as_bytes());
-    for match_ in matches {
-        for capture in match_.captures {
-            let capture_name = &query.capture_names()[capture.index as usize];
-            match capture_name.as_str() {
-                "name" => {
-                    name = text.slice(capture.node.byte_range()).to_string();
-                }
-                "element" => {
-                    let text = text.slice(capture.node.byte_range());
-                    values.push(text.to_string());
-                }
-                &_ => {} 
-            }
-        }
-    }
-    (name, values)
 }
 
 const CPP_PARSER_QUERY_FIND_VARIABLES: &str = r#"((declaration type: [
@@ -255,143 +135,138 @@ impl CppParser {
 }
 
 impl LanguageParser for CppParser {
-    fn parse_declarations(&mut self, code: &str, path: &PathBuf) -> Result<HashMap<String, SymbolDeclarationStruct>, String> {
-        let mut indexes: HashMap<String, SymbolDeclarationStruct> = Default::default();
-        let tree: Tree = match self.parser.parse(code, None) {
-            Some(tree) => tree,
-            None => return Err("Parse error".to_string()),
-        };
+    fn get_parser(&mut self) -> &mut Parser {
+        &mut self.parser
+    }
+
+
+    fn get_parser_query(&self) -> &String {
+        &CPP_PARSER_QUERY
+    }
+
+    fn get_parser_query_find_all(&self) -> &String {
+        &CPP_PARSER_QUERY_FIND_ALL
+    }
+
+    fn get_namespace(&self, mut parent: Option<Node>, text: &str) -> Vec<String> {
+        let mut namespaces: Vec<String> = vec![];
+        while parent.is_some() {
+            match parent.unwrap().kind() {
+                "namespace_definition" => {
+                    let children_len = parent.unwrap().child_count();
+                    for i in 0..children_len {
+                        if let Some(child) = parent.unwrap().child(i) {
+                            if child.kind() == "namespace_identifier" {
+                                namespaces.push(text.slice(child.byte_range()).to_string());
+                                break;
+                            }
+                        }
+                    }
+                }
+                "class_specifier" | "struct_specifier" => {
+                    let children_len = parent.unwrap().child_count();
+                    for i in 0..children_len {
+                        if let Some(child) = parent.unwrap().child(i) {
+                            if child.kind() == "type_identifier" {
+                                namespaces.push(text.slice(child.byte_range()).to_string());
+                                break;
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+            parent = parent.unwrap().parent();
+        }
+        namespaces.reverse();
+        namespaces
+    }
+
+    fn get_enum_name_and_all_values(&self, parent: Node, text: &str) -> (String, Vec<String>) {
+        let mut name: String = Default::default();
+        let mut values: Vec<String> = vec![];
         let mut qcursor = tree_sitter::QueryCursor::new();
-        let query = Query::new(tree_sitter_cpp::language(), &**CPP_PARSER_QUERY).unwrap();
-        let matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
+        let query = Query::new(language(),
+                               "(enum_specifier name: (type_identifier) @name (_ (_ (identifier) @element)))\
+                           ((declaration type: (enum_specifier (_ (_ (identifier) @element))) declarator: (identifier) @name))").unwrap();
+        let matches = qcursor.matches(&query, parent, text.as_bytes());
         for match_ in matches {
             for capture in match_.captures {
                 let capture_name = &query.capture_names()[capture.index as usize];
                 match capture_name.as_str() {
-                    "class" | "struct" => {
-                        let range = capture.node.range();
-                        let namespaces = get_namespace(Some(capture.node), code);
-                        let class_name = namespaces.last().unwrap().clone();
-                        let mut key = path.to_str().unwrap().to_string();
-                        namespaces.iter().for_each(|ns| {
-                            key += format!("::{}", ns).as_str();
-                        });
-                        indexes.insert(key.clone(),
-                                       SymbolDeclarationStruct {
-                                           name: class_name,
-                                           definition_info: SymbolInfo { path: path.clone(), range },
-                                           children: vec![],
-                                           symbol_type: SymbolType::Class,
-                                           meta_path: key,
-                                           language: LanguageId::from(capture.node.language()),
-                                       });
+                    "name" => {
+                        name = text.slice(capture.node.byte_range()).to_string();
                     }
-                    "enum" => {
-                        let range = capture.node.range();
-                        let mut namespaces = get_namespace(Some(capture.node), code);
-                        let (enum_name, values) = get_enum_name_and_all_values(capture.node, code);
-                        namespaces.push(enum_name);
-                        let mut key = path.to_str().unwrap().to_string();
-                        namespaces.iter().for_each(|ns| {
-                            key += format!("::{}", ns).as_str();
-                        });
-                        values.iter().for_each(|value| {
-                            let key = format!("{}::{}", key, value);
-                            indexes.insert(key.clone(),
-                                           SymbolDeclarationStruct {
-                                               name: value.clone(),
-                                               definition_info: SymbolInfo { path: path.clone(), range },
-                                               children: vec![],
-                                               symbol_type: SymbolType::Enum,
-                                               meta_path: key,
-                                               language: LanguageId::from(capture.node.language())
-                                           });
-                        });
-                    }
-                    "function" => {
-                        let range = capture.node.range();
-                        let mut namespaces = get_namespace(Some(capture.node), code);
-                        let (name, scopes) = get_function_name_and_scope(capture.node.clone(), code);
-                        namespaces.extend(scopes);
-                        namespaces.push(name.clone());
-                        let mut key = path.to_str().unwrap().to_string();
-                        namespaces.iter().for_each(|ns| {
-                            key += format!("::{}", ns).as_str();
-                        });
-                        indexes.insert(key.clone(),
-                                       SymbolDeclarationStruct {
-                                           name,
-                                           definition_info: SymbolInfo { path: path.clone(), range },
-                                           children: vec![],
-                                           symbol_type: SymbolType::Function,
-                                           meta_path: key,
-                                           language: LanguageId::from(capture.node.language())
-                                       });
-                    }
-                    "global_variable" => {
-                        let range = capture.node.range();
-                        let mut namespaces = get_namespace(Some(capture.node), code);
-                        let name = get_variable_name(capture.node, code);
-                        let mut key = path.to_str().unwrap().to_string();
-                        namespaces.push(name.clone());
-                        namespaces.iter().for_each(|ns| {
-                            key += format!("::{}", ns).as_str();
-                        });
-                        indexes.insert(key.clone(),
-                                       SymbolDeclarationStruct {
-                                           name,
-                                           definition_info: SymbolInfo { path: path.clone(), range },
-                                           children: vec![],
-                                           symbol_type: SymbolType::GlobalVar,
-                                           meta_path: key,
-                                           language: LanguageId::from(capture.node.language())
-                                       });
+                    "element" => {
+                        let text = text.slice(capture.node.byte_range());
+                        values.push(text.to_string());
                     }
                     &_ => {}
                 }
             }
         }
-        Ok(indexes)
+        (name, values)
     }
-    fn parse_usages(&mut self, code: &str) -> Result<Vec<Box<dyn UsageSymbolInfo + 'static>>, String> {
-        let tree: Tree = match self.parser.parse(code, None) {
-            Some(tree) => tree,
-            None => return Err("Parse error".to_string()),
-        };
-        let mut usages: Vec<Box<dyn UsageSymbolInfo>> = vec![];
-        let mut qcursor = tree_sitter::QueryCursor::new();
-        let query = Query::new(language(), &**CPP_PARSER_QUERY_FIND_ALL).unwrap();
-        let matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
-        for match_ in matches {
-            match match_.pattern_index {
-                0 => {
-                    if let Some(var) = get_variable(match_.captures, &query, code) {
-                        usages.push(Box::new(var));
+
+    fn get_function_name_and_scope(&self, parent: Node, text: &str) -> (String, Vec<String>) {
+        for i in 0..parent.child_count() {
+            if let Some(child) = parent.child(i) {
+                let kind = child.kind();
+                match kind {
+                    "function_declarator" => {
+                        for i in 0..child.child_count() {
+                            if let Some(child) = child.child(i) {
+                                let kind = child.kind();
+                                match kind {
+                                    "identifier" => {
+                                        let name = text.slice(child.byte_range());
+                                        return (name.to_string(), vec![]);
+                                    }
+                                    "qualified_identifier" => {
+                                        return get_function_name_and_scope_req(child, text);
+                                    }
+                                    &_ => {}
+                                }
+                            }
+                        }
                     }
+                    &_ => {}
                 }
-                1 => {
-                    if let Some(var) = get_call(match_.captures, &query, code) {
-                        usages.push(Box::new(var));
-                    }
-                }
-                2 => {
-                    if let Some(var) = get_static(match_.captures, &query, code) {
-                        usages.push(Box::new(var));
-                    }
-                }
-                _ => {}
             }
         }
-        Ok(usages)
+        ("".parse().unwrap(), vec![])
+    }
+
+    fn get_variable_name(&self, parent: Node, text: &str) -> String {
+        for i in 0..parent.child_count() {
+            if let Some(child) = parent.child(i) {
+                let kind = child.kind();
+                match kind {
+                    "init_declarator" => {
+                        for i in 0..child.child_count() {
+                            if let Some(child) = child.child(i) {
+                                let kind = child.kind();
+                                match kind {
+                                    "identifier" => {
+                                        let name = text.slice(child.byte_range());
+                                        return name.to_string();
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        return "".to_string();
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::any::Any;
     use std::path::PathBuf;
-    use tree_sitter::Language;
-    use crate::ast::treesitter::language_id::LanguageId;
 
     use crate::ast::treesitter::parsers::cpp::CppParser;
     use crate::ast::treesitter::parsers::LanguageParser;

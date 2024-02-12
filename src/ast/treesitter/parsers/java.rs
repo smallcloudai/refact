@@ -1,17 +1,14 @@
-use std::collections::HashMap;
 use std::iter::Iterator;
-use std::path::PathBuf;
 use std::string::ToString;
 
 use similar::DiffableStr;
 use structopt::lazy_static::lazy_static;
-use tree_sitter::{Node, Parser, Query, QueryCapture, Range, Tree};
+use tree_sitter::{Node, Parser};
 use tree_sitter_java::language;
-use crate::ast::treesitter::language_id::LanguageId;
 
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
-use crate::ast::treesitter::parsers::utils::{get_call, get_function_name, get_static};
-use crate::ast::treesitter::structs::{SymbolDeclarationStruct, SymbolInfo, SymbolType, UsageSymbolInfo, VariableInfo};
+use crate::ast::treesitter::parsers::utils::get_function_name;
+use crate::ast::treesitter::structs::UsageSymbolInfo;
 
 const JAVA_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(program (local_variable_declaration (_)) @global_variable)";
 const JAVA_PARSER_QUERY_FUNCTION: &str = "";
@@ -76,257 +73,109 @@ impl JavaParser {
     }
 }
 
-fn get_namespace(mut parent: Option<Node>, text: &str) -> Vec<String> {
-    let mut namespaces: Vec<String> = vec![];
-    while parent.is_some() {
-        match parent.unwrap().kind() {
-            "class_declaration" => {
-                let children_len = parent.unwrap().child_count();
-                for i in 0..children_len {
-                    if let Some(child) = parent.unwrap().child(i) {
-                        if child.kind() == "identifier" {
-                            namespaces.push(text.slice(child.byte_range()).to_string());
-                            break;
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-        parent = parent.unwrap().parent();
-    }
-    namespaces.reverse();
-    namespaces
-}
-
-fn get_variable_name(parent: Node, text: &str) -> String {
-    for i in 0..parent.child_count() {
-        if let Some(child) = parent.child(i) {
-            let kind = child.kind();
-            match kind {
-                "identifier" => {
-                    let name = text.slice(child.byte_range());
-                    return name.to_string();
-                }
-                _ => {}
-            }
-        }
-    }
-    return "".to_string();
-}
-
-fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
-    let mut var = VariableInfo {
-        name: "".to_string(),
-        range: Range {
-            start_byte: 0,
-            end_byte: 0,
-            start_point: Default::default(),
-            end_point: Default::default(),
-        },
-        type_name: None,
-    };
-    for capture in captures {
-        let capture_name = &query.capture_names()[capture.index as usize];
-        match capture_name.as_str() {
-            "variable" => {
-                var.range = capture.node.range()
-            }
-            "variable_name" => {
-                let text = code.slice(capture.node.byte_range());
-                var.name = text.to_string();
-            }
-            "variable_type" => {
-                let text = code.slice(capture.node.byte_range());
-                var.type_name = Some(text.to_string());
-            }
-            &_ => {}
-        }
-    }
-    if var.name.is_empty() {
-        return None;
+impl LanguageParser for JavaParser {
+    fn get_parser(&mut self) -> &mut Parser {
+        &mut self.parser
     }
 
-    Some(var)
-}
+    fn get_parser_query(&self) -> &String {
+        &JAVA_PARSER_QUERY
+    }
 
-fn get_enum_name_and_all_values(parent: Node, text: &str) -> (String, Vec<String>) {
-    let mut name: String = Default::default();
-    let mut values: Vec<String> = vec![];
-    for i in 0..parent.child_count() {
-        if let Some(child) = parent.child(i) {
-            let kind = child.kind();
-            match kind {
-                "identifier" => {
-                    name = text.slice(child.byte_range()).to_string();
-                }
-                "enum_body" => {
-                    for i in 0..child.child_count() {
-                        if let Some(child) = child.child(i) {
-                            let kind = child.kind();
-                            match kind {
-                                "enum_constant" => {
-                                    for i in 0..child.child_count() {
-                                        if let Some(child) = child.child(i) {
-                                            let kind = child.kind();
-                                            match kind {
-                                                "identifier" => {
-                                                    let text = text.slice(child.byte_range());
-                                                    values.push(text.to_string());
-                                                    break;
-                                                }
-                                                _ => {}
-                                            }
-                                        }
-                                    }
-                                }
-                                _ => {}
+    fn get_parser_query_find_all(&self) -> &String {
+        &JAVA_PARSER_QUERY_FIND_ALL
+    }
+
+    fn get_namespace(&self, mut parent: Option<Node>, text: &str) -> Vec<String> {
+        let mut namespaces: Vec<String> = vec![];
+        while parent.is_some() {
+            match parent.unwrap().kind() {
+                "class_declaration" => {
+                    let children_len = parent.unwrap().child_count();
+                    for i in 0..children_len {
+                        if let Some(child) = parent.unwrap().child(i) {
+                            if child.kind() == "identifier" {
+                                namespaces.push(text.slice(child.byte_range()).to_string());
+                                break;
                             }
                         }
                     }
                 }
                 _ => {}
             }
+            parent = parent.unwrap().parent();
         }
+        namespaces.reverse();
+        namespaces
     }
-    (name, values)
-}
 
-
-impl LanguageParser for JavaParser {
-    fn parse_declarations(&mut self, code: &str, path: &PathBuf) -> Result<HashMap<String, SymbolDeclarationStruct>, String> {
-        let mut indexes: HashMap<String, SymbolDeclarationStruct> = Default::default();
-        let tree: Tree = match self.parser.parse(code, None) {
-            Some(tree) => tree,
-            None => return Err("Parse error".to_string()),
-        };
-        let mut qcursor = tree_sitter::QueryCursor::new();
-        let query = Query::new(tree_sitter_java::language(), &**JAVA_PARSER_QUERY).unwrap();
-        let matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
-        for match_ in matches {
-            for capture in match_.captures {
-                let capture_name = &query.capture_names()[capture.index as usize];
-                match capture_name.as_str() {
-                    "class" | "struct" => {
-                        let range = capture.node.range();
-                        let namespaces = get_namespace(Some(capture.node), code);
-                        let class_name = namespaces.last().unwrap().clone();
-                        let mut key = path.to_str().unwrap().to_string();
-                        namespaces.iter().for_each(|ns| {
-                            key += format!("::{}", ns).as_str();
-                        });
-                        indexes.insert(key.clone(),
-                                       SymbolDeclarationStruct {
-                                           name: class_name,
-                                           definition_info: SymbolInfo { path: path.clone(), range },
-                                           children: vec![],
-                                           symbol_type: SymbolType::Class,
-                                           meta_path: key,
-                                           language: LanguageId::from(capture.node.language()),
-                                       });
+    fn get_enum_name_and_all_values(&self, parent: Node, text: &str) -> (String, Vec<String>) {
+        let mut name: String = Default::default();
+        let mut values: Vec<String> = vec![];
+        for i in 0..parent.child_count() {
+            if let Some(child) = parent.child(i) {
+                let kind = child.kind();
+                match kind {
+                    "identifier" => {
+                        name = text.slice(child.byte_range()).to_string();
                     }
-                    "enum" => {
-                        let range = capture.node.range();
-                        let mut namespaces = get_namespace(Some(capture.node), code);
-                        let (enum_name, values) = get_enum_name_and_all_values(capture.node, code);
-                        namespaces.push(enum_name);
-                        let mut key = path.to_str().unwrap().to_string();
-                        namespaces.iter().for_each(|ns| {
-                            key += format!("::{}", ns).as_str();
-                        });
-                        values.iter().for_each(|value| {
-                            let key = format!("{}::{}", key, value);
-                            indexes.insert(key.clone(),
-                                           SymbolDeclarationStruct {
-                                               name: value.clone(),
-                                               definition_info: SymbolInfo { path: path.clone(), range },
-                                               children: vec![],
-                                               symbol_type: SymbolType::Enum,
-                                               meta_path: key,
-                                               language: LanguageId::from(capture.node.language()),
-                                           });
-                        });
+                    "enum_body" => {
+                        for i in 0..child.child_count() {
+                            if let Some(child) = child.child(i) {
+                                let kind = child.kind();
+                                match kind {
+                                    "enum_constant" => {
+                                        for i in 0..child.child_count() {
+                                            if let Some(child) = child.child(i) {
+                                                let kind = child.kind();
+                                                match kind {
+                                                    "identifier" => {
+                                                        let text = text.slice(child.byte_range());
+                                                        values.push(text.to_string());
+                                                        break;
+                                                    }
+                                                    _ => {}
+                                                }
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
                     }
-                    "function" => {
-                        let range = capture.node.range();
-                        let mut namespaces = get_namespace(Some(capture.node), code);
-                        let name = get_function_name(capture.node.clone(), code);
-                        namespaces.push(name.clone());
-                        let mut key = path.to_str().unwrap().to_string();
-                        namespaces.iter().for_each(|ns| {
-                            key += format!("::{}", ns).as_str();
-                        });
-                        indexes.insert(key.clone(),
-                                       SymbolDeclarationStruct {
-                                           name,
-                                           definition_info: SymbolInfo { path: path.clone(), range },
-                                           children: vec![],
-                                           symbol_type: SymbolType::Function,
-                                           meta_path: key,
-                                           language: LanguageId::from(capture.node.language()),
-                                       });
-                    }
-                    "global_variable" => {
-                        let range = capture.node.range();
-                        let mut namespaces = get_namespace(Some(capture.node), code);
-                        let name = get_variable_name(capture.node, code);
-                        let mut key = path.to_str().unwrap().to_string();
-                        namespaces.push(name.clone());
-                        namespaces.iter().for_each(|ns| {
-                            key += format!("::{}", ns).as_str();
-                        });
-                        indexes.insert(key.clone(),
-                                       SymbolDeclarationStruct {
-                                           name,
-                                           definition_info: SymbolInfo { path: path.clone(), range },
-                                           children: vec![],
-                                           symbol_type: SymbolType::GlobalVar,
-                                           meta_path: key,
-                                           language: LanguageId::from(capture.node.language()),
-                                       });
-                    }
-                    &_ => {}
+                    _ => {}
                 }
             }
         }
-        Ok(indexes)
+        (name, values)
     }
-    fn parse_usages(&mut self, code: &str) -> Result<Vec<Box<dyn UsageSymbolInfo>>, String> {
-        let tree: Tree = match self.parser.parse(code, None) {
-            Some(tree) => tree,
-            None => return Err("Parse error".to_string()),
-        };
-        let mut usages: Vec<Box<dyn UsageSymbolInfo>> = vec![];
-        let mut qcursor = tree_sitter::QueryCursor::new();
-        let query = Query::new(language(), &**JAVA_PARSER_QUERY_FIND_ALL).unwrap();
-        let matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
-        for match_ in matches {
-            match match_.pattern_index {
-                0 => {
-                    if let Some(var) = get_variable(match_.captures, &query, code) {
-                        usages.push(Box::new(var));
+
+    fn get_function_name_and_scope(&self, parent: Node, text: &str) -> (String, Vec<String>) {
+        (get_function_name(parent, text), vec![])
+    }
+
+    fn get_variable_name(&self, parent: Node, text: &str) -> String {
+        for i in 0..parent.child_count() {
+            if let Some(child) = parent.child(i) {
+                let kind = child.kind();
+                match kind {
+                    "identifier" => {
+                        let name = text.slice(child.byte_range());
+                        return name.to_string();
                     }
+                    _ => {}
                 }
-                1 => {
-                    if let Some(var) = get_call(match_.captures, &query, code) {
-                        usages.push(Box::new(var));
-                    }
-                }
-                2 => {
-                    if let Some(var) = get_static(match_.captures, &query, code) {
-                        usages.push(Box::new(var));
-                    }
-                }
-                _ => {}
             }
         }
-        Ok(usages)
+        return "".to_string();
     }
 }
 
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
+
     use crate::ast::treesitter::parsers::java::JavaParser;
     use crate::ast::treesitter::parsers::LanguageParser;
 
@@ -377,7 +226,7 @@ public class Main {
         let path = PathBuf::from("test.java");
         let indexes = parser.parse_declarations(TEST_CODE, &path).unwrap();
         let zxc = parser.parse_usages(TEST_CODE);
-        // assert_eq!(indexes.len(), 1);
+        assert_eq!(indexes.len(), 1);
         // assert_eq!(indexes.get("function").unwrap().name, "foo");
     }
 }
