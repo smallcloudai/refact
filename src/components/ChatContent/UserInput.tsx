@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { RightButton } from "../Buttons/Buttons";
-import { Card } from "@radix-ui/themes";
+import { Card, Box } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
 
@@ -34,10 +34,12 @@ export const UserInput: React.FC<{
         whiteSpace: "break-spaces",
       }}
     >
-      <RightButton title="retry" onClick={() => setShowTextArea(true)}>
-        Retry
-      </RightButton>
-      <Markdown>{props.children}</Markdown>
+      <Box style={{ minHeight: "var(--space-5)" }}>
+        <RightButton title="retry" onClick={() => setShowTextArea(true)}>
+          Retry
+        </RightButton>
+        <Markdown>{props.children}</Markdown>
+      </Box>
     </Card>
   );
 };
