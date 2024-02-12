@@ -1,7 +1,7 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import SyntaxHighlighter from "react-syntax-highlighter";
-import { Code, Button, Flex } from "@radix-ui/themes";
+import { Code, Button, Flex, Text } from "@radix-ui/themes";
 import { RightButton, RightButtonGroup } from "../Buttons/";
 import { ScrollArea } from "../ScrollArea";
 import remarkBreaks from "remark-breaks";
@@ -97,7 +97,6 @@ export const Markdown: React.FC<MarkdownProps> = ({
             ...rest
           } = props;
           const match = /language-(\w+)/.exec(className ?? "");
-
           const textWithOutTrailingNewLine = String(children).replace(
             /\n$/,
             "",
@@ -137,16 +136,18 @@ export const Markdown: React.FC<MarkdownProps> = ({
           };
 
           return match ? (
-            <SyntaxHighlighter
-              className={className}
-              PreTag={PreTag}
-              language={match[1]}
-              useInlineStyles={false}
-              // wrapLines={true}
-              // wrapLongLines
-            >
-              {textWithOutTrailingNewLine}
-            </SyntaxHighlighter>
+            <Text size="2">
+              <SyntaxHighlighter
+                className={className}
+                PreTag={PreTag}
+                language={match[1]}
+                useInlineStyles={false}
+                // wrapLines={true}
+                // wrapLongLines
+              >
+                {textWithOutTrailingNewLine}
+              </SyntaxHighlighter>
+            </Text>
           ) : (
             <Code {...rest} className={classNames(styles.code, className)}>
               {children}
