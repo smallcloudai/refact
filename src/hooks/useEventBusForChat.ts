@@ -42,6 +42,7 @@ import {
   isReceiveAtCommandPreview,
   isRemoveLastUserMessage,
   isChatUserMessageResponse,
+  isChatSetLastModelUsed,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
@@ -141,7 +142,14 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isCreateNewChat(action)) {
-    return createInitialState();
+    const nextState = createInitialState();
+    return {
+      ...nextState,
+      chat: {
+        ...nextState.chat,
+        model: state.chat.model,
+      },
+    };
   }
 
   if (isRequestCapsFromChat(action)) {
@@ -338,6 +346,17 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
+  // TODO: this may need to be set by the editor
+  if (isThisChat && isChatSetLastModelUsed(action)) {
+    return {
+      ...state,
+      chat: {
+        ...state.chat,
+        model: action.payload.model,
+      },
+    };
+  }
+
   return state;
 }
 
@@ -353,6 +372,7 @@ export type ChatState = {
   streaming: boolean;
   previous_message_length: number;
   error: string | null;
+  last_model_used: string;
   caps: ChatCapsState;
   rag_commands: {
     available_commands: string[];
@@ -375,6 +395,7 @@ function createInitialState(): ChatState {
     error: null,
     previous_message_length: 0,
     files_in_preview: [],
+    last_model_used: "",
     chat: {
       id: uuidv4(),
       messages: [],
@@ -454,6 +475,7 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
       payload: { id: state.chat.id, disable: true },
     });
+
     const payload: ChatThread = {
       id: state.chat.id,
       messages: messages,

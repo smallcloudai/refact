@@ -44,6 +44,7 @@ export enum EVENT_NAMES_TO_CHAT {
   RECEIVE_AT_COMMAND_PREVIEW = "chat_receive_at_command_preview",
   SET_SELECTED_AT_COMMAND = "chat_set_selected_command",
   REMOVE_LAST_USER_MESSAGE = "chat_remove_last_user_message",
+  SET_LAST_MODEL_USED = "chat_set_last_model_used",
 }
 
 export type ChatThread = {
@@ -433,4 +434,16 @@ export type Actions = ActionToChat | ActionFromChat;
 
 export function isAction(action: unknown): action is Actions {
   return isActionFromChat(action) || isActionToChat(action);
+}
+
+export interface ChatSetLastModelUsed extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_LAST_MODEL_USED;
+  payload: { id: string; model: string };
+}
+
+export function isChatSetLastModelUsed(
+  action: unknown,
+): action is ChatSetLastModelUsed {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_LAST_MODEL_USED;
 }
