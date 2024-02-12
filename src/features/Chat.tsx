@@ -124,6 +124,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         attachFile={state.active_file}
         executeCommand={executeCommand}
         filesInPreview={state.files_in_preview}
+        selectedSnippet={state.selected_snippet}
       />
     </Flex>
   );

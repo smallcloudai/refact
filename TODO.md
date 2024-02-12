@@ -95,10 +95,11 @@
 [x] add new line after command
 [x] add flex grow to history list
 [ ] save last used model
-[ ] increase textarea height with user input
+[x] increase textarea height with user input
 [x] send whole user input when previewing a command
 [x] replace file preview when receiving command preview
-[ ] don't add a new line if command is executable but has now arguments
+[x] don't add a new line if command is executable but has no arguments
+[ ] use syntax highlighting in the users message
 
 ### EVENTS TODO FOR IDEs
 
@@ -116,3 +117,4 @@
 [x] configure vite to output multiple entry files (one for web and one for the ide's)
 [x] export events in package.json or from lib
 [ ] remove inline styles
+[x] vscode select text, click new chat the selected code should be in the chat

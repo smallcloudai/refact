@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 import { Box, Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
@@ -65,6 +65,7 @@ export const ChatForm: React.FC<{
   setSelectedCommand: (command: string) => void;
   executeCommand: (command: string, cursor: number) => void;
   filesInPreview: ChatContextFile[];
+  selectedSnippet: string;
 }> = ({
   onSubmit,
   onClose,
@@ -85,8 +86,18 @@ export const ChatForm: React.FC<{
   setSelectedCommand,
   executeCommand,
   filesInPreview,
+  selectedSnippet,
 }) => {
+  //TODO: handle attached snippet, when code is highlighted and chat is opened
   const [value, setValue] = React.useState("");
+  const [snippetAdded, setSnippetAdded] = React.useState(false);
+
+  useEffect(() => {
+    if (!snippetAdded && selectedSnippet) {
+      setValue("```\n" + selectedSnippet + "\n```\n" + value);
+      setSnippetAdded(true);
+    }
+  }, [snippetAdded, selectedSnippet, value]);
 
   const isOnline = useIsOnline();
 

@@ -45,6 +45,7 @@ export enum EVENT_NAMES_TO_CHAT {
   SET_SELECTED_AT_COMMAND = "chat_set_selected_command",
   REMOVE_LAST_USER_MESSAGE = "chat_remove_last_user_message",
   SET_LAST_MODEL_USED = "chat_set_last_model_used",
+  SET_SELECTED_SNIPPET = "chat_set_selected_snippet",
 }
 
 export type ChatThread = {
@@ -347,6 +348,7 @@ export function isRestoreChat(action: unknown): action is RestoreChat {
 
 export interface CreateNewChatThread extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.NEW_CHAT;
+  payload?: { id: string; snippet: string };
 }
 
 export function isCreateNewChat(
@@ -446,4 +448,16 @@ export function isChatSetLastModelUsed(
 ): action is ChatSetLastModelUsed {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.SET_LAST_MODEL_USED;
+}
+
+export interface ChatSetSelectedSnippet extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
+  payload: { id: string; snippet: string };
+}
+
+export function isSetSelectedSnippet(
+  action: unknown,
+): action is ChatSetSelectedSnippet {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
 }

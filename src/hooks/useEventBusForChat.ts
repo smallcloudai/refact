@@ -43,6 +43,7 @@ import {
   isRemoveLastUserMessage,
   isChatUserMessageResponse,
   isChatSetLastModelUsed,
+  isSetSelectedSnippet,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
@@ -149,6 +150,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         ...nextState.chat,
         model: state.chat.model,
       },
+      selected_snippet: action.payload?.snippet ?? "",
     };
   }
 
@@ -357,6 +359,13 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
+  if (isThisChat && isSetSelectedSnippet(action)) {
+    return {
+      ...state,
+      selected_snippet: action.payload.snippet,
+    };
+  }
+
   return state;
 }
 
@@ -372,7 +381,6 @@ export type ChatState = {
   streaming: boolean;
   previous_message_length: number;
   error: string | null;
-  last_model_used: string;
   caps: ChatCapsState;
   rag_commands: {
     available_commands: string[];
@@ -386,6 +394,7 @@ export type ChatState = {
     attach: boolean;
     can_paste: boolean;
   };
+  selected_snippet: string;
 };
 
 function createInitialState(): ChatState {
@@ -394,8 +403,8 @@ function createInitialState(): ChatState {
     waiting_for_response: false,
     error: null,
     previous_message_length: 0,
+    selected_snippet: "",
     files_in_preview: [],
-    last_model_used: "",
     chat: {
       id: uuidv4(),
       messages: [],
@@ -491,6 +500,11 @@ export const useEventBusForChat = () => {
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
       payload,
+    });
+
+    dispatch({
+      type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET,
+      payload: { id: state.chat.id, snippet: "" },
     });
   }
 
