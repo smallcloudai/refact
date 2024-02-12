@@ -76,9 +76,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     if (trigger && commandIsExecutable) {
       const place = (startPosition ?? 0) + trigger.length - 1;
       executeCommand(value, place);
-      setTrigger("");
-      setSelectedCommand("");
-      setStartPosition(null);
     }
   }, [
     trigger,
@@ -90,6 +87,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     onChange,
     selectedCommand,
     wasDelete,
+    commandArguments,
   ]);
 
   React.useEffect(() => {
@@ -218,7 +216,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
     onChange(event.target.value);
 
-    if (maybeTrigger && combobox.getState().open) {
+    if (trigger && maybeTrigger) {
       combobox.setValue(maybeTrigger);
       setTrigger(maybeTrigger);
       combobox.show();
