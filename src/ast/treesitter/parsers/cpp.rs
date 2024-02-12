@@ -360,7 +360,7 @@ impl LanguageParser for CppParser {
         };
         let mut usages: Vec<Box<dyn UsageSymbolInfo>> = vec![];
         let mut qcursor = tree_sitter::QueryCursor::new();
-        let query = Query::new(tree_sitter_cpp::language(), &**CPP_PARSER_QUERY_FIND_ALL).unwrap();
+        let query = Query::new(language(), &**CPP_PARSER_QUERY_FIND_ALL).unwrap();
         let matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
         for match_ in matches {
             match match_.pattern_index {
