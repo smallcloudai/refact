@@ -163,7 +163,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         trigger,
         command,
       );
-      setTrigger(commandIsExecutable ? "" : command);
+
+      setTrigger(command);
       onChange(newInput);
 
       setSelectedCommand(selectedCommand ? "" : command);

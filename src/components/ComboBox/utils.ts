@@ -44,7 +44,7 @@ export function replaceValue(
     maybeStartPosition ?? element.selectionStart - trigger.length;
   const endPosition =
     maybeStartPosition !== null
-      ? maybeStartPosition + trigger.length + 1
+      ? maybeStartPosition + trigger.length
       : element.selectionStart;
 
   const start = element.value.substring(0, startPosition);
