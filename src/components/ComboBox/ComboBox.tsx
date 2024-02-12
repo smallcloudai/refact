@@ -19,7 +19,7 @@ export type ComboBoxProps = {
     cursor: number,
     number?: number,
   ) => void;
-  executeCommand: (command: string) => void;
+  executeCommand: (command: string, cursor: number) => void;
   commandIsExecutable: boolean;
   setSelectedCommand: (command: string) => void;
   selectedCommand: string;
@@ -74,7 +74,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     }
 
     if (trigger && commandIsExecutable) {
-      executeCommand(trigger);
+      const place = (startPosition ?? 0) + trigger.length - 1;
+      executeCommand(value, place);
       setTrigger("");
       setSelectedCommand("");
       setStartPosition(null);

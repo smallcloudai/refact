@@ -306,22 +306,15 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   if (isThisChat && isReceiveAtCommandPreview(action)) {
     const filesInPreview = action.payload.preview.reduce<ChatContextFile[]>(
       (acc, curr) => {
-        return [...acc, ...curr[1]];
+        const files = curr[1];
+        return [...acc, ...files];
       },
-      state.files_in_preview,
+      [],
     );
 
-    const fileNames = new Set();
-    const uniqueFilesInPreview = filesInPreview.filter((file) => {
-      if (fileNames.has(file.file_name)) {
-        return false;
-      }
-      fileNames.add(file.file_name);
-      return true;
-    });
     return {
       ...state,
-      files_in_preview: uniqueFilesInPreview,
+      files_in_preview: filesInPreview,
       rag_commands: {
         ...state.rag_commands,
         selected_command: "",
@@ -622,10 +615,10 @@ export const useEventBusForChat = () => {
     postMessage(action);
   }
 
-  function executeCommand(command: string) {
+  function executeCommand(command: string, cursor: number) {
     const action: RequestAtCommandPreview = {
       type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW,
-      payload: { id: state.chat.id, query: command },
+      payload: { id: state.chat.id, query: command, cursor },
     };
     if (!state.chat.model) {
       setChatModel(state.caps.default_cap);

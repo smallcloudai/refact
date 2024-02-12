@@ -90,7 +90,7 @@ export function isRequestAtCommandCompletion(
 
 export interface RequestAtCommandPreview extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW;
-  payload: { id: string; query: string };
+  payload: { id: string; query: string; cursor: number };
 }
 
 export function isRequestAtCommandPreview(

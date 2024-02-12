@@ -63,7 +63,7 @@ export const ChatForm: React.FC<{
     number?: number,
   ) => void;
   setSelectedCommand: (command: string) => void;
-  executeCommand: (command: string) => void;
+  executeCommand: (command: string, cursor: number) => void;
   filesInPreview: ChatContextFile[];
 }> = ({
   onSubmit,
