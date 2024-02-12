@@ -1,5 +1,4 @@
 import { general_error } from './error.js';
-const default_tab = 'model-hosting'
 let first_page_load = true;
 const req = await fetch('list-plugins');
 const plugins = await req.json();
@@ -20,6 +19,11 @@ for (const p of plugins) {
 for (const p of inits_working) {
     await p;
 }
+const plugin_tabs = [];
+for (const p of plugins) {
+    plugin_tabs.push(p.tab);
+}
+const default_tab = plugin_tabs.includes("model-hosting") ? "model-hosting" : plugin_tabs[0];
 
 const navbar = document.querySelector('.navbar-brand')
 navbar.addEventListener('click', () => {
