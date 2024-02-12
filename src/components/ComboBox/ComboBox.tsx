@@ -60,18 +60,18 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const hasMatches = !!trigger && !!matches.length;
 
   React.useEffect(() => {
-    const sliceAt = (startPosition ?? 0) + trigger.length;
-    if (
-      trigger &&
-      commandIsExecutable &&
-      value[sliceAt + 1] !== "\n" &&
-      !wasDelete
-    ) {
-      const start = value.substring(0, sliceAt);
-      const end = value.substring(sliceAt);
-      const nextValue = `${start}\n${end}`;
-      onChange(nextValue);
-    }
+    // const sliceAt = (startPosition ?? 0) + trigger.length;
+    // if (
+    //   trigger &&
+    //   commandIsExecutable &&
+    //   value[sliceAt + 1] !== "\n" &&
+    //   !wasDelete
+    // ) {
+    //   const start = value.substring(0, sliceAt);
+    //   const end = value.substring(sliceAt);
+    //   const nextValue = `${start}\n${end}`;
+    //   onChange(nextValue);
+    // }
 
     if (trigger && commandIsExecutable) {
       const place = (startPosition ?? 0) + trigger.length - 1;
@@ -81,13 +81,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     trigger,
     commandIsExecutable,
     executeCommand,
-    setSelectedCommand,
+    // setSelectedCommand,
     startPosition,
     value,
-    onChange,
-    selectedCommand,
-    wasDelete,
-    commandArguments,
+    // onChange,
+    // selectedCommand,
+    // wasDelete,
+    // commandArguments,
   ]);
 
   React.useEffect(() => {
@@ -144,13 +144,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       event.stopPropagation();
       requestCommandsCompletion("@", 1);
       onSubmit(event);
-      setStartPosition(0);
+      setStartPosition(null);
       combobox.hide();
       return;
     }
 
     const tabOrEnter = event.key === "Tab" || event.key === "Enter";
-    const activeValue = state.activeValue ?? "";
+    const activeValue = state.activeValue ?? trigger;
     const command = selectedCommand ? activeValue : activeValue + " ";
 
     if (state.open && tabOrEnter && command) {
