@@ -73,6 +73,7 @@ class AdminSession(RefactSession):
             "/v1",
             "/infengine-v1",
             "/stats/telemetry",
+            "/stats/rh-stats",
             "/chat",
             "/assets",  # TODO: this static dir should be renamed soon
             "/favicon.png",

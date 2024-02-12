@@ -115,7 +115,8 @@ class WebGUI(FastAPI):
                 session=session),
             TabStatisticsRouter(
                 prefix="/stats",
-                stats_service=stats_service),
+                stats_service=stats_service,
+                session=session),
             CompletionsRouter(
                 id2ticket=id2ticket,
                 inference_queue=inference_queue,

@@ -4,8 +4,10 @@ import asyncio
 from typing import List, Any, Dict
 
 import aiohttp
+from more_itertools import chunked
 from pydantic import BaseModel
-from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
 
 from self_hosting_machinery.webgui.selfhost_database import StatisticsService
@@ -13,6 +15,10 @@ from self_hosting_machinery.webgui.selfhost_database import TelemetryNetwork
 from self_hosting_machinery.webgui.selfhost_database import TelemetrySnippets
 from self_hosting_machinery.webgui.selfhost_database import TelemetryRobotHuman
 from self_hosting_machinery.webgui.selfhost_database import TelemetryCompCounters
+from self_hosting_machinery.webgui.selfhost_login import RefactSession
+
+
+__all__ = ["BaseTabStatisticsRouter", "TabStatisticsRouter"]
 
 
 class TelemetryBasicData(BaseModel):
@@ -41,7 +47,7 @@ class DashTeamsGenDashData(BaseModel):
         }
 
 
-class TabStatisticsRouter(APIRouter):
+class BaseTabStatisticsRouter(APIRouter):
 
     def __init__(
             self,
@@ -56,11 +62,32 @@ class TabStatisticsRouter(APIRouter):
             },
             media_type='application/json',
             status_code=500)
+        self.add_api_route('/rh-stats', self._rh_stats, methods=["GET"])
         self.add_api_route("/telemetry-basic", self._telemetry_basic, methods=["POST"])
         self.add_api_route("/telemetry-snippets", self._telemetry_snippets, methods=["POST"])
         self.add_api_route('/dash-prime', self._dash_prime_get, methods=['GET'])
         self.add_api_route('/dash-teams', self._dash_teams_get, methods=['GET'])
         self.add_api_route('/dash-teams', self._dash_teams_post, methods=['POST'])
+
+    def _account_from_bearer(self, authorization: str) -> str:
+        raise NotImplementedError()
+
+    async def _rh_stats(self, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+        if not self._stats_service.is_ready:
+            raise HTTPException(status_code=500, detail="Statistics service is not ready, waiting for database connection")
+
+        def streamer():
+            for records_batch in chunked(self._stats_service.get_robot_human_for_account(account), 100):
+                yield json.dumps({
+                    "retcode": "OK",
+                    "data": records_batch
+                }) + '\n'
+
+        try:
+            return StreamingResponse(streamer(), media_type='text/event-stream')
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     async def _dash_prime_get(self):
         if not self._stats_service.is_ready:
@@ -110,7 +137,9 @@ class TabStatisticsRouter(APIRouter):
                 media_type='application/json',
                 status_code=500)
 
-    async def _telemetry_basic(self, data: TelemetryBasicData, request: Request, account: str = "user"):
+    async def _telemetry_basic(self, data: TelemetryBasicData, request: Request, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+
         if not self._stats_service.is_ready:
             return self._stats_service_not_available_response
 
@@ -175,7 +204,9 @@ class TabStatisticsRouter(APIRouter):
 
         return JSONResponse({"retcode": "OK"})
 
-    async def _telemetry_snippets(self, data: TelemetryBasicData, request: Request, account: str = "user"):
+    async def _telemetry_snippets(self, data: TelemetryBasicData, request: Request, authorization: str = Header(None)):
+        account = self._account_from_bearer(authorization)
+
         if not self._stats_service.is_ready:
             return self._stats_service_not_available_response
 
@@ -207,3 +238,15 @@ class TabStatisticsRouter(APIRouter):
             )
 
         return JSONResponse({"retcode": "OK"})
+
+
+class TabStatisticsRouter(BaseTabStatisticsRouter):
+    def __init__(self, session: RefactSession, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._session = session
+
+    def _account_from_bearer(self, authorization: str) -> str:
+        try:
+            return self._session.header_authenticate(authorization)
+        except BaseException as e:
+            raise HTTPException(status_code=401, detail=str(e))
