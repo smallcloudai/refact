@@ -149,6 +149,12 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       return;
     }
 
+    if (event.key === "Enter" && event.shiftKey) {
+      setTrigger("");
+      combobox.hide();
+      return;
+    }
+
     const tabOrEnter = event.key === "Tab" || event.key === "Enter";
     const activeValue = state.activeValue ?? trigger;
     const command = selectedCommand ? activeValue : activeValue + " ";
