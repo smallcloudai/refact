@@ -175,11 +175,12 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       const maybeCommand = detectCommand(ref.current);
 
       if (maybeCommand !== null) {
-        const [command, args] = maybeCommand.command.split(" ");
+        const maybeCommandWithArguments = maybeCommand.command.split(" ");
+        const [command, args] = maybeCommandWithArguments;
 
         if (!selectedCommand && args) {
           setSelectedCommand(command + " ");
-        } else if (selectedCommand && !args) {
+        } else if (selectedCommand && maybeCommandWithArguments.length < 2) {
           setSelectedCommand("");
         }
 

@@ -175,4 +175,17 @@ describe("ComboBox", () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(event.target.value).toEqual("hello\n");
   });
+
+  test("select command, type / and then delete", async () => {
+    const { user, ...app } = render(<App />);
+    const textarea = app.getByRole("combobox");
+    await user.type(textarea, "@fi{Enter}");
+    expect(app.getByRole("combobox").textContent).toEqual("@file ");
+    await user.type(textarea, "/");
+    expect(app.queryByText("/foo")).not.toBeNull();
+    expect(app.queryByText("/bar")).not.toBeNull();
+    await user.type(textarea, "{Backspace}");
+    expect(app.queryByText("/foo")).not.toBeNull();
+    expect(app.queryByText("/bar")).not.toBeNull();
+  });
 });
