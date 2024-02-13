@@ -79,6 +79,7 @@ const meta = {
     },
     filesInPreview: [],
     selectedSnippet: { code: "", language: "" },
+    removePreviewFileByName: () => ({}),
   },
 } satisfies Meta<typeof ChatForm>;
 

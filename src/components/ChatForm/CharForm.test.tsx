@@ -8,6 +8,7 @@ describe("ChatForm", () => {
 
     const { user, ...app } = render(
       <ChatForm
+        removePreviewFileByName={() => ({})}
         selectedSnippet={{ code: "", language: "" }}
         onSubmit={fakeOnSubmit}
         isStreaming={false}
@@ -55,6 +56,7 @@ describe("ChatForm", () => {
 
     const { user, ...app } = render(
       <ChatForm
+        removePreviewFileByName={() => ({})}
         selectedSnippet={{ code: "", language: "" }}
         onSubmit={fakeOnSubmit}
         isStreaming={false}

@@ -37,6 +37,7 @@ const App = (props: Partial<ComboBoxProps>) => {
     executeCommand: () => ({}),
     selectedCommand,
     setSelectedCommand,
+    removePreviewFileByName: () => ({}),
     ...props,
   };
 
