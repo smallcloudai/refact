@@ -4,10 +4,10 @@ import time
 import signal
 import sys
 import traceback
-import logging
 import subprocess
 
 from self_hosting_machinery import env
+from self_hosting_machinery.webgui.selfhost_webutils import logger
 
 
 def query_nvidia_smi():
@@ -34,9 +34,9 @@ def query_nvidia_smi():
                 "temp_celsius": gpu_temp_celsius,
             })
     except Exception:
-        logging.warning("nvidia-smi does not work, that's especially bad for initial setup.")
-        logging.warning(traceback.format_exc())
-        logging.warning(f"output was:\n{nvidia_smi_output}")
+        logger.warning("nvidia-smi does not work, that's especially bad for initial setup.")
+        logger.warning(traceback.format_exc())
+        logger.warning(f"output was:\n{nvidia_smi_output}")
 
     return {"gpus": descriptions}
 

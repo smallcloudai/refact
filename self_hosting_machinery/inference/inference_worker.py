@@ -1,5 +1,4 @@
 import sys
-import logging
 import time
 import signal
 import socket
@@ -9,13 +8,14 @@ from refact_scratchpads_no_gpu.stream_results import validate_description_dict
 from refact_scratchpads_no_gpu.stream_results import UploadProxy
 from refact_scratchpads_no_gpu.stream_results import completions_wait_batch
 
+from self_hosting_machinery import init_logger
+from self_hosting_machinery.inference import log
 from self_hosting_machinery.inference import InferenceHF, InferenceEmbeddings
 
 from typing import Dict, Any
 
 
 quit_flag = False
-log = logging.getLogger("MODEL").info
 
 
 def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
@@ -133,11 +133,7 @@ if __name__ == "__main__":
     parser.add_argument("--compile", action="store_true", help="download and compile triton kernels, quit")
     args = parser.parse_args()
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s MODEL %(message)s',
-        datefmt='%Y%m%d %H:%M:%S',
-        handlers=[logging.StreamHandler(stream=sys.stderr)])
+    init_logger("MODEL")
 
     signal.signal(signal.SIGUSR1, catch_sigkill)
 
