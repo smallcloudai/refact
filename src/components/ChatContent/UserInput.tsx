@@ -34,8 +34,12 @@ export const UserInput: React.FC<{
         whiteSpace: "break-spaces",
       }}
     >
-      <Box style={{ minHeight: "var(--space-5)" }}>
-        <RightButton title="retry" onClick={() => setShowTextArea(true)}>
+      <Box>
+        <RightButton
+          style={{ top: "var(--space-3)" }}
+          title="retry"
+          onClick={() => setShowTextArea(true)}
+        >
           Retry
         </RightButton>
         <Markdown>{props.children}</Markdown>
