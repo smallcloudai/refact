@@ -47,6 +47,7 @@ import {
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
+import { useDebounceCallback } from "usehooks-ts";
 
 function formatChatResponse(
   messages: ChatMessages,
@@ -641,15 +642,26 @@ export const useEventBusForChat = () => {
     postMessage(action);
   }
 
+  // TODO: hoise this hook to context so useCallback isn't  needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestCommandsCompletion = useCallback(
-    function (query: string, cursor: number, number = 5) {
-      const action: RequestAtCommandCompletion = {
-        type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
-        payload: { id: state.chat.id, query, cursor, number },
-      };
-      postMessage(action);
-    },
-    [state.chat.id, postMessage],
+    useDebounceCallback(
+      function (
+        query: string,
+        cursor: number,
+        // eslint-disable-next-line @typescript-eslint/no-inferrable-types
+        number: number = 5,
+      ) {
+        const action: RequestAtCommandCompletion = {
+          type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
+          payload: { id: state.chat.id, query, cursor, number },
+        };
+        postMessage(action);
+      },
+      300,
+      { leading: true },
+    ),
+    [state.chat.id],
   );
 
   function setSelectedCommand(command: string) {
