@@ -658,7 +658,7 @@ export const useEventBusForChat = () => {
         };
         postMessage(action);
       },
-      300,
+      500,
       { leading: true },
     ),
     [state.chat.id],
