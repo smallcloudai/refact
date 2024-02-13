@@ -8,6 +8,7 @@ import os
 import re
 import litellm
 import traceback
+import aiofiles
 
 from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
@@ -240,6 +241,7 @@ class BaseCompletionsRouter(APIRouter):
         self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
 
         # API for LSP server
+        self.add_api_route("/tokenizer/{model_name:path}/tokenizer.json", self._get_tokenizer, methods=["GET"])
         self.add_api_route("/refact-caps", self._caps, methods=["GET"])
         self.add_api_route("/v1/completions", self._completions, methods=["POST"])
         self.add_api_route("/v1/embeddings", self._embeddings_style_openai, methods=["POST"])
@@ -275,6 +277,23 @@ class BaseCompletionsRouter(APIRouter):
         _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
         _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
 
+    async def _get_tokenizer(self, model_name: str):
+        model_dict = self._model_assigner.models_db.get(model_name, {})
+        model_full_name = f"models--{model_dict.get('model_path', '').replace('/', '--')}"
+
+        path = os.path.join(env.DIR_WEIGHTS, model_full_name, "tokenizer.json")
+        if not os.path.isfile(path) or not path.endswith("tokenizer.json"):
+            raise HTTPException(404, detail=f"tokenizer.json not found: {path} does not exist")
+
+        data = ""
+        async with aiofiles.open(path, mode='r') as f:
+            while True:
+                if not (chunk := await f.read(1024 * 1024)):
+                    break
+                data += chunk
+
+        return Response(content=data, media_type='application/json')
+
     def _caps_base_data(self) -> Dict[str, Any]:
         running = running_models_and_loras(self._model_assigner)
         models_available = self._inference_queue.models_available(force_read=True)
@@ -305,9 +324,9 @@ class BaseCompletionsRouter(APIRouter):
             "endpoint_embeddings_style": "openai",
             "size_embeddings": 768,
 
-            "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
+            "tokenizer_path_template": "/tokenizer/$MODEL/tokenizer.json",
             "tokenizer_rewrite_path": {
-                model: self._model_assigner.models_db[model]["model_path"]
+                model: model
                 for model in models_available
                 if model in self._model_assigner.models_db
             },
