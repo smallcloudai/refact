@@ -60,35 +60,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const hasMatches = !!trigger && !!matches.length;
 
   React.useEffect(() => {
-    // const sliceAt = (startPosition ?? 0) + trigger.length;
-    // if (
-    //   trigger &&
-    //   commandIsExecutable &&
-    //   value[sliceAt + 1] !== "\n" &&
-    //   !wasDelete
-    // ) {
-    //   const start = value.substring(0, sliceAt);
-    //   const end = value.substring(sliceAt);
-    //   const nextValue = `${start}\n${end}`;
-    //   onChange(nextValue);
-    // }
-
     if (trigger && commandIsExecutable) {
       const place = (startPosition ?? 0) + trigger.length - 1;
       executeCommand(value, place);
     }
-  }, [
-    trigger,
-    commandIsExecutable,
-    executeCommand,
-    // setSelectedCommand,
-    startPosition,
-    value,
-    // onChange,
-    // selectedCommand,
-    // wasDelete,
-    // commandArguments,
-  ]);
+  }, [trigger, commandIsExecutable, executeCommand, startPosition, value]);
 
   React.useEffect(() => {
     if (trigger) {
@@ -157,6 +133,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
     const tabOrEnter = event.key === "Tab" || event.key === "Enter";
     const activeValue = state.activeValue ?? trigger;
+
     const command = selectedCommand ? activeValue : activeValue + " ";
 
     if (state.open && tabOrEnter && command) {
@@ -198,8 +175,14 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       const maybeCommand = detectCommand(ref.current);
 
       if (maybeCommand !== null) {
-        const [command, _args] = maybeCommand.command.split(" ");
-        setSelectedCommand(command + " ");
+        const [command, args] = maybeCommand.command.split(" ");
+
+        if (!selectedCommand && args) {
+          setSelectedCommand(command + " ");
+        } else if (selectedCommand && !args) {
+          setSelectedCommand("");
+        }
+
         setTrigger(maybeCommand.command);
         setStartPosition(maybeCommand.startPosition);
         combobox.show();
