@@ -44,6 +44,8 @@ import {
   isChatUserMessageResponse,
   isChatSetLastModelUsed,
   isSetSelectedSnippet,
+  isRemovePreviewFileByName,
+  RemovePreviewFileByName,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
@@ -370,6 +372,16 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
+  if (isThisChat && isRemovePreviewFileByName(action)) {
+    const previewFiles = state.files_in_preview.filter(
+      (file) => file.file_name !== action.payload.name,
+    );
+    return {
+      ...state,
+      files_in_preview: previewFiles,
+    };
+  }
+
   return state;
 }
 
@@ -683,6 +695,15 @@ export const useEventBusForChat = () => {
     postMessage(action);
   }
 
+  function removePreviewFileByName(name: string) {
+    const action: RemovePreviewFileByName = {
+      type: EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME,
+      payload: { id: state.chat.id, name },
+    };
+
+    postMessage(action);
+  }
+
   return {
     state,
     askQuestion,
@@ -701,5 +722,6 @@ export const useEventBusForChat = () => {
     requestCommandsCompletion,
     setSelectedCommand,
     executeCommand,
+    removePreviewFileByName,
   };
 };

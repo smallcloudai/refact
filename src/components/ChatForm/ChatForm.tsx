@@ -16,7 +16,7 @@ import { ErrorCallout, Callout } from "../Callout";
 import { Select } from "../Select/Select";
 import { FileUpload } from "../FileUpload";
 import { Button } from "@radix-ui/themes";
-import { ComboBox } from "../ComboBox";
+import { ComboBox, type ComboBoxProps } from "../ComboBox";
 import type { ChatState } from "../../hooks";
 import { ChatContextFile } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
@@ -66,6 +66,7 @@ export const ChatForm: React.FC<{
   executeCommand: (command: string, cursor: number) => void;
   filesInPreview: ChatContextFile[];
   selectedSnippet: ChatState["selected_snippet"];
+  removePreviewFileByName: ComboBoxProps["removePreviewFileByName"];
 }> = ({
   onSubmit,
   onClose,
@@ -87,6 +88,7 @@ export const ChatForm: React.FC<{
   executeCommand,
   filesInPreview,
   selectedSnippet,
+  removePreviewFileByName,
 }) => {
   //TODO: handle attached snippet, when code is highlighted and chat is opened
   const [value, setValue] = React.useState("");
@@ -184,6 +186,7 @@ export const ChatForm: React.FC<{
           commandIsExecutable={commands.is_cmd_executable}
           selectedCommand={commands.selected_command}
           setSelectedCommand={setSelectedCommand}
+          removePreviewFileByName={removePreviewFileByName}
         />
         <Flex gap="2" className={styles.buttonGroup}>
           {onClose && (

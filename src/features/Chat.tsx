@@ -33,6 +33,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     requestCommandsCompletion,
     setSelectedCommand,
     executeCommand,
+    removePreviewFileByName,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -125,6 +126,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         executeCommand={executeCommand}
         filesInPreview={state.files_in_preview}
         selectedSnippet={state.selected_snippet}
+        removePreviewFileByName={removePreviewFileByName}
       />
     </Flex>
   );

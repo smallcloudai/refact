@@ -46,6 +46,7 @@ export enum EVENT_NAMES_TO_CHAT {
   REMOVE_LAST_USER_MESSAGE = "chat_remove_last_user_message",
   SET_LAST_MODEL_USED = "chat_set_last_model_used",
   SET_SELECTED_SNIPPET = "chat_set_selected_snippet",
+  REMOVE_PREVIEW_FILE_BY_NAME = "chat_remove_file_from_preview",
 }
 
 export type ChatThread = {
@@ -460,4 +461,18 @@ export function isSetSelectedSnippet(
 ): action is ChatSetSelectedSnippet {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
+}
+
+export interface RemovePreviewFileByName extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME;
+  payload: { id: string; name: string };
+}
+
+export function isRemovePreviewFileByName(
+  action: unknown,
+): action is RemovePreviewFileByName {
+  return (
+    isActionToChat(action) &&
+    action.type === EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME
+  );
 }

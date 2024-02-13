@@ -23,6 +23,7 @@ export type ComboBoxProps = {
   commandIsExecutable: boolean;
   setSelectedCommand: (command: string) => void;
   selectedCommand: string;
+  removePreviewFileByName: (name: string) => void;
 };
 
 export const ComboBox: React.FC<ComboBoxProps> = ({
@@ -38,6 +39,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   commandIsExecutable,
   setSelectedCommand,
   selectedCommand,
+  removePreviewFileByName,
 }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [trigger, setTrigger] = React.useState<string>("");
@@ -109,6 +111,35 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       combobox.setValue("");
       combobox.show();
     }
+
+    if (wasDelete && event.key !== "Backspace") {
+      setWasDelete(false);
+    }
+
+    if (!ref.current) return;
+    if (event.key === "Backspace") {
+      setWasDelete(true);
+      const maybeCommand = detectCommand(ref.current);
+
+      if (maybeCommand !== null) {
+        const maybeCommandWithArguments = maybeCommand.command.split(" ");
+        const [command, args] = maybeCommandWithArguments;
+
+        if (!selectedCommand && args) {
+          setSelectedCommand(command + " ");
+          removePreviewFileByName(args);
+        } else if (selectedCommand && maybeCommandWithArguments.length < 2) {
+          setSelectedCommand("");
+        }
+
+        setTrigger(maybeCommand.command);
+        setStartPosition(maybeCommand.startPosition);
+        combobox.show();
+      } else {
+        setTrigger("");
+        setSelectedCommand("");
+      }
+    }
   };
 
   const onKeyUp = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -168,31 +199,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       combobox.setValue(trigger + " ");
       setTrigger(trigger + " ");
       setSelectedCommand(trigger + " ");
-    }
-
-    if (event.key === "Backspace") {
-      setWasDelete(true);
-      const maybeCommand = detectCommand(ref.current);
-
-      if (maybeCommand !== null) {
-        const maybeCommandWithArguments = maybeCommand.command.split(" ");
-        const [command, args] = maybeCommandWithArguments;
-
-        if (!selectedCommand && args) {
-          setSelectedCommand(command + " ");
-        } else if (selectedCommand && maybeCommandWithArguments.length < 2) {
-          setSelectedCommand("");
-        }
-
-        setTrigger(maybeCommand.command);
-        setStartPosition(maybeCommand.startPosition);
-        combobox.show();
-      } else {
-        setTrigger("");
-        setSelectedCommand("");
-      }
-    } else if (wasDelete) {
-      setWasDelete(false);
     }
   };
 
