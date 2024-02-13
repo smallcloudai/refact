@@ -452,7 +452,7 @@ export function isChatSetLastModelUsed(
 
 export interface ChatSetSelectedSnippet extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
-  payload: { id: string; snippet: string };
+  payload: { id: string; snippet: string; language: string };
 }
 
 export function isSetSelectedSnippet(

@@ -65,7 +65,7 @@ export const ChatForm: React.FC<{
   setSelectedCommand: (command: string) => void;
   executeCommand: (command: string, cursor: number) => void;
   filesInPreview: ChatContextFile[];
-  selectedSnippet: string;
+  selectedSnippet: ChatState["selected_snippet"];
 }> = ({
   onSubmit,
   onClose,
@@ -93,11 +93,18 @@ export const ChatForm: React.FC<{
   const [snippetAdded, setSnippetAdded] = React.useState(false);
 
   useEffect(() => {
-    if (!snippetAdded && selectedSnippet) {
-      setValue("```\n" + selectedSnippet + "\n```\n" + value);
+    if (!snippetAdded && selectedSnippet.code) {
+      setValue(
+        "```" +
+          selectedSnippet.language +
+          "\n" +
+          selectedSnippet.code +
+          "\n```\n" +
+          value,
+      );
       setSnippetAdded(true);
     }
-  }, [snippetAdded, selectedSnippet, value]);
+  }, [snippetAdded, selectedSnippet.code, value, selectedSnippet.language]);
 
   const isOnline = useIsOnline();
 

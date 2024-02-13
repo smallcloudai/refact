@@ -78,7 +78,7 @@ const meta = {
       attach: false,
     },
     filesInPreview: [],
-    selectedSnippet: "",
+    selectedSnippet: { code: "", language: "" },
   },
 } satisfies Meta<typeof ChatForm>;
 

@@ -8,7 +8,7 @@ describe("ChatForm", () => {
 
     const { user, ...app } = render(
       <ChatForm
-        selectedSnippet=""
+        selectedSnippet={{ code: "", language: "" }}
         onSubmit={fakeOnSubmit}
         isStreaming={false}
         onStopStreaming={vi.fn}
@@ -55,7 +55,7 @@ describe("ChatForm", () => {
 
     const { user, ...app } = render(
       <ChatForm
-        selectedSnippet=""
+        selectedSnippet={{ code: "", language: "" }}
         onSubmit={fakeOnSubmit}
         isStreaming={false}
         onStopStreaming={vi.fn}

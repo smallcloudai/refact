@@ -144,13 +144,13 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
 
   if (isCreateNewChat(action)) {
     const nextState = createInitialState();
+
     return {
       ...nextState,
       chat: {
         ...nextState.chat,
         model: state.chat.model,
       },
-      selected_snippet: action.payload?.snippet ?? "",
     };
   }
 
@@ -362,7 +362,10 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   if (isThisChat && isSetSelectedSnippet(action)) {
     return {
       ...state,
-      selected_snippet: action.payload.snippet,
+      selected_snippet: {
+        language: action.payload.language,
+        code: action.payload.snippet,
+      },
     };
   }
 
@@ -394,7 +397,10 @@ export type ChatState = {
     attach: boolean;
     can_paste: boolean;
   };
-  selected_snippet: string;
+  selected_snippet: {
+    language: string;
+    code: string;
+  };
 };
 
 function createInitialState(): ChatState {
@@ -403,7 +409,10 @@ function createInitialState(): ChatState {
     waiting_for_response: false,
     error: null,
     previous_message_length: 0,
-    selected_snippet: "",
+    selected_snippet: {
+      language: "",
+      code: "",
+    },
     files_in_preview: [],
     chat: {
       id: uuidv4(),
@@ -504,7 +513,7 @@ export const useEventBusForChat = () => {
 
     dispatch({
       type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET,
-      payload: { id: state.chat.id, snippet: "" },
+      payload: { id: state.chat.id, snippet: "", language: "" },
     });
   }
 

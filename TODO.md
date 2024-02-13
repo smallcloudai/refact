@@ -94,12 +94,13 @@
 [x] prevent the user from changing the model when there are temp files
 [x] add new line after command
 [x] add flex grow to history list
-[ ] save last used model
+[x] save last used model
 [x] increase textarea height with user input
 [x] send whole user input when previewing a command
 [x] replace file preview when receiving command preview
 [x] don't add a new line if command is executable but has no arguments
-[ ] use syntax highlighting in the users message
+[x] use syntax highlighting in the users message
+[ ] bug when running retry, user message isn't removed
 
 ### EVENTS TODO FOR IDEs
 
