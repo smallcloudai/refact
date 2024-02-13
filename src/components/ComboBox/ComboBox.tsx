@@ -205,7 +205,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const maybeTrigger = event.target.value
       .substring(
-        event.target.selectionStart - (trigger.length + 1),
+        startPosition ?? event.target.selectionStart - trigger.length,
         event.target.selectionStart,
       )
       .trim();
