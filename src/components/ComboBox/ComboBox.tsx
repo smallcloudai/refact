@@ -57,6 +57,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   const matches = matchSorter(commandsOrArguments, trigger, {
     baseSort: (a, b) => (a.index < b.index ? -1 : 1),
+    threshold: 0,
   });
 
   const hasMatches = !!trigger && !!matches.length;
