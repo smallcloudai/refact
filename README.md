@@ -35,9 +35,33 @@ when `host` is `web` the chat will be rendered in the browser and the events to 
 when `host` is `ide`, `vscode` or `jetbrains` events to and from the chat will be handled by the corresponding IDE or code editor via the `postMessage` API.
 when ``
 
-`tabbed` is true or false, default `false`
+`tabbed` is true or false, default `false` used in vscode for when the chat is rendered in a tab
 
 `dev` if dev is true then the component works as it would when `host` is set to web but can display the chat as it would in another host setting.
+
+`lspUrl` is the url of the refact-lsp server. If not set, the component will try to connect to the server using the default url `/`.
+
+`themeProps`?: object containing some styles for the chat component.
+
+```ts
+interface ThemeProps = {
+
+  hasBackground: boolean = true;
+
+  appearance: "inherit" | "light" | "dark" = "inherit";
+
+  accentColor: "tomato" | "red" | "ruby" | "crimson" | "pink"| "plum" | "purple" | "violet" | "iris" | "indigo" | "blue" | "cyan" | "teal" | "jade" | "green" | "grass" | "brown" | "orange" | "sky" | "mint" | "lime" | "yellow" | "amber" | "gold" | "bronze" | "gray" = "indigo";
+
+  grayColor: "gray" | "mauve" | "slate" | "sage" | "olive" | "sand" | "auto" = "auto";
+
+  panelBackground: "solid" | "translucent" = "translucent";
+
+  radius: "none" | "small" | "medium" | "large" | "full" = "medium";
+
+  scaling: "90%" | "95%" | "100%" | "105%" | "110%" = "100%";
+
+}
+```
 
 #### Events
 
@@ -63,5 +87,304 @@ run `REFACT_LSP_URL="http://localhost:8001 npm dev` and go to localhost:5173
 
 ## How to build for docker
 
-`VITE_REFACT_LSP_URL="/lsp" npm run build -- --base=chat`
-and copy the files over to `refact/self_hosting_machinery/webgui/static` renaming "dist/index.html" to "chat.html"
+`VITE_REFACT_LSP_URL="/lsp" npm run build`
+and copy the files `dist/chat/styles.css` and `dist/index.umd.cjs` over to `refact/self_hosting_machinery/webgui/static/assets`
+
+## Integrating with IDE's
+
+### Message sent between chat and host.
+
+Events types are loosely guarded by using `type branding` on the events `type` property
+
+```ts
+/**
+ * This message is sent from the chat component to the host when the chat is mounted and ready to receive messages.
+ */
+interface ReadyMessage extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.READY; // chat_ready
+  payload: { id: string };
+}
+
+/**
+ * This messages is sent from the host to the chat component to restore a previously saved chat.
+ */
+interface RestoreChat extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
+  payload: ChatThread;
+}
+
+/**
+ * The host sends this message to start a new chat thread.
+ */
+interface CreateNewChatThread extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.NEW_CHAT;
+  payload?: { id: string; snippet: string };
+}
+
+/**
+ * Chat sends this to the host when asking a question.
+ */
+interface QuestionFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION; // "chat_question"
+  payload: ChatThread;
+}
+/**
+ * Response from the host to the question
+ */
+interface ResponseToChat extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE;
+  payload: ChatResponse;
+}
+
+/**
+ * This message is sent from the host to the chat when the lsp is done streaming it's response
+ */
+interface ChatDoneStreaming extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.DONE_STREAMING;
+  payload: { id: string };
+}
+
+/**
+ * Sent from the host to the chat when an error has happened while streaming the response
+ */
+interface ChatErrorStreaming extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING;
+  payload: { id: string; message: string };
+}
+/**
+ * Request for command completion from the lsp
+ */
+interface RequestAtCommandCompletion extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
+  payload: { id: string; query: string; cursor: number; number: number };
+}
+
+/**
+ * This message is sent from the host to the chat contains the result of command completion request
+ */
+interface ReceiveAtCommandCompletion extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
+  payload: { id: string } & CommandCompletionResponse;
+}
+
+/**
+ * This message is sent from the chat component to the host to request for command preview
+ */
+interface RequestAtCommandPreview extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW;
+  payload: { id: string; query: string; cursor: number };
+}
+
+/**
+ * This message is sent from the host to the chat contains the result of command preview request.
+ */
+interface ReceiveAtCommandPreview extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW;
+  payload: { id: string; preview: ChatContextFileMessage[] };
+}
+
+/**
+ * This message is sent from the chat component to the host when the response to the question is received.
+ */
+interface SaveChatFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT;
+  payload: ChatThread;
+}
+
+/**
+ * Tells chat to replace the current message list, this is  done before sending a question to the lsp.
+ */
+interface BackUpMessages extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES;
+  payload: { id: string; messages: ChatMessages };
+}
+
+/**
+ * This message is sent from the chat component to the host when the user clicks stop while the response is streaming.
+ */
+interface StopStreamingFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING;
+  payload: { id: string };
+}
+
+/**
+ * This message is sent from the host to the chat when the user asks a questions so the chat can remove the last user message, which will be added to the response.
+ */
+interface RemoveLastUserMessage extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.REMOVE_LAST_USER_MESSAGE;
+  payload: { id: string };
+}
+
+/**
+ * chat requesting caps from the server.
+ */
+interface RequestCapsFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS;
+  payload: { id: string };
+}
+
+/**
+ * This message is sent from the host to the chat when the server responds with caps.
+ */
+interface ChatReceiveCaps extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS;
+  payload: { id: string; caps: CapsResponse };
+}
+
+/**
+ * This message is sent from the host to the chat when the server responds with an error.
+ */
+interface ChatReceiveCapsError extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR;
+  payload: { id: string; message: string };
+}
+
+/**
+ * Toggles attaching a file to the chat.
+ */
+interface ToggleActiveFile extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
+  payload: { id: string; attach_file: boolean };
+}
+
+/**
+ * This message is sent from the host to the chat with information about the current active file
+ */
+interface ActiveFileInfo extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
+  payload: { id: string; name: string; can_paste: boolean };
+}
+
+/**
+ * This message is sent from the host to the chat if the active file should be attached, this is used when adding snippets to the user input.
+ */
+interface ToggleActiveFile extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
+  payload: { id: string; attach_file: boolean };
+}
+
+/**
+ * This message is sent from the host to the chat to set the selected snippet.
+ */
+interface ChatSetSelectedSnippet extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
+  payload: { id: string; snippet: string; language: string };
+}
+
+/**
+ * This message is sent from the host telling chat to enable of disable the chat input.
+ */
+interface SetChatDisable extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT;
+  payload: { id: string; disable: boolean };
+}
+
+/**
+ * Sets the default chat model for the chat.
+ */
+interface SetChatModel extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL;
+  payload: { id: string; model: string };
+}
+
+/**
+ * This message is sent from the chat when the user clicks the `new file` button in a code example.
+ */
+interface NewFileFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.NEW_FILE;
+  payload: { id: string; content: string };
+}
+
+/**
+ * This message is sent from the chat when the user clicks the `paste` button in a code example.
+ */
+interface PasteDiffFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.PASTE_DIFF;
+  payload: { id: string; content: string };
+}
+
+/**
+ * This message is used to attach context files from the host to the chat.
+ */
+interface ReceiveContextFile extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_FILES;
+  payload: { id: string; files: ChatContextFile[] };
+}
+```
+
+### Data types in the events
+
+```ts
+type ChatContextFile = {
+  file_name: string;
+  file_content: string;
+  line1: number;
+  line2: number;
+};
+
+interface ChatContextFileMessage extends BaseMessage {
+  0: "context_file";
+  1: ChatContextFile[];
+}
+
+interface UserMessage extends BaseMessage {
+  0: "user";
+  1: string;
+}
+
+interface AssistantMessage extends BaseMessage {
+  0: "assistant";
+  1: string;
+}
+
+type ChatMessage = UserMessage | AssistantMessage | ChatContextFileMessage;
+
+type ChatMessages = ChatMessage[];
+
+type ChatThread = {
+  id: string;
+  messages: ChatMessages;
+  title?: string | undefined;
+  model: string;
+  attach_file?: boolean | undefined;
+};
+
+type ChatResponse =
+  | { choices: ChatChoice[]; created: number; model: string; id: string }
+  | ChatUserMessageResponse;
+
+type ChatChoice = {
+  delta: Delta;
+  finish_reason: "stop" | "abort" | null;
+  index: number;
+};
+
+type ChatUserMessageResponse = {
+  id: string;
+  role: "user" | "context_file";
+  content: string;
+};
+
+type CapsResponse = {
+  code_chat_default_model: string;
+  code_chat_models: Record<string, CodeChatModel>;
+};
+
+type CodeCompletionModel = {
+  default_scratchpad: string;
+  n_ctx: number;
+  similar_models: string[];
+  supports_scratchpads: Record<string, Record<string, unknown>>;
+};
+
+type CommandCompletionResponse = {
+  completions: string[];
+  replace: Replace;
+  is_cmd_executable: false;
+};
+
+interface Replace {
+  0: number;
+  1: number;
+}
+```
