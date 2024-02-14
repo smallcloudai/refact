@@ -23,6 +23,7 @@ export const ContextFile: React.FC<{
 export const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({
   files,
 }) => {
+  if (files.length === 0) return null;
   return (
     <pre>
       <Flex gap="4" wrap="wrap">

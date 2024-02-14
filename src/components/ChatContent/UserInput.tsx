@@ -34,7 +34,7 @@ export const UserInput: React.FC<{
         whiteSpace: "break-spaces",
       }}
     >
-      <Box>
+      <Box style={{ minHeight: "var(--space-5)" }}>
         <RightButton
           style={{ top: "var(--space-3)" }}
           title="retry"
