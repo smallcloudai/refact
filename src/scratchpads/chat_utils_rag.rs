@@ -107,19 +107,17 @@ pub async fn run_at_commands(
     for cmd in valid_commands {
         match cmd.command.lock().await.execute(&query, &cmd.args, top_n, &context).await {
             Ok(msg) => {
-                if msg.role == "context_file" {
-                    messages_for_postprocessing.push(msg);
-                }
+                messages_for_postprocessing.push(msg);
             },
             Err(_) => {}
         }
     }
     let max_bytes = 5*1024;
-    let processed = postprocess_at_results(
-        messages_for_postprocessing,
-        max_bytes
-    );
-    for msg in processed {
+    // let processed = postprocess_at_results(
+    //     messages_for_postprocessing,
+    //     max_bytes
+    // );
+    for msg in messages_for_postprocessing {
         post.messages.push(msg.clone());
         has_vecdb.push_in_json(json!(msg));
     }

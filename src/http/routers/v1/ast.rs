@@ -111,7 +111,7 @@ pub async fn handle_v1_ast_query_search(
     }
 }
 
-pub async fn handle_v1_ast_references(
+pub async fn handle_v1_ast_file_symbols(
     Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
@@ -122,7 +122,7 @@ pub async fn handle_v1_ast_references(
     let cx_locked = global_context.read().await;
     let search_res = match *cx_locked.ast_module.lock().await {
         Some(ref ast) => {
-            ast.get_file_references(PathBuf::from(post.filename)).await
+            ast.get_file_symbols(PathBuf::from(post.filename)).await
         }
         None => {
             return Err(ScratchError::new(

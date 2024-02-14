@@ -126,7 +126,7 @@ impl AstModule {
         }
     }
 
-    pub async fn get_file_references(&self, file_path: PathBuf) -> Result<FileReferencesResult, String> {
+    pub async fn get_file_symbols(&self, file_path: PathBuf) -> Result<FileReferencesResult, String> {
         let ast_index = self.ast_index.clone();
         let ast_index_locked  = ast_index.lock().await;
         let symbols = match ast_index_locked.get_symbols_by_file_path(&file_path) {

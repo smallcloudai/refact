@@ -27,15 +27,15 @@ fn results2message(result: &FileReferencesResult) -> ChatMessage {
     }
 }
 
-pub struct AtAstReferences {
+pub struct AtAstFileSymbols {
     pub name: String,
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
 }
 
-impl AtAstReferences {
+impl AtAstFileSymbols {
     pub fn new() -> Self {
-        AtAstReferences {
-            name: "@ast_reference".to_string(),
+        AtAstFileSymbols {
+            name: "@ast_file_symbols".to_string(),
             params: vec![
                 Arc::new(AMutex::new(AtParamFilePath::new()))
             ],
@@ -44,7 +44,7 @@ impl AtAstReferences {
 }
 
 #[async_trait]
-impl AtCommand for AtAstReferences {
+impl AtCommand for AtAstFileSymbols {
     fn name(&self) -> &String {
         &self.name
     }
@@ -80,7 +80,7 @@ impl AtCommand for AtAstReferences {
         let binding = context.global_context.read().await;
         let x = match *binding.ast_module.lock().await {
             Some(ref ast) => {
-                match ast.get_file_references(PathBuf::from(file_path)).await {
+                match ast.get_file_symbols(PathBuf::from(file_path)).await {
                     Ok(res) => Ok(results2message(&res)),
                     Err(err) => Err(err)
                 }
