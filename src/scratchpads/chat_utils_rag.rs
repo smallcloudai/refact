@@ -113,11 +113,11 @@ pub async fn run_at_commands(
         }
     }
     let max_bytes = 5*1024;
-    // let processed = postprocess_at_results(
-    //     messages_for_postprocessing,
-    //     max_bytes
-    // );
-    for msg in messages_for_postprocessing {
+    let processed = postprocess_at_results(
+        messages_for_postprocessing,
+        max_bytes
+    );
+    for msg in processed {
         post.messages.push(msg.clone());
         has_vecdb.push_in_json(json!(msg));
     }

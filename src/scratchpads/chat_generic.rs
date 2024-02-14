@@ -7,7 +7,7 @@ use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
-use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters, SimplifiedSymbolDeclaration, SymbolDeclaration};
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
@@ -114,29 +114,6 @@ impl ScratchpadAbstract for GenericChatScratchpad {
                 let vector_of_context_files: Vec<ContextFile> = serde_json::from_str(&msg.content).unwrap(); // FIXME unwrap
                 for context_file in vector_of_context_files {
                     prompt.push_str(format!("{}\n```\n{}```\n\n", context_file.file_name, context_file.file_content).as_str());
-                }
-            } else if msg.role == "symbol_declaration" {
-                let data: Vec<SymbolDeclaration> = serde_json::from_str(&msg.content).unwrap(); // FIXME unwrap
-                for context_file in data {
-                    prompt.push_str(
-                        format!("FILEPATH: {}:{}:{}\nSYMBOL_PATH: {}\n```\n{}```\n\n",
-                                context_file.file_path,
-                                context_file.line1,
-                                context_file.line2,
-                                context_file.symbol_path,
-                                context_file.content).as_str()
-                    );
-                }
-            } else if msg.role == "simplified_symbol_declaration" {
-                let data: Vec<SimplifiedSymbolDeclaration> = serde_json::from_str(&msg.content).unwrap(); // FIXME unwrap
-                for context_file in data {
-                    prompt.push_str(
-                        format!("- {} - {}:{}:{}\n\n",
-                                context_file.symbol_type,
-                                context_file.symbol_path,
-                                context_file.line1,
-                                context_file.line2).as_str()
-                    );
                 }
             } else {
                 return Err(format!("role \"{}\"not recognized", msg.role));

@@ -8,18 +8,18 @@ use tokio::sync::Mutex as AMutex;
 use crate::ast::structs::FileReferencesResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_params::AtParamFilePath;
-use crate::call_validation::{ChatMessage, SimplifiedSymbolDeclaration};
+use crate::call_validation::{ChatMessage, ContextFile};
 use crate::files_in_workspace::DocumentInfo;
 
 fn results2message(result: &FileReferencesResult) -> ChatMessage {
-    let simplified_symbols: Vec<SimplifiedSymbolDeclaration> = result.symbols.iter().map(|x| {
+    let simplified_symbols: Vec<ContextFile> = result.symbols.iter().map(|x| {
         let path = format!("{:?}::", result.file_path).to_string();
-        SimplifiedSymbolDeclaration {
-            symbol_path: x.meta_path.replace(path.as_str(), ""),
-            symbol_type: format!("{:?}", x.symbol_type),
-            line1: x.definition_info.range.start_point.row,
-            line2: x.definition_info.range.end_point.row,
-
+        ContextFile {
+            file_name: x.meta_path.replace(path.as_str(), ""),
+            file_content: format!("{:?}", x.symbol_type),
+            line1: x.definition_info.range.start_point.row as i32,
+            line2: x.definition_info.range.end_point.row as i32,
+            usefullness: 1.0
         }
     }).collect();
     ChatMessage {

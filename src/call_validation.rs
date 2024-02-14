@@ -183,25 +183,6 @@ pub struct ContextFile {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SymbolDeclaration {
-    pub file_path: String,
-    pub symbol_path: String,
-    pub symbol_type: String,
-    pub content: String,
-    pub line1: usize,
-    pub line2: usize,
-    pub usefullness: f32
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SimplifiedSymbolDeclaration {
-    pub symbol_path: String,
-    pub symbol_type: String,
-    pub line1: usize,
-    pub line2: usize,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatMessage {
     pub role: String,
     pub content: String,

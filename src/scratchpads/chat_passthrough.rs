@@ -5,7 +5,7 @@ use serde_json::Value;
 use tracing::{error, info};
 use tokio::sync::RwLock as ARwLock;
 
-use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters, SimplifiedSymbolDeclaration, SymbolDeclaration};
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history_in_bytes;
@@ -74,43 +74,6 @@ impl ScratchpadAbstract for ChatPassthrough {
                             filtered_msgs.push(ChatMessage {
                                 role: "user".to_string(),
                                 content: format!("{}\n```\n{}```", context_file.file_name, context_file.file_content),
-                            });
-                        }
-                    },
-                    Err(e) => { error!("error parsing context file: {}", e); }
-                }
-            } else if msg.role == "symbol_declaration" {
-                info!(msg.content);
-                match serde_json::from_str(&msg.content) {
-                    Ok(res) => {
-                        let data: Vec<SymbolDeclaration> = res;
-                        for context_file in &data {
-                            filtered_msgs.push(ChatMessage {
-                                role: "user".to_string(),
-                                content: format!("FILEPATH: {}:{}:{}\nSYMBOL_PATH: {}\n```\n{}```\n\n",
-                                                 context_file.file_path,
-                                                 context_file.line1,
-                                                 context_file.line2,
-                                                 context_file.symbol_path,
-                                                 context_file.content),
-                            });
-                        }
-                    },
-                    Err(e) => { error!("error parsing context file: {}", e); }
-                }
-            } else if msg.role == "simplified_symbol_declaration" {
-                info!(msg.content);
-                match serde_json::from_str(&msg.content) {
-                    Ok(res) => {
-                        let data: Vec<SimplifiedSymbolDeclaration> = res;
-                        for context_file in &data {
-                            filtered_msgs.push(ChatMessage {
-                                role: "user".to_string(),
-                                content: format!("- {} - {}:{}:{}\n\n",
-                                                 context_file.symbol_type,
-                                                 context_file.symbol_path,
-                                                 context_file.line1,
-                                                 context_file.line2),
                             });
                         }
                     },

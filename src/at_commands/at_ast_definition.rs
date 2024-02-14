@@ -8,7 +8,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::ast::structs::AstQuerySearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_params::AtParamSymbolPathQuery;
-use crate::call_validation::{ChatMessage, SymbolDeclaration};
+use crate::call_validation::{ChatMessage, ContextFile};
 use tracing::info;
 
 
@@ -31,20 +31,17 @@ async fn results2message(result: &AstQuerySearchResult) -> ChatMessage {
             .first()
             .cloned()
             .unwrap_or("".to_string());
-        let symbol_path = res.symbol_declaration.meta_path.replace(file_path.as_str(), "");
         let content = res.symbol_declaration.get_content().await.unwrap_or("".to_string());
-        symbols.push(SymbolDeclaration {
-            file_path: file_path,
-            symbol_path: symbol_path,
-            symbol_type: format!("{:?}", res.symbol_declaration.symbol_type),
-            content: content,
-            line1: res.symbol_declaration.definition_info.range.start_point.row,
-            line2: res.symbol_declaration.definition_info.range.end_point.row,
-            usefullness: res.sim_to_query,
+        symbols.push(ContextFile {
+            file_name: file_path,
+            file_content: content,
+            line1: res.symbol_declaration.definition_info.range.start_point.row as i32,
+            line2: res.symbol_declaration.definition_info.range.end_point.row as i32,
+            usefullness: res.sim_to_query
         });
     }
     ChatMessage {
-        role: "symbol_declaration".to_string(),
+        role: "context_file".to_string(),
         content: json!(symbols).to_string(),
     }
 }

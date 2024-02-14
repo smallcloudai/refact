@@ -61,6 +61,6 @@ pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand 
         ("@workspace".to_string(), Arc::new(AMutex::new(Box::new(AtWorkspace::new()) as Box<dyn AtCommand + Send>))),
         ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
         ("@ast_definition".to_string(), Arc::new(AMutex::new(Box::new(AtAstDefinition::new()) as Box<dyn AtCommand + Send>))),
-        ("@ast_file_symbols".to_string(), Arc::new(AMutex::new(Box::new(AtAstFileSymbols::new()) as Box<dyn AtCommand + Send>))),
+        // ("@ast_file_symbols".to_string(), Arc::new(AMutex::new(Box::new(AtAstFileSymbols::new()) as Box<dyn AtCommand + Send>))),
     ]);
 }
