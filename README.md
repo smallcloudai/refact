@@ -101,7 +101,7 @@ Events types are loosely guarded by using `type branding` on the events `type` p
  * This message is sent from the chat component to the host when the chat is mounted and ready to receive messages.
  */
 interface ReadyMessage extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.READY; // chat_ready
+  type: EVENT_NAMES_FROM_CHAT.READY; // "chat_ready"
   payload: { id: string };
 }
 
@@ -109,7 +109,7 @@ interface ReadyMessage extends ActionFromChat {
  * This messages is sent from the host to the chat component to restore a previously saved chat.
  */
 interface RestoreChat extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
+  type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT; // = "restore_chat_from_history"
   payload: ChatThread;
 }
 
@@ -117,7 +117,7 @@ interface RestoreChat extends ActionToChat {
  * The host sends this message to start a new chat thread.
  */
 interface CreateNewChatThread extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.NEW_CHAT;
+  type: EVENT_NAMES_TO_CHAT.NEW_CHAT; // = "create_new_chat"
   payload?: { id: string; snippet: string };
 }
 
@@ -125,14 +125,14 @@ interface CreateNewChatThread extends ActionToChat {
  * Chat sends this to the host when asking a question.
  */
 interface QuestionFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION; // "chat_question"
+  type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION; // = "chat_question"
   payload: ChatThread;
 }
 /**
  * Response from the host to the question
  */
 interface ResponseToChat extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE;
+  type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE; // = "chat_response",
   payload: ChatResponse;
 }
 
@@ -140,7 +140,7 @@ interface ResponseToChat extends ActionToChat {
  * This message is sent from the host to the chat when the lsp is done streaming it's response
  */
 interface ChatDoneStreaming extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.DONE_STREAMING;
+  type: EVENT_NAMES_TO_CHAT.DONE_STREAMING; // = "chat_done_streaming"
   payload: { id: string };
 }
 
@@ -148,14 +148,14 @@ interface ChatDoneStreaming extends ActionToChat {
  * Sent from the host to the chat when an error has happened while streaming the response
  */
 interface ChatErrorStreaming extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING;
+  type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING; // = "chat_error_streaming"
   payload: { id: string; message: string };
 }
 /**
  * Request for command completion from the lsp
  */
 interface RequestAtCommandCompletion extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION; // = "chat_request_at_command_completion"
   payload: { id: string; query: string; cursor: number; number: number };
 }
 
@@ -163,7 +163,7 @@ interface RequestAtCommandCompletion extends ActionFromChat {
  * This message is sent from the host to the chat contains the result of command completion request
  */
 interface ReceiveAtCommandCompletion extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION; // = "chat_receive_at_command_completion"
   payload: { id: string } & CommandCompletionResponse;
 }
 
@@ -171,7 +171,7 @@ interface ReceiveAtCommandCompletion extends ActionToChat {
  * This message is sent from the chat component to the host to request for command preview
  */
 interface RequestAtCommandPreview extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW;
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW; // = "chat_request_at_command_preview"
   payload: { id: string; query: string; cursor: number };
 }
 
@@ -179,7 +179,7 @@ interface RequestAtCommandPreview extends ActionFromChat {
  * This message is sent from the host to the chat contains the result of command preview request.
  */
 interface ReceiveAtCommandPreview extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW;
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW; // = "chat_receive_at_command_preview"
   payload: { id: string; preview: ChatContextFileMessage[] };
 }
 
@@ -187,7 +187,7 @@ interface ReceiveAtCommandPreview extends ActionToChat {
  * This message is sent from the chat component to the host when the response to the question is received.
  */
 interface SaveChatFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT;
+  type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT; // = "save_chat_to_history"
   payload: ChatThread;
 }
 
@@ -195,7 +195,7 @@ interface SaveChatFromChat extends ActionFromChat {
  * Tells chat to replace the current message list, this is  done before sending a question to the lsp.
  */
 interface BackUpMessages extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES;
+  type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES; // = "back_up_messages"
   payload: { id: string; messages: ChatMessages };
 }
 
@@ -203,7 +203,7 @@ interface BackUpMessages extends ActionToChat {
  * This message is sent from the chat component to the host when the user clicks stop while the response is streaming.
  */
 interface StopStreamingFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING;
+  type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING; // = "chat_stop_streaming"
   payload: { id: string };
 }
 
@@ -211,7 +211,7 @@ interface StopStreamingFromChat extends ActionFromChat {
  * This message is sent from the host to the chat when the user asks a questions so the chat can remove the last user message, which will be added to the response.
  */
 interface RemoveLastUserMessage extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.REMOVE_LAST_USER_MESSAGE;
+  type: EVENT_NAMES_TO_CHAT.REMOVE_LAST_USER_MESSAGE; // = "chat_remove_file_from_preview"
   payload: { id: string };
 }
 
@@ -219,7 +219,7 @@ interface RemoveLastUserMessage extends ActionToChat {
  * chat requesting caps from the server.
  */
 interface RequestCapsFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS;
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS; // = "chat_request_caps"
   payload: { id: string };
 }
 
@@ -227,7 +227,7 @@ interface RequestCapsFromChat extends ActionFromChat {
  * This message is sent from the host to the chat when the server responds with caps.
  */
 interface ChatReceiveCaps extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS;
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS; // = "receive_caps"
   payload: { id: string; caps: CapsResponse };
 }
 
@@ -235,23 +235,15 @@ interface ChatReceiveCaps extends ActionToChat {
  * This message is sent from the host to the chat when the server responds with an error.
  */
 interface ChatReceiveCapsError extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR;
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR; // = "receive_caps_error"
   payload: { id: string; message: string };
-}
-
-/**
- * Toggles attaching a file to the chat.
- */
-interface ToggleActiveFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
-  payload: { id: string; attach_file: boolean };
 }
 
 /**
  * This message is sent from the host to the chat with information about the current active file
  */
 interface ActiveFileInfo extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
+  type: EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO; // = "chat_active_file_info"
   payload: { id: string; name: string; can_paste: boolean };
 }
 
@@ -259,7 +251,7 @@ interface ActiveFileInfo extends ActionToChat {
  * This message is sent from the host to the chat if the active file should be attached, this is used when adding snippets to the user input.
  */
 interface ToggleActiveFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
+  type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE; // = "chat_toggle_active_file"
   payload: { id: string; attach_file: boolean };
 }
 
@@ -267,7 +259,7 @@ interface ToggleActiveFile extends ActionToChat {
  * This message is sent from the host to the chat to set the selected snippet.
  */
 interface ChatSetSelectedSnippet extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
+  type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET; // = "chat_set_selected_command"
   payload: { id: string; snippet: string; language: string };
 }
 
@@ -275,7 +267,7 @@ interface ChatSetSelectedSnippet extends ActionToChat {
  * This message is sent from the host telling chat to enable of disable the chat input.
  */
 interface SetChatDisable extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT;
+  type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT; // = "set_disable_chat"
   payload: { id: string; disable: boolean };
 }
 
@@ -283,7 +275,7 @@ interface SetChatDisable extends ActionToChat {
  * Sets the default chat model for the chat.
  */
 interface SetChatModel extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL;
+  type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL; // = "chat_set_chat_model"
   payload: { id: string; model: string };
 }
 
@@ -291,7 +283,7 @@ interface SetChatModel extends ActionToChat {
  * This message is sent from the chat when the user clicks the `new file` button in a code example.
  */
 interface NewFileFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.NEW_FILE;
+  type: EVENT_NAMES_FROM_CHAT.NEW_FILE; // = "chat_create_new_file"
   payload: { id: string; content: string };
 }
 
@@ -299,7 +291,7 @@ interface NewFileFromChat extends ActionFromChat {
  * This message is sent from the chat when the user clicks the `paste` button in a code example.
  */
 interface PasteDiffFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.PASTE_DIFF;
+  type: EVENT_NAMES_FROM_CHAT.PASTE_DIFF; // = "chat_paste_diff"
   payload: { id: string; content: string };
 }
 
@@ -307,7 +299,7 @@ interface PasteDiffFromChat extends ActionFromChat {
  * This message is used to attach context files from the host to the chat.
  */
 interface ReceiveContextFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_FILES;
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_FILES; // =  "receive_context_file"
   payload: { id: string; files: ChatContextFile[] };
 }
 ```
