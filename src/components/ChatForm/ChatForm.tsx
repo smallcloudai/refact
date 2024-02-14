@@ -167,7 +167,10 @@ export const ChatForm: React.FC<{
         className={className}
         onSubmit={() => handleSubmit()}
       >
-        <FilesPreview files={filesInPreview} />
+        <FilesPreview
+          files={filesInPreview}
+          onRemovePreviewFile={removePreviewFileByName}
+        />
 
         <ComboBox
           commands={commands.available_commands}

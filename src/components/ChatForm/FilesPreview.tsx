@@ -3,9 +3,10 @@ import { Box, Text } from "@radix-ui/themes";
 import { ChatContextFile } from "../../events";
 import styles from "./ChatForm.module.css";
 
-export const FilesPreview: React.FC<{ files: ChatContextFile[] }> = ({
-  files,
-}) => {
+export const FilesPreview: React.FC<{
+  files: ChatContextFile[];
+  onRemovePreviewFile: (name: string) => void;
+}> = ({ files, onRemovePreviewFile }) => {
   if (files.length === 0) return null;
   return (
     <Box p="2">
@@ -19,7 +20,16 @@ export const FilesPreview: React.FC<{ files: ChatContextFile[] }> = ({
               title={file.file_content}
               className={styles.fileName}
             >
-              📎 {file.file_name.replace(/^\/home\/user/, "~")}
+              <button
+                onClick={(event) => {
+                  event.preventDefault();
+                  onRemovePreviewFile(file.file_name);
+                }}
+                style={{ all: "unset", backgroundColor: "transparent" }}
+              >
+                📎
+              </button>{" "}
+              {file.file_name.replace(/^\/home\/user/, "~")}
               {lineText}
             </Text>
           </pre>
