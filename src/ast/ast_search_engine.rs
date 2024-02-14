@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use itertools::Itertools;
@@ -9,6 +8,7 @@ use tree_sitter::Point;
 use crate::ast::ast_index::AstIndex;
 use crate::ast::structs::{CursorUsagesResult, SymbolsSearchResultStruct, UsageSearchResultStruct};
 use crate::ast::treesitter::parsers::get_parser_by_filename;
+use crate::files_in_workspace::DocumentInfo;
 
 #[derive(Debug)]
 pub struct AstSearchEngine {
@@ -25,12 +25,13 @@ impl AstSearchEngine {
 
     async fn parse_near_cursor(
         &mut self,
-        file_path: &PathBuf,
+        doc: &DocumentInfo,
         code: &str,
         cursor: Point,
         top_n: usize,
     ) -> Result<CursorUsagesResult, String> {
-        let mut parser = match get_parser_by_filename(file_path) {
+        let path = doc.get_path();
+        let mut parser = match get_parser_by_filename(&path) {
             Ok(parser) => parser,
             Err(err) => {
                 return Err(err.message);
@@ -39,7 +40,7 @@ impl AstSearchEngine {
         let usages = match parser.parse_usages(code) {
             Ok(usages) => usages,
             Err(e) => {
-                return Err(format!("Error parsing {}: {}", file_path.display(), e));
+                return Err(format!("Error parsing {}: {}", path.display(), e));
             }
         };
         let filtered_usages = usages.iter()
@@ -51,7 +52,7 @@ impl AstSearchEngine {
             .collect::<Vec<_>>();
 
         Ok(CursorUsagesResult {
-            file_path: file_path.clone(),
+            file_path: path,
             query_text: code.to_string(),
             cursor: cursor.clone(),
             search_results: filtered_usages
@@ -69,15 +70,16 @@ impl AstSearchEngine {
 
     pub async fn search(
         &mut self,
-        file_path: &PathBuf,
+        doc: &DocumentInfo,
         code: &str,
         cursor: Point,
         top_n: usize,
     ) -> Result<(Vec<SymbolsSearchResultStruct>, Vec<UsageSearchResultStruct>), String> {
-        let usage_result = match self.parse_near_cursor(file_path, code, cursor, top_n).await {
+        let path = doc.get_path();
+        let usage_result = match self.parse_near_cursor(doc, code, cursor, top_n).await {
             Ok(usages) => usages,
             Err(e) => {
-                return Err(format!("Error parsing {}: {}", file_path.display(), e));
+                return Err(format!("Error parsing {}: {}", path.display(), e));
             }
         };
         let mut declarations: Vec<SymbolsSearchResultStruct> = vec![];
@@ -86,7 +88,7 @@ impl AstSearchEngine {
             let ast_index_locked = ast_index.lock().await;
             for sym in usage_result.search_results.iter() {
                 declarations.extend(
-                    match ast_index_locked.search(sym.symbol_path.as_str(), 1, Some(file_path.clone())).await {
+                    match ast_index_locked.search(sym.symbol_path.as_str(), 1, Some(doc.clone())).await {
                         Ok(nodes) => nodes,
                         Err(e) => {
                             info!("Error searching for {}: {}", sym.symbol_path.as_str(), e);

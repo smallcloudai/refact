@@ -11,6 +11,7 @@ use tokio::fs::File;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
 use tokio::sync::RwLock as ARwLock;
+use crate::files_in_workspace::DocumentInfo;
 
 use crate::global_context::GlobalContext;
 
@@ -19,8 +20,8 @@ pub async fn enqueue_all_files_from_jsonl(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) {
     let files_jsonl_path = gcx.clone().read().await.cmdline.files_jsonl_path.clone();
-    let files = match parse_jsonl(&files_jsonl_path).await {
-        Ok(data) => data,
+    let docs = match parse_jsonl(&files_jsonl_path).await {
+        Ok(docs) => docs,
         Err(e) => {
             info!("invalid jsonl file {:?}: {:?}", files_jsonl_path, e);
             vec![]
@@ -31,16 +32,16 @@ pub async fn enqueue_all_files_from_jsonl(
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
     match *ast_module.lock().await {
-        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files).await,
+        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&docs, true).await,
         None => {},
     };
     match *vecdb_module.lock().await {
-        Some(ref mut db) => db.vectorizer_enqueue_files(&files, false).await,
+        Some(ref mut db) => db.vectorizer_enqueue_files(&docs, false).await,
         None => {},
     };
 }
 
-pub async fn parse_jsonl(path: &String) -> Result<Vec<PathBuf>, String> {
+pub async fn parse_jsonl(path: &String) -> Result<Vec<DocumentInfo>, String> {
     if path.is_empty() {
         return Ok(vec![]);
     }
@@ -57,7 +58,14 @@ pub async fn parse_jsonl(path: &String) -> Result<Vec<PathBuf>, String> {
             if value.is_object() {
                 if let Some(filename) = value.get("path").and_then(|v| v.as_str()) {
                     // TODO: join, why it's there?
-                    paths.push(base_path.join(filename));
+                    let doc = match DocumentInfo::from(&base_path.join(filename)) {
+                        Ok(doc) => doc,
+                        Err(err) => {
+                            info!("{}", err);
+                            continue
+                        }
+                    };
+                    paths.push(doc);
                 }
             }
         }

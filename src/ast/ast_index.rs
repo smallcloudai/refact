@@ -6,11 +6,11 @@ use fst::automaton::Subsequence;
 use tracing::info;
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
-use tokio::fs::read_to_string;
 
 use crate::ast::structs::SymbolsSearchResultStruct;
 use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolDeclarationStruct;
+use crate::files_in_workspace::DocumentInfo;
 
 #[derive(Debug)]
 pub struct AstIndex {
@@ -47,26 +47,27 @@ impl AstIndex {
         }
     }
 
-    pub async fn add_or_update(&mut self, file_path: &PathBuf) -> Result<SortedVec<String>, String> {
-        let mut parser = match get_parser_by_filename(file_path) {
+    pub async fn add_or_update(&mut self, doc: &DocumentInfo) -> Result<SortedVec<String>, String> {
+        let path = doc.get_path();
+        let mut parser = match get_parser_by_filename(&doc.get_path()) {
             Ok(parser) => parser,
             Err(err) => {
                 return Err(err.message);
             }
         };
-        let text = match read_to_string(file_path).await {
+        let text = match doc.read_file().await {
             Ok(s) => s,
             Err(e) => return Err(e.to_string())
         };
-        let declarations = match parser.parse_declarations(text.as_str(), file_path) {
+        let declarations = match parser.parse_declarations(text.as_str(), &path) {
             Ok(declarations) => declarations,
             Err(e) => {
-                return Err(format!("Error parsing {}: {}", file_path.display(), e));
+                return Err(format!("Error parsing {}: {}", path.display(), e));
             }
         };
-        match self.remove(file_path).await {
+        match self.remove(&doc).await {
             Ok(()) => (),
-            Err(e) => return Err(format!("Error removing {}: {}", file_path.display(), e)),
+            Err(e) => return Err(format!("Error removing {}: {}", path.display(), e)),
         }
 
         let mut meta_names: SortedVec<String> = SortedVec::new();
@@ -78,12 +79,13 @@ impl AstIndex {
             Ok(set) => set,
             Err(e) => return Err(format!("Error creating set: {}", e)),
         };
-        self.nodes_indexes.insert(file_path.clone(), meta_names_set);
+        self.nodes_indexes.insert(path.clone(), meta_names_set);
         Ok(meta_names)
     }
 
-    pub async fn remove(&mut self, file_path: &PathBuf) -> Result<(), String> {
-        if let Some(meta_names) = self.nodes_indexes.remove(file_path) {
+    pub async fn remove(&mut self, doc: &DocumentInfo) -> Result<(), String> {
+        let path = doc.get_path();
+        if let Some(meta_names) = self.nodes_indexes.remove(&path) {
             let mut stream = meta_names.stream();
             while let Some(name_vec) = stream.next() {
                 let name = match String::from_utf8(name_vec.to_vec()) {
@@ -102,12 +104,17 @@ impl AstIndex {
         &self,
         query: &str,
         top_n: usize,
-        exception_filename: Option<PathBuf>,
+        exception_doc: Option<DocumentInfo>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         let query_str = query.to_string();
         let found_keys = make_a_query(&self.nodes_indexes, query_str.as_str());
 
-        let exception_filename = exception_filename.unwrap_or_default();
+        let exception_filename = match exception_doc {
+            Some(doc) => doc.get_path(),
+            None => {
+                PathBuf::default()
+            }
+        };
         let filtered_found_keys = found_keys
             .iter()
             .filter_map(|k| self.nodes.get(k))
@@ -145,9 +152,10 @@ impl AstIndex {
         Ok(search_results)
     }
 
-    pub fn get_symbols_by_file_path(&self, file_path: &PathBuf) -> Result<Vec<SymbolDeclarationStruct>, String> {
+    pub fn get_symbols_by_file_path(&self, doc: &DocumentInfo) -> Result<Vec<SymbolDeclarationStruct>, String> {
+        let path = doc.get_path();
         let mut result: Vec<SymbolDeclarationStruct> = vec![];
-        if let Some(meta_names) = self.nodes_indexes.get(file_path) {
+        if let Some(meta_names) = self.nodes_indexes.get(&path) {
             let mut stream = meta_names.stream();
             while let Some(name_vec) = stream.next() {
                 let name = match String::from_utf8(name_vec.to_vec()) {
@@ -165,7 +173,7 @@ impl AstIndex {
             }
             return Ok(result);
         }
-        return Err(format!("File {} is not found in the AST index", file_path.display()));
+        return Err(format!("File {} is not found in the AST index", path.display()));
     }
 
     pub fn get_indexed_symbol_paths(&self) -> Vec<String> {

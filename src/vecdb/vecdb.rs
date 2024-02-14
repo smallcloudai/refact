@@ -12,6 +12,7 @@ use crate::global_context::{CommandLine, GlobalContext};
 use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
+use crate::files_in_workspace::DocumentInfo;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
 use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants};
@@ -220,8 +221,8 @@ impl VecDb {
         return self.vectorizer_service.lock().await.vecdb_start_background_tasks(self.vecdb_emb_client.clone()).await;
     }
 
-    pub async fn vectorizer_enqueue_files(&self, file_paths: &Vec<PathBuf>, force: bool) {
-        self.vectorizer_service.lock().await.vectorizer_enqueue_files(file_paths, force).await;
+    pub async fn vectorizer_enqueue_files(&self, documents: &Vec<DocumentInfo>, force: bool) {
+        self.vectorizer_service.lock().await.vectorizer_enqueue_files(documents, force).await;
     }
 
     pub async fn remove_file(&self, file_path: &PathBuf) {

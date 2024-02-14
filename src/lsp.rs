@@ -10,7 +10,7 @@ use tokio::task::JoinHandle;
 use tower_lsp::{ClientSocket, LanguageServer, LspService};
 use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
 use crate::global_context;
@@ -223,31 +223,17 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         files_in_workspace::on_did_open(
             self.gcx.clone(),
-            &params.text_document.uri.to_string(),
+            &params.text_document.uri,
             &params.text_document.text,
             &params.text_document.language_id
         ).await
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let file_path = PathBuf::from(params.text_document.uri.path());
-        if is_valid_file(&file_path) {
-            // TODO: lock held too long
-            // TODO: move to files_in_workspace
-            let binding = self.gcx.read().await;
-            match *binding.ast_module.lock().await {
-                Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()]).await,
-                None => {},
-            };
-            match *binding.vec_db.lock().await {
-                Some(ref mut db) => db.vectorizer_enqueue_files(&vec![file_path.clone()], false).await,
-                None => {}
-            };
-        }
         files_in_workspace::on_did_change(
             self.gcx.clone(),
-            &params.text_document.uri.to_string(),
-            &params.content_changes[0].text
+            &params.text_document.uri,
+            &params.content_changes[0].text  // TODO: This text could be just a part of the whole file
         ).await
     }
 
@@ -256,20 +242,6 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "{refact-lsp} file saved")
             .await;
         let uri = params.text_document.uri.to_string();
-        let file_path = PathBuf::from(params.text_document.uri.path());
-        if is_valid_file(&file_path) {
-            // TODO: lock held too long
-            // TODO: move to files_in_workspace
-            let binding = self.gcx.read().await;
-            match *binding.ast_module.lock().await {
-                Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()]).await,
-                None => {},
-            };
-            match *binding.vec_db.lock().await {
-                Some(ref mut db) => db.vectorizer_enqueue_files(&vec![file_path.clone()], false).await,
-                None => {}
-            };
-        }
         info!("{uri} saved");
     }
 
@@ -278,20 +250,6 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "{refact-lsp} file closed")
             .await;
         let uri = params.text_document.uri.to_string();
-        let file_path = PathBuf::from(params.text_document.uri.path());
-        if is_valid_file(&file_path) {
-            // TODO: lock held too long
-            // TODO: move to files_in_workspace
-            let binding = self.gcx.read().await;
-            match *binding.ast_module.lock().await {
-                Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![file_path.clone()]).await,
-                None => {},
-            };
-            match *binding.vec_db.lock().await {
-                Some(ref mut db) => db.vectorizer_enqueue_files(&vec![file_path.clone()], false).await,
-                None => {}
-            };
-        }
         info!("{uri} closed");
     }
 
@@ -302,54 +260,19 @@ impl LanguageServer for Backend {
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
         info!("LSP asked for popup completions");
-        Ok(Some(CompletionResponse::Array(vec![
-        ])))
+        Ok(Some(CompletionResponse::Array(vec![])))
     }
 
     async fn did_delete_files(&self, params: DeleteFilesParams) {
-        let files = params.files
-            .into_iter()
-            .map(|x| PathBuf::from(x.uri.replace("file://", "")))
-            .filter(|x| is_valid_file(&x));
-
-        // TODO: lock held too long
-        // TODO: move to files_in_workspace
-        let binding = self.gcx.read().await;
-        match *binding.ast_module.lock().await {
-            Some(ref mut ast) => {
-                for file in files.clone() {
-                    ast.remove_file(&file).await;
-                }
-            },
-            None => {},
-        };
-        match *binding.vec_db.lock().await {
-            Some(ref mut db) => {
-                for file in files {
-                    db.remove_file(&file).await;
-                }
-            }
-            None => {}
-        };
+        self.client
+            .log_message(MessageType::INFO, "{refact-lsp} delete files")
+            .await;
     }
 
     async fn did_create_files(&self, params: CreateFilesParams) {
-        let files: Vec<PathBuf> = params.files
-            .into_iter()
-            .map(|x| PathBuf::from(x.uri.replace("file://", "")))
-            .filter(|x| is_valid_file(&x))
-            .collect();
-        // TODO: lock held too long
-        // TODO: move to files_in_workspace
-        let binding = self.gcx.read().await;
-        match *binding.ast_module.lock().await {
-            Some(ref mut ast) => ast.ast_indexer_enqueue_files(&files).await,
-            None => {},
-        };
-        match *binding.vec_db.lock().await {
-            Some(ref db) => db.vectorizer_enqueue_files(&files, false).await,
-            None => {}
-        };
+        self.client
+            .log_message(MessageType::INFO, "{refact-lsp} create files")
+            .await;
     }
 }
 

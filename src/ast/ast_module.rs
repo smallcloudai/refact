@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -13,6 +12,7 @@ use crate::ast::ast_index::AstIndex;
 use crate::ast::ast_index_service::AstIndexService;
 use crate::ast::ast_search_engine::AstSearchEngine;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileReferencesResult};
+use crate::files_in_workspace::DocumentInfo;
 
 
 #[derive(Debug)]
@@ -38,7 +38,7 @@ impl AstModule {
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(ast_index.clone())));
 
         let files_jsonl_path = global_context.read().await.cmdline.files_jsonl_path.clone();
-        let files = match crate::files_in_jsonl::parse_jsonl(&files_jsonl_path).await {
+        let documents = match crate::files_in_jsonl::parse_jsonl(&files_jsonl_path).await {
             Ok(lst) => lst,
             Err(err) => {
                 error!("failed to parse {}: {}", files_jsonl_path, err);
@@ -50,7 +50,7 @@ impl AstModule {
             ast_index,
             ast_search_engine,
         };
-        me.ast_indexer_enqueue_files(&files).await;
+        me.ast_indexer_enqueue_files(&documents, true).await;
         Ok(me)
     }
 
@@ -58,18 +58,18 @@ impl AstModule {
         return self.ast_index_service.lock().await.ast_start_background_tasks().await;
     }
 
-    pub async fn ast_indexer_enqueue_files(&self, file_paths: &Vec<PathBuf>) {
-        self.ast_index_service.lock().await.ast_indexer_enqueue_files(file_paths).await;
+    pub async fn ast_indexer_enqueue_files(&self, documents: &Vec<DocumentInfo>, force: bool) {
+        self.ast_index_service.lock().await.ast_indexer_enqueue_files(documents, force).await;
     }
 
-    pub async fn remove_file(&self, file_path: &PathBuf) {
+    pub async fn remove_file(&self, doc: &DocumentInfo) {
         // TODO: will not work if the same file is in the indexer queue
-        let _ = self.ast_index.lock().await.remove(file_path).await;
+        let _ = self.ast_index.lock().await.remove(doc).await;
     }
 
     pub async fn search_by_cursor(
         &self,
-        file_path: &PathBuf,
+        doc: &DocumentInfo,
         code: &str,
         cursor: Point,
         top_n: usize
@@ -78,7 +78,7 @@ impl AstModule {
 
         let mut handler_locked = self.ast_search_engine.lock().await;
         let (results, cursor_symbols) = match handler_locked.search(
-            file_path,
+            doc,
             code,
             cursor,
             top_n
@@ -93,7 +93,7 @@ impl AstModule {
         Ok(
             AstCursorSearchResult {
                 query_text: code.to_string(),
-                file_path: file_path.clone(),
+                file_path: doc.get_path(),
                 cursor: cursor,
                 cursor_symbols: cursor_symbols,
                 search_results: results,
@@ -126,15 +126,15 @@ impl AstModule {
         }
     }
 
-    pub async fn get_file_symbols(&self, file_path: PathBuf) -> Result<FileReferencesResult, String> {
+    pub async fn get_file_symbols(&self, doc: &DocumentInfo) -> Result<FileReferencesResult, String> {
         let ast_index = self.ast_index.clone();
         let ast_index_locked  = ast_index.lock().await;
-        let symbols = match ast_index_locked.get_symbols_by_file_path(&file_path) {
+        let symbols = match ast_index_locked.get_symbols_by_file_path(&doc) {
             Ok(s) => s,
             Err(err) => { return Err(format!("Error: {}", err)) }
         };
         Ok(FileReferencesResult {
-            file_path: file_path.clone(),
+            file_path: doc.get_path(),
             symbols,
         })
     }

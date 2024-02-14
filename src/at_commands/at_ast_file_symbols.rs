@@ -9,6 +9,7 @@ use crate::ast::structs::FileReferencesResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_params::AtParamFilePath;
 use crate::call_validation::{ChatMessage, SimplifiedSymbolDeclaration};
+use crate::files_in_workspace::DocumentInfo;
 
 fn results2message(result: &FileReferencesResult) -> ChatMessage {
     let simplified_symbols: Vec<SimplifiedSymbolDeclaration> = result.symbols.iter().map(|x| {
@@ -80,7 +81,11 @@ impl AtCommand for AtAstFileSymbols {
         let binding = context.global_context.read().await;
         let x = match *binding.ast_module.lock().await {
             Some(ref ast) => {
-                match ast.get_file_symbols(PathBuf::from(file_path)).await {
+                let doc = match DocumentInfo::from(&PathBuf::from(file_path)).ok() {
+                    Some(doc) => doc,
+                    None => return Err("file not found".to_string())
+                };
+                match ast.get_file_symbols(&doc).await {
                     Ok(res) => Ok(results2message(&res)),
                     Err(err) => Err(err)
                 }

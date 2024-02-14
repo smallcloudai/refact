@@ -17,6 +17,7 @@ use tree_sitter::Point;
 use crate::ast::ast_module::AstModule;
 
 use crate::completion_cache;
+use crate::files_in_workspace::DocumentInfo;
 use crate::telemetry::telemetry_structs;
 use crate::telemetry::snippets_collection;
 
@@ -300,8 +301,12 @@ async fn ast_search(
     tokenizer: HasTokenizerAndEot,
     max_context_size: usize
 ) -> (String, i32){
+    let doc = match DocumentInfo::from(file_path).ok() {
+        Some(doc) => doc,
+        None => return ("".to_string(), 0)
+    };
     let search_result = ast_module.search_by_cursor(
-        file_path, code, cursor, 5
+        &doc, code, cursor, 5
     ).await;
 
     let init_cfc_text = "Here are some relevant code fragments from other files of the repo:\n\n";

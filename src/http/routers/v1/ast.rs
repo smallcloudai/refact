@@ -8,6 +8,7 @@ use tokio::fs::read_to_string;
 use tree_sitter::Point;
 
 use crate::custom_error::ScratchError;
+use crate::files_in_workspace::DocumentInfo;
 use crate::global_context::SharedGlobalContext;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -41,13 +42,16 @@ pub async fn handle_v1_ast_cursor_search(
     let cx_locked = global_context.read().await;
     let search_res = match *cx_locked.ast_module.lock().await {
         Some(ref ast) => {
-            let filename = PathBuf::from(post.filename);
-            let code = match read_to_string(filename.clone()).await {
+            let doc = match DocumentInfo::from(&PathBuf::from(&post.filename)).ok() {
+                Some(doc) => doc,
+                None => return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("Filename could not be parsed: {}", post.filename))),
+            };
+            let code = match doc.read_file().await {
                 Ok(s) => s,
                 Err(e) => { return Err(ScratchError::new(StatusCode::BAD_REQUEST, e.to_string())); }
             };
             ast.search_by_cursor(
-                &filename, code.as_str(), Point::new(post.row, post.column), post.top_n,
+                &doc, code.as_str(), Point::new(post.row, post.column), post.top_n,
             ).await
         }
         None => {
@@ -118,11 +122,15 @@ pub async fn handle_v1_ast_file_symbols(
     let post = serde_json::from_slice::<AstReferencesPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
+    let doc = match DocumentInfo::from(&PathBuf::from(&post.filename)).ok() {
+        Some(doc) => doc,
+        None => return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("Filename could not be parsed: {}", post.filename))),
+    };
 
     let cx_locked = global_context.read().await;
     let search_res = match *cx_locked.ast_module.lock().await {
         Some(ref ast) => {
-            ast.get_file_symbols(PathBuf::from(post.filename)).await
+            ast.get_file_symbols(&doc).await
         }
         None => {
             return Err(ScratchError::new(
