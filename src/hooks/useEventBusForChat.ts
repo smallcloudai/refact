@@ -46,6 +46,8 @@ import {
   isSetSelectedSnippet,
   isRemovePreviewFileByName,
   RemovePreviewFileByName,
+  isSetPreviousMessagesLength,
+  setPreviousMessagesLength,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
@@ -382,6 +384,13 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
+  if (isThisChat && isSetPreviousMessagesLength(action)) {
+    return {
+      ...state,
+      previous_message_length: action.payload.message_length,
+    };
+  }
+
   return state;
 }
 
@@ -708,6 +717,20 @@ export const useEventBusForChat = () => {
     dispatch(action);
   }
 
+  function retryQuestion(messages: ChatMessages) {
+    // set last_messages_length to messages.lent - 1
+    const setMessageLengthAction: setPreviousMessagesLength = {
+      type: EVENT_NAMES_TO_CHAT.SET_PREVIOUS_MESSAGES_LENGTH,
+      payload: {
+        id: state.chat.id,
+        message_length: messages.length > 0 ? messages.length - 1 : 0,
+      },
+    };
+
+    dispatch(setMessageLengthAction);
+    sendMessages(messages);
+  }
+
   return {
     state,
     askQuestion,
@@ -727,5 +750,6 @@ export const useEventBusForChat = () => {
     setSelectedCommand,
     executeCommand,
     removePreviewFileByName,
+    retryQuestion,
   };
 };

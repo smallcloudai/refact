@@ -47,6 +47,7 @@ export enum EVENT_NAMES_TO_CHAT {
   SET_LAST_MODEL_USED = "chat_set_last_model_used",
   SET_SELECTED_SNIPPET = "chat_set_selected_snippet",
   REMOVE_PREVIEW_FILE_BY_NAME = "chat_remove_file_from_preview",
+  SET_PREVIOUS_MESSAGES_LENGTH = "chat_set_previous_messages_length",
 }
 
 export type ChatThread = {
@@ -475,4 +476,16 @@ export function isRemovePreviewFileByName(
     isActionToChat(action) &&
     action.type === EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME
   );
+}
+
+export interface setPreviousMessagesLength extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_PREVIOUS_MESSAGES_LENGTH;
+  payload: { id: string; message_length: number };
+}
+
+export function isSetPreviousMessagesLength(
+  action: unknown,
+): action is setPreviousMessagesLength {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_PREVIOUS_MESSAGES_LENGTH;
 }

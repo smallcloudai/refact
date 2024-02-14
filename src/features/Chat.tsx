@@ -18,7 +18,6 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
   const {
     state,
     askQuestion,
-    sendMessages,
     clearError,
     setChatModel,
     stopStreaming,
@@ -34,6 +33,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     setSelectedCommand,
     executeCommand,
     removePreviewFileByName,
+    retryQuestion,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -91,7 +91,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
       )}
       <ChatContent
         messages={state.chat.messages}
-        onRetry={(messages) => sendMessages(messages)}
+        onRetry={retryQuestion}
         isWaiting={state.waiting_for_response}
         onNewFileClick={handleNewFileClick}
         onPasteClick={handlePasteDiffClick}

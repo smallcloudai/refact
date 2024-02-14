@@ -100,7 +100,8 @@
 [x] replace file preview when receiving command preview
 [x] don't add a new line if command is executable but has no arguments
 [x] use syntax highlighting in the users message
-[ ] bug when running retry, user message isn't removed
+[x] bug when running retry, user message isn't removed
+[ ] bug with the combobox being open after asking a question
 
 ### EVENTS TODO FOR IDEs
 
