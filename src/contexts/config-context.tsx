@@ -2,7 +2,6 @@ import React, { useContext, createContext } from "react";
 import { ThemeProps } from "../components/Theme";
 
 export type Config = {
-  rag?: boolean; // TODO: remove this
   host: "web" | "ide" | "vscode" | "jetbrains";
   tabbed?: boolean;
   lspUrl?: string;

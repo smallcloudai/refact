@@ -110,6 +110,7 @@ export interface NewFileFromChat extends ActionFromChat {
     content: string;
   };
 }
+
 export function isNewFileFromChat(action: unknown): action is NewFileFromChat {
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.NEW_FILE;
@@ -350,7 +351,7 @@ export function isRestoreChat(action: unknown): action is RestoreChat {
 
 export interface CreateNewChatThread extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.NEW_CHAT;
-  payload?: { id: string; snippet: string };
+  payload: { id: string; snippet: string };
 }
 
 export function isCreateNewChat(
@@ -362,6 +363,7 @@ export function isCreateNewChat(
 
 export interface ChatDoneStreaming extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.DONE_STREAMING;
+  payload: { id: string };
 }
 
 export function isChatDoneStreaming(
