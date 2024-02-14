@@ -148,6 +148,7 @@ pub struct SymbolDeclarationStruct {
     pub symbol_type: SymbolType,
     pub meta_path: String,
     pub language: LanguageId,
+    pub extra_declarations: Vec<SymbolInfo>,
 }
 
 impl SymbolDeclarationStruct {

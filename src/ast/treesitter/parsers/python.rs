@@ -121,7 +121,7 @@ impl LanguageParser for PythonParser {
         return "".to_string();
     }
 
-    fn get_variable(&self, captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
+    fn get_variable(&mut self, captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
         let mut var = VariableInfo {
             name: "".to_string(),
             range: Range {

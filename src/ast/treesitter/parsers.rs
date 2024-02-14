@@ -9,9 +9,10 @@ use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::utils::{get_call, get_static, get_variable};
 use crate::ast::treesitter::structs::{FunctionCallInfo, StaticInfo, SymbolDeclarationStruct, SymbolInfo, SymbolType, UsageSymbolInfo, VariableInfo};
 
-pub mod cpp;
-pub mod python;
-pub mod java;
+pub(crate)  mod cpp;
+pub(crate)  mod python;
+pub(crate)  mod java;
+pub(crate) mod rust;
 mod utils;
 
 
@@ -82,10 +83,14 @@ pub trait LanguageParser: Send {
     fn get_enum_name_and_all_values(&self, parent: Node, text: &str) -> (String, Vec<String>) {
         ("".to_string(), vec![])
     }
+    
+    fn get_extra_declarations_for_struct(&mut self, struct_name: String, tree: &Tree, text: &str, path: &PathBuf) -> Vec<SymbolInfo> {
+        vec![]
+    }
 
     fn get_function_name_and_scope(&self, parent: Node, text: &str) -> (String, Vec<String>);
     fn get_variable_name(&self, parent: Node, text: &str) -> String;
-    fn get_variable(&self, captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
+    fn get_variable(&mut self, captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
         get_variable(captures, query, code)
     }
 
@@ -109,7 +114,7 @@ pub trait LanguageParser: Send {
             for capture in match_.captures {
                 let capture_name = &query.capture_names()[capture.index as usize];
                 match capture_name.as_str() {
-                    "class" | "struct" => {
+                    "class" | "struct" | "trait" => {
                         let range = capture.node.range();
                         let namespaces = self.get_namespace(Some(capture.node), code);
                         let class_name = namespaces.last().unwrap().clone();
@@ -119,12 +124,13 @@ pub trait LanguageParser: Send {
                         });
                         indexes.insert(key.clone(),
                                        SymbolDeclarationStruct {
-                                           name: class_name,
+                                           name: class_name.clone(),
                                            definition_info: SymbolInfo { path: path.clone(), range },
                                            children: vec![],
                                            symbol_type: SymbolType::Class,
                                            meta_path: key,
                                            language: LanguageId::from(capture.node.language()),
+                                           extra_declarations: self.get_extra_declarations_for_struct(class_name, &tree, code, &path),
                                        });
                     }
                     "enum" => {
@@ -146,6 +152,7 @@ pub trait LanguageParser: Send {
                                                symbol_type: SymbolType::Enum,
                                                meta_path: key,
                                                language: LanguageId::from(capture.node.language()),
+                                               extra_declarations: vec![],
                                            });
                         });
                     }
@@ -167,6 +174,7 @@ pub trait LanguageParser: Send {
                                            symbol_type: SymbolType::Function,
                                            meta_path: key,
                                            language: LanguageId::from(capture.node.language()),
+                                           extra_declarations: vec![],
                                        });
                     }
                     "global_variable" => {
@@ -186,6 +194,7 @@ pub trait LanguageParser: Send {
                                            symbol_type: SymbolType::GlobalVar,
                                            meta_path: key,
                                            language: LanguageId::from(capture.node.language()),
+                                           extra_declarations: vec![],
                                        });
                     }
                     &_ => {}
@@ -246,6 +255,14 @@ fn get_parser(language_id: LanguageId) -> Result<Box<dyn LanguageParser + 'stati
             let parser = python::PythonParser::new()?;
             Ok(Box::new(parser))
         }
+        LanguageId::Java => {
+            let parser = java::JavaParser::new()?;
+            Ok(Box::new(parser))
+        }
+        LanguageId::Rust => {
+            let parser = rust::RustParser::new()?;
+            Ok(Box::new(parser))
+        }
         other => Err(ParserError {
             message: "Unsupported language id: ".to_string() + &other.to_string()
         }),
@@ -260,6 +277,7 @@ pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguagePars
         "inl" | "inc" | "tpp" | "tpl" => get_parser(LanguageId::Cpp),
         "py" | "pyo" | "py3" | "pyx" => get_parser(LanguageId::Python),
         "java" => get_parser(LanguageId::Java),
+        "rs" => get_parser(LanguageId::Rust),
         other => Err(ParserError { message: "Unsupported filename suffix: ".to_string() + &other }),
     }
 }
