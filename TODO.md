@@ -85,7 +85,7 @@
 [x] remove context latest context files from chat when sending a message
 [x] small but in command deletion, type @fi tab delete delete then tab
 [x] workspace being run twice ? or adding extra files
-[ ] update readme with the new features/options
+[x] update readme with the new features/options
 [x] uninstall react-cookie and delete code comments
 [x] fix flaky test for multiple commands
 [x] figure out why the combobox is sometimes not removing the input trigger
@@ -118,5 +118,5 @@
 [x] create lib directory for code that becomes a lib
 [x] configure vite to output multiple entry files (one for web and one for the ide's)
 [x] export events in package.json or from lib
-[ ] remove inline styles
+[ ] remove inline styles?
 [x] vscode select text, click new chat the selected code should be in the chat
