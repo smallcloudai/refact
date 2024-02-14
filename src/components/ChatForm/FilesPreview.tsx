@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Text } from "@radix-ui/themes";
+import { Box, Text, Button } from "@radix-ui/themes";
 import { ChatContextFile } from "../../events";
 import styles from "./ChatForm.module.css";
 
@@ -20,15 +20,16 @@ export const FilesPreview: React.FC<{
               title={file.file_content}
               className={styles.fileName}
             >
-              <button
+              <Button
                 onClick={(event) => {
                   event.preventDefault();
                   onRemovePreviewFile(file.file_name);
                 }}
+                variant="ghost"
                 className={styles.removeFileButton}
               >
                 📎
-              </button>{" "}
+              </Button>{" "}
               {file.file_name.replace(/^\/home\/user/, "~")}
               {lineText}
             </Text>
