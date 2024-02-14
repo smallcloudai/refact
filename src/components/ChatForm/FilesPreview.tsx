@@ -25,7 +25,7 @@ export const FilesPreview: React.FC<{
                   event.preventDefault();
                   onRemovePreviewFile(file.file_name);
                 }}
-                style={{ all: "unset", backgroundColor: "transparent" }}
+                className={styles.removeFileButton}
               >
                 📎
               </button>{" "}

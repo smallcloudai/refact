@@ -31,3 +31,8 @@
   word-break: break-word;
   white-space: normal;
 }
+
+.removeFileButton {
+  all: unset;
+  background-color: transparent;
+}
