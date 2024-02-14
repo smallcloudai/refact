@@ -1,6 +1,6 @@
 use std::io::Write;
 use tokio::task::JoinHandle;
-use tracing::info;
+use tracing::{info, Level};
 use tracing_appender;
 
 use crate::background_tasks::start_background_tasks;

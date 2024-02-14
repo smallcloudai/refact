@@ -21,10 +21,7 @@ use async_trait::async_trait;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::telemetry::telemetry_structs;
-use crate::custom_error::ScratchError;
-use hyper::StatusCode;
 use tokio::sync::mpsc::Permit;
-use tower_lsp::lsp_types::WorkspaceFolder;
 use crate::receive_workspace_changes::Document;
 use crate::vecdb::vecdb::VecDb;
 
