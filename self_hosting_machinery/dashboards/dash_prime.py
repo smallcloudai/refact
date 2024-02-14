@@ -1,13 +1,8 @@
-import time
-
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import pandas as pd
 
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
-
-from self_hosting_machinery.dashboard_service.utils import StatsDataTables, complete_date_axis
+from self_hosting_machinery.dashboards.utils import complete_date_axis, StatsDataFrames
 
 
 def robot_human_ratio(robot: int, human: int) -> float:
@@ -223,33 +218,10 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
     return res
 
 
-class DashboardPrimeRouter(APIRouter):
-    def __init__(
-            self,
-            data_tables: Optional[StatsDataTables],
-            *args, **kwargs
-    ):
-        super().__init__(*args, **kwargs)
-        self._data_tables = data_tables
-        self.add_api_route("/plots-data", self._plots_data, methods=["GET"])
-
-    async def _plots_data(self):
-        if self._data_tables is None:
-            return JSONResponse(
-                content={"error": "users sent no statistics so far"},
-                media_type='application/json',
-                status_code=404,
-            )
-
-        time_start = time.time()
-        data = {
-            "table_lang_comp_stats": table_lang_comp_stats(self._data_tables.robot_human_df),
-            "barplot_rh": barplot_rh(self._data_tables.robot_human_df, self._data_tables.extra),
-            "barplot_completions": barplot_completions(self._data_tables.robot_human_df, self._data_tables.extra),
-            "barplot_users": barplot_users(self._data_tables.robot_human_df, self._data_tables.extra),
-        }
-        print(f"DashboardPrimeRouter._plots_data took: {round(time.time() - time_start, 3)}s")
-        return JSONResponse(
-            content=data,
-            media_type='application/json'
-        )
+def dashboard_prime(data_tables: StatsDataFrames):
+    return {
+        "table_lang_comp_stats": table_lang_comp_stats(data_tables.robot_human_df),
+        "barplot_rh": barplot_rh(data_tables.robot_human_df, data_tables.extra),
+        "barplot_completions": barplot_completions(data_tables.robot_human_df, data_tables.extra),
+        "barplot_users": barplot_users(data_tables.robot_human_df, data_tables.extra),
+    }
