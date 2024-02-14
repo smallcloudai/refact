@@ -116,7 +116,7 @@ describe("ComboBox", () => {
     await user.type(textarea, "@f{Enter}");
     await user.keyboard("/{Enter}");
     expect(textarea.textContent).toEqual("@file /foo");
-    await user.keyboard("{Enter}");
+    await user.type(textarea, "{Shift>}{Enter}{/Shift}");
     await user.type(textarea, "@wo{Enter}");
     expect(app.getByRole("combobox").textContent).toEqual(
       "@file /foo\n@workspace ",
