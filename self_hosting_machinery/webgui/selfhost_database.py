@@ -75,24 +75,6 @@ class ScyllaBatchInserter:
         self._cache[to] = []
 
 
-class UsersAccessControl(ScyllaModel):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @property
-    def name(self) -> str:
-        return "users_access_control"
-
-    def create_table_query(self) -> str:
-        return """
-            CREATE TABLE IF NOT EXISTS users_access_control (
-                account text PRIMARY KEY,
-                team text,
-                api_key text
-            );
-        """
-
-
 class TelemetryNetwork(ScyllaModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
