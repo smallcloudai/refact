@@ -91,7 +91,7 @@ class BaseTabStatisticsRouter(APIRouter):
 
         data_tables = await compose_data_frames(self._stats_service)
 
-        if data_tables.robot_human_df.empty or not data_tables.extra:
+        if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
                 content={"error": "users sent no statistics so far"},
                 media_type='application/json',
@@ -110,7 +110,7 @@ class BaseTabStatisticsRouter(APIRouter):
 
         data_tables = await compose_data_frames(self._stats_service)
 
-        if data_tables.robot_human_df.empty or not data_tables.extra:
+        if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
                 content={"error": "users sent no statistics so far"},
                 media_type='application/json',
@@ -129,7 +129,7 @@ class BaseTabStatisticsRouter(APIRouter):
 
         data_tables = await compose_data_frames(self._stats_service)
 
-        if data_tables.robot_human_df.empty or not data_tables.extra:
+        if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
                 content={"error": "users sent no statistics so far"},
                 media_type='application/json',
