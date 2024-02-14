@@ -153,6 +153,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       requestCommandsCompletion("@", 1);
       onSubmit(event);
       setStartPosition(null);
+      setTrigger("");
       combobox.hide();
       return;
     }
