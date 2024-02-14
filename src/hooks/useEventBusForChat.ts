@@ -681,19 +681,23 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND,
       payload: { id: state.chat.id, command },
     };
-    postMessage(action);
+    dispatch(action);
   }
 
-  function executeCommand(command: string, cursor: number) {
-    const action: RequestAtCommandPreview = {
-      type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW,
-      payload: { id: state.chat.id, query: command, cursor },
-    };
-    if (!state.chat.model) {
-      setChatModel(state.caps.default_cap);
-    }
-    postMessage(action);
-  }
+  const executeCommand = useDebounceCallback(
+    (command: string, cursor: number) => {
+      const action: RequestAtCommandPreview = {
+        type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW,
+        payload: { id: state.chat.id, query: command, cursor },
+      };
+      if (!state.chat.model) {
+        setChatModel(state.caps.default_cap);
+      }
+      postMessage(action);
+    },
+    500,
+    { leading: true },
+  );
 
   function removePreviewFileByName(name: string) {
     const action: RemovePreviewFileByName = {
@@ -701,7 +705,7 @@ export const useEventBusForChat = () => {
       payload: { id: state.chat.id, name },
     };
 
-    postMessage(action);
+    dispatch(action);
   }
 
   return {
