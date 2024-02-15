@@ -71,6 +71,8 @@
     "@vitest/coverage-v8": "^1.1.0",
     "@vitest/ui": "^1.1.0",
     "classnames": "^2.3.2",
+    "echarts": "^5.4.3",
+    "echarts-for-react": "^3.0.2",
     "eslint": "^8.55.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.33.2",
