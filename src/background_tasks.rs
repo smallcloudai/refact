@@ -55,8 +55,7 @@ pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>) -> Backgro
     if !files_jsonl_path.is_empty() {
         bg.extend(vec![
             tokio::spawn(crate::files_in_jsonl::reload_if_jsonl_changes_background_task(gcx.clone()))
-        tokio::spawn(vecdb::vecdb::vecdb_background_reload(global_context.clone())),
-    ]);
+        ]);
     }
     bg
 }

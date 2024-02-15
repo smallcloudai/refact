@@ -20,14 +20,13 @@ use crate::completion_cache;
 use crate::files_in_workspace::DocumentInfo;
 use crate::telemetry::telemetry_structs;
 use crate::telemetry::snippets_collection;
-use crate::vecdb::structs::VecdbSearch;
 
 
 const DEBUG: bool = false;
 
 
 #[derive(Debug)]
-pub struct SingleFileFIM<T> {
+pub struct SingleFileFIM {
     pub t: HasTokenizerAndEot,
     pub post: CodeCompletionPost,
     pub order: String,
@@ -39,7 +38,7 @@ pub struct SingleFileFIM<T> {
     pub ast_module: Arc<AMutex<Option<AstModule>>>,
 }
 
-impl<T: Send + Sync + VecdbSearch> SingleFileFIM<T> {
+impl SingleFileFIM {
     pub fn new(
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: CodeCompletionPost,

@@ -16,7 +16,7 @@ use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPos
 use crate::global_context;
 use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
-use crate::receive_workspace_changes;
+use crate::files_in_workspace;
 use crate::telemetry;
 use crate::telemetry::snippets_collection;
 use crate::vecdb::file_filter::is_valid_file;
@@ -205,13 +205,6 @@ impl LanguageServer for Backend {
         files_in_workspace::on_workspaces_init(
             self.gcx.clone(),
         ).await;
-
-        if let Some(folders) = params.workspace_folders {
-            match *self.gcx.read().await.vec_db.lock().await {
-                Some(ref mut db) => db.init_folders(folders).await,
-                None => {},
-            };
-        }
 
         let completion_options: CompletionOptions;
         completion_options = CompletionOptions {

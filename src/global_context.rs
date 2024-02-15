@@ -27,7 +27,6 @@ use crate::telemetry::telemetry_structs;
 use crate::files_in_workspace::Document;
 use crate::vecdb::vecdb::VecDb;
 use tokio::sync::mpsc::Permit;
-use crate::receive_workspace_changes::Document;
 
 
 #[derive(Debug, StructOpt, Clone)]

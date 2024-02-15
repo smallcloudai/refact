@@ -21,13 +21,12 @@ use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::completion_cache;
 use crate::telemetry::telemetry_structs;
 use crate::cached_tokenizers;
-use crate::vecdb::structs::VecdbSearch;
 
 
 fn verify_has_send<T: Send>(_x: &T) {}
 
 
-pub async fn create_code_completion_scratchpad<T>(
+pub async fn create_code_completion_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     model_name_for_tokenizer: String,

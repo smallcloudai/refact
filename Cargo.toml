@@ -80,6 +80,7 @@ arrow-schema= "47.0.0"
 async_once= "0.2.6"
 async-process = "2.0.1"
 itertools = "0.11.0"
+fst = { version = "0.4.7", features = ["levenshtein"] }
 lance = "=0.9.0"
 lance-linalg = "=0.9.0"
 lance-index = "=0.9.0"
