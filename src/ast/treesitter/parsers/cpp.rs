@@ -67,7 +67,7 @@ fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<
             start_point: Default::default(),
             end_point: Default::default(),
         },
-        type_name: None,
+        type_names: vec![],
     };
     for capture in captures {
         let capture_name = &query.capture_names()[capture.index as usize];
@@ -81,7 +81,7 @@ fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<
             }
             "variable_type" => {
                 let text = code.slice(capture.node.byte_range());
-                var.type_name = Some(text.to_string());
+                var.type_names.push(text.to_string());
             }
             &_ => {}
         }

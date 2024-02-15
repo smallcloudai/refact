@@ -156,14 +156,16 @@ impl LanguageParser for RustParser {
                 start_point: Default::default(),
                 end_point: Default::default(),
             },
-            type_name: None,
+            type_names: vec![],
         };
         for capture in captures {
             let capture_name = &query.capture_names()[capture.index as usize];
             match capture_name.as_str() {
                 "variable" => {
                     var.range = capture.node.range();
-                    var.type_name = try_to_find_type(&mut self.parser, &capture.node, code);
+                    if let Some(var_type) = try_to_find_type(&mut self.parser, &capture.node, code) {
+                        var.type_names.push(var_type);
+                    }
                 }
                 "variable_name" => {
                     let text = code.slice(capture.node.byte_range());

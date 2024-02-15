@@ -40,14 +40,15 @@ pub struct VariableInfo {
     pub name: String,
     #[serde(with = "RangeDef")]
     pub range: Range,
-    pub type_name: Option<String>,
+    pub type_names: Vec<String>,
 }
 
 impl UsageSymbolInfo for VariableInfo {
     fn dump_path(&self) -> String {
-        match self.type_name.as_ref() {
-            Some(t) => format!("{}::{}", t, self.name),
-            None => self.name.clone(),
+        if self.type_names.len() > 0 {
+            format!("{}::{}", self.type_names.first().unwrap(), self.name)
+        } else {
+            self.name.clone()
         }
     }
     fn distance_to_cursor(&self, cursor: &Point) -> usize {

@@ -130,7 +130,7 @@ impl LanguageParser for PythonParser {
                 start_point: Default::default(),
                 end_point: Default::default(),
             },
-            type_name: None,
+            type_names: vec![],
         };
         for capture in captures {
             let capture_name = &query.capture_names()[capture.index as usize];
@@ -144,24 +144,21 @@ impl LanguageParser for PythonParser {
                 }
                 "variable_type" => {
                     let text = code.slice(capture.node.byte_range());
-                    var.type_name = Some(text.to_string());
+                    var.type_names.push(text.to_string());
                 }
                 "variable_right" => {
-                    if var.type_name.is_some() {
-                        continue;
-                    }
                     match capture.node.kind() {
                         "string" => {
-                            var.type_name = Some("str".to_string());
+                            var.type_names.push("str".to_string());
                         }
                         "integer" => {
-                            var.type_name = Some("int".to_string());
+                            var.type_names.push("int".to_string());
                         }
                         "false" | "true" => {
-                            var.type_name = Some("bool".to_string());
+                            var.type_names.push("bool".to_string());
                         }
                         "float" => {
-                            var.type_name = Some("float".to_string());
+                            var.type_names.push("float".to_string());
                         }
                         // "call" => {
                         //     let node = capture.node;
