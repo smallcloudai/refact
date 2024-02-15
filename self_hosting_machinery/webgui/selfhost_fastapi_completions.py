@@ -271,7 +271,7 @@ class BaseCompletionsRouter(APIRouter):
             "endpoint_style": "openai",
             "telemetry_basic_dest": "/stats/telemetry-basic",
             "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
-            "telemetry_get_my_own_stats": "/stats/rh-stats",
+            "telemetry_basic_retrieve_my_own": "/stats/rh-stats",
             "running_models": models_available,
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
