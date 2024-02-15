@@ -20,7 +20,6 @@ export type ComboBoxProps = {
     number?: number,
   ) => void;
   executeCommand: (command: string, cursor: number) => void;
-  commandIsExecutable: boolean;
   setSelectedCommand: (command: string) => void;
   selectedCommand: string;
   removePreviewFileByName: (name: string) => void;
@@ -36,7 +35,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   commandArguments,
   requestCommandsCompletion,
   executeCommand,
-  commandIsExecutable,
   setSelectedCommand,
   selectedCommand,
   removePreviewFileByName,
@@ -63,19 +61,14 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const hasMatches = !!trigger && !!matches.length;
 
   React.useEffect(() => {
-    if (trigger && commandIsExecutable) {
-      const place = (startPosition ?? 0) + trigger.length - 1;
-      executeCommand(value, place);
-    }
-  }, [trigger, commandIsExecutable, executeCommand, startPosition, value]);
+    if (!ref.current) return;
+    if (startPosition === null) return;
+    if (!trigger) return;
+    requestCommandsCompletion(value, ref.current.selectionStart);
+    executeCommand(value, ref.current.selectionStart);
 
-  React.useEffect(() => {
-    if (trigger) {
-      requestCommandsCompletion(trigger, trigger.length);
-    } else {
-      requestCommandsCompletion("@", 1);
-    }
-  }, [trigger, requestCommandsCompletion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startPosition, trigger, value]);
 
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
@@ -105,23 +98,35 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       event.preventDefault();
     }
 
-    if (event.key === "@" && !state.open && !selectedCommand) {
-      setTrigger(event.key);
-      const start = ref.current ? ref.current.selectionStart : null;
-      setStartPosition(start);
-      combobox.setValue("");
-      combobox.show();
-    }
-
     if (wasDelete && event.key !== "Backspace") {
       setWasDelete(false);
+    } else if (event.key === "Backspace") {
+      setWasDelete(true);
+    }
+  };
+
+  const onKeyUp = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!ref.current) return;
+
+    const state = combobox.getState();
+    if (!state.activeValue && event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      onSubmit(event);
+      setStartPosition(null);
+      setTrigger("");
+      combobox.hide();
+      return;
     }
 
-    if (!ref.current) return;
-    if (event.key === "Backspace") {
-      setWasDelete(true);
-      const maybeCommand = detectCommand(ref.current);
+    if (event.key === "Enter" && event.shiftKey) {
+      setTrigger("");
+      combobox.hide();
+      return;
+    }
 
+    if (wasDelete) {
+      const maybeCommand = detectCommand(ref.current);
       if (maybeCommand !== null) {
         const maybeCommandWithArguments = maybeCommand.command.split(" ");
         const [command, args] = maybeCommandWithArguments;
@@ -141,27 +146,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         setSelectedCommand("");
       }
     }
-  };
 
-  const onKeyUp = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (!ref.current) return;
-
-    const state = combobox.getState();
-    if (!state.activeValue && event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      requestCommandsCompletion("@", 1);
-      onSubmit(event);
-      setStartPosition(null);
-      setTrigger("");
-      combobox.hide();
-      return;
-    }
-
-    if (event.key === "Enter" && event.shiftKey) {
-      setTrigger("");
-      combobox.hide();
-      return;
+    if (event.key === "@" && !state.open && !selectedCommand) {
+      setTrigger(event.key);
+      const start = ref.current.selectionStart - 1;
+      setStartPosition(start);
+      combobox.setValue("");
+      combobox.show();
     }
 
     const tabOrEnter = event.key === "Tab" || event.key === "Enter";
@@ -173,12 +164,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       event.preventDefault();
       event.stopPropagation();
 
-      const newInput = replaceValue(
-        startPosition,
-        ref.current,
-        trigger,
-        command,
-      );
+      const newInput = replaceValue(ref.current, trigger, command);
 
       setTrigger(command);
       onChange(newInput);
@@ -188,12 +174,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     }
 
     if (event.key === "Space" && state.open && commands.includes(trigger)) {
-      const newInput = replaceValue(
-        startPosition,
-        ref.current,
-        trigger,
-        command,
-      );
+      const newInput = replaceValue(ref.current, trigger, command);
 
       event.preventDefault();
       event.stopPropagation();
@@ -230,7 +211,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       const command = selectedCommand ? item : item + " ";
 
       if (selectedCommand) {
-        // arguments
         setSelectedCommand("");
         setTrigger(command);
         combobox.hide();
@@ -239,7 +219,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         setTrigger(command);
       }
 
-      const nextValue = replaceValue(startPosition, textarea, trigger, command);
+      const nextValue = replaceValue(textarea, trigger, command);
+
       onChange(nextValue);
     };
 

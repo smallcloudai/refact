@@ -7,20 +7,6 @@ import { TextArea, type TextAreaProps } from "../TextArea";
 const App = (props: Partial<ComboBoxProps>) => {
   const [value, setValue] = React.useState<string>(props.value ?? "");
   const [selectedCommand, setSelectedCommand] = React.useState<string>("");
-  const [commandIsExecutable, setCommandIsExecutable] =
-    React.useState<boolean>(false);
-
-  React.useEffect(() => {
-    if (
-      selectedCommand === "@workspace " ||
-      selectedCommand === "@file /bar" ||
-      selectedCommand === "@file /foo"
-    ) {
-      setCommandIsExecutable(true);
-    } else {
-      setCommandIsExecutable(false);
-    }
-  }, [selectedCommand, value]);
 
   const requestCompletionSpy = vi.fn();
   const onSubmitSpy = vi.fn();
@@ -33,7 +19,6 @@ const App = (props: Partial<ComboBoxProps>) => {
     onSubmit: onSubmitSpy,
     placeholder: "Type @ for commands",
     render: (props: TextAreaProps) => <TextArea {...props} />,
-    commandIsExecutable,
     executeCommand: () => ({}),
     selectedCommand,
     setSelectedCommand,

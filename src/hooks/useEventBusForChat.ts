@@ -330,12 +330,6 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     return {
       ...state,
       files_in_preview: filesInPreview,
-      rag_commands: {
-        ...state.rag_commands,
-        selected_command: "",
-        is_cmd_executable: false,
-        available_commands: [],
-      },
     };
   }
 

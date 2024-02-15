@@ -186,7 +186,6 @@ export const ChatForm: React.FC<{
           }
           render={(props) => <TextArea disabled={isStreaming} {...props} />}
           executeCommand={executeCommand}
-          commandIsExecutable={commands.is_cmd_executable}
           selectedCommand={commands.selected_command}
           setSelectedCommand={setSelectedCommand}
           removePreviewFileByName={removePreviewFileByName}
