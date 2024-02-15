@@ -2,8 +2,8 @@
   position: absolute;
   /* display: flex;
     gap: 4px; */
-  right: 0;
-  bottom: 6px;
+  right: 6px;
+  bottom: 8px;
   padding: 1px 6px;
 }
 
@@ -16,8 +16,10 @@
   border: 1px solid var(--gray-a7);
   /* padding: 10px; */
   border-radius: 6px;
-  position: relative;
   flex-shrink: 0;
+  max-height: 50dvh;
+  /* TODO: fix this to use the scrollarea component */
+  overflow: scroll;
 }
 
 .file {

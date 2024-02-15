@@ -102,6 +102,8 @@
 [x] use syntax highlighting in the users message
 [x] bug when running retry, user message isn't removed
 [x] bug with the combobox being open after asking a question
+[ ] file preview should scroll with textarea
+[ ] chat content should stay at end when textarea grows
 
 ### EVENTS TODO FOR IDEs
 
