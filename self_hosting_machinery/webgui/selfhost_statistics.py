@@ -5,7 +5,7 @@ from typing import List, Any, Dict
 from more_itertools import chunked
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
-from fastapi import APIRouter, Request, HTTPException, Header
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
 
 from self_hosting_machinery.dashboards.dash_prime import dashboard_prime
@@ -48,12 +48,6 @@ class BaseTabStatisticsRouter(APIRouter):
     ):
         super().__init__(*args, **kwargs)
         self._stats_service = stats_service
-        self._stats_service_not_available_response = JSONResponse(
-            content={
-                'error': "Statistics service is not ready, waiting for database connection",
-            },
-            media_type='application/json',
-            status_code=500)
         self.add_api_route('/rh-stats', self._rh_stats, methods=["GET"])
         self.add_api_route("/telemetry-basic", self._telemetry_basic, methods=["POST"])
         self.add_api_route("/telemetry-snippets", self._telemetry_snippets, methods=["POST"])
@@ -61,17 +55,15 @@ class BaseTabStatisticsRouter(APIRouter):
         self.add_api_route('/dash-teams', self._dash_teams_get, methods=['GET'])
         self.add_api_route('/dash-teams', self._dash_teams_post, methods=['POST'])
 
-    async def _account_from_bearer(self, authorization: str) -> str:
+    async def _account_from_request(self, request: Request) -> Any:
         raise NotImplementedError()
 
-    async def _rh_stats(self, authorization: str = Header(None)):
-        account = await self._account_from_bearer(authorization)
-        if not self._stats_service.is_ready:
-            raise HTTPException(status_code=500, detail="Statistics service is not ready, waiting for database connection")
+    async def _rh_stats(self, request: Request):
+        account = await self._account_from_request(request)
 
         async def streamer():
             records = []
-            async for r in self._stats_service.get_robot_human_for_account(account):
+            async for r in self._stats_service.get_robot_human_for_account(**account):
                 records.append(r)
 
             for records_batch in chunked(records, 100):
@@ -86,9 +78,6 @@ class BaseTabStatisticsRouter(APIRouter):
             raise HTTPException(status_code=500, detail=str(e))
 
     async def _dash_prime_get(self):
-        if not self._stats_service.is_ready:
-            return self._stats_service_not_available_response
-
         data_tables = await compose_data_frames(self._stats_service)
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
@@ -105,9 +94,6 @@ class BaseTabStatisticsRouter(APIRouter):
         )
 
     async def _dash_teams_get(self):
-        if not self._stats_service.is_ready:
-            return self._stats_service_not_available_response
-
         data_tables = await compose_data_frames(self._stats_service)
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
@@ -124,9 +110,6 @@ class BaseTabStatisticsRouter(APIRouter):
         )
 
     async def _dash_teams_post(self, post: DashTeamsGenDashData):
-        if not self._stats_service.is_ready:
-            return self._stats_service_not_available_response
-
         data_tables = await compose_data_frames(self._stats_service)
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
@@ -142,11 +125,8 @@ class BaseTabStatisticsRouter(APIRouter):
             media_type='application/json'
         )
 
-    async def _telemetry_basic(self, data: TelemetryBasicData, request: Request, authorization: str = Header(None)):
-        account = await self._account_from_bearer(authorization)
-
-        if not self._stats_service.is_ready:
-            return self._stats_service_not_available_response
+    async def _telemetry_basic(self, data: TelemetryBasicData, request: Request):
+        account = await self._account_from_request(request)
 
         ip = request.client.host
         clamp = data.clamp()
@@ -156,7 +136,6 @@ class BaseTabStatisticsRouter(APIRouter):
                 if clamp['teletype'] == 'network':
                     await inserter.insert(
                         dict(
-                            tenant_name=account,
                             ip=ip,
                             enduser_client_version=clamp['enduser_client_version'],
                             counter=record['counter'],
@@ -166,14 +145,14 @@ class BaseTabStatisticsRouter(APIRouter):
                             url=record['url'],
                             teletype=clamp['teletype'],
                             ts_start=clamp['ts_start'],
-                            ts_end=clamp['ts_end']
+                            ts_end=clamp['ts_end'],
+                            **account,
                         ),
                         to="net"
                     )
                 elif clamp['teletype'] == 'robot_human':
                     await inserter.insert(
                         dict(
-                            tenant_name=account,
                             ip=ip,
                             enduser_client_version=clamp['enduser_client_version'],
 
@@ -186,13 +165,13 @@ class BaseTabStatisticsRouter(APIRouter):
                             teletype=clamp['teletype'],
                             ts_end=clamp['ts_end'],
                             ts_start=clamp['ts_start'],
+                            **account,
                         ),
                         to="rh"
                     )
                 elif clamp['teletype'] == 'comp_counters':
                     await inserter.insert(
                         dict(
-                            tenant_name=account,
                             ip=ip,
                             enduser_client_version=clamp['enduser_client_version'],
 
@@ -205,18 +184,16 @@ class BaseTabStatisticsRouter(APIRouter):
 
                             teletype=clamp['teletype'],
                             ts_start=clamp['ts_start'],
-                            ts_end=clamp['ts_end']
+                            ts_end=clamp['ts_end'],
+                            **account,
                         ),
                         to="comp"
                     )
 
         return JSONResponse({"retcode": "OK"})
 
-    async def _telemetry_snippets(self, data: TelemetryBasicData, request: Request, authorization: str = Header(None)):
-        account = await self._account_from_bearer(authorization)
-
-        if not self._stats_service.is_ready:
-            return self._stats_service_not_available_response
+    async def _telemetry_snippets(self, data: TelemetryBasicData, request: Request):
+        account = await self._account_from_request(request)
 
         ip = request.client.host
         clamp = data.clamp()
@@ -225,7 +202,6 @@ class BaseTabStatisticsRouter(APIRouter):
             for record in clamp['records']:
                 await inserter.insert(
                     dict(
-                        tenant_name=account,
                         ip=ip,
                         enduser_client_version=clamp['enduser_client_version'],
                         model=record['model'],
@@ -240,7 +216,8 @@ class BaseTabStatisticsRouter(APIRouter):
                         cursor_line=record['inputs']['cursor']['line'],
                         multiline=record['inputs']['multiline'],
                         sources=json.dumps(record['inputs']['sources']),
-                        teletype=clamp['teletype']
+                        teletype=clamp['teletype'],
+                        **account,
                     ),
                     to="snip"
                 )
@@ -249,12 +226,16 @@ class BaseTabStatisticsRouter(APIRouter):
 
 
 class TabStatisticsRouter(BaseTabStatisticsRouter):
+
     def __init__(self, session: RefactSession, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._session = session
 
-    async def _account_from_bearer(self, authorization: str) -> str:
+    async def _account_from_request(self, request: Request) -> Dict:
         try:
-            return self._session.header_authenticate(authorization)
+            authorization = request.headers.get("Authorization", None)
+            return {
+                "tenant_name": self._session.header_authenticate(authorization),
+            }
         except BaseException as e:
             raise HTTPException(status_code=401, detail=str(e))

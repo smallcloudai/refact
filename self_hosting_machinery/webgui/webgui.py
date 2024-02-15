@@ -11,6 +11,7 @@ import weakref
 from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
+from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -85,6 +86,21 @@ class WebGUI(FastAPI):
                     return await call_next(request)
                 return RedirectResponse(url="/login")
 
+        class StatsMiddleware(BaseHTTPMiddleware):
+
+            def __init__(self,
+                         stats_service: StatisticsService,
+                         *args, **kwargs):
+                self._stats_service = stats_service
+                super().__init__(*args, **kwargs)
+
+            async def dispatch(self, request: Request, call_next: Callable):
+                if not self._stats_service.is_ready:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Statistics service is not ready, waiting for database connection")
+                return await call_next(request)
+
         self.add_middleware(
             CORSMiddleware,
             allow_origins=[],
@@ -96,6 +112,10 @@ class WebGUI(FastAPI):
         self.add_middleware(
             LoginMiddleware,
             session=self._session,
+        )
+        self.add_middleware(
+            StatsMiddleware,
+            stats_service=self._stats_service,
         )
 
         self.add_event_handler("startup", self._startup_event)

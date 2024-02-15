@@ -301,9 +301,9 @@ class StatisticsService:
         else:
             raise NotImplementedError(f"cannot insert to {to}; type {to} does not exist")
 
-    async def get_robot_human_for_account(self, account: str) -> AsyncIterator[Dict]:
+    async def get_robot_human_for_account(self, tenant_name: str) -> AsyncIterator[Dict]:
         rows = await Select("telemetry_robot_human")\
-            .where("tenant_name =?", [account])\
+            .where("tenant_name =?", [tenant_name])\
             .allow_filtering()\
             .execute(self.session, paged=True)
         async for r in rows:
