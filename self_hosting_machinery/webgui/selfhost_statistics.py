@@ -11,8 +11,8 @@ from fastapi.responses import JSONResponse
 from self_hosting_machinery.dashboards.dash_prime import dashboard_prime
 from self_hosting_machinery.dashboards.dash_teams import teams_data, dashboard_teams
 from self_hosting_machinery.webgui.selfhost_database import StatisticsService, ScyllaBatchInserter
+from self_hosting_machinery.webgui.selfhost_database import StatisticsService, ScyllaBatchInserter
 from self_hosting_machinery.webgui.selfhost_login import RefactSession
-from self_hosting_machinery.dashboards.utils import compose_data_frames
 
 
 __all__ = ["BaseTabStatisticsRouter", "TabStatisticsRouter", "DashTeamsGenDashData"]
@@ -77,8 +77,8 @@ class BaseTabStatisticsRouter(APIRouter):
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def _dash_prime_get(self):
-        data_tables = await compose_data_frames(self._stats_service)
+    async def _dash_prime_get(self, request: Request):
+        data_tables = await self._stats_service.compose_data_frames(request)
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
@@ -93,8 +93,8 @@ class BaseTabStatisticsRouter(APIRouter):
             media_type='application/json'
         )
 
-    async def _dash_teams_get(self):
-        data_tables = await compose_data_frames(self._stats_service)
+    async def _dash_teams_get(self, request: Request):
+        data_tables = await self._stats_service.compose_data_frames(request)
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
@@ -109,8 +109,8 @@ class BaseTabStatisticsRouter(APIRouter):
             media_type='application/json'
         )
 
-    async def _dash_teams_post(self, post: DashTeamsGenDashData):
-        data_tables = await compose_data_frames(self._stats_service)
+    async def _dash_teams_post(self, post: DashTeamsGenDashData, request: Request):
+        data_tables = await self._stats_service.compose_data_frames(request)
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
