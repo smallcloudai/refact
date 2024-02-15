@@ -40,14 +40,21 @@ export function replaceValue(
   command: string,
   startAt: number | null,
 ) {
-  const startPosition = startAt ?? element.selectionStart;
-  const endPosition = element.selectionStart + trigger.length;
+  const maybeExistingCommand = detectCommand(element);
+  const maybeEndOfCommand = maybeExistingCommand
+    ? maybeExistingCommand.startPosition + maybeExistingCommand.command.length
+    : null;
+  const startPosition =
+    maybeExistingCommand?.startPosition ?? startAt ?? element.selectionStart;
+
+  const endPosition =
+    maybeEndOfCommand ?? element.selectionStart + trigger.length;
 
   const start = element.value.substring(0, startPosition);
   const end = element.value.substring(endPosition);
   const result = `${start}${command}${end}`;
 
-  element.selectionStart = endPosition;
+  element.selectionStart = result.length - end.length;
 
   return result;
 }

@@ -194,7 +194,6 @@ describe("ComboBox", () => {
     const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
     await user.type(textarea, "@fi{Enter}${Enter}");
     expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
-    await user.type(textarea, "@fi{Enter}${Enter}");
     await user.type(textarea, "{Shift>}{Enter}{/Shift}hello");
     expect(textarea.textContent).toEqual("@file /foo\nhello");
 
