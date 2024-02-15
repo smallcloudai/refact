@@ -61,11 +61,11 @@ class BaseTabStatisticsRouter(APIRouter):
         self.add_api_route('/dash-teams', self._dash_teams_get, methods=['GET'])
         self.add_api_route('/dash-teams', self._dash_teams_post, methods=['POST'])
 
-    def _account_from_bearer(self, authorization: str) -> str:
+    async def _account_from_bearer(self, authorization: str) -> str:
         raise NotImplementedError()
 
     async def _rh_stats(self, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
+        account = await self._account_from_bearer(authorization)
         if not self._stats_service.is_ready:
             raise HTTPException(status_code=500, detail="Statistics service is not ready, waiting for database connection")
 
@@ -143,7 +143,7 @@ class BaseTabStatisticsRouter(APIRouter):
         )
 
     async def _telemetry_basic(self, data: TelemetryBasicData, request: Request, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
+        account = await self._account_from_bearer(authorization)
 
         if not self._stats_service.is_ready:
             return self._stats_service_not_available_response
@@ -213,7 +213,7 @@ class BaseTabStatisticsRouter(APIRouter):
         return JSONResponse({"retcode": "OK"})
 
     async def _telemetry_snippets(self, data: TelemetryBasicData, request: Request, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
+        account = await self._account_from_bearer(authorization)
 
         if not self._stats_service.is_ready:
             return self._stats_service_not_available_response
@@ -253,7 +253,7 @@ class TabStatisticsRouter(BaseTabStatisticsRouter):
         super().__init__(*args, **kwargs)
         self._session = session
 
-    def _account_from_bearer(self, authorization: str) -> str:
+    async def _account_from_bearer(self, authorization: str) -> str:
         try:
             return self._session.header_authenticate(authorization)
         except BaseException as e:

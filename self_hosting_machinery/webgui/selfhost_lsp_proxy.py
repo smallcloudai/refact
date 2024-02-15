@@ -38,14 +38,14 @@ class LspProxy(APIRouter):
         self._session = session
         self._client = httpx.AsyncClient(base_url=lsp_address)
 
-    def _account_from_bearer(self, authorization: str) -> str:
+    async def _account_from_bearer(self, authorization: str) -> str:
         try:
             return self._session.header_authenticate(authorization)
         except BaseException as e:
             raise HTTPException(status_code=401, detail=str(e))
 
     async def _reverse_proxy_chat(self, request: Request):
-        account = self._account_from_bearer(request.headers.get("Authorization", None))
+        account = await self._account_from_bearer(request.headers.get("Authorization", None))
         return await self._reverse_proxy(request)
 
     async def _reverse_proxy(self, request: Request):

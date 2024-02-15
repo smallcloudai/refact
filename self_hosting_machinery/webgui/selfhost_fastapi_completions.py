@@ -233,7 +233,7 @@ class BaseCompletionsRouter(APIRouter):
         self._model_assigner = model_assigner
         self._timeout = timeout
 
-    def _account_from_bearer(self, authorization: str) -> str:
+    async def _account_from_bearer(self, authorization: str) -> str:
         raise NotImplementedError()
 
     @staticmethod
@@ -292,7 +292,7 @@ class BaseCompletionsRouter(APIRouter):
         return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
     async def _login(self, authorization: str = Header(None)):
-        self._account_from_bearer(authorization)
+        await self._account_from_bearer(authorization)
 
         longthink_functions = dict()
         longthink_filters = set()
@@ -340,14 +340,14 @@ class BaseCompletionsRouter(APIRouter):
         }
 
     async def _secret_key_activate(self, authorization: str = Header(None)):
-        self._account_from_bearer(authorization)
+        await self._account_from_bearer(authorization)
         return {
             "retcode": "OK",
             "human_readable_message": "API key verified",
         }
 
     async def _completions(self, post: NlpCompletion, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
+        account = await self._account_from_bearer(authorization)
 
         ticket = Ticket("comp-")
         req = post.clamp()
@@ -377,7 +377,7 @@ class BaseCompletionsRouter(APIRouter):
         )
 
     async def _chat(self, post: ChatContext, request: Request, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
+        account = await self._account_from_bearer(authorization)
 
         ticket = Ticket("comp-")
 
@@ -448,7 +448,7 @@ class BaseCompletionsRouter(APIRouter):
                 yield {"embedding": embedding, "index": idx}
 
     async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
+        account = await self._account_from_bearer(authorization)
         data = [
             {
                 "embedding": res["embedding"],
@@ -467,7 +467,7 @@ class BaseCompletionsRouter(APIRouter):
         }
 
     async def _models(self, authorization: str = Header(None)):
-        self._account_from_bearer(authorization)
+        await self._account_from_bearer(authorization)
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get("http://127.0.0.1:8001/v1/caps") as resp:
@@ -496,7 +496,7 @@ class BaseCompletionsRouter(APIRouter):
         }
 
     async def _chat_completions(self, post: ChatContext, authorization: str = Header(None)):
-        account = self._account_from_bearer(authorization)
+        account = await self._account_from_bearer(authorization)
 
         prefix, postfix = "data: ", "\n\n"
 
@@ -565,7 +565,7 @@ class CompletionsRouter(BaseCompletionsRouter):
         super().__init__(*args, **kwargs)
         self._session = session
 
-    def _account_from_bearer(self, authorization: str) -> str:
+    async def _account_from_bearer(self, authorization: str) -> str:
         try:
             return self._session.header_authenticate(authorization)
         except BaseException as e:

@@ -205,7 +205,7 @@ class DisableLogger:
 
 
 class RefactDatabase:
-    KEYSPACE = os.environ.get("REFACT_KEYSPACE", "temp")
+    KEYSPACE = os.environ.get("REFACT_KEYSPACE", "smc")
 
     def __init__(self):
         self._session = None
