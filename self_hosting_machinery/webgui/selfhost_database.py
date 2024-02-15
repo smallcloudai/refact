@@ -205,7 +205,7 @@ class DisableLogger:
 
 
 class RefactDatabase:
-    KEYSPACE = os.environ.get("REFACT_KEYSPACE", "smc")
+    KEYSPACE = os.environ.get("REFACT_KEYSPACE", "temp")
 
     def __init__(self):
         self._session = None
@@ -344,10 +344,14 @@ class StatisticsService:
 
     async def select_users_to_team(self) -> Dict[str, str]:
         res = {}
-        rows = await Select("users_access_control").execute(self.session, paged=True)
-        async for r in rows:
-            res[r["account"]] = r["team"]
-        return res
+        # table users_access_control might not exist for refact OSS
+        try:
+            rows = await Select("users_access_control").execute(self.session, paged=True)
+            async for r in rows:
+                res[r["account"]] = r["team"]
+            return res
+        except Exception:
+            return {"user": "default"}
 
     @property
     def session(self) -> Scylla:
