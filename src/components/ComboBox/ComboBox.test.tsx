@@ -188,4 +188,20 @@ describe("ComboBox", () => {
     expect(app.queryByText("/foo")).not.toBeNull();
     expect(app.queryByText("/bar")).not.toBeNull();
   });
+
+  test("change a command after typing", async () => {
+    const { user, ...app } = render(<App />);
+    const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
+    await user.type(textarea, "@fi{Enter}${Enter}");
+    expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
+    await user.type(textarea, "@fi{Enter}${Enter}");
+    await user.type(textarea, "{Shift>}{Enter}{/Shift}hello");
+    expect(textarea.textContent).toEqual("@file /foo\nhello");
+
+    textarea.selectionStart = "@file /foo".length;
+    textarea.selectionEnd = textarea.selectionStart;
+    await user.keyboard("{Backspace}{Backspace}{Backspace}b${Enter}");
+
+    expect(textarea.textContent).toEqual("@file /bar\nhello");
+  });
 });
