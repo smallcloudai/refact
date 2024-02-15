@@ -343,15 +343,7 @@ class StatisticsService:
         return records
 
     async def select_users_to_team(self) -> Dict[str, str]:
-        res = {}
-        # table users_access_control might not exist for refact OSS
-        try:
-            rows = await Select("users_access_control").execute(self.session, paged=True)
-            async for r in rows:
-                res[r["account"]] = r["team"]
-            return res
-        except Exception:
-            return {"user": "default"}
+        return {"user": "default"}
 
     @property
     def session(self) -> Scylla:
