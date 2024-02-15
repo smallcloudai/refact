@@ -343,11 +343,7 @@ class StatisticsService:
         return records
 
     async def select_users_to_team(self) -> Dict[str, str]:
-        res = {}
-        rows = await Select("users_access_control").execute(self.session, paged=True)
-        async for r in rows:
-            res[r["account"]] = r["team"]
-        return res
+        return {"user": "default"}
 
     @property
     def session(self) -> Scylla:
