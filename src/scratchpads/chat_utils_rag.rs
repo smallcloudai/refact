@@ -18,7 +18,7 @@ pub fn postprocess_at_results(
     // 1. Decode all
     let mut cxfile_list: Vec<ContextFile> = vec![];
     for msg in messages {
-        cxfile_list.extend(serde_json::from_str::<Vec<ContextFile>>(&msg.content).unwrap());
+        cxfile_list.extend(serde_json::from_str::<Vec<ContextFile>>(&msg.content).unwrap()); // TODO: this unwrap() is not good
     }
     // 2. Sort by usefullness
     cxfile_list.sort_by(|a, b| {
@@ -99,6 +99,7 @@ pub async fn run_at_commands(
 ) {
     // TODO: don't operate on `post`, return a copy of the messages
     let context = AtCommandsContext::new(global_context.clone()).await;
+    // TODO: delete the last, not just take the last
     let mut query = post.messages.last().unwrap().content.clone(); // latest_msg_cont
     let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &context).await;
 

@@ -22,8 +22,10 @@ pub struct GenericChatScratchpad {
     pub t: HasTokenizerAndEot,
     pub dd: DeltaDeltaChatStreamer,
     pub post: ChatPost,
-    pub token_esc: String,    // for models that switch between sections using <esc>SECTION
-    pub keyword_syst: String, // "SYSTEM:" keyword means it's not one token
+    pub token_esc: String,
+    // for models that switch between sections using <esc>SECTION
+    pub keyword_syst: String,
+    // "SYSTEM:" keyword means it's not one token
     pub keyword_user: String,
     pub keyword_asst: String,
     pub default_system_message: String,
@@ -77,7 +79,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
             self.dd.stop_list.push(self.keyword_user.clone());
             self.dd.stop_list.push(self.keyword_asst.clone());
         }
-        self.dd.stop_list.retain(|x|!x.is_empty());
+        self.dd.stop_list.retain(|x| !x.is_empty());
 
         Ok(())
     }

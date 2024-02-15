@@ -5,6 +5,7 @@ use std::future::Future;
 use std::hash::Hasher;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::{AcquireError, Mutex as AMutex, Semaphore, SemaphorePermit};
 use tokio::sync::RwLock as ARwLock;
@@ -14,6 +15,8 @@ use tokio::signal;
 use tokenizers::Tokenizer;
 use structopt::StructOpt;
 use hyper::StatusCode;
+use crate::ast::ast_module::AstModule;
+
 use tower_lsp::lsp_types::WorkspaceFolder;
 
 use crate::custom_error::ScratchError;
@@ -21,9 +24,10 @@ use async_trait::async_trait;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::telemetry::telemetry_structs;
+use crate::files_in_workspace::Document;
+use crate::vecdb::vecdb::VecDb;
 use tokio::sync::mpsc::Permit;
 use crate::receive_workspace_changes::Document;
-use crate::vecdb::vecdb::VecDb;
 
 
 #[derive(Debug, StructOpt, Clone)]
@@ -50,14 +54,17 @@ pub struct CommandLine {
     pub insecure: bool,
     #[structopt(long, short="v", help="Verbose logging, lots of output")]
     pub verbose: bool,
-    #[structopt(long, help="Whether to use a vector database")]
+    #[structopt(long, help="Use AST. For it to start working, give it a jsonl files list or LSP workspace folders.")]
+    pub ast: bool,
+    #[structopt(long, help="Use vector database. Give it a jsonl files list or LSP workspace folders, and also caps need to have an embedding model.")]
     pub vecdb: bool,
-    #[structopt(long, short = "f", default_value = "", help = "The path to jsonl file which contains filtered source files")]
-    pub files_set_path: String,
-    #[structopt(long, default_value = "", help = "Vecdb forced path")]
+    #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to vecdb and ast")]
+    pub files_jsonl_path: String,
+    #[structopt(long, default_value="", help="Vecdb storage path")]
     pub vecdb_forced_path: String,
+    #[structopt(long, short="w", default_value="", help="Workspace folder to find files for vecdb and AST. An LSP or HTTP request can override this later.")]
+    pub workspace_folder: String,
 }
-
 impl CommandLine {
     fn create_hash(msg: String) -> String {
         let mut hasher = DefaultHasher::new();;
@@ -69,9 +76,9 @@ impl CommandLine {
     }
 }
 
-pub struct LSPBackendDocumentState {
+pub struct DocumentsState {
+    pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub document_map: Arc<ARwLock<HashMap<String, Document>>>,
-    pub workspace_folders: Arc<ARwLock<Option<Vec<WorkspaceFolder>>>>,
 }
 
 pub struct GlobalContext {
@@ -85,8 +92,9 @@ pub struct GlobalContext {
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
+    pub ast_module: Arc<AMutex<Option<AstModule>>>,   // TODO: don't use AMutex, use StdMutex
     pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
-    pub lsp_backend_document_state: LSPBackendDocumentState,
+    pub documents_state: DocumentsState,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -212,7 +220,6 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
-
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
         http_client,
@@ -224,11 +231,19 @@ pub async fn create_global_context(
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vec_db: Arc::new(AMutex::new(None)),
+        ast_module: Arc::new(AMutex::new(None)),
         ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
-        lsp_backend_document_state: LSPBackendDocumentState {
+        documents_state: DocumentsState {
+            workspace_folders: if cmdline.workspace_folder.is_empty() { Arc::new(StdMutex::new(vec![])) } else { Arc::new(StdMutex::new(vec![PathBuf::from(cmdline.workspace_folder.clone())])) },
             document_map: Arc::new(ARwLock::new(HashMap::new())),
-            workspace_folders: Arc::new(ARwLock::new(None)),
         },
     };
-    (Arc::new(ARwLock::new(cx)), ask_shutdown_receiver, cmdline)
+    let gcx = Arc::new(ARwLock::new(cx));
+    if cmdline.ast {
+        let ast_module = Arc::new(AMutex::new(Some(
+            AstModule::ast_indexer_init(gcx.clone()).await.expect("Failed to initialize ast module")
+        )));
+        gcx.write().await.ast_module = ast_module;
+    }
+    (gcx, ask_shutdown_receiver, cmdline)
 }

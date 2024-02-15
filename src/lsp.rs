@@ -10,7 +10,7 @@ use tokio::task::JoinHandle;
 use tower_lsp::{ClientSocket, LanguageServer, LspService};
 use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
 use crate::global_context;
@@ -118,10 +118,9 @@ pub struct SuccessRes {
 impl Backend {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
         let txt = {
-            let document_map = self.gcx.read().await.lsp_backend_document_state.document_map.clone();
+            let document_map = self.gcx.read().await.documents_state.document_map.clone();  // Arc::ARwLock
             let document_map = document_map.read().await;
-            let document = document_map
-                .get(params.text_document_position.text_document.uri.as_str());
+            let document = document_map.get(params.text_document_position.text_document.uri.as_str());
             match document {
                 None => {
                     return Err(internal_error("document not found"));
@@ -194,11 +193,18 @@ impl Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         info!("LSP client_info {:?}", params.client_info);
+        let mut folders: Vec<PathBuf> = vec![];
+        if let Some(nonzero_folders) = params.workspace_folders {
+            folders = nonzero_folders.iter().map(|x| PathBuf::from(x.uri.path())).collect();
+        }
         {
             let gcx_locked = self.gcx.write().await;
-            *gcx_locked.lsp_backend_document_state.workspace_folders.write().await = params.workspace_folders.clone();
-            info!("LSP workspace_folders {:?}", gcx_locked.lsp_backend_document_state.workspace_folders);
+            *gcx_locked.documents_state.workspace_folders.lock().unwrap() = folders.clone();
+            info!("LSP workspace_folders {:?}", folders);
         }
+        files_in_workspace::on_workspaces_init(
+            self.gcx.clone(),
+        ).await;
 
         if let Some(folders) = params.workspace_folders {
             match *self.gcx.read().await.vec_db.lock().await {
@@ -238,27 +244,19 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        receive_workspace_changes::on_did_open(
+        files_in_workspace::on_did_open(
             self.gcx.clone(),
-            &params.text_document.uri.to_string(),
+            &params.text_document.uri,
             &params.text_document.text,
             &params.text_document.language_id
         ).await
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let file_path = PathBuf::from(params.text_document.uri.path());
-        if is_valid_file(&file_path) {
-            match *self.gcx.read().await.vec_db.lock().await {
-                Some(ref mut db) => db.add_or_update_file(file_path, false).await,
-                None => {}
-            };
-        }
-
-        receive_workspace_changes::on_did_change(
+        files_in_workspace::on_did_change(
             self.gcx.clone(),
-            &params.text_document.uri.to_string(),
-            &params.content_changes[0].text
+            &params.text_document.uri,
+            &params.content_changes[0].text  // TODO: This text could be just a part of the whole file
         ).await
     }
 
@@ -267,13 +265,6 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "{refact-lsp} file saved")
             .await;
         let uri = params.text_document.uri.to_string();
-        let file_path = PathBuf::from(params.text_document.uri.path());
-        if is_valid_file(&file_path) {
-            match *self.gcx.read().await.vec_db.lock().await {
-                Some(ref mut db) => db.add_or_update_file(file_path, false).await,
-                None => {}
-            };
-        }
         info!("{uri} saved");
     }
 
@@ -282,13 +273,6 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "{refact-lsp} file closed")
             .await;
         let uri = params.text_document.uri.to_string();
-        let file_path = PathBuf::from(params.text_document.uri.path());
-        if is_valid_file(&file_path) {
-            match *self.gcx.read().await.vec_db.lock().await {
-                Some(ref mut db) => db.add_or_update_file(file_path, false).await,
-                None => {}
-            };
-        }
         info!("{uri} closed");
     }
 
@@ -299,36 +283,19 @@ impl LanguageServer for Backend {
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
         info!("LSP asked for popup completions");
-        Ok(Some(CompletionResponse::Array(vec![
-        ])))
+        Ok(Some(CompletionResponse::Array(vec![])))
     }
 
     async fn did_delete_files(&self, params: DeleteFilesParams) {
-        let files = params.files
-            .into_iter()
-            .map(|x| PathBuf::from(x.uri.replace("file://", "")))
-            .filter(|x| is_valid_file(&x));
-
-        match *self.gcx.read().await.vec_db.lock().await {
-            Some(ref mut db) => {
-                for file in files {
-                    db.remove_file(&file).await;
-                }
-            }
-            None => {}
-        };
+        self.client
+            .log_message(MessageType::INFO, "{refact-lsp} delete files")
+            .await;
     }
 
     async fn did_create_files(&self, params: CreateFilesParams) {
-        let files = params.files
-            .into_iter()
-            .map(|x| PathBuf::from(x.uri.replace("file://", "")))
-            .filter(|x| is_valid_file(&x))
-            .collect();
-        match *self.gcx.read().await.vec_db.lock().await {
-            Some(ref db) => db.add_or_update_files(files, false).await,
-            None => {}
-        };
+        self.client
+            .log_message(MessageType::INFO, "{refact-lsp} create files")
+            .await;
     }
 }
 

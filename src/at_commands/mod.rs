@@ -1,3 +1,5 @@
+pub mod at_ast_definition;
+pub mod at_ast_file_symbols;
 pub mod at_commands;
 pub mod at_file;
 pub mod at_workspace;

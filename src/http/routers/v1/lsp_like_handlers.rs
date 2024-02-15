@@ -1,23 +1,23 @@
 use std::path::PathBuf;
+
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use url::Url;
+
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::receive_workspace_changes;
-use crate::vecdb::file_filter::retrieve_files_by_proj_folders;
-
+use crate::files_in_workspace;
 
 #[derive(Serialize, Deserialize, Clone)]
-struct PostInit {
+struct LspLikeInit {
     pub project_roots: Vec<Url>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct PostDocument {
+struct LspLikeDidChange {
     pub uri: Url,
     pub text: String,
 }
@@ -27,21 +27,15 @@ pub async fn handle_v1_lsp_initialize(
     Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<PostInit>(&body_bytes).map_err(|e| {
+    let post = serde_json::from_slice::<LspLikeInit>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-
-    let files = retrieve_files_by_proj_folders(
-        post.project_roots.iter().map(|x| PathBuf::from(x.path())).collect()
-    ).await;
-    match *global_context.read().await.vec_db.lock().await {
-        Some(ref mut db) => db.add_or_update_files(files, true).await,
-        None => {}
-    };
-
+    let folders: Vec<PathBuf> = post.project_roots.iter().map(|x| PathBuf::from(x.path())).collect();
+    *global_context.write().await.documents_state.workspace_folders.lock().unwrap() = folders;
+    let files_count = files_in_workspace::on_workspaces_init(global_context).await;
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(json!({"success": 1}).to_string()))
+        .body(Body::from(json!({"success": 1, "files_found": files_count}).to_string()))
         .unwrap())
 }
 
@@ -49,16 +43,14 @@ pub async fn handle_v1_lsp_did_change(
     Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<PostDocument>(&body_bytes).map_err(|e| {
+    let post = serde_json::from_slice::<LspLikeDidChange>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-
-    receive_workspace_changes::on_did_change(
+    files_in_workspace::on_did_change(
         global_context.clone(),
-        &post.uri.to_string(),
+        &post.uri,
         &post.text,
     ).await;
-
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(json!({"success": 1}).to_string()))

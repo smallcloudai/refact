@@ -9,13 +9,10 @@ use async_trait::async_trait;
 use serde::Serialize;
 use tokio::task::JoinHandle;
 use crate::global_context::{CommandLine, GlobalContext};
-use tower_lsp::lsp_types::WorkspaceFolder;
 use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
-use crate::vecdb;
-use crate::vecdb::file_filter;
-use crate::vecdb::file_watcher_service::read_and_load_jsonl;
+use crate::files_in_workspace::DocumentInfo;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
 use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants};
@@ -35,11 +32,12 @@ fn vecdb_constants(
     }
 }
 
+#[derive(Debug)]
 pub struct VecDb {
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
-    retriever_service: Arc<AMutex<FileVectorizerService>>,
-    cmdline: CommandLine,
+    vectorizer_service: Arc<AMutex<FileVectorizerService>>,
+    cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
     constants: VecdbConstants,
 }
 
@@ -109,26 +107,23 @@ async fn create_vecdb(
     }
     info!("vecdb: test request complete");
 
+    let files_jsonl_path = global_context.read().await.cmdline.files_jsonl_path.clone();
+    let files = match crate::files_in_jsonl::parse_jsonl(&files_jsonl_path).await {
+        Ok(lst) => lst,
+        Err(err) => {
+            error!("failed to parse {}: {}", files_jsonl_path, err);
+            vec![]
+        }
+    };
+    vec_db.vectorizer_enqueue_files(&files, true).await;
+    let tasks = vec_db.vecdb_start_background_tasks().await;
+    background_tasks.extend(tasks);
+
     {
         let mut gcx_locked = global_context.write().await;
-
-        if let Some(folders) = gcx_locked.lsp_backend_document_state.workspace_folders.clone().read().await.clone() {
-            let mut vec_db_lock = gcx_locked.vec_db.lock().await;
-            if let Some(ref mut db) = *vec_db_lock {
-                db.init_folders(folders).await;
-            }
-        }
-        let files_set_path = PathBuf::from(gcx_locked.cmdline.files_set_path.clone());
-        read_and_load_jsonl(&files_set_path, &vec_db).await;
-
-        let mut tasks = vec_db.start_background_tasks().await;
         gcx_locked.vec_db = Arc::new(AMutex::new(Some(vec_db)));
-
-        tasks.extend(vec![
-            tokio::spawn(vecdb::file_watcher_service::file_watcher_task(files_set_path, global_context.clone()))
-        ]);
-        background_tasks.extend(tasks);
     }
+
     Ok(())
 }
 
@@ -183,7 +178,9 @@ pub async fn vecdb_background_reload(
                 &mut background_tasks,
                 consts.unwrap(),
             ).await {
-                Ok(_) => {}
+                Ok(_) => {
+                    crate::files_in_workspace::enqueue_all_files_from_workspace_folders(global_context.clone()).await;
+                }
                 Err(err) => {
                     error!("vecdb: init failed: {}", err);
                     // global_context.vec_db stays None, the rest of the system continues working
@@ -205,7 +202,7 @@ impl VecDb {
             Err(err) => { return Err(err) }
         };
         let vecdb_handler = Arc::new(AMutex::new(handler));
-        let retriever_service = Arc::new(AMutex::new(FileVectorizerService::new(
+        let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),
             constants.clone(),
             cmdline.api_key.clone(),
@@ -213,23 +210,19 @@ impl VecDb {
         Ok(VecDb {
             vecdb_emb_client: Arc::new(AMutex::new(reqwest::Client::new())),
             vecdb_handler,
-            retriever_service,
+            vectorizer_service,
             cmdline: cmdline.clone(),
             constants: constants.clone(),
         })
     }
 
-    pub async fn start_background_tasks(&self) -> Vec<JoinHandle<()>> {
+    pub async fn vecdb_start_background_tasks(&self) -> Vec<JoinHandle<()>> {
         info!("vecdb: start_background_tasks");
-        return self.retriever_service.lock().await.start_background_tasks(self.vecdb_emb_client.clone()).await;
+        return self.vectorizer_service.lock().await.vecdb_start_background_tasks(self.vecdb_emb_client.clone()).await;
     }
 
-    pub async fn add_or_update_file(&self, file_path: PathBuf, force: bool) {
-        self.retriever_service.lock().await.process_file(file_path, force).await;
-    }
-
-    pub async fn add_or_update_files(&self, file_paths: Vec<PathBuf>, force: bool) {
-        self.retriever_service.lock().await.process_files(file_paths, force).await;
+    pub async fn vectorizer_enqueue_files(&self, documents: &Vec<DocumentInfo>, force: bool) {
+        self.vectorizer_service.lock().await.vectorizer_enqueue_files(documents, force).await;
     }
 
     pub async fn remove_file(&self, file_path: &PathBuf) {
@@ -237,15 +230,7 @@ impl VecDb {
     }
 
     pub async fn get_status(&self) -> Result<VecDbStatus, String> {
-        self.retriever_service.lock().await.status().await
-    }
-
-    pub async fn init_folders(&self, folders: Vec<WorkspaceFolder>) {
-        let files = file_filter::retrieve_files_by_proj_folders(
-            folders.iter().map(|x| PathBuf::from(x.uri.path())).collect()
-        ).await;
-        self.add_or_update_files(files, true).await;
-        info!("init_folders complete");
+        self.vectorizer_service.lock().await.status().await
     }
 
     pub async fn get_indexed_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {

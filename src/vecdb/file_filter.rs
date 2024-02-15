@@ -3,11 +3,14 @@ use std::io::Read;
 use std::path::PathBuf;
 
 use async_process::Command;
+use tracing::info;
 use walkdir::WalkDir;
 use which::which;
 
-const LARGE_FILE_SIZE_THRESHOLD: u64 = 1_000_000;
-// 1 MB
+use crate::files_in_workspace::DocumentInfo;
+
+const LARGE_FILE_SIZE_THRESHOLD: u64 = 10_000_000;
+// 10 MB
 const SMALL_FILE_SIZE_THRESHOLD: u64 = 10;  // 10 Bytes
 
 const SOURCE_FILE_EXTENSIONS: &[&str] = &[
@@ -23,6 +26,7 @@ const SOURCE_FILE_EXTENSIONS: &[&str] = &[
 pub fn is_valid_file(path: &PathBuf) -> bool {
     // Check if the path points to a file
     if !path.is_file() {
+        info!("path is not a file: {}", path.display());
         return false;
     }
 
@@ -32,49 +36,63 @@ pub fn is_valid_file(path: &PathBuf) -> bool {
             .map(|name| name.to_string_lossy().starts_with('.'))
             .unwrap_or(false)
     }) {
+        info!("path is in a hidden directory, skipping it: {}", path.display());
         return false;
     }
 
     // Check if the file is a source file
     if let Some(extension) = path.extension() {
         if !SOURCE_FILE_EXTENSIONS.contains(&extension.to_str().unwrap_or_default()) {
+            info!("path has an unsupported extension: {}", path.display());
             return false;
         }
     } else {
         // No extension, not a source file
+        info!("path has no extension, skipping it: {}", path.display());
         return false;
     }
 
     // Check file size
     if let Ok(metadata) = fs::metadata(path) {
         let file_size = metadata.len();
-        if file_size < SMALL_FILE_SIZE_THRESHOLD || file_size > LARGE_FILE_SIZE_THRESHOLD {
+        if file_size < SMALL_FILE_SIZE_THRESHOLD {
+            info!("file is too small, skipping: {}", path.display());
+            return false;
+        }
+        if file_size > LARGE_FILE_SIZE_THRESHOLD {
+            info!("file is too large, skipping: {}", path.display());
             return false;
         }
     } else {
         // Unable to access file metadata
+        info!("unable to access file metadata: {}", path.display());
         return false;
     }
 
     // Check for read permissions
     if fs::read(&path).is_err() {
+        info!("no read permissions on file: {}", path.display());
         return false;
     }
 
     // Check if the file is not UTF-8
     let mut file = match fs::File::open(&path) {
         Ok(file) => file,
-        Err(_) => return false,
+        Err(_) => {
+            info!("unable to open file: {}", path.display());
+            return false;
+        }
     };
     let mut buffer = Vec::new();
     if file.read_to_end(&mut buffer).is_err() {
+        info!("unable to read file: {}", path.display());
         return false;
     }
     if String::from_utf8(buffer).is_err() {
+        info!("file is not valid utf8: {}", path.display());
         return false;
     }
 
-    // All checks passed
     true
 }
 
@@ -111,20 +129,20 @@ async fn run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<Pat
 }
 
 
-pub async fn retrieve_files_by_proj_folders(proj_folders: Vec<PathBuf>) -> Vec<PathBuf> {
-    let mut all_files: Vec<PathBuf> = Vec::new();
+pub async fn retrieve_files_by_proj_folders(proj_folders: Vec<PathBuf>) -> Vec<DocumentInfo> {
+    let mut all_files: Vec<DocumentInfo> = Vec::new();
     for proj_folder in proj_folders {
         let maybe_files = get_control_version_files(&proj_folder).await;
         if let Some(files) = maybe_files {
-            all_files.extend(files);
+            all_files.extend(files.iter().filter_map(|x| DocumentInfo::from(x).ok()).collect::<Vec<_>>());
         } else {
-            let files: Vec<PathBuf> = WalkDir::new(proj_folder)
+            let files: Vec<DocumentInfo> = WalkDir::new(proj_folder)
                 .into_iter()
                 .filter_map(|e| e.ok())
                 .filter(|e| !e.path().is_dir())
                 .filter(|e| is_valid_file(&e.path().to_path_buf()))
-                .map(|e| e.path().to_path_buf())
-                .collect::<Vec<PathBuf>>();
+                .filter_map(|e| DocumentInfo::from(&e.path().to_path_buf()).ok())
+                .collect::<Vec<DocumentInfo>>();
             all_files.extend(files);
         }
     }

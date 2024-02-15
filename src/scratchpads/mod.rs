@@ -3,6 +3,7 @@ use std::sync::RwLock as StdRwLock;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokenizers::Tokenizer;
+use crate::ast::ast_module::AstModule;
 
 pub mod completion_single_file_fim;
 pub mod chat_generic;
@@ -35,15 +36,14 @@ pub async fn create_code_completion_scratchpad<T>(
     scratchpad_patch: &serde_json::Value,
     cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
     tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
-    vecdb_search: Arc<AMutex<Option<T>>>,
-) -> Result<Box<dyn ScratchpadAbstract>, String>
-    where T: VecdbSearch + 'static + Sync {
+    ast_module: Arc<AMutex<Option<AstModule>>>,
+) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context, model_name_for_tokenizer).await?;
     if scratchpad_name == "FIM-PSM" {
-        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "PSM".to_string(), cache_arc, tele_storage, vecdb_search));
+        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "PSM".to_string(), cache_arc, tele_storage, ast_module));
     } else if scratchpad_name == "FIM-SPM" {
-        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "SPM".to_string(), cache_arc, tele_storage, vecdb_search));
+        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "SPM".to_string(), cache_arc, tele_storage, ast_module));
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }

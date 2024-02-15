@@ -1,5 +1,4 @@
 use std::collections::{HashMap, VecDeque};
-use std::path::PathBuf;
 use std::time::SystemTime;
 use std::ops::Div;
 use std::io::Write;
@@ -12,28 +11,29 @@ use tracing::info;
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::handler::VecDBHandler;
 use crate::fetch_embedding::try_get_embedding;
-use crate::vecdb::structs::{Record, SplitResult, VecDbStatus, VecDbStatusRef, VecdbConstants};
+use crate::files_in_workspace::DocumentInfo;
+use crate::vecdb::structs::{Record, SplitResult, VecDbStatus, VecdbConstants};
 
 #[derive(Debug)]
 pub struct FileVectorizerService {
-    update_request_queue: Arc<AMutex<VecDeque<PathBuf>>>,
-    output_queue: Arc<AMutex<VecDeque<PathBuf>>>,
+    update_request_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    output_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
-    status: VecDbStatusRef,
+    status: Arc<AMutex<VecDbStatus>>,
     constants: VecdbConstants,
     api_key: String,
 }
 
 async fn cooldown_queue_thread(
-    update_request_queue: Arc<AMutex<VecDeque<PathBuf>>>,
-    out_queue: Arc<AMutex<VecDeque<PathBuf>>>,
-    _status: VecDbStatusRef,
+    update_request_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    out_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    _status: Arc<AMutex<VecDbStatus>>,
     cooldown_secs: u64,
 ) {
     // This function delays vectorization of a file, until mtime is at least cooldown_secs old.
-    let mut last_updated: HashMap<PathBuf, SystemTime> = HashMap::new();
+    let mut last_updated: HashMap<DocumentInfo, SystemTime> = HashMap::new();
     loop {
-        let (path_maybe, _unprocessed_files_count) = {
+        let (doc_maybe, _unprocessed_files_count) = {
             let mut queue_locked = update_request_queue.lock().await;
             let queue_len = queue_locked.len();
             if !queue_locked.is_empty() {
@@ -43,16 +43,16 @@ async fn cooldown_queue_thread(
             }
         };
 
-        if let Some(path) = path_maybe {
-            last_updated.insert(path, SystemTime::now());
+        if let Some(doc) = doc_maybe {
+            last_updated.insert(doc, SystemTime::now());
         }
 
-        let mut paths_to_process: Vec<PathBuf> = Vec::new();
+        let mut docs_to_process: Vec<DocumentInfo> = Vec::new();
         let mut stat_too_new = 0;
         let mut stat_proceed = 0;
-        for (path, time) in &last_updated {
+        for (doc, time) in &last_updated {
             if time.elapsed().unwrap().as_secs() > cooldown_secs {
-                paths_to_process.push(path.clone());
+                docs_to_process.push(doc.clone());
                 stat_proceed += 1;
             } else {
                 stat_too_new += 1;
@@ -61,9 +61,9 @@ async fn cooldown_queue_thread(
         if stat_proceed > 0 || stat_too_new > 0 {
             info!("cooldown_queue_thread: {} files to process, {} files too new", stat_proceed, stat_too_new);
         }
-        for path in paths_to_process {
-            last_updated.remove(&path);
-            out_queue.lock().await.push_back(path);
+        for doc in docs_to_process {
+            last_updated.remove(&doc);
+            out_queue.lock().await.push_back(doc);
         }
         tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     }
@@ -72,9 +72,9 @@ async fn cooldown_queue_thread(
 
 async fn vectorize_thread(
     client: Arc<AMutex<reqwest::Client>>,
-    queue: Arc<AMutex<VecDeque<PathBuf>>>,
+    queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
     vecdb_handler_ref: Arc<AMutex<VecDBHandler>>,
-    status: VecDbStatusRef,
+    status: Arc<AMutex<VecDbStatus>>,
     constants: VecdbConstants,
     api_key: String,
     max_concurrent_tasks: usize,
@@ -85,7 +85,7 @@ async fn vectorize_thread(
     let mut reported_vecdb_complete: bool = false;
 
     loop {
-        let (path_maybe, unprocessed_files_count) = {
+        let (doc_maybe, unprocessed_files_count) = {
             let mut queue_locked = queue.lock().await;
             let queue_len = queue_locked.len();
             if queue_len > 0 {
@@ -100,9 +100,9 @@ async fn vectorize_thread(
         }
         status.lock().await.unprocessed_files_count = unprocessed_files_count;
         reported_vecdb_complete &= unprocessed_files_count==0;
-        let path = {
-            match path_maybe {
-                Some(path) => path,
+        let doc = {
+            match doc_maybe {
+                Some(doc) => doc,
                 None => {
                     // No files left to process
                     if !reported_vecdb_complete {
@@ -111,7 +111,7 @@ async fn vectorize_thread(
                         info!("update_indexed_file_paths: it took {:.3}s", t0.elapsed().as_secs_f64());
 
                         reported_vecdb_complete = true;
-                        // For now we do not create index 'cause it hurts quality of retrieval
+                        // For now, we do not create index 'cause it hurts quality of retrieval
                         // info!("VECDB Creating index");
                         // match vecdb_handler_ref.lock().await.create_index().await {
                         //     Ok(_) => info!("VECDB CREATED INDEX"),
@@ -126,7 +126,7 @@ async fn vectorize_thread(
             }
         };
 
-        let split_data = match file_splitter.split(&path).await {
+        let split_data = match file_splitter.split(&doc).await {
             Ok(data) => data,
             Err(_) => { continue }
         };
@@ -140,8 +140,8 @@ async fn vectorize_thread(
         split_data_filtered = vecdb_handler.try_add_from_cache(split_data_filtered).await;
         drop(vecdb_handler);
 
-        let last_30_chars: String = path.display().to_string().chars().rev().take(30).collect::<String>().chars().rev().collect();
-        info!("...{} embeddings todo/total {}/{}", last_30_chars, split_data_filtered.len(), split_data.len());
+        let last_30_chars = crate::nicer_logs::last_n_chars(&doc.get_path().display().to_string(), 30);
+        info!("embeddings {} todo/total {}/{}", last_30_chars, split_data_filtered.len(), split_data.len());
 
         // TODO: replace with a batched call?
         let join_handles: Vec<_> = split_data_filtered.into_iter().map(|x| {
@@ -254,7 +254,7 @@ impl FileVectorizerService {
         }
     }
 
-    pub async fn start_background_tasks(&self, vecdb_client: Arc<AMutex<reqwest::Client>>) -> Vec<JoinHandle<()>> {
+    pub async fn vecdb_start_background_tasks(&self, vecdb_client: Arc<AMutex<reqwest::Client>>) -> Vec<JoinHandle<()>> {
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
                 self.update_request_queue.clone(),
@@ -285,21 +285,12 @@ impl FileVectorizerService {
         return vec![cooldown_queue_join_handle, retrieve_thread_handle, cleanup_thread_handle];
     }
 
-    pub async fn process_file(&self, path: PathBuf, force: bool) {
-        info!("adding single file");
+    pub async fn vectorizer_enqueue_files(&self, documents: &Vec<DocumentInfo>, force: bool) {
+        info!("adding {} files", documents.len());
         if !force {
-            self.update_request_queue.lock().await.push_back(path);
+            self.update_request_queue.lock().await.extend(documents.clone());
         } else {
-            self.output_queue.lock().await.push_back(path);
-        }
-    }
-
-    pub async fn process_files(&self, paths: Vec<PathBuf>, force: bool) {
-        info!("adding {} files", paths.len());
-        if !force {
-            self.update_request_queue.lock().await.extend(paths);
-        } else {
-            self.output_queue.lock().await.extend(paths);
+            self.output_queue.lock().await.extend(documents.clone());
         }
     }
 
@@ -314,13 +305,5 @@ impl FileVectorizerService {
             Err(err) => return Err(err.to_string())
         };
         Ok(status)
-    }
-
-    pub async fn get_all_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {
-        return self.vecdb_handler.lock().await.get_indexed_file_paths().await;
-    }
-
-    pub async fn get_file_orig_text(&self, file_path: String) -> String {
-        return self.vecdb_handler.lock().await.get_file_orig_text(file_path).await;
     }
 }
