@@ -28,10 +28,10 @@ class StaticRouter(APIRouter):
 
     async def _chat(self):
         for spath in self.static_folders:
-            fn = os.path.join(spath, "chat.html")
+            fn = os.path.join(spath, "tab-chat.html")
             if os.path.exists(fn):
                 return FileResponse(fn, media_type="text/html")
-        raise HTTPException(404, "No chat.html found")
+        raise HTTPException(404, "No tab-chat.html found")
 
     async def _static_file(self, file_path: str):
         if ".." in file_path:
