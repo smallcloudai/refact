@@ -219,7 +219,6 @@ export type CapsResponse = {
   telemetry_corrected_snippets_dest: string;
   tokenizer_path_template: string;
   tokenizer_rewrite_path: Record<string, unknown>;
-  chat_rag_functions?: string[];
 };
 
 interface Replace {
@@ -258,7 +257,7 @@ export async function getAtCommandCompletion(
   cursor: number,
   number: number,
   lspUrl?: string,
-): Promise<CommandCompletionResponse | DetailMessage> {
+): Promise<CommandCompletionResponse> {
   const completionEndpoint = lspUrl
     ? `${lspUrl.replace(/\/*$/, "")}${AT_COMMAND_COMPLETION}`
     : AT_COMMAND_COMPLETION;
@@ -278,6 +277,14 @@ export async function getAtCommandCompletion(
   const json: unknown = await response.json();
   if (!isCommandCompletionResponse(json) && !isDetailMessage(json)) {
     throw new Error("Invalid response from completion");
+  }
+
+  if (isDetailMessage(json)) {
+    return {
+      completions: [],
+      replace: [0, 0],
+      is_cmd_executable: false,
+    };
   }
 
   return json;
@@ -315,7 +322,7 @@ export function isCommandPreviewResponse(
 export async function getAtCommandPreview(
   query: string,
   lspUrl?: string,
-): Promise<ChatContextFileMessage[] | DetailMessage> {
+): Promise<ChatContextFileMessage[]> {
   // check this
   const previewEndpoint = lspUrl
     ? `${lspUrl.replace(/\/*$/, "")}${AT_COMMAND_PREVIEW}`
@@ -344,7 +351,7 @@ export async function getAtCommandPreview(
   }
 
   if (isDetailMessage(json)) {
-    return json;
+    return [];
   }
 
   const jsonMessages = json.messages.map<ChatContextFileMessage>(
