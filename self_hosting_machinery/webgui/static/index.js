@@ -10,11 +10,15 @@ plugins_to_top_nav_bar(plugins);
 // this might take some time: load all modules
 const imported_plugins = [];
 const inits_working = [];
+let has_hamburger_plugins = false;
 for (const p of plugins) {
     const mod = await import("./tab-" + p.tab + ".js");
     imported_plugins.push(mod);
     p.mod = mod;
     inits_working.push(mod.init());
+    if (p.hamburger) {
+        has_hamburger_plugins = true;
+    }
 }
 for (const p of inits_working) {
     await p;
@@ -24,6 +28,11 @@ for (const p of plugins) {
     if (p.id === "default") {
         default_tab = p.tab;
     }
+}
+
+const settings_hamburger = document.getElementById("settings-hamburger");
+if (!has_hamburger_plugins) {
+    settings_hamburger.style.display = "none";
 }
 
 const navbar = document.querySelector('.navbar-brand')
