@@ -44,7 +44,7 @@ impl AstSearchEngine {
             }
         };
         let filtered_usages = usages.iter()
-            .unique_by(|x| x.dump_path())
+            .unique_by(|x| x.meta_path())
             .sorted_by(|a, b| {
                 a.distance_to_cursor(&cursor).cmp(&b.distance_to_cursor(&cursor))
             })
@@ -59,7 +59,7 @@ impl AstSearchEngine {
                 .iter()
                 .map(|x| {
                     UsageSearchResultStruct {
-                        symbol_path: x.dump_path(),
+                        symbol_path: x.meta_path(),
                         dist_to_cursor: x.distance_to_cursor(&cursor),
                         type_str: x.type_str(),
                     }
@@ -88,7 +88,7 @@ impl AstSearchEngine {
             let ast_index_locked = ast_index.lock().await;
             for sym in usage_result.search_results.iter() {
                 declarations.extend(
-                    match ast_index_locked.search(sym.symbol_path.as_str(), 1, Some(doc.clone())).await {
+                    match ast_index_locked.search_declarations(sym.symbol_path.as_str(), 1, Some(doc.clone())).await {
                         Ok(nodes) => nodes,
                         Err(e) => {
                             info!("Error searching for {}: {}", sym.symbol_path.as_str(), e);

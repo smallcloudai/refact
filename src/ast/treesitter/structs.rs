@@ -1,6 +1,8 @@
+use std::fmt::Debug;
 use std::io;
 use std::path::PathBuf;
 use std::str::FromStr;
+use async_trait::async_trait;
 
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
@@ -27,12 +29,14 @@ pub(crate) struct RangeDef {
     pub end_point: Point,
 }
 
-
-
-pub trait UsageSymbolInfo {
-    fn dump_path(&self) -> String;
+#[async_trait]
+pub trait UsageSymbolInfo: Debug + Send + Sync {
+    fn meta_path(&self) -> String;
     fn distance_to_cursor(&self, cursor: &Point) -> usize;
     fn type_str(&self) -> String;
+    fn get_range(&self) -> Range;
+    fn set_definition_meta_path(&mut self, meta_path: String);
+    fn get_definition_meta_path(&self) -> Option<String>;
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -41,10 +45,12 @@ pub struct VariableInfo {
     #[serde(with = "RangeDef")]
     pub range: Range,
     pub type_names: Vec<String>,
+    pub meta_path: Option<String>,
 }
 
+#[async_trait]
 impl UsageSymbolInfo for VariableInfo {
-    fn dump_path(&self) -> String {
+    fn meta_path(&self) -> String {
         if self.type_names.len() > 0 {
             format!("{}::{}", self.type_names.first().unwrap(), self.name)
         } else {
@@ -58,6 +64,18 @@ impl UsageSymbolInfo for VariableInfo {
     fn type_str(&self) -> String {
         String::from("variable_info")
     }
+
+    fn get_range(&self) -> Range {
+        self.range.clone()
+    }
+
+    fn set_definition_meta_path(&mut self, meta_path: String) {
+        self.meta_path = Some(meta_path);
+    }
+
+    fn get_definition_meta_path(&self) -> Option<String> {
+        self.meta_path.clone()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -66,10 +84,12 @@ pub struct FunctionCallInfo {
     #[serde(with = "RangeDef")]
     pub range: Range,
     pub caller_type_name: Option<String>,
+    pub meta_path: Option<String>,
 }
 
+#[async_trait]
 impl UsageSymbolInfo for FunctionCallInfo {
-    fn dump_path(&self) -> String {
+    fn meta_path(&self) -> String {
         match self.caller_type_name.as_ref() {
             Some(t) => format!("{}::{}", self.name, t),
             None => self.name.clone(),
@@ -80,6 +100,18 @@ impl UsageSymbolInfo for FunctionCallInfo {
     }
     fn type_str(&self) -> String {
         String::from("function_call_info")
+    }
+
+    fn get_range(&self) -> Range {
+        self.range.clone()
+    }
+
+    fn set_definition_meta_path(&mut self, meta_path: String) {
+        self.meta_path = Some(meta_path);
+    }
+
+    fn get_definition_meta_path(&self) -> Option<String> {
+        self.meta_path.clone()
     }
 }
 
@@ -95,10 +127,12 @@ pub struct StaticInfo {
     pub static_type: StaticType,
     #[serde(with = "RangeDef")]
     pub range: Range,
+    pub meta_path: Option<String>,
 }
 
+#[async_trait]
 impl UsageSymbolInfo for StaticInfo {
-    fn dump_path(&self) -> String {
+    fn meta_path(&self) -> String {
         format!("{}", self.data)
     }
     fn distance_to_cursor(&self, cursor: &Point) -> usize {
@@ -106,6 +140,18 @@ impl UsageSymbolInfo for StaticInfo {
     }
     fn type_str(&self) -> String {
         String::from("static_info")
+    }
+
+    fn get_range(&self) -> Range {
+        self.range.clone()
+    }
+
+    fn set_definition_meta_path(&mut self, meta_path: String) {
+        self.meta_path = Some(meta_path);
+    }
+
+    fn get_definition_meta_path(&self) -> Option<String> {
+        self.meta_path.clone()
     }
 }
 

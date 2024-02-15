@@ -25,7 +25,6 @@ use crate::telemetry::snippets_collection;
 const DEBUG: bool = false;
 
 
-#[derive(Debug)]
 pub struct SingleFileFIM {
     pub t: HasTokenizerAndEot,
     pub post: CodeCompletionPost,

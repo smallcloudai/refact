@@ -131,6 +131,7 @@ impl LanguageParser for PythonParser {
                 end_point: Default::default(),
             },
             type_names: vec![],
+            meta_path: None,
         };
         for capture in captures {
             let capture_name = &query.capture_names()[capture.index as usize];

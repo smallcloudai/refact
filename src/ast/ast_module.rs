@@ -15,7 +15,6 @@ use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileRefer
 use crate::files_in_workspace::DocumentInfo;
 
 
-#[derive(Debug)]
 pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
     ast_index: Arc<AMutex<AstIndex>>,
@@ -109,7 +108,7 @@ impl AstModule {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
         let ast_index_locked  = ast_index.lock().await;
-        match ast_index_locked.search(symbol_path.as_str(), top_n, None).await {
+        match ast_index_locked.search_declarations(symbol_path.as_str(), top_n, None).await {
             Ok(results) => {
                 for r in results.iter() {
                     info!("distance {:.3}, found {}, ", r.sim_to_query, r.symbol_declaration.meta_path);

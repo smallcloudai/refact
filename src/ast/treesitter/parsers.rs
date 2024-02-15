@@ -204,7 +204,7 @@ pub trait LanguageParser: Send {
         Ok(indexes)
     }
 
-    fn parse_usages(&mut self, code: &str) -> Result<Vec<Box<dyn UsageSymbolInfo + 'static>>, String> {
+    fn parse_usages(&mut self, code: &str) -> Result<Vec<Box<dyn UsageSymbolInfo>>, String> {
         let tree: Tree = match self.get_parser().parse(code, None) {
             Some(tree) => tree,
             None => return Err("Parse error".to_string()),

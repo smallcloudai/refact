@@ -29,6 +29,7 @@ pub(crate) fn get_variable(captures: &[QueryCapture], query: &Query, code: &str)
             end_point: Default::default(),
         },
         type_names: vec![],
+        meta_path: None,
     };
     for capture in captures {
         let capture_name = &query.capture_names()[capture.index as usize];
@@ -64,6 +65,7 @@ pub(crate) fn get_call(captures: &[QueryCapture], query: &Query, code: &str) -> 
             end_point: Default::default(),
         },
         caller_type_name: None,
+        meta_path: None,
     };
     for capture in captures {
         let capture_name = &query.capture_names()[capture.index as usize];
@@ -94,6 +96,7 @@ pub(crate) fn get_static(captures: &[QueryCapture], query: &Query, code: &str) -
                     data: text.to_string(),
                     static_type: StaticType::Comment,
                     range: capture.node.range(),
+                    meta_path: None,
                 })
             }
             "string_literal" => {
@@ -101,6 +104,7 @@ pub(crate) fn get_static(captures: &[QueryCapture], query: &Query, code: &str) -
                     data: text.to_string(),
                     static_type: StaticType::Literal,
                     range: capture.node.range(),
+                    meta_path: None,
                 })
             }
             &_ => {
