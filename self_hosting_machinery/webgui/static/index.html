@@ -66,11 +66,6 @@
       </li>
       {{/unless}}
       {{/each}}
-      {{#unless hamburger}}
-      <li class="nav-item" role="presentation">
-        <button onclick="window.open('/chat', '_blank')" class="nav-link" id="{{id}}" {{#if disabled}}disabled{{/if}}>Chat</button>
-      </li>
-      {{/unless}}
       <div class="d-flex ms-auto">
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
@@ -97,11 +92,6 @@
             </li>
             {{/if}}
             {{/each}}
-            {{#if hamburger}}
-              <li class="nav-item" role="presentation">
-                <button onclick="window.open('/chat', '_blank')" class="nav-link main-tab-button" id="{{id}}-tab">Chat</button>
-              </li>
-            {{/if}}
           </ul>
         </li>
       </div>
@@ -127,6 +117,8 @@
       <div class="main-tab-pane" id="license">
       </div>
       <div class="main-tab-pane" id="about">
+      </div>
+      <div class="main-tab-pane" id="chat">
       </div>
     </div>
   </div>

@@ -19,11 +19,12 @@ for (const p of plugins) {
 for (const p of inits_working) {
     await p;
 }
-const plugin_tabs = [];
+let default_tab = plugins[0].tab;
 for (const p of plugins) {
-    plugin_tabs.push(p.tab);
+    if (p.id === "default") {
+        default_tab = p.tab;
+    }
 }
-const default_tab = plugin_tabs.includes("model-hosting") ? "model-hosting" : plugin_tabs[0];
 
 const navbar = document.querySelector('.navbar-brand')
 navbar.addEventListener('click', () => {
