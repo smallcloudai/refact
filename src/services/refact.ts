@@ -221,16 +221,16 @@ export type RefactTableData = {
 };
 
 export type ColumnName =
-    | "lang"
-    | "refact"
-    | "human"
-    | "total"
-    | "refact_impact"
-    | "completions";
+  | "lang"
+  | "refact"
+  | "human"
+  | "total"
+  | "refact_impact"
+  | "completions";
 
 export type CellValue = string | number;
 
 export type FormatCellValue = (
-    columnName: string,
-    cellValue: string | number,
+  columnName: string,
+  cellValue: string | number,
 ) => string | number;

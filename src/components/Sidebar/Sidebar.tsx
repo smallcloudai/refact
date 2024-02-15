@@ -10,7 +10,7 @@ export const Sidebar: React.FC<
   {
     onCreateNewChat: () => void;
   } & ChatHistoryProps
-  > = ({ history, onHistoryItemClick, onCreateNewChat, onDeleteHistoryItem }) => {
+> = ({ history, onHistoryItemClick, onCreateNewChat, onDeleteHistoryItem }) => {
   const [isOpenedStatistic, setIsOpenedStatistic] = useState(false);
 
   const handleCloseStatistic = () => {
