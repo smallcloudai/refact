@@ -5,14 +5,14 @@ import asyncio
 import pandas as pd
 
 from datetime import datetime
-from dataclasses import dataclass
-from fastapi.requests import Request
 
 from typing import Dict, Any, Iterable, List, Union, AsyncIterator, Optional
 
 from more_itertools import chunked
 from scyllapy import Scylla, InlineBatch, ExecutionProfile, Consistency, SerialConsistency
 from scyllapy.query_builder import Insert, Select
+
+from self_hosting_machinery.dashboards.utils import StatsDataFrames
 
 
 os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
@@ -262,12 +262,6 @@ class RefactDatabase:
         return self._session
 
 
-@dataclass
-class StatsDataFrames:
-    robot_human_df: pd.DataFrame
-    extra: Dict
-
-
 class StatisticsService:
 
     def __init__(self, database: RefactDatabase):
@@ -360,8 +354,8 @@ class StatisticsService:
         start_of_year = datetime(current_year, 1, 1, 0, 0, 0, 0)
         timestamp_start_of_year = int(start_of_year.timestamp())
 
-        user_to_team_dict = await self.select_users_to_team(request)
-        rh_records = await self.select_rh_from_ts(timestamp_start_of_year, request)
+        user_to_team_dict = await self.select_users_to_team(*args, **kwargs)
+        rh_records = await self.select_rh_from_ts(timestamp_start_of_year, *args, **kwargs)
 
         robot_human_df = pd.DataFrame(rh_records)
 

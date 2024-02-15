@@ -1,7 +1,15 @@
 import copy
+import pandas as pd
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, Any
+
+
+@dataclass
+class StatsDataFrames:
+    robot_human_df: pd.DataFrame
+    extra: Dict
 
 
 def complete_date_axis(
