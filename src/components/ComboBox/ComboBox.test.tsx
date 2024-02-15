@@ -197,10 +197,12 @@ describe("ComboBox", () => {
     await user.type(textarea, "{Shift>}{Enter}{/Shift}hello");
     expect(textarea.textContent).toEqual("@file /foo\nhello");
 
-    textarea.selectionStart = "@file /foo".length;
-    textarea.selectionEnd = textarea.selectionStart;
-    await user.keyboard("{Backspace}{Backspace}{Backspace}b${Enter}");
-
+    await user.keyboard(
+      "{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}",
+    );
+    await user.keyboard("{Backspace}{Backspace}{Backspace}");
+    await user.keyboard("b");
+    await user.keyboard("{Enter}");
     expect(textarea.textContent).toEqual("@file /bar\nhello");
   });
 });
