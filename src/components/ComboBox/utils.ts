@@ -38,9 +38,10 @@ export function replaceValue(
   element: HTMLTextAreaElement,
   trigger: string,
   command: string,
+  startAt: number | null,
 ) {
-  const startPosition = element.selectionStart - trigger.length;
-  const endPosition = element.selectionStart;
+  const startPosition = startAt ?? element.selectionStart;
+  const endPosition = element.selectionStart + trigger.length;
 
   const start = element.value.substring(0, startPosition);
   const end = element.value.substring(endPosition);

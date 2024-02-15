@@ -51,6 +51,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const combobox = useComboboxStore({
     defaultOpen: false,
     placement: "top-start",
+    defaultActiveId: undefined,
   });
 
   const matches = matchSorter(commandsOrArguments, trigger, {
@@ -59,6 +60,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   });
 
   const hasMatches = !!trigger && !!matches.length;
+
+  const getValueOrTrigger = () => {
+    const state = combobox.getState();
+    if (state.activeValue) return state.activeValue;
+    if (state.activeId) return combobox.item(state.activeId)?.value ?? trigger;
+    return trigger;
+  };
 
   React.useEffect(() => {
     if (!ref.current) return;
@@ -72,6 +80,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
+    const first = combobox.first();
+    combobox.setActiveId(first);
   }, [combobox, hasMatches]);
 
   React.useEffect(() => {
@@ -109,7 +119,12 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     if (!ref.current) return;
 
     const state = combobox.getState();
-    if (!state.activeValue && event.key === "Enter" && !event.shiftKey) {
+    if (
+      !state.activeValue &&
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      !state.open
+    ) {
       event.preventDefault();
       event.stopPropagation();
       onSubmit(event);
@@ -156,7 +171,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     }
 
     const tabOrEnter = event.key === "Tab" || event.key === "Enter";
-    const activeValue = state.activeValue ?? trigger;
+
+    const activeValue = getValueOrTrigger();
 
     const command = selectedCommand ? activeValue : activeValue + " ";
 
@@ -164,7 +180,12 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       event.preventDefault();
       event.stopPropagation();
 
-      const newInput = replaceValue(ref.current, trigger, command);
+      const newInput = replaceValue(
+        ref.current,
+        trigger,
+        command,
+        startPosition,
+      );
 
       setTrigger(command);
       onChange(newInput);
@@ -174,7 +195,12 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     }
 
     if (event.key === "Space" && state.open && commands.includes(trigger)) {
-      const newInput = replaceValue(ref.current, trigger, command);
+      const newInput = replaceValue(
+        ref.current,
+        trigger,
+        command,
+        startPosition,
+      );
 
       event.preventDefault();
       event.stopPropagation();
@@ -213,13 +239,14 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       if (selectedCommand) {
         setSelectedCommand("");
         setTrigger(command);
+        setStartPosition(null);
         combobox.hide();
       } else {
         setSelectedCommand(command);
         setTrigger(command);
       }
 
-      const nextValue = replaceValue(textarea, trigger, command);
+      const nextValue = replaceValue(textarea, trigger, command, startPosition);
 
       onChange(nextValue);
     };

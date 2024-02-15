@@ -108,9 +108,23 @@ describe("ComboBox", () => {
     );
   });
 
-  test.todo(
-    "typing command and pressing tab or enter twice, should complete the command and argument",
-  );
+  test("typing @ and tab twice, should complete the command and argument", async () => {
+    const { user, ...app } = render(<App />);
+    const textarea = app.getByRole("combobox");
+    await user.type(textarea, "@");
+    await user.keyboard("{Tab}");
+    await user.keyboard("{Tab}");
+    expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
+  });
+
+  test("typing @ and enter twice, should complete the command and argument", async () => {
+    const { user, ...app } = render(<App />);
+    const textarea = app.getByRole("combobox");
+    await user.type(textarea, "@");
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
+    expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
+  });
 
   test("clicking on an executable command", async () => {
     const executableSpy = vi.fn();
@@ -121,7 +135,7 @@ describe("ComboBox", () => {
     const commandButton = app.getByText("@workspace");
     await user.click(commandButton);
 
-    expect(executableSpy).toHaveBeenCalledWith("@workspace ", 10);
+    expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11);
   });
 
   test("execute command when pressing enter", async () => {
@@ -129,7 +143,7 @@ describe("ComboBox", () => {
     const { user, ...app } = render(<App executeCommand={executableSpy} />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@wo{Enter}");
-    expect(executableSpy).toHaveBeenCalledWith("@workspace ", 10);
+    expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11);
   });
 
   test("execute command when pressing tab", async () => {
@@ -137,7 +151,7 @@ describe("ComboBox", () => {
     const { user, ...app } = render(<App executeCommand={executableSpy} />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@wo{Tab}");
-    expect(executableSpy).toHaveBeenCalledWith("@workspace ", 10);
+    expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11);
   });
 
   test("typing executable command and pressing space", async () => {
@@ -145,7 +159,7 @@ describe("ComboBox", () => {
     const { user, ...app } = render(<App executeCommand={executableSpy} />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@workspace{Space}");
-    expect(executableSpy).toHaveBeenCalledWith("@workspace ", 10);
+    expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11);
   });
 
   test("submit when pressing enter", async () => {
