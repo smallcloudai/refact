@@ -4,29 +4,28 @@ import {
   FormatCellValue,
   ColumnName,
   RefactTableImpactLanguagesRow,
-  RefactTableData,
 } from "../../services/refact";
 import styles from "./Table.module.css";
 import { Spinner } from "../Spinner";
 import { TableRow } from "./TableRow";
 import { TableCell } from "./TableCell";
 
+const convertedColumnNames: Record<ColumnName, string> = {
+  lang: "Lang.",
+  refact: "Refact",
+  human: "Human",
+  total: "Total",
+  refact_impact: "Refact Impact",
+  completions: "Compl.",
+};
+
 export const Table: React.FC<{
-  refactTable: RefactTableData | null;
-}> = ({ refactTable }) => {
-  if (refactTable === null) {
+  refactImpactTable: RefactTableImpactLanguagesRow[] | null;
+}> = ({ refactImpactTable }) => {
+  if (refactImpactTable === null) {
     return <Spinner />;
   }
-  const refactImpactTable: RefactTableImpactLanguagesRow[] =
-    refactTable.table_refact_impact.data;
-  const convertedColumnNames: Record<ColumnName, string> = {
-    lang: "Lang.",
-    refact: "Refact",
-    human: "Human",
-    total: "Total",
-    refact_impact: "Refact Impact",
-    completions: "Compl.",
-  };
+
   const formatCellValue: FormatCellValue = (
     columnName: string,
     cellValue: string | number,

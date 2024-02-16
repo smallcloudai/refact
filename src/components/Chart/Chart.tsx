@@ -1,20 +1,16 @@
 import React from "react";
 import { Box, Text } from "@radix-ui/themes";
-import {
-  RefactTableData,
-  RefactTableImpactDatesRow,
-} from "../../services/refact";
+import { RefactTableImpactDatesRow } from "../../services/refact";
 import ReactEcharts from "echarts-for-react";
 import { Spinner } from "../Spinner";
 
 export const Chart: React.FC<{
-  refactTable: RefactTableData | null;
-}> = ({ refactTable }) => {
-  if (refactTable === null) {
+  refactImpactDatesWeekly: RefactTableImpactDatesRow[] | null;
+}> = ({ refactImpactDatesWeekly }) => {
+  if (refactImpactDatesWeekly === null) {
     return <Spinner />;
   }
-  const refactImpactDatesWeekly: RefactTableImpactDatesRow[] =
-    refactTable.refact_impact_dates.data.weekly;
+
   const dates: string[] = Object.keys(refactImpactDatesWeekly).map((date) => {
     return new Date(date).toLocaleString(undefined, {
       month: "short",

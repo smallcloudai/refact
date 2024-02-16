@@ -99,8 +99,14 @@ export const Statistic: React.FC<{
                 </Heading>
                 {refactTable !== null && (
                   <Flex align="center" justify="center" direction="column">
-                    <Table refactTable={refactTable} />
-                    <Chart refactTable={refactTable} />
+                    <Table
+                      refactImpactTable={refactTable.table_refact_impact.data}
+                    />
+                    <Chart
+                      refactImpactDatesWeekly={
+                        refactTable.refact_impact_dates.data.weekly
+                      }
+                    />
                   </Flex>
                 )}
               </Flex>
