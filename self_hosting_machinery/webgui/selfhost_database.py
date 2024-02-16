@@ -306,7 +306,7 @@ class StatisticsService:
         else:
             raise NotImplementedError(f"cannot insert to {to}; type {to} does not exist")
 
-    async def get_robot_human_for_account(self, tenant_name: str, *args, **kwargs) -> AsyncIterator[Dict]:
+    async def get_robot_human_for_account(self, tenant_name: str, workspace: str) -> AsyncIterator[Dict]:
         rows = await Select("telemetry_robot_human")\
             .where("tenant_name =?", [tenant_name])\
             .allow_filtering()\
@@ -328,7 +328,7 @@ class StatisticsService:
                 "ts_end": r["ts_end"],
             }
 
-    async def select_rh_from_ts(self, ts: int, request: Request) -> List[Dict]:
+    async def select_rh_from_ts(self, ts: int, workspace: str) -> List[Dict]:
         records = []
         rows = await Select("telemetry_robot_human")\
             .where("ts_end >= ?", [ts])\
@@ -347,16 +347,16 @@ class StatisticsService:
             })
         return records
 
-    async def select_users_to_team(self, request: Request) -> Dict[str, str]:
+    async def select_users_to_team(self, workspace: str) -> Dict[str, str]:
         return {"user": "default"}
 
-    async def compose_data_frames(self, request: Request) -> Optional[StatsDataFrames]:
+    async def compose_data_frames(self, workspace: str) -> Optional[StatsDataFrames]:
         current_year = datetime.now().year
         start_of_year = datetime(current_year, 1, 1, 0, 0, 0, 0)
         timestamp_start_of_year = int(start_of_year.timestamp())
 
-        user_to_team_dict = await self.select_users_to_team(request)
-        rh_records = await self.select_rh_from_ts(timestamp_start_of_year, request)
+        user_to_team_dict = await self.select_users_to_team(workspace)
+        rh_records = await self.select_rh_from_ts(timestamp_start_of_year, workspace)
 
         robot_human_df = pd.DataFrame(rh_records)
 

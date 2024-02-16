@@ -10,8 +10,8 @@ from fastapi.responses import JSONResponse
 
 from self_hosting_machinery.dashboards.dash_prime import dashboard_prime
 from self_hosting_machinery.dashboards.dash_teams import teams_data, dashboard_teams
-from self_hosting_machinery.webgui.selfhost_database import StatisticsService, ScyllaBatchInserter
-from self_hosting_machinery.webgui.selfhost_database import StatisticsService, ScyllaBatchInserter
+from self_hosting_machinery.webgui.selfhost_database import StatisticsService
+from self_hosting_machinery.webgui.selfhost_database import ScyllaBatchInserter
 from self_hosting_machinery.webgui.selfhost_login import RefactSession
 
 
@@ -55,7 +55,10 @@ class BaseTabStatisticsRouter(APIRouter):
         self.add_api_route('/dash-teams', self._dash_teams_get, methods=['GET'])
         self.add_api_route('/dash-teams', self._dash_teams_post, methods=['POST'])
 
-    async def _account_from_request(self, request: Request) -> Any:
+    async def _account_from_request(self, request: Request) -> Dict:
+        raise NotImplementedError()
+
+    async def _workspace_from_request(self, request: Request) -> str:
         raise NotImplementedError()
 
     async def _rh_stats(self, request: Request):
@@ -78,7 +81,8 @@ class BaseTabStatisticsRouter(APIRouter):
             raise HTTPException(status_code=500, detail=str(e))
 
     async def _dash_prime_get(self, request: Request):
-        data_tables = await self._stats_service.compose_data_frames(request)
+        data_tables = await self._stats_service.compose_data_frames(
+            await self._workspace_from_request(request))
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
@@ -94,7 +98,8 @@ class BaseTabStatisticsRouter(APIRouter):
         )
 
     async def _dash_teams_get(self, request: Request):
-        data_tables = await self._stats_service.compose_data_frames(request)
+        data_tables = await self._stats_service.compose_data_frames(
+            await self._workspace_from_request(request))
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
@@ -110,7 +115,8 @@ class BaseTabStatisticsRouter(APIRouter):
         )
 
     async def _dash_teams_post(self, post: DashTeamsGenDashData, request: Request):
-        data_tables = await self._stats_service.compose_data_frames(request)
+        data_tables = await self._stats_service.compose_data_frames(
+            await self._workspace_from_request(request))
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
@@ -226,7 +232,6 @@ class BaseTabStatisticsRouter(APIRouter):
 
 
 class TabStatisticsRouter(BaseTabStatisticsRouter):
-
     def __init__(self, session: RefactSession, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._session = session
@@ -236,6 +241,10 @@ class TabStatisticsRouter(BaseTabStatisticsRouter):
             authorization = request.headers.get("Authorization", None)
             return {
                 "tenant_name": self._session.header_authenticate(authorization),
+                "workspace": "",
             }
         except BaseException as e:
             raise HTTPException(status_code=401, detail=str(e))
+
+    async def _workspace_from_request(self, request: Request) -> str:
+        return ""
