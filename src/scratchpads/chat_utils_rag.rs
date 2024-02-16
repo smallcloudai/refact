@@ -25,15 +25,16 @@ pub fn postprocess_at_results(
         b.usefullness.partial_cmp(&a.usefullness).unwrap_or(Ordering::Equal)
     });
     for cxfile in cxfile_list.iter() {
-        info!("sorted file {}:{}-{} usefullness {}", crate::nicer_logs::last_n_chars(&cxfile.file_name, 40), cxfile.line1, cxfile.line2, cxfile.usefullness);
+        info!("sorted file {}:{}-{} usefullness {:.1}", crate::nicer_logs::last_n_chars(&cxfile.file_name, 30), cxfile.line1, cxfile.line2, cxfile.usefullness);
     }
     // 3. Truncate less useful to max_bytes
     let mut total_bytes: usize = cxfile_list.iter().map(|x| x.file_content.len()).sum();
     while total_bytes > max_bytes {
         let least_useful = cxfile_list.pop();
         match least_useful {
-            Some(file) => {
-                total_bytes -= file.file_content.len();
+            Some(x) => {
+                info!("drop less useful {}:{}-{}, because {} still greater than max {}", crate::nicer_logs::last_n_chars(&x.file_name, 30), x.line1, x.line2, total_bytes, max_bytes);
+                total_bytes -= x.file_content.len();
             },
             None => break,
         }
@@ -62,10 +63,11 @@ pub fn postprocess_at_results(
                 let possible_merge_line2 = x.line2.max(y.line2);
                 if possible_merge_line2 - possible_merge_line1 <= (x.line2 - x.line1) + (y.line2 - y.line1) + SMALL_GAP_LINES {
                     // good, makes sense to merge
-                    info!("merging file {} range {}-{} with range {}-{}", x.file_name, x.line1, x.line2, y.line1, y.line2);
+                    info!("merging file {} range {}-{} with range {}-{}", crate::nicer_logs::last_n_chars(&x.file_name, 30), x.line1, x.line2, y.line1, y.line2);
                     eaten[j] = true;
                     x.line1 = possible_merge_line1;
                     x.line2 = possible_merge_line2;
+                    x.usefullness = x.usefullness.max(y.usefullness);
                     merged_anything = true;
                 }
             }
@@ -79,7 +81,7 @@ pub fn postprocess_at_results(
             continue;
         }
         merged.push(cxfile_list[i].clone());
-        info!("merged {}:{}-{}", cxfile_list[i].file_name, cxfile_list[i].line1, cxfile_list[i].line2);
+        info!("merged {}:{}-{}", crate::nicer_logs::last_n_chars(&cxfile_list[i].file_name, 30), cxfile_list[i].line1, cxfile_list[i].line2);
     }
     // 5. Encode back into a single message
     let mut processed_messages: Vec<ChatMessage> = vec![];
@@ -112,7 +114,7 @@ pub async fn run_at_commands(
             Err(_) => {}
         }
     }
-    let max_bytes = 5*1024;
+    let max_bytes = 7*1024;
     let processed = postprocess_at_results(
         messages_for_postprocessing,
         max_bytes
