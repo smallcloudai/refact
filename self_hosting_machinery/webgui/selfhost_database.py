@@ -5,7 +5,6 @@ import asyncio
 import pandas as pd
 
 from datetime import datetime
-from fastapi import Request
 
 from typing import Dict, Any, Iterable, List, Union, AsyncIterator, Optional
 
