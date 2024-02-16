@@ -16,7 +16,7 @@ export const Chart: React.FC<{
   const refactImpactDatesWeekly: RefactTableImpactDatesRow[] =
     refactTable.refact_impact_dates.data.weekly;
   const dates: string[] = Object.keys(refactImpactDatesWeekly).map((date) => {
-    return new Date(date).toLocaleString("en-US", {
+    return new Date(date).toLocaleString(undefined, {
       month: "short",
       day: "numeric",
     });

@@ -5,8 +5,10 @@
   width: 100%;
   table-layout: fixed;
 }
-.table td,
-.table th {
+.td {
   border: 1px solid white;
   padding: 3px;
+}
+.tableCellHead {
+  font-weight: bold;
 }

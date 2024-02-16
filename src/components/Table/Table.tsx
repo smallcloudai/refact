@@ -8,6 +8,8 @@ import {
 } from "../../services/refact";
 import styles from "./Table.module.css";
 import { Spinner } from "../Spinner";
+import { TableRow } from "./TableRow";
+import { TableCell } from "./TableCell";
 
 export const Table: React.FC<{
   refactTable: RefactTableData | null;
@@ -59,35 +61,37 @@ export const Table: React.FC<{
   return (
     <Box>
       <Text as="p" size="2" mb="1">
-        Refact`&apos;s impact by language
+        Refact&apos;s impact by language
       </Text>
       <table className={styles.table}>
         <thead>
-          <tr>
+          <TableRow>
             {Object.values(convertedColumnNames).map(
               (columnName: string, idx: number) => (
-                <th key={idx}>{columnName}</th>
+                <TableCell key={idx} className={styles.tableCellHead}>
+                  {columnName}
+                </TableCell>
               ),
             )}
-          </tr>
+          </TableRow>
         </thead>
         <tbody>
           {refactImpactTable.map(
             (rowData: RefactTableImpactLanguagesRow, idx: number) => (
-              <tr key={idx}>
+              <TableRow key={idx}>
                 {Object.keys(convertedColumnNames).map(
                   (columnName: string, idx: number) => (
-                    <td key={idx}>
+                    <TableCell key={idx}>
                       {formatCellValue(
                         columnName,
                         rowData[
                           columnName as keyof RefactTableImpactLanguagesRow
                         ],
                       )}
-                    </td>
+                    </TableCell>
                   ),
                 )}
-              </tr>
+              </TableRow>
             ),
           )}
         </tbody>
