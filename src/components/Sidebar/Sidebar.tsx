@@ -19,9 +19,7 @@ export const Sidebar: React.FC<
   return (
     <Box className={styles.sidebar}>
       {isOpenedStatistic ? (
-        <Box>
-          <Statistic onCloseStatistic={handleCloseStatistic} />
-        </Box>
+        <Statistic onCloseStatistic={handleCloseStatistic} />
       ) : (
         <Flex
           direction="column"
