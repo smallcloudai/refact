@@ -55,18 +55,18 @@ class BaseTabStatisticsRouter(APIRouter):
         self.add_api_route('/dash-teams', self._dash_teams_get, methods=['GET'])
         self.add_api_route('/dash-teams', self._dash_teams_post, methods=['POST'])
 
-    async def _account_from_request(self, request: Request) -> Dict:
+    async def _account_dict_from_request(self, request: Request) -> Dict:
         raise NotImplementedError()
 
     async def _workspace_from_request(self, request: Request) -> str:
         raise NotImplementedError()
 
     async def _rh_stats(self, request: Request):
-        account = await self._account_from_request(request)
+        account_dict = await self._account_dict_from_request(request)
 
         async def streamer():
             records = []
-            async for r in self._stats_service.get_robot_human_for_account(**account):
+            async for r in self._stats_service.get_robot_human_for_account(**account_dict):
                 records.append(r)
 
             for records_batch in chunked(records, 100):
@@ -132,7 +132,7 @@ class BaseTabStatisticsRouter(APIRouter):
         )
 
     async def _telemetry_basic(self, data: TelemetryBasicData, request: Request):
-        account = await self._account_from_request(request)
+        account_dict = await self._account_dict_from_request(request)
 
         ip = request.client.host
         clamp = data.clamp()
@@ -152,7 +152,7 @@ class BaseTabStatisticsRouter(APIRouter):
                             teletype=clamp['teletype'],
                             ts_start=clamp['ts_start'],
                             ts_end=clamp['ts_end'],
-                            **account,
+                            **account_dict,
                         ),
                         to="net"
                     )
@@ -171,7 +171,7 @@ class BaseTabStatisticsRouter(APIRouter):
                             teletype=clamp['teletype'],
                             ts_end=clamp['ts_end'],
                             ts_start=clamp['ts_start'],
-                            **account,
+                            **account_dict,
                         ),
                         to="rh"
                     )
@@ -191,7 +191,7 @@ class BaseTabStatisticsRouter(APIRouter):
                             teletype=clamp['teletype'],
                             ts_start=clamp['ts_start'],
                             ts_end=clamp['ts_end'],
-                            **account,
+                            **account_dict,
                         ),
                         to="comp"
                     )
@@ -199,7 +199,7 @@ class BaseTabStatisticsRouter(APIRouter):
         return JSONResponse({"retcode": "OK"})
 
     async def _telemetry_snippets(self, data: TelemetryBasicData, request: Request):
-        account = await self._account_from_request(request)
+        account_dict = await self._account_dict_from_request(request)
 
         ip = request.client.host
         clamp = data.clamp()
@@ -223,7 +223,7 @@ class BaseTabStatisticsRouter(APIRouter):
                         multiline=record['inputs']['multiline'],
                         sources=json.dumps(record['inputs']['sources']),
                         teletype=clamp['teletype'],
-                        **account,
+                        **account_dict,
                     ),
                     to="snip"
                 )
@@ -236,12 +236,11 @@ class TabStatisticsRouter(BaseTabStatisticsRouter):
         super().__init__(*args, **kwargs)
         self._session = session
 
-    async def _account_from_request(self, request: Request) -> Dict:
+    async def _account_dict_from_request(self, request: Request) -> Dict:
         try:
             authorization = request.headers.get("Authorization", None)
             return {
                 "tenant_name": self._session.header_authenticate(authorization),
-                "workspace": "",
             }
         except BaseException as e:
             raise HTTPException(status_code=401, detail=str(e))
