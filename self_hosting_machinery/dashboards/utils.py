@@ -1,55 +1,15 @@
 import copy
-
 import pandas as pd
 
-from datetime import datetime
-from typing import Dict, Any, Optional
 from dataclasses import dataclass
-
-
-from self_hosting_machinery.webgui.selfhost_database import StatisticsService
+from datetime import datetime
+from typing import Dict, Any
 
 
 @dataclass
 class StatsDataFrames:
     robot_human_df: pd.DataFrame
     extra: Dict
-
-
-async def compose_data_frames(
-        stats_service: StatisticsService
-) -> Optional[StatsDataFrames]:
-    current_year = datetime.now().year
-    start_of_year = datetime(current_year, 1, 1, 0, 0, 0, 0)
-    timestamp_start_of_year = int(start_of_year.timestamp())
-
-    user_to_team_dict = await stats_service.select_users_to_team()
-    rh_records = await stats_service.select_rh_from_ts(timestamp_start_of_year)
-
-    robot_human_df = pd.DataFrame(rh_records)
-
-    if robot_human_df.empty:
-        return
-
-    robot_human_df['dt_end'] = pd.to_datetime(robot_human_df['ts_end'], unit='s')
-    robot_human_df['team'] = robot_human_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
-    robot_human_df.sort_values(by='dt_end', inplace=True)
-
-    extra = {"week_n_to_fmt": {
-        week_n: datetime.strftime(group["dt_end"].iloc[0], "%b %d")
-        for week_n, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.isocalendar().week)
-    }, "day_to_fmt": [
-        datetime.strftime(group["dt_end"].iloc[0], "%b %d")
-        for date, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.date)
-    ], "month_to_fmt": {
-        month_n: datetime.strftime(group["dt_end"].iloc[0], "%b")
-        for month_n, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.month)
-    }}
-
-    return StatsDataFrames(
-        robot_human_df=robot_human_df,
-        extra=extra,
-    )
 
 
 def complete_date_axis(

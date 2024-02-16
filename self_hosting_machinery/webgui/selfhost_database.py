@@ -2,13 +2,17 @@ import os
 import uuid
 import logging
 import asyncio
+import pandas as pd
 
 from datetime import datetime
-from typing import Dict, Any, Iterable, List, Union, AsyncIterator
+
+from typing import Dict, Any, Iterable, List, Union, AsyncIterator, Optional
 
 from more_itertools import chunked
 from scyllapy import Scylla, InlineBatch, ExecutionProfile, Consistency, SerialConsistency
 from scyllapy.query_builder import Insert, Select
+
+from self_hosting_machinery.dashboards.utils import StatsDataFrames
 
 
 os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
@@ -301,9 +305,10 @@ class StatisticsService:
         else:
             raise NotImplementedError(f"cannot insert to {to}; type {to} does not exist")
 
-    async def get_robot_human_for_account(self, account: str) -> AsyncIterator[Dict]:
+    async def get_robot_human_for_account(
+            self, tenant_name: str, workspace: Optional[str] = None) -> AsyncIterator[Dict]:
         rows = await Select("telemetry_robot_human")\
-            .where("tenant_name =?", [account])\
+            .where("tenant_name =?", [tenant_name])\
             .allow_filtering()\
             .execute(self.session, paged=True)
         async for r in rows:
@@ -323,7 +328,7 @@ class StatisticsService:
                 "ts_end": r["ts_end"],
             }
 
-    async def select_rh_from_ts(self, ts: int) -> List[Dict]:
+    async def select_rh_from_ts(self, ts: int, workspace: str) -> List[Dict]:
         records = []
         rows = await Select("telemetry_robot_human")\
             .where("ts_end >= ?", [ts])\
@@ -342,8 +347,41 @@ class StatisticsService:
             })
         return records
 
-    async def select_users_to_team(self) -> Dict[str, str]:
+    async def select_users_to_team(self, workspace: str) -> Dict[str, str]:
         return {"user": "default"}
+
+    async def compose_data_frames(self, workspace: str) -> Optional[StatsDataFrames]:
+        current_year = datetime.now().year
+        start_of_year = datetime(current_year, 1, 1, 0, 0, 0, 0)
+        timestamp_start_of_year = int(start_of_year.timestamp())
+
+        user_to_team_dict = await self.select_users_to_team(workspace)
+        rh_records = await self.select_rh_from_ts(timestamp_start_of_year, workspace)
+
+        robot_human_df = pd.DataFrame(rh_records)
+
+        if robot_human_df.empty:
+            return
+
+        robot_human_df['dt_end'] = pd.to_datetime(robot_human_df['ts_end'], unit='s')
+        robot_human_df['team'] = robot_human_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
+        robot_human_df.sort_values(by='dt_end', inplace=True)
+
+        extra = {"week_n_to_fmt": {
+            week_n: datetime.strftime(group["dt_end"].iloc[0], "%b %d")
+            for week_n, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.isocalendar().week)
+        }, "day_to_fmt": [
+            datetime.strftime(group["dt_end"].iloc[0], "%b %d")
+            for date, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.date)
+        ], "month_to_fmt": {
+            month_n: datetime.strftime(group["dt_end"].iloc[0], "%b")
+            for month_n, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.month)
+        }}
+
+        return StatsDataFrames(
+            robot_human_df=robot_human_df,
+            extra=extra,
+        )
 
     @property
     def session(self) -> Scylla:
