@@ -5,10 +5,21 @@ _fim_train_ds_pipeline = {
                "fim_probability=0.9,fim_drop_residual=1,random_trim_context_prob=0.01",
     "ds_name": "RefactFIMCodeDataset"
 }
+_completion_train_ds_pipeline = {
+    "ds_opts": "n_ctx={n_ctx},debug=0,seed=42,shuffle_depth=256,"
+               "fim_probability=0.0,fim_drop_residual=1,random_trim_context_prob=0.01",
+    "ds_name": "RefactFIMCodeDataset"
+}
 
 _fim_test_ds_pipeline = {
     "ds_opts": "n_ctx={n_ctx},debug=0,seed=42,shuffle_depth=0,quit_on_epoch=1,"
                "fim_probability=0.9,fim_drop_residual=1,random_trim_context_prob=0.01,"
+               "pack_single=1,pack_complete=0,pack_buffer_size=50",
+    "ds_name": "RefactFIMCodeDataset"
+}
+_completion_test_ds_pipeline = {
+    "ds_opts": "n_ctx={n_ctx},debug=0,seed=42,shuffle_depth=0,quit_on_epoch=1,"
+               "fim_probability=0.0,fim_drop_residual=1,random_trim_context_prob=0.01,"
                "pack_single=1,pack_complete=0,pack_buffer_size=50",
     "ds_name": "RefactFIMCodeDataset"
 }
@@ -148,5 +159,15 @@ config = {
     "deepseek-coder/6.7b/base": {
         **_deepseek_base,
         "force_enable_checkpointing": True
+    },
+
+    "deepseek-coder/6.7b/instruct-finetune": {
+        **_deepseek_base,
+        "train_ds_pipeline": {
+            "ds_opts": f"{_completion_train_ds_pipeline['ds_opts']},spm_prob=0.0",
+            "ds_name": _completion_train_ds_pipeline["ds_name"]
+        },
+        "test_ds_pipeline": _completion_test_ds_pipeline,
+        "force_enable_checkpointing": True,
     }
 }

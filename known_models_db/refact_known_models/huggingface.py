@@ -263,4 +263,14 @@ huggingface_mini_db = {
     #     "T": 4096,
     #     "filter_caps": ["chat"],
     # },
+    "deepseek-coder/6.7b/instruct-finetune": {
+        "backend": "transformers",
+        "model_path": "deepseek-ai/deepseek-coder-6.7b-instruct",
+        "diff_scratchpad_class": None,
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {},
+        "required_memory_mb": 8000,
+        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
+        "filter_caps": ["completion", "chat", "finetune"],
+    },
 }
