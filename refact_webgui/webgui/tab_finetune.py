@@ -9,7 +9,8 @@ import asyncio
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response, StreamingResponse, JSONResponse
 
-from self_hosting_machinery.scripts import best_lora  # REFACTORME
+from refact_utils.scripts import env
+from refact_utils.scripts import best_lora
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from self_hosting_machinery.finetune.utils.finetune_utils import get_active_loras  # REFACTORME
 from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_config  # REFACTORME
@@ -18,7 +19,6 @@ from self_hosting_machinery.finetune.utils.finetune_utils import get_prog_and_st
 from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_runs  # REFACTORME
 from self_hosting_machinery.finetune.configuration.finetune_filtering_defaults import finetune_filtering_defaults  # REFACTORME
 from self_hosting_machinery.finetune.configuration.finetune_train_defaults import finetune_train_defaults  # REFACTORME
-from self_hosting_machinery import env  # REFACTORME
 
 from pydantic import BaseModel
 

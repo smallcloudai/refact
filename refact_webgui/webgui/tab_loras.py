@@ -12,10 +12,10 @@ from fastapi import APIRouter, UploadFile, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import Required
 
-from self_hosting_machinery import env  # REFACTORME
+from refact_utils.scripts import env
+from refact_utils.scripts.best_lora import find_best_checkpoint
 from refact_webgui.webgui.selfhost_webutils import log
 from refact_webgui.webgui.tab_upload import download_file_from_url, UploadViaURL
-from self_hosting_machinery.scripts.best_lora import find_best_checkpoint  # REFACTORME
 
 
 def rm(f):

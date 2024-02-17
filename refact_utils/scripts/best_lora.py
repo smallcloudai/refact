@@ -2,9 +2,9 @@ import re
 import os
 import json
 
-from self_hosting_machinery import env
-from self_hosting_machinery.finetune.utils.finetune_utils import get_run_model_name
-from self_hosting_machinery.finetune.utils.finetune_utils import default_finetune_model
+from refact_utils.scripts import env
+from self_hosting_machinery.finetune.utils.finetune_utils import get_run_model_name  # REFACTORME
+from self_hosting_machinery.finetune.utils.finetune_utils import default_finetune_model  # REFACTORME
 
 from typing import Dict, Optional
 

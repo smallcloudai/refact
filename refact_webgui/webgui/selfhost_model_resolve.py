@@ -1,6 +1,6 @@
 import json
 
-from self_hosting_machinery import env  # REFACTORME
+from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
 
 from typing import Tuple, List

@@ -10,7 +10,7 @@ import litellm
 from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
-from self_hosting_machinery import env  # REFACTORME
+from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket

@@ -10,7 +10,7 @@ import torch.utils.data
 from refact_data_pipeline import DatasetOpts
 from refact_data_pipeline import pipeline_pieces as pp
 from refact_data_pipeline.filters_fim_v2 import FIMv2, FIMv2CodeLlama
-from self_hosting_machinery import env
+from refact_utils.scripts import env
 
 __all__ = [
     'RefactDataset', 'RefactPlainCodeDataset', 'RefactFIMCodeDataset'

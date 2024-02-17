@@ -10,8 +10,8 @@ from typing import Dict, Any
 
 import torch
 
+from refact_utils.scripts import env
 import self_hosting_machinery.finetune.utils.traces as traces
-from self_hosting_machinery import env
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config
 from self_hosting_machinery.finetune.scripts.aux.dataset import create_finetune_filter_dataloader, to_cuda
 from self_hosting_machinery.finetune.scripts.aux.file_sets_context import FileSetsContext

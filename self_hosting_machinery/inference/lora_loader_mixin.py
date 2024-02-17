@@ -8,11 +8,11 @@ from typing import Optional, Dict, Any
 import torch
 from safetensors.torch import load_file
 
-from self_hosting_machinery import env
+from refact_utils.scripts import env
+from refact_utils.scripts import best_lora
 from self_hosting_machinery.finetune.modelling.lora import LoraMixin
 from self_hosting_machinery.finetune.modelling.utils import map_model_specific_params
 from self_hosting_machinery.finetune.utils.finetune_utils import get_active_loras
-from self_hosting_machinery.scripts import best_lora
 
 log = logging.getLogger("MODEL").info
 

@@ -10,7 +10,7 @@ from transformers import AutoTokenizer
 from refact_data_pipeline import finetune_datasource
 from refact_data_pipeline.datautils import collate_fn, data_parallel_split_and_collate_fn
 from self_hosting_machinery.finetune.configuration import supported_models
-from self_hosting_machinery.scripts.env import TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH
+from refact_utils.scripts.env import TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH
 
 __all__ = [
     "create_train_dataloader",

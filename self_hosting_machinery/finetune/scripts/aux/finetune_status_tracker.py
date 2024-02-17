@@ -5,10 +5,10 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from refact_utils.scripts import env
 from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery.finetune.utils.eta import EtaTracker
 from self_hosting_machinery.finetune.utils.traces_plot import AsyncPlotter
-from self_hosting_machinery.scripts import env
 
 __all__ = ['FinetuneStatusTracker']
 

@@ -14,8 +14,8 @@ from fastapi.responses import Response, JSONResponse, StreamingResponse
 
 from self_hosting_machinery.finetune.utils.finetune_utils import get_prog_and_status_for_ui  # REFACTORME
 
+from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_webutils import log
-from self_hosting_machinery import env  # REFACTORME
 
 
 __all__ = ["TabUploadRouter", "download_file_from_url", "UploadViaURL"]

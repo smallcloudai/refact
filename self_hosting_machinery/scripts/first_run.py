@@ -1,8 +1,8 @@
 import os
 
-from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
+from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from self_hosting_machinery.scripts import enum_gpus
-from self_hosting_machinery import env
+from refact_utils.scripts import env
 
 
 def copy_watchdog_configs_if_first_run_detected(model_assigner: ModelAssigner):

@@ -12,8 +12,7 @@ from pathlib import Path
 
 from typing import Dict, Optional, List
 
-from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
-from self_hosting_machinery import env
+from refact_utils.scripts import env
 
 FIRST_RUN_CMDLINE = [sys.executable, "-m", "self_hosting_machinery.scripts.first_run"]
 

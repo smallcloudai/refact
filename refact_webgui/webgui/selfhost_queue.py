@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from typing import Dict, List, Any
 import uuid
 
-from self_hosting_machinery import env  # REFACTORME
+from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_webutils import log
 
 
