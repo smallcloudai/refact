@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Optional, Any, Dict, List
 
 from refact_utils.scripts import env
+from refact_utils.finetune.utils import get_file_digest
 from self_hosting_machinery.finetune.scripts.aux.finetune_filter_status_tracker import FinetuneFilterStatusTracker
 from self_hosting_machinery.finetune.utils import traces
-from self_hosting_machinery.finetune.utils.finetune_utils import get_file_digest
 
 __all__ = ['FilesStatusContext', 'FileStatus']
 

@@ -4,8 +4,8 @@ import time
 from typing import Dict, Any, Optional
 
 from refact_utils.scripts import env
+from refact_utils.finetune.utils import get_finetune_filter_stat
 from self_hosting_machinery.finetune.utils.eta import EtaTracker
-from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_filter_stat
 
 __all__ = ['FinetuneFilterStatusTracker']
 
