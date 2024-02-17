@@ -270,7 +270,7 @@ class TrackedJob:
 
 
 tracked: Dict[str, TrackedJob] = {}
-watchdog_templates = list(Path(env.DIR_WATCHDOG_TEMPLATES).iterdir())
+watchdog_templates = list(Path(DIR_WATCHDOG_TEMPLATES).iterdir())
 
 
 def create_tracked_jobs_from_configs():
