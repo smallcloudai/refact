@@ -26,6 +26,7 @@ all_refact_packages = {
     "known_models_db": PyPackage(
         requires=["dataclasses", "dataclasses_json"],
         data=["refact_toolbox_db/htmls/*.html"]),
+    "refact_utils": PyPackage(),
     "refact_encoding": PyPackage(
         requires=["tiktoken", "tokenizers==0.15.0", "sentencepiece", "termcolor", "protobuf"],
         data=["*.json"]),
@@ -39,22 +40,27 @@ all_refact_packages = {
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools', "cdifflib",
                   "ujson", "zstandard", "scipy", "einops", "matplotlib", "giturlparse",
                   "jsonlines", "binpacking", "filelock", "tables==3.8.0", "pygments", "kshingle"],
-        requires_packages=["refact_encoding", "code_contrast", "self_hosting_machinery"],
+        requires_packages=["refact_encoding", "code_contrast", "self_hosting_machinery", "refact_utils"],
         data=["git_command.exp"],
     ),
-    "self_hosting_machinery": PyPackage(
+    "refact_webgui": PyPackage(
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
-                  "starlette==0.27.0", "uvicorn", "uvloop", "python-multipart", "auto-gptq==0.6.0", "accelerate",
-                  "termcolor", "torch", "transformers==4.36.2", "bitsandbytes", "safetensors", "peft", "triton",
-                  "torchinfo", "mpi4py", "deepspeed==0.12.6", "scyllapy==1.3.0", "pandas>=2.0.3", "litellm",
+                  "starlette==0.27.0", "uvicorn", "uvloop", "termcolor", "python-multipart",
+                  "scyllapy==1.3.0", "pandas>=2.0.3", "litellm"],
+        requires_packages=["known_models_db", "refact_utils"],
+        data=["webgui/static/*", "webgui/static/components/modals/*",
+              "webgui/static/dashboards/*", "webgui/static/assets/*"]),
+    "self_hosting_machinery": PyPackage(
+        requires=["python-multipart", "auto-gptq==0.6.0", "accelerate",
+                  "termcolor", "torch", "transformers==4.36.2", "bitsandbytes",
+                  "safetensors", "peft", "triton",
+                  "torchinfo", "mpi4py", "deepspeed==0.12.6",
                   "sentence-transformers", "huggingface-hub>=0.19.3"],
         optional=["ninja", "flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
-                           "known_models_db", "refact_data_pipeline"],
-        data=["webgui/static/*", "webgui/static/components/modals/*",
-              "webgui/static/dashboards/*", "watchdog/watchdog.d/*",
-              "webgui/static/assets/*",
-              ]),
+                           "known_models_db", "refact_data_pipeline",
+                           "refact_webgui", "refact_utils"],
+        data=["watchdog/watchdog.d/*"]),
 }
 
 
