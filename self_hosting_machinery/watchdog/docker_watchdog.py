@@ -15,7 +15,6 @@ from typing import Dict, Optional, List
 from refact_utils.scripts import env
 
 FIRST_RUN_CMDLINE = [sys.executable, "-m", "self_hosting_machinery.scripts.first_run"]
-DIR_WATCHDOG_TEMPLATES = os.path.join(os.path.dirname(__file__), "watchdog.d")
 
 
 def replace_variable_names_from_env(s):
@@ -270,7 +269,7 @@ class TrackedJob:
 
 
 tracked: Dict[str, TrackedJob] = {}
-watchdog_templates = list(Path(DIR_WATCHDOG_TEMPLATES).iterdir())
+watchdog_templates = list(Path(env.DIR_WATCHDOG_TEMPLATES).iterdir())
 
 
 def create_tracked_jobs_from_configs():

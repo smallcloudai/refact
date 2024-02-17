@@ -56,6 +56,10 @@ def create_dirs():
 
 create_dirs()
 
+# env mechanism doesn't work for this variable well
+DIR_WATCHDOG_TEMPLATES = os.path.join(
+    os.path.dirname(__file__), "..", "..", "self_hosting_machinery", "watchdog", "watchdog.d")
+
 GIT_CONFIG_FILENAME = 'git_config.json'
 
 private_key_ext = 'private_key'
