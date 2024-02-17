@@ -15,6 +15,7 @@ from typing import Dict, Optional, List
 from refact_utils.scripts import env
 
 FIRST_RUN_CMDLINE = [sys.executable, "-m", "self_hosting_machinery.scripts.first_run"]
+DIR_WATCHDOG_TEMPLATES = os.path.join(os.path.dirname(__file__), "watchdog.d")
 
 
 def replace_variable_names_from_env(s):

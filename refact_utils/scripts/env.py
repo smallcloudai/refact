@@ -56,8 +56,6 @@ def create_dirs():
 
 create_dirs()
 
-DIR_WATCHDOG_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "watchdog", "watchdog.d")
-
 GIT_CONFIG_FILENAME = 'git_config.json'
 
 private_key_ext = 'private_key'
