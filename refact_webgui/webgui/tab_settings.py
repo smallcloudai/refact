@@ -5,8 +5,8 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pathlib import Path
-from self_hosting_machinery import env
-from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
+from self_hosting_machinery import env  # REFACTORME
+from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
 from typing import Optional
 

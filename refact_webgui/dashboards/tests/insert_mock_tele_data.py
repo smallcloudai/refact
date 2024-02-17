@@ -11,11 +11,11 @@ import faker
 import asyncio
 from tqdm import tqdm
 
-from self_hosting_machinery.webgui.selfhost_database import RefactDatabase
-from self_hosting_machinery.webgui.selfhost_database import StatisticsService
-from self_hosting_machinery.webgui.selfhost_database import TelemetryRobotHuman
-from self_hosting_machinery.webgui.selfhost_database import TelemetryCompCounters
-from self_hosting_machinery.webgui.selfhost_database import TelemetryNetwork
+from refact_webgui.webgui.selfhost_database import RefactDatabase
+from refact_webgui.webgui.selfhost_database import StatisticsService
+from refact_webgui.webgui.selfhost_database import TelemetryRobotHuman
+from refact_webgui.webgui.selfhost_database import TelemetryCompCounters
+from refact_webgui.webgui.selfhost_database import TelemetryNetwork
 
 
 LANGUAGES = [

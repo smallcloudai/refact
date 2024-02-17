@@ -10,14 +10,14 @@ import litellm
 from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
-from self_hosting_machinery import env
-from self_hosting_machinery.webgui.selfhost_model_resolve import completion_resolve_model
-from self_hosting_machinery.webgui.selfhost_model_resolve import static_resolve_model
-from self_hosting_machinery.webgui.selfhost_queue import Ticket
-from self_hosting_machinery.webgui.selfhost_webutils import log
-from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue
-from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
-from self_hosting_machinery.webgui.selfhost_login import RefactSession
+from self_hosting_machinery import env  # REFACTORME
+from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model
+from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
+from refact_webgui.webgui.selfhost_queue import Ticket
+from refact_webgui.webgui.selfhost_webutils import log
+from refact_webgui.webgui.selfhost_queue import InferenceQueue
+from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
+from refact_webgui.webgui.selfhost_login import RefactSession
 
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union

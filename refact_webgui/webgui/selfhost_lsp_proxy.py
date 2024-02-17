@@ -9,8 +9,8 @@ from starlette.requests import Request
 from starlette.responses import StreamingResponse
 from starlette.background import BackgroundTask
 
-from self_hosting_machinery import env
-from self_hosting_machinery.webgui.selfhost_login import RefactSession
+from self_hosting_machinery import env  # REFACTORME
+from refact_webgui.webgui.selfhost_login import RefactSession
 
 __all__ = ["LspProxy"]
 
