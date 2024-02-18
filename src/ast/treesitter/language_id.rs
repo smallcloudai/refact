@@ -20,7 +20,6 @@ pub(crate) enum LanguageId {
     Kotlin,
     Java,
     JavaScript,
-    JavaScriptReact,
     // Json,
     Lua,
     Ocaml,
@@ -60,7 +59,6 @@ impl fmt::Display for LanguageId {
             Self::Kotlin => write!(f, "kotlin"),
             Self::Java => write!(f, "java"),
             Self::JavaScript => write!(f, "javascript"),
-            Self::JavaScriptReact => write!(f, "javascriptreact"),
             // Self::Json => write!(f, "json"),
             Self::Lua => write!(f, "lua"),
             Self::Ocaml => write!(f, "ocaml"),
@@ -109,7 +107,6 @@ impl From<&str> for LanguageId {
             "html" => Self::Html,
             "java" => Self::Java,
             "javascript" => Self::JavaScript,
-            "javascriptreact" => Self::JavaScriptReact,
             // "json" => Self::Json,
             "lua" => Self::Lua,
             // "markdown" => Self::Markdown,
@@ -144,6 +141,8 @@ impl From<Language> for LanguageId {
             Self::Python
         } else if value == tree_sitter_java::language() {
             Self::Java
+        } else if value == tree_sitter_javascript::language() {
+            Self::JavaScript
         } else if value == tree_sitter_rust::language() {
             Self::Rust
         } else if value == tree_sitter_typescript::language_typescript() {

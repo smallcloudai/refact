@@ -14,6 +14,7 @@ pub(crate)  mod cpp;
 pub(crate)  mod python;
 pub(crate)  mod java;
 pub(crate) mod rust;
+pub(crate) mod js;
 pub(crate) mod ts;
 pub(crate) mod tsx;
 mod utils;
@@ -119,7 +120,6 @@ pub trait LanguageParser: Send {
                 match capture_name.as_str() {
                     "class" | "struct" | "trait" => {
                         let range = capture.node.range();
-                        let text = code.slice(capture.node.byte_range());
                         let namespaces = self.get_namespace(Some(capture.node), code);
                         let class_name = namespaces.last().unwrap().clone();
                         let mut key = path.to_str().unwrap().to_string();
@@ -163,7 +163,6 @@ pub trait LanguageParser: Send {
                     "function" => {
                         let range = capture.node.range();
                         let mut namespaces = self.get_namespace(Some(capture.node), code);
-                        let text = code.slice(capture.node.byte_range());
                         let (name, scopes) = self.get_function_name_and_scope(capture.node.clone(), code);
                         namespaces.extend(scopes);
                         namespaces.push(name.clone());
@@ -184,7 +183,6 @@ pub trait LanguageParser: Send {
                     }
                     "global_variable" => {
                         let range = capture.node.range();
-                        let text = code.slice(capture.node.byte_range());
                         let mut namespaces = self.get_namespace(Some(capture.node), code);
                         let name = self.get_variable_name(capture.node, code);
                         let mut key = path.to_str().unwrap().to_string();
@@ -265,6 +263,10 @@ fn get_parser(language_id: LanguageId) -> Result<Box<dyn LanguageParser + 'stati
             let parser = java::JavaParser::new()?;
             Ok(Box::new(parser))
         }
+        LanguageId::JavaScript => {
+            let parser = js::JavascriptParser::new()?;
+            Ok(Box::new(parser))
+        }
         LanguageId::Rust => {
             let parser = rust::RustParser::new()?;
             Ok(Box::new(parser))
@@ -291,6 +293,7 @@ pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguagePars
         "inl" | "inc" | "tpp" | "tpl" => get_parser(LanguageId::Cpp),
         "py" | "pyo" | "py3" | "pyx" => get_parser(LanguageId::Python),
         "java" => get_parser(LanguageId::Java),
+        "js" | "jsx" => get_parser(LanguageId::JavaScript),
         "rs" => get_parser(LanguageId::Rust),
         "ts" => get_parser(LanguageId::TypeScript),
         "tsx" => get_parser(LanguageId::TypeScriptReact),
