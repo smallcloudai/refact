@@ -1,20 +1,12 @@
 use similar::DiffableStr;
-use tree_sitter::{Node, Query, QueryCapture, Range};
+use tree_sitter::{Node, Parser, Query, QueryCapture, Range};
 
 use crate::ast::treesitter::structs::{FunctionCallInfo, StaticInfo, StaticType, VariableInfo};
 
 pub(crate) fn get_function_name(parent: Node, text: &str) -> String {
-    for i in 0..parent.child_count() {
-        if let Some(child) = parent.child(i) {
-            let kind = child.kind();
-            match kind {
-                "identifier" => {
-                    let name = text.slice(child.byte_range());
-                    return name.to_string();
-                }
-                _ => {}
-            }
-        }
+    let name_id: u16 = parent.language().field_id_for_name("name").unwrap();
+    if let Some(field) = parent.child_by_field_id(name_id) {
+        return text.slice(field.byte_range()).to_string();
     }
     return "".to_string();
 }
@@ -113,4 +105,17 @@ pub(crate) fn get_static(captures: &[QueryCapture], query: &Query, code: &str) -
         };
     }
     None
+}
+
+pub(crate) fn try_to_find_matches(parser: &mut Parser, query_str: &str, parent: &Node, code: &str) -> Vec<String> {
+    let mut res: Vec<String> = vec![];
+    let mut qcursor = tree_sitter::QueryCursor::new();
+    let query = Query::new(parser.language().unwrap(), query_str).unwrap();
+    let matches = qcursor.matches(&query, *parent, code.as_bytes());
+    for match_ in matches {
+        for capture in match_.captures {
+            res.push(code.slice(capture.node.byte_range()).to_string());
+        }
+    }
+    res
 }

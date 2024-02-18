@@ -144,6 +144,12 @@ impl From<Language> for LanguageId {
             Self::Python
         } else if value == tree_sitter_java::language() {
             Self::Java
+        } else if value == tree_sitter_rust::language() {
+            Self::Rust
+        } else if value == tree_sitter_typescript::language_typescript() {
+            Self::TypeScript
+        } else if value == tree_sitter_typescript::language_tsx() {
+            Self::TypeScriptReact
         } else {
             Self::Unknown
         }

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
+use similar::DiffableStr;
 
 use tracing::error;
 use tree_sitter::{Node, Query, QueryCapture, Tree};
@@ -13,6 +14,8 @@ pub(crate)  mod cpp;
 pub(crate)  mod python;
 pub(crate)  mod java;
 pub(crate) mod rust;
+pub(crate) mod ts;
+pub(crate) mod tsx;
 mod utils;
 
 
@@ -116,6 +119,7 @@ pub trait LanguageParser: Send {
                 match capture_name.as_str() {
                     "class" | "struct" | "trait" => {
                         let range = capture.node.range();
+                        let text = code.slice(capture.node.byte_range());
                         let namespaces = self.get_namespace(Some(capture.node), code);
                         let class_name = namespaces.last().unwrap().clone();
                         let mut key = path.to_str().unwrap().to_string();
@@ -159,6 +163,7 @@ pub trait LanguageParser: Send {
                     "function" => {
                         let range = capture.node.range();
                         let mut namespaces = self.get_namespace(Some(capture.node), code);
+                        let text = code.slice(capture.node.byte_range());
                         let (name, scopes) = self.get_function_name_and_scope(capture.node.clone(), code);
                         namespaces.extend(scopes);
                         namespaces.push(name.clone());
@@ -179,6 +184,7 @@ pub trait LanguageParser: Send {
                     }
                     "global_variable" => {
                         let range = capture.node.range();
+                        let text = code.slice(capture.node.byte_range());
                         let mut namespaces = self.get_namespace(Some(capture.node), code);
                         let name = self.get_variable_name(capture.node, code);
                         let mut key = path.to_str().unwrap().to_string();
@@ -263,6 +269,14 @@ fn get_parser(language_id: LanguageId) -> Result<Box<dyn LanguageParser + 'stati
             let parser = rust::RustParser::new()?;
             Ok(Box::new(parser))
         }
+        LanguageId::TypeScript => {
+            let parser = ts::TypescriptParser::new()?;
+            Ok(Box::new(parser))
+        }
+        LanguageId::TypeScriptReact => {
+            let parser = tsx::TypescriptxParser::new()?;
+            Ok(Box::new(parser))
+        }
         other => Err(ParserError {
             message: "Unsupported language id: ".to_string() + &other.to_string()
         }),
@@ -278,6 +292,8 @@ pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguagePars
         "py" | "pyo" | "py3" | "pyx" => get_parser(LanguageId::Python),
         "java" => get_parser(LanguageId::Java),
         "rs" => get_parser(LanguageId::Rust),
+        "ts" => get_parser(LanguageId::TypeScript),
+        "tsx" => get_parser(LanguageId::TypeScriptReact),
         other => Err(ParserError { message: "Unsupported filename suffix: ".to_string() + &other }),
     }
 }
