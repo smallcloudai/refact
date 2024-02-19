@@ -82,6 +82,7 @@ const meta = {
     removePreviewFileByName: () => ({}),
     requestCommandsCompletion: () => ({}),
     setSelectedCommand: () => ({}),
+    onTextAreaHeightChange: noop,
   },
 } satisfies Meta<typeof ChatForm>;
 

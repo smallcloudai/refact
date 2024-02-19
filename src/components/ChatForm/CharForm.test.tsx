@@ -34,6 +34,7 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     },
     setSelectedCommand: noop,
     filesInPreview: [],
+    onTextAreaHeightChange: noop,
     ...props,
   };
 
