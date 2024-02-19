@@ -12,7 +12,7 @@ from more_itertools import chunked
 from scyllapy import Scylla, InlineBatch, ExecutionProfile, Consistency, SerialConsistency
 from scyllapy.query_builder import Insert, Select
 
-from self_hosting_machinery.dashboards.utils import StatsDataFrames
+from refact_webgui.dashboards.utils import StatsDataFrames
 
 
 os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'

@@ -15,28 +15,28 @@ from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
-from self_hosting_machinery.webgui.selfhost_plugins import PluginsRouter
-from self_hosting_machinery.webgui.selfhost_fastapi_completions import CompletionsRouter
-from self_hosting_machinery.webgui.selfhost_fastapi_gpu import GPURouter
-from self_hosting_machinery.webgui.tab_server_logs import TabServerLogRouter
-from self_hosting_machinery.webgui.tab_settings import TabSettingsRouter
-from self_hosting_machinery.webgui.tab_upload import TabUploadRouter
-from self_hosting_machinery.webgui.tab_finetune import TabFinetuneRouter
-from self_hosting_machinery.webgui.tab_models_host import TabHostRouter
-from self_hosting_machinery.webgui.selfhost_queue import InferenceQueue, Ticket
-from self_hosting_machinery.webgui.selfhost_static import StaticRouter
-from self_hosting_machinery.webgui.tab_loras import TabLorasRouter
-from self_hosting_machinery.webgui.selfhost_statistics import TabStatisticsRouter
-from self_hosting_machinery.webgui.selfhost_login import LoginRouter
-from self_hosting_machinery.webgui.tab_about import TabAboutRouter
+from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
+from refact_webgui.webgui.selfhost_plugins import PluginsRouter
+from refact_webgui.webgui.selfhost_fastapi_completions import CompletionsRouter
+from refact_webgui.webgui.selfhost_fastapi_gpu import GPURouter
+from refact_webgui.webgui.tab_server_logs import TabServerLogRouter
+from refact_webgui.webgui.tab_settings import TabSettingsRouter
+from refact_webgui.webgui.tab_upload import TabUploadRouter
+from refact_webgui.webgui.tab_finetune import TabFinetuneRouter
+from refact_webgui.webgui.tab_models_host import TabHostRouter
+from refact_webgui.webgui.selfhost_queue import InferenceQueue, Ticket
+from refact_webgui.webgui.selfhost_static import StaticRouter
+from refact_webgui.webgui.tab_loras import TabLorasRouter
+from refact_webgui.webgui.selfhost_statistics import TabStatisticsRouter
+from refact_webgui.webgui.selfhost_login import LoginRouter
+from refact_webgui.webgui.tab_about import TabAboutRouter
 
-from self_hosting_machinery.webgui.selfhost_database import RefactDatabase
-from self_hosting_machinery.webgui.selfhost_database import StatisticsService
-from self_hosting_machinery.webgui.selfhost_lsp_proxy import LspProxy
-from self_hosting_machinery.webgui.selfhost_login import RefactSession
-from self_hosting_machinery.webgui.selfhost_login import DummySession
-from self_hosting_machinery.webgui.selfhost_login import AdminSession
+from refact_webgui.webgui.selfhost_database import RefactDatabase
+from refact_webgui.webgui.selfhost_database import StatisticsService
+from refact_webgui.webgui.selfhost_lsp_proxy import LspProxy
+from refact_webgui.webgui.selfhost_login import RefactSession
+from refact_webgui.webgui.selfhost_login import DummySession
+from refact_webgui.webgui.selfhost_login import AdminSession
 
 from typing import Dict, Callable
 

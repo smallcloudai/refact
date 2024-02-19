@@ -4,7 +4,7 @@ import os.path
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from self_hosting_machinery.webgui.selfhost_webutils import log
+from refact_webgui.webgui.selfhost_webutils import log
 
 from typing import List, Tuple
 

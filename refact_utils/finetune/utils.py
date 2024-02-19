@@ -5,10 +5,9 @@ import json
 import time
 from pathlib import Path
 
-from self_hosting_machinery.finetune.configuration.finetune_filtering_defaults import finetune_filtering_defaults
-from self_hosting_machinery.finetune.configuration.finetune_train_defaults import finetune_train_defaults
-
-from self_hosting_machinery import env
+from refact_utils.scripts import env
+from refact_utils.finetune.filtering_defaults import finetune_filtering_defaults
+from refact_utils.finetune.train_defaults import finetune_train_defaults
 
 from typing import Any, Dict, Optional, Callable, Union
 

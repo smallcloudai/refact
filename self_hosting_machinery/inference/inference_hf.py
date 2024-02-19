@@ -20,7 +20,7 @@ from self_hosting_machinery.inference import InferenceBase
 from self_hosting_machinery.inference import modload
 from refact_scratchpads_no_gpu.stream_results import UploadProxy
 
-from self_hosting_machinery import env
+from refact_utils.scripts import env
 
 from typing import Dict, Any, Union, Optional
 

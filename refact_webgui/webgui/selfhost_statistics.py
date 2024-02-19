@@ -8,11 +8,11 @@ from fastapi.responses import StreamingResponse
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
 
-from self_hosting_machinery.dashboards.dash_prime import dashboard_prime
-from self_hosting_machinery.dashboards.dash_teams import teams_data, dashboard_teams
-from self_hosting_machinery.webgui.selfhost_database import StatisticsService
-from self_hosting_machinery.webgui.selfhost_database import ScyllaBatchInserter
-from self_hosting_machinery.webgui.selfhost_login import RefactSession
+from refact_webgui.dashboards.dash_prime import dashboard_prime
+from refact_webgui.dashboards.dash_teams import teams_data, dashboard_teams
+from refact_webgui.webgui.selfhost_database import StatisticsService
+from refact_webgui.webgui.selfhost_database import ScyllaBatchInserter
+from refact_webgui.webgui.selfhost_login import RefactSession
 
 
 __all__ = ["BaseTabStatisticsRouter", "TabStatisticsRouter", "DashTeamsGenDashData"]

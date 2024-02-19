@@ -1,6 +1,5 @@
 import hashlib
 import json
-import os.path
 import random
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -8,9 +7,9 @@ from typing import List, Dict, Any, Optional
 import jsonlines
 
 from self_hosting_machinery.finetune.utils import traces
-from self_hosting_machinery.scripts.env import (TRAIN_UNFILTERED_FILEPATH, TEST_UNFILTERED_FILEPATH,
-                                                TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH,
-                                                LOSS_PER_HASH_DB_FILEPATH)
+from refact_utils.scripts.env import (TRAIN_UNFILTERED_FILEPATH, TEST_UNFILTERED_FILEPATH,
+                                      TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH,
+                                      LOSS_PER_HASH_DB_FILEPATH)
 
 __all__ = ['FileSetsContext']
 

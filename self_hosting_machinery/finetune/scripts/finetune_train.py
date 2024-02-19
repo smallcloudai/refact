@@ -10,7 +10,8 @@ from typing import Dict, Any, Iterable, Tuple
 
 import torch as th
 
-from self_hosting_machinery import env
+from refact_utils.scripts import env
+from refact_utils.finetune.utils import get_finetune_config
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config, ConfigBuilder
 from self_hosting_machinery.finetune.scripts.aux.dataset import (
     create_train_dataloader, create_test_dataloader, get_ds_len_per_epoch, to_cuda
@@ -19,7 +20,6 @@ from self_hosting_machinery.finetune.scripts.aux.early_stopper import EarlyStopp
 from self_hosting_machinery.finetune.scripts.aux.finetune_status_tracker import FinetuneStatusTracker
 from self_hosting_machinery.finetune.scripts.aux.model import ModelContext
 from self_hosting_machinery.finetune.utils import traces
-from self_hosting_machinery.finetune.utils.finetune_utils import get_finetune_config
 
 
 def _log_everywhere(message):

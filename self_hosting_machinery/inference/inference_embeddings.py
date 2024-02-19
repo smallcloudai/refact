@@ -8,8 +8,9 @@ import traceback
 
 from typing import Dict, Any
 
-from self_hosting_machinery import env
 from sentence_transformers import SentenceTransformer
+
+from refact_utils.scripts import env
 from self_hosting_machinery.inference import InferenceBase
 from self_hosting_machinery.inference.lora_loader_mixin import LoraLoaderMixin
 

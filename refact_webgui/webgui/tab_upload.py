@@ -1,6 +1,4 @@
 import re
-import logging
-import json
 import os
 import json
 import time
@@ -14,10 +12,9 @@ from pydantic import BaseModel, Required
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 
-from self_hosting_machinery.finetune.utils.finetune_utils import get_prog_and_status_for_ui
-
-from self_hosting_machinery.webgui.selfhost_webutils import log
-from self_hosting_machinery import env
+from refact_utils.scripts import env
+from refact_utils.finetune.utils import get_prog_and_status_for_ui
+from refact_webgui.webgui.selfhost_webutils import log
 
 
 __all__ = ["TabUploadRouter", "download_file_from_url", "UploadViaURL"]

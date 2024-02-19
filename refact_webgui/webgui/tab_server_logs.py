@@ -5,7 +5,7 @@ import asyncio
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse, Response
-from self_hosting_machinery.scripts import env
+from refact_utils.scripts import env
 
 
 class TabServerLogRouter(APIRouter):

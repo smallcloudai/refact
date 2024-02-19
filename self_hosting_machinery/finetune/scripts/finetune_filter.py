@@ -10,8 +10,9 @@ from typing import Dict, Any
 
 import torch
 
+from refact_utils.scripts import env
+from refact_utils.finetune.utils import (get_finetune_config, get_finetune_filter_config)
 import self_hosting_machinery.finetune.utils.traces as traces
-from self_hosting_machinery import env
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config
 from self_hosting_machinery.finetune.scripts.aux.dataset import create_finetune_filter_dataloader, to_cuda
 from self_hosting_machinery.finetune.scripts.aux.file_sets_context import FileSetsContext
@@ -19,7 +20,6 @@ from self_hosting_machinery.finetune.scripts.aux.file_status_context import File
 from self_hosting_machinery.finetune.scripts.aux.finetune_filter_status_tracker import FinetuneFilterStatusTracker
 from self_hosting_machinery.finetune.scripts.aux.model import ModelContext
 from self_hosting_machinery.finetune.scripts.process_uploaded_files import make_matcher
-from self_hosting_machinery.finetune.utils.finetune_utils import (get_finetune_config, get_finetune_filter_config)
 
 
 class InvalidLossValueException(Exception):

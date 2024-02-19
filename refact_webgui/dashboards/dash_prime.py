@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Dict, List, Any
 import pandas as pd
 
-from self_hosting_machinery.dashboards.utils import complete_date_axis, StatsDataFrames
+from refact_webgui.dashboards.utils import complete_date_axis, StatsDataFrames
 
 
 def robot_human_ratio(robot: int, human: int) -> float:

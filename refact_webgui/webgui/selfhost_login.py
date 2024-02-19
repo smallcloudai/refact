@@ -10,8 +10,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pydantic import Required
 
-from self_hosting_machinery.webgui import static_folders
-from self_hosting_machinery import env
+from refact_utils.scripts import env
+from refact_webgui.webgui import static_folders
 
 from typing import List
 

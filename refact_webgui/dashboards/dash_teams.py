@@ -2,8 +2,8 @@ from typing import Dict, Any, List
 
 import pandas as pd
 
-from self_hosting_machinery.dashboards.utils import StatsDataFrames
-from self_hosting_machinery.dashboards.dash_prime import barplot_completions, barplot_rh
+from refact_webgui.dashboards.utils import StatsDataFrames
+from refact_webgui.dashboards.dash_prime import barplot_completions, barplot_rh
 
 
 def get_teams_data(rh_df) -> Dict[str, Any]:

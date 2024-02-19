@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, Query
 from fastapi.responses import Response, JSONResponse
 
-from self_hosting_machinery.webgui.selfhost_model_assigner import ModelAssigner
+from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
 from pydantic import BaseModel
 from typing import Dict

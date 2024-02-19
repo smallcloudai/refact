@@ -11,7 +11,7 @@ from itertools import chain
 from collections import Counter
 from fnmatch import fnmatch
 
-from self_hosting_machinery import env
+from refact_utils.scripts import env
 import self_hosting_machinery.finetune.utils.traces as traces
 
 from typing import List, Dict, Any, Iterable, Tuple
