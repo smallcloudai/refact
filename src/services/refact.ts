@@ -294,13 +294,13 @@ type CommandPreviewContent = {
   content: string;
   role: "context_file";
 };
-export type ResponseFromCommandPreview = {
+export type CommandPreviewResponse = {
   messages: CommandPreviewContent[];
 };
 
 export function isCommandPreviewResponse(
   json: unknown,
-): json is ResponseFromCommandPreview {
+): json is CommandPreviewResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
   if (!("messages" in json)) return false;
