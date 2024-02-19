@@ -23,6 +23,7 @@ function makeConfig(library: "browser" | "node") {
         emptyOutDir: true,
         outDir: OUT_DIR,
         copyPublicDir: false,
+        sourcemap: library === "browser",
       },
       plugins: [react()],
       server: {
