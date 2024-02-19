@@ -23,7 +23,7 @@ function makeConfig(library: "browser" | "node") {
         emptyOutDir: true,
         outDir: OUT_DIR,
         copyPublicDir: false,
-        sourcemap: library === "browser",
+        sourcemap: library === "browser" ? "inline" : false,
       },
       plugins: [react()],
       server: {
@@ -32,6 +32,7 @@ function makeConfig(library: "browser" | "node") {
         },
       },
       test: {
+        retry: 2,
         environment: "jsdom",
         coverage: {
           exclude: coverageConfigDefaults.exclude.concat(

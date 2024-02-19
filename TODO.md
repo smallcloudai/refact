@@ -109,6 +109,7 @@
 [ ] combobox only needs one function for completion and preview
 [x] check clicking on the combobox the second click on @@file doesn't seem to work.
 [x] place the cursor at the right place when adding a command between text
+[ ] use repeat to find flaky tests
 
 ### EVENTS TODO FOR IDEs
 
