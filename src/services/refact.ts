@@ -290,7 +290,7 @@ export async function getAtCommandCompletion(
   return json;
 }
 
-type CommandPreviewContent = {
+export type CommandPreviewContent = {
   content: string;
   role: "context_file";
 };
