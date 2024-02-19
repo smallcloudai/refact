@@ -5,6 +5,12 @@ import { EVENT_NAMES_TO_CHAT } from "../events";
 
 import { ChatHistoryItem } from "../hooks/useChatHistory";
 
+vi.mock("../hooks/useEventBusForChat", () => ({
+  useEventBusForChat: () => ({
+    backFromChat: vi.fn,
+  }),
+}));
+
 describe("HistorySideBar", () => {
   stubResizeObserver();
 
