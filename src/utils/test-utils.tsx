@@ -61,4 +61,4 @@ export function stubResizeObserver() {
  *
  */
 export const repeat = (n: number) =>
-  Array.from({ length: n }).map((d, i) => i + 1);
+  Array.from({ length: n }).map((_d, i) => i + 1);
