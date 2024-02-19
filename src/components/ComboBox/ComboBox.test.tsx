@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, test, vi, expect, afterEach } from "vitest";
-import { render, cleanup } from "../../utils/test-utils";
+import { render, cleanup, waitFor } from "../../utils/test-utils";
 import { ComboBox, ComboBoxProps } from "./ComboBox";
 import { TextArea, type TextAreaProps } from "../TextArea";
 
@@ -46,9 +46,7 @@ describe("ComboBox", () => {
   test("deleting while typing a command", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@");
-    await user.keyboard("{Tab}");
-    await user.keyboard("{Tab}");
+    await user.type(textarea, "@f{Tab}f{Tab}");
     expect(textarea.textContent).toEqual("@file /foo");
     await user.keyboard("{Backspace}");
     expect(app.queryByText("/foo")).not.toBeNull();
@@ -60,7 +58,7 @@ describe("ComboBox", () => {
   test("delete part of a command and press tab", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@");
+    await user.type(textarea, "@f");
     await user.keyboard("{Tab}");
     expect(textarea.textContent).toEqual("@file ");
     await user.type(textarea, "{Backspace}{BackSpace}");
@@ -72,7 +70,7 @@ describe("ComboBox", () => {
   test("completes when pressing tab", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "foo{Shift>}{Enter}{/Shift}@");
+    await user.type(textarea, "foo{Shift>}{Enter}{/Shift}@f");
     await user.keyboard("{Tab}");
     await user.keyboard("{Tab}");
     expect(app.getByRole("combobox").textContent).toEqual("foo\n@file /foo");
@@ -81,10 +79,13 @@ describe("ComboBox", () => {
   test("completes when pressing enter", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "foo{Shift>}{Enter}{/Shift}@");
+    await user.type(textarea, "@f");
+    await waitFor(() => app.getByText("@file"));
     await user.keyboard("{Enter}");
-    await user.keyboard("{Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual("foo\n@file /foo");
+    expect(app.getByRole("combobox").textContent).toEqual("@file ");
+    await waitFor(() => app.getByText("/foo"));
+    await user.type(textarea, "/f{Enter}");
+    expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
   });
 
   test("type part of the command, then press ender", async () => {
@@ -110,18 +111,18 @@ describe("ComboBox", () => {
   test("typing @ and tab twice, should complete the command and argument", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@");
-    await user.keyboard("{Tab}");
-    await user.keyboard("{Tab}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
+    await user.type(textarea, "@f{Tab}f{Tab}");
+    const result = app.getByRole("combobox").textContent;
+    const expected = "@file /foo";
+    expect(result).toEqual(expected);
   });
 
   test("typing @ and enter twice, should complete the command and argument", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@");
+    await user.type(textarea, "@f");
     await user.keyboard("{Enter}");
-    await user.keyboard("{Enter}");
+    await user.keyboard("f{Enter}");
     expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
   });
 
@@ -199,17 +200,15 @@ describe("ComboBox", () => {
   test("change a command after typing", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
-    await user.type(textarea, "@fi{Enter}${Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
-    await user.type(textarea, "{Shift>}{Enter}{/Shift}hello");
-    expect(textarea.textContent).toEqual("@file /foo\nhello");
+    await user.type(textarea, "@file /bar");
 
+    await user.type(textarea, "{Shift>}{Enter}{/Shift}hello");
+    expect(textarea.textContent).toEqual("@file /bar\nhello");
     await user.keyboard(
       "{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}",
     );
     await user.keyboard("{Backspace}{Backspace}{Backspace}");
-    await user.keyboard("b");
-    await user.keyboard("{Enter}");
-    expect(textarea.textContent).toEqual("@file /bar\nhello");
+    await user.keyboard("f{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo\nhello");
   });
 });
