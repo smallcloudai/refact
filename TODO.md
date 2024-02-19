@@ -103,7 +103,9 @@
 [x] bug when running retry, user message isn't removed
 [x] bug with the combobox being open after asking a question
 [x] file preview should scroll with textarea
-[ ] chat content should stay at end when textarea grows
+[x] chat content should stay at end when textarea grows
+[ ] should this be disabled if the user has scrolled away from the bottom?
+
 [ ] combobox only needs one function for completion and preview
 [x] check clicking on the combobox the second click on @@file doesn't seem to work.
 [x] place the cursor at the right place when adding a command between text
