@@ -4,6 +4,8 @@ import { matchSorter } from "match-sorter";
 import { getAnchorRect, replaceValue, detectCommand } from "./utils";
 import type { TextAreaProps } from "../TextArea/TextArea";
 import { Item } from "./Item";
+
+import { Portal } from "../Portal";
 import { Popover } from "./Popover";
 
 export type ComboBoxProps = {
@@ -271,25 +273,27 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
           onKeyDown: onKeyDown,
         })}
       />
-      <Popover
-        store={combobox}
-        hidden={!hasMatches}
-        getAnchorRect={() => {
-          const textarea = ref.current;
-          if (!textarea) return null;
-          return getAnchorRect(textarea, trigger);
-        }}
-      >
-        {matches.map((item, index) => (
-          <Item
-            key={item + "-" + index}
-            value={item}
-            onClick={onItemClick(item)}
-          >
-            {item.slice(selectedCommand.length)}
-          </Item>
-        ))}
-      </Popover>
+      <Portal>
+        <Popover
+          store={combobox}
+          hidden={!hasMatches}
+          getAnchorRect={() => {
+            const textarea = ref.current;
+            if (!textarea) return null;
+            return getAnchorRect(textarea, trigger);
+          }}
+        >
+          {matches.map((item, index) => (
+            <Item
+              key={item + "-" + index}
+              value={item}
+              onClick={onItemClick(item)}
+            >
+              {item.slice(selectedCommand.length)}
+            </Item>
+          ))}
+        </Popover>
+      </Portal>
     </>
   );
 };

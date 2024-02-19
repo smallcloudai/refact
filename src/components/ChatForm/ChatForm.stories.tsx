@@ -80,6 +80,9 @@ const meta = {
     filesInPreview: [],
     selectedSnippet: { code: "", language: "" },
     removePreviewFileByName: () => ({}),
+    requestCommandsCompletion: () => ({}),
+    executeCommand: () => ({}),
+    setSelectedCommand: () => ({}),
   },
 } satisfies Meta<typeof ChatForm>;
 
