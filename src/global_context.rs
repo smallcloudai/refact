@@ -66,7 +66,7 @@ pub struct CommandLine {
 }
 impl CommandLine {
     fn create_hash(msg: String) -> String {
-        let mut hasher = DefaultHasher::new();;
+        let mut hasher = DefaultHasher::new();
         hasher.write(msg.as_bytes());
         format!("{:x}", hasher.finish())
     }

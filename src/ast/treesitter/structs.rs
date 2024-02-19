@@ -36,7 +36,7 @@ pub trait UsageSymbolInfo: Debug + Send + Sync {
     fn type_str(&self) -> String;
     fn get_range(&self) -> Range;
     fn set_definition_meta_path(&mut self, meta_path: String);
-    fn get_definition_meta_path(&self) -> Option<String>;
+    fn get_declaration_meta_path(&self) -> Option<String>;
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -73,7 +73,7 @@ impl UsageSymbolInfo for VariableInfo {
         self.meta_path = Some(meta_path);
     }
 
-    fn get_definition_meta_path(&self) -> Option<String> {
+    fn get_declaration_meta_path(&self) -> Option<String> {
         self.meta_path.clone()
     }
 }
@@ -110,7 +110,7 @@ impl UsageSymbolInfo for FunctionCallInfo {
         self.meta_path = Some(meta_path);
     }
 
-    fn get_definition_meta_path(&self) -> Option<String> {
+    fn get_declaration_meta_path(&self) -> Option<String> {
         self.meta_path.clone()
     }
 }
@@ -150,7 +150,7 @@ impl UsageSymbolInfo for StaticInfo {
         self.meta_path = Some(meta_path);
     }
 
-    fn get_definition_meta_path(&self) -> Option<String> {
+    fn get_declaration_meta_path(&self) -> Option<String> {
         self.meta_path.clone()
     }
 }

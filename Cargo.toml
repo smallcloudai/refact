@@ -40,6 +40,7 @@ axum = "0.6.20"
 uuid = { version = "1", features = ["v4"] }
 lazy_static = "1.4.0"
 
+regex-automata = { version = "0.1.10", features = ["transducer"] }
 sorted-vec = "0.8.3"
 tree-sitter = "0.20"
 tree-sitter-apex = "1.0.0"

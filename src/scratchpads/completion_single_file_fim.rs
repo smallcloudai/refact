@@ -304,7 +304,7 @@ async fn ast_search(
         Some(doc) => doc,
         None => return ("".to_string(), 0)
     };
-    let search_result = ast_module.search_by_cursor(
+    let search_result = ast_module.search_declarations_by_cursor(
         &doc, code, cursor, 5
     ).await;
 

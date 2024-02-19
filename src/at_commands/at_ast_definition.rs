@@ -96,7 +96,7 @@ impl AtCommand for AtAstDefinition {
         let binding = context.global_context.read().await;
         let x = match *binding.ast_module.lock().await {
             Some(ref ast) => {
-                match ast.search_by_symbol_path(symbol_path.clone(), 1).await {
+                match ast.search_declarations_by_symbol_path(symbol_path.clone(), 1).await {
                     Ok(res) => Ok(results2message(&res).await),
                     Err(err) => Err(err)
                 }

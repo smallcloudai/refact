@@ -66,7 +66,7 @@ impl AstModule {
         let _ = self.ast_index.lock().await.remove(doc).await;
     }
 
-    pub async fn search_by_cursor(
+    pub async fn search_declarations_by_cursor(
         &self,
         doc: &DocumentInfo,
         code: &str,
@@ -100,7 +100,7 @@ impl AstModule {
         )
     }
 
-    pub async fn search_by_symbol_path(
+    pub async fn search_declarations_by_symbol_path(
         &self,
         symbol_path: String,
         top_n: usize
@@ -109,6 +109,31 @@ impl AstModule {
         let ast_index = self.ast_index.clone();
         let ast_index_locked  = ast_index.lock().await;
         match ast_index_locked.search_declarations(symbol_path.as_str(), top_n, None).await {
+            Ok(results) => {
+                for r in results.iter() {
+                    info!("distance {:.3}, found {}, ", r.sim_to_query, r.symbol_declaration.meta_path);
+                }
+                info!("search_by_symbol_path time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                Ok(
+                    AstQuerySearchResult {
+                        query_text: symbol_path,
+                        search_results: results,
+                    }
+                )
+            },
+            Err(e) => Err(e.to_string())
+        }
+    }
+
+    pub async fn search_references_by_symbol_path(
+        &self,
+        symbol_path: String,
+        top_n: usize
+    ) -> Result<AstQuerySearchResult, String> {
+        let t0 = std::time::Instant::now();
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked  = ast_index.lock().await;
+        match ast_index_locked.search_usages(symbol_path.as_str(), top_n, None).await {
             Ok(results) => {
                 for r in results.iter() {
                     info!("distance {:.3}, found {}, ", r.sim_to_query, r.symbol_declaration.meta_path);

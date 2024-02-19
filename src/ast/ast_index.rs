@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use fst::{Set, set, Streamer};
 use fst::automaton::Subsequence;
+use regex_automata::dense;
 use tracing::{debug, info};
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
@@ -18,18 +19,25 @@ use crate::files_in_workspace::DocumentInfo;
 pub struct AstIndex {
     declarations: HashMap<String, SymbolDeclarationStruct>,
     declarations_search_index: HashMap<PathBuf, Set<Vec<u8>>>,
-    usages: HashMap<String, Box<dyn UsageSymbolInfo>>,
-    usages_search_index: HashMap<PathBuf, Set<Vec<u8>>>
+    usages: HashMap<String, Vec<Box<dyn UsageSymbolInfo>>>,
+    usages_search_index: HashMap<PathBuf, Set<Vec<u8>>>,
 }
 
 
 fn make_a_query(
     nodes_indexes: &HashMap<PathBuf, Set<Vec<u8>>>,
     query_str: &str,
+    exception_doc: Option<DocumentInfo>,
 ) -> Vec<String> {
-    let matcher = Subsequence::new(query_str);
+    let pattern = format!(r"(?i){}", query_str);
+    let matcher = dense::Builder::new().anchored(true).build(pattern.as_str()).unwrap();
     let mut stream_builder = set::OpBuilder::new();
-    for (_, set) in nodes_indexes {
+    for (doc, set) in nodes_indexes {
+        if let Some(ref exception) = exception_doc {
+            if doc.eq(&exception.get_path()) {
+                continue;
+            }
+        }
         stream_builder = stream_builder.add(set.search(matcher.clone()));
     }
 
@@ -53,7 +61,7 @@ impl AstIndex {
         }
     }
 
-    pub async fn add_or_update(&mut self, doc: &DocumentInfo) -> Result<SortedVec<String>, String> {
+    pub async fn add_or_update(&mut self, doc: &DocumentInfo) -> Result<(), String> {
         let path = doc.get_path();
         let mut parser = match get_parser_by_filename(&doc.get_path()) {
             Ok(parser) => parser,
@@ -103,15 +111,20 @@ impl AstIndex {
         let mut usages_meta_names: SortedVec<String> = SortedVec::new();
         for usage in usages {
             usages_meta_names.push(usage.meta_path());
-            self.usages.insert(usage.meta_path(), usage);
+            self.usages.entry(usage.meta_path()).or_default().push(usage);
         }
-        let meta_names_set = match Set::from_iter(meta_names.iter()) {
+        let meta_names_set = match Set::from_iter(usages_meta_names.iter()) {
             Ok(set) => set,
             Err(e) => return Err(format!("Error creating set: {}", e)),
         };
         self.usages_search_index.insert(path.clone(), meta_names_set);
 
-        Ok(meta_names)
+        info!(
+            "parsed {}, added {} definitions, {} usages",
+            crate::nicer_logs::last_n_chars(&path.display().to_string(), 30),
+            meta_names.len(), usages_meta_names.len()
+        );
+        Ok(())
     }
 
     pub async fn remove(&mut self, doc: &DocumentInfo) -> Result<(), String> {
@@ -150,18 +163,12 @@ impl AstIndex {
         exception_doc: Option<DocumentInfo>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         let query_str = query.to_string();
-        let found_keys = make_a_query(&self.declarations_search_index, query_str.as_str());
+        let found_keys = make_a_query(&self.declarations_search_index, query_str.as_str(), exception_doc);
 
-        let exception_filename = match exception_doc {
-            Some(doc) => doc.get_path(),
-            None => {
-                PathBuf::default()
-            }
-        };
         let filtered_found_keys = found_keys
             .iter()
             .filter_map(|k| self.declarations.get(k))
-            .filter(|k| k.definition_info.path != exception_filename && !k.meta_path.is_empty())
+            .filter(|k| !k.meta_path.is_empty())
             .collect::<Vec<_>>();
 
         let mut filtered_search_results: Vec<(SymbolDeclarationStruct, f32)> = filtered_found_keys
@@ -202,25 +209,25 @@ impl AstIndex {
         exception_doc: Option<DocumentInfo>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         let query_str = query.to_string();
-        let found_keys = make_a_query(&self.declarations_search_index, query_str.as_str());
+        let found_keys = make_a_query(&self.usages_search_index, query_str.as_str(), exception_doc);
 
-        let exception_filename = match exception_doc {
-            Some(doc) => doc.get_path(),
-            None => {
-                PathBuf::default()
-            }
-        };
         let filtered_found_keys = found_keys
             .iter()
-            .filter_map(|k| self.declarations.get(k))
-            .filter(|k| k.definition_info.path != exception_filename && !k.meta_path.is_empty())
+            .filter_map(|k| self.usages.get(k))
+            .flatten()
+            .filter(|k| !k.meta_path().is_empty())
+            .filter(|k| k.get_declaration_meta_path().is_some())
             .collect::<Vec<_>>();
 
         let mut filtered_search_results: Vec<(SymbolDeclarationStruct, f32)> = filtered_found_keys
             .into_iter()
-            .map(|key| (key.clone(),
-                        (jaro_winkler(query, key.meta_path.as_str()) as f32).max(f32::MIN_POSITIVE) *
-                            (jaro_winkler(query, key.name.as_str()) as f32).max(f32::MIN_POSITIVE)))
+            .map(|key| (
+                self.declarations.get(&key.get_declaration_meta_path().unwrap_or_default()),
+                jaro_winkler(query, &key.meta_path()) as f32)
+            )
+            .filter_map(|(maybe_declaration, dist)| {
+                maybe_declaration.map(|declaration| (declaration.clone(), dist))
+            })
             .collect();
         filtered_search_results.sort_by(|(_, dist_1), (_, dist_2)|
             dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
@@ -281,10 +288,10 @@ fn link_declarations_to_usages(
     usages: &mut Vec<Box<dyn UsageSymbolInfo>>,
 ) {
     fn within_range(
-        main_range: &Range,
-        range_to_check: &Range,
+        decl_range: &Range,
+        usage_range: &Range,
     ) -> bool {
-        main_range.start_point.row >= range_to_check.start_point.row && main_range.end_point.row <= range_to_check.end_point.row
+        decl_range.start_point.row <= usage_range.start_point.row && decl_range.end_point.row >= usage_range.end_point.row
     }
 
     for mut usage in usages.iter_mut() {
@@ -295,7 +302,7 @@ fn link_declarations_to_usages(
             if within_range(&declaration.definition_info.range, &range) {
                 let distance = max(
                     declaration.definition_info.range.end_point.row - declaration.definition_info.range.start_point.row,
-                    0
+                    0,
                 );
                 if closest_declaration.is_none() || closest_declaration_rows_count.unwrap_or(distance + 1) < distance {
                     closest_declaration = Some(meta_path.clone());
@@ -312,6 +319,5 @@ fn link_declarations_to_usages(
             }
         }
     }
-
 }
 

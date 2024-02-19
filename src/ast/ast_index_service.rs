@@ -57,7 +57,7 @@ async fn cooldown_queue_thread(
             last_updated.remove(&path);
             out_queue.lock().await.push_back(path);
         }
-        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 }
 
@@ -94,7 +94,7 @@ async fn ast_indexer_thread(
                         write!(std::io::stderr(), "AST COMPLETED\n").unwrap();
                         info!("AST COMPLETED");
                     }
-                    tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     continue;
                 }
             }
@@ -103,11 +103,7 @@ async fn ast_indexer_thread(
             Err(e) => {
                 info!("Error adding/updating records in AST index: {}", e);
             }
-            Ok(definitions_vector) => {
-                let path = document.get_path();
-                let last_30_chars = crate::nicer_logs::last_n_chars(&path.display().to_string(), 30);
-                info!("parsed {}, added {} definitions", last_30_chars, definitions_vector.len());
-            }
+            Ok(()) => { }
         }
     }
 }
