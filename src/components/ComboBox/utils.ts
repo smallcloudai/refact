@@ -39,7 +39,7 @@ export function replaceValue(
   trigger: string,
   command: string,
   startAt: number | null,
-) {
+): { value: string; endPosition: number } {
   const maybeExistingCommand = detectCommand(element);
   const maybeEndOfCommand = maybeExistingCommand
     ? maybeExistingCommand.startPosition + maybeExistingCommand.command.length
@@ -54,9 +54,12 @@ export function replaceValue(
   const end = element.value.substring(endPosition);
   const result = `${start}${command}${end}`;
 
-  element.selectionStart = result.length - end.length;
+  const finalEndPosition = result.length - end.length;
 
-  return result;
+  return {
+    value: result,
+    endPosition: finalEndPosition,
+  };
 }
 
 export function detectCommand(element: HTMLTextAreaElement): {

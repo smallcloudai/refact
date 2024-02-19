@@ -45,6 +45,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const [trigger, setTrigger] = React.useState<string>("");
   const [startPosition, setStartPosition] = React.useState<null | number>(null);
   const [wasDelete, setWasDelete] = React.useState<boolean>(false);
+  const [endPosition, setEndPosition] = React.useState<null | number>(null);
 
   const commandsOrArguments = selectedCommand
     ? commandArguments.map((arg) => selectedCommand + arg)
@@ -81,6 +82,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   }, [startPosition, trigger, value]);
 
   React.useLayoutEffect(() => {
+    if (!ref.current) return;
+    if (endPosition === null) return;
+    ref.current.setSelectionRange(endPosition, endPosition);
+    setEndPosition(null);
+  }, [endPosition]);
+
+  React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
     const first = combobox.first();
     combobox.setActiveId(first);
@@ -95,8 +103,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       setSelectedCommand("");
     }
   }, [trigger, setSelectedCommand, selectedCommand]);
-
-  // TODO: if selected value changes and box is open set activeId to first item
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const state = combobox.getState();
@@ -190,8 +196,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       );
 
       setTrigger(command);
-      onChange(newInput);
-
+      onChange(newInput.value);
+      setEndPosition(newInput.endPosition);
       setSelectedCommand(selectedCommand ? "" : command);
       combobox.setValue(command);
     }
@@ -206,7 +212,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
       event.preventDefault();
       event.stopPropagation();
-      onChange(newInput);
+      onChange(newInput.value);
+      setEndPosition(newInput.endPosition);
       combobox.setValue(trigger + " ");
       setTrigger(trigger + " ");
       setSelectedCommand(trigger + " ");
@@ -241,7 +248,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       if (selectedCommand) {
         setSelectedCommand("");
         setTrigger(command);
-        // setStartPosition(null);
+        setStartPosition(null);
         combobox.hide();
       } else {
         setSelectedCommand(command);
@@ -250,9 +257,17 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
       const nextValue = replaceValue(textarea, trigger, command, startPosition);
 
-      onChange(nextValue);
+      onChange(nextValue.value);
+      setEndPosition(nextValue.endPosition);
     };
 
+  console.log({
+    start: ref.current?.selectionStart,
+    end: ref.current?.selectionEnd,
+    statePositions: { endPosition, startPosition },
+    value,
+    cState: combobox.getState(),
+  });
   return (
     <>
       <Combobox
