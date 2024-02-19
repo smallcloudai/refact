@@ -105,6 +105,8 @@
 [x] file preview should scroll with textarea
 [ ] chat content should stay at end when textarea grows
 [ ] combobox only needs one function for completion and preview
+[x] check clicking on the combobox the second click on @@file doesn't seem to work.
+[ ] place the cursor at the right place when adding a command between text
 
 ### EVENTS TODO FOR IDEs
 

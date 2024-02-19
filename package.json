@@ -97,7 +97,8 @@
     "vite": "^5.0.8",
     "vite-plugin-dts": "^3.7.0",
     "vite-plugin-eslint": "^1.8.1",
-    "vitest": "^1.0.4"
+    "vitest": "^1.0.4",
+    "vitest-matchmedia-mock": "^1.0.3"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
