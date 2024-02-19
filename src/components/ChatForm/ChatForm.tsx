@@ -4,7 +4,7 @@ import { Box, Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
-import { TextArea } from "../TextArea";
+import { TextArea, TextAreaProps } from "../TextArea";
 import { Form } from "./Form";
 import {
   useOnPressedEnter,
@@ -66,6 +66,7 @@ export type ChatFormProps = {
   filesInPreview: ChatContextFile[];
   selectedSnippet: ChatState["selected_snippet"];
   removePreviewFileByName: ComboBoxProps["removePreviewFileByName"];
+  onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -89,6 +90,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   filesInPreview,
   selectedSnippet,
   removePreviewFileByName,
+  onTextAreaHeightChange,
 }) => {
   const [value, setValue] = React.useState("");
   const [snippetAdded, setSnippetAdded] = React.useState(false);
@@ -183,7 +185,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           placeholder={
             commands.available_commands.length > 0 ? "Type @ for commands" : ""
           }
-          render={(props) => <TextArea disabled={isStreaming} {...props} />}
+          render={(props) => (
+            <TextArea
+              disabled={isStreaming}
+              {...props}
+              onTextAreaHeightChange={onTextAreaHeightChange}
+            />
+          )}
           selectedCommand={commands.selected_command}
           setSelectedCommand={setSelectedCommand}
           removePreviewFileByName={removePreviewFileByName}

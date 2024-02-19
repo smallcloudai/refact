@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useImperativeHandle } from "react";
 import { ChatMessages, isChatContextFileMessage } from "../../services/refact";
 import { Markdown, MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
@@ -40,70 +40,79 @@ const ChatInput: React.FC<ChatInputProps> = (props) => {
   );
 };
 
-export const ChatContent: React.FC<
-  {
-    messages: ChatMessages;
-    onRetry: (question: ChatMessages) => void;
-    isWaiting: boolean;
-    canPaste: boolean;
-  } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">
-> = ({
-  messages,
-  onRetry,
-  isWaiting,
-  onNewFileClick,
-  onPasteClick,
-  canPaste,
-}) => {
-  const ref = React.useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    ref.current?.scrollIntoView &&
-      ref.current.scrollIntoView({ behavior: "instant", block: "end" });
-  }, [messages]);
+export type ChatContentProps = {
+  messages: ChatMessages;
+  onRetry: (question: ChatMessages) => void;
+  isWaiting: boolean;
+  canPaste: boolean;
+} & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
-  return (
-    <ScrollArea scrollbars="vertical">
-      <Flex grow="1" direction="column" className={styles.content}>
-        {messages.length === 0 && <PlaceHolderText />}
-        {messages.map((message, index) => {
-          if (isChatContextFileMessage(message)) {
-            const [, files] = message;
-            return <ContextFiles key={index} files={files} />;
-          }
+export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
+  (props, ref) => {
+    const {
+      messages,
+      onRetry,
+      isWaiting,
+      onNewFileClick,
+      onPasteClick,
+      canPaste,
+    } = props;
 
-          const [role, text] = message;
+    const innerRef = React.useRef<HTMLDivElement>(null);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    useImperativeHandle(ref, () => innerRef.current!, []);
 
-          if (role === "user") {
-            const handleRetry = (question: string) => {
-              const toSend = messages
-                .slice(0, index)
-                .concat([["user", question]]);
-              onRetry(toSend);
-            };
-            return (
-              <UserInput onRetry={handleRetry} key={index}>
-                {text}
-              </UserInput>
-            );
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          } else if (role === "assistant") {
-            return (
-              <ChatInput
-                onNewFileClick={onNewFileClick}
-                onPasteClick={onPasteClick}
-                canPaste={canPaste}
-                key={index}
-              >
-                {text}
-              </ChatInput>
-            );
-          } else {
-            return <Markdown key={index}>{text}</Markdown>;
-          }
-        })}
-        {isWaiting && <Spinner />}
-        <div ref={ref} />
-      </Flex>
-    </ScrollArea>
-  );
-};
+    useEffect(() => {
+      innerRef.current?.scrollIntoView &&
+        innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
+    }, [messages]);
+
+    return (
+      <ScrollArea scrollbars="vertical">
+        <Flex grow="1" direction="column" className={styles.content}>
+          {messages.length === 0 && <PlaceHolderText />}
+          {messages.map((message, index) => {
+            if (isChatContextFileMessage(message)) {
+              const [, files] = message;
+              return <ContextFiles key={index} files={files} />;
+            }
+
+            const [role, text] = message;
+
+            if (role === "user") {
+              const handleRetry = (question: string) => {
+                const toSend = messages
+                  .slice(0, index)
+                  .concat([["user", question]]);
+                onRetry(toSend);
+              };
+              return (
+                <UserInput onRetry={handleRetry} key={index}>
+                  {text}
+                </UserInput>
+              );
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            } else if (role === "assistant") {
+              return (
+                <ChatInput
+                  onNewFileClick={onNewFileClick}
+                  onPasteClick={onPasteClick}
+                  canPaste={canPaste}
+                  key={index}
+                >
+                  {text}
+                </ChatInput>
+              );
+            } else {
+              return <Markdown key={index}>{text}</Markdown>;
+            }
+          })}
+          {isWaiting && <Spinner />}
+          <div ref={innerRef} />
+        </Flex>
+      </ScrollArea>
+    );
+  },
+);
+
+ChatContent.displayName = "ChatContent";

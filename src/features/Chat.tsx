@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { ChatForm } from "../components/ChatForm";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
@@ -14,6 +14,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
   });
 
   const { host, tabbed } = useConfig();
+
+  const chatContentRef = useRef<HTMLDivElement>(null);
 
   const {
     state,
@@ -95,6 +97,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         onNewFileClick={handleNewFileClick}
         onPasteClick={handlePasteDiffClick}
         canPaste={state.active_file.can_paste}
+        ref={chatContentRef}
       />
 
       <ChatForm
@@ -125,6 +128,14 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         filesInPreview={state.files_in_preview}
         selectedSnippet={state.selected_snippet}
         removePreviewFileByName={removePreviewFileByName}
+        onTextAreaHeightChange={() => {
+          if (!chatContentRef.current) return;
+          // TODO: handle preventing scroll if the user is not on the bottom of the chat
+          chatContentRef.current.scrollIntoView({
+            behavior: "instant",
+            block: "end",
+          });
+        }}
       />
     </Flex>
   );
