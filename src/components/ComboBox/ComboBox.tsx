@@ -241,7 +241,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       if (selectedCommand) {
         setSelectedCommand("");
         setTrigger(command);
-        setStartPosition(null);
+        // setStartPosition(null);
         combobox.hide();
       } else {
         setSelectedCommand(command);
