@@ -200,8 +200,13 @@ export type CapsResponse = {
   tokenizer_rewrite_path: Record<string, unknown>;
   chat_rag_functions?: string[];
 };
-export type RefactTableImpactDatesRow = {
-  [key in ColumnName]: number;
+export type RefactTableImpactDateObj = {
+  completions: number;
+  human: number;
+  langs: string[];
+  refact: number;
+  refact_impact: number;
+  total: number;
 };
 export type RefactTableImpactLanguagesRow = {
   [key in ColumnName]: string | number;
@@ -209,8 +214,8 @@ export type RefactTableImpactLanguagesRow = {
 export type RefactTableData = {
   refact_impact_dates: {
     data: {
-      daily: RefactTableImpactDatesRow[];
-      weekly: RefactTableImpactDatesRow[];
+      daily: Record<string, RefactTableImpactDateObj>;
+      weekly: Record<string, RefactTableImpactDateObj>;
     };
   };
   table_refact_impact: {

@@ -1,11 +1,11 @@
 import React from "react";
 import { Box, Text } from "@radix-ui/themes";
-import { RefactTableImpactDatesRow } from "../../services/refact";
+import { RefactTableImpactDateObj } from "../../services/refact";
 import ReactEcharts from "echarts-for-react";
 import { Spinner } from "../Spinner";
 
 export const Chart: React.FC<{
-  refactImpactDatesWeekly: RefactTableImpactDatesRow[] | null;
+  refactImpactDatesWeekly: Record<string, RefactTableImpactDateObj> | null;
 }> = ({ refactImpactDatesWeekly }) => {
   if (refactImpactDatesWeekly === null) {
     return <Spinner />;
