@@ -24,6 +24,16 @@ function makeConfig(library: "browser" | "node") {
         outDir: OUT_DIR,
         copyPublicDir: false,
         sourcemap: library === "browser" ? "inline" : false,
+        rollupOptions: {
+          // TODO: remove when this issue is closed https://github.com/vitejs/vite/issues/15012
+          onwarn(warning, defaultHandler) {
+            if (warning.code === "SOURCEMAP_ERROR") {
+              return;
+            }
+
+            defaultHandler(warning);
+          },
+        },
       },
       plugins: [react()],
       server: {
