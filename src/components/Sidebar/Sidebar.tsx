@@ -5,6 +5,7 @@ import styles from "./sidebar.module.css";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Settings } from "./Settings";
 import { Statistic } from "../Statistic/Statistic";
+import { useEventBusForChat } from "../../hooks";
 
 export const Sidebar: React.FC<
   {
@@ -12,6 +13,7 @@ export const Sidebar: React.FC<
   } & ChatHistoryProps
 > = ({ history, onHistoryItemClick, onCreateNewChat, onDeleteHistoryItem }) => {
   const [isOpenedStatistic, setIsOpenedStatistic] = useState(false);
+  const { backFromChat } = useEventBusForChat();
 
   const handleCloseStatistic = () => {
     setIsOpenedStatistic(false);
@@ -19,7 +21,10 @@ export const Sidebar: React.FC<
   return (
     <Box className={styles.sidebar}>
       {isOpenedStatistic ? (
-        <Statistic onCloseStatistic={handleCloseStatistic} />
+        <Statistic
+          onCloseStatistic={handleCloseStatistic}
+          backFromChat={backFromChat}
+        />
       ) : (
         <Flex
           direction="column"

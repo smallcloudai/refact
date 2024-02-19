@@ -5,7 +5,6 @@ import { Table } from "../Table/Table";
 import { Chart } from "../Chart/Chart";
 import { Spinner } from "../Spinner";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { useEventBusForChat } from "../../hooks";
 import { useConfig } from "../../contexts/config-context";
 import { ScrollArea } from "../ScrollArea";
 
@@ -15,11 +14,11 @@ const table: { data: string } = {
 
 export const Statistic: React.FC<{
   onCloseStatistic?: () => void;
-}> = ({ onCloseStatistic }) => {
+  backFromChat: () => void;
+}> = ({ onCloseStatistic, backFromChat }) => {
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [refactTable, setRefactTable] = useState<RefactTableData | null>(null);
   const { host, tabbed } = useConfig();
-  const { backFromChat } = useEventBusForChat();
 
   const LeftRightPadding: Responsive<
     "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
