@@ -131,10 +131,12 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         onTextAreaHeightChange={() => {
           if (!chatContentRef.current) return;
           // TODO: handle preventing scroll if the user is not on the bottom of the chat
-          chatContentRef.current.scrollIntoView({
-            behavior: "instant",
-            block: "end",
-          });
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          chatContentRef.current.scrollIntoView &&
+            chatContentRef.current.scrollIntoView({
+              behavior: "instant",
+              block: "end",
+            });
         }}
       />
     </Flex>
