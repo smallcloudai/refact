@@ -70,9 +70,7 @@ describe("ComboBox", () => {
   test("completes when pressing tab", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "foo{Shift>}{Enter}{/Shift}@f");
-    await user.keyboard("{Tab}");
-    await user.keyboard("{Tab}");
+    await user.type(textarea, "foo{Shift>}{Enter}{/Shift}@f{Tab}f{Tab}");
     expect(app.getByRole("combobox").textContent).toEqual("foo\n@file /foo");
   });
 
