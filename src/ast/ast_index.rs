@@ -30,7 +30,7 @@ fn make_a_query(
     exception_doc: Option<DocumentInfo>,
 ) -> Vec<String> {
     let pattern = format!(r"(?i){}", query_str);
-    let matcher = dense::Builder::new().anchored(true).build(pattern.as_str()).unwrap();
+    let matcher = dense::Builder::new().anchored(false).build(pattern.as_str()).unwrap();
     let mut stream_builder = set::OpBuilder::new();
     for (doc, set) in nodes_indexes {
         if let Some(ref exception) = exception_doc {

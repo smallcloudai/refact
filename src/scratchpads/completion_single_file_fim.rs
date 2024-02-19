@@ -1,3 +1,4 @@
+use std::ops::Index;
 use std::path::PathBuf;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
@@ -13,6 +14,7 @@ use ropey::Rope;
 use tracing::info;
 use async_trait::async_trait;
 use serde_json::Value;
+use similar::DiffableStr;
 use tree_sitter::Point;
 use crate::ast::ast_module::AstModule;
 
@@ -113,14 +115,14 @@ impl ScratchpadAbstract for SingleFileFIM {
         let mut before_iter = text.lines_at(pos.line as usize).reversed();
         let mut after_iter = text.lines_at(pos.line as usize + 1);
         let (extra_context, mut tokens_used) = match *self.ast_module.lock().await {
-            Some(ref ast) => {
+            Some(ref mut ast) => {
                 ast_search(
                     ast,
                     &file_path,
                     &source,
                     Point { row: pos.line as usize, column: pos.character as usize },
                     self.t.clone(),
-                    (limit as f32 * 0.5) as usize,
+                    (limit as f32 * 0.25) as usize,
                 ).await
             }
             None => (String::new(), 0)
@@ -293,52 +295,81 @@ impl ScratchpadAbstract for SingleFileFIM {
 }
 
 async fn ast_search(
-    ast_module: &AstModule,
+    ast_module: &mut AstModule,
     file_path: &PathBuf,
     code: &str,
     cursor: Point,
     tokenizer: HasTokenizerAndEot,
     max_context_size: usize
 ) -> (String, i32){
+    let declarations_str = "[DECLARATIONS]:\n";
+    let references_str = "\n\n[REFERENCES]:\n";
+
     let doc = match DocumentInfo::from(file_path).ok() {
         Some(doc) => doc,
         None => return ("".to_string(), 0)
     };
+
     let search_result = ast_module.search_declarations_by_cursor(
         &doc, code, cursor, 5
     ).await;
-
-    let init_cfc_text = "Here are some relevant code fragments from other files of the repo:\n\n";
-    let mut tokens_used = tokenizer.count_tokens(init_cfc_text).expect(
+    let mut extra_context: Vec<String> = vec!(declarations_str.to_string());
+    let mut tokens_used = tokenizer.count_tokens(&declarations_str).expect(
         "Tokenization has failed"
     );
     match search_result {
         Ok(res) => {
-            if res.search_results.is_empty() {
-                return ("".to_string(), tokens_used);
-            }
-
-            let mut final_text_vec: Vec<String> = vec![init_cfc_text.to_string()];
             for res in res.search_results {
                 let text: String = format!(
-                    "The below code fragment is found in {}\n{}\n\n",
+                    "[PATH]: {}\n[CODE]: {}\n\n",
                     res.symbol_declaration.meta_path,
                     res.symbol_declaration.get_content().await.unwrap_or("".to_string())
                 );
                 tokens_used += tokenizer.count_tokens(&text).expect(
                     "Tokenization has failed"
                 );
-                final_text_vec.push(text);
-                if tokens_used > max_context_size as i32 {
+                extra_context.push(text);
+                if tokens_used > (max_context_size / 2) as i32 {
                     break
                 }
             }
-            (final_text_vec.join(""), tokens_used)
         }
-        Err(_) => ("".to_string(), tokens_used)
+        Err(err) => {
+            info!("Error while calling `search_declarations_by_cursor` {:?}", err);
+        }
     }
-}
 
+    let search_result = ast_module.search_references_by_cursor(
+        &doc, code, cursor, 5
+    ).await;
+    extra_context.push(references_str.to_string());
+    let mut tokens_used = tokenizer.count_tokens(&references_str).expect(
+        "Tokenization has failed"
+    );
+    match search_result {
+        Ok(res) => {
+            for res in res.search_results {
+                let text: String = format!(
+                    "[PATH]: {}\n[CODE]: {}\n\n",
+                    res.symbol_declaration.meta_path,
+                    res.symbol_declaration.get_content().await.unwrap_or("".to_string())
+                );
+                tokens_used += tokenizer.count_tokens(&text).expect(
+                    "Tokenization has failed"
+                );
+                extra_context.push(text);
+                if tokens_used > (max_context_size / 2) as i32 {
+                    break
+                }
+            }
+        }
+        Err(err) => {
+            info!("Error while calling `search_declarations_by_cursor` {:?}", err);
+        }
+    }
+
+    (extra_context.join(""), tokens_used)
+}
 
 fn cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
     let mut cut_at = vec![];

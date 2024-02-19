@@ -41,7 +41,7 @@ pub async fn handle_v1_ast_cursor_search(
 
     let cx_locked = global_context.read().await;
     let search_res = match *cx_locked.ast_module.lock().await {
-        Some(ref ast) => {
+        Some(ref mut ast) => {
             let doc = match DocumentInfo::from(&PathBuf::from(&post.filename)).ok() {
                 Some(doc) => doc,
                 None => return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("Filename could not be parsed: {}", post.filename))),

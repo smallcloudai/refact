@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use itertools::Itertools;
 
 use serde::Serialize;
 use tokio::sync::Mutex as AMutex;
@@ -10,16 +11,15 @@ use tree_sitter::Point;
 use crate::global_context::GlobalContext;
 use crate::ast::ast_index::AstIndex;
 use crate::ast::ast_index_service::AstIndexService;
-use crate::ast::ast_search_engine::AstSearchEngine;
-use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileReferencesResult};
+use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, CursorUsagesResult, FileReferencesResult, SymbolsSearchResultStruct, UsageSearchResultStruct};
+use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::files_in_workspace::DocumentInfo;
 
 
 pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
     ast_index: Arc<AMutex<AstIndex>>,
-    ast_search_engine: Arc<AMutex<AstSearchEngine>>,
-    // cmdline -- take from command line what's needed, don't store a copy 
+    // cmdline -- take from command line what's needed, don't store a copy
 }
 
 #[derive(Debug, Serialize)]
@@ -33,7 +33,6 @@ impl AstModule {
         global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Result<AstModule, String> {
         let ast_index = Arc::new(AMutex::new(AstIndex::init()));
-        let ast_search_engine = Arc::new(AMutex::new(AstSearchEngine::init(ast_index.clone())));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(ast_index.clone())));
 
         let files_jsonl_path = global_context.read().await.cmdline.files_jsonl_path.clone();
@@ -47,7 +46,6 @@ impl AstModule {
         let me = AstModule {
             ast_index_service,
             ast_index,
-            ast_search_engine,
         };
         me.ast_indexer_enqueue_files(&documents, true).await;
         Ok(me)
@@ -67,7 +65,7 @@ impl AstModule {
     }
 
     pub async fn search_declarations_by_cursor(
-        &self,
+        &mut self,
         doc: &DocumentInfo,
         code: &str,
         cursor: Point,
@@ -75,27 +73,41 @@ impl AstModule {
     ) -> Result<AstCursorSearchResult, String> {
         let t0 = std::time::Instant::now();
 
-        let mut handler_locked = self.ast_search_engine.lock().await;
-        let (results, cursor_symbols) = match handler_locked.search(
-            doc,
-            code,
-            cursor,
-            top_n
-        ).await {
-            Ok(res) => res,
-            Err(_) => { return Err("error during search occurred".to_string()); }
+        let path = doc.get_path();
+        let usage_result = match self.parse_near_cursor(doc, code, cursor, top_n).await {
+            Ok(usages) => usages,
+            Err(e) => {
+                return Err(format!("Error parsing {}: {}", path.display(), e));
+            }
         };
-        for rec in results.iter() {
+        let mut declarations: Vec<SymbolsSearchResultStruct> = vec![];
+        {
+            let ast_index = self.ast_index.clone();
+            let ast_index_locked = ast_index.lock().await;
+            for sym in usage_result.search_results.iter() {
+                declarations.extend(
+                    match ast_index_locked.search_declarations(sym.symbol_path.as_str(), 1, Some(doc.clone())).await {
+                        Ok(nodes) => nodes,
+                        Err(e) => {
+                            info!("Error searching for {}: {}", sym.symbol_path.as_str(), e);
+                            vec![]
+                        }
+                    }
+                )
+            }
+        }
+
+        for rec in declarations.iter() {
             info!("distance {:.3}, found {}, ", rec.sim_to_query, rec.symbol_declaration.meta_path);
         }
-        info!("search_by_cursor time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+        info!("search_by_cursor time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), declarations.len());
         Ok(
             AstCursorSearchResult {
                 query_text: code.to_string(),
                 file_path: doc.get_path(),
                 cursor: cursor,
-                cursor_symbols: cursor_symbols,
-                search_results: results,
+                cursor_symbols: usage_result.search_results,
+                search_results: declarations
             }
         )
     }
@@ -123,6 +135,54 @@ impl AstModule {
             },
             Err(e) => Err(e.to_string())
         }
+    }
+
+    pub async fn search_references_by_cursor(
+        &mut self,
+        doc: &DocumentInfo,
+        code: &str,
+        cursor: Point,
+        top_n: usize
+    ) -> Result<AstCursorSearchResult, String> {
+        let t0 = std::time::Instant::now();
+
+        let path = doc.get_path();
+        let usage_result = match self.parse_near_cursor(doc, code, cursor, top_n).await {
+            Ok(usages) => usages,
+            Err(e) => {
+                return Err(format!("Error parsing {}: {}", path.display(), e));
+            }
+        };
+        let mut declarations: Vec<SymbolsSearchResultStruct> = vec![];
+        {
+            let ast_index = self.ast_index.clone();
+            let ast_index_locked = ast_index.lock().await;
+            for sym in usage_result.search_results.iter() {
+                declarations.extend(
+                    match ast_index_locked.search_usages(sym.symbol_path.as_str(), 3, Some(doc.clone())).await {
+                        Ok(nodes) => nodes,
+                        Err(e) => {
+                            info!("Error searching for {}: {}", sym.symbol_path.as_str(), e);
+                            vec![]
+                        }
+                    }
+                )
+            }
+        }
+
+        for rec in declarations.iter() {
+            info!("distance {:.3}, found {}, ", rec.sim_to_query, rec.symbol_declaration.meta_path);
+        }
+        info!("search_by_cursor time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), declarations.len());
+        Ok(
+            AstCursorSearchResult {
+                query_text: code.to_string(),
+                file_path: doc.get_path(),
+                cursor: cursor,
+                cursor_symbols: usage_result.search_results,
+                search_results: declarations
+            }
+        )
     }
 
     pub async fn search_references_by_symbol_path(
@@ -167,5 +227,50 @@ impl AstModule {
         let ast_index = self.ast_index.clone();
         let ast_index_locked  = ast_index.lock().await;
         ast_index_locked.get_indexed_symbol_paths()
+    }
+
+    async fn parse_near_cursor(
+        &mut self,
+        doc: &DocumentInfo,
+        code: &str,
+        cursor: Point,
+        top_n: usize,
+    ) -> Result<CursorUsagesResult, String> {
+        let path = doc.get_path();
+        let mut parser = match get_parser_by_filename(&path) {
+            Ok(parser) => parser,
+            Err(err) => {
+                return Err(err.message);
+            }
+        };
+        let usages = match parser.parse_usages(code) {
+            Ok(usages) => usages,
+            Err(e) => {
+                return Err(format!("Error parsing {}: {}", path.display(), e));
+            }
+        };
+        let filtered_usages = usages.iter()
+            .unique_by(|x| x.meta_path())
+            .sorted_by(|a, b| {
+                a.distance_to_cursor(&cursor).cmp(&b.distance_to_cursor(&cursor))
+            })
+            .take(top_n)
+            .collect::<Vec<_>>();
+
+        Ok(CursorUsagesResult {
+            file_path: path,
+            query_text: code.to_string(),
+            cursor: cursor.clone(),
+            search_results: filtered_usages
+                .iter()
+                .map(|x| {
+                    UsageSearchResultStruct {
+                        symbol_path: x.meta_path(),
+                        dist_to_cursor: x.distance_to_cursor(&cursor),
+                        type_str: x.type_str(),
+                    }
+                })
+                .collect::<Vec<UsageSearchResultStruct>>(),
+        })
     }
 }
