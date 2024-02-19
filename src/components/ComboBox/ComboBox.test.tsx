@@ -19,7 +19,6 @@ const App = (props: Partial<ComboBoxProps>) => {
     onSubmit: onSubmitSpy,
     placeholder: "Type @ for commands",
     render: (props: TextAreaProps) => <TextArea {...props} />,
-    executeCommand: () => ({}),
     selectedCommand,
     setSelectedCommand,
     removePreviewFileByName: () => ({}),
@@ -128,7 +127,9 @@ describe("ComboBox", () => {
 
   test("clicking on an executable command", async () => {
     const executableSpy = vi.fn();
-    const { user, ...app } = render(<App executeCommand={executableSpy} />);
+    const { user, ...app } = render(
+      <App requestCommandsCompletion={executableSpy} />,
+    );
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@");
 
@@ -140,7 +141,9 @@ describe("ComboBox", () => {
 
   test("execute command when pressing enter", async () => {
     const executableSpy = vi.fn();
-    const { user, ...app } = render(<App executeCommand={executableSpy} />);
+    const { user, ...app } = render(
+      <App requestCommandsCompletion={executableSpy} />,
+    );
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@wo{Enter}");
     expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11);
@@ -148,7 +151,9 @@ describe("ComboBox", () => {
 
   test("execute command when pressing tab", async () => {
     const executableSpy = vi.fn();
-    const { user, ...app } = render(<App executeCommand={executableSpy} />);
+    const { user, ...app } = render(
+      <App requestCommandsCompletion={executableSpy} />,
+    );
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@wo{Tab}");
     expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11);
@@ -156,7 +161,9 @@ describe("ComboBox", () => {
 
   test("typing executable command and pressing space", async () => {
     const executableSpy = vi.fn();
-    const { user, ...app } = render(<App executeCommand={executableSpy} />);
+    const { user, ...app } = render(
+      <App requestCommandsCompletion={executableSpy} />,
+    );
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@workspace{Space}");
     expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11);

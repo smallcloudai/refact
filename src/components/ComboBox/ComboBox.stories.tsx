@@ -15,7 +15,6 @@ const App: React.FC<ComboBoxProps> = (props) => {
         onChange={setValue}
         selectedCommand={selectedCommand}
         setSelectedCommand={setSelectedCommand}
-        executeCommand={() => ({})}
       />
     </Card>
   );

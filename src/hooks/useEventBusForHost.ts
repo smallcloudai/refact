@@ -17,7 +17,6 @@ import {
   isStopStreamingFromChat,
   isRequestForFileFromChat,
   isRequestAtCommandCompletion,
-  isRequestAtCommandPreview,
   ReceiveAtCommandCompletion,
   ReceiveAtCommandPreview,
   RemoveLastUserMessage,
@@ -150,10 +149,7 @@ export function useEventBusForHost() {
             // eslint-disable-next-line no-console
             console.error(error);
           });
-      }
 
-      if (isRequestAtCommandPreview(event.data)) {
-        const { id, query } = event.data.payload;
         getAtCommandPreview(query, lspUrl)
           .then((res) => {
             if (isDetailMessage(res)) return;

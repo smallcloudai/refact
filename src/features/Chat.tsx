@@ -6,7 +6,7 @@ import { Flex, Responsive, Button } from "@radix-ui/themes";
 import { isChatContextFileMessage } from "../services/refact";
 import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { useEffectOnce } from "usehooks-ts";
+import { useEffectOnce } from "../hooks";
 
 export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
   useEffectOnce(() => {
@@ -31,7 +31,6 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     handlePasteDiffClick,
     requestCommandsCompletion,
     setSelectedCommand,
-    executeCommand,
     removePreviewFileByName,
     retryQuestion,
   } = useEventBusForChat();
@@ -123,7 +122,6 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         setSelectedCommand={setSelectedCommand}
         onClose={maybeSendToSideBar}
         attachFile={state.active_file}
-        executeCommand={executeCommand}
         filesInPreview={state.files_in_preview}
         selectedSnippet={state.selected_snippet}
         removePreviewFileByName={removePreviewFileByName}

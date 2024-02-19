@@ -176,14 +176,6 @@ interface RequestAtCommandPreview extends ActionFromChat {
 }
 
 /**
- * This message is sent from the host to the chat contains the result of command preview request.
- */
-interface ReceiveAtCommandPreview extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW; // = "chat_receive_at_command_preview"
-  payload: { id: string; preview: ChatContextFileMessage[] };
-}
-
-/**
  * This message is sent from the chat component to the host when the response to the question is received.
  */
 interface SaveChatFromChat extends ActionFromChat {

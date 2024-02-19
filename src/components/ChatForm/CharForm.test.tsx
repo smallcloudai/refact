@@ -1,44 +1,50 @@
 import { render } from "../../utils/test-utils";
 import { describe, expect, test, vi } from "vitest";
-import { ChatForm } from "./ChatForm";
+import { ChatForm, ChatFormProps } from "./ChatForm";
+import React from "react";
+
+const noop = () => ({});
+
+const App: React.FC<Partial<ChatFormProps>> = (props) => {
+  const defaultProps: ChatFormProps = {
+    removePreviewFileByName: noop,
+    selectedSnippet: { code: "", language: "" },
+    onSubmit: noop,
+    isStreaming: false,
+    onStopStreaming: noop,
+    onSetChatModel: noop,
+    model: "gpt-3.5-turbo",
+    caps: { fetching: false, default_cap: "foo", available_caps: [] },
+    error: "",
+    clearError: noop,
+    canChangeModel: false,
+    handleContextFile: noop,
+    hasContextFile: false,
+    commands: {
+      available_commands: [],
+      selected_command: "",
+      arguments: [],
+      is_cmd_executable: false,
+    },
+    requestCommandsCompletion: noop,
+    attachFile: {
+      name: "",
+      can_paste: false,
+      attach: false,
+    },
+    setSelectedCommand: noop,
+    filesInPreview: [],
+    ...props,
+  };
+
+  return <ChatForm {...defaultProps} />;
+};
 
 describe("ChatForm", () => {
   test("when I push enter it should call onSubmit", async () => {
     const fakeOnSubmit = vi.fn();
 
-    const { user, ...app } = render(
-      <ChatForm
-        removePreviewFileByName={() => ({})}
-        selectedSnippet={{ code: "", language: "" }}
-        onSubmit={fakeOnSubmit}
-        isStreaming={false}
-        onStopStreaming={vi.fn}
-        onSetChatModel={vi.fn}
-        model="gpt-3.5-turbo"
-        caps={{ fetching: false, default_cap: "foo", available_caps: [] }}
-        error=""
-        clearError={vi.fn}
-        canChangeModel={false}
-        handleContextFile={vi.fn}
-        hasContextFile={false}
-        commands={{
-          available_commands: [],
-          selected_command: "",
-          arguments: [],
-          is_cmd_executable: false,
-        }}
-        requestCommandsCompletion={() => ({})}
-        attachFile={{
-          name: "",
-          can_paste: false,
-          attach: false,
-        }}
-        setSelectedCommand={() => ({})}
-        executeCommand={() => ({})}
-        filesInPreview={[]}
-        // setSelectedCommand={() => ({})}
-      />,
-    );
+    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
 
     const textarea: HTMLTextAreaElement | null =
       app.container.querySelector("textarea");
@@ -54,38 +60,7 @@ describe("ChatForm", () => {
   test("when I hole shift and push enter it should not call onSubmit", async () => {
     const fakeOnSubmit = vi.fn();
 
-    const { user, ...app } = render(
-      <ChatForm
-        removePreviewFileByName={() => ({})}
-        selectedSnippet={{ code: "", language: "" }}
-        onSubmit={fakeOnSubmit}
-        isStreaming={false}
-        onStopStreaming={vi.fn}
-        onSetChatModel={vi.fn}
-        model="gpt-3.5-turbo"
-        caps={{ fetching: false, default_cap: "foo", available_caps: [] }}
-        error=""
-        clearError={vi.fn}
-        canChangeModel={false}
-        handleContextFile={vi.fn}
-        hasContextFile={false}
-        commands={{
-          available_commands: [],
-          selected_command: "",
-          arguments: [],
-          is_cmd_executable: false,
-        }}
-        requestCommandsCompletion={() => ({})}
-        attachFile={{
-          name: "",
-          can_paste: false,
-          attach: false,
-        }}
-        setSelectedCommand={() => ({})}
-        executeCommand={() => ({})}
-        filesInPreview={[]}
-      />,
-    );
+    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
     const textarea = app.container.querySelector("textarea");
     expect(textarea).not.toBeNull();
     if (textarea) {

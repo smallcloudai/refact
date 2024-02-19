@@ -38,7 +38,6 @@ import {
   isReceiveAtCommandCompletion,
   SetSelectedAtCommand,
   isSetSelectedAtCommand,
-  RequestAtCommandPreview,
   isReceiveAtCommandPreview,
   isRemoveLastUserMessage,
   isChatUserMessageResponse,
@@ -687,21 +686,6 @@ export const useEventBusForChat = () => {
     dispatch(action);
   }
 
-  const executeCommand = useDebounceCallback(
-    (command: string, cursor: number) => {
-      const action: RequestAtCommandPreview = {
-        type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW,
-        payload: { id: state.chat.id, query: command, cursor },
-      };
-      if (!state.chat.model) {
-        setChatModel(state.caps.default_cap);
-      }
-      postMessage(action);
-    },
-    500,
-    { leading: true },
-  );
-
   function removePreviewFileByName(name: string) {
     const action: RemovePreviewFileByName = {
       type: EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME,
@@ -742,7 +726,6 @@ export const useEventBusForChat = () => {
     handlePasteDiffClick,
     requestCommandsCompletion,
     setSelectedCommand,
-    executeCommand,
     removePreviewFileByName,
     retryQuestion,
   };

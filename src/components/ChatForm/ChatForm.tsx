@@ -41,7 +41,7 @@ const CapsSelect: React.FC<{
   );
 };
 
-export const ChatForm: React.FC<{
+export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
@@ -63,11 +63,12 @@ export const ChatForm: React.FC<{
     number?: number,
   ) => void;
   setSelectedCommand: (command: string) => void;
-  executeCommand: (command: string, cursor: number) => void;
   filesInPreview: ChatContextFile[];
   selectedSnippet: ChatState["selected_snippet"];
   removePreviewFileByName: ComboBoxProps["removePreviewFileByName"];
-}> = ({
+};
+
+export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
@@ -85,12 +86,10 @@ export const ChatForm: React.FC<{
   attachFile,
   requestCommandsCompletion,
   setSelectedCommand,
-  executeCommand,
   filesInPreview,
   selectedSnippet,
   removePreviewFileByName,
 }) => {
-  //TODO: handle attached snippet, when code is highlighted and chat is opened
   const [value, setValue] = React.useState("");
   const [snippetAdded, setSnippetAdded] = React.useState(false);
 
@@ -185,7 +184,6 @@ export const ChatForm: React.FC<{
             commands.available_commands.length > 0 ? "Type @ for commands" : ""
           }
           render={(props) => <TextArea disabled={isStreaming} {...props} />}
-          executeCommand={executeCommand}
           selectedCommand={commands.selected_command}
           setSelectedCommand={setSelectedCommand}
           removePreviewFileByName={removePreviewFileByName}

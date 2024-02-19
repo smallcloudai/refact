@@ -21,7 +21,6 @@ export enum EVENT_NAMES_FROM_CHAT {
   NEW_FILE = "chat_create_new_file",
   PASTE_DIFF = "chat_paste_diff",
   REQUEST_AT_COMMAND_COMPLETION = "chat_request_at_command_completion",
-  REQUEST_AT_COMMAND_PREVIEW = "chat_request_at_command_preview",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -92,17 +91,6 @@ export function isRequestAtCommandCompletion(
   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
 }
 
-export interface RequestAtCommandPreview extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW;
-  payload: { id: string; query: string; cursor: number };
-}
-
-export function isRequestAtCommandPreview(
-  action: unknown,
-): action is RequestAtCommandPreview {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_PREVIEW;
-}
 export interface NewFileFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.NEW_FILE;
   payload: {

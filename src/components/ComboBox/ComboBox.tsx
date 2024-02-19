@@ -21,7 +21,6 @@ export type ComboBoxProps = {
     cursor: number,
     number?: number,
   ) => void;
-  executeCommand: (command: string, cursor: number) => void;
   setSelectedCommand: (command: string) => void;
   selectedCommand: string;
   removePreviewFileByName: (name: string) => void;
@@ -36,7 +35,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   render,
   commandArguments,
   requestCommandsCompletion,
-  executeCommand,
   setSelectedCommand,
   selectedCommand,
   removePreviewFileByName,
@@ -76,8 +74,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     if (startPosition === null) return;
     if (!trigger) return;
     requestCommandsCompletion(value, ref.current.selectionStart);
-    executeCommand(value, ref.current.selectionStart);
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startPosition, trigger, value]);
 
@@ -260,14 +256,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       onChange(nextValue.value);
       setEndPosition(nextValue.endPosition);
     };
-
-  console.log({
-    start: ref.current?.selectionStart,
-    end: ref.current?.selectionEnd,
-    statePositions: { endPosition, startPosition },
-    value,
-    cState: combobox.getState(),
-  });
   return (
     <>
       <Combobox
