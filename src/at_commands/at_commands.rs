@@ -8,6 +8,7 @@ use crate::global_context::GlobalContext;
 
 use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_ast_file_symbols::AtAstFileSymbols;
+use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_workspace::AtWorkspace;
 use crate::call_validation::ChatMessage;
 
@@ -61,6 +62,7 @@ pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand 
         ("@workspace".to_string(), Arc::new(AMutex::new(Box::new(AtWorkspace::new()) as Box<dyn AtCommand + Send>))),
         ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
         ("@ast_definition".to_string(), Arc::new(AMutex::new(Box::new(AtAstDefinition::new()) as Box<dyn AtCommand + Send>))),
+        ("@ast_reference".to_string(), Arc::new(AMutex::new(Box::new(AtAstReference::new()) as Box<dyn AtCommand + Send>))),
         // ("@ast_file_symbols".to_string(), Arc::new(AMutex::new(Box::new(AtAstFileSymbols::new()) as Box<dyn AtCommand + Send>))),
     ]);
 }
