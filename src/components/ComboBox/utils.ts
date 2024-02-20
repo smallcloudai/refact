@@ -55,7 +55,8 @@ export function replaceValue(
     element.value.substring(0, startPosition);
 
   const end = element.value.substring(endPosition);
-  const result = `${start}${command}${end}`;
+  const maybeNewLine = start.length > 0 && !start.endsWith("\n") ? "\n" : "";
+  const result = `${start}${maybeNewLine}${command}${end}`;
 
   const finalEndPosition = result.length - end.length;
 
