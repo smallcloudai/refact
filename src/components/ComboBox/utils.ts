@@ -67,8 +67,11 @@ export function detectCommand(element: HTMLTextAreaElement): {
   startPosition: number;
 } | null {
   const start = element.value.substring(0, element.selectionStart);
+
   if (start.length === 0) return null;
-  const maybeCommandIndex = start.lastIndexOf("@");
+  const maybeNewLine = Math.max(start.lastIndexOf("\n"), 0);
+  const currentLine = start.substring(maybeNewLine > 0 ? maybeNewLine + 1 : 0);
+  const maybeCommandIndex = currentLine.lastIndexOf("@");
   if (maybeCommandIndex < 0) return null;
   const maybeCommand = start.substring(maybeCommandIndex);
   return {
