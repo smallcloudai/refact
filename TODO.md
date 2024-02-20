@@ -113,6 +113,7 @@
 [x] combobox undo / redo
 [x] list display in response has a large margin/padding
 [ ] tidy up combobox
+[x] bug @ast_definition blocks sending requests
 
 ### EVENTS TODO FOR IDEs
 

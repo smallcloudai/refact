@@ -264,19 +264,19 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const maybeTrigger = event.target.value
-      .substring(
-        startPosition ?? event.target.selectionStart - trigger.length,
-        event.target.selectionStart,
-      )
-      .trim();
-
     onChange(event.target.value);
-
-    if (trigger && maybeTrigger) {
-      combobox.setValue(maybeTrigger);
-      setTrigger(maybeTrigger);
-      combobox.show();
+    const maybeCommand = detectCommand(event.target);
+    if (maybeCommand) {
+      setTrigger(maybeCommand.command);
+      setStartPosition(maybeCommand.startPosition);
+      const [command, ...args] = maybeCommand.command
+        .split(" ")
+        .filter((d) => d);
+      setSelectedCommand(args.length > 0 ? command + " " : "");
+    } else {
+      setTrigger("");
+      setSelectedCommand("");
+      setStartPosition(null);
     }
   };
 

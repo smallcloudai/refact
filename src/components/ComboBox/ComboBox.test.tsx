@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, test, vi, expect, afterEach } from "vitest";
-import { render, cleanup, waitFor } from "../../utils/test-utils";
+import { render, cleanup } from "../../utils/test-utils";
 import { ComboBox, ComboBoxProps } from "./ComboBox";
 import { TextArea, type TextAreaProps } from "../TextArea";
 
@@ -9,14 +9,13 @@ const App = (props: Partial<ComboBoxProps>) => {
   const [selectedCommand, setSelectedCommand] = React.useState<string>("");
 
   const requestCompletionSpy = vi.fn();
-  const onSubmitSpy = vi.fn();
   const defaultProps: ComboBoxProps = {
     commands: ["@file", "@workspace"],
     requestCommandsCompletion: requestCompletionSpy,
     commandArguments: ["/foo", "/bar"],
     value: value,
     onChange: setValue,
-    onSubmit: onSubmitSpy,
+    onSubmit: () => ({}),
     placeholder: "Type @ for commands",
     render: (props: TextAreaProps) => <TextArea {...props} />,
     selectedCommand,
@@ -91,11 +90,9 @@ describe("ComboBox", () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@f");
-    await waitFor(() => app.getByText("@file"));
     await user.keyboard("{Enter}");
     expect(app.getByRole("combobox").textContent).toEqual("@file ");
-    await waitFor(() => app.getByText("/foo"));
-    await user.type(textarea, "/f{Enter}");
+    await user.keyboard("{Enter}");
     expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
   });
 
@@ -195,17 +192,33 @@ describe("ComboBox", () => {
     expect(event.target.value).toEqual("hello\n");
   });
 
+  test("select and execute command", async () => {
+    const onSubmitSpy = vi.fn();
+    const { user, ...app } = render(<App onSubmit={onSubmitSpy} />);
+    const textarea = app.getByRole("combobox");
+    await user.type(textarea, "@");
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo");
+    await user.keyboard("{Enter}");
+    expect(onSubmitSpy).toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect(onSubmitSpy.mock.lastCall[0]?.target.value).toEqual("@file /foo\n");
+  });
+
   test("select command, type / and then delete", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@fi{Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file ");
-    await user.type(textarea, "/");
+    expect(textarea.textContent).toEqual("@file ");
+    await user.keyboard("/");
     expect(app.queryByText("/foo")).not.toBeNull();
     expect(app.queryByText("/bar")).not.toBeNull();
-    await user.type(textarea, "{Backspace}");
-    expect(app.queryByText("/foo")).not.toBeNull();
-    expect(app.queryByText("/bar")).not.toBeNull();
+    await user.keyboard("{Backspace}");
+    await user.keyboard("{Backspace}");
+    expect(app.queryByText("/foo")).toBeNull();
+    expect(app.queryByText("/bar")).toBeNull();
+    expect(app.queryByText("@workspace")).not.toBeNull();
   });
 
   test("change a command after typing", async () => {
