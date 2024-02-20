@@ -206,10 +206,10 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
         setTrigger(maybeCommand.command);
         setStartPosition(maybeCommand.startPosition);
-        combobox.show();
       } else {
         setTrigger("");
         setSelectedCommand("");
+        setStartPosition(null);
       }
     }
 
