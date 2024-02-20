@@ -229,6 +229,13 @@ impl AstModule {
         ast_index_locked.get_indexed_symbol_paths()
     }
 
+
+    pub async fn get_indexed_references(&self) -> Vec<String> {
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked  = ast_index.lock().await;
+        ast_index_locked.get_indexed_references()
+    }
+
     async fn parse_near_cursor(
         &mut self,
         doc: &DocumentInfo,

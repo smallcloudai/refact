@@ -281,6 +281,10 @@ impl AstIndex {
     pub fn get_indexed_symbol_paths(&self) -> Vec<String> {
         self.declarations.iter().map(|(path, _)| path.clone()).collect()
     }
+
+    pub fn get_indexed_references(&self) -> Vec<String> {
+        self.usages.iter().map(|(path, _)| path.clone()).collect()
+    }
 }
 
 fn link_declarations_to_usages(

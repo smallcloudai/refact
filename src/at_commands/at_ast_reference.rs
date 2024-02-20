@@ -7,7 +7,7 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::ast::structs::AstQuerySearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::at_params::AtParamSymbolPathQuery;
+use crate::at_commands::at_params::AtParamSymbolReferencePathQuery;
 use crate::call_validation::{ChatMessage, ContextFile};
 use tracing::info;
 
@@ -56,7 +56,7 @@ impl AtAstReference {
         AtAstReference {
             name: "@ast_reference".to_string(),
             params: vec![
-                Arc::new(AMutex::new(AtParamSymbolPathQuery::new()))
+                Arc::new(AMutex::new(AtParamSymbolReferencePathQuery::new()))
             ],
         }
     }
