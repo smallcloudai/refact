@@ -14,3 +14,7 @@
   word-wrap: break-word;
   white-space: break-spaces;
 }
+
+.list {
+  padding-inline-start: var(--space-6);
+}

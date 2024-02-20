@@ -87,6 +87,22 @@ export const Markdown: React.FC<MarkdownProps> = ({
     <ReactMarkdown
       remarkPlugins={[remarkBreaks]}
       components={{
+        ol(props) {
+          return (
+            <ol
+              {...props}
+              className={classNames(styles.list, props.className)}
+            />
+          );
+        },
+        ul(props) {
+          return (
+            <ul
+              {...props}
+              className={classNames(styles.list, props.className)}
+            />
+          );
+        },
         code(props) {
           const {
             children,
