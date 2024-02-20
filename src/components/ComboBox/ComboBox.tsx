@@ -127,10 +127,10 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       setWasDelete(true);
     }
 
-    const isMod = event.metaKey || event.ctrlKey;
+    if (!ref.current) return;
 
+    const isMod = event.metaKey || event.ctrlKey;
     if (
-      ref.current &&
       isMod &&
       event.key === "z" &&
       !event.shiftKey &&
@@ -138,17 +138,30 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     ) {
       event.preventDefault();
       undoRedo.undo();
+      const maybeCommand = detectCommand(ref.current);
+      if (maybeCommand?.command) {
+        setTrigger(maybeCommand.command);
+        setWasDelete(true);
+      }
     }
 
     if (
-      ref.current &&
       isMod &&
       event.key === "z" &&
       event.shiftKey &&
       undoRedo.isRedoPossible
     ) {
       event.preventDefault();
+      const nextValue = undoRedo.futureStates[0];
+      const clonedTextArea = {
+        ...ref.current,
+        value: nextValue,
+      };
+      const maybeCommand = detectCommand(clonedTextArea);
       undoRedo.redo();
+      if (maybeCommand?.command) {
+        setTrigger(maybeCommand.command);
+      }
     }
   };
 
