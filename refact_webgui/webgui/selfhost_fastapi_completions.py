@@ -73,6 +73,7 @@ class NlpCompletion(NlpSamplingParams):
     n: int = 1
     echo: bool = False
     stream: bool = False
+    mask_emails: bool = False
 
 
 class ChatMessage(BaseModel):
@@ -92,7 +93,7 @@ class EmbeddingsStyleOpenAI(BaseModel):
     model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
 
 
-def _mask_emails(text: str, mask: str = "***") -> str:
+def _mask_emails(text: str, mask: str = "john@example.com") -> str:
     masked_text = text
     for m in re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', text):
         masked_text = masked_text.replace(m, mask)
@@ -119,10 +120,13 @@ async def _completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, see
                         if " " not in delta and not is_final_msg:
                             not_seen_resp["choices"][i]["text"] = ""
                             continue
-                        else:
+                        if post.mask_emails:
+                            delta = " ".join(delta.strip(" ")[:-1])
                             not_seen_resp["choices"][i]["text"] = _mask_emails(delta)
-                            if post.stream:
-                                seen[i] = newtext
+                        else:
+                            not_seen_resp["choices"][i]["text"] = delta
+                        if post.stream:
+                            seen[i] = newtext[:len(seen[i])] + delta
                     else:
                         log("ooops seen doesn't work, might be infserver's fault")
             if not post.stream:
