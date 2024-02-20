@@ -200,10 +200,17 @@ describe("ComboBox", () => {
     await user.keyboard("{Enter}");
     await user.keyboard("{Enter}");
     expect(textarea.textContent).toEqual("@file /foo");
+    await user.type(textarea, "{Shift>}{Enter}{/Shift}");
+    await user.type(textarea, "what's this?");
     await user.keyboard("{Enter}");
+    if (onSubmitSpy.mock.calls.length === 0) {
+      app.debug();
+    }
     expect(onSubmitSpy).toHaveBeenCalled();
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    expect(onSubmitSpy.mock.lastCall[0]?.target.value).toEqual("@file /foo\n");
+    expect(onSubmitSpy.mock.lastCall[0]?.target.value).toEqual(
+      "@file /foo\nwhat's this?\n",
+    );
   });
 
   test("select command, type / and then delete", async () => {
