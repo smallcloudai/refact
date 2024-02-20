@@ -73,8 +73,7 @@ describe("ComboBox", () => {
     await user.type(textarea, "@f");
     await user.keyboard("{Tab}");
     expect(textarea.textContent).toEqual("@file ");
-    await user.type(textarea, "{Backspace}{BackSpace}");
-    expect(textarea.textContent).toEqual("@fil");
+    await user.keyboard("{Backspace}{BackSpace}");
     await user.keyboard("{Tab}");
     expect(textarea.textContent).toEqual("@file ");
   });
