@@ -121,7 +121,8 @@ async def _completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, see
                             not_seen_resp["choices"][i]["text"] = ""
                             continue
                         if post.mask_emails:
-                            delta = " ".join(delta.strip(" ")[:-1])
+                            if not is_final_msg:
+                                delta = " ".join(delta.split(" ")[:-1])
                             not_seen_resp["choices"][i]["text"] = _mask_emails(delta)
                         else:
                             not_seen_resp["choices"][i]["text"] = delta
@@ -130,7 +131,7 @@ async def _completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, see
                     else:
                         log("ooops seen doesn't work, might be infserver's fault")
             if not post.stream:
-                if msg.get("status", "") == "in_progress":
+                if not is_final_msg:
                     continue
                 yield json.dumps(not_seen_resp)
                 break
