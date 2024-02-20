@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::call_validation::CodeCompletionInputs;
@@ -77,6 +78,8 @@ pub struct TeleRobotHumanAccum {
     pub robot_characters: i64,
     pub human_characters: i64,
     pub used_snip_ids: Vec<u64>,
+    // if user changed branch / copy-pasted into the file and hasn't touched it, we won't calculate it on IDE shutdown
+    pub last_changed_ts: i64,
 }
 
 impl TeleRobotHumanAccum {
@@ -88,11 +91,12 @@ impl TeleRobotHumanAccum {
             file_extension: utils::extract_extension_or_filename(&uri),
             model: "".to_string(),
             baseline_text,
-            baseline_updated_ts: 0,
+            baseline_updated_ts: Utc::now().timestamp(),
             robot_characters_acc_baseline: 0,
             robot_characters: 0,
             human_characters: 0,
             used_snip_ids: vec![],
+            last_changed_ts: Utc::now().timestamp(),
         }
     }
 }

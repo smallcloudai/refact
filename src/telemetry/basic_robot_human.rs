@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use tracing::{info};
+use tracing::debug;
 use std::sync::{Arc, RwLockReadGuard, RwLockWriteGuard};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,10 @@ use crate::telemetry::telemetry_structs::{SnippetTracker, Storage, TeleRobotHuma
 use crate::telemetry::utils::compress_tele_records_to_file;
 
 
+// if human characters / diff_time > 20 => ignore (don't count copy-paste and branch changes)
+const MAX_CHARS_PER_SECOND: i64 = 20;
+
+
 pub fn create_robot_human_record_if_not_exists(
     tele_robot_human: &mut Vec<TeleRobotHumanAccum>,
     uri: &String,
@@ -21,7 +25,7 @@ pub fn create_robot_human_record_if_not_exists(
     if record_mb.is_some() {
         return;
     }
-    info!("create_robot_human_rec_if_not_exists: new uri {}", uri);
+    debug!("create_robot_human_rec_if_not_exists: new uri {}", uri);
     let record = TeleRobotHumanAccum::new(
         uri.clone(),
         text.clone(),
@@ -29,6 +33,18 @@ pub fn create_robot_human_record_if_not_exists(
     tele_robot_human.push(record);
 }
 
+pub fn on_file_text_changed(
+    tele_robot_human: &mut Vec<TeleRobotHumanAccum>,
+    uri: &String,
+    _text: &String
+) {
+    match tele_robot_human.iter_mut().find(|stat| stat.uri.eq(uri)) {
+        Some(x) => {
+            x.last_changed_ts = chrono::Local::now().timestamp();
+        },
+        None => {}
+    }
+}
 
 fn update_robot_characters_baseline(
     rec: &mut TeleRobotHumanAccum,
@@ -50,27 +66,30 @@ fn basetext_to_text_leap_calculations(
         &removed_characters.lines().last().unwrap_or("").to_string(),
         &added_characters.lines().next().unwrap_or("").to_string(),
     );
-    // info!(added_characters_first_line);
     let added_characters= vec![
         added_characters_first_line,
         added_characters.lines().skip(1).map(|x|x.to_string()).collect::<Vec<String>>().join("\n")
     ].join("\n");
-    // info!(added_characters);
-    let human_characters = re.replace_all(&added_characters, "").len() as i64 - rec.robot_characters_acc_baseline;
-    info!("human_characters: +{}; robot_characters: +{}", 0.max(human_characters), rec.robot_characters_acc_baseline);
+    let mut human_characters = re.replace_all(&added_characters, "").len() as i64 - rec.robot_characters_acc_baseline;
+    let now = chrono::Local::now().timestamp();
+    let time_diff_s = (now - rec.baseline_updated_ts).max(1);
+    if human_characters.max(1) / time_diff_s > MAX_CHARS_PER_SECOND {
+        debug!("ignoring human_character: {}; probably copy-paste; time_diff_s: {}", human_characters, time_diff_s);
+        human_characters = 0;
+    }
+    debug!("human_characters: +{}; robot_characters: +{}", 0.max(human_characters), rec.robot_characters_acc_baseline);
     rec.human_characters += 0.max(human_characters);
     rec.robot_characters += rec.robot_characters_acc_baseline;
     rec.robot_characters_acc_baseline = 0;
 }
 
 
-pub fn increase_counters_from_finished_snippet(
+pub fn increase_counters_from_accepted_snippet(
     storage_locked: &mut RwLockWriteGuard<Storage>,
     uri: &String,
     text: &String,
     snip: &SnippetTracker,
 ) {
-    // info!("snip grey_text: {}", snip.grey_text);
     let now = chrono::Local::now().timestamp();
     if let Some(rec) = storage_locked.tele_robot_human.iter_mut().find(|stat| stat.uri.eq(uri)) {
         if rec.used_snip_ids.contains(&snip.snippet_telemetry_id) {
@@ -90,7 +109,7 @@ pub fn increase_counters_from_finished_snippet(
     storage_locked.last_seen_file_texts.remove(text);
 }
 
-pub fn force_update_text_leap_calculations(
+pub fn _force_update_text_leap_calculations(
     tele_robot_human: &mut Vec<TeleRobotHumanAccum>,
     uri: &String,
     text: &String,
@@ -114,7 +133,6 @@ fn compress_robot_human(
     }
     let mut compressed_vec= vec![];
     for (key, entries) in unique_combinations {
-        // info!("compress_robot_human: compressing {} entries for key {:?}", entries.len(), key);
         let mut record = TeleRobotHuman::new(
             key.0.clone(),
             key.1.clone()
@@ -132,10 +150,6 @@ fn compress_robot_human(
 pub async fn tele_robot_human_compress_to_file(
     cx: Arc<ARwLock<global_context::GlobalContext>>,
 ) {
-    let last_seen_file_texts = cx.read().await.telemetry.read().unwrap().last_seen_file_texts.clone();
-    for (k, v) in &last_seen_file_texts {
-        force_update_text_leap_calculations(&mut cx.read().await.telemetry.write().unwrap().tele_robot_human, k, v);
-    }
     let mut records = vec![];
     for rec in compress_robot_human(&cx.read().await.telemetry.read().unwrap()) {
         if rec.model.is_empty() && rec.robot_characters == 0 && rec.human_characters == 0 {

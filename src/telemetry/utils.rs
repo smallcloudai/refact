@@ -70,20 +70,14 @@ pub fn get_add_del_from_texts(
 
     for s in &mut text_a_lines {
         *s = s.trim_end().trim_start();
-        // info!("text_a: {}; len: {}", s, s.len());
     }
 
     for s in &mut text_b_lines {
         *s = s.trim_end().trim_start();
-        // info!("text_b: {}; len: {}", s, s.len());
     }
 
-    let mut text_a_new = text_a_lines.join("\n");
+    let text_a_new = text_a_lines.join("\n");
     let text_b_new = text_b_lines.join("\n");
-
-    if !text_a_new.ends_with("\n") {
-        text_a_new += "\n";
-    }
 
     let diff = TextDiff::from_lines(&text_a_new, &text_b_new);
 

@@ -141,14 +141,15 @@ pub async fn sources_changed(
                 snip.finished_ts = chrono::Local::now().timestamp();
                 debug!("ID{}: snippet is finished, remaining_percentage={}", snip.snippet_telemetry_id, snip.remaining_percentage);
             } else {
-                snip.accepted_ts = 0;  // that will cleanup and not send
+                snip.accepted_ts = 0;  // that will clean up and not send
             }
         }
     }
 
     for snip in accepted_snippets {
-        basic_robot_human::increase_counters_from_finished_snippet(&mut storage_locked, uri, text, &snip);
-        basic_comp_counters::create_data_accumulator_for_finished_snippet(&mut storage_locked.snippet_data_accumulators, uri, &snip);
+        basic_robot_human::increase_counters_from_accepted_snippet(&mut storage_locked, uri, text, &snip);
+        basic_comp_counters::create_data_accumulator_for_accepted_snippet(&mut storage_locked.snippet_data_accumulators, uri, &snip);
     }
+    basic_robot_human::on_file_text_changed(&mut storage_locked.tele_robot_human, uri, text);
     basic_comp_counters::on_file_text_changed(&mut storage_locked.snippet_data_accumulators, uri, text);
 }
