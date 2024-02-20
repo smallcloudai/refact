@@ -110,8 +110,9 @@
 [x] check clicking on the combobox the second click on @@file doesn't seem to work.
 [x] place the cursor at the right place when adding a command between text
 [x] use repeat to find flaky tests
-
+[x] combobox undo / redo
 [x] list display in response has a large margin/padding
+[ ] tidy up combobox
 
 ### EVENTS TODO FOR IDEs
 

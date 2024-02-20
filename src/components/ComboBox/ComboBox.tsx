@@ -4,9 +4,9 @@ import { matchSorter } from "match-sorter";
 import { getAnchorRect, replaceValue, detectCommand } from "./utils";
 import type { TextAreaProps } from "../TextArea/TextArea";
 import { Item } from "./Item";
-
 import { Portal } from "../Portal";
 import { Popover } from "./Popover";
+import { useUndoRedo } from "../../hooks";
 
 export type ComboBoxProps = {
   commands: string[];
@@ -31,8 +31,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   commands,
   onSubmit,
   placeholder,
-  onChange,
-  value,
+  onChange: _onChange,
+  value: _value,
   render,
   commandArguments,
   requestCommandsCompletion,
@@ -45,6 +45,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const [startPosition, setStartPosition] = React.useState<null | number>(null);
   const [wasDelete, setWasDelete] = React.useState<boolean>(false);
   const [endPosition, setEndPosition] = React.useState<null | number>(null);
+  const undoRedo = useUndoRedo(_value);
+  const value = undoRedo.state;
+
+  const onChange = (value: string) => {
+    undoRedo.setState(value);
+    _onChange(value);
+  };
 
   const commandsOrArguments = selectedCommand
     ? commandArguments.map((arg) => selectedCommand + arg)
@@ -118,6 +125,30 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       setWasDelete(false);
     } else if (event.key === "Backspace") {
       setWasDelete(true);
+    }
+
+    const isMod = event.metaKey || event.ctrlKey;
+
+    if (
+      ref.current &&
+      isMod &&
+      event.key === "z" &&
+      !event.shiftKey &&
+      undoRedo.isUndoPossible
+    ) {
+      event.preventDefault();
+      undoRedo.undo();
+    }
+
+    if (
+      ref.current &&
+      isMod &&
+      event.key === "z" &&
+      event.shiftKey &&
+      undoRedo.isRedoPossible
+    ) {
+      event.preventDefault();
+      undoRedo.redo();
     }
   };
 

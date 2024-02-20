@@ -117,7 +117,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const handleEnter = useOnPressedEnter(handleSubmit);
 
-  const handleChange = (command: React.SetStateAction<string>) => {
+  const handleChange = (command: string) => {
     setValue(command);
   };
   if (error) {
