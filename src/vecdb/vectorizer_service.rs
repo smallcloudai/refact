@@ -7,6 +7,7 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing::info;
+use crate::ast::file_splitter::AstBasedFileSplitter;
 
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::handler::VecDBHandler;
@@ -79,7 +80,6 @@ async fn vectorize_thread(
     api_key: String,
     max_concurrent_tasks: usize,
 ) {
-    let file_splitter = FileSplitter::new(constants.splitter_window_size, constants.splitter_soft_limit);
     let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
     let mut reported_unprocessed: usize = 0;
     let mut reported_vecdb_complete: bool = false;
@@ -126,9 +126,13 @@ async fn vectorize_thread(
             }
         };
 
+        let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size, constants.splitter_soft_limit);
         let split_data = match file_splitter.split(&doc).await {
             Ok(data) => data,
-            Err(_) => { continue }
+            Err(err) => {
+                info!("{}", err);
+                vec![]
+            }
         };
 
         let mut vecdb_handler = vecdb_handler_ref.lock().await;

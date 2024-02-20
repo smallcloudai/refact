@@ -1,4 +1,4 @@
-mod file_splitter;
+pub mod file_splitter;
 mod handler;
 mod vectorizer_service;
 pub mod file_filter;
