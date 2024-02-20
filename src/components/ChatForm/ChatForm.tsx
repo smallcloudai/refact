@@ -57,11 +57,7 @@ export type ChatFormProps = {
   hasContextFile: boolean;
   commands: ChatState["rag_commands"];
   attachFile: ChatState["active_file"];
-  requestCommandsCompletion: (
-    query: string,
-    cursor: number,
-    number?: number,
-  ) => void;
+  requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
   setSelectedCommand: (command: string) => void;
   filesInPreview: ChatContextFile[];
   selectedSnippet: ChatState["selected_snippet"];

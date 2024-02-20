@@ -134,8 +134,15 @@ export function useEventBusForHost() {
       }
 
       if (isRequestAtCommandCompletion(event.data)) {
-        const { id, query, cursor, number } = event.data.payload;
-        getAtCommandCompletion(query, cursor, number, lspUrl)
+        const {
+          id,
+          query,
+          // cursor,
+          number,
+          trigger,
+        } = event.data.payload;
+        // getAtCommandCompletion(query, cursor, number, lspUrl)
+        getAtCommandCompletion(trigger, trigger.length, number, lspUrl)
           .then((res) => {
             if (isDetailMessage(res)) return;
             const message: ReceiveAtCommandCompletion = {

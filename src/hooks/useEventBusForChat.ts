@@ -337,6 +337,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       0,
       state.previous_message_length,
     );
+
     return {
       ...state,
       chat: {
@@ -663,12 +664,13 @@ export const useEventBusForChat = () => {
       function (
         query: string,
         cursor: number,
+        trigger: string,
         // eslint-disable-next-line @typescript-eslint/no-inferrable-types
         number: number = 5,
       ) {
         const action: RequestAtCommandCompletion = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
-          payload: { id: state.chat.id, query, cursor, number },
+          payload: { id: state.chat.id, query, cursor, trigger, number },
         };
         postMessage(action);
       },

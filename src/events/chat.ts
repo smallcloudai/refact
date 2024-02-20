@@ -81,7 +81,13 @@ export function isActionFromChat(action: unknown): action is ActionFromChat {
 
 export interface RequestAtCommandCompletion extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
-  payload: { id: string; query: string; cursor: number; number: number };
+  payload: {
+    id: string;
+    query: string;
+    cursor: number;
+    trigger: string;
+    number: number;
+  };
 }
 
 export function isRequestAtCommandCompletion(
