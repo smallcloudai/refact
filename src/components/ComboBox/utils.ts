@@ -50,7 +50,10 @@ export function replaceValue(
   const endPosition =
     maybeEndOfCommand ?? element.selectionStart + trigger.length;
 
-  const start = element.value.substring(0, startPosition);
+  const start =
+    maybeExistingCommand?.beforeCommand ??
+    element.value.substring(0, startPosition);
+
   const end = element.value.substring(endPosition);
   const result = `${start}${command}${end}`;
 
@@ -65,6 +68,7 @@ export function replaceValue(
 export function detectCommand(element: HTMLTextAreaElement): {
   command: string;
   startPosition: number;
+  beforeCommand: string;
 } | null {
   const start = element.value.substring(0, element.selectionStart);
 
@@ -73,9 +77,11 @@ export function detectCommand(element: HTMLTextAreaElement): {
   const currentLine = start.substring(maybeNewLine > 0 ? maybeNewLine + 1 : 0);
   const maybeCommandIndex = currentLine.lastIndexOf("@");
   if (maybeCommandIndex < 0) return null;
-  const maybeCommand = start.substring(maybeCommandIndex);
+  const maybeCommand = currentLine.substring(maybeCommandIndex);
+
   return {
     command: maybeCommand,
-    startPosition: maybeCommandIndex,
+    startPosition: start.length - maybeCommand.length,
+    beforeCommand: start.substring(0, start.length - maybeCommand.length),
   };
 }
