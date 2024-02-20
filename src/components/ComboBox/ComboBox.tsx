@@ -53,6 +53,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     _onChange(value);
   };
 
+  const handleSubmit: ComboBoxProps["onSubmit"] = (event) => {
+    undoRedo.setState("");
+    onSubmit(event);
+  };
+
   const commandsOrArguments = selectedCommand
     ? commandArguments.map((arg) => selectedCommand + arg)
     : commands;
@@ -177,7 +182,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     ) {
       event.preventDefault();
       event.stopPropagation();
-      onSubmit(event);
+      handleSubmit(event);
       setStartPosition(null);
       setTrigger("");
       combobox.hide();
