@@ -19,7 +19,7 @@ export type ComboBoxProps = {
   requestCommandsCompletion: (
     query: string,
     cursor: number,
-    trigger: string,
+    trigger: string | null,
     number?: number,
   ) => void;
   setSelectedCommand: (command: string) => void;
@@ -74,7 +74,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     if (!ref.current) return;
     if (startPosition === null) return;
     if (!trigger) return;
-    requestCommandsCompletion(value, ref.current.selectionStart, trigger);
+    const maybeTrigger = !selectedCommand && trigger ? trigger : null;
+    requestCommandsCompletion(value, ref.current.selectionStart, maybeTrigger);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startPosition, trigger, value]);
 

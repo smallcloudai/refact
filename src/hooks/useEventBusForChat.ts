@@ -664,7 +664,7 @@ export const useEventBusForChat = () => {
       function (
         query: string,
         cursor: number,
-        trigger: string,
+        trigger: string | null,
         // eslint-disable-next-line @typescript-eslint/no-inferrable-types
         number: number = 5,
       ) {
