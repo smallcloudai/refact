@@ -1,8 +1,26 @@
 import React from "react";
 import { Box, Text } from "@radix-ui/themes";
 import { RefactTableImpactDateObj } from "../../services/refact";
-import ReactEcharts from "echarts-for-react";
+import ReactEChartsCore from "echarts-for-react/lib/core";
+import * as echarts from "echarts/core";
+import { BarChart } from "echarts/charts";
+import {
+  GridComponent,
+  TooltipComponent,
+  AxisPointerComponent,
+  TitleComponent,
+} from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
+
 import { Spinner } from "../Spinner";
+echarts.use([
+  TitleComponent,
+  TooltipComponent,
+  GridComponent,
+  BarChart,
+  CanvasRenderer,
+  AxisPointerComponent,
+]);
 
 export const Chart: React.FC<{
   refactImpactDatesWeekly: Record<string, RefactTableImpactDateObj> | null;
@@ -76,7 +94,8 @@ export const Chart: React.FC<{
       <Text as="p" size="2">
         Refact vs Human
       </Text>
-      <ReactEcharts
+      <ReactEChartsCore
+        echarts={echarts}
         option={option}
         style={{ width: "100%", height: "300px" }}
       />
