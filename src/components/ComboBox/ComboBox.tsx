@@ -49,13 +49,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const value = undoRedo.state;
 
   const onChange = (value: string) => {
-    undoRedo.setState(value);
     _onChange(value);
-  };
-
-  const handleSubmit: ComboBoxProps["onSubmit"] = (event) => {
-    undoRedo.setState("");
-    onSubmit(event);
+    undoRedo.setState(value);
   };
 
   const commandsOrArguments = selectedCommand
@@ -90,6 +85,12 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     requestCommandsCompletion(value, ref.current.selectionStart, maybeTrigger);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startPosition, trigger, value]);
+
+  React.useEffect(() => {
+    if (value && !_value) {
+      undoRedo.setState(_value);
+    }
+  }, [_value, value, undoRedo]);
 
   React.useLayoutEffect(() => {
     if (!ref.current) return;
@@ -135,6 +136,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     if (!ref.current) return;
 
     const isMod = event.metaKey || event.ctrlKey;
+
     if (
       isMod &&
       event.key === "z" &&
@@ -182,7 +184,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     ) {
       event.preventDefault();
       event.stopPropagation();
-      handleSubmit(event);
+      onSubmit(event);
       setStartPosition(null);
       setTrigger("");
       combobox.hide();
