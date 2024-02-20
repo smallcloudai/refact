@@ -104,12 +104,14 @@
 [x] bug with the combobox being open after asking a question
 [x] file preview should scroll with textarea
 [x] chat content should stay at end when textarea grows
-[ ] should this be disabled if the user has scrolled away from the bottom?
+[ ] should the scrolling be disabled if the user has scrolled away from the bottom?
 
-[ ] combobox only needs one function for completion and preview
+[x] combobox only needs one function for completion and preview
 [x] check clicking on the combobox the second click on @@file doesn't seem to work.
 [x] place the cursor at the right place when adding a command between text
-[ ] use repeat to find flaky tests
+[x] use repeat to find flaky tests
+
+[x] list display in response has a large margin/padding
 
 ### EVENTS TODO FOR IDEs
 

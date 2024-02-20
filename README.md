@@ -153,10 +153,17 @@ interface ChatErrorStreaming extends ActionToChat {
 }
 /**
  * Request for command completion from the lsp
+ * trigger will be null if the user has selected a command at that point it should be fine to send the query to the lsp
  */
 interface RequestAtCommandCompletion extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION; // = "chat_request_at_command_completion"
-  payload: { id: string; query: string; cursor: number; number: number };
+  payload: {
+    id: string;
+    query: string;
+    cursor: number;
+    trigger: string | null;
+    number?: number;
+  };
 }
 
 /**
