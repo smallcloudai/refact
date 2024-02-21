@@ -16,6 +16,8 @@ pub(crate) mod rust;
 pub(crate) mod js;
 pub(crate) mod ts;
 pub(crate) mod tsx;
+#[cfg(test)]
+mod tests;
 mod utils;
 
 

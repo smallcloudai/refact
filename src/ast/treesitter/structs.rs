@@ -3,6 +3,7 @@ use std::io;
 use std::path::PathBuf;
 use std::str::FromStr;
 use async_trait::async_trait;
+use dyn_partial_eq::*;
 
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
@@ -30,6 +31,8 @@ pub(crate) struct RangeDef {
 }
 
 #[async_trait]
+#[typetag::serde]
+#[dyn_partial_eq]
 pub trait UsageSymbolInfo: Debug + Send + Sync {
     fn meta_path(&self) -> String;
     fn distance_to_cursor(&self, cursor: &Point) -> usize;
@@ -39,7 +42,8 @@ pub trait UsageSymbolInfo: Debug + Send + Sync {
     fn get_declaration_meta_path(&self) -> Option<String>;
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+
+#[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct VariableInfo {
     pub name: String,
     #[serde(with = "RangeDef")]
@@ -49,6 +53,7 @@ pub struct VariableInfo {
 }
 
 #[async_trait]
+#[typetag::serde]
 impl UsageSymbolInfo for VariableInfo {
     fn meta_path(&self) -> String {
         if self.type_names.len() > 0 {
@@ -78,7 +83,7 @@ impl UsageSymbolInfo for VariableInfo {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct FunctionCallInfo {
     pub name: String,
     #[serde(with = "RangeDef")]
@@ -88,6 +93,7 @@ pub struct FunctionCallInfo {
 }
 
 #[async_trait]
+#[typetag::serde]
 impl UsageSymbolInfo for FunctionCallInfo {
     fn meta_path(&self) -> String {
         match self.caller_type_name.as_ref() {
@@ -115,13 +121,13 @@ impl UsageSymbolInfo for FunctionCallInfo {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub enum StaticType {
     Comment,
     Literal,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct StaticInfo {
     pub data: String,
     pub static_type: StaticType,
@@ -131,6 +137,7 @@ pub struct StaticInfo {
 }
 
 #[async_trait]
+#[typetag::serde]
 impl UsageSymbolInfo for StaticInfo {
     fn meta_path(&self) -> String {
         format!("{}", self.data)
@@ -180,14 +187,14 @@ impl FromStr for SymbolType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct SymbolInfo {
     pub path: PathBuf,
     #[serde(with = "RangeDef")]
     pub range: Range,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct SymbolDeclarationStruct {
     pub name: String,
     pub definition_info: SymbolInfo,
