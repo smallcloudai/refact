@@ -8,3 +8,8 @@
   word-break: break-word;
   white-space: normal;
 }
+
+.retryButton {
+  top: var(--space-2);
+  right: var(--space-3);
+}
