@@ -1,3 +1,8 @@
+[profile.release]
+strip = true
+opt-level = "z"
+lto = true
+
 [package]
 name = "refact-lsp"
 version = "0.0.3"
