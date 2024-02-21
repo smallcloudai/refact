@@ -1,28 +1,25 @@
-use std::ops::Index;
 use std::path::PathBuf;
-use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::scratchpad_abstract::HasTokenizerAndEot;
-use crate::call_validation::CodeCompletionPost;
-use crate::call_validation::SamplingParameters;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::vec;
-use tokio::sync::Mutex as AMutex;
-// use ropey::RopeSlice;
-use tokenizers::Tokenizer;
-use ropey::Rope;
-use tracing::info;
-use async_trait::async_trait;
-use serde_json::Value;
-use similar::DiffableStr;
-use tree_sitter::Point;
-use crate::ast::ast_module::AstModule;
 
+use async_trait::async_trait;
+use ropey::Rope;
+use serde_json::Value;
+use tokenizers::Tokenizer;
+use tokio::sync::Mutex as AMutex;
+use tracing::info;
+use tree_sitter::Point;
+
+use crate::ast::ast_module::AstModule;
+use crate::call_validation::CodeCompletionPost;
+use crate::call_validation::SamplingParameters;
 use crate::completion_cache;
 use crate::files_in_workspace::DocumentInfo;
-use crate::telemetry::telemetry_structs;
+use crate::scratchpad_abstract::HasTokenizerAndEot;
+use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::telemetry::snippets_collection;
-
+use crate::telemetry::telemetry_structs;
 
 const DEBUG: bool = false;
 

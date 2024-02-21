@@ -1,15 +1,13 @@
-use std::iter::Iterator;
-use std::string::ToString;
 
-use similar::DiffableStr;
 use structopt::lazy_static::lazy_static;
+
 use tree_sitter::{Node, Parser, Query, QueryCapture};
 use tree_sitter_typescript::language_tsx;
 
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
 use crate::ast::treesitter::parsers::ts::TypescriptParser;
 use crate::ast::treesitter::parsers::utils::get_function_name;
-use crate::ast::treesitter::structs::{UsageSymbolInfo, VariableInfo};
+use crate::ast::treesitter::structs::VariableInfo;
 
 const TYPESCRIPTX_PARSER_QUERY_FIND_VARIABLES: &str = "([
     (lexical_declaration 
@@ -74,7 +72,7 @@ impl LanguageParser for TypescriptxParser {
         &TYPESCRIPTX_PARSER_QUERY_FIND_ALL
     }
 
-    fn get_namespace(&self, mut parent: Option<Node>, text: &str) -> Vec<String> {
+    fn get_namespace(&self, parent: Option<Node>, text: &str) -> Vec<String> {
         self.inner.get_namespace(parent, text)
     }
 

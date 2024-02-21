@@ -1,15 +1,13 @@
-use serde::{Deserialize, Serialize};
-use tracing::info;
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 
 use crate::global_context;
-use crate::telemetry::utils;
 use crate::telemetry::telemetry_structs::{SnippetTracker, TeleCompletionAccum};
+use crate::telemetry::utils;
 use crate::telemetry::utils::compress_tele_records_to_file;
-
 
 pub fn create_data_accumulator_for_finished_snippet(
     snippet_data_accumulator: &mut Vec<TeleCompletionAccum>,

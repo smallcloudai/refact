@@ -3,19 +3,17 @@ use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
+
 use ropey::Rope;
 use tokio::fs::read_to_string;
-
 use tokio::sync::RwLock as ARwLock;
-use tracing::{debug, info};
-use tracing_subscriber::fmt::format;
+use tracing::info;
 use url::Url;
 
 use crate::global_context;
 use crate::telemetry;
 use crate::vecdb::file_filter;
 use crate::vecdb::file_filter::is_valid_file;
-
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
 pub struct Document {

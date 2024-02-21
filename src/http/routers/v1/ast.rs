@@ -3,13 +3,11 @@ use std::path::PathBuf;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use ropey::Rope;
 use serde::{Deserialize, Serialize};
-use tokio::fs::read_to_string;
 use tree_sitter::Point;
 
 use crate::custom_error::ScratchError;
-use crate::files_in_workspace::{Document, DocumentInfo, pathbuf_to_url};
+use crate::files_in_workspace::DocumentInfo;
 use crate::global_context::SharedGlobalContext;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -295,7 +293,7 @@ pub async fn handle_v1_ast_index_file(
 
 pub async fn handle_v1_ast_clear_index(
     Extension(global_context): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
+    _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let cx_locked = global_context.read().await;
     let x = match *cx_locked.ast_module.lock().await {

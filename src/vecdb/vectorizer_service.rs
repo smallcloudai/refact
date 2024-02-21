@@ -1,19 +1,19 @@
 use std::collections::{HashMap, VecDeque};
-use std::time::SystemTime;
-use std::ops::Div;
 use std::io::Write;
+use std::ops::Div;
 use std::sync::Arc;
+use std::time::SystemTime;
+
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing::info;
-use crate::ast::file_splitter::AstBasedFileSplitter;
 
-use crate::vecdb::file_splitter::FileSplitter;
-use crate::vecdb::handler::VecDBHandler;
+use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::try_get_embedding;
 use crate::files_in_workspace::DocumentInfo;
-use crate::vecdb::structs::{Record, SplitResult, VecDbStatus, VecdbConstants};
+use crate::vecdb::handler::VecDBHandler;
+use crate::vecdb::structs::{Record, SplitResult, VecdbConstants, VecDbStatus};
 
 #[derive(Debug)]
 pub struct FileVectorizerService {

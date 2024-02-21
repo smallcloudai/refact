@@ -1,6 +1,3 @@
-use std::iter::Iterator;
-use std::string::ToString;
-
 use similar::DiffableStr;
 use structopt::lazy_static::lazy_static;
 use tree_sitter::{Node, Parser, Query, QueryCapture, Range};
@@ -8,7 +5,7 @@ use tree_sitter_javascript::language;
 
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
 use crate::ast::treesitter::parsers::utils::get_function_name;
-use crate::ast::treesitter::structs::{UsageSymbolInfo, VariableInfo};
+use crate::ast::treesitter::structs::VariableInfo;
 
 const JAVASCRIPT_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(program [
 (lexical_declaration) @global_variable
@@ -41,8 +38,6 @@ const JAVASCRIPT_PARSER_QUERY_FIND_CALLS: &str = r#"((call_expression function: 
 const JAVASCRIPT_PARSER_QUERY_FIND_STATICS: &str = r#"(comment) @comment
 (string_fragment) @string_literal"#;
 
-
-const JAVASCRIPT_ALL_TYPES_QUERY: &str = "(predefined_type) @type (type_identifier) @type";
 const JAVASCRIPT_NAME_OF_VAR_QUERY: &str = "(variable_declarator name: (identifier) @name)";
 
 lazy_static! {

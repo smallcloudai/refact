@@ -1,10 +1,9 @@
 use lazy_static::lazy_static;
 use similar::DiffableStr;
-use tree_sitter::{Node, Parser, Query, QueryCapture, Range};
+use tree_sitter::{Node, Parser, Query};
 use tree_sitter_cpp::language;
 
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
-use crate::ast::treesitter::structs::{UsageSymbolInfo, VariableInfo};
 
 const CPP_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(translation_unit (declaration declarator: (init_declarator)) @global_variable)\n\
 (namespace_definition (declaration_list (declaration (init_declarator)) @global_variable))";
@@ -56,42 +55,6 @@ fn get_function_name_and_scope_req(parent: Node, text: &str) -> (String, Vec<Str
         }
     }
     (name, scope)
-}
-
-fn get_variable(captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
-    let mut var = VariableInfo {
-        name: "".to_string(),
-        range: Range {
-            start_byte: 0,
-            end_byte: 0,
-            start_point: Default::default(),
-            end_point: Default::default(),
-        },
-        type_names: vec![],
-        meta_path: None,
-    };
-    for capture in captures {
-        let capture_name = &query.capture_names()[capture.index as usize];
-        match capture_name.as_str() {
-            "variable" => {
-                var.range = capture.node.range()
-            }
-            "variable_name" => {
-                let text = code.slice(capture.node.byte_range());
-                var.name = text.to_string();
-            }
-            "variable_type" => {
-                let text = code.slice(capture.node.byte_range());
-                var.type_names.push(text.to_string());
-            }
-            &_ => {}
-        }
-    }
-    if var.name.is_empty() {
-        return None;
-    }
-
-    Some(var)
 }
 
 const CPP_PARSER_QUERY_FIND_VARIABLES: &str = r#"((declaration type: [

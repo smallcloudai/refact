@@ -1,4 +1,3 @@
-use std::iter::Iterator;
 use std::string::ToString;
 
 use similar::DiffableStr;
@@ -8,7 +7,7 @@ use tree_sitter_python::language;
 
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
 use crate::ast::treesitter::parsers::utils::get_function_name;
-use crate::ast::treesitter::structs::{UsageSymbolInfo, VariableInfo};
+use crate::ast::treesitter::structs::VariableInfo;
 
 const PYTHON_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(expression_statement (assignment left: (identifier)) @global_variable)";
 const PYTHON_PARSER_QUERY_FUNCTION: &str = "((function_definition name: (identifier)) @function)";

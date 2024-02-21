@@ -3,11 +3,10 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use fst::{Set, set, Streamer};
-use fst::automaton::Subsequence;
 use regex_automata::dense;
-use tracing::{debug, info};
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
+use tracing::{debug, info};
 use tree_sitter::Range;
 
 use crate::ast::structs::SymbolsSearchResultStruct;
@@ -311,7 +310,7 @@ fn link_declarations_to_usages(
         decl_range.start_point.row <= usage_range.start_point.row && decl_range.end_point.row >= usage_range.end_point.row
     }
 
-    for mut usage in usages.iter_mut() {
+    for usage in usages.iter_mut() {
         let mut closest_declaration: Option<String> = None;
         let mut closest_declaration_rows_count: Option<usize> = None;
         let range = usage.get_range();

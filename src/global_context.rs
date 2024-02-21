@@ -1,33 +1,27 @@
 use std::collections::hash_map::DefaultHasher;
-use tracing::{error, info};
 use std::collections::HashMap;
-use std::future::Future;
 use std::hash::Hasher;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
-use tokio::sync::{AcquireError, Mutex as AMutex, Semaphore, SemaphorePermit};
-use tokio::sync::RwLock as ARwLock;
-use std::io::Write;
-use tokio::signal;
 
-use tokenizers::Tokenizer;
-use structopt::StructOpt;
 use hyper::StatusCode;
+use structopt::StructOpt;
+use tokenizers::Tokenizer;
+use tokio::signal;
+use tokio::sync::{Mutex as AMutex, Semaphore};
+use tokio::sync::RwLock as ARwLock;
+use tracing::{error, info};
+
 use crate::ast::ast_module::AstModule;
-
-use tower_lsp::lsp_types::WorkspaceFolder;
-
-use crate::custom_error::ScratchError;
-use async_trait::async_trait;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
-use crate::telemetry::telemetry_structs;
+use crate::custom_error::ScratchError;
 use crate::files_in_workspace::Document;
+use crate::telemetry::telemetry_structs;
 use crate::vecdb::vecdb::VecDb;
-use tokio::sync::mpsc::Permit;
-
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CommandLine {

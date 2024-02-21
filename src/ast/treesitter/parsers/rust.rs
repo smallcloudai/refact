@@ -1,4 +1,3 @@
-use std::iter::Iterator;
 use std::path::PathBuf;
 use std::string::ToString;
 
@@ -8,8 +7,8 @@ use tree_sitter::{Node, Parser, Query, QueryCapture, Range, Tree};
 use tree_sitter_rust::language;
 
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
-use crate::ast::treesitter::parsers::utils::{get_function_name, get_variable};
-use crate::ast::treesitter::structs::{SymbolInfo, UsageSymbolInfo, VariableInfo};
+use crate::ast::treesitter::parsers::utils::get_function_name;
+use crate::ast::treesitter::structs::{SymbolInfo, VariableInfo};
 
 const RUST_PARSER_QUERY_GLOBAL_VARIABLE: &str = "((static_item name: (identifier)) @global_variable)";
 const RUST_PARSER_QUERY_FUNCTION: &str = "((function_item name: (identifier)) @function)";
@@ -250,7 +249,7 @@ impl LanguageParser for RustParser {
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-    
+
     use crate::ast::treesitter::parsers::LanguageParser;
     use crate::ast::treesitter::parsers::rust::RustParser;
 

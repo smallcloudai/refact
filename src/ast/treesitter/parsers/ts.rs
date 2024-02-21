@@ -9,7 +9,7 @@ use tree_sitter_typescript::language_typescript;
 
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
 use crate::ast::treesitter::parsers::utils::{get_function_name, try_to_find_matches};
-use crate::ast::treesitter::structs::{UsageSymbolInfo, VariableInfo};
+use crate::ast::treesitter::structs::VariableInfo;
 
 const TYPESCRIPT_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(program [
 (lexical_declaration) @global_variable

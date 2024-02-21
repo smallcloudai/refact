@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
-use tokio::sync::Mutex as AMutex;
+
 use arrow::array::ArrayData;
 use arrow::buffer::Buffer;
 use arrow::compute::concat_batches;
@@ -14,24 +14,23 @@ use arrow_array::{FixedSizeListArray, Float32Array, RecordBatch, RecordBatchIter
 use arrow_array::cast::{as_fixed_size_list_array, as_primitive_array, as_string_array};
 use arrow_array::types::{Float32Type, UInt64Type};
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
-use itertools::Itertools;
 use futures_util::TryStreamExt;
+use itertools::Itertools;
 use lance::dataset::{WriteMode, WriteParams};
-use lance_linalg::distance::MetricType;
 use lance_index::vector::ivf::IvfBuildParams;
-use lance::index::vector::pq::PQBuildParams;
-use tracing::info;
+use lance_linalg::distance::MetricType;
 use rusqlite::{OpenFlags, params, Result};
 use tempfile::{tempdir, TempDir};
 use tokio::fs;
+use tokio::sync::Mutex as AMutex;
 use tokio_rusqlite::Connection;
 use tracing::error;
+use tracing::info;
 use vectordb::database::Database;
 use vectordb::index::vector::IvfPQIndexBuilder;
 use vectordb::table::Table;
 
 use crate::vecdb::structs::{Record, SplitResult};
-
 
 impl Debug for VecDBHandler {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

@@ -10,16 +10,15 @@ use tokio::task::JoinHandle;
 use tower_lsp::{ClientSocket, LanguageServer, LspService};
 use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
+use crate::files_in_workspace;
 use crate::global_context;
 use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
-use crate::files_in_workspace;
 use crate::telemetry;
 use crate::telemetry::snippets_collection;
-use crate::vecdb::file_filter::is_valid_file;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -279,13 +278,13 @@ impl LanguageServer for Backend {
         Ok(Some(CompletionResponse::Array(vec![])))
     }
 
-    async fn did_delete_files(&self, params: DeleteFilesParams) {
+    async fn did_delete_files(&self, _: DeleteFilesParams) {
         self.client
             .log_message(MessageType::INFO, "{refact-lsp} delete files")
             .await;
     }
 
-    async fn did_create_files(&self, params: CreateFilesParams) {
+    async fn did_create_files(&self, _: CreateFilesParams) {
         self.client
             .log_message(MessageType::INFO, "{refact-lsp} create files")
             .await;

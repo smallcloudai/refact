@@ -3,7 +3,6 @@ use ropey::Rope;
 use tracing::info;
 
 use crate::ast::treesitter::parsers::get_parser_by_filename;
-use crate::ast::treesitter::structs::SymbolType;
 use crate::files_in_workspace::{Document, DocumentInfo};
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::structs::SplitResult;

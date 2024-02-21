@@ -1,20 +1,21 @@
-use tracing::{error, info};
-use std::sync::{Arc, Mutex};
-use tokio::sync::{AcquireError, RwLock as ARwLock, Semaphore, SemaphorePermit};
+use std::sync::Arc;
+
+use async_stream::stream;
+use futures::StreamExt;
+use hyper::{Body, Response, StatusCode};
 use reqwest_eventsource::Event;
 use serde_json::json;
-use futures::StreamExt;
-use async_stream::stream;
-use hyper::{Body, Response, StatusCode};
+use tokio::sync::RwLock as ARwLock;
+use tracing::{error, info};
 
-use crate::nicer_logs;
-use crate::scratchpad_abstract::ScratchpadAbstract;
+use crate::call_validation::SamplingParameters;
+use crate::custom_error::ScratchError;
 use crate::forward_to_hf_endpoint;
 use crate::forward_to_openai_endpoint;
-use crate::custom_error::ScratchError;
-use crate::call_validation::SamplingParameters;
-use crate::telemetry::telemetry_structs;
 use crate::global_context::GlobalContext;
+use crate::nicer_logs;
+use crate::scratchpad_abstract::ScratchpadAbstract;
+use crate::telemetry::telemetry_structs;
 
 pub async fn scratchpad_interaction_not_stream(
     global_context: Arc<ARwLock<GlobalContext>>,
@@ -27,14 +28,14 @@ pub async fn scratchpad_interaction_not_stream(
     parameters: &SamplingParameters,
 ) -> Result<Response<Body>, ScratchError> {
     let t2 = std::time::SystemTime::now();
-    let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage, mut slowdown_arc) = {
+    let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage, slowdown_arc) = {
         let cx = global_context.write().await;
         let caps = cx.caps.clone().unwrap();
         let caps_locked = caps.read().unwrap();
         (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), caps_locked.endpoint_chat_passthrough.clone(), cx.telemetry.clone(), cx.http_client_slowdown.clone())
     };
     let mut save_url: String = String::new();
-    let permit = slowdown_arc.acquire().await;
+    let _ = slowdown_arc.acquire().await;
     let model_says = if endpoint_style == "hf" {
         forward_to_hf_endpoint::forward_to_hf_style_endpoint(
             &mut save_url,
@@ -152,7 +153,7 @@ pub async fn scratchpad_interaction_stream(
             (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), caps_locked.endpoint_chat_passthrough.clone(), cx.telemetry.clone(), cx.http_client_slowdown.clone())
         };
         let mut save_url: String = String::new();
-        let permit = slowdown_arc.acquire().await;
+        let _ = slowdown_arc.acquire().await;
         loop {
             {
                 let value_maybe = scratch.response_spontaneous();

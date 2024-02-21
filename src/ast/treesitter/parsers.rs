@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
-use similar::DiffableStr;
 
 use tracing::error;
 use tree_sitter::{Node, Query, QueryCapture, Tree};
@@ -84,11 +83,11 @@ pub trait LanguageParser: Send {
     fn get_parser_query_find_all(&self) -> &String;
     fn get_namespace(&self, parent: Option<Node>, text: &str) -> Vec<String>;
 
-    fn get_enum_name_and_all_values(&self, parent: Node, text: &str) -> (String, Vec<String>) {
+    fn get_enum_name_and_all_values(&self, _: Node, _: &str) -> (String, Vec<String>) {
         ("".to_string(), vec![])
     }
     
-    fn get_extra_declarations_for_struct(&mut self, struct_name: String, tree: &Tree, text: &str, path: &PathBuf) -> Vec<SymbolInfo> {
+    fn get_extra_declarations_for_struct(&mut self, _: String, _: &Tree, _: &str, _: &PathBuf) -> Vec<SymbolInfo> {
         vec![]
     }
 
