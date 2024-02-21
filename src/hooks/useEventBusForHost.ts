@@ -19,7 +19,6 @@ import {
   isRequestAtCommandCompletion,
   ReceiveAtCommandCompletion,
   ReceiveAtCommandPreview,
-  RemoveLastUserMessage,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 
@@ -190,13 +189,6 @@ function handleSend(
       const decoder = new TextDecoder();
       const reader = response.body?.getReader();
       if (!reader) return;
-
-      const removeLastUserMessage: RemoveLastUserMessage = {
-        type: EVENT_NAMES_TO_CHAT.REMOVE_LAST_USER_MESSAGE,
-        payload: { id: chat.id },
-      };
-
-      window.postMessage(removeLastUserMessage, "*");
 
       return reader.read().then(function pump({ done, value }): Promise<void> {
         if (done) {

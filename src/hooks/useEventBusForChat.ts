@@ -39,7 +39,6 @@ import {
   SetSelectedAtCommand,
   isSetSelectedAtCommand,
   isReceiveAtCommandPreview,
-  isRemoveLastUserMessage,
   isChatUserMessageResponse,
   isChatSetLastModelUsed,
   isSetSelectedSnippet,
@@ -85,6 +84,8 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   const isThisChat =
     action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
+  console.log(action.type, { isThisChat, payload: action.payload });
+
   if (isThisChat && isSetDisableChat(action)) {
     return {
       ...state,
@@ -94,7 +95,11 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isThisChat && isResponseToChat(action)) {
-    const messages = formatChatResponse(state.chat.messages, action.payload);
+    const hasUserMessage = isChatUserMessageResponse(action.payload);
+    const current = hasUserMessage
+      ? state.chat.messages.slice(0, state.previous_message_length)
+      : state.chat.messages;
+    const messages = formatChatResponse(current, action.payload);
     return {
       ...state,
       waiting_for_response: false,
@@ -212,7 +217,10 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       ...state,
       streaming: false,
       waiting_for_response: false,
-      error: action.payload.message,
+      error:
+        typeof action.payload.message === "string"
+          ? action.payload.message
+          : "Error streaming",
     };
   }
 
@@ -329,21 +337,6 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     return {
       ...state,
       files_in_preview: filesInPreview,
-    };
-  }
-
-  if (isThisChat && isRemoveLastUserMessage(action)) {
-    const messages = state.chat.messages.slice(
-      0,
-      state.previous_message_length,
-    );
-
-    return {
-      ...state,
-      chat: {
-        ...state.chat,
-        messages,
-      },
     };
   }
 
