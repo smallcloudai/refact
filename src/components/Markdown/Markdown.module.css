@@ -10,9 +10,17 @@
 .code {
   display: inline-block;
   max-width: 100%;
+}
+
+.code_inline {
   word-break: break-word;
   word-wrap: break-word;
   white-space: break-spaces;
+}
+
+.code_block {
+  color: inherit;
+  background: none;
 }
 
 .list {
