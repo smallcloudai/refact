@@ -5,6 +5,7 @@ import classNames from "classnames";
 import { PreTag, type PreTagProps } from "./Pre";
 import "./highlightjs.css";
 import styles from "./Markdown.module.css";
+import type { Element } from "hast";
 
 export type MarkdownControls = {
   onCopyClick: (str: string) => void;
@@ -15,7 +16,7 @@ export type MarkdownControls = {
 
 export const MarkdownCodeBlock: React.FC<
   React.JSX.IntrinsicElements["code"] &
-    Partial<MarkdownControls & { node: HTMLElement }>
+    Partial<MarkdownControls> & { node?: Element | undefined }
 > = ({
   children,
   className,
