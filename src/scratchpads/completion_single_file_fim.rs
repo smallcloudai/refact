@@ -203,6 +203,9 @@ impl ScratchpadAbstract for SingleFileFIM {
                 "finish_reason": finish_reason.clone(),
             })
         }).collect::<Vec<_>>();
+        if DEBUG {
+            info!("response_n_choices\n{:?}", json_choices);
+        }
 
         snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
         return Ok(serde_json::json!(
