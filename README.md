@@ -207,14 +207,6 @@ interface StopStreamingFromChat extends ActionFromChat {
 }
 
 /**
- * This message is sent from the host to the chat when the user asks a questions so the chat can remove the last user message, which will be added to the response.
- */
-interface RemoveLastUserMessage extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.REMOVE_LAST_USER_MESSAGE; // = "chat_remove_file_from_preview"
-  payload: { id: string };
-}
-
-/**
  * chat requesting caps from the server.
  */
 interface RequestCapsFromChat extends ActionFromChat {
