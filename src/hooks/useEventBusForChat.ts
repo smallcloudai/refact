@@ -491,7 +491,10 @@ export const useEventBusForChat = () => {
     sendMessages(messages);
   }
 
-  function sendMessages(messages: ChatMessages) {
+  function sendMessages(
+    messages: ChatMessages,
+    attach_file = state.active_file.attach,
+  ) {
     dispatch({
       type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
       payload: { id: state.chat.id },
@@ -506,7 +509,7 @@ export const useEventBusForChat = () => {
       messages: messages,
       title: state.chat.title,
       model: state.chat.model,
-      attach_file: state.active_file.attach,
+      attach_file,
     };
 
     dispatch({
@@ -703,7 +706,7 @@ export const useEventBusForChat = () => {
     };
 
     dispatch(setMessageLengthAction);
-    sendMessages(messages);
+    sendMessages(messages, false);
   }
 
   return {

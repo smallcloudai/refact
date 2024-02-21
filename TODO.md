@@ -114,8 +114,9 @@
 [x] list display in response has a large margin/padding
 [ ] tidy up combobox
 [x] bug @ast_definition blocks sending requests
-[ ] TBD: command cache for undo / redo, use a hashmap, but clear it on a miss
+[ ] TBD: response cache for undo / redo, use a hashmap
 [x] limit the size of undo / redo history
+[x] fix re-attaching files on retry
 
 ### EVENTS TODO FOR IDEs
 
@@ -134,3 +135,4 @@
 [x] export events in package.json or from lib
 [ ] remove inline styles?
 [x] vscode select text, click new chat the selected code should be in the chat
+[ ] add debug? https://www.npmjs.com/package/debug
