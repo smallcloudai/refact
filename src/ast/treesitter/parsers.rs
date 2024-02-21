@@ -19,59 +19,6 @@ pub(crate) mod tsx;
 mod utils;
 
 
-// Legacy
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypeDeclarationSearchInfo {
-    pub node_type: String,
-    pub name_node_types: Vec<String>,
-}
-
-// Legacy
-impl TypeDeclarationSearchInfo {
-    pub fn default() -> Self {
-        TypeDeclarationSearchInfo {
-            node_type: "".to_string(),
-            name_node_types: vec![],
-        }
-    }
-    pub fn new(node_type: String, name_node_types: Vec<String>) -> Self {
-        TypeDeclarationSearchInfo { node_type, name_node_types }
-    }
-}
-
-// Legacy
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AstConfig {
-    pub type_declaration_search_info: Vec<TypeDeclarationSearchInfo>,
-    pub namespace_search_info: Option<TypeDeclarationSearchInfo>,
-    pub keywords: Vec<String>,
-    pub keywords_types: Vec<String>,
-}
-
-// Legacy
-impl AstConfig {
-    pub fn default() -> Self {
-        Self {
-            type_declaration_search_info: vec![],
-            keywords: vec![],
-            namespace_search_info: None,
-            keywords_types: vec![],
-        }
-    }
-}
-
-// Legacy
-pub trait Language {
-    fn make_ast_config() -> AstConfig;
-}
-
-// Legacy
-impl Language for AstConfig {
-    fn make_ast_config() -> AstConfig {
-        AstConfig::default()
-    }
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParserError {
     pub message: String,
