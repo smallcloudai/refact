@@ -25,6 +25,7 @@ mod lsp;
 mod http;
 mod background_tasks;
 mod receive_workspace_changes;
+mod dashboard;
 
 #[tokio::main]
 async fn main() {

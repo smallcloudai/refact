@@ -20,6 +20,7 @@ use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
 use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_initialize;
 use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_did_change;
 use crate::http::utils::telemetry_wrapper;
+use crate::http::routers::v1::dashboard::get_dashboard_plots;
 
 pub mod code_completion;
 pub mod chat;
@@ -28,6 +29,7 @@ pub mod snippet_accepted;
 pub mod caps;
 pub mod graceful_shutdown;
 mod lsp_like_handlers;
+mod dashboard;
 
 pub fn make_v1_router() -> Router {
     Router::new()
@@ -41,4 +43,6 @@ pub fn make_v1_router() -> Router {
 
         .route("/lsp-initialize", telemetry_post!(handle_v1_lsp_initialize))
         .route("/lsp-did-changed", telemetry_post!(handle_v1_lsp_did_change))
+
+        .route("/get-dashboard-plots", telemetry_get!(get_dashboard_plots))
 }
