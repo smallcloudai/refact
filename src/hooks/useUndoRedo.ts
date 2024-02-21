@@ -4,6 +4,7 @@ enum ACTION_TYPES {
   SET_STATE = "SET_STATE",
   UNDO = "UNDO",
   REDO = "REDO",
+  RESET = "RESET",
 }
 
 interface InternalState<T> {
@@ -29,7 +30,12 @@ interface RedoAction extends Action {
   type: ACTION_TYPES.REDO;
 }
 
-type Actions<T> = SetStateAction<T> | UndoAction | RedoAction;
+interface ResetAction<T> extends Action<T> {
+  type: ACTION_TYPES.RESET;
+  payload: T;
+}
+
+type Actions<T> = SetStateAction<T> | UndoAction | RedoAction | ResetAction<T>;
 
 const reducerWithUndoRedo = <T>(
   state: InternalState<T>,
@@ -59,6 +65,11 @@ const reducerWithUndoRedo = <T>(
         future: future.slice(1),
       };
     }
+
+    case ACTION_TYPES.RESET: {
+      return createInitialState(action.payload);
+    }
+
     default: {
       return state;
     }
@@ -84,6 +95,8 @@ export const useUndoRedo = <T>(initialState: T) => {
     dispatch({ type: ACTION_TYPES.SET_STATE, payload: newState });
   const undo = () => dispatch({ type: ACTION_TYPES.UNDO });
   const redo = () => dispatch({ type: ACTION_TYPES.REDO });
+  const reset = (payload: T) =>
+    dispatch({ type: ACTION_TYPES.RESET, payload: payload });
   const isUndoPossible = past.length > 0;
   const isRedoPossible = future.length > 0;
 
@@ -92,6 +105,7 @@ export const useUndoRedo = <T>(initialState: T) => {
     setState,
     undo,
     redo,
+    reset,
     pastStates: past,
     futureStates: future,
     isUndoPossible,

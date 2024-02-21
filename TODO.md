@@ -114,6 +114,8 @@
 [x] list display in response has a large margin/padding
 [ ] tidy up combobox
 [x] bug @ast_definition blocks sending requests
+[ ] TBD: command cache for undo / redo, use a hashmap, but clear it on a miss
+[x] limit the size of undo / redo history
 
 ### EVENTS TODO FOR IDEs
 

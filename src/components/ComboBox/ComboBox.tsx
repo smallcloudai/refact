@@ -88,7 +88,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useEffect(() => {
     if (value && !_value) {
-      undoRedo.setState(_value);
+      undoRedo.reset(_value);
     }
   }, [_value, value, undoRedo]);
 
