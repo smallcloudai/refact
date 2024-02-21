@@ -49,7 +49,6 @@ export const Chart: React.FC<{
         type: "shadow",
       },
     },
-    legend: {},
     height: "200px",
     grid: {
       left: "3%",

@@ -1,7 +1,6 @@
 import React from "react";
 import { Box, Text } from "@radix-ui/themes";
 import {
-  FormatCellValue,
   ColumnName,
   RefactTableImpactLanguagesRow,
 } from "../../services/refact";
@@ -9,6 +8,7 @@ import styles from "./Table.module.css";
 import { Spinner } from "../Spinner";
 import { TableRow } from "./TableRow";
 import { TableCell } from "./TableCell";
+import { formatTableCell } from "./formatTableCell";
 
 const convertedColumnNames: Record<ColumnName, string> = {
   lang: "Lang.",
@@ -25,37 +25,6 @@ export const Table: React.FC<{
   if (refactImpactTable === null) {
     return <Spinner />;
   }
-
-  const formatCellValue: FormatCellValue = (
-    columnName: string,
-    cellValue: string | number,
-  ): string | number => {
-    if (columnName === "refact_impact") {
-      return cellValue === 0
-        ? cellValue
-        : parseFloat(cellValue.toString()).toFixed(2);
-    } else if (columnName === "lang" || columnName === "completions") {
-      return cellValue;
-    } else {
-      const convertedNumber = Number(
-        cellValue
-          .toLocaleString("en-US", {
-            style: "decimal",
-            maximumFractionDigits: 0,
-            minimumFractionDigits: 0,
-            useGrouping: true,
-          })
-          .replace(",", "."),
-      );
-      if (convertedNumber === 0) {
-        return "0";
-      } else if (Number.isInteger(convertedNumber)) {
-        return convertedNumber + "k";
-      } else {
-        return `${convertedNumber.toFixed(2)}k`;
-      }
-    }
-  };
 
   return (
     <Box>
@@ -81,7 +50,7 @@ export const Table: React.FC<{
                 {Object.keys(convertedColumnNames).map(
                   (columnName: string, idx: number) => (
                     <TableCell key={idx}>
-                      {formatCellValue(
+                      {formatTableCell(
                         columnName,
                         rowData[
                           columnName as keyof RefactTableImpactLanguagesRow

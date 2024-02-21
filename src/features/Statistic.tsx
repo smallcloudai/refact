@@ -1,21 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { Box, Flex, Button, Heading, Responsive } from "@radix-ui/themes";
-import { RefactTableData } from "../../services/refact";
-import { Table } from "../Table/Table";
-import { Chart } from "../Chart/Chart";
-import { Spinner } from "../Spinner";
+import { RefactTableData } from "../services/refact";
+import { Table } from "../components/Table/Table";
+import { Chart } from "../components/Chart/Chart";
+import { Spinner } from "../components/Spinner";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { useConfig } from "../../contexts/config-context";
-import { ScrollArea } from "../ScrollArea";
-import { TABLE } from "../../__fixtures__";
+import { useConfig } from "../contexts/config-context";
+import { ScrollArea } from "../components/ScrollArea";
+import { TABLE } from "../__fixtures__";
+import { useEventBusForStatistic } from "../hooks";
 
 export const Statistic: React.FC<{
   onCloseStatistic?: () => void;
-  backFromStatistic?: () => void;
-}> = ({ onCloseStatistic, backFromStatistic }) => {
+}> = ({ onCloseStatistic }) => {
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [refactTable, setRefactTable] = useState<RefactTableData | null>(null);
   const { host, tabbed } = useConfig();
+  const { backFromStatistic } = useEventBusForStatistic();
   const LeftRightPadding: Responsive<
     "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
   > =

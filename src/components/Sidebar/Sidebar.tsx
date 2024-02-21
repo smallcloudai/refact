@@ -4,7 +4,7 @@ import { BarChartIcon } from "@radix-ui/react-icons";
 import styles from "./sidebar.module.css";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Settings } from "./Settings";
-import { Statistic } from "../Statistic/Statistic";
+import { Statistic } from "../../features/Statistic";
 
 export const Sidebar: React.FC<
   {
