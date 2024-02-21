@@ -59,9 +59,17 @@ impl AstModule {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(documents, force).await;
     }
 
+    pub async fn ast_add_file_no_queue(&self, document: &DocumentInfo) -> Result<(), String> {
+        self.ast_index.lock().await.add_or_update(&document).await
+    }
+
     pub async fn remove_file(&self, doc: &DocumentInfo) {
         // TODO: will not work if the same file is in the indexer queue
         let _ = self.ast_index.lock().await.remove(doc).await;
+    }
+
+    pub async fn clear_index(&self) {
+        self.ast_index.lock().await.clear_index().await;
     }
 
     pub async fn search_declarations_by_cursor(
@@ -228,7 +236,6 @@ impl AstModule {
         let ast_index_locked  = ast_index.lock().await;
         ast_index_locked.get_indexed_symbol_paths()
     }
-
 
     pub async fn get_indexed_references(&self) -> Vec<String> {
         let ast_index = self.ast_index.clone();

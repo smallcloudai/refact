@@ -58,7 +58,7 @@ pub async fn parse_jsonl(path: &String) -> Result<Vec<DocumentInfo>, String> {
             if value.is_object() {
                 if let Some(filename) = value.get("path").and_then(|v| v.as_str()) {
                     // TODO: join, why it's there?
-                    let doc = match DocumentInfo::from(&base_path.join(filename)) {
+                    let doc = match DocumentInfo::from_pathbuf(&base_path.join(filename)) {
                         Ok(doc) => doc,
                         Err(err) => {
                             info!("{}", err);

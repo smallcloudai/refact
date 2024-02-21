@@ -11,8 +11,10 @@ use hyper::Response;
 use crate::{telemetry_get, telemetry_post};
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::http::routers::v1::ast::{handle_v1_ast_cursor_search, handle_v1_ast_query_search,
-                                    handle_v1_ast_references_search, handle_v1_ast_file_symbols};
+use crate::http::routers::v1::ast::{handle_v1_ast_declarations_cursor_search, handle_v1_ast_declarations_query_search,
+                                    handle_v1_ast_references_cursor_search, handle_v1_ast_references_query_search,
+                                    handle_v1_ast_file_symbols, handle_v1_ast_index_file,
+                                    handle_v1_ast_clear_index};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::chat::handle_v1_chat;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion_web;
@@ -55,8 +57,11 @@ pub fn make_v1_router() -> Router {
         .route("/lsp-initialize", telemetry_post!(handle_v1_lsp_initialize))
         .route("/lsp-did-changed", telemetry_post!(handle_v1_lsp_did_change))
 
-        .route("/ast-cursor-search", telemetry_post!(handle_v1_ast_cursor_search))
-        .route("/ast-query-search", telemetry_post!(handle_v1_ast_query_search))
-        .route("/ast-references-search", telemetry_post!(handle_v1_ast_references_search))
+        .route("/ast-declarations-cursor-search", telemetry_post!(handle_v1_ast_declarations_cursor_search))
+        .route("/ast-declarations-query-search", telemetry_post!(handle_v1_ast_declarations_query_search))
+        .route("/ast-references-cursor-search", telemetry_post!(handle_v1_ast_references_cursor_search))
+        .route("/ast-references-query-search", telemetry_post!(handle_v1_ast_references_query_search))
         .route("/ast-file-symbols", telemetry_post!(handle_v1_ast_file_symbols))
+        .route("/ast-index-file", telemetry_post!(handle_v1_ast_index_file))
+        .route("/ast-clear-index", telemetry_post!(handle_v1_ast_clear_index))
 }

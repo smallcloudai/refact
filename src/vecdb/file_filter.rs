@@ -134,14 +134,14 @@ pub async fn retrieve_files_by_proj_folders(proj_folders: Vec<PathBuf>) -> Vec<D
     for proj_folder in proj_folders {
         let maybe_files = get_control_version_files(&proj_folder).await;
         if let Some(files) = maybe_files {
-            all_files.extend(files.iter().filter_map(|x| DocumentInfo::from(x).ok()).collect::<Vec<_>>());
+            all_files.extend(files.iter().filter_map(|x| DocumentInfo::from_pathbuf(x).ok()).collect::<Vec<_>>());
         } else {
             let files: Vec<DocumentInfo> = WalkDir::new(proj_folder)
                 .into_iter()
                 .filter_map(|e| e.ok())
                 .filter(|e| !e.path().is_dir())
                 .filter(|e| is_valid_file(&e.path().to_path_buf()))
-                .filter_map(|e| DocumentInfo::from(&e.path().to_path_buf()).ok())
+                .filter_map(|e| DocumentInfo::from_pathbuf(&e.path().to_path_buf()).ok())
                 .collect::<Vec<DocumentInfo>>();
             all_files.extend(files);
         }

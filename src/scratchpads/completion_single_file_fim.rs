@@ -305,7 +305,7 @@ async fn ast_search(
     let declarations_str = "[DECLARATIONS]:\n";
     let references_str = "\n\n[REFERENCES]:\n";
 
-    let doc = match DocumentInfo::from(file_path).ok() {
+    let doc = match DocumentInfo::from_pathbuf(file_path).ok() {
         Some(doc) => doc,
         None => return ("".to_string(), 0)
     };

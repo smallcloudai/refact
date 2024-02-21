@@ -81,7 +81,7 @@ impl AtCommand for AtAstFileSymbols {
         let binding = context.global_context.read().await;
         let x = match *binding.ast_module.lock().await {
             Some(ref ast) => {
-                let doc = match DocumentInfo::from(&PathBuf::from(file_path)).ok() {
+                let doc = match DocumentInfo::from_pathbuf(&PathBuf::from(file_path)).ok() {
                     Some(doc) => doc,
                     None => return Err("file not found".to_string())
                 };

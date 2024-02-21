@@ -30,7 +30,13 @@ fn make_a_query(
     exception_doc: Option<DocumentInfo>,
 ) -> Vec<String> {
     let pattern = format!(r"(?i){}", query_str);
-    let matcher = dense::Builder::new().anchored(false).build(pattern.as_str()).unwrap();
+    let matcher = match dense::Builder::new().anchored(false).build(pattern.as_str()) {
+        Ok(matcher) => matcher,
+        Err(err) => {
+            info!("cannot build a query to make ast index search: {err}\nFailed query: {query_str}");
+            return vec![];
+        }
+    };
     let mut stream_builder = set::OpBuilder::new();
     for (doc, set) in nodes_indexes {
         if let Some(ref exception) = exception_doc {
@@ -154,6 +160,13 @@ impl AstIndex {
             }
         }
         Ok(())
+    }
+
+    pub async fn clear_index(&mut self) {
+        self.declarations.clear();
+        self.declarations_search_index.clear();
+        self.usages.clear();
+        self.usages_search_index.clear();
     }
 
     pub async fn search_declarations(

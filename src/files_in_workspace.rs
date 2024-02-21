@@ -48,9 +48,22 @@ impl Hash for DocumentInfo {
 }
 
 impl DocumentInfo {
-    pub fn from(path: &PathBuf) -> Result<Self, String> {
+    pub fn from_pathbuf(path: &PathBuf) -> Result<Self, String> {
         match pathbuf_to_url(path) {
             Ok(uri) => Ok(Self { uri, document: None }),
+            Err(_) => Err("Failed to convert path to URL".to_owned())
+        }
+    }
+
+    pub fn from_pathbuf_and_text(path: &PathBuf, text: &String) -> Result<Self, String> {
+        match pathbuf_to_url(path) {
+            Ok(uri) => Ok(Self {
+                uri,
+                document: Some(Document {
+                    language_id: "unknown".to_string(),
+                    text: Rope::from_str(&text),
+                }),
+            }),
             Err(_) => Err("Failed to convert path to URL".to_owned())
         }
     }
