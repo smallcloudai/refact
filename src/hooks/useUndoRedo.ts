@@ -30,7 +30,7 @@ interface RedoAction extends Action {
   type: ACTION_TYPES.REDO;
 }
 
-interface ResetAction<T> extends Action<T> {
+interface ResetAction<T> extends Action {
   type: ACTION_TYPES.RESET;
   payload: T;
 }
