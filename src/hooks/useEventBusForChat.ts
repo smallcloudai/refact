@@ -84,8 +84,6 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   const isThisChat =
     action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
-  console.log(action.type, { isThisChat, payload: action.payload });
-
   if (isThisChat && isSetDisableChat(action)) {
     return {
       ...state,
