@@ -11,12 +11,11 @@ import { TABLE } from "../../__fixtures__";
 
 export const Statistic: React.FC<{
   onCloseStatistic?: () => void;
-  backFromChat: () => void;
-}> = ({ onCloseStatistic, backFromChat }) => {
+  backFromStatistic?: () => void;
+}> = ({ onCloseStatistic, backFromStatistic }) => {
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [refactTable, setRefactTable] = useState<RefactTableData | null>(null);
   const { host, tabbed } = useConfig();
-
   const LeftRightPadding: Responsive<
     "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
   > =
@@ -58,7 +57,7 @@ export const Statistic: React.FC<{
     >
       {host === "vscode" && !tabbed ? (
         <Flex gap="2" pb="3">
-          <Button variant="surface" onClick={backFromChat}>
+          <Button variant="surface" onClick={backFromStatistic}>
             <ArrowLeftIcon width="16" height="16" />
             Back
           </Button>

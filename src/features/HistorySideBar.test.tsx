@@ -2,14 +2,7 @@ import { expect, vi, describe, it } from "vitest";
 import { render, stubResizeObserver } from "../utils/test-utils";
 import { HistorySideBar } from "./HistorySideBar";
 import { EVENT_NAMES_TO_CHAT } from "../events";
-
 import { ChatHistoryItem } from "../hooks/useChatHistory";
-
-vi.mock("../hooks/useEventBusForChat", () => ({
-  useEventBusForChat: () => ({
-    backFromChat: vi.fn,
-  }),
-}));
 
 describe("HistorySideBar", () => {
   stubResizeObserver();
