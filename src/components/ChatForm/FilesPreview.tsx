@@ -29,9 +29,9 @@ export const FilesPreview: React.FC<{
                 className={styles.removeFileButton}
               >
                 📎
-              </Button>{" "}
+              </Button>
               <Text className={styles.file_name_ellipsis_rtl}>
-                &lrm;
+                &lrm;{" "}
                 <Text className={styles.file_name_ellipsis_ltr}>
                   {file.file_name}
                   {lineText}
