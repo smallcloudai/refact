@@ -174,6 +174,10 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         setSelectedCommand(maybeCommandWithArguments[0]);
       }
     }
+
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+    }
   };
 
   const onKeyUp = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
