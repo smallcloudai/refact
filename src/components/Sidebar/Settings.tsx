@@ -32,7 +32,7 @@ export const Settings: React.FC = () => {
   };
 
   return (
-    <Flex p="4">
+    <Flex>
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger>
           <IconButton variant="outline" title="Settings">

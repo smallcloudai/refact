@@ -1,2 +1,2 @@
 export * from "../events";
-export { render, renderHistoryList } from "./render";
+export { render, renderHistoryList, renderStatistic } from "./render";

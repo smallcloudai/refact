@@ -200,3 +200,42 @@ export type CapsResponse = {
   tokenizer_rewrite_path: Record<string, unknown>;
   chat_rag_functions?: string[];
 };
+export type RefactTableImpactDateObj = {
+  completions: number;
+  human: number;
+  langs: string[];
+  refact: number;
+  refact_impact: number;
+  total: number;
+};
+export type RefactTableImpactLanguagesRow = {
+  [key in ColumnName]: string | number;
+};
+export type RefactTableData = {
+  refact_impact_dates: {
+    data: {
+      daily: Record<string, RefactTableImpactDateObj>;
+      weekly: Record<string, RefactTableImpactDateObj>;
+    };
+  };
+  table_refact_impact: {
+    columns: string[];
+    data: RefactTableImpactLanguagesRow[];
+    title: string;
+  };
+};
+
+export type ColumnName =
+  | "lang"
+  | "refact"
+  | "human"
+  | "total"
+  | "refact_impact"
+  | "completions";
+
+export type CellValue = string | number;
+
+export type FormatCellValue = (
+  columnName: string,
+  cellValue: string | number,
+) => string | number;

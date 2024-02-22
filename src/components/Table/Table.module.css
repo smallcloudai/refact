@@ -1,0 +1,14 @@
+.table {
+  border-collapse: collapse;
+  font-size: 9px;
+  text-align: center;
+  width: 100%;
+  table-layout: fixed;
+}
+.td {
+  border: 1px solid white;
+  padding: 3px;
+}
+.tableCellHead {
+  font-weight: bold;
+}
