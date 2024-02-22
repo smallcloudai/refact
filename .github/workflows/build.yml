@@ -59,6 +59,13 @@ jobs:
     container: ${{ matrix.container }}
 
     steps:
+      - name: Cleanup
+        if: matrix.target == 'aarch64-apple-darwin'
+        run: |
+          rm -rf ./* || true
+          rm -rf ./.??* || true
+          rm -rf ~/.cargo/registry || true
+          
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -118,6 +125,7 @@ jobs:
       - name: Build and test artifact
         if: matrix.target == 'aarch64-apple-darwin'
         run: |
+          cargo test --release
           cargo build --release --target-dir dist/ --target aarch64-apple-darwin
           mv ./dist/aarch64-apple-darwin/release/refact-lsp ./dist/release/refact-lsp
       
@@ -172,36 +180,3 @@ jobs:
         with:
           name: dist-x86_64-unknown-linux-musl
           path: ./dist/release/refact-lsp
-
-  # dist-arm64-unknown-linux-musl:
-  #   name: dist (arm64-unknown-linux-musl)
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: ${{ env.FETCH_DEPTH }}
-
-  #     - uses: uraimo/run-on-arch-action@v2
-  #       name: Build artifact
-  #       id: build
-  #       with:
-  #         arch: aarch64
-  #         distro: rust:alpine
-  #         dockerRunArgs: |
-  #           --volume "${PWD}:/data"
-  #         env: |
-  #           RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C target-feature=-crt-static"
-  #         shell: /bin/sh
-  #         install: |
-  #           apk add --no-cache git clang lld musl-dev nodejs npm openssl-dev pkgconfig g++
-  #         run: |
-  #           cd /data
-  #           cargo build --release --target-dir dist/
-
-  #     - name: Upload artifacts
-  #       uses: actions/upload-artifact@v1
-  #       with:
-  #         name: dist-arm64-unknown-linux-musl
-  #         path: ./dist/release/refact-lsp
