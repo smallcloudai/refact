@@ -292,6 +292,10 @@ impl AstIndex {
     pub fn get_indexed_references(&self) -> Vec<String> {
         self.usages.iter().map(|(path, _)| path.clone()).collect()
     }
+
+    pub fn get_indexed_file_paths(&self) -> Vec<PathBuf> {
+        self.usages_search_index.iter().map(|(path, _)| path.clone()).collect()
+    }
 }
 
 fn link_declarations_to_usages(

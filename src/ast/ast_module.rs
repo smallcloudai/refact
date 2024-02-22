@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 use itertools::Itertools;
 
@@ -241,6 +242,12 @@ impl AstModule {
         let ast_index = self.ast_index.clone();
         let ast_index_locked  = ast_index.lock().await;
         ast_index_locked.get_indexed_references()
+    }
+
+    pub async fn get_indexed_file_paths(&self) -> Vec<PathBuf> {
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked  = ast_index.lock().await;
+        ast_index_locked.get_indexed_file_paths()
     }
 
     async fn parse_near_cursor(

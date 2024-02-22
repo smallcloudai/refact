@@ -1,8 +1,12 @@
+use std::path::PathBuf;
 use std::sync::Arc;
-use crate::at_commands::at_commands::{AtCommandCall, AtCommandsContext, AtParam};
-use tracing::info;
-use tokio::sync::Mutex as AMutex;
 
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use tracing::info;
+
+use crate::at_commands::at_commands::{AtCommandCall, AtCommandsContext, AtParam};
+use crate::files_in_workspace::{DocumentInfo, pathbuf_to_url};
+use crate::global_context::GlobalContext;
 
 pub async fn find_valid_at_commands_in_query(
     query: &mut String,
@@ -12,7 +16,7 @@ pub async fn find_valid_at_commands_in_query(
     let mut valid_command_lines = vec![];
     for (idx, line) in query.lines().enumerate() {
         let line_words: Vec<&str> = line.split_whitespace().collect();
-        let q_cmd_args = line_words.iter().skip(1).map(|x|x.to_string()).collect::<Vec<String>>();
+        let q_cmd_args = line_words.iter().skip(1).map(|x| x.to_string()).collect::<Vec<String>>();
 
         let q_cmd = match line_words.first() {
             Some(x) => x,
@@ -75,4 +79,48 @@ pub async fn correct_arguments_if_needed(
         args_new.push(arg_completed.clone());
     }
     Ok(args_new)
+}
+
+
+pub async fn get_file_text_from_vecdb(global_context: Arc<ARwLock<GlobalContext>>, file_path: &String) -> Result<String, String> {
+    let cx = global_context.read().await;
+
+    // if you write pathbuf_to_url(&PathBuf::from(file_path)) without unwrapping it gives: future cannot be sent between threads safe
+    let url_mb = pathbuf_to_url(&PathBuf::from(file_path)).map(|x| Some(x)).unwrap_or(None);
+    if let Some(url) = url_mb {
+        let document_mb = cx.documents_state.document_map.read().await.get(&url).cloned();
+        if document_mb.is_some() {
+            return Ok(document_mb.unwrap().text.to_string());
+        }
+    }
+
+    return match *cx.vec_db.lock().await {
+        Some(ref db) => Ok(db.get_file_orig_text(file_path.clone()).await.file_text),
+        None => Err("vecdb is not available && no file in memory was found".to_string())
+    };
+}
+
+
+pub async fn get_file_text_from_disk(global_context: Arc<ARwLock<GlobalContext>>, file_path: &String) -> Result<String, String> {
+    let cx = global_context.read().await;
+
+    // if you write pathbuf_to_url(&PathBuf::from(file_path)) without unwrapping it gives: future cannot be sent between threads safe
+    let url_mb = pathbuf_to_url(&PathBuf::from(file_path)).map(|x| Some(x)).unwrap_or(None);
+    if let Some(url) = url_mb {
+        let document_mb = cx.documents_state.document_map.read().await.get(&url).cloned();
+        if document_mb.is_some() {
+            return Ok(document_mb.unwrap().text.to_string());
+        }
+    }
+
+    let doc_info = match DocumentInfo::from_pathbuf(&PathBuf::from(file_path)) {
+        Ok(doc) => doc.read_file().await,
+        Err(_) => {
+            return Err(format!("cannot parse filepath: {file_path}"))
+        }
+    };
+    match doc_info {
+        Ok(text) => Ok(text),
+        Err(err) => Err(err.to_string())
+    }
 }
