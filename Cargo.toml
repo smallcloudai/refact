@@ -22,7 +22,7 @@ tower-lsp = "0.20"
 tower-http = { version = "0.4.0" }
 tower-layer = "0.3.2"
 tracing = "0.1"
-tracing-appender = "0.2"
+tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tokenizers = "0.13"
 ropey = "1.6"

@@ -119,21 +119,21 @@ jobs:
       - name: Build and test artifact
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
-          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo test --release && \
-          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo build --release --target-dir dist/
+          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo test --release || exit 1
+          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo build --release --target-dir dist/ || exit 1
       
       - name: Build and test artifact
         if: matrix.target == 'aarch64-apple-darwin'
         run: |
-          cargo test --release && \
-          cargo build --release --target-dir dist/ --target aarch64-apple-darwin && \
+          cargo test --release || exit 1
+          cargo build --release --target-dir dist/ --target aarch64-apple-darwin || exit 1
           mv ./dist/aarch64-apple-darwin/release/refact-lsp ./dist/release/refact-lsp
       
       - name: Build and test artifact
         if: matrix.target != 'x86_64-unknown-linux-gnu' && matrix.target != 'aarch64-apple-darwin'
         run: |
-          cargo test --release && \
-          cargo build --release --target-dir dist/
+          cargo test --release || exit 1
+          cargo build --release --target-dir dist/ || exit 1
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
