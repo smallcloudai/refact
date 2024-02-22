@@ -8,6 +8,7 @@ use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
 use tracing::{debug, info};
 use tree_sitter::Range;
+use crate::ast::fst_extra_automation::Substring;
 
 use crate::ast::structs::SymbolsSearchResultStruct;
 use crate::ast::treesitter::parsers::get_parser_by_filename;
@@ -28,15 +29,9 @@ fn make_a_query(
     query_str: &str,
     exception_doc: Option<DocumentInfo>,
 ) -> Vec<String> {
-    let pattern = format!(r"(?i){}", query_str);
-    let matcher = match dense::Builder::new().anchored(false).build(pattern.as_str()) {
-        Ok(matcher) => matcher,
-        Err(err) => {
-            info!("cannot build a query to make ast index search: {err}\nFailed query: {query_str}");
-            return vec![];
-        }
-    };
+    let matcher = Substring::new(query_str, true);
     let mut stream_builder = set::OpBuilder::new();
+
     for (doc, set) in nodes_indexes {
         if let Some(ref exception) = exception_doc {
             if doc.eq(&exception.get_path()) {

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use async_trait::async_trait;
 use itertools::Itertools;
-use strsim::normalized_damerau_levenshtein;
+use strsim::{normalized_damerau_levenshtein, jaro_winkler};
 use tokio::sync::RwLock as ARwLock;
 use url::Url;
 
@@ -114,20 +114,25 @@ impl AtParam for AtParamSymbolPathQuery {
             Some(ref ast) => ast.get_indexed_symbol_paths().await,
             None => vec![]
         };
-        let mapped_paths = index_paths.iter().map(|f| {
-            let filename = f.split("::").dropping(1).into_iter().join("::");
-            (
-                f,
-                normalized_damerau_levenshtein(
-                    if value.starts_with("/") {
-                        f
-                    } else {
-                        &filename
-                    },
-                    &value.to_string(),
+
+        let value_lower = value.to_lowercase();
+        let mapped_paths = index_paths
+            .iter()
+            .filter(|x| x.to_lowercase().contains(&value_lower))
+            .map(|f| {
+                let filename = f.split("::").dropping(1).into_iter().join("::");
+                (
+                    f,
+                    jaro_winkler(
+                        if value.starts_with("/") {
+                            f
+                        } else {
+                            &filename
+                        },
+                        &value.to_string(),
+                    )
                 )
-            )
-        });
+            });
         let sorted_paths = mapped_paths
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
             .rev()
@@ -169,20 +174,24 @@ impl AtParam for AtParamSymbolReferencePathQuery {
             Some(ref ast) => ast.get_indexed_references().await,
             None => vec![]
         };
-        let mapped_paths = index_paths.iter().map(|f| {
-            let filename = f.split("::").dropping(1).into_iter().join("::");
-            (
-                f,
-                normalized_damerau_levenshtein(
-                    if value.starts_with("/") {
-                        f
-                    } else {
-                        &filename
-                    },
-                    &value.to_string(),
+        let value_lower = value.to_lowercase();
+        let mapped_paths = index_paths
+            .iter()
+            .filter(|x| x.to_lowercase().contains(&value_lower))
+            .map(|f| {
+                let filename = f.split("::").dropping(1).into_iter().join("::");
+                (
+                    f,
+                    jaro_winkler(
+                        if value.starts_with("/") {
+                            f
+                        } else {
+                            &filename
+                        },
+                        &value.to_string(),
+                    )
                 )
-            )
-        });
+            });
         let sorted_paths = mapped_paths
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
             .rev()
@@ -195,4 +204,3 @@ impl AtParam for AtParamSymbolReferencePathQuery {
         true
     }
 }
-
