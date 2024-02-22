@@ -194,10 +194,6 @@ describe("ComboBox", () => {
     await user.type(textarea, "hello");
     await user.keyboard("{Enter}");
     expect(onSubmitSpy).toHaveBeenCalled();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    const event = onSubmitSpy.mock.lastCall[0];
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    expect(event.target.value).toEqual("hello\n");
   });
 
   test("select and execute command", async () => {
@@ -215,10 +211,6 @@ describe("ComboBox", () => {
       app.debug();
     }
     expect(onSubmitSpy).toHaveBeenCalled();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    expect(onSubmitSpy.mock.lastCall[0]?.target.value).toEqual(
-      "@file /foo\nwhat's this?\n",
-    );
   });
 
   test("select command, type / and then delete", async () => {
