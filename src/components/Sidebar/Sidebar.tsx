@@ -5,6 +5,7 @@ import styles from "./sidebar.module.css";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Settings } from "./Settings";
 import { Statistic } from "../../features/Statistic";
+import { useConfig } from "../../contexts/config-context";
 
 export const Sidebar: React.FC<
   {
@@ -15,6 +16,8 @@ export const Sidebar: React.FC<
   const handleCloseStatistic = () => {
     setIsOpenedStatistic(false);
   };
+  const { features } = useConfig();
+
   return (
     <Box className={styles.sidebar}>
       {isOpenedStatistic ? (
@@ -47,13 +50,15 @@ export const Sidebar: React.FC<
           />
           <Flex ml="3" gap="1">
             <Settings />
-            <IconButton
-              variant="outline"
-              title="Bar Chart"
-              onClick={() => setIsOpenedStatistic(true)}
-            >
-              <BarChartIcon />
-            </IconButton>
+            {features.statistics && (
+              <IconButton
+                variant="outline"
+                title="Bar Chart"
+                onClick={() => setIsOpenedStatistic(true)}
+              >
+                <BarChartIcon />
+              </IconButton>
+            )}
           </Flex>
         </Flex>
       )}
