@@ -79,8 +79,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useEffect(() => {
     if (!ref.current) return;
-    if (startPosition === null) return;
-    if (!trigger) return;
     const maybeTrigger = !selectedCommand && trigger ? trigger : null;
     requestCommandsCompletion(value, ref.current.selectionStart, maybeTrigger);
     // eslint-disable-next-line react-hooks/exhaustive-deps
