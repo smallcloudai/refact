@@ -93,12 +93,19 @@ export const useUndoRedo = <T>(initialState: T) => {
 
   const setState = (newState: T) =>
     dispatch({ type: ACTION_TYPES.SET_STATE, payload: newState });
-  const undo = () => dispatch({ type: ACTION_TYPES.UNDO });
-  const redo = () => dispatch({ type: ACTION_TYPES.REDO });
+
+  const isUndoPossible = past.length > 0;
+  const undo = () => {
+    isUndoPossible && dispatch({ type: ACTION_TYPES.UNDO });
+  };
+
+  const isRedoPossible = future.length > 0;
+  const redo = () => {
+    isRedoPossible && dispatch({ type: ACTION_TYPES.REDO });
+  };
+
   const reset = (payload: T) =>
     dispatch({ type: ACTION_TYPES.RESET, payload: payload });
-  const isUndoPossible = past.length > 0;
-  const isRedoPossible = future.length > 0;
 
   return {
     state: present,

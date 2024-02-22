@@ -73,6 +73,7 @@ export function detectCommand(element: HTMLTextAreaElement): {
   startPosition: number;
   beforeCommand: string;
 } | null {
+  if (!element.value) return null;
   const start = element.value.substring(0, element.selectionStart);
 
   if (start.length === 0) return null;

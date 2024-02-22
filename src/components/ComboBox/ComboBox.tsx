@@ -86,12 +86,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startPosition, trigger, value]);
 
-  React.useEffect(() => {
-    if (value && !_value) {
-      undoRedo.reset(_value);
-    }
-  }, [_value, value, undoRedo]);
-
   React.useLayoutEffect(() => {
     if (!ref.current) return;
     if (endPosition === null) return;
@@ -137,37 +131,47 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
     const isMod = event.metaKey || event.ctrlKey;
 
-    if (
-      isMod &&
-      event.key === "z" &&
-      !event.shiftKey &&
-      undoRedo.isUndoPossible
-    ) {
+    if (isMod && event.key === "z" && !event.shiftKey) {
       event.preventDefault();
       undoRedo.undo();
       const maybeCommand = detectCommand(ref.current);
-      if (maybeCommand?.command) {
+      if (maybeCommand) {
         setTrigger(maybeCommand.command);
+        setStartPosition(maybeCommand.startPosition);
         setWasDelete(true);
+      } else {
+        combobox.hide();
+      }
+
+      const maybeCommandWithArguments = maybeCommand?.command
+        .split(" ")
+        .filter((_) => _);
+      if (maybeCommandWithArguments?.length) {
+        setSelectedCommand(maybeCommandWithArguments[0]);
       }
     }
 
-    if (
-      isMod &&
-      event.key === "z" &&
-      event.shiftKey &&
-      undoRedo.isRedoPossible
-    ) {
+    if (isMod && event.key === "z" && event.shiftKey) {
       event.preventDefault();
+      undoRedo.redo();
       const nextValue = undoRedo.futureStates[0];
       const clonedTextArea = {
         ...ref.current,
         value: nextValue,
       };
       const maybeCommand = detectCommand(clonedTextArea);
-      undoRedo.redo();
-      if (maybeCommand?.command) {
+      if (maybeCommand) {
         setTrigger(maybeCommand.command);
+        setStartPosition(maybeCommand.startPosition);
+      } else {
+        combobox.hide();
+      }
+
+      const maybeCommandWithArguments = maybeCommand?.command
+        .split(" ")
+        .filter((_) => _);
+      if (maybeCommandWithArguments?.length) {
+        setSelectedCommand(maybeCommandWithArguments[0]);
       }
     }
   };
@@ -185,6 +189,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       event.preventDefault();
       event.stopPropagation();
       onSubmit(event);
+      undoRedo.reset("");
       setStartPosition(null);
       setTrigger("");
       combobox.hide();
@@ -217,6 +222,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         setTrigger("");
         setSelectedCommand("");
         setStartPosition(null);
+        combobox.hide();
       }
     }
 

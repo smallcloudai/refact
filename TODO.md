@@ -117,6 +117,7 @@
 [ ] TBD: response cache for undo / redo, use a hashmap
 [x] limit the size of undo / redo history
 [x] fix re-attaching files on retry
+[x] undo redo, holding ctrl keeps the box open until the user releases it
 
 ### EVENTS TODO FOR IDEs
 
