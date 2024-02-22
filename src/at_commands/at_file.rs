@@ -1,11 +1,15 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 use async_trait::async_trait;
 use serde_json::json;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+
+use crate::call_validation::{ChatMessage, ContextFile};
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_params::AtParamFilePath;
-use tokio::sync::Mutex as AMutex;
-use crate::call_validation::{ChatMessage, ContextFile};
-use crate::vecdb::vecdb::FileSearchResult;
+use crate::files_in_workspace::pathbuf_to_url;
+use crate::global_context::GlobalContext;
+
 
 pub struct AtFile {
     pub name: String,
@@ -52,27 +56,42 @@ impl AtCommand for AtFile {
         if !can_execute {
             return Err("incorrect arguments".to_string());
         }
-        match *context.global_context.read().await.vec_db.lock().await {
-            Some(ref db) => {
-                let file_path = match args.get(0) {
-                    Some(x) => x,
-                    None => return Err("no file path".to_string()),
-                };
-                let path_and_text: FileSearchResult = db.get_file_orig_text(file_path.clone()).await;
-                let mut vector_of_context_file: Vec<ContextFile> = vec![];
-                vector_of_context_file.push(ContextFile {
-                    file_name: path_and_text.file_path,
-                    file_content: path_and_text.file_text.clone(),
-                    line1: 0,
-                    line2: path_and_text.file_text.lines().count() as i32,
-                    usefullness: 100.0,
-                });
-                Ok(ChatMessage {
-                    role: "context_file".to_string(),
-                    content: json!(vector_of_context_file).to_string(),
-                })
-            }
-            None => Err("vecdb is not available".to_string())
+        let file_path = match args.get(0) {
+            Some(x) => x,
+            None => return Err("no file path".to_string()),
+        };
+
+        let file_text = get_file_text(context.global_context.clone(), file_path).await?;
+
+        let mut vector_of_context_file: Vec<ContextFile> = vec![];
+        vector_of_context_file.push(ContextFile {
+            file_name: file_path.clone(),
+            file_content: file_text.clone(),
+            line1: 0,
+            line2: file_text.lines().count() as i32,
+            usefullness: 100.0,
+        });
+        Ok(ChatMessage {
+            role: "context_file".to_string(),
+            content: json!(vector_of_context_file).to_string(),
+        })
+    }
+}
+
+async fn get_file_text(global_context: Arc<ARwLock<GlobalContext>>, file_path: &String) -> Result<String, String> {
+    let cx = global_context.read().await;
+
+    // if you write pathbuf_to_url(&PathBuf::from(file_path)) without unwrapping it gives: future cannot be sent between threads safe
+    let url_mb = pathbuf_to_url(&PathBuf::from(file_path)).map(|x|Some(x)).unwrap_or(None);
+    if let Some(url) = url_mb {
+        let document_mb = cx.documents_state.document_map.read().await.get(&url).cloned();
+        if document_mb.is_some() {
+            return Ok(document_mb.unwrap().text.to_string());
         }
     }
+
+    return match *cx.vec_db.lock().await {
+        Some(ref db) => Ok(db.get_file_orig_text(file_path.clone()).await.file_text),
+        None => Err("vecdb is not available && no file in memory was found".to_string())
+    };
 }

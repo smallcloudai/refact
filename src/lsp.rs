@@ -119,7 +119,7 @@ impl Backend {
         let txt = {
             let document_map = self.gcx.read().await.documents_state.document_map.clone();  // Arc::ARwLock
             let document_map = document_map.read().await;
-            let document = document_map.get(params.text_document_position.text_document.uri.as_str());
+            let document = document_map.get(&params.text_document_position.text_document.uri);
             match document {
                 None => {
                     return Err(internal_error("document not found"));

@@ -14,6 +14,7 @@ use tokio::signal;
 use tokio::sync::{Mutex as AMutex, Semaphore};
 use tokio::sync::RwLock as ARwLock;
 use tracing::{error, info};
+use url::Url;
 
 use crate::ast::ast_module::AstModule;
 use crate::caps::CodeAssistantCaps;
@@ -71,7 +72,7 @@ impl CommandLine {
 
 pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
-    pub document_map: Arc<ARwLock<HashMap<String, Document>>>,
+    pub document_map: Arc<ARwLock<HashMap<Url, Document>>>,
 }
 
 pub struct GlobalContext {

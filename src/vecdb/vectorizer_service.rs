@@ -34,17 +34,17 @@ async fn cooldown_queue_thread(
     // This function delays vectorization of a file, until mtime is at least cooldown_secs old.
     let mut last_updated: HashMap<DocumentInfo, SystemTime> = HashMap::new();
     loop {
-        let (doc_maybe, _unprocessed_files_count) = {
+        let mut docs: Vec<DocumentInfo> = Vec::new();
+        {
             let mut queue_locked = update_request_queue.lock().await;
-            let queue_len = queue_locked.len();
-            if !queue_locked.is_empty() {
-                (Some(queue_locked.pop_front().unwrap()), queue_len)
-            } else {
-                (None, 0)
+            for _ in 0..queue_locked.len() {
+                if let Some(doc) = queue_locked.pop_front() {
+                    docs.push(doc);
+                }
             }
-        };
+        }
 
-        if let Some(doc) = doc_maybe {
+        for doc in docs {
             last_updated.insert(doc, SystemTime::now());
         }
 

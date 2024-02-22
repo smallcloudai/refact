@@ -138,7 +138,7 @@ pub async fn on_did_open(
     let mut document_map_locked = document_map.write().await;
     let doc = Document::new(language_id.clone(), Rope::from_str(&text));
     let doc_info = DocumentInfo { uri: file_url.clone(), document: Some(doc.clone()) };
-    document_map_locked.insert(file_url.to_string(), doc);
+    document_map_locked.insert(file_url.clone(), doc);
     let path_str = format!("{:?}", doc_info.get_path());
     let last_30_chars: String = crate::nicer_logs::last_n_chars(&path_str, 30);
     info!("opened {}", last_30_chars);
@@ -155,7 +155,7 @@ pub async fn on_did_change(
         let gcx_locked = gcx.read().await;
         let document_map = &gcx_locked.documents_state.document_map;
         let mut document_map_locked = document_map.write().await;
-        let doc = document_map_locked.entry(file_url.to_string())
+        let doc = document_map_locked.entry(file_url.clone())
             .or_insert(Document::new("unknown".to_owned(), Rope::new()));
         doc.text = Rope::from_str(&text);
         DocumentInfo { uri: file_url.clone(), document: Some(doc.clone()) }
