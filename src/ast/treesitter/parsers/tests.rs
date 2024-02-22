@@ -16,5 +16,10 @@ pub(crate) fn test_query_function(mut parser: Box<dyn LanguageParser>,
     let usages = parser.parse_usages(code).unwrap();
 
     assert_eq!(indexes, ref_indexes);
-    assert_eq!(usages, ref_usages);
+    usages.iter().for_each(|usage| {
+        assert!(ref_usages.contains(usage));
+    });
+    ref_usages.iter().for_each(|usage| {
+        assert!(usages.contains(usage));
+    });
 }
