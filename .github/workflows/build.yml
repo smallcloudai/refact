@@ -47,7 +47,7 @@ jobs:
           - os: macos-11
             target: x86_64-apple-darwin
             code-target: darwin-x64
-          - os: macos-13-large
+          - os: macos-11
             target: aarch64-apple-darwin
             code-target: darwin-arm64
 
