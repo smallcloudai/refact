@@ -35,6 +35,25 @@
   white-space: normal;
 }
 
+.file_name {
+  display: flex;
+}
+
+.file_name_ellipsis_rtl {
+  display: inline;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  max-width: 100%;
+  line-height: var(--line-height-2, 20px);
+}
+
+.file_name_ellipsis_ltr {
+  direction: ltr;
+}
+
 .removeFileButton {
   background-color: transparent;
   padding: 0;

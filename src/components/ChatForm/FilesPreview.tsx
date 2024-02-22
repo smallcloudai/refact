@@ -18,7 +18,7 @@ export const FilesPreview: React.FC<{
             <Text
               size="1"
               title={file.file_content}
-              className={styles.fileName}
+              className={styles.file_name}
             >
               <Button
                 onClick={(event) => {
@@ -30,8 +30,13 @@ export const FilesPreview: React.FC<{
               >
                 📎
               </Button>{" "}
-              {file.file_name.replace(/^\/home\/user/, "~")}
-              {lineText}
+              <Text className={styles.file_name_ellipsis_rtl}>
+                &lrm;
+                <Text className={styles.file_name_ellipsis_ltr}>
+                  {file.file_name}
+                  {lineText}
+                </Text>
+              </Text>
             </Text>
           </pre>
         );

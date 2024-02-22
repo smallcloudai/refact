@@ -145,7 +145,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         .split(" ")
         .filter((_) => _);
       if (maybeCommandWithArguments?.length) {
-        setSelectedCommand(maybeCommandWithArguments[0]);
+        setSelectedCommand(maybeCommandWithArguments[0] + " ");
       }
     }
 
@@ -169,7 +169,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         .split(" ")
         .filter((_) => _);
       if (maybeCommandWithArguments?.length) {
-        setSelectedCommand(maybeCommandWithArguments[0]);
+        setSelectedCommand(maybeCommandWithArguments[0] + " ");
       }
     }
 
