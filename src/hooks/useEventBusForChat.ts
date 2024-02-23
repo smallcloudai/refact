@@ -85,6 +85,8 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   const isThisChat =
     action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
+  console.log(action.type, action.payload, { isThisChat });
+
   if (isThisChat && isSetDisableChat(action)) {
     return {
       ...state,
@@ -161,7 +163,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         ...nextState.chat,
         model: state.chat.model,
       },
-      selected_snippet: action.payload.snippet ?? state.selected_snippet,
+      selected_snippet: action.payload?.snippet ?? state.selected_snippet,
     };
   }
 

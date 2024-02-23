@@ -337,7 +337,7 @@ export function isRestoreChat(action: unknown): action is RestoreChat {
 
 export interface CreateNewChatThread extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.NEW_CHAT;
-  payload: { id: string; snippet?: Snippet };
+  payload?: { id: string; snippet?: Snippet };
 }
 
 export function isCreateNewChat(
