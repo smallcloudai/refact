@@ -30,7 +30,6 @@ const App = (props: Partial<ComboBoxProps>) => {
     render: (props: TextAreaProps) => <TextArea {...props} />,
     selectedCommand,
     setSelectedCommand,
-    removePreviewFileByName: () => ({}),
     ...props,
   };
 

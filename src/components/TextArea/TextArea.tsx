@@ -8,7 +8,6 @@ export type TextAreaProps = React.ComponentProps<typeof RadixTextArea> &
   React.JSX.IntrinsicElements["textarea"] & {
     onTextAreaHeightChange?: (scrollHeight: number) => void;
     onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
-    onSubmit: React.FormEventHandler<HTMLTextAreaElement>;
   };
 
 export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
