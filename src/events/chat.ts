@@ -55,6 +55,11 @@ export type ChatThread = {
   model: string;
   attach_file?: boolean;
 };
+
+export type Snippet = {
+  language: string;
+  code: string;
+};
 interface BaseAction {
   type: EVENT_NAMES_FROM_CHAT | EVENT_NAMES_TO_CHAT;
   payload?: { id: string; [key: string]: unknown };
@@ -322,7 +327,7 @@ export function isBackupMessages(action: unknown): action is BackUpMessages {
 
 export interface RestoreChat extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
-  payload: ChatThread;
+  payload: ChatThread & { snippet?: Snippet };
 }
 
 export function isRestoreChat(action: unknown): action is RestoreChat {
@@ -332,7 +337,7 @@ export function isRestoreChat(action: unknown): action is RestoreChat {
 
 export interface CreateNewChatThread extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.NEW_CHAT;
-  payload: { id: string; snippet: string };
+  payload: { id: string; snippet?: Snippet };
 }
 
 export function isCreateNewChat(

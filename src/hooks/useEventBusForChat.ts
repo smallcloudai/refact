@@ -11,8 +11,8 @@ import {
   EVENT_NAMES_TO_CHAT,
   EVENT_NAMES_FROM_CHAT,
   isActionToChat,
-  ActionToChat,
-  ChatThread,
+  type ActionToChat,
+  type ChatThread,
   isResponseToChat,
   isBackupMessages,
   isRestoreChat,
@@ -30,22 +30,23 @@ import {
   isRemoveContext,
   isActiveFileInfo,
   isToggleActiveFile,
-  ToggleActiveFile,
-  NewFileFromChat,
-  PasteDiffFromChat,
-  ReadyMessage,
-  RequestAtCommandCompletion,
+  type ToggleActiveFile,
+  type NewFileFromChat,
+  type PasteDiffFromChat,
+  type ReadyMessage,
+  type RequestAtCommandCompletion,
   isReceiveAtCommandCompletion,
-  SetSelectedAtCommand,
+  type SetSelectedAtCommand,
   isSetSelectedAtCommand,
   isReceiveAtCommandPreview,
   isChatUserMessageResponse,
   isChatSetLastModelUsed,
   isSetSelectedSnippet,
   isRemovePreviewFileByName,
-  RemovePreviewFileByName,
+  type RemovePreviewFileByName,
   isSetPreviousMessagesLength,
   setPreviousMessagesLength,
+  type Snippet,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
@@ -136,6 +137,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
 
       return message;
     });
+
     return {
       ...state,
       waiting_for_response: false,
@@ -146,6 +148,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         ...action.payload,
         messages,
       },
+      selected_snippet: action.payload.snippet ?? state.selected_snippet,
     };
   }
 
@@ -158,6 +161,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         ...nextState.chat,
         model: state.chat.model,
       },
+      selected_snippet: action.payload.snippet ?? state.selected_snippet,
     };
   }
 
@@ -404,10 +408,7 @@ export type ChatState = {
     attach: boolean;
     can_paste: boolean;
   };
-  selected_snippet: {
-    language: string;
-    code: string;
-  };
+  selected_snippet: Snippet;
 };
 
 function createInitialState(): ChatState {
