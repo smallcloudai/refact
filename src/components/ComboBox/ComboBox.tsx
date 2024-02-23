@@ -23,7 +23,6 @@ export type ComboBoxProps = {
   ) => void;
   setSelectedCommand: (command: string) => void;
   selectedCommand: string;
-  removePreviewFileByName: (name: string) => void;
 };
 
 export const ComboBox: React.FC<ComboBoxProps> = ({
@@ -37,7 +36,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   requestCommandsCompletion,
   setSelectedCommand,
   selectedCommand,
-  removePreviewFileByName,
 }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [trigger, setTrigger] = React.useState<string>("");
@@ -72,11 +70,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   React.useEffect(() => {
     if (!ref.current) return;
     const maybeTrigger = !selectedCommand && trigger ? trigger : null;
-    requestCommandsCompletion(
-      value,
-      ref.current.selectionStart + trigger.trim().length,
-      maybeTrigger,
-    );
+
+    const cursor = wasDelete
+      ? ref.current.selectionStart - 1
+      : startPosition !== null
+        ? startPosition + trigger.length
+        : ref.current.selectionStart;
+    requestCommandsCompletion(value, cursor, maybeTrigger);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startPosition, trigger, value]);
 
@@ -123,18 +123,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
     if (!ref.current) return;
     const isMod = event.metaKey || event.ctrlKey;
-    const maybeCommand = detectCommand(ref.current);
-    const maybeCommandWithArguments = maybeCommand?.command
-      .split(" ")
-      .filter((_) => _);
-    if (isMod && event.key === "z" && maybeCommand) {
+    if (isMod && event.key === "z") {
       setWasDelete(true);
-      setTrigger(maybeCommand.command);
-      setStartPosition(maybeCommand.startPosition);
-
-      if (maybeCommandWithArguments && maybeCommandWithArguments.length > 1) {
-        setSelectedCommand(maybeCommandWithArguments[0] + " ");
-      }
     }
   };
 
@@ -162,28 +152,25 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       return;
     }
 
-    if (wasDelete) {
-      const maybeCommand = detectCommand(ref.current);
+    const maybeCommand = detectCommand(ref.current);
+    const maybeCommandWithArguments = maybeCommand?.command
+      .split(" ")
+      .filter((_) => _);
 
-      if (maybeCommand !== null) {
-        const maybeCommandWithArguments = maybeCommand.command.split(" ");
-        const [command, args] = maybeCommandWithArguments;
-
-        if (!selectedCommand && args) {
-          setSelectedCommand(command + " ");
-          removePreviewFileByName(args);
-        } else if (selectedCommand && maybeCommandWithArguments.length < 2) {
-          setSelectedCommand("");
-        }
-
-        setTrigger(maybeCommand.command);
-        setStartPosition(maybeCommand.startPosition);
+    if (wasDelete && maybeCommand) {
+      setTrigger(maybeCommand.command);
+      setStartPosition(maybeCommand.startPosition);
+      if (maybeCommandWithArguments && maybeCommandWithArguments.length > 1) {
+        setSelectedCommand(maybeCommandWithArguments[0] + " ");
       } else {
-        setTrigger("");
         setSelectedCommand("");
-        setStartPosition(null);
-        combobox.hide();
       }
+      combobox.show();
+    } else if (wasDelete && !maybeCommand) {
+      setTrigger("");
+      setSelectedCommand("");
+      setStartPosition(null);
+      combobox.hide();
     }
 
     if (event.key === "@" && !state.open && !selectedCommand) {

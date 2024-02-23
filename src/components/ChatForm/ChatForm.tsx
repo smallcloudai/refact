@@ -61,7 +61,7 @@ export type ChatFormProps = {
   setSelectedCommand: (command: string) => void;
   filesInPreview: ChatContextFile[];
   selectedSnippet: ChatState["selected_snippet"];
-  removePreviewFileByName: ComboBoxProps["removePreviewFileByName"];
+  removePreviewFileByName: (name: string) => void;
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
 };
 
@@ -190,7 +190,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           )}
           selectedCommand={commands.selected_command}
           setSelectedCommand={setSelectedCommand}
-          removePreviewFileByName={removePreviewFileByName}
         />
         <Flex gap="2" className={styles.buttonGroup}>
           {onClose && (
