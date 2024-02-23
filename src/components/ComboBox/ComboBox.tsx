@@ -6,7 +6,6 @@ import type { TextAreaProps } from "../TextArea/TextArea";
 import { Item } from "./Item";
 import { Portal } from "../Portal";
 import { Popover } from "./Popover";
-import { useUndoRedo } from "../../hooks";
 
 export type ComboBoxProps = {
   commands: string[];
@@ -31,8 +30,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   commands,
   onSubmit,
   placeholder,
-  onChange: _onChange,
-  value: _value,
+  onChange,
+  value,
   render,
   commandArguments,
   requestCommandsCompletion,
@@ -45,13 +44,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const [startPosition, setStartPosition] = React.useState<null | number>(null);
   const [wasDelete, setWasDelete] = React.useState<boolean>(false);
   const [endPosition, setEndPosition] = React.useState<null | number>(null);
-  const undoRedo = useUndoRedo(_value);
-  const value = undoRedo.state;
-
-  const onChange = (value: string) => {
-    _onChange(value);
-    undoRedo.setState(value);
-  };
 
   const commandsOrArguments = selectedCommand
     ? commandArguments.map((arg) => selectedCommand + arg)
@@ -80,7 +72,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   React.useEffect(() => {
     if (!ref.current) return;
     const maybeTrigger = !selectedCommand && trigger ? trigger : null;
-    requestCommandsCompletion(value, ref.current.selectionStart, maybeTrigger);
+    requestCommandsCompletion(
+      value,
+      ref.current.selectionStart + trigger.trim().length,
+      maybeTrigger,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startPosition, trigger, value]);
 
@@ -188,10 +184,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       !event.shiftKey &&
       !state.open
     ) {
-      event.preventDefault();
+      // event.preventDefault();
       event.stopPropagation();
       onSubmit(event);
-      undoRedo.reset("");
       setStartPosition(null);
       setTrigger("");
       combobox.hide();
@@ -337,6 +332,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
           onChange: handleChange,
           onKeyUp: onKeyUp,
           onKeyDown: onKeyDown,
+          onSubmit: onSubmit,
         })}
       />
       <Portal>

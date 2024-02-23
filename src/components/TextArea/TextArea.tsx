@@ -33,6 +33,10 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
         undoRedo.redo();
       }
 
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+      }
+
       onKeyDown && onKeyDown(event);
     };
 
