@@ -234,18 +234,28 @@ fn get_parser(language_id: LanguageId) -> Result<Box<dyn LanguageParser + 'stati
 }
 
 
-pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguageParser + 'static>, ParserError> {
+pub fn get_language_id_by_filename(filename: &PathBuf) -> Option<LanguageId> {
     let suffix = filename.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
     match suffix.as_str() {
-        "cpp" | "cc" | "cxx" | "c++" | "c" | "h" | "hpp" | "hxx" | "hh" => get_parser(LanguageId::Cpp),
-        "inl" | "inc" | "tpp" | "tpl" => get_parser(LanguageId::Cpp),
-        "py" | "pyo" | "py3" | "pyx" => get_parser(LanguageId::Python),
-        "java" => get_parser(LanguageId::Java),
-        "js" | "jsx" => get_parser(LanguageId::JavaScript),
-        "rs" => get_parser(LanguageId::Rust),
-        "ts" => get_parser(LanguageId::TypeScript),
-        "tsx" => get_parser(LanguageId::TypeScriptReact),
-        other => Err(ParserError { message: "Unsupported filename suffix: ".to_string() + &other }),
+        "cpp" | "cc" | "cxx" | "c++" | "c" | "h" | "hpp" | "hxx" | "hh" => Some(LanguageId::Cpp),
+        "inl" | "inc" | "tpp" | "tpl" => Some(LanguageId::Cpp),
+        "py" | "pyo" | "py3" | "pyx" => Some(LanguageId::Python),
+        "java" => Some(LanguageId::Java),
+        "js" | "jsx" => Some(LanguageId::JavaScript),
+        "rs" => Some(LanguageId::Rust),
+        "ts" => Some(LanguageId::TypeScript),
+        "tsx" => Some(LanguageId::TypeScriptReact),
+        _ => None
+    }
+}
+
+
+pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguageParser + 'static>, ParserError> {
+    let suffix = filename.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let maybe_language_id = get_language_id_by_filename(filename);
+    match maybe_language_id {
+        Some(language_id) => get_parser(language_id),
+        None => Err(ParserError { message: format!("Unsupported filename suffix: {suffix}") }),
     }
 }
 

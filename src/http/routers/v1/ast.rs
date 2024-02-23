@@ -61,7 +61,7 @@ pub async fn handle_v1_ast_declarations_cursor_search(
                 Err(e) => { return Err(ScratchError::new(StatusCode::BAD_REQUEST, e.to_string())); }
             };
             ast.search_declarations_by_cursor(
-                &doc, code.as_str(), Point::new(post.row, post.column), post.top_n,
+                &doc, code.as_str(), Point::new(post.row, post.column), post.top_n, false
             ).await
         }
         None => {
@@ -147,7 +147,7 @@ pub async fn handle_v1_ast_references_cursor_search(
                 Err(e) => { return Err(ScratchError::new(StatusCode::BAD_REQUEST, e.to_string())); }
             };
             ast.search_references_by_cursor(
-                &doc, code.as_str(), Point::new(post.row, post.column), post.top_n,
+                &doc, code.as_str(), Point::new(post.row, post.column), post.top_n, true
             ).await
         }
         None => {

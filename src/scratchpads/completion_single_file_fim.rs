@@ -308,7 +308,7 @@ async fn ast_search(
     };
 
     let search_result = ast_module.search_declarations_by_cursor(
-        &doc, code, cursor, 5
+        &doc, code, cursor, 5, true
     ).await;
     let mut extra_context: Vec<String> = vec!(declarations_str.to_string());
     let mut tokens_used = tokenizer.count_tokens(&declarations_str).expect(
@@ -337,7 +337,7 @@ async fn ast_search(
     }
 
     let search_result = ast_module.search_references_by_cursor(
-        &doc, code, cursor, 5
+        &doc, code, cursor, 5, true
     ).await;
     extra_context.push(references_str.to_string());
     let mut tokens_used = tokenizer.count_tokens(&references_str).expect(

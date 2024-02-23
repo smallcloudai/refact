@@ -11,6 +11,7 @@ use tree_sitter::Range;
 use crate::ast::fst_extra_automation::Substring;
 
 use crate::ast::structs::SymbolsSearchResultStruct;
+use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::ast::treesitter::structs::{SymbolDeclarationStruct, UsageSymbolInfo};
 use crate::files_in_workspace::DocumentInfo;
@@ -168,14 +169,19 @@ impl AstIndex {
         query: &str,
         top_n: usize,
         exception_doc: Option<DocumentInfo>,
+        language: Option<LanguageId>
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         let query_str = query.to_string();
-        let found_keys = make_a_query(&self.declarations_search_index, query_str.as_str(), exception_doc);
+        let found_keys = make_a_query(
+            &self.declarations_search_index, query_str.as_str(),
+            exception_doc,
+        );
 
         let filtered_found_keys = found_keys
             .iter()
             .filter_map(|k| self.declarations.get(k))
             .filter(|k| !k.meta_path.is_empty())
+            .filter(|k| language.map(|x| k.language == x).unwrap_or(true))
             .collect::<Vec<_>>();
 
         let mut filtered_search_results: Vec<(SymbolDeclarationStruct, f32)> = filtered_found_keys
@@ -214,6 +220,7 @@ impl AstIndex {
         query: &str,
         top_n: usize,
         exception_doc: Option<DocumentInfo>,
+        language: Option<LanguageId>
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         let query_str = query.to_string();
         let found_keys = make_a_query(&self.usages_search_index, query_str.as_str(), exception_doc);
@@ -235,6 +242,7 @@ impl AstIndex {
             .filter_map(|(maybe_declaration, dist)| {
                 maybe_declaration.map(|declaration| (declaration.clone(), dist))
             })
+            .filter(|(decl, dist)| language.map(|x| decl.language == x).unwrap_or(true))
             .collect();
         filtered_search_results.sort_by(|(_, dist_1), (_, dist_2)|
             dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
