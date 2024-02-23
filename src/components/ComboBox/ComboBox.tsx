@@ -77,12 +77,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     return trigger;
   };
 
-  // React.useEffect(() => {
-  //   if (_value !== undoRedo.state) {
-  //     undoRedo.setState(_value);
-  //   }
-  // }, [_value, undoRedo]);
-
   React.useEffect(() => {
     if (!ref.current) return;
     const maybeTrigger = !selectedCommand && trigger ? trigger : null;
@@ -133,51 +127,51 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
     if (!ref.current) return;
 
-    const isMod = event.metaKey || event.ctrlKey;
+    // const isMod = event.metaKey || event.ctrlKey;
 
-    if (isMod && event.key === "z" && !event.shiftKey) {
-      event.preventDefault();
-      undoRedo.undo();
-      const maybeCommand = detectCommand(ref.current);
-      if (maybeCommand) {
-        setTrigger(maybeCommand.command);
-        setStartPosition(maybeCommand.startPosition);
-        setWasDelete(true);
-      } else {
-        combobox.hide();
-      }
+    // if (isMod && event.key === "z" && !event.shiftKey) {
+    //   event.preventDefault();
+    //   undoRedo.undo();
+    //   const maybeCommand = detectCommand(ref.current);
+    //   if (maybeCommand) {
+    //     setTrigger(maybeCommand.command);
+    //     setStartPosition(maybeCommand.startPosition);
+    //     setWasDelete(true);
+    //   } else {
+    //     combobox.hide();
+    //   }
 
-      const maybeCommandWithArguments = maybeCommand?.command
-        .split(" ")
-        .filter((_) => _);
-      if (maybeCommandWithArguments?.length) {
-        setSelectedCommand(maybeCommandWithArguments[0] + " ");
-      }
-    }
+    //   const maybeCommandWithArguments = maybeCommand?.command
+    //     .split(" ")
+    //     .filter((_) => _);
+    //   if (maybeCommandWithArguments?.length) {
+    //     setSelectedCommand(maybeCommandWithArguments[0] + " ");
+    //   }
+    // }
 
-    if (isMod && event.key === "z" && event.shiftKey) {
-      event.preventDefault();
-      undoRedo.redo();
-      const nextValue = undoRedo.futureStates[0];
-      const clonedTextArea = {
-        ...ref.current,
-        value: nextValue,
-      };
-      const maybeCommand = detectCommand(clonedTextArea);
-      if (maybeCommand) {
-        setTrigger(maybeCommand.command);
-        setStartPosition(maybeCommand.startPosition);
-      } else {
-        combobox.hide();
-      }
+    // if (isMod && event.key === "z" && event.shiftKey) {
+    //   event.preventDefault();
+    //   undoRedo.redo();
+    //   const nextValue = undoRedo.futureStates[0];
+    //   const clonedTextArea = {
+    //     ...ref.current,
+    //     value: nextValue,
+    //   };
+    //   const maybeCommand = detectCommand(clonedTextArea);
+    //   if (maybeCommand) {
+    //     setTrigger(maybeCommand.command);
+    //     setStartPosition(maybeCommand.startPosition);
+    //   } else {
+    //     combobox.hide();
+    //   }
 
-      const maybeCommandWithArguments = maybeCommand?.command
-        .split(" ")
-        .filter((_) => _);
-      if (maybeCommandWithArguments?.length) {
-        setSelectedCommand(maybeCommandWithArguments[0] + " ");
-      }
-    }
+    //   const maybeCommandWithArguments = maybeCommand?.command
+    //     .split(" ")
+    //     .filter((_) => _);
+    //   if (maybeCommandWithArguments?.length) {
+    //     setSelectedCommand(maybeCommandWithArguments[0] + " ");
+    //   }
+    // }
 
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
