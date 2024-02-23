@@ -77,11 +77,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     return trigger;
   };
 
-  React.useEffect(() => {
-    if (_value !== undoRedo.state) {
-      undoRedo.setState(_value);
-    }
-  }, [_value, undoRedo]);
+  // React.useEffect(() => {
+  //   if (_value !== undoRedo.state) {
+  //     undoRedo.setState(_value);
+  //   }
+  // }, [_value, undoRedo]);
 
   React.useEffect(() => {
     if (!ref.current) return;
