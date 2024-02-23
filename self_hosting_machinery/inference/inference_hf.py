@@ -277,6 +277,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
                                          do_sample=temperature >= 0.05,
                                          return_dict_in_generate=True,
                                          output_scores=True,
+                                         begin_suppress_tokens=[scratchpad.eos_token],
                                          top_p=request.get('top_p', 1.0),
                                          temperature=temperature)
 

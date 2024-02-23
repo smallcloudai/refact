@@ -111,6 +111,10 @@ class ScratchpadHuggingfaceBase:
     def generated_tokens_n(self):
         return self._tokens_produced
 
+    @property
+    def eos_token(self):
+        return self._eos_token
+
     def prompt(self, T: int):
         raise NotImplementedError()
 
