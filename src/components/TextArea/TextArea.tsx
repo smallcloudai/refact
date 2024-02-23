@@ -12,10 +12,7 @@ export type TextAreaProps = React.ComponentProps<typeof RadixTextArea> &
   };
 
 export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
-  (
-    { onTextAreaHeightChange, value, onKeyDown, onChange, onSubmit, ...props },
-    ref,
-  ) => {
+  ({ onTextAreaHeightChange, value, onKeyDown, onChange, ...props }, ref) => {
     const innerRef = useRef<HTMLTextAreaElement>(null);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     useImperativeHandle(ref, () => innerRef.current!, []);
@@ -44,11 +41,6 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
       onChange(event);
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLTextAreaElement>) => {
-      onSubmit(event);
-      undoRedo.reset("");
-    };
-
     useEffect(() => {
       if (innerRef.current) {
         innerRef.current.style.height = "1px";
@@ -71,7 +63,6 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
         onKeyDown={handleKeyDown}
         onChange={handleChange}
         className={classNames(styles.textarea, props.className)}
-        onSubmit={handleSubmit}
         ref={innerRef}
       />
     );
