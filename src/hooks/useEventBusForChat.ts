@@ -356,10 +356,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   if (isThisChat && isSetSelectedSnippet(action)) {
     return {
       ...state,
-      selected_snippet: {
-        language: action.payload.language,
-        code: action.payload.snippet,
-      },
+      selected_snippet: action.payload.snippet,
     };
   }
 
