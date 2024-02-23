@@ -11,6 +11,9 @@ export type ChatContextFile = {
   file_content: string;
   line1: number;
   line2: number;
+  usefulness?: number;
+  // FIXME: typo in lsp
+  usefullness?: number;
 };
 
 interface BaseMessage extends Array<string | ChatContextFile[]> {
