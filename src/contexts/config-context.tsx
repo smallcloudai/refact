@@ -7,9 +7,15 @@ export type Config = {
   lspUrl?: string;
   dev?: boolean;
   themeProps?: ThemeProps;
+  features: {
+    statistics: boolean;
+  };
 };
 
-const ConfigContext = createContext<Config>({ host: "web" });
+const ConfigContext = createContext<Config>({
+  host: "web",
+  features: { statistics: false },
+});
 
 // TODO: add theme props, and configure vscode to grey
 const ConfigProvider: React.FC<{
