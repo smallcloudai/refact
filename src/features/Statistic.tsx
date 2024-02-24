@@ -1,22 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { Box, Flex, Button, Heading, Responsive } from "@radix-ui/themes";
-import { RefactTableData } from "../services/refact";
 import { Table } from "../components/Table/Table";
 import { Chart } from "../components/Chart/Chart";
 import { Spinner } from "../components/Spinner";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { useConfig } from "../contexts/config-context";
 import { ScrollArea } from "../components/ScrollArea";
-import { TABLE } from "../__fixtures__";
 import { useEventBusForStatistic } from "../hooks";
 
 export const Statistic: React.FC<{
   onCloseStatistic?: () => void;
 }> = ({ onCloseStatistic }) => {
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
-  const [refactTable, setRefactTable] = useState<RefactTableData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const { host, tabbed } = useConfig();
-  const { backFromStatistic } = useEventBusForStatistic();
+  const { backFromStatistic, statisticData } = useEventBusForStatistic();
   const LeftRightPadding: Responsive<
     "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
   > =
@@ -38,11 +35,10 @@ export const Statistic: React.FC<{
   };
 
   useEffect(() => {
-    if (TABLE.data) {
-      setRefactTable(JSON.parse(TABLE.data) as RefactTableData);
-      setIsLoaded(true);
+    if (statisticData) {
+      setIsLoading(false);
     }
-  }, []);
+  }, [statisticData]);
 
   return (
     <Flex
@@ -78,7 +74,9 @@ export const Statistic: React.FC<{
             width: "inherit",
           }}
         >
-          {isLoaded ? (
+          {isLoading ? (
+            <Spinner />
+          ) : (
             <Box
               style={{
                 width: "inherit",
@@ -93,22 +91,20 @@ export const Statistic: React.FC<{
                 <Heading as="h3" align="center" mb="1">
                   Statistics
                 </Heading>
-                {refactTable !== null && (
+                {statisticData !== null && (
                   <Flex align="center" justify="center" direction="column">
                     <Table
-                      refactImpactTable={refactTable.table_refact_impact.data}
+                      refactImpactTable={statisticData.table_refact_impact.data}
                     />
                     <Chart
                       refactImpactDatesWeekly={
-                        refactTable.refact_impact_dates.data.weekly
+                        statisticData.refact_impact_dates.data.weekly
                       }
                     />
                   </Flex>
                 )}
               </Flex>
             </Box>
-          ) : (
-            <Spinner />
           )}
         </Flex>
       </ScrollArea>
