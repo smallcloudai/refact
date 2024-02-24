@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import {
   sendChat,
   getCaps,
-  ChatContextFile,
   getAtCommandCompletion,
   getAtCommandPreview,
   isDetailMessage,
@@ -15,7 +14,6 @@ import {
   isSaveChatFromChat,
   isRequestCapsFromChat,
   isStopStreamingFromChat,
-  isRequestForFileFromChat,
   isRequestAtCommandCompletion,
   ReceiveAtCommandCompletion,
   ReceiveAtCommandPreview,
@@ -81,54 +79,6 @@ export function useEventBusForHost() {
                 message: error.message,
               },
             });
-          });
-      }
-
-      if (isRequestForFileFromChat(event.data)) {
-        const { payload } = event.data;
-
-        window
-          .showOpenFilePicker({ multiple: true })
-          .then(async (fileHandlers) => {
-            const promises = fileHandlers.map(async (fileHandler) => {
-              const file = await fileHandler.getFile();
-              const content = await file.text();
-              const messageInChat: ChatContextFile = {
-                file_name: fileHandler.name,
-                file_content: content,
-                line1: 1,
-                line2: content.split("\n").length + 1,
-              };
-              return messageInChat;
-            });
-
-            const files = await Promise.all(promises);
-            window.postMessage({
-              type: EVENT_NAMES_TO_CHAT.RECEIVE_FILES,
-              payload: {
-                id: payload.id,
-                files,
-              },
-            });
-          })
-          .catch((error: Error) => {
-            if (error instanceof DOMException && error.name === "AbortError") {
-              return;
-            }
-            // eslint-disable-next-line no-console
-            console.error(error);
-
-            // TODO: add specific error type for this case
-            window.postMessage(
-              {
-                type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
-                payload: {
-                  id: payload.id,
-                  message: error.message || "error attaching file",
-                },
-              },
-              "*",
-            );
           });
       }
 

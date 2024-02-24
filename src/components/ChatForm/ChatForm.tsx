@@ -20,6 +20,7 @@ import { ComboBox, type ComboBoxProps } from "../ComboBox";
 import type { ChatState } from "../../hooks";
 import { ChatContextFile } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
+import { useConfig } from "../../contexts/config-context";
 
 const CapsSelect: React.FC<{
   value: string;
@@ -53,10 +54,9 @@ export type ChatFormProps = {
   canChangeModel: boolean;
   isStreaming: boolean;
   onStopStreaming: () => void;
-  handleContextFile: () => void;
-  hasContextFile: boolean;
   commands: ChatState["rag_commands"];
   attachFile: ChatState["active_file"];
+  hasContextFile: boolean;
   requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
   setSelectedCommand: (command: string) => void;
   filesInPreview: ChatContextFile[];
@@ -77,7 +77,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   canChangeModel,
   isStreaming,
   onStopStreaming,
-  handleContextFile,
   hasContextFile,
   commands,
   attachFile,
@@ -90,7 +89,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 }) => {
   const [value, setValue] = React.useState("");
   const [snippetAdded, setSnippetAdded] = React.useState(false);
+  const config = useConfig();
 
+  // TODO: this won't update the value in the text area
   useEffect(() => {
     if (!snippetAdded && selectedSnippet.code) {
       setValue(
@@ -128,14 +129,26 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }
 
+  const checked = value.includes(`@file ${attachFile.name}`);
+
   return (
     <Box mt="1" position="relative">
       {!isOnline && <Callout type="info">Offline</Callout>}
-      {canChangeModel && (
+      {config.host !== "web" && !hasContextFile && (
         <FileUpload
           fileName={attachFile.name}
-          onClick={handleContextFile}
-          checked={hasContextFile || attachFile.attach}
+          onClick={() =>
+            setValue((preValue) => {
+              const command = `@file ${attachFile.name}${
+                value.length > 0 ? "\n" : ""
+              }`;
+              if (checked) {
+                return preValue.replace(command, "");
+              }
+              return `${command}${preValue}`;
+            })
+          }
+          checked={checked}
         />
       )}
       <Flex>

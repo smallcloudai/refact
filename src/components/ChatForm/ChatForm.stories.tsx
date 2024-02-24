@@ -65,7 +65,6 @@ const meta = {
     clearError: noop,
     canChangeModel: true,
     hasContextFile: false,
-    handleContextFile: noop,
     commands: {
       available_commands: testCommands,
       selected_command: "",

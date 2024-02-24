@@ -3,7 +3,6 @@ import {
   ChatResponse,
   CapsResponse,
   isCapsResponse,
-  ChatContextFile,
   CommandCompletionResponse,
   ChatContextFileMessage,
 } from "../services/refact";
@@ -13,7 +12,6 @@ export enum EVENT_NAMES_FROM_CHAT {
   ASK_QUESTION = "chat_question",
   REQUEST_CAPS = "chat_request_caps",
   STOP_STREAMING = "chat_stop_streaming",
-  REQUEST_FILES = "chat_request_for_file",
   BACK_FROM_CHAT = "chat_back_from_chat",
   OPEN_IN_CHAT_IN_TAB = "open_chat_in_new_tab",
   SEND_TO_SIDE_BAR = "chat_send_to_sidebar",
@@ -35,10 +33,7 @@ export enum EVENT_NAMES_TO_CHAT {
   RECEIVE_CAPS_ERROR = "receive_caps_error",
   SET_CHAT_MODEL = "chat_set_chat_model",
   SET_DISABLE_CHAT = "set_disable_chat",
-  RECEIVE_FILES = "receive_context_file",
-  REMOVE_FILES = "remove_context_file",
   ACTIVE_FILE_INFO = "chat_active_file_info",
-  TOGGLE_ACTIVE_FILE = "chat_toggle_active_file",
   RECEIVE_AT_COMMAND_COMPLETION = "chat_receive_at_command_completion",
   RECEIVE_AT_COMMAND_PREVIEW = "chat_receive_at_command_preview",
   SET_SELECTED_AT_COMMAND = "chat_set_selected_command",
@@ -124,18 +119,6 @@ export function isPasteDiffFromChat(
 ): action is PasteDiffFromChat {
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.PASTE_DIFF;
-}
-
-export interface RequestForFileFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_FILES;
-  payload: { id: string };
-}
-
-export function isRequestForFileFromChat(
-  action: unknown,
-): action is RequestForFileFromChat {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_FILES;
 }
 
 export interface QuestionFromChat extends ActionFromChat {
@@ -235,17 +218,6 @@ export function isSetSelectedAtCommand(
   return action.type === EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND;
 }
 
-export interface ToggleActiveFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
-  payload: { id: string; attach_file: boolean };
-}
-
-export function isToggleActiveFile(
-  action: unknown,
-): action is ToggleActiveFile {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
-}
 export interface ActiveFileInfo extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
   payload: { id: string; name: string; can_paste: boolean };
@@ -254,31 +226,6 @@ export interface ActiveFileInfo extends ActionToChat {
 export function isActiveFileInfo(action: unknown): action is ActiveFileInfo {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
-}
-
-export interface ReceiveContextFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_FILES;
-  payload: {
-    id: string;
-    files: ChatContextFile[];
-  };
-}
-
-export function isReceiveContextFile(
-  action: unknown,
-): action is ReceiveContextFile {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_FILES;
-}
-
-export interface RemoveContextFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.REMOVE_FILES;
-  payload: { id: string };
-}
-
-export function isRemoveContext(action: unknown): action is RemoveContextFile {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.REMOVE_FILES;
 }
 
 export interface SetChatDisable extends ActionToChat {

@@ -239,19 +239,11 @@ interface ActiveFileInfo extends ActionToChat {
 }
 
 /**
- * This message is sent from the host to the chat if the active file should be attached, this is used when adding snippets to the user input.
- */
-interface ToggleActiveFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE; // = "chat_toggle_active_file"
-  payload: { id: string; attach_file: boolean };
-}
-
-/**
  * This message is sent from the host to the chat to set the selected snippet.
  */
 interface ChatSetSelectedSnippet extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET; // = "chat_set_selected_command"
-  payload: { id: string; snippet: string; language: string };
+  payload: { id: string; snippet: { code: string; language: string } };
 }
 
 /**
@@ -284,14 +276,6 @@ interface NewFileFromChat extends ActionFromChat {
 interface PasteDiffFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.PASTE_DIFF; // = "chat_paste_diff"
   payload: { id: string; content: string };
-}
-
-/**
- * This message is used to attach context files from the host to the chat.
- */
-interface ReceiveContextFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_FILES; // =  "receive_context_file"
-  payload: { id: string; files: ChatContextFile[] };
 }
 ```
 

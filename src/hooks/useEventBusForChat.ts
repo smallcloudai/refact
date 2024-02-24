@@ -25,12 +25,7 @@ import {
   isChatReceiveCapsError,
   isSetChatModel,
   isSetDisableChat,
-  isReceiveContextFile,
-  isRequestForFileFromChat,
-  isRemoveContext,
   isActiveFileInfo,
-  isToggleActiveFile,
-  type ToggleActiveFile,
   type NewFileFromChat,
   type PasteDiffFromChat,
   type ReadyMessage,
@@ -48,7 +43,6 @@ import {
   setPreviousMessagesLength,
   type Snippet,
 } from "../events";
-import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
 
@@ -245,41 +239,6 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
-  if (isThisChat && isRequestForFileFromChat(action)) {
-    return {
-      ...state,
-      waiting_for_response: true,
-    };
-  }
-
-  if (isThisChat && isReceiveContextFile(action)) {
-    return {
-      ...state,
-      waiting_for_response: false,
-      chat: {
-        ...state.chat,
-        messages: [
-          ["context_file", action.payload.files],
-          ...state.chat.messages,
-        ],
-      },
-    };
-  }
-
-  if (isThisChat && isRemoveContext(action)) {
-    const messages = state.chat.messages.filter(
-      (message) => !isChatContextFileMessage(message),
-    );
-
-    return {
-      ...state,
-      chat: {
-        ...state.chat,
-        messages,
-      },
-    };
-  }
-
   if (isThisChat && isActiveFileInfo(action)) {
     const { name, can_paste } = action.payload;
     return {
@@ -288,16 +247,6 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         name,
         can_paste,
         attach: state.active_file.attach,
-      },
-    };
-  }
-
-  if (isThisChat && isToggleActiveFile(action)) {
-    return {
-      ...state,
-      active_file: {
-        ...state.active_file,
-        attach: action.payload.attach_file,
       },
     };
   }
@@ -450,7 +399,6 @@ function createInitialState(): ChatState {
 const initialState = createInitialState();
 // Maybe use context to avoid prop drilling?
 export const useEventBusForChat = () => {
-  const config = useConfig();
   const [state, dispatch] = useReducer(reducer, initialState);
   const postMessage = usePostMessage();
 
@@ -580,32 +528,6 @@ export const useEventBusForChat = () => {
     isChatContextFileMessage(message),
   );
 
-  function handleContextFileForWeb() {
-    if (hasContextFile) {
-      dispatch({
-        type: EVENT_NAMES_TO_CHAT.REMOVE_FILES,
-        payload: { id: state.chat.id },
-      });
-    } else {
-      postMessage({
-        type: EVENT_NAMES_FROM_CHAT.REQUEST_FILES,
-        payload: { id: state.chat.id },
-      });
-    }
-  }
-
-  function handleContextFile(toggle?: boolean) {
-    if (config.host === "web") {
-      handleContextFileForWeb();
-    } else {
-      const action: ToggleActiveFile = {
-        type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE,
-        payload: { id: state.chat.id, attach_file: !!toggle },
-      };
-      dispatch(action);
-    }
-  }
-
   function backFromChat() {
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.BACK_FROM_CHAT,
@@ -716,7 +638,6 @@ export const useEventBusForChat = () => {
     clearError,
     setChatModel,
     stopStreaming,
-    handleContextFile,
     hasContextFile,
     backFromChat,
     openChatInNewTab,

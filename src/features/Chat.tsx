@@ -23,14 +23,13 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     clearError,
     setChatModel,
     stopStreaming,
-    handleContextFile,
-    hasContextFile,
     backFromChat,
     openChatInNewTab,
     sendToSideBar,
     sendReadyMessage,
     handleNewFileClick,
     handlePasteDiffClick,
+    hasContextFile,
     requestCommandsCompletion,
     setSelectedCommand,
     removePreviewFileByName,
@@ -118,9 +117,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         onSetChatModel={setChatModel}
         caps={state.caps}
         onStopStreaming={stopStreaming}
-        handleContextFile={handleContextFile}
-        hasContextFile={hasContextFile}
         commands={state.rag_commands}
+        hasContextFile={hasContextFile}
         requestCommandsCompletion={requestCommandsCompletion}
         setSelectedCommand={setSelectedCommand}
         onClose={maybeSendToSideBar}

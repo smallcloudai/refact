@@ -18,7 +18,6 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     error: "",
     clearError: noop,
     canChangeModel: false,
-    handleContextFile: noop,
     hasContextFile: false,
     commands: {
       available_commands: [],
