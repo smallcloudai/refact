@@ -19,7 +19,7 @@ fn results2message(result: &FileReferencesResult) -> ChatMessage {
             file_content: format!("{:?}", x.symbol_type),
             line1: x.definition_info.range.start_point.row as i32,
             line2: x.definition_info.range.end_point.row as i32,
-            usefullness: 1.0
+            usefulness: 100.0
         }
     }).collect();
     ChatMessage {

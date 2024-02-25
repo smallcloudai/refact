@@ -40,7 +40,7 @@ async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
             file_content: content,
             line1: res.symbol_declaration.definition_info.range.start_point.row as i32,
             line2: res.symbol_declaration.definition_info.range.end_point.row as i32,
-            usefullness: res.sim_to_query,
+            usefulness: res.sim_to_query,
         });
     }
     ChatMessage {

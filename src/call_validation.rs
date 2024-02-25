@@ -179,7 +179,8 @@ pub struct ContextFile {
     pub file_content: String,
     pub line1: i32,
     pub line2: i32,
-    pub usefullness: f32,  // the higher the better
+    #[serde(default)]
+    pub usefulness: f32,  // the higher the better
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

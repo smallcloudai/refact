@@ -104,7 +104,7 @@ impl AtCommand for AtFile {
             file_content: file_text,
             line1: colon.start,
             line2: colon.end,
-            usefullness: 100.0,
+            usefulness: 100.0,
         });
         Ok(ChatMessage {
             role: "context_file".to_string(),

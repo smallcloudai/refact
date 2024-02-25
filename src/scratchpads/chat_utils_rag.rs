@@ -20,12 +20,12 @@ pub fn postprocess_at_results(
     for msg in messages {
         cxfile_list.extend(serde_json::from_str::<Vec<ContextFile>>(&msg.content).unwrap()); // TODO: this unwrap() is not good
     }
-    // 2. Sort by usefullness
+    // 2. Sort by usefulness
     cxfile_list.sort_by(|a, b| {
-        b.usefullness.partial_cmp(&a.usefullness).unwrap_or(Ordering::Equal)
+        b.usefulness.partial_cmp(&a.usefulness).unwrap_or(Ordering::Equal)
     });
     for cxfile in cxfile_list.iter() {
-        info!("sorted file {}:{}-{} usefullness {:.1}", crate::nicer_logs::last_n_chars(&cxfile.file_name, 30), cxfile.line1, cxfile.line2, cxfile.usefullness);
+        info!("sorted file {}:{}-{} usefulness {:.1}", crate::nicer_logs::last_n_chars(&cxfile.file_name, 30), cxfile.line1, cxfile.line2, cxfile.usefulness);
     }
     // 3. Truncate less useful to max_bytes
     let mut total_bytes: usize = cxfile_list.iter().map(|x| x.file_content.len()).sum();
@@ -67,7 +67,7 @@ pub fn postprocess_at_results(
                     eaten[j] = true;
                     x.line1 = possible_merge_line1;
                     x.line2 = possible_merge_line2;
-                    x.usefullness = x.usefullness.max(y.usefullness);
+                    x.usefulness = x.usefulness.max(y.usefulness);
                     merged_anything = true;
                 }
             }
