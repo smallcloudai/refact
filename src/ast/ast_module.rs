@@ -118,7 +118,8 @@ impl AstModule {
         }
 
         for rec in declarations.iter() {
-            info!("distance {:.3}, found {}, ", rec.sim_to_query, rec.symbol_declaration.meta_path);
+            let last_30_chars = crate::nicer_logs::last_n_chars(&rec.symbol_declaration.meta_path, 30);
+            info!("distance {:.3}, found {last_30_chars}", rec.sim_to_query);
         }
         info!("search_by_cursor time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), declarations.len());
         Ok(
@@ -143,7 +144,8 @@ impl AstModule {
         match ast_index_locked.search_declarations(symbol_path.as_str(), top_n, None, None).await {
             Ok(results) => {
                 for r in results.iter() {
-                    info!("distance {:.3}, found {}, ", r.sim_to_query, r.symbol_declaration.meta_path);
+                    let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.meta_path, 30);
+                    info!("distance {:.3}, found {last_30_chars}", r.sim_to_query);
                 }
                 info!("search_by_symbol_path time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(
@@ -199,7 +201,8 @@ impl AstModule {
         }
 
         for rec in declarations.iter() {
-            info!("distance {:.3}, found {}, ", rec.sim_to_query, rec.symbol_declaration.meta_path);
+            let last_30_chars = crate::nicer_logs::last_n_chars(&rec.symbol_declaration.meta_path, 30);
+            info!("distance {:.3}, found {last_30_chars}", rec.sim_to_query);
         }
         info!("search_by_cursor time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), declarations.len());
         Ok(
@@ -224,7 +227,8 @@ impl AstModule {
         match ast_index_locked.search_usages(symbol_path.as_str(), top_n, None, None).await {
             Ok(results) => {
                 for r in results.iter() {
-                    info!("distance {:.3}, found {}, ", r.sim_to_query, r.symbol_declaration.meta_path);
+                    let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.meta_path, 30);
+                    info!("distance {:.3}, found {last_30_chars}", r.sim_to_query);
                 }
                 info!("search_by_symbol_path time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(

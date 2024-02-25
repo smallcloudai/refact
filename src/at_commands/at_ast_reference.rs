@@ -21,7 +21,7 @@ struct SimplifiedSymbolDeclarationStruct {
 }
 
 async fn results2message(result: &AstQuerySearchResult) -> ChatMessage {
-    info!("results2message {:?}", result);
+    // info!("results2message {:?}", result);
     let mut symbols = vec![];
     for res in &result.search_results {
         let file_path: String = res.symbol_declaration.meta_path
@@ -54,7 +54,7 @@ pub struct AtAstReference {
 impl AtAstReference {
     pub fn new() -> Self {
         AtAstReference {
-            name: "@ast_reference".to_string(),
+            name: "@references".to_string(),
             params: vec![
                 Arc::new(AMutex::new(AtParamSymbolReferencePathQuery::new()))
             ],
@@ -75,7 +75,7 @@ impl AtCommand for AtAstReference {
         if !can_execute {
             return Err("incorrect arguments".to_string());
         }
-        info!("execute @ast_reference {:?}", args);
+        info!("execute @references {:?}", args);
         let symbol_path = match args.get(0) {
             Some(x) => x,
             None => return Err("no symbol path".to_string()),

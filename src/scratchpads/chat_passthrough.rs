@@ -66,7 +66,6 @@ impl ScratchpadAbstract for ChatPassthrough {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" {
                 filtered_msgs.push(msg.clone());
             } else if msg.role == "context_file" {
-                info!("context_file original: {}", msg.content);
                 match serde_json::from_str(&msg.content) {
                     Ok(res) => {
                         let vector_of_context_files: Vec<ContextFile> = res;

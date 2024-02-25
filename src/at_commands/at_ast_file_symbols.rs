@@ -36,7 +36,7 @@ pub struct AtAstFileSymbols {
 impl AtAstFileSymbols {
     pub fn new() -> Self {
         AtAstFileSymbols {
-            name: "@ast_file_symbols".to_string(),
+            name: "@symbols-at".to_string(),
             params: vec![
                 Arc::new(AMutex::new(AtParamFilePath::new()))
             ],
