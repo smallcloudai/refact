@@ -156,7 +156,7 @@ pub trait LanguageParser: Send {
         Ok(indexes)
     }
 
-    fn parse_usages(&mut self, code: &str) -> Result<Vec<Box<dyn UsageSymbolInfo>>, String> {
+    fn parse_usages(&mut self, code: &str, include_static_data: bool) -> Result<Vec<Box<dyn UsageSymbolInfo>>, String> {
         let tree: Tree = match self.get_parser().parse(code, None) {
             Some(tree) => tree,
             None => return Err("Parse error".to_string()),
@@ -178,8 +178,10 @@ pub trait LanguageParser: Send {
                     }
                 }
                 2 => {
-                    if let Some(var) = self.get_static(match_.captures, &query, code) {
-                        usages.push(Box::new(var));
+                    if include_static_data {
+                        if let Some(var) = self.get_static(match_.captures, &query, code) {
+                            usages.push(Box::new(var));
+                        }
                     }
                 }
                 _ => {}

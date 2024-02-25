@@ -282,7 +282,7 @@ impl AstModule {
                 return Err(err.message);
             }
         };
-        let usages = match parser.parse_usages(code) {
+        let usages = match parser.parse_usages(code, false) {
             Ok(usages) => usages,
             Err(e) => {
                 return Err(format!("Error parsing {}: {}", path.display(), e));

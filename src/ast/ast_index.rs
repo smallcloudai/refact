@@ -82,7 +82,7 @@ impl AstIndex {
                 return Err(format!("Error parsing {}: {}", path.display(), e));
             }
         };
-        let mut usages = match parser.parse_usages(text.as_str()) {
+        let mut usages = match parser.parse_usages(text.as_str(), false) {
             Ok(usages) => usages,
             Err(e) => {
                 return Err(format!("Error parsing {}: {}", path.display(), e));
