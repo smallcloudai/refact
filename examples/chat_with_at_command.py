@@ -5,7 +5,7 @@ initial_messages = [
 {"role": "user", "content":
     # "@workspace definition of DeltaDeltaChatStreamer\n" +
     # "@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\n" +
-    "@ast_definition DeltaDeltaChatStreamer\n" +
+    "@definition DeltaDeltaChatStreamer\n" +
     "summarize the code in one paragraph"
 },
 ]

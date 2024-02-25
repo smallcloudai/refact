@@ -37,7 +37,7 @@ async fn results2message(result: &AstQuerySearchResult) -> ChatMessage {
             file_content: content,
             line1: res.symbol_declaration.definition_info.range.start_point.row as i32,
             line2: res.symbol_declaration.definition_info.range.end_point.row as i32,
-            usefulness: 100.0 * res.sim_to_query
+            usefulness: 50.0 * res.sim_to_query
         });
     }
     ChatMessage {

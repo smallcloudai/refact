@@ -75,7 +75,7 @@ impl AtCommand for AtAstDefinition {
         if !can_execute {
             return Err("incorrect arguments".to_string());
         }
-        info!("execute @ast_definition {:?}", args);
+        info!("execute @definition {:?}", args);
         let symbol_path = match args.get(0) {
             Some(x) => x,
             None => return Err("no symbol path".to_string()),

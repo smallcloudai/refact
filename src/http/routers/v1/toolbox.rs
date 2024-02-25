@@ -33,7 +33,7 @@ struct SnippetAcceptedPostData {
 
 
 pub async fn handle_v1_rewrite_assistant_says_to_at_commands(
-	Extension(_global_context): Extension<Arc<ARwLock<GlobalContext>>>,	
+	Extension(_global_context): Extension<Arc<ARwLock<GlobalContext>>>,
 	body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<SnippetAcceptedPostData>(&body_bytes).map_err(|e| {
@@ -94,7 +94,7 @@ pub async fn handle_v1_rewrite_assistant_says_to_at_commands(
             out += "\n";
         }
         if s.starts_with("🔍DEFINITION ") {
-            out += "@ast_definition ";
+            out += "@definition ";
             out += &s[15..];
             out += "\n";
         }

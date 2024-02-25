@@ -145,7 +145,7 @@ impl AstModule {
             Ok(results) => {
                 for r in results.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.meta_path, 30);
-                    info!("distance {:.3}, found {last_30_chars}", r.sim_to_query);
+                    info!("def-distance {:.3}, found {last_30_chars}", r.sim_to_query);
                 }
                 info!("search_by_symbol_path time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(
@@ -228,7 +228,7 @@ impl AstModule {
             Ok(results) => {
                 for r in results.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.meta_path, 30);
-                    info!("distance {:.3}, found {last_30_chars}", r.sim_to_query);
+                    info!("ref-distance {:.3}, found {last_30_chars}", r.sim_to_query);
                 }
                 info!("search_by_symbol_path time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(
