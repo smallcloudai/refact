@@ -88,7 +88,7 @@ export const Statistic: React.FC<{
                   width: "inherit",
                 }}
               >
-                <Heading as="h3" align="center" mb="1">
+                <Heading as="h3" align="center" mb="5">
                   Statistics
                 </Heading>
                 {statisticData !== null && (

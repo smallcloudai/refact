@@ -12,10 +12,10 @@ import { formatTableCell } from "./formatTableCell";
 
 const convertedColumnNames: Record<ColumnName, string> = {
   lang: "Lang.",
-  refact: "Refact",
-  human: "Human",
-  total: "Total",
-  refact_impact: "Refact Impact",
+  refact: "Refact (char.)",
+  human: "Human (char.)",
+  total: "Total (char.)",
+  refact_impact: "Refact Impact (%)",
   completions: "Compl.",
 };
 
