@@ -76,12 +76,16 @@ impl AstIndex {
         };
 
         // Parse the text and get the declarations and usages
+        let t_declarations = std::time::Instant::now();
         let declarations = match parser.parse_declarations(text.as_str(), &path) {
             Ok(declarations) => declarations,
             Err(e) => {
                 return Err(format!("Error parsing {}: {}", path.display(), e));
             }
         };
+        let t_declarations_elapsed = t_declarations.elapsed();
+
+        let t_usages = std::time::Instant::now();
         let mut usages = match parser.parse_usages(text.as_str(), false) {
             Ok(usages) => usages,
             Err(e) => {
@@ -89,6 +93,7 @@ impl AstIndex {
             }
         };
         link_declarations_to_usages(&declarations, &mut usages);
+        let t_usages_elapsed = t_usages.elapsed();
 
         // Remove old data from all search indexes
         match self.remove(&doc).await {
@@ -121,9 +126,11 @@ impl AstIndex {
         self.usages_search_index.insert(path.clone(), meta_names_set);
 
         info!(
-            "parsed {}, added {} definitions, {} usages",
+            "parsed {}, added {} definitions, {} usages, \
+            took {:.3}s to parse decls, took {:.3}s to parse refs",
             crate::nicer_logs::last_n_chars(&path.display().to_string(), 30),
-            meta_names.len(), usages_meta_names.len()
+            meta_names.len(), usages_meta_names.len(),
+            t_declarations_elapsed.as_secs_f32(), t_usages_elapsed.as_secs_f32()
         );
         Ok(())
     }
