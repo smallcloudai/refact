@@ -112,6 +112,7 @@ pub async fn run_at_commands(
         let last_message_role = post.messages.last().unwrap().role.clone();
         info!("last_message_role {}", last_message_role);
         if last_message_role == "context_file" {
+            post.messages.pop();
             info!("popped");
         } else {
             break;
