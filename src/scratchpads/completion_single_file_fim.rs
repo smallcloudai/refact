@@ -12,6 +12,7 @@ use tracing::info;
 use tree_sitter::Point;
 
 use crate::ast::ast_module::AstModule;
+use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
 use crate::call_validation::CodeCompletionPost;
 use crate::call_validation::SamplingParameters;
 use crate::completion_cache;
@@ -119,7 +120,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                     &source,
                     Point { row: pos.line as usize, column: pos.character as usize },
                     self.t.clone(),
-                    (limit as f32 * 0.25) as usize,
+                    (limit as f32 * 0.5) as usize,
                 ).await
             }
             None => (String::new(), 0)
@@ -299,29 +300,34 @@ async fn ast_search(
     tokenizer: HasTokenizerAndEot,
     max_context_size: usize
 ) -> (String, i32){
-    let declarations_str = "[DECLARATIONS]:\n";
-    let references_str = "\n\n[REFERENCES]:\n";
-
     let doc = match DocumentInfo::from_pathbuf(file_path).ok() {
         Some(doc) => doc,
         None => return ("".to_string(), 0)
     };
+    let lang = get_language_id_by_filename(&doc.get_path()).unwrap_or_default();
+    let declarations_str = wrap_comments("Useful declarations:\n ", &lang);
+    let references_str = wrap_comments("Useful references:\n ", &lang);
 
     let search_result = ast_module.search_declarations_by_cursor(
         &doc, code, cursor, 5, true
     ).await;
-    let mut extra_context: Vec<String> = vec!(declarations_str.to_string());
+    let mut extra_context: Vec<String> = vec!();
     let mut tokens_used = tokenizer.count_tokens(&declarations_str).expect(
         "Tokenization has failed"
     );
+
     match search_result {
         Ok(res) => {
+            if res.search_results.len() > 0 {
+                extra_context.push(declarations_str.to_string());
+            }
             for res in res.search_results {
-                let text: String = format!(
-                    "[PATH]: {}\n[CODE]: {}\n\n",
+                let code: String = format!(
+                    "symbol path: {}\ncode: \n{}\n\n",
                     res.symbol_declaration.meta_path,
-                    res.symbol_declaration.get_content().await.unwrap_or("".to_string())
+                    res.symbol_declaration.get_content().await.unwrap_or(" ".to_string())
                 );
+                let text = wrap_comments(&code, &lang);
                 tokens_used += tokenizer.count_tokens(&text).expect(
                     "Tokenization has failed"
                 );
@@ -339,18 +345,21 @@ async fn ast_search(
     let search_result = ast_module.search_references_by_cursor(
         &doc, code, cursor, 5, true
     ).await;
-    extra_context.push(references_str.to_string());
     let mut tokens_used = tokenizer.count_tokens(&references_str).expect(
         "Tokenization has failed"
     );
     match search_result {
         Ok(res) => {
+            if res.search_results.len() > 0 {
+                extra_context.push(references_str.to_string());
+            }
             for res in res.search_results {
-                let text: String = format!(
-                    "[PATH]: {}\n[CODE]: {}\n\n",
+                let code: String = format!(
+                    "symbol path: {}\ncode: {}\n\n",
                     res.symbol_declaration.meta_path,
                     res.symbol_declaration.get_content().await.unwrap_or("".to_string())
                 );
+                let text = wrap_comments(&code, &lang);
                 tokens_used += tokenizer.count_tokens(&text).expect(
                     "Tokenization has failed"
                 );

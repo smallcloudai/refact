@@ -12,8 +12,9 @@ use tree_sitter::Point;
 use crate::global_context::GlobalContext;
 use crate::ast::ast_index::AstIndex;
 use crate::ast::ast_index_service::AstIndexService;
+use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, CursorUsagesResult, FileReferencesResult, SymbolsSearchResultStruct, UsageSearchResultStruct};
-use crate::ast::treesitter::parsers::{get_language_id_by_filename, get_parser_by_filename};
+use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::files_in_workspace::DocumentInfo;
 
 

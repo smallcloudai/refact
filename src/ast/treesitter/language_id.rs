@@ -41,6 +41,12 @@ pub(crate) enum LanguageId {
     Unknown,
 }
 
+impl Default for LanguageId {
+    fn default() -> Self {
+        LanguageId::Unknown
+    }
+}
+
 impl fmt::Display for LanguageId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

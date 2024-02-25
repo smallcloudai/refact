@@ -5,3 +5,4 @@ pub mod ast_module;
 pub mod structs;
 pub mod file_splitter;
 pub mod fst_extra_automation;
+pub mod comments_wrapper;

@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use tracing::error;
 use tree_sitter::{Node, Query, QueryCapture, Tree};
+use crate::ast::comments_wrapper::get_language_id_by_filename;
 
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::utils::{get_call, get_static, get_variable};
@@ -234,23 +235,6 @@ fn get_parser(language_id: LanguageId) -> Result<Box<dyn LanguageParser + 'stati
         }),
     }
 }
-
-
-pub fn get_language_id_by_filename(filename: &PathBuf) -> Option<LanguageId> {
-    let suffix = filename.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-    match suffix.as_str() {
-        "cpp" | "cc" | "cxx" | "c++" | "c" | "h" | "hpp" | "hxx" | "hh" => Some(LanguageId::Cpp),
-        "inl" | "inc" | "tpp" | "tpl" => Some(LanguageId::Cpp),
-        "py" | "pyo" | "py3" | "pyx" => Some(LanguageId::Python),
-        "java" => Some(LanguageId::Java),
-        "js" | "jsx" => Some(LanguageId::JavaScript),
-        "rs" => Some(LanguageId::Rust),
-        "ts" => Some(LanguageId::TypeScript),
-        "tsx" => Some(LanguageId::TypeScriptReact),
-        _ => None
-    }
-}
-
 
 pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguageParser + 'static>, ParserError> {
     let suffix = filename.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();

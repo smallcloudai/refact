@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use fst::{Set, set, Streamer};
-use regex_automata::dense;
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
 use tracing::{debug, info};
