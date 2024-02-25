@@ -73,7 +73,7 @@ impl AstBasedFileSplitter {
                 };
                 match self.fallback_file_splitter.split(&temp_doc_info).await {
                     Ok(mut res) => {
-                        for mut r in res.iter_mut() {
+                        for r in res.iter_mut() {
                             r.start_line += declaration.definition_info.range.start_point.row as u64;
                             r.end_line += declaration.definition_info.range.start_point.row as u64;
                         }
@@ -96,8 +96,8 @@ impl AstBasedFileSplitter {
                 });
             }
         }
-        let message = format!("split result for {path:?}: split by definitions: {split_normally}, \
-            split using fallback: {split_using_fallback}, split errors: {split_errors}");
+        let last_30_chars = crate::nicer_logs::last_n_chars(&doc_info.get_path().display().to_string(), 30);
+        let message = format!("split {last_30_chars} by definitions {split_normally}, fallback {split_using_fallback}, errors {split_errors}");
         info!(message);
 
         Ok(chunks)
