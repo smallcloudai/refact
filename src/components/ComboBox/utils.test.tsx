@@ -56,6 +56,25 @@ describe("detectCommand", () => {
     const result = detectCommand(textarea);
     expect(result).toEqual(expected);
   });
+
+  test("add @ on new line before text", async () => {
+    const { user, ...app } = render(<TextArea />);
+    const textarea = app.getByTestId("textarea") as HTMLTextAreaElement;
+    await user.type(textarea, "\nhello");
+    await user.keyboard("{ArrowUp}");
+    await user.type(textarea, "@", {
+      initialSelectionStart: 0,
+      initialSelectionEnd: 0,
+    });
+    const expected: DetectResult = {
+      command: "@",
+      beforeCommand: "",
+      startPosition: 1,
+    };
+    const result = detectCommand(textarea);
+    expect(result).toEqual(expected);
+    // app.debug();
+  });
 });
 
 type ReplaceValueResult = ReturnType<typeof replaceValue>;
@@ -73,7 +92,7 @@ describe("replaceValue", () => {
     expect(result).toEqual(expected);
   });
 
-  test("it should set the end poisition to the end  of the command", async () => {
+  test("it should set the end position to the end  of the command", async () => {
     const { user, ...app } = render(<TextArea />);
     const textarea = app.getByTestId("textarea") as HTMLTextAreaElement;
     await user.type(
