@@ -223,7 +223,7 @@ public class Main {
         let mut parser = JavaParser::new().expect("JavaParser::new");
         let path = PathBuf::from("test.java");
         let indexes = parser.parse_declarations(TEST_CODE, &path).unwrap();
-        let zxc = parser.parse_usages(TEST_CODE);
+        let zxc = parser.parse_usages(TEST_CODE, true);
         // assert_eq!(indexes.len(), 1);
         // assert_eq!(indexes.get("function").unwrap().name, "foo");
     }

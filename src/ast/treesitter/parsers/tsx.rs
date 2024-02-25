@@ -314,7 +314,7 @@ export default UserComponent;
         let mut parser = TypescriptxParser::new().expect("TypescriptXParser::new");
         let path = PathBuf::from("test.tsx");
         let indexes = parser.parse_declarations(TEST_CODE, &path).unwrap();
-        let zxc = parser.parse_usages(TEST_CODE);
+        let zxc = parser.parse_usages(TEST_CODE, true);
         // assert_eq!(indexes.len(), 1);
         // assert_eq!(indexes.get("function").unwrap().name, "foo");
     }
