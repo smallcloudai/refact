@@ -44,6 +44,7 @@ export function replaceValue(
   const maybeEndOfCommand = maybeExistingCommand
     ? maybeExistingCommand.startPosition + maybeExistingCommand.command.length
     : null;
+
   const startPosition =
     maybeExistingCommand?.startPosition ?? startAt ?? element.selectionStart;
 
@@ -74,6 +75,7 @@ export function detectCommand(element: HTMLTextAreaElement): {
   beforeCommand: string;
 } | null {
   if (!element.value) return null;
+
   const start = element.value.substring(0, element.selectionStart);
 
   if (start.length === 0) return null;

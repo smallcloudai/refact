@@ -120,6 +120,8 @@
 [x] undo redo, holding ctrl keeps the box open until the user releases it
 [x] attach file with @ command,
 [x] bug: add text, add file go back and edit the text fixed by prepending the command to the value
+[x] ctrl-z then enter, cursor is at wrong position
+[x] @, enter, enter, ctrl-z, enter
 
 ### EVENTS TODO FOR IDEs
 

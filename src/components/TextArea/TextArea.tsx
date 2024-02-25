@@ -98,7 +98,7 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
     return (
       <RadixTextArea
         {...props}
-        value={undoRedo.state}
+        value={value}
         onKeyDown={handleKeyDown}
         onChange={handleChange}
         className={classNames(styles.textarea, props.className)}

@@ -69,11 +69,10 @@ describe("detectCommand", () => {
     const expected: DetectResult = {
       command: "@",
       beforeCommand: "",
-      startPosition: 1,
+      startPosition: 0,
     };
     const result = detectCommand(textarea);
     expect(result).toEqual(expected);
-    // app.debug();
   });
 });
 

@@ -72,7 +72,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     if (endPosition === null) return;
     ref.current.setSelectionRange(endPosition, endPosition);
     setEndPosition(null);
-  }, [endPosition]);
+  }, [endPosition, trigger]);
 
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
@@ -101,22 +101,18 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const state = combobox.getState();
-
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       combobox.hide();
       setStartPosition(null);
     }
-
     if (state.open && event.key === "Tab") {
       event.preventDefault();
     }
-
     if (wasDelete && event.key !== "Backspace") {
       setWasDelete(false);
     } else if (event.key === "Backspace") {
       setWasDelete(true);
     }
-
     if (!ref.current) return;
     const isMod = event.metaKey || event.ctrlKey;
     if (isMod && event.key === "z") {
@@ -169,7 +165,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
     if (event.key === "@" && !state.open && !selectedCommand) {
       setTrigger(event.key);
-      const start = ref.current.selectionStart - 1;
+      const command = detectCommand(ref.current);
+      const start = command?.startPosition ?? ref.current.selectionStart;
       setStartPosition(start);
       combobox.setValue("");
       combobox.show();
@@ -184,7 +181,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     if (state.open && tabOrEnter && command) {
       event.preventDefault();
       event.stopPropagation();
-
       const newInput = replaceValue(
         ref.current,
         trigger,
@@ -206,7 +202,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         command,
         startPosition,
       );
-
       event.preventDefault();
       event.stopPropagation();
       onChange(newInput.value);

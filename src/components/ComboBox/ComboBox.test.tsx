@@ -294,7 +294,31 @@ describe("ComboBox", () => {
     expect(textarea.textContent).toEqual("@file /foo");
   });
 
-  test.todo("@, enter, enter, ctrl+z, enter");
+  test("@, enter, enter, ctrl+z, enter", async () => {
+    const { user, ...app } = render(<App />);
+    const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
+    await user.type(textarea, "@");
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo");
+    await user.keyboard("{Control>}{z}{/Control}");
+    expect(textarea.textContent).toEqual("@file ");
+    await user.keyboard("{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo");
+  });
+
+  test("insert command before text", async () => {
+    const { user, ...app } = render(<App />);
+    const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
+    await user.type(textarea, "\nhello");
+    await user.type(textarea, "@", {
+      initialSelectionEnd: 0,
+      initialSelectionStart: 0,
+    });
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo\nhello");
+  });
 
   // test("textarea should be empty after submit", async () => {
   //   const submitSpy = vi.fn();
