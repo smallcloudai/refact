@@ -1,7 +1,13 @@
-import React, { useEffect, useImperativeHandle, useRef } from "react";
+import React, {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useLayoutEffect,
+} from "react";
 import { TextArea as RadixTextArea } from "@radix-ui/themes";
 import classNames from "classnames";
 import { useUndoRedo } from "../../hooks";
+import { createSyntheticEvent } from "../../utils/createSyntheticEvent";
 import styles from "./TextArea.module.css";
 
 export type TextAreaProps = React.ComponentProps<typeof RadixTextArea> &
@@ -12,6 +18,7 @@ export type TextAreaProps = React.ComponentProps<typeof RadixTextArea> &
 
 export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
   ({ onTextAreaHeightChange, value, onKeyDown, onChange, ...props }, ref) => {
+    const [callChange, setCallChange] = React.useState(true);
     const innerRef = useRef<HTMLTextAreaElement>(null);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     useImperativeHandle(ref, () => innerRef.current!, []);
@@ -22,11 +29,13 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
       if (isMod && event.key === "z" && !event.shiftKey) {
         event.preventDefault();
         undoRedo.undo();
+        setCallChange(true);
       }
 
       if (isMod && event.key === "z" && event.shiftKey) {
         event.preventDefault();
         undoRedo.redo();
+        setCallChange(true);
       }
 
       if (event.key === "Enter" && !event.shiftKey) {
@@ -51,9 +60,40 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
     }, [innerRef.current?.value, onTextAreaHeightChange]);
 
     useEffect(() => {
-      undoRedo.setState(value);
+      if (value !== undoRedo.state) {
+        undoRedo.setState(value);
+      }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value]);
+
+    useLayoutEffect(() => {
+      if (innerRef.current && callChange && undoRedo.state !== value) {
+        const e = new Event("change", { bubbles: true });
+        Object.defineProperty(e, "target", {
+          writable: true,
+          value: {
+            ...innerRef.current,
+            value: undoRedo.state,
+          },
+        });
+
+        Object.defineProperty(e, "currentTarget", {
+          writable: true,
+          value: {
+            ...innerRef.current,
+            value: undoRedo.state,
+          },
+        });
+        const syntheticEvent = createSyntheticEvent(
+          e,
+        ) as React.ChangeEvent<HTMLTextAreaElement>;
+
+        queueMicrotask(() => onChange(syntheticEvent));
+        setCallChange(false);
+      } else if (callChange) {
+        setCallChange(false);
+      }
+    }, [callChange, undoRedo.state, onChange, value]);
 
     return (
       <RadixTextArea

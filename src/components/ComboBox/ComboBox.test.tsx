@@ -294,6 +294,8 @@ describe("ComboBox", () => {
     expect(textarea.textContent).toEqual("@file /foo");
   });
 
+  test.todo("@, enter, enter, ctrl+z, enter");
+
   // test("textarea should be empty after submit", async () => {
   //   const submitSpy = vi.fn();
   //   const { user, ...app } = render(<App onSubmit={submitSpy} />);

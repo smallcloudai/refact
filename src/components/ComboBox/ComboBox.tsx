@@ -67,19 +67,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     return trigger;
   };
 
-  React.useEffect(() => {
-    if (!ref.current) return;
-    const maybeTrigger = !selectedCommand && trigger ? trigger : null;
-
-    const cursor = wasDelete
-      ? ref.current.selectionStart - 1
-      : startPosition !== null
-        ? startPosition + trigger.length
-        : ref.current.selectionStart;
-    requestCommandsCompletion(value, cursor, maybeTrigger);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startPosition, trigger, value]);
-
   React.useLayoutEffect(() => {
     if (!ref.current) return;
     if (endPosition === null) return;
@@ -102,6 +89,15 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       setSelectedCommand("");
     }
   }, [trigger, setSelectedCommand, selectedCommand]);
+
+  React.useLayoutEffect(() => {
+    if (!ref.current) return;
+    const maybeTrigger = !selectedCommand && trigger ? trigger : null;
+    const cursor =
+      endPosition ?? Math.max(startPosition ?? 0, ref.current.selectionStart);
+    requestCommandsCompletion(value, cursor, maybeTrigger);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const state = combobox.getState();
@@ -153,11 +149,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     }
 
     const maybeCommand = detectCommand(ref.current);
-    const maybeCommandWithArguments = maybeCommand?.command
-      .split(" ")
-      .filter((_) => _);
+    const maybeCommandWithArguments = maybeCommand?.command.split(" ");
 
-    if (wasDelete && maybeCommand) {
+    if (maybeCommand) {
       setTrigger(maybeCommand.command);
       setStartPosition(maybeCommand.startPosition);
       if (maybeCommandWithArguments && maybeCommandWithArguments.length > 1) {
@@ -166,7 +160,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         setSelectedCommand("");
       }
       combobox.show();
-    } else if (wasDelete && !maybeCommand) {
+    } else if (wasDelete) {
       setTrigger("");
       setSelectedCommand("");
       setStartPosition(null);
