@@ -1,6 +1,6 @@
 import React from "react";
 import { useComboboxStore, Combobox } from "@ariakit/react";
-import { matchSorter } from "match-sorter";
+// import { matchSorter } from "match-sorter";
 import { getAnchorRect, replaceValue, detectCommand } from "./utils";
 import type { TextAreaProps } from "../TextArea/TextArea";
 import { Item } from "./Item";
@@ -53,10 +53,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     defaultActiveId: undefined,
   });
 
-  const matches = matchSorter(commandsOrArguments, trigger, {
-    baseSort: (a, b) => (a.index < b.index ? -1 : 1),
-    threshold: 0,
-  });
+  // TODO: uninstall this package
+  // const matches = matchSorter(commandsOrArguments, trigger, {
+  //   baseSort: (a, b) => (a.index < b.index ? -1 : 1),
+  //   threshold: 0,
+  // });
+
+  const matches = commandsOrArguments;
 
   const hasMatches = !!trigger && !!matches.length;
 
