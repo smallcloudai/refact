@@ -33,9 +33,10 @@ class LspProxy(APIRouter):
     def __init__(self, session: RefactSession, *args, **kwargs):
         super().__init__(*args, **kwargs)
         super().add_route("/lsp/v1/caps", self._reverse_proxy, methods=["GET"])
-        super().add_route("/lsp/v1/chat", self._reverse_proxy_chat, methods=["POST"])
-        super().add_route("/lsp/v1/at-command-completion", self._reverse_proxy, methods=["POST"])
-        super().add_route("/lsp/v1/at-command-preview", self._reverse_proxy, methods=["POST"])
+        super().add_route("/lsp/v1/at-command-completion", self._reverse_proxy_with_auth, methods=["POST"])
+        super().add_route("/lsp/v1/at-command-preview", self._reverse_proxy_with_auth, methods=["POST"])
+        super().add_route("/lsp/v1/chat", self._reverse_proxy_with_auth, methods=["POST"])
+
         lsp_address = get_lsp_url()
         self._session = session
         self._client = httpx.AsyncClient(base_url=lsp_address)
@@ -46,8 +47,8 @@ class LspProxy(APIRouter):
         except BaseException as e:
             raise HTTPException(status_code=401, detail=str(e))
 
-    async def _reverse_proxy_chat(self, request: Request):
-        account = await self._account_from_bearer(request.headers.get("Authorization", None))
+    async def _reverse_proxy_with_auth(self, request: Request):
+        account = self._account_from_bearer(request.headers.get("Authorization", None))
         return await self._reverse_proxy(request)
 
     async def _reverse_proxy(self, request: Request):
