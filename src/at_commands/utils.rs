@@ -25,7 +25,6 @@ pub async fn find_valid_at_commands_in_query(
             Some(x) => x,
             None => continue,
         };
-
         let can_execute = cmd.lock().await.can_execute(&q_cmd_args, context).await;
         let q_cmd_args = match correct_arguments_if_needed(cmd.lock().await.params(), &q_cmd_args, can_execute, context).await {
             Ok(x) => x,

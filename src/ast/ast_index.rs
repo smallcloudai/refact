@@ -3,12 +3,14 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use fst::{Set, set, Streamer};
+use rayon::current_num_threads;
+use rayon::prelude::*;
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
 use tracing::{debug, info};
 use tree_sitter::Range;
-use crate::ast::fst_extra_automation::Substring;
 
+use crate::ast::fst_extra_automation::Substring;
 use crate::ast::structs::SymbolsSearchResultStruct;
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_parser_by_filename;
@@ -61,7 +63,8 @@ impl AstIndex {
         }
     }
 
-    pub async fn add_or_update(&mut self, doc: &DocumentInfo) -> Result<(), String> {
+    pub fn get_declarations_and_usages(doc: &DocumentInfo)
+                                       -> Result<(HashMap<String, SymbolDeclarationStruct>, Vec<Box<dyn UsageSymbolInfo>>), String> {
         let path = doc.get_path();
         let mut parser = match get_parser_by_filename(&doc.get_path()) {
             Ok(parser) => parser,
@@ -69,7 +72,7 @@ impl AstIndex {
                 return Err(err.message);
             }
         };
-        let text = match doc.read_file().await {
+        let text = match doc.read_file_blocked() {
             Ok(s) => s,
             Err(e) => return Err(e.to_string())
         };
@@ -93,9 +96,22 @@ impl AstIndex {
         };
         link_declarations_to_usages(&declarations, &mut usages);
         let t_usages_elapsed = t_usages.elapsed();
+        info!(
+            "parsed {},  {} definitions, {} usages, \
+            took {:.3}s to parse decls, took {:.3}s to parse refs",
+            crate::nicer_logs::last_n_chars(&path.display().to_string(), 30),
+            declarations.len(), usages.len(),
+            t_declarations_elapsed.as_secs_f32(), t_usages_elapsed.as_secs_f32()
+        );
+        Ok((declarations, usages))
+    }
 
+    pub fn add_or_update_declarations_and_usages(&mut self, doc: &DocumentInfo,
+                                                 declarations: HashMap<String, SymbolDeclarationStruct>,
+                                                 usages: Vec<Box<dyn UsageSymbolInfo>>) -> Result<(), String> {
+        let path = doc.get_path();
         // Remove old data from all search indexes
-        match self.remove(&doc).await {
+        match self.remove(&doc) {
             Ok(()) => (),
             Err(e) => return Err(format!("Error removing {}: {}", path.display(), e)),
         }
@@ -123,18 +139,15 @@ impl AstIndex {
             Err(e) => return Err(format!("Error creating set: {}", e)),
         };
         self.usages_search_index.insert(path.clone(), meta_names_set);
-
-        info!(
-            "parsed {}, added {} definitions, {} usages, \
-            took {:.3}s to parse decls, took {:.3}s to parse refs",
-            crate::nicer_logs::last_n_chars(&path.display().to_string(), 30),
-            meta_names.len(), usages_meta_names.len(),
-            t_declarations_elapsed.as_secs_f32(), t_usages_elapsed.as_secs_f32()
-        );
         Ok(())
     }
 
-    pub async fn remove(&mut self, doc: &DocumentInfo) -> Result<(), String> {
+    pub fn add_or_update(&mut self, doc: &DocumentInfo) -> Result<(), String> {
+        let (declarations, usages) = AstIndex::get_declarations_and_usages(doc)?;
+        self.add_or_update_declarations_and_usages(doc, declarations, usages)
+    }
+
+    pub fn remove(&mut self, doc: &DocumentInfo) -> Result<(), String> {
         let path = doc.get_path();
         if let Some(meta_names) = self.declarations_search_index.remove(&path) {
             let mut stream = meta_names.stream();
@@ -170,7 +183,7 @@ impl AstIndex {
         self.usages_search_index.clear();
     }
 
-    pub async fn search_declarations(
+    pub fn search_declarations(
         &self,
         query: &str,
         top_n: usize,
@@ -183,19 +196,22 @@ impl AstIndex {
             exception_doc,
         );
 
-        let filtered_found_keys = found_keys
-            .iter()
-            .filter_map(|k| self.declarations.get(k))
-            .filter(|k| !k.meta_path.is_empty())
-            .filter(|k| language.map(|x| k.language == x).unwrap_or(true))
-            .collect::<Vec<_>>();
+        let mut filtered_search_results = found_keys
+            .par_chunks(current_num_threads())
+            .map(|keys| {
+                keys.iter().filter_map(|k| {
+                    if let Some(decl) = self.declarations.get(k) {
+                        if decl.meta_path.is_empty() { return None; }
+                        if !language.map(|x| decl.language == x).unwrap_or(true) { return None; }
 
-        let mut filtered_search_results: Vec<(SymbolDeclarationStruct, f32)> = filtered_found_keys
-            .into_iter()
-            .map(|key| (key.clone(),
-                        (jaro_winkler(query, key.meta_path.as_str()) as f32).max(f32::MIN_POSITIVE) *
-                            (jaro_winkler(query, key.name.as_str()) as f32).max(f32::MIN_POSITIVE)))
-            .collect();
+                        return Some((decl.clone(),
+                                     (jaro_winkler(query, decl.meta_path.as_str()) as f32).max(f32::MIN_POSITIVE) *
+                                         (jaro_winkler(query, decl.name.as_str()) as f32).max(f32::MIN_POSITIVE)));
+                    } else {
+                        None
+                    }
+                }).collect::<Vec<_>>()
+            }).flatten().collect::<Vec<_>>();
         filtered_search_results.sort_by(|(_, dist_1), (_, dist_2)|
             dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
         );
@@ -205,7 +221,7 @@ impl AstIndex {
             .into_iter()
             .rev()
             .take(top_n) {
-            let content = match key.get_content().await {
+            let content = match key.get_content_blocked() {
                 Ok(content) => content,
                 Err(err) => {
                     info!("Error opening the file {:?}: {}", key.definition_info.path, err);
@@ -232,24 +248,28 @@ impl AstIndex {
         let found_keys = make_a_query(&self.usages_search_index, query_str.as_str(), exception_doc);
 
         let filtered_found_keys = found_keys
-            .iter()
+            .par_iter()
             .filter_map(|k| self.usages.get(k))
             .flatten()
-            .filter(|k| !k.meta_path().is_empty())
-            .filter(|k| k.get_declaration_meta_path().is_some())
+            .filter(|k|
+                !k.meta_path().is_empty() && k.get_declaration_meta_path().is_some()
+            )
             .collect::<Vec<_>>();
 
         let mut filtered_search_results: Vec<(SymbolDeclarationStruct, f32)> = filtered_found_keys
-            .into_iter()
-            .map(|key| (
-                self.declarations.get(&key.get_declaration_meta_path().unwrap_or_default()),
-                jaro_winkler(query, &key.meta_path()) as f32)
-            )
-            .filter_map(|(maybe_declaration, dist)| {
-                maybe_declaration.map(|declaration| (declaration.clone(), dist))
+            .par_chunks(current_num_threads())
+            .map(|keys| {
+                keys.iter().filter_map(|&key| {
+                    if let Some(decl) = self.declarations.get(&key.get_declaration_meta_path().unwrap_or_default()) {
+                        let dist = jaro_winkler(query, &key.meta_path()) as f32;
+                        if language.map(|x| decl.language == x).unwrap_or(true) {
+                            return Some((decl.clone(), dist));
+                        }
+                    }
+                    None
+                }).collect::<Vec<_>>()
             })
-            .filter(|(decl, dist)| language.map(|x| decl.language == x).unwrap_or(true))
-            .collect();
+            .flatten().collect();
         filtered_search_results.sort_by(|(_, dist_1), (_, dist_2)|
             dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
         );

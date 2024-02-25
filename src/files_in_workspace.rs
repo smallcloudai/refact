@@ -79,6 +79,16 @@ impl DocumentInfo {
             }
         }
     }
+    
+    pub fn read_file_blocked(&self) -> io::Result<String> {
+        match &self.document {
+            Some(doc) => Ok(doc.text.to_string()),
+            None => {
+                std::fs::read_to_string(self.get_path())
+            }
+        }
+    }
+    
 }
 
 pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<GlobalContext>>, file_path: &String) -> Result<String, String> {

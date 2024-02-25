@@ -16,7 +16,7 @@ use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, CursorUsagesResult, FileReferencesResult, SymbolsSearchResultStruct, UsageSearchResultStruct};
 use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::files_in_workspace::DocumentInfo;
-
+use rayon::prelude::*;
 
 pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
@@ -62,12 +62,12 @@ impl AstModule {
     }
 
     pub async fn ast_add_file_no_queue(&self, document: &DocumentInfo) -> Result<(), String> {
-        self.ast_index.lock().await.add_or_update(&document).await
+        self.ast_index.lock().await.add_or_update(&document)
     }
 
     pub async fn remove_file(&self, doc: &DocumentInfo) {
         // TODO: will not work if the same file is in the indexer queue
-        let _ = self.ast_index.lock().await.remove(doc).await;
+        let _ = self.ast_index.lock().await.remove(doc);
     }
 
     pub async fn clear_index(&self) {
@@ -91,31 +91,28 @@ impl AstModule {
                 return Err(format!("Error parsing {}: {}", path.display(), e));
             }
         };
-        let mut declarations: Vec<SymbolsSearchResultStruct> = vec![];
-        {
+        let declarations: Vec<SymbolsSearchResultStruct> = {
+            let language = match filter_by_language {
+                true => get_language_id_by_filename(&path),
+                false => None
+            };
             let ast_index = self.ast_index.clone();
             let ast_index_locked = ast_index.lock().await;
-            for sym in usage_result.search_results.iter() {
-                let language = match filter_by_language {
-                    true => get_language_id_by_filename(&path),
-                    false => None
-                };
-                declarations.extend(
-                    match ast_index_locked.search_declarations(
-                        sym.symbol_path.as_str(),
-                        1,
-                        Some(doc.clone()),
-                        language
-                    ).await {
-                        Ok(nodes) => nodes,
-                        Err(e) => {
-                            info!("Error searching for {}: {}", sym.symbol_path.as_str(), e);
-                            vec![]
-                        }
+            usage_result.search_results.par_iter().map(|sym| {
+                match ast_index_locked.search_declarations(
+                    sym.symbol_path.as_str(), 
+                    1, 
+                    Some(doc.clone()),
+                    language
+                ) {
+                    Ok(nodes) => nodes,
+                    Err(e) => {
+                        info!("Error searching for {}: {}", sym.symbol_path.as_str(), e);
+                        vec![]
                     }
-                )
-            }
-        }
+                }
+            }).flatten().collect()
+        };
 
         for rec in declarations
             .iter()
@@ -144,7 +141,7 @@ impl AstModule {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
         let ast_index_locked = ast_index.lock().await;
-        match ast_index_locked.search_declarations(symbol_path.as_str(), top_n, None, None).await {
+        match ast_index_locked.search_declarations(symbol_path.as_str(), top_n, None, None) {
             Ok(results) => {
                 for r in results.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.meta_path, 30);

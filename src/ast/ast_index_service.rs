@@ -1,5 +1,7 @@
+use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::io::Write;
+use std::iter::zip;
 use std::ops::Div;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -7,8 +9,9 @@ use std::time::SystemTime;
 use tokio::sync::Mutex as AMutex;
 use tokio::task::JoinHandle;
 use tracing::info;
-
+use rayon::prelude::*;
 use crate::ast::ast_index::AstIndex;
+use crate::ast::treesitter::structs::{SymbolDeclarationStruct, UsageSymbolInfo};
 use crate::files_in_workspace::DocumentInfo;
 
 #[derive(Debug)]
@@ -71,42 +74,51 @@ async fn ast_indexer_thread(
     let mut reported_astindex_complete: bool = false;
 
     loop {
-        let (path_maybe, unprocessed_files_count) = {
+        let (list_of_path, unprocessed_files_count) = {
             let mut queue_locked = queue.lock().await;
-            let queue_len = queue_locked.len();
-            if queue_len > 0 {
-                (Some(queue_locked.pop_front().unwrap()), queue_len)
-            } else {
-                (None, 0)
-            }
+            let docs: Vec<DocumentInfo> = Vec::from(queue_locked.to_owned());
+            let queue_len = docs.len();
+            queue_locked.clear();
+            (docs, queue_len)
+            
         };
         if (unprocessed_files_count + 99).div(100) != (reported_unprocessed + 99).div(100) {
             info!("have {} unprocessed files", unprocessed_files_count);
             reported_unprocessed = unprocessed_files_count;
         }
         reported_astindex_complete &= unprocessed_files_count == 0;
-        let document = {
-            match path_maybe {
-                Some(document) => document,
-                None => {
-                    if !reported_astindex_complete {
-                        reported_astindex_complete = true;
-                        write!(std::io::stderr(), "AST COMPLETED\n").unwrap();
-                        info!("AST COMPLETED");
-                    }
-                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                    continue;
-                }
+        if list_of_path.is_empty() {
+            if !reported_astindex_complete {
+                reported_astindex_complete = true;
+                write!(std::io::stderr(), "AST COMPLETED\n").unwrap();
+                info!("AST COMPLETED");
             }
-        };
-        match ast_index.lock().await.add_or_update(&document).await {
-            Err(e) => {
-                info!("Error adding/updating records in AST index: {}", e);
-            }
-            Ok(()) => { }
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            continue;
         }
+        
+        
+        let ast_index = ast_index.clone();
+        let declarations_and_usages: Vec<Result<(HashMap<String, SymbolDeclarationStruct>, Vec<Box<dyn UsageSymbolInfo>>), String>> 
+            = list_of_path.par_iter().map(move |document| {
+            AstIndex::get_declarations_and_usages(&document)
+        }).collect();
+
+        let mut ast_index = ast_index.lock().await;
+        zip(list_of_path, declarations_and_usages).for_each(|(doc, res)| {
+            match res {
+                Ok((declaration, usages)) => {
+                    match ast_index.add_or_update_declarations_and_usages(&doc, declaration, usages) {
+                        Ok(_) => {}
+                        Err(e) => { info!("Error adding/updating records in AST index: {}", e);}
+                    }
+                }
+                Err(e) => { info!("Error adding/updating records in AST index: {}", e);}
+            }
+        })
     }
 }
+
 const COOLDOWN_SECS: u64 = 5;
 
 impl AstIndexService {
