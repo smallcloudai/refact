@@ -15,28 +15,6 @@ pub const COMPILED_IN_TOOLBOX_YAML : &str = r#"
 
 SYSTEM_PROMPT: "You are a programming assistant. Use backquotes for code blocks, give links to documentation at the end of the response."
 
-SYSTEM_PROMPT_WHY: |
-  Explain the purpose of the given code. Steps:
-  In the 👣ORIGINAL_CODE_STEP user will provide code surrounding the code snippet in question, and then the snippet itself will start with 🔥code and backquotes.
-  In the 👣PROVIDE_COMMANDS_STEP you need to ask for an extra context to completely understand the 🔥code and it's role in the project.
-  Run several commands in a single message. Don't write any explanations on this step.
-  Write the number of commands you plan to issue as a first line of your response, and then write all the commands.
-  Ask for definitions of any unusual types used in the 🔥code.
-  Ask for usages of the class or function defined in the 🔥code.
-  Don't look up symbols you already have. Don't look up simple types and classes from common libraries.
-  Commands available:
-  🔍SEARCH <search query> to find more information in other source files in the project or documentation.
-  🔍FILE <path/file> to see whole file text.
-  🔍DEFINITION <symbol>
-  A example of command usage:
-  3
-  🔍SEARCH usages of function f
-  🔍DEFINITION Type1
-  🔍FILE repo1/test_file.cpp
-  In the 👣GENERATE_DOCUMENTATION_STEP you need to generate an explanation of the 🔥code.
-  Answer questions "why it exists", "how does it fit into broader context". Don't explain line-by-line. Don't explain class data fields.
-  Your response size should be one or two paragraphs.
-
 commands:
   shorter:
     selection_needed: [1, 50]
@@ -44,34 +22,70 @@ commands:
     messages:
     - role: "system"
       content: "%SYSTEM_PROMPT%"
-    - role: "context_file"
-      content: "%CODE_AROUND_CURSOR_JSON%"
     - role: "user"
-      content: "Make this specific code block shorter\n\n```\n%CODE_SELECTION%```\n"
-  new:
-    selection_unwanted: true
-    insert_at_cursor: true
-    description: "Create new code, provide a description after the command"
-    messages:
-      - role: "system"
-        content: "You are an expert in writing new clean code, repeat in one paragraph how did you understand the instructions. Code needs to fit in the context around |INSERT-HERE| mark. Write a single block of code in backquotes that exactly implements the description. Do nothing else. Don't fix imports. The indent must match |INSERT-HERE| mark."
-      - role: "user"
-        content: "@workspace %ARGS%"
-        additional_info: "xxx"
-      - role: "context_file"
-        content: "%CODE_INSERT_HERE_JSON%"
-      - role: "user"
-        content: "Generate new code according this description: %ARGS%"
-  why:
+      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nMake this specific code block shorter:\n\n```\n%CODE_SELECTION%```\n"
+  bugs:
     selection_needed: [1, 50]
-    description: "Explain how this code fits into the project and why it exists"
+    description: "Find and fix bugs"
     messages:
-      - role: "system"
-        content: "%SYSTEM_PROMPT_WHY%"
-      - role: "ignore"
-        content: "original-toolbox-command why\nauto-reponse 👣PROVIDE_COMMANDS_STEP 👣GENERATE_DOCUMENTATION_STEP\n"
-      - role: "context_file"
-        content: "%CODE_AROUND_CURSOR_JSON%"
-      - role: "user"
-        content: "Why this 🔥code exists:\n```\n%CODE_SELECTION%```\n👣PROVIDE_COMMANDS_STEP"
+    - role: "system"
+      content: "%SYSTEM_PROMPT%"
+    - role: "user"
+      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nFind and fix bugs in this specific code block:\n\n```\n%CODE_SELECTION%```\n"
+  "improve":
+    selection_needed: [1, 50]
+    description: "Rewrite this specific code block of code to improve it"
+    messages:
+    - role: "system"
+      content: "%SYSTEM_PROMPT%"
+    - role: "user"
+      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nRewrite this specific code block of code to improve it:\n\n```\n%CODE_SELECTION%```\n"
+  comment:
+    selection_needed: [1, 50]
+    description: "Comment each line"
+    messages:
+    - role: "system"
+      content: "%SYSTEM_PROMPT%"
+    - role: "user"
+      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nComment each line of this specific code block:\n\n```\n%CODE_SELECTION%```\n"
+  typehints:
+    selection_needed: [1, 50]
+    description: "Add type hints"
+    messages:
+    - role: "system"
+      content: "%SYSTEM_PROMPT%"
+    - role: "user"
+      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nAdd type hints to this specific code block:\n\n```\n%CODE_SELECTION%```\n"
+  naming:
+    selection_needed: [1, 50]
+    description: "Improve variable names"
+    messages:
+    - role: "system"
+      content: "%SYSTEM_PROMPT%"
+    - role: "user"
+      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nImprove variable names in this specific code block:\n\n```\n%CODE_SELECTION%```\n"
+  explain:
+    selection_needed: [1, 50]
+    description: "Explain code"
+    messages:
+    - role: "system"
+      content: "%SYSTEM_PROMPT%"
+    - role: "user"
+      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nExplain this specific code block:\n\n```\n%CODE_SELECTION%```\n"
+  summarize:
+    selection_needed: [1, 50]
+    description: "Summarize code in 1 paragraph"
+    messages:
+    - role: "system"
+      content: "%SYSTEM_PROMPT%"
+    - role: "user"
+      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nSummarize this specific code block in 1 paragraph:\n\n```\n%CODE_SELECTION%```\n"
+  typos:
+    selection_needed: [1, 50]
+    description: "Fix typos"
+    messages:
+    - role: "system"
+      content: "%SYSTEM_PROMPT%"
+    - role: "user"
+      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nRewrite this specific code block to fix typos, especially inside strings and comments:\n\n```\n%CODE_SELECTION%```\n"
 "#;
