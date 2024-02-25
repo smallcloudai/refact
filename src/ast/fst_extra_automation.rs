@@ -28,31 +28,35 @@ impl<'a> Automaton for Substring<'a> {
     type State = usize;
 
     #[inline]
-    fn start(&self) -> Self::State {
+    fn start(&self) -> usize {
         0
     }
 
     #[inline]
-    fn is_match(&self, state: &Self::State) -> bool {
-        *state >= self.pattern.len()
+    fn is_match(&self, &state: &usize) -> bool {
+        state == self.pattern.len()
     }
 
     #[inline]
-    fn can_match(&self, state: &Self::State) -> bool {
-        true
+    fn can_match(&self, &state: &usize) -> bool {
+        self.pattern.len() > 0
     }
 
     #[inline]
-    fn will_always_match(&self, state: &Self::State) -> bool {
-        self.is_match(state)
+    fn will_always_match(&self, &state: &usize) -> bool {
+        state == self.pattern.len()
     }
 
     #[inline]
-    fn accept(&self, state: &Self::State, byte: u8) -> Self::State {
-        if state < &self.pattern.len() && self.byte_match(byte, self.pattern[*state]) {
+    fn accept(&self, &state: &usize, byte: u8) -> usize {
+        if state == self.pattern.len() {
+            return state;
+        }
+
+        if self.byte_match(byte, self.pattern[state]) {
             state + 1
         } else {
-            *state
+            0
         }
     }
 }
