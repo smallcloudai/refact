@@ -85,6 +85,9 @@ pub fn postprocess_at_results(
     }
     // 5. Encode back into a single message
     let mut processed_messages: Vec<ChatMessage> = vec![];
+    if merged.len() == 0 {
+        return processed_messages;
+    }
     let message = ChatMessage {
         role: "context_file".to_string(),
         content: serde_json::to_string(&merged).unwrap(),
@@ -97,18 +100,28 @@ pub async fn run_at_commands(
     global_context: Arc<ARwLock<GlobalContext>>,
     post: &mut ChatPost,
     top_n: usize,
-    has_vecdb: &mut HasVecdbResults,
+    stream_back_to_user: &mut HasVecdbResults,
 ) {
     // TODO: don't operate on `post`, return a copy of the messages
     let context = AtCommandsContext::new(global_context.clone()).await;
-    // TODO: delete the last, not just take the last
-    let mut query = post.messages.last().unwrap().content.clone(); // latest_msg_cont
-    post.messages.pop();
-    let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &context).await;
+    let mut user_posted = post.messages.last().unwrap().content.clone();
+    post.messages.pop();  // this deletes the last user message to rewrite
 
+    // TODO: chat sends preview as files, remove when that's fixed
+    while post.messages.len() > 0 {
+        let last_message_role = post.messages.last().unwrap().role.clone();
+        info!("last_message_role {}", last_message_role);
+        if last_message_role == "context_file" {
+            info!("popped");
+        } else {
+            break;
+        }
+    }
+
+    let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut user_posted, &context).await;
     let mut messages_for_postprocessing = vec![];
     for cmd in valid_commands {
-        match cmd.command.lock().await.execute(&query, &cmd.args, top_n, &context).await {
+        match cmd.command.lock().await.execute(&user_posted, &cmd.args, top_n, &context).await {
             Ok(msg) => {
                 messages_for_postprocessing.push(msg);
             },
@@ -122,14 +135,14 @@ pub async fn run_at_commands(
     );
     for msg in processed {
         post.messages.push(msg.clone());
-        has_vecdb.push_in_json(json!(msg));
+        stream_back_to_user.push_in_json(json!(msg));
     }
     let msg = ChatMessage {
         role: "user".to_string(),
-        content: query,  // stream back to the user, without commands
+        content: user_posted,  // stream back to the user, without commands
     };
     post.messages.push(msg.clone());
-    has_vecdb.push_in_json(json!(msg));
+    stream_back_to_user.push_in_json(json!(msg));
 }
 
 pub struct HasVecdbResults {
