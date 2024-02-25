@@ -91,9 +91,6 @@ impl AtParam for AtParamFilePath {
             .collect::<Vec<String>>();
         sorted_paths
     }
-    fn complete_if_valid(&self) -> bool {
-        false
-    }
 }
 
 
@@ -165,9 +162,6 @@ impl AtParam for AtParamFilePathWithRow {
             .take(top_n)
             .collect::<Vec<String>>();
         sorted_paths
-    }
-    fn complete_if_valid(&self) -> bool {
-        false
     }
 }
 

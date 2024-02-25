@@ -237,11 +237,6 @@ impl VecDb {
         return self.vecdb_handler.lock().await.get_indexed_file_paths().await;
     }
 
-    pub async fn get_file_orig_text(&self, file_path: String) -> FileSearchResult {
-        let text = self.vecdb_handler.lock().await.get_file_orig_text(file_path.clone()).await;
-        FileSearchResult { file_path, file_text: text }
-    }
-
     pub async fn caps(&self) -> VecDbCaps {
         VecDbCaps {
             functions: vec!["@workspace".to_string()],

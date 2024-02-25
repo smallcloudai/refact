@@ -386,25 +386,6 @@ impl VecDBHandler {
         return file_paths.into_iter().collect();
     }
 
-    pub async fn get_file_orig_text(&mut self, file_path: String) -> String{
-        let batches: Vec<RecordBatch> = self.data_table
-            .filter(format!("file_path == '{}'", file_path))
-            .execute()
-            .await.unwrap()
-            .try_collect::<Vec<_>>()
-            .await.unwrap();
-
-        let mut records = vec![];
-        for rec_batch in batches {
-            for record in VecDBHandler::parse_table_iter(rec_batch, false, None).unwrap() {
-                records.push((record.start_line, record.end_line, record.window_text));
-            }
-        }
-        records.sort_by(|a, b| a.1.cmp(&b.1));
-        let text: String = records.into_iter().map(|rec| rec.2).collect::<Vec<_>>().join("\n");
-        text
-    }
-
     pub async fn update_indexed_file_paths(&mut self) {
         let res = self.select_all_file_paths().await;
         self.indexed_file_paths = Arc::new(AMutex::new(res));

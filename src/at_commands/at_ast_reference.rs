@@ -70,19 +70,6 @@ impl AtCommand for AtAstReference {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn are_args_valid(&self, args: &Vec<String>, context: &AtCommandsContext) -> Vec<bool> {
-        let mut results = Vec::new();
-        for (arg, param) in args.iter().zip(self.params.iter()) {
-            let param = param.lock().await;
-            results.push(param.is_value_valid(arg, context).await);
-        }
-        results
-    }
-
-    async fn can_execute(&self, _: &Vec<String>, _: &AtCommandsContext) -> bool {
-        return true;
-    }
-
     async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String> {
         let can_execute = self.can_execute(args, context).await;
         if !can_execute {

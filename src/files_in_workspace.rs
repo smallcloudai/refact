@@ -11,6 +11,7 @@ use tracing::info;
 use url::Url;
 
 use crate::global_context;
+use crate::global_context::GlobalContext;
 use crate::telemetry;
 use crate::vecdb::file_filter;
 use crate::vecdb::file_filter::is_valid_file;
@@ -78,6 +79,25 @@ impl DocumentInfo {
             }
         }
     }
+}
+
+pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<GlobalContext>>, file_path: &String) -> Result<String, String> {
+    // if you write pathbuf_to_url(&PathBuf::from(file_path)) without unwrapping it gives: future cannot be sent between threads safe
+    let url_mb = pathbuf_to_url(&PathBuf::from(file_path)).map(|x| Some(x)).unwrap_or(None);
+    if let Some(url) = url_mb {
+        let document_mb = global_context.read().await.documents_state.document_map.read().await.get(&url).cloned();
+        if document_mb.is_some() {
+            return Ok(document_mb.unwrap().text.to_string());
+        }
+    }
+
+    let doc_info = match DocumentInfo::from_pathbuf(&PathBuf::from(file_path)) {
+        Ok(doc) => doc.read_file().await,
+        Err(_) => {
+            return Err(format!("cannot parse filepath: {file_path}"))
+        }
+    };
+    doc_info.map_err(|e|e.to_string())
 }
 
 pub fn pathbuf_to_url(path: &PathBuf) -> Result<Url, Box<dyn std::error::Error>> {
