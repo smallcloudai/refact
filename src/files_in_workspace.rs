@@ -114,7 +114,7 @@ pub async fn enqueue_all_files_from_workspace_folders(
         },
     };
     match *vecdb_module.lock().await {
-        Some(ref mut db) => db.vectorizer_enqueue_files(&docs, false).await,
+        Some(ref mut db) => db.vectorizer_enqueue_files(&docs, true).await,
         None => {},
     };
     docs.len() as i32

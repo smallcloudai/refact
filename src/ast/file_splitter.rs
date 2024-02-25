@@ -51,16 +51,19 @@ impl AstBasedFileSplitter {
         };
 
         let mut chunks = Vec::new();
-        for (path, declaration) in declarations.iter() {
+        let mut split_normally: usize = 0;
+        let mut split_using_fallback: usize = 0;
+        let mut split_errors: usize = 0;
+        for (_, declaration) in declarations.iter() {
             let content = match declaration.get_content().await {
                 Ok(content) => content,
                 Err(err) => {
+                    split_errors += 1;
                     info!("cannot retrieve symbol's content {}", err);
                     continue;
                 }
             };
             if content.len() > self.soft_window {
-                info!("too large content size to vectorize the chunk, using simple file splitter {}", path);
                 let temp_doc_info = DocumentInfo {
                     uri: doc_info.uri.clone(),
                     document: Some(Document {
@@ -69,22 +72,33 @@ impl AstBasedFileSplitter {
                     })
                 };
                 match self.fallback_file_splitter.split(&temp_doc_info).await {
-                    Ok(res) => chunks.extend(res),
+                    Ok(mut res) => {
+                        for mut r in res.iter_mut() {
+                            r.start_line += declaration.definition_info.range.start_point.row as u64;
+                            r.end_line += declaration.definition_info.range.start_point.row as u64;
+                        }
+                        chunks.extend(res)
+                    },
                     Err(err) => {
                         info!("{}", err);
                     }
                 }
+                split_using_fallback += 1;
                 continue;
+            } else {
+                split_normally += 1;
+                chunks.push(SplitResult {
+                    file_path: doc_info.get_path(),
+                    window_text: content.clone(),
+                    window_text_hash: str_hash(&content),
+                    start_line: declaration.definition_info.range.start_point.row as u64,
+                    end_line: declaration.definition_info.range.end_point.row as u64,
+                });
             }
-
-            chunks.push(SplitResult {
-                file_path: doc_info.get_path(),
-                window_text: content.clone(),
-                window_text_hash: str_hash(&content),
-                start_line: declaration.definition_info.range.start_point.row as u64,
-                end_line: declaration.definition_info.range.end_point.row as u64,
-            });
         }
+        let message = format!("split result for {path:?}: split by definitions: {split_normally}, \
+            split using fallback: {split_using_fallback}, split errors: {split_errors}");
+        info!(message);
 
         Ok(chunks)
     }

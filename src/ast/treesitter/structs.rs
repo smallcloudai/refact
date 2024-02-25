@@ -211,7 +211,7 @@ impl SymbolDeclarationStruct {
         let text = Rope::from_str(content.as_str());
         Ok(text
             .slice(text.line_to_char(self.definition_info.range.start_point.row)..
-                text.line_to_char(self.definition_info.range.end_point.row))
+                text.line_to_char(self.definition_info.range.end_point.row + 1))
             .to_string())
     }
 }
