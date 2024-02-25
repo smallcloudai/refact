@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useCallback } from "react";
 import {
   ChatContextFile,
-  ChatContextFileMessage,
+  //  ChatContextFileMessage,
   ChatMessages,
   ChatResponse,
   isChatContextFileMessage,
@@ -429,12 +429,13 @@ export const useEventBusForChat = () => {
   }, [state, dispatch, postMessage]);
 
   function askQuestion(question: string) {
-    const filesInPreview: ChatContextFileMessage[] =
-      state.files_in_preview.length > 0
-        ? [["context_file", state.files_in_preview]]
-        : [];
+    // TODO: delete this if it works
+    // const filesInPreview: ChatContextFileMessage[] =
+    //   state.files_in_preview.length > 0
+    //     ? [["context_file", state.files_in_preview]]
+    //     : [];
     const messages = state.chat.messages
-      .concat(filesInPreview)
+      // .concat(filesInPreview)
       .concat([["user", question]]);
     sendMessages(messages);
   }
