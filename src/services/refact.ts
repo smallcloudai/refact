@@ -159,7 +159,8 @@ export function isStatisticDataResponse(
   json: unknown,
 ): json is { data: string } {
   if (!json || typeof json !== "object") return false;
-  return typeof (json as { data?: unknown }).data === "string";
+  if (!("data" in json)) return false;
+  return typeof json.data === "string";
 }
 
 export async function getStatisticData(
