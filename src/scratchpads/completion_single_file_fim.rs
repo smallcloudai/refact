@@ -86,7 +86,6 @@ impl ScratchpadAbstract for SingleFileFIM {
         Ok(())
     }
 
-
     async fn prompt(
         &mut self,
         context_size: usize,
@@ -102,8 +101,8 @@ impl ScratchpadAbstract for SingleFileFIM {
             sampling_parameters_to_patch.stop = Some(stop_list);
         }
         let mut source = self.post.inputs.sources.get(
-            &self.post.inputs.cursor.file)
-            .ok_or("Cursor is in file not found in sources".to_string())?.clone();
+                &self.post.inputs.cursor.file
+            ).ok_or("Cursor is in file not found in sources".to_string())?.clone();
         source = self.cleanup_prompt(&source);
 
         let text = Rope::from_str(&*source);
@@ -112,19 +111,27 @@ impl ScratchpadAbstract for SingleFileFIM {
         let file_path = PathBuf::from(self.post.inputs.cursor.file.clone());
         let mut before_iter = text.lines_at(pos.line as usize).reversed();
         let mut after_iter = text.lines_at(pos.line as usize + 1);
-        let (extra_context, mut tokens_used) = match *self.ast_module.lock().await {
-            Some(ref mut ast) => {
-                ast_search(
-                    ast,
-                    &file_path,
-                    &source,
-                    Point { row: pos.line as usize, column: pos.character as usize },
-                    self.t.clone(),
-                    (limit as f32 * 0.5) as usize,
-                ).await
+        let mut extra_context = String::new();
+        let mut tokens_used = 0;
+        if self.post.use_ast {
+            let (ast_context, ast_tokens) = match *self.ast_module.lock().await {
+                Some(ref mut ast) => {
+                    ast_search(
+                        ast,
+                        &file_path,
+                        &source,
+                        Point { row: pos.line as usize, column: pos.character as usize },
+                        self.t.clone(),
+                        (limit as f32 * 0.5) as usize,
+                    ).await
+                }
+                None => (String::new(), 0)
+            };
+            if ast_tokens > 0 {
+                extra_context.push_str(ast_context.as_str());
+                tokens_used += ast_tokens;
             }
-            None => (String::new(), 0)
-        };
+        }
 
         let mut before_line = before_iter.next();
 

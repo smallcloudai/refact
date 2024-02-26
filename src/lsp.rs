@@ -149,7 +149,9 @@ impl Backend {
             model: "".to_string(),
             scratchpad: "".to_string(),
             stream: false,
-            no_cache: false
+            no_cache: false,
+            use_ast: false,
+            use_vecdb: false,
         })
     }
 

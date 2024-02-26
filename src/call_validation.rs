@@ -42,6 +42,10 @@ pub struct CodeCompletionPost {
     pub stream: bool,
     #[serde(default)]
     pub no_cache: bool,
+    #[serde(default)]
+    pub use_ast: bool,
+    #[serde(default)]
+    pub use_vecdb: bool,
 }
 
 pub(crate) fn validate_post(code_completion_post: CodeCompletionPost) -> axum::response::Result<(), ScratchError> {
@@ -90,6 +94,8 @@ mod tests {
             scratchpad: "".to_string(),
             stream: false,
             no_cache: false,
+            use_ast: true,
+            use_vecdb: true,
         };
         assert!(validate_post(post).is_ok());
     }
@@ -116,6 +122,8 @@ mod tests {
             scratchpad: "".to_string(),
             stream: false,
             no_cache: false,
+            use_ast: true,
+            use_vecdb: true,
         };
         assert!(validate_post(post).is_ok());
     }
@@ -142,6 +150,8 @@ mod tests {
             scratchpad: "".to_string(),
             stream: false,
             no_cache: false,
+            use_ast: true,
+            use_vecdb: true,
         };
         assert!(validate_post(post).is_err());
     }
@@ -168,6 +178,8 @@ mod tests {
             scratchpad: "".to_string(),
             stream: false,
             no_cache: false,
+            use_ast: true,
+            use_vecdb: true,
         };
         assert!(validate_post(post).is_err());
     }
