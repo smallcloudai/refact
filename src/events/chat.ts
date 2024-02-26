@@ -232,7 +232,16 @@ export function isToggleActiveFile(
 }
 export interface ActiveFileInfo extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
-  payload: { id: string; name: string; can_paste: boolean };
+  payload: {
+    id: string;
+    file: Partial<{
+      name: string;
+      line1: number | null;
+      line2: number | null;
+      can_paste: boolean;
+      attach: boolean;
+    }>;
+  };
 }
 
 export function isActiveFileInfo(action: unknown): action is ActiveFileInfo {
@@ -286,7 +295,9 @@ export function isBackupMessages(action: unknown): action is BackUpMessages {
 
 export interface RestoreChat extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
-  payload: ChatThread & { snippet?: Snippet };
+  payload: (ChatThread & { snippet?: Snippet }) & {
+    messages: ChatThread["messages"] | [string, string][];
+  };
 }
 
 export function isRestoreChat(action: unknown): action is RestoreChat {

@@ -28,20 +28,30 @@ const PreTagWithButtons: React.FC<
         {config.host === "web" ? (
           <RightButton onClick={onCopyClick}>Copy</RightButton>
         ) : (
-          <RightButtonGroup direction="column">
-            <Flex gap="1" justify="end">
+          <RightButtonGroup
+            direction="column"
+            style={{
+              position: "static",
+              minHeight: "var(--space-5)",
+            }}
+          >
+            <Flex
+              gap="1"
+              justify="end"
+              style={{ position: "absolute", right: "var(--space-1)" }}
+            >
               <Button variant="surface" size="1" onClick={onNewFileClick}>
                 New File
               </Button>
               <Button size="1" variant="surface" onClick={onCopyClick}>
                 Copy
               </Button>
+              {canPaste && (
+                <Button variant="surface" size="1" onClick={onPasteClick}>
+                  Paste
+                </Button>
+              )}
             </Flex>
-            {canPaste && (
-              <Button variant="surface" size="1" onClick={onPasteClick}>
-                Paste
-              </Button>
-            )}
           </RightButtonGroup>
         )}
         {children}

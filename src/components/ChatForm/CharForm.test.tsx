@@ -28,6 +28,8 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     requestCommandsCompletion: noop,
     attachFile: {
       name: "",
+      line1: null,
+      line2: null,
       can_paste: false,
       attach: false,
     },

@@ -77,7 +77,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   canChangeModel,
   isStreaming,
   onStopStreaming,
-  hasContextFile,
   commands,
   attachFile,
   requestCommandsCompletion,
@@ -129,26 +128,34 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }
 
-  const checked = value.includes(`@file ${attachFile.name}`);
+  // TODO: handle multiple files?
+  const commandUpToWhiteSpace = /@file ([^\s]+)/;
+  const checked = commandUpToWhiteSpace.test(value);
+  const lines =
+    attachFile.line1 !== null && attachFile.line2 !== null
+      ? `:${attachFile.line1}-${attachFile.line2}`
+      : "";
+  const nameWithLines = `${attachFile.name}${lines}`;
 
   return (
     <Box mt="1" position="relative">
       {!isOnline && <Callout type="info">Offline</Callout>}
-      {config.host !== "web" && !hasContextFile && (
+      {config.host !== "web" && (
         <FileUpload
-          fileName={attachFile.name}
+          fileName={nameWithLines}
           onClick={() =>
             setValue((preValue) => {
-              const command = `@file ${attachFile.name}${
+              if (checked) {
+                return preValue.replace(commandUpToWhiteSpace, "");
+              }
+              const command = `@file ${nameWithLines}${
                 value.length > 0 ? "\n" : ""
               }`;
-              if (checked) {
-                return preValue.replace(command, "");
-              }
               return `${command}${preValue}`;
             })
           }
           checked={checked}
+          disabled={!attachFile.can_paste}
         />
       )}
       <Flex>

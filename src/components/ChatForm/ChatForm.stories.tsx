@@ -75,6 +75,8 @@ const meta = {
       name: "todo.md",
       can_paste: true,
       attach: false,
+      line1: 1,
+      line2: 100,
     },
     filesInPreview: [
       {

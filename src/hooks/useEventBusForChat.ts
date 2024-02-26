@@ -240,13 +240,11 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isThisChat && isActiveFileInfo(action)) {
-    const { name, can_paste } = action.payload;
     return {
       ...state,
       active_file: {
-        name,
-        can_paste,
-        attach: state.active_file.attach,
+        ...state.active_file,
+        ...action.payload.file,
       },
     };
   }
@@ -355,6 +353,8 @@ export type ChatState = {
     name: string;
     attach: boolean;
     can_paste: boolean;
+    line1: null | number;
+    line2: null | number;
   };
   selected_snippet: Snippet;
 };
@@ -390,6 +390,8 @@ function createInitialState(): ChatState {
 
     active_file: {
       name: "",
+      line1: null,
+      line2: null,
       attach: false,
       can_paste: false,
     },
