@@ -215,7 +215,7 @@ impl SymbolDeclarationStruct {
         let end_row = min(self.definition_info.range.end_point.row + 1, text.len_lines());
         start_row = min(start_row, end_row);
 
-        Ok(text.slice(start_row..end_row).to_string())
+        Ok(text.slice(text.line_to_char(start_row)..text.line_to_char(end_row)).to_string())
     }
 }
 
