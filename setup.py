@@ -44,7 +44,7 @@ all_refact_packages = {
         data=["git_command.exp"],
     ),
     "refact_webgui": PyPackage(
-        requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic>=2.0",
+        requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
                   "starlette==0.27.0", "uvicorn", "uvloop", "termcolor", "python-multipart", "more_itertools",
                   "scyllapy==1.3.0", "pandas>=2.0.3", "litellm"],
         requires_packages=["known_models_db", "refact_utils"],
