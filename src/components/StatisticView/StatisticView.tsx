@@ -18,6 +18,7 @@ export const StatisticView: React.FC<{
   if (error || !statisticData) {
     return <ErrorCallout>{error}</ErrorCallout>;
   }
+
   return (
     <Box
       style={{

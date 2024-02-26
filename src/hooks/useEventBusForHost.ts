@@ -122,6 +122,7 @@ export function useEventBusForHost() {
             );
           });
       }
+
       if (isRequestDataForStatistic(event.data)) {
         getStatisticData(lspUrl)
           .then((data) => {
