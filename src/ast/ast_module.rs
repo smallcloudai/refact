@@ -117,7 +117,9 @@ impl AstModule {
             }
         }
 
-        for rec in declarations.iter() {
+        for rec in declarations
+            .iter()
+            .unique_by(|x| &x.symbol_declaration.meta_path) {
             let last_30_chars = crate::nicer_logs::last_n_chars(&rec.symbol_declaration.meta_path, 30);
             info!("distance {:.3}, found {last_30_chars}", rec.sim_to_query);
         }
@@ -200,7 +202,9 @@ impl AstModule {
             }
         }
 
-        for rec in declarations.iter() {
+        for rec in declarations
+            .iter()
+            .unique_by(|x| &x.symbol_declaration.meta_path)  {
             let last_30_chars = crate::nicer_logs::last_n_chars(&rec.symbol_declaration.meta_path, 30);
             info!("distance {:.3}, found {last_30_chars}", rec.sim_to_query);
         }
