@@ -1,5 +1,6 @@
 import React from "react";
-import { Box, Text, Button } from "@radix-ui/themes";
+import { Box, Button } from "@radix-ui/themes";
+import { Text, TruncateLeft } from "../Text";
 import { ChatContextFile } from "../../events";
 import styles from "./ChatForm.module.css";
 
@@ -30,13 +31,10 @@ export const FilesPreview: React.FC<{
               >
                 📎
               </Button>
-              <Text className={styles.file_name_ellipsis_rtl}>
-                &lrm;{" "}
-                <Text className={styles.file_name_ellipsis_ltr}>
-                  {file.file_name}
-                  {lineText}
-                </Text>
-              </Text>
+              <TruncateLeft>
+                {file.file_name}
+                {lineText}
+              </TruncateLeft>
             </Text>
           </pre>
         );

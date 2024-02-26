@@ -1,0 +1,14 @@
+.text_rtl {
+  display: inline;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  max-width: 100%;
+  line-height: var(--line-height-2, 20px);
+}
+
+.text_ltr {
+  direction: ltr;
+}
