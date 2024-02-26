@@ -34,6 +34,7 @@ export enum EVENT_NAMES_TO_CHAT {
   SET_CHAT_MODEL = "chat_set_chat_model",
   SET_DISABLE_CHAT = "set_disable_chat",
   ACTIVE_FILE_INFO = "chat_active_file_info",
+  TOGGLE_ACTIVE_FILE = "chat_toggle_active_file",
   RECEIVE_AT_COMMAND_COMPLETION = "chat_receive_at_command_completion",
   RECEIVE_AT_COMMAND_PREVIEW = "chat_receive_at_command_preview",
   SET_SELECTED_AT_COMMAND = "chat_set_selected_command",
@@ -218,6 +219,17 @@ export function isSetSelectedAtCommand(
   return action.type === EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND;
 }
 
+export interface ToggleActiveFile extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
+  payload: { id: string; attach_file: boolean };
+}
+
+export function isToggleActiveFile(
+  action: unknown,
+): action is ToggleActiveFile {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
+}
 export interface ActiveFileInfo extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
   payload: { id: string; name: string; can_paste: boolean };
