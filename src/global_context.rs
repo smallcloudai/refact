@@ -81,6 +81,7 @@ pub struct GlobalContext {
     pub http_client_slowdown: Arc<Semaphore>,
     pub cache_dir: PathBuf,
     pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
+    pub caps_reading_lock: Arc<AMutex<bool>>,
     pub caps_last_attempted_ts: u64,
     pub tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
@@ -100,42 +101,47 @@ pub async fn try_load_caps_quickly_if_not_present(
     global_context: Arc<ARwLock<GlobalContext>>,
     max_age_seconds: u64,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, ScratchError> {
+    let caps_reading_lock: Arc<AMutex<bool>> = global_context.read().await.caps_reading_lock.clone();
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
     let caps_last_attempted_ts;
-    let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
     {
-        let mut cx_locked = global_context.write().await;
-        if cx_locked.caps_last_attempted_ts + max_age < now {
-            cx_locked.caps = None;
-            cx_locked.caps_last_attempted_ts = 0;
-            caps_last_attempted_ts = 0;
-        } else {
-            if let Some(caps_arc) = cx_locked.caps.clone() {
-                return Ok(caps_arc.clone());
+        // global_context is not locked, but a specialized async mutex is, up until caps are saved
+        let _caps_reading_locked = caps_reading_lock.lock().await;
+        let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
+        {
+            let mut cx_locked = global_context.write().await;
+            if cx_locked.caps_last_attempted_ts + max_age < now {
+                cx_locked.caps = None;
+                cx_locked.caps_last_attempted_ts = 0;
+                caps_last_attempted_ts = 0;
+            } else {
+                if let Some(caps_arc) = cx_locked.caps.clone() {
+                    return Ok(caps_arc.clone());
+                }
+                caps_last_attempted_ts = cx_locked.caps_last_attempted_ts;
             }
-            caps_last_attempted_ts = cx_locked.caps_last_attempted_ts;
         }
-    }
-    if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
-        return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "server is not reachable, no caps available".to_string()));
-    }
-    let caps_result = crate::caps::load_caps(
-        CommandLine::from_args(),
-        global_context.clone()
-    ).await;
-    {
-        let mut global_context_locked = global_context.write().await;
-        global_context_locked.caps_last_attempted_ts = now;
-        match caps_result {
-            Ok(caps) => {
-                global_context_locked.caps = Some(caps.clone());
-                info!("quick load caps successful");
-                write!(std::io::stderr(), "CAPS\n").unwrap();
-                Ok(caps)
-            },
-            Err(e) => {
-                error!("load caps failed: \"{}\"", e);
-                return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("server is not reachable: {}", e)));
+        if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
+            return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "server is not reachable, no caps available".to_string()));
+        }
+        let caps_result = crate::caps::load_caps(
+            CommandLine::from_args(),
+            global_context.clone()
+        ).await;
+        {
+            let mut global_context_locked = global_context.write().await;
+            global_context_locked.caps_last_attempted_ts = now;
+            match caps_result {
+                Ok(caps) => {
+                    global_context_locked.caps = Some(caps.clone());
+                    info!("quick load caps successful");
+                    write!(std::io::stderr(), "CAPS\n").unwrap();
+                    Ok(caps)
+                },
+                Err(e) => {
+                    error!("load caps failed: \"{}\"", e);
+                    return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("server is not reachable: {}", e)));
+                }
             }
         }
     }
@@ -220,6 +226,7 @@ pub async fn create_global_context(
         http_client_slowdown: Arc::new(Semaphore::new(2)),
         cache_dir,
         caps: None,
+        caps_reading_lock: Arc::new(AMutex::<bool>::new(false)),
         caps_last_attempted_ts: 0,
         tokenizer_map: HashMap::new(),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
