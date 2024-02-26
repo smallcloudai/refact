@@ -8,6 +8,7 @@ use tracing::info;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_params::AtParamFilePath;
+use crate::at_commands::utils::split_file_into_chunks_from_line_inside;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ChatMessage, ContextFile};
 
@@ -49,73 +50,42 @@ fn colon_lines_range_from_arg(value: &mut String) -> Option<ColonLinesRange> {
     None
 }
 
-fn split_file_into_chunks_from_line_inside(
-    cursor_line: usize, file_text: &String, chunk_size_lines: usize
-) -> (
-    Vec<((usize, usize), String)>,
-    Vec<((usize, usize), String)>
-) {
-    let (
-        mut result_above, mut result_below, mut buffer_above, mut buffer_below
-    ) = (
-        Vec::new(), Vec::new(), Vec::new(), Vec::new()
-    );
-
-    let idx =0;
-    for (idx, line) in file_text.lines().enumerate() {
-        let idx = idx + 1;
-        if idx <= cursor_line {
-            buffer_above.push(line);
-            if buffer_above.len() >= chunk_size_lines {
-                result_above.push(((idx - buffer_above.len(), idx), buffer_above.join("\n")));
-                buffer_above.clear();
-            }
-        } else if idx > cursor_line {
-            if !buffer_above.is_empty() {
-                result_above.push(((idx - buffer_above.len(), idx), buffer_above.join("\n")));
-            }
-
-            buffer_below.push(line);
-            if buffer_below.len() >= chunk_size_lines {
-                result_below.push(((idx - buffer_below.len(), idx), buffer_below.join("\n")));
-                buffer_below.clear();
-            }
-        }
-    }
-
-    if !buffer_below.is_empty() {
-        result_below.push(((idx - buffer_below.len(), idx), buffer_below.join("\n")));
-    }
-
-    (result_above, result_below)
-}
-
 fn chunks_into_context_file(
-    result_above: Vec<((usize, usize), String)>,
-    results_below: Vec<((usize, usize), String)>,
+    result_above: Vec<((i32, i32), String)>,
+    results_below: Vec<((i32, i32), String)>,
     file_name: &String,
 ) -> Vec<ContextFile> {
+    let max_val = result_above.len().max(results_below.len());
+    let mut usefulness_vec = vec![];
+    for idx in 0..max_val + 1 {
+        usefulness_vec.push(100.0 * (idx as f32 / max_val as f32));
+    }
+    let reversed_vec: Vec<f32> = usefulness_vec.iter().cloned().rev().collect();
+    let usefulness_above: Vec<f32> = reversed_vec[..result_above.len()].to_vec().iter().cloned().rev().collect();
+
     let mut vector_of_context_file: Vec<ContextFile> = vec![];
     for (idx, ((line1, line2), text_above)) in result_above.iter().enumerate() {
         vector_of_context_file.push({
             ContextFile {
                 file_name: file_name.clone(),
                 file_content: text_above.clone(),
-                line1: *line1 as i32,
-                line2: *line2 as i32,
-                usefulness: 100. * (idx as f32 / result_above.len() as f32),
+                line1: *line1,
+                line2: *line2,
+                usefulness: *usefulness_above.get(idx).unwrap_or(&100.),
             }
         })
     }
 
+    let usefulness_below = reversed_vec[1..].to_vec();
     for (idx, ((line1, line2), text_below)) in results_below.iter().enumerate() {
         vector_of_context_file.push({
             ContextFile {
                 file_name: file_name.clone(),
                 file_content: text_below.clone(),
-                line1: *line1 as i32,
-                line2: *line2 as i32,
-                usefulness: 100. * (idx as f32 / results_below.len() as f32),
+                line1: *line1,
+                line2: *line2,
+                usefulness: *usefulness_below.get(idx).unwrap_or(&0.0),
+
             }
         })
     }
@@ -151,25 +121,19 @@ impl AtCommand for AtFile {
             None => return Err("no file path".to_string()),
         };
 
-        let mut file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &file_path).await?;
-        let lines_cnt = file_text.lines().count() as i32;
+        let mut split_into_chunks = false;
 
         let mut colon = match colon_lines_range_from_arg(&mut file_path) {
-            Some(mut c) => {
-                // if c.end == -1 {
-                //     let (res_above, res_below) = split_file_into_chunks_from_line_inside(c.start as usize, &file_text, 20);
-                //     info!("{:?}", res_above);
-                //     info!("{:?}", res_below);
-                //     return Ok(ChatMessage {
-                //         role: "context_file".to_string(),
-                //         content: json!(chunks_into_context_file(res_above, res_below, &file_path)).to_string(),
-                //     })
-                // }
-                if c.start > c.end { c.start = c.end }
+            Some(c) => {
+                if c.end == -1 { split_into_chunks = true; }
+                if c.end != -1 && c.start > c.end { return Err("start line must be less than end line".to_string()); }
                 c
             },
             None => ColonLinesRange { start: 0, end: 0 },
         };
+
+        let mut file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &file_path).await?;
+        let lines_cnt = file_text.lines().count() as i32;
 
         if colon.end <= 0 {
             colon.end = lines_cnt;
@@ -177,6 +141,15 @@ impl AtCommand for AtFile {
 
         colon.start = (colon.start - 1).max(0).min(lines_cnt);
         colon.end = colon.end.max(0).min(lines_cnt);
+
+        if split_into_chunks {
+            info!(colon.start);
+            let (res_above, res_below) = split_file_into_chunks_from_line_inside(colon.start, &file_text, 20);
+            return Ok(ChatMessage {
+                role: "context_file".to_string(),
+                content: json!(chunks_into_context_file(res_above, res_below, &file_path)).to_string(),
+            })
+        }
 
         let lines: Vec<&str> = file_text.lines().collect();
         file_text = lines[colon.start as usize..colon.end as usize].join("\n");

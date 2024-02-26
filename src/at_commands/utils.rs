@@ -78,4 +78,45 @@ pub async fn correct_arguments_if_needed(
     }
     Ok(args_new)
 }
-// pass
+
+pub fn split_file_into_chunks_from_line_inside(
+    cursor_line: i32, file_text: &String, chunk_size_lines: usize
+) -> (
+    Vec<((i32, i32), String)>,
+    Vec<((i32, i32), String)>
+) {
+    let cursor_line = cursor_line + 1;
+    let (
+        mut result_above, mut result_below, mut buffer_above, mut buffer_below
+    ) = (
+        Vec::new(), Vec::new(), Vec::new(), Vec::new()
+    );
+
+    for (idx, line) in file_text.lines().enumerate() {
+        let idx = (idx + 2) as i32;
+        if idx <= cursor_line {
+            buffer_above.push(line);
+            if buffer_above.len() >= chunk_size_lines {
+                result_above.push(((idx - buffer_above.len() as i32, idx - 1), buffer_above.join("\n")));
+                buffer_above.clear();
+            }
+        } else if idx > cursor_line {
+            if !buffer_above.is_empty() {
+                result_above.push(((idx - 1 - buffer_above.len() as i32, idx - 2), buffer_above.join("\n")));
+                buffer_above.clear();
+            }
+
+            buffer_below.push(line);
+            if buffer_below.len() >= chunk_size_lines {
+                result_below.push(((idx - buffer_below.len() as i32, idx - 1), buffer_below.join("\n")));
+                buffer_below.clear();
+            }
+        }
+    }
+
+    if !buffer_below.is_empty() {
+        result_below.push(((file_text.lines().count() as i32 - buffer_below.len() as i32 + 1, file_text.lines().count() as i32), buffer_below.join("\n")));
+    }
+
+    (result_above, result_below)
+}
