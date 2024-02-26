@@ -10,7 +10,7 @@ export enum EVENT_NAMES_TO_STATISTIC {
 
 interface BaseAction {
   type: EVENT_NAMES_FROM_STATISTIC | EVENT_NAMES_TO_STATISTIC;
-  payload?: { data: string };
+  payload?: { data?: string; [key: string]: unknown };
 }
 
 export interface ActionToStatistic extends BaseAction {
@@ -45,4 +45,19 @@ export function isReceiveDataForStatistic(
 ): action is RequestDataForStatistic {
   if (!isActionToStatistic(action)) return false;
   return action.type === EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA;
+}
+
+export interface ReceiveDataForStatisticError extends ActionToStatistic {
+  type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR;
+  payload: {
+    data: string;
+    message: string;
+  };
+}
+
+export function isReceiveDataForStatisticError(
+  action: unknown,
+): action is ReceiveDataForStatisticError {
+  if (!isActionToStatistic(action)) return false;
+  return action.type === EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR;
 }

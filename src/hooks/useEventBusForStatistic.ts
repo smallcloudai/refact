@@ -2,6 +2,7 @@ import {
   EVENT_NAMES_FROM_STATISTIC,
   EVENT_NAMES_TO_STATISTIC,
   isReceiveDataForStatistic,
+  isReceiveDataForStatisticError,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useEffect, useState } from "react";
@@ -12,6 +13,7 @@ export const useEventBusForStatistic = () => {
   const [statisticData, setStatisticData] = useState<StatisticData | null>(
     null,
   );
+  const [error, setError] = useState<string>("");
 
   const backFromStatistic = () => {
     postMessage({
@@ -22,12 +24,15 @@ export const useEventBusForStatistic = () => {
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (isReceiveDataForStatistic(event.data)) {
-        if (event.data.payload !== undefined) {
+        if (event.data.payload?.data !== undefined) {
           const parsedData = JSON.parse(
             event.data.payload.data,
           ) as StatisticData;
           setStatisticData(parsedData);
+          setError("");
         }
+      } else if (isReceiveDataForStatisticError(event.data)) {
+        setError(event.data.payload.message);
       }
     };
 
@@ -51,5 +56,6 @@ export const useEventBusForStatistic = () => {
   return {
     backFromStatistic,
     statisticData,
+    error,
   };
 };
