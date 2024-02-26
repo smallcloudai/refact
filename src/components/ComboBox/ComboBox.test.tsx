@@ -118,7 +118,8 @@ describe("ComboBox", () => {
     await user.keyboard("/{Enter}");
     expect(textarea.textContent).toEqual("@file /foo");
     await user.type(textarea, "{Shift>}{Enter}{/Shift}");
-    await user.type(textarea, "@wo{Enter}");
+    await user.type(textarea, "@");
+    await user.keyboard("{ArrowDown}{Enter}");
     expect(app.getByRole("combobox").textContent).toEqual(
       "@file /foo\n@workspace ",
     );
@@ -162,7 +163,7 @@ describe("ComboBox", () => {
       <App requestCommandsCompletion={executableSpy} />,
     );
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@wo{Enter}");
+    await user.type(textarea, "@{ArrowDown}{Enter}");
     expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11, null);
   });
 
@@ -172,7 +173,7 @@ describe("ComboBox", () => {
       <App requestCommandsCompletion={executableSpy} />,
     );
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@wo{Tab}");
+    await user.type(textarea, "@{ArrowDown}{Tab}");
     expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11, null);
   });
 
@@ -182,8 +183,8 @@ describe("ComboBox", () => {
       <App requestCommandsCompletion={executableSpy} />,
     );
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@workspace{Space}");
-    expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11, null);
+    await user.type(textarea, "@file /foo{Space}");
+    expect(executableSpy).toHaveBeenLastCalledWith("@file /foo", 10, null);
   });
 
   test("submit when pressing enter", async () => {
