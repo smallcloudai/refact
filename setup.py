@@ -44,7 +44,7 @@ all_refact_packages = {
         data=["git_command.exp"],
     ),
     "refact_webgui": PyPackage(
-        requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic==1.10.13",
+        requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic>=2.0",
                   "starlette==0.27.0", "uvicorn", "uvloop", "termcolor", "python-multipart", "more_itertools",
                   "scyllapy==1.3.0", "pandas>=2.0.3", "litellm"],
         requires_packages=["known_models_db", "refact_utils"],
@@ -52,7 +52,7 @@ all_refact_packages = {
               "webgui/static/dashboards/*", "webgui/static/assets/*"]),
     "self_hosting_machinery": PyPackage(
         requires=["python-multipart", "auto-gptq==0.6.0", "accelerate",
-                  "termcolor", "torch", "transformers==4.36.2", "bitsandbytes",
+                  "termcolor", "torch", "transformers==4.38.1", "bitsandbytes",
                   "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed==0.12.6",
                   "sentence-transformers", "huggingface-hub>=0.19.3"],
