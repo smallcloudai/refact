@@ -60,8 +60,8 @@ async fn vecdb_test_request(
         Ok(_) => {
             Ok(())
         }
-        Err(_) => {
-            error!("vecdb: test search failed");
+        Err(e) => {
+            error!("vecdb: test search failed: {}", e);
             Err("vecdb: test search failed".to_string())
         }
     }
