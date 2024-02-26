@@ -34,7 +34,7 @@ fn make_a_query(
 
     for (doc, set) in nodes_indexes {
         if let Some(ref exception) = exception_doc {
-            if doc.eq(&exception.get_path()) {
+            if *doc == exception.get_path() {
                 continue;
             }
         }

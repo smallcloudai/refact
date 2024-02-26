@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::fmt::Debug;
 use std::io;
 use std::path::PathBuf;
@@ -209,10 +210,12 @@ impl SymbolDeclarationStruct {
     pub async fn get_content(&self) -> io::Result<String> {
         let content = read_to_string(&self.definition_info.path).await?;
         let text = Rope::from_str(content.as_str());
-        Ok(text
-            .slice(text.line_to_char(self.definition_info.range.start_point.row)..
-                text.line_to_char(self.definition_info.range.end_point.row + 1))
-            .to_string())
+
+        let mut start_row = min(self.definition_info.range.start_point.row, text.len_lines());
+        let end_row = min(self.definition_info.range.end_point.row + 1, text.len_lines());
+        start_row = min(start_row, end_row);
+
+        Ok(text.slice(start_row..end_row).to_string())
     }
 }
 

@@ -328,12 +328,14 @@ async fn ast_search(
                     res.symbol_declaration.get_content().await.unwrap_or(" ".to_string())
                 );
                 let text = wrap_comments(&code, &lang);
-                tokens_used += tokenizer.count_tokens(&text).expect(
+                let tokens = tokenizer.count_tokens(&text).expect(
                     "Tokenization has failed"
                 );
-                extra_context.push(text);
-                if tokens_used > (max_context_size / 2) as i32 {
+                if (tokens_used + tokens) > (max_context_size / 2) as i32 {
                     break
+                } else {
+                    extra_context.push(text);
+                    tokens_used += tokens;
                 }
             }
         }
@@ -360,12 +362,14 @@ async fn ast_search(
                     res.symbol_declaration.get_content().await.unwrap_or("".to_string())
                 );
                 let text = wrap_comments(&code, &lang);
-                tokens_used += tokenizer.count_tokens(&text).expect(
+                let tokens = tokenizer.count_tokens(&text).expect(
                     "Tokenization has failed"
                 );
-                extra_context.push(text);
-                if tokens_used > (max_context_size / 2) as i32 {
+                if (tokens_used + tokens) > (max_context_size / 2) as i32 {
                     break
+                } else {
+                    extra_context.push(text);
+                    tokens_used += tokens;
                 }
             }
         }
