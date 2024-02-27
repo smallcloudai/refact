@@ -13,16 +13,16 @@ use crate::global_context::GlobalContext;
 use crate::custom_error::ScratchError;
 
 
-pub async fn handle_v1_toolbox_config(
+pub async fn handle_v1_customization(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let gcx: Arc<ARwLock<GlobalContext>> = global_context.clone();
     let cache_dir = gcx.read().await.cache_dir.clone();
-	let tconfig = match crate::toolbox::toolbox_config::load_config_high_level(cache_dir) {
+	let tconfig = match crate::toolbox::toolbox_config::load_customization_high_level(cache_dir) {
 		Ok(config) => config,
 		Err(err) => {
-			error!("Error in load_config_high_level: {}", err);
+			error!("load_customization_high_level: {}", err);
 			return Ok(Response::builder()
 				.status(StatusCode::INTERNAL_SERVER_ERROR)
 				.body(Body::from(serde_json::to_string_pretty(&json!({ "detail": err.to_string() })).unwrap()))

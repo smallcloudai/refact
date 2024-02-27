@@ -55,7 +55,7 @@ fn _replace_variables_in_messages(config: &mut ToolboxConfig, variables: &HashMa
     }
 }
 
-pub fn load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, String> {
+fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, String> {
     let default_unstructured: serde_yaml::Value = serde_yaml::from_str(crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML)
         .map_err(|e| format!("Error parsing default YAML: {}", e))?;
     let user_unstructured: serde_yaml::Value = serde_yaml::from_str(user_yaml)
@@ -78,7 +78,7 @@ pub fn load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, 
     Ok(work_config)
 }
 
-pub fn load_config_high_level(cache_dir: std::path::PathBuf) -> Result<ToolboxConfig, String> {
+pub fn load_customization_high_level(cache_dir: std::path::PathBuf) -> Result<ToolboxConfig, String> {
     let user_config_path = cache_dir.join("customization.yaml");
 
     if !user_config_path.exists() {
@@ -98,7 +98,7 @@ pub fn load_config_high_level(cache_dir: std::path::PathBuf) -> Result<ToolboxCo
     }
 
     let user_config_text = std::fs::read_to_string(&user_config_path).map_err(|e| format!("Failed to read file: {}", e))?;
-    load_and_mix_with_users_config(&user_config_text).map_err(|e| e.to_string())
+    _load_and_mix_with_users_config(&user_config_text).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -107,6 +107,6 @@ mod tests {
 
     #[test]
     fn is_compiled_in_toolbox_valid_toml() {
-        let _config = load_and_mix_with_users_config(crate::toolbox::toolbox_compiled_in::COMPILED_IN_INITIAL_USER_YAML);
+        let _config = _load_and_mix_with_users_config(crate::toolbox::toolbox_compiled_in::COMPILED_IN_INITIAL_USER_YAML);
     }
 }

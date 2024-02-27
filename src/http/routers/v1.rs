@@ -23,7 +23,7 @@ use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
 use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
 use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_initialize;
 use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_did_change;
-use crate::http::routers::v1::toolbox::handle_v1_toolbox_config;
+use crate::http::routers::v1::toolbox::handle_v1_customization;
 use crate::http::routers::v1::toolbox::handle_v1_rewrite_assistant_says_to_at_commands;
 use crate::http::utils::telemetry_wrapper;
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
@@ -72,6 +72,6 @@ pub fn make_v1_router() -> Router {
         .route("/ast-clear-index", telemetry_post!(handle_v1_ast_clear_index))
 
         // experimental
-        .route("/toolbox-config", telemetry_get!(handle_v1_toolbox_config))
+        .route("/customization", telemetry_get!(handle_v1_customization))
         .route("/rewrite-assistant-says-to-at-commands", telemetry_post!(handle_v1_rewrite_assistant_says_to_at_commands))
 }
