@@ -42,6 +42,7 @@ export enum EVENT_NAMES_TO_CHAT {
   SET_SELECTED_SNIPPET = "chat_set_selected_snippet",
   REMOVE_PREVIEW_FILE_BY_NAME = "chat_remove_file_from_preview",
   SET_PREVIOUS_MESSAGES_LENGTH = "chat_set_previous_messages_length",
+  RECEIVE_TOKEN_COUNT = "chat_set_tokens",
 }
 
 export type ChatThread = {
@@ -446,4 +447,16 @@ export function isSetPreviousMessagesLength(
 ): action is setPreviousMessagesLength {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.SET_PREVIOUS_MESSAGES_LENGTH;
+}
+
+export interface ReceiveTokenCount extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_TOKEN_COUNT;
+  payload: { id: string; tokens: number | null };
+}
+
+export function isReceiveTokenCount(
+  action: unknown,
+): action is ReceiveTokenCount {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_TOKEN_COUNT;
 }

@@ -2,11 +2,12 @@ import React, { useRef } from "react";
 import { ChatForm } from "../components/ChatForm";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
-import { Flex, Responsive, Button } from "@radix-ui/themes";
+import { Flex, Responsive, Button, Text } from "@radix-ui/themes";
 import { isChatContextFileMessage } from "../services/refact";
 import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { useEffectOnce } from "../hooks";
+import { Coin } from "../images";
 
 export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
   useEffectOnce(() => {
@@ -137,6 +138,17 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
             });
         }}
       />
+
+      <Flex justify="between" pl="1" pr="1" pt="1">
+        {state.chat.messages.length > 0 && (
+          <Text size="1">model: {state.chat.model} </Text>
+        )}
+        {state.tokens !== null && (
+          <Text title="balance" size="1" ml="auto">
+            {state.tokens} <Coin width="10" height="10" />
+          </Text>
+        )}
+      </Flex>
     </Flex>
   );
 };

@@ -42,6 +42,7 @@ import {
   isSetPreviousMessagesLength,
   setPreviousMessagesLength,
   type Snippet,
+  isReceiveTokenCount,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -326,6 +327,13 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
+  if (isThisChat && isReceiveTokenCount(action)) {
+    return {
+      ...state,
+      tokens: action.payload.tokens,
+    };
+  }
+
   return state;
 }
 
@@ -357,6 +365,7 @@ export type ChatState = {
     line2: null | number;
   };
   selected_snippet: Snippet;
+  tokens: number | null;
 };
 
 function createInitialState(): ChatState {
@@ -395,6 +404,7 @@ function createInitialState(): ChatState {
       attach: false,
       can_paste: false,
     },
+    tokens: null,
   };
 }
 

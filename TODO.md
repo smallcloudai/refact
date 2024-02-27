@@ -126,6 +126,7 @@
 [ ] combobox theme not working in vscode
 [x] use a different way to disable attach than if context file is there
 [ ] remove snippet
+[x] add metering_balance (coins) and model used in chat
 
 ### EVENTS TODO FOR IDEs
 
