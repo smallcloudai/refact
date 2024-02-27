@@ -6,6 +6,7 @@ export enum EVENT_NAMES_TO_STATISTIC {
   REQUEST_STATISTIC_DATA = "request_statistic_data",
   RECEIVE_STATISTIC_DATA = "receive_statistic_data",
   RECEIVE_STATISTIC_DATA_ERROR = "receive_statistic_data_error",
+  SET_LOADING_STATISTIC_DATA = "set_loading_statistic_data",
 }
 
 interface BaseAction {

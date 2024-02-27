@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Flex, Button, Responsive } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { useConfig } from "../contexts/config-context";
@@ -9,9 +9,8 @@ import { StatisticView } from "../components/StatisticView/StatisticView";
 export const Statistic: React.FC<{
   onCloseStatistic?: () => void;
 }> = ({ onCloseStatistic }) => {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const { host, tabbed } = useConfig();
-  const { backFromStatistic, statisticData, error } = useEventBusForStatistic();
+  const { backFromStatistic, state } = useEventBusForStatistic();
   const LeftRightPadding: Responsive<
     "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
   > =
@@ -31,12 +30,6 @@ export const Statistic: React.FC<{
   > = {
     initial: "5",
   };
-
-  useEffect(() => {
-    if (statisticData ?? error) {
-      setIsLoading(false);
-    }
-  }, [statisticData, error]);
 
   return (
     <Flex
@@ -73,9 +66,9 @@ export const Statistic: React.FC<{
           }}
         >
           <StatisticView
-            statisticData={statisticData}
-            isLoading={isLoading}
-            error={error}
+            statisticData={state.statisticData}
+            isLoading={state.isLoading}
+            error={state.error}
           />
         </Flex>
       </ScrollArea>
