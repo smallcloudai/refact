@@ -3,6 +3,7 @@ import {
   EVENT_NAMES_FROM_STATISTIC,
   EVENT_NAMES_TO_STATISTIC,
   RequestFillInTheMiddleData,
+  isActionToStatistic,
   isReceiveDataForStatistic,
   isReceiveDataForStatisticError,
   isReceiveFillInTheMiddleData,
@@ -162,6 +163,8 @@ export const useEventBusForStatistic = () => {
           type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
           payload: { message: event.data.payload.message },
         });
+      } else if (isActionToStatistic(event.data)) {
+        dispatch(event.data);
       }
     };
 

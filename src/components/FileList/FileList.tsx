@@ -2,16 +2,24 @@ import React from "react";
 import { Flex } from "@radix-ui/themes";
 import { TruncateLeft, Text } from "../Text";
 import type { ChatContextFile } from "../../events";
+import styles from "./file-list.module.css";
 
 export type FileListProps = { files: ChatContextFile[] };
 export const FileList: React.FC<FileListProps> = ({ files }) => {
   return (
-    <Flex>
+    <Flex direction="column">
       {files.map((file, i) => {
-        const key = `${file.file_name}:${file.line1}-${file.line2}:${i}`;
+        const name = `${file.file_name}:${file.line1}-${file.line2}`;
+        const key = `${name}--${i}`;
         return (
-          <Text key={key} size="2" title={file.file_content}>
-            📎 <TruncateLeft>{file.file_name}</TruncateLeft>
+          <Text
+            as="div"
+            key={key}
+            size="2"
+            title={file.file_content}
+            className={styles.file}
+          >
+            📎 <TruncateLeft>{name}</TruncateLeft>
           </Text>
         );
       })}
