@@ -17,8 +17,13 @@ interface BaseAction {
 export interface ActionToStatistic extends BaseAction {
   type: EVENT_NAMES_TO_STATISTIC;
 }
+
 export interface RequestDataForStatistic extends ActionToStatistic {
   type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA;
+}
+
+export interface SetLoadingStatisticData extends ActionToStatistic {
+  type: EVENT_NAMES_TO_STATISTIC.SET_LOADING_STATISTIC_DATA;
 }
 
 export function isActionToStatistic(
@@ -61,4 +66,11 @@ export function isReceiveDataForStatisticError(
 ): action is ReceiveDataForStatisticError {
   if (!isActionToStatistic(action)) return false;
   return action.type === EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR;
+}
+
+export function isSetLoadingStatisticData(
+  action: unknown,
+): action is SetLoadingStatisticData {
+  if (!isActionToStatistic(action)) return false;
+  return action.type === EVENT_NAMES_TO_STATISTIC.SET_LOADING_STATISTIC_DATA;
 }
