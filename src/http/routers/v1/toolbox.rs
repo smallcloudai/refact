@@ -19,7 +19,16 @@ pub async fn handle_v1_toolbox_config(
 ) -> Result<Response<Body>, ScratchError> {
     let gcx: Arc<ARwLock<GlobalContext>> = global_context.clone();
     let cache_dir = gcx.read().await.cache_dir.clone();
-    let tconfig = crate::toolbox::toolbox_config::load_config_high_level(cache_dir);
+	let tconfig = match crate::toolbox::toolbox_config::load_config_high_level(cache_dir) {
+		Ok(config) => config,
+		Err(err) => {
+			error!("Error in load_config_high_level: {}", err);
+			return Ok(Response::builder()
+				.status(StatusCode::INTERNAL_SERVER_ERROR)
+				.body(Body::from(serde_json::to_string_pretty(&json!({ "detail": err.to_string() })).unwrap()))
+				.unwrap());
+		}
+	};
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(serde_json::to_string_pretty(&tconfig).unwrap()))
