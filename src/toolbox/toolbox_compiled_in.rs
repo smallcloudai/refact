@@ -1,5 +1,4 @@
-pub const COMPILED_IN_CUSTOMIZATION_YAML : &str = r#"
-# Customization will merge this compiled-in config and the user config.
+pub const COMPILED_IN_CUSTOMIZATION_YAML : &str = r#"# Customization will merge this compiled-in config and the user config.
 #
 # There are magic keys:
 #    %ARGS%
@@ -94,12 +93,12 @@ toolbox_commands:
 "#;
 
 
-pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"
-# Customization will override the default config you can see at the bottom of this file, in the comments.
+pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# Customization will override the default config you can see at the bottom of this file, in the comments.
 # You can find the default config by searching for COMPILED_IN_CUSTOMIZATION_YAML in `refact-lsp` repo.
-# If your custom command is good, you can post a PR changing the default for everybody.
+# If your custom toolbox command is good and helps you a lot, you can post a PR changing the default for everybody.
 #
-# It's easy, just make your commands by analogy and experiment!
+# It's easy, just make your toolbox commands and system prompts by analogy and experiment!
+#
 
 system_prompts:
   write_pseudo_code:
@@ -117,5 +116,10 @@ toolbox_commands:
     - role: "system"
       content: "%DEFAULT_PROMPT%"
     - role: "user"
-      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nRewrite this specific code block into a very inefficient and cryptic one, but still correct:\n\n```\n%CODE_SELECTION%```\n
+      content: "@file %CURRENT_FILE_PATH_COLON_CURSOR%\nRewrite this specific code block into a very inefficient and cryptic one, but still correct:\n\n```\n%CODE_SELECTION%```\n"
+
+
+
+# To help you write by analogy, the default config as was compiled-in at the time of the first run of refact-lsp:
+#
 "#;

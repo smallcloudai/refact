@@ -14,11 +14,12 @@ use crate::custom_error::ScratchError;
 
 
 pub async fn handle_v1_toolbox_config(
-    Extension(_global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    // let _context = AtCommandsContext::new(global_context.clone()).await;
-    let tconfig = crate::toolbox::toolbox_config::load_and_mix_with_users_config();
+    let gcx: Arc<ARwLock<GlobalContext>> = global_context.clone();
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    let tconfig = crate::toolbox::toolbox_config::load_config_high_level(cache_dir);
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(serde_json::to_string_pretty(&tconfig).unwrap()))
