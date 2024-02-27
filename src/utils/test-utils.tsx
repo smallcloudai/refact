@@ -53,3 +53,12 @@ export function stubResizeObserver() {
   // Stub the global ResizeObserver
   vi.stubGlobal("ResizeObserver", ResizeObserverMock);
 }
+
+/**
+ * repeat use with describe.each or test.each to find flaky tests
+ * @param n
+ * @returns an array of n numbers
+ *
+ */
+export const repeat = (n: number) =>
+  Array.from({ length: n }).map((_d, i) => i + 1);

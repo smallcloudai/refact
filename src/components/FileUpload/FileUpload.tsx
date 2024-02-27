@@ -5,14 +5,15 @@ export const FileUpload: React.FC<{
   onClick: (value: boolean) => void;
   fileName?: string;
   checked: boolean;
-}> = ({ onClick, fileName, checked }) => {
+  disabled?: boolean;
+}> = ({ onClick, fileName, ...props }) => {
   return (
     <Text as="label" size="2">
       <Flex gap="2">
         <Checkbox
-          checked={checked}
+          {...props}
           onCheckedChange={() => {
-            onClick(!checked);
+            onClick(!props.checked);
           }}
         />{" "}
         Attach {fileName ?? "a file"}

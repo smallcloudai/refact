@@ -23,6 +23,17 @@ function makeConfig(library: "browser" | "node") {
         emptyOutDir: true,
         outDir: OUT_DIR,
         copyPublicDir: false,
+        sourcemap: library === "browser" ? "inline" : false,
+        rollupOptions: {
+          // TODO: remove when this issue is closed https://github.com/vitejs/vite/issues/15012
+          onwarn(warning, defaultHandler) {
+            if (warning.code === "SOURCEMAP_ERROR") {
+              return;
+            }
+
+            defaultHandler(warning);
+          },
+        },
       },
       plugins: [react()],
       server: {
@@ -31,12 +42,14 @@ function makeConfig(library: "browser" | "node") {
         },
       },
       test: {
+        retry: 2,
         environment: "jsdom",
         coverage: {
           exclude: coverageConfigDefaults.exclude.concat(
             "**/*.stories.@(js|jsx|mjs|ts|tsx)",
           ),
         },
+        setupFiles: ["./src/utils/test-setup.ts"],
       },
       css: {
         modules: {},

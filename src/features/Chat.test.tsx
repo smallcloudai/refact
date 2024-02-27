@@ -174,6 +174,7 @@ describe("Chat", () => {
 
     const createNewChatAction: CreateNewChatThread = {
       type: EVENT_NAMES_TO_CHAT.NEW_CHAT,
+      payload: { id: "foo" },
     };
 
     postMessage(createNewChatAction);

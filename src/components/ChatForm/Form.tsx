@@ -1,7 +1,7 @@
 import React from "react";
-import classNames from "classnames";
 import { Box } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
+import { ScrollArea } from "../ScrollArea";
 
 export const Form: React.FC<
   React.PropsWithChildren<{
@@ -9,17 +9,19 @@ export const Form: React.FC<
     onSubmit: React.FormEventHandler<HTMLFormElement>;
     disabled?: boolean;
   }>
-> = ({ className, onSubmit, ...props }) => {
+> = ({ onSubmit, ...props }) => {
   return (
-    <Box mt="1">
-      <form
-        className={classNames(styles.chatForm, className)}
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSubmit(event);
-        }}
-        {...props}
-      />
+    <Box mt="1" className={styles.chatForm}>
+      <ScrollArea scrollbars="vertical" style={{ maxHeight: "50dvh" }}>
+        <form
+          // className={classNames(styles.chatForm, className)}
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit(event);
+          }}
+          {...props}
+        />
+      </ScrollArea>
     </Box>
   );
 };

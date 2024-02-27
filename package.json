@@ -94,12 +94,13 @@
     "textarea-caret": "^3.1.0",
     "typescript": "^5.2.2",
     "typescript-plugin-css-modules": "^5.0.2",
-    "usehooks-ts": "^2.9.1",
+    "usehooks-ts": "^2.14.0",
     "uuid": "^9.0.1",
     "vite": "^5.0.8",
     "vite-plugin-dts": "^3.7.0",
     "vite-plugin-eslint": "^1.8.1",
-    "vitest": "^1.0.4"
+    "vitest": "^1.0.4",
+    "vitest-matchmedia-mock": "^1.0.3"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

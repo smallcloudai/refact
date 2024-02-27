@@ -37,7 +37,16 @@ export const RetryForm: React.FC<{
         onChange={(event) => onChange(event.target.value)}
         onKeyUp={onPressedEnter}
       />
-      <Flex align="center" justify="center" gap="1" direction="row">
+      <Flex
+        align="center"
+        justify="center"
+        gap="1"
+        direction="row"
+        p="2"
+        style={{
+          backgroundColor: "var(--color-surface)",
+        }}
+      >
         <Button color="grass" variant="surface" size="1" type="submit">
           Submit
         </Button>

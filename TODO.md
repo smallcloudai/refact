@@ -76,11 +76,57 @@
 [ ] canceling chat doesn't seems to work (the spinner keeps spinning) :/
 [x] build the events (+ types) as a dedicated file
 [ ] automate publishing the main branch
-[ ] export the chat history component
-[ ] add vscode specific button for opening the history in a tab
+[x] export the chat history component
+[x] add vscode specific button for opening the history in a tab
 [ ] should be monotype font on tooltip (will require adding a custom tooltip)
-[ ] update readme with the new features/options
+
+[x] command completion combobox interactions
+[ ] maybe add optimistic cache for queries to lsp?
+[x] remove context latest context files from chat when sending a message
+[x] small but in command deletion, type @fi tab delete delete then tab
+[x] workspace being run twice ? or adding extra files
+[x] update readme with the new features/options
 [x] uninstall react-cookie and delete code comments
+[x] fix flaky test for multiple commands
+[x] figure out why the combobox is sometimes not removing the input trigger
+[x] add temp file storage when the user uses @ commands
+[x] set the model when using @ commands
+[x] prevent the user from changing the model when there are temp files
+[x] add new line after command
+[x] add flex grow to history list
+[x] save last used model
+[x] increase textarea height with user input
+[x] send whole user input when previewing a command
+[x] replace file preview when receiving command preview
+[x] don't add a new line if command is executable but has no arguments
+[x] use syntax highlighting in the users message
+[x] bug when running retry, user message isn't removed
+[x] bug with the combobox being open after asking a question
+[x] file preview should scroll with textarea
+[x] chat content should stay at end when textarea grows
+[ ] should the scrolling be disabled if the user has scrolled away from the bottom?
+
+[x] combobox only needs one function for completion and preview
+[x] check clicking on the combobox the second click on @@file doesn't seem to work.
+[x] place the cursor at the right place when adding a command between text
+[x] use repeat to find flaky tests
+[x] combobox undo / redo
+[x] list display in response has a large margin/padding
+[ ] tidy up combobox
+[x] bug @ast_definition blocks sending requests
+[ ] TBD: response cache for undo / redo, use a hashmap
+[x] limit the size of undo / redo history
+[x] fix re-attaching files on retry
+[x] undo redo, holding ctrl keeps the box open until the user releases it
+[x] attach file with @ command,
+[x] bug: add text, add file go back and edit the text fixed by prepending the command to the value
+[x] ctrl-z then enter, cursor is at wrong position
+[x] @, enter, enter, ctrl-z, enter
+[x] allow paste when no code is selected (A convenient way to insert code from the chat into the active tab (where the cursor is) is needed.)
+[ ] combobox theme not working in vscode
+[x] use a different way to disable attach than if context file is there
+[ ] remove snippet
+[x] add metering_balance (coins) and model used in chat
 
 ### EVENTS TODO FOR IDEs
 
@@ -97,4 +143,6 @@
 [x] create lib directory for code that becomes a lib
 [x] configure vite to output multiple entry files (one for web and one for the ide's)
 [x] export events in package.json or from lib
-[ ] remove inline styles
+[ ] remove inline styles?
+[x] vscode select text, click new chat the selected code should be in the chat
+[ ] add debug? https://www.npmjs.com/package/debug

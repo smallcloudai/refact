@@ -48,7 +48,7 @@ export const Sidebar: React.FC<
             onHistoryItemClick={onHistoryItemClick}
             onDeleteHistoryItem={onDeleteHistoryItem}
           />
-          <Flex ml="3" gap="1">
+          <Flex p="2" gap="1">
             <Settings />
             {features.statistics && (
               <IconButton
