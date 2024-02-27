@@ -6,7 +6,7 @@
   text-overflow: ellipsis;
   direction: rtl;
   max-width: 100%;
-  line-height: var(--line-height-2, 20px);
+  /* line-height: var(--line-height-2, 20px); */
 }
 
 .text_ltr {

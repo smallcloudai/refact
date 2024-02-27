@@ -2,17 +2,25 @@ import {
   ActionToStatistic,
   EVENT_NAMES_FROM_STATISTIC,
   EVENT_NAMES_TO_STATISTIC,
+  RequestFillInTheMiddleData,
   isReceiveDataForStatistic,
   isReceiveDataForStatisticError,
+  isReceiveFillInTheMiddleData,
+  isRequestFillInTheMiddleData,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useCallback, useEffect, useReducer } from "react";
-import { StatisticData } from "../services/refact";
+import { ChatContextFile, StatisticData } from "../services/refact";
 
-type StatisticState = {
+export type StatisticState = {
   statisticData: StatisticData | null;
   isLoading: boolean;
   error: string;
+  fill_in_the_middle: {
+    files: ChatContextFile[];
+    error: string;
+    fetching: boolean;
+  };
 };
 
 function createInitialState(): StatisticState {
@@ -20,6 +28,11 @@ function createInitialState(): StatisticState {
     statisticData: null,
     isLoading: true,
     error: "",
+    fill_in_the_middle: {
+      files: [],
+      error: "",
+      fetching: false,
+    },
   };
 }
 
@@ -29,6 +42,38 @@ function reducer(
   state: StatisticState,
   action: ActionToStatistic,
 ): StatisticState {
+  if (isReceiveFillInTheMiddleData(action)) {
+    return {
+      ...state,
+      fill_in_the_middle: {
+        error: "",
+        fetching: false,
+        files: action.payload.files,
+      },
+    };
+  }
+
+  if (isReceiveDataForStatisticError(action)) {
+    return {
+      ...state,
+      fill_in_the_middle: {
+        ...state.fill_in_the_middle,
+        error: action.payload.message,
+        fetching: false,
+      },
+    };
+  }
+
+  if (isRequestFillInTheMiddleData(action)) {
+    return {
+      ...state,
+      fill_in_the_middle: {
+        ...state.fill_in_the_middle,
+        fetching: true,
+      },
+    };
+  }
+
   switch (action.type) {
     case EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA:
       return {
@@ -82,6 +127,15 @@ export const useEventBusForStatistic = () => {
       type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA,
     });
   }, [postMessage]);
+
+  const requestFillInTheMiddleData = useCallback(() => {
+    const action: RequestFillInTheMiddleData = {
+      type: EVENT_NAMES_FROM_STATISTIC.REQUEST_FILL_IN_THE_MIDDLE_DATA,
+    };
+    postMessage(action);
+  }, [postMessage]);
+
+  useEffect(requestFillInTheMiddleData, [requestFillInTheMiddleData]);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
