@@ -162,3 +162,6 @@ dmypy.json
 
 workdir
 Cargo.lock
+
+# macos dir cache
+.DS_Store

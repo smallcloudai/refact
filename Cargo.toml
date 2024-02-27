@@ -5,7 +5,7 @@ lto = true
 
 [package]
 name = "refact-lsp"
-version = "0.0.6"
+version = "0.2.0"
 edition = "2021"
 build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -22,12 +22,13 @@ reqwest-eventsource = "0.4.0"
 url = "2.4.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_yaml = "0.9.31"
 tower = { version = "0.4", features = ["full"] }
 tower-lsp = "0.20"
 tower-http = { version = "0.4.0" }
 tower-layer = "0.3.2"
 tracing = "0.1"
-tracing-appender = "0.2"
+tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tokenizers = "0.13"
 ropey = "1.6"
@@ -43,3 +44,42 @@ async-trait = "0.1.73"
 similar = "2.3.0"
 axum = "0.6.20"
 uuid = { version = "1", features = ["v4"] }
+lazy_static = "1.4.0"
+
+regex-automata = { version = "0.1.10", features = ["transducer"] }
+sorted-vec = "0.8.3"
+tree-sitter = "0.20"
+tree-sitter-cpp = "0.20"
+tree-sitter-c-sharp = "0.20"
+tree-sitter-java = "0.20"
+tree-sitter-javascript = "0.20"
+tree-sitter-kotlin = "0.3.1"
+tree-sitter-python = "0.20"
+tree-sitter-rust = "0.20"
+tree-sitter-typescript = "0.20"
+
+arrow = "47.0.0"
+arrow-array = "47.0.0"
+arrow-schema= "47.0.0"
+async_once= "0.2.6"
+async-process = "2.0.1"
+itertools = "0.11.0"
+fst = { version = "0.4.7", features = ["levenshtein"] }
+lance = "=0.9.0"
+lance-linalg = "=0.9.0"
+lance-index = "=0.9.0"
+log = "0.4.20"
+md5 = "0.7"
+mockito = "0.28.0"
+notify = "6.1.1"
+rusqlite = { version = "0.30.0", features = ["bundled"] }
+tempfile = "3.8.1"
+time = "0.3.30"
+tokio-rusqlite = "0.5.0"
+vectordb = "=0.4.0"
+walkdir = "2.3"
+which = "5.0.0"
+strsim = "0.8.0"
+typetag = "0.2"
+dyn_partial_eq = "=0.1.2"
+rayon = "1.8.0"

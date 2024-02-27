@@ -1,12 +1,11 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use std::collections::HashMap;
-
+use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::global_context;
-use crate::telemetry::utils;
 use crate::telemetry::telemetry_structs::{SnippetTracker, TeleCompletionAccum};
+use crate::telemetry::utils;
 use crate::telemetry::utils::compress_tele_records_to_file;
 
 

@@ -1,23 +1,30 @@
-use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::scratchpad_abstract::HasTokenizerAndEot;
-use crate::call_validation::CodeCompletionPost;
-use crate::call_validation::SamplingParameters;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-// use ropey::RopeSlice;
-use tokenizers::Tokenizer;
-use ropey::Rope;
-use tracing::info;
-use async_trait::async_trait;
+use std::vec;
 
+use async_trait::async_trait;
+use ropey::Rope;
+use serde_json::Value;
+use tokenizers::Tokenizer;
+use tokio::sync::Mutex as AMutex;
+use tracing::info;
+use tree_sitter::Point;
+
+use crate::ast::ast_module::AstModule;
+use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
+use crate::call_validation::CodeCompletionPost;
+use crate::call_validation::SamplingParameters;
 use crate::completion_cache;
-use crate::telemetry::telemetry_structs;
+use crate::files_in_workspace::DocumentInfo;
+use crate::scratchpad_abstract::HasTokenizerAndEot;
+use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::telemetry::snippets_collection;
+use crate::telemetry::telemetry_structs;
 
 const DEBUG: bool = false;
 
 
-#[derive(Debug)]
 pub struct SingleFileFIM {
     pub t: HasTokenizerAndEot,
     pub post: CodeCompletionPost,
@@ -27,6 +34,7 @@ pub struct SingleFileFIM {
     pub fim_middle: String,
     pub data4cache: completion_cache::CompletionSaveToCache,
     pub data4snippet: snippets_collection::SaveSnippet,
+    pub ast_module: Arc<AMutex<Option<AstModule>>>,
 }
 
 impl SingleFileFIM {
@@ -36,10 +44,14 @@ impl SingleFileFIM {
         order: String,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
         tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
+        ast_module: Arc<AMutex<Option<AstModule>>>,
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
         let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
-        SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(), fim_suffix: String::new(), fim_middle: String::new(), data4cache, data4snippet }
+        SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(),
+            fim_suffix: String::new(), fim_middle: String::new(), data4cache, data4snippet,
+            ast_module
+        }
     }
 
     fn cleanup_prompt(&mut self, text: &String) -> String {
@@ -89,15 +101,37 @@ impl ScratchpadAbstract for SingleFileFIM {
             sampling_parameters_to_patch.stop = Some(stop_list);
         }
         let mut source = self.post.inputs.sources.get(
-            &self.post.inputs.cursor.file)
-            .ok_or("Cursor is in file not found in sources".to_string())?.clone();
+                &self.post.inputs.cursor.file
+            ).ok_or("Cursor is in file not found in sources".to_string())?.clone();
         source = self.cleanup_prompt(&source);
 
         let text = Rope::from_str(&*source);
 
         let pos = &self.post.inputs.cursor;
+        let file_path = PathBuf::from(self.post.inputs.cursor.file.clone());
         let mut before_iter = text.lines_at(pos.line as usize).reversed();
         let mut after_iter = text.lines_at(pos.line as usize + 1);
+        let mut extra_context = String::new();
+        let mut tokens_used = 0;
+        if self.post.use_ast {
+            let (ast_context, ast_tokens) = match *self.ast_module.lock().await {
+                Some(ref mut ast) => {
+                    ast_search(
+                        ast,
+                        &file_path,
+                        &source,
+                        Point { row: pos.line as usize, column: pos.character as usize },
+                        self.t.clone(),
+                        (limit as f32 * 0.5) as usize,
+                    ).await
+                }
+                None => (String::new(), 0)
+            };
+            if ast_tokens > 0 {
+                extra_context.push_str(ast_context.as_str());
+                tokens_used += ast_tokens;
+            }
+        }
 
         let mut before_line = before_iter.next();
 
@@ -117,7 +151,7 @@ impl ScratchpadAbstract for SingleFileFIM {
 
         let mut before = vec![];
         let mut after = String::new();
-        let mut tokens_used = self.t.count_tokens(
+        tokens_used += self.t.count_tokens(
             (cursor_line1.clone() + &cursor_line2).as_str()
         )?;
         while before_line.is_some() || after_line.is_some() {
@@ -146,9 +180,10 @@ impl ScratchpadAbstract for SingleFileFIM {
         let prompt: String;
         if self.order == "PSM" {
             prompt = format!(
-                "{}{}{}{}{}{}{}{}",
+                "{}{}{}{}{}{}{}{}{}",
                 self.t.eos,
                 self.fim_prefix,
+                extra_context,
                 before.into_iter().rev().collect::<Vec<_>>().join(""),
                 cursor_line1,
                 self.fim_suffix,
@@ -158,9 +193,10 @@ impl ScratchpadAbstract for SingleFileFIM {
             );
         } else if self.order == "SPM" {
             prompt = format!(
-                "{}{}{}{}{}{}{}{}",
+                "{}{}{}{}{}{}{}{}{}",
                 self.t.eos,
                 self.fim_suffix,
+                extra_context,
                 cursor_line2,
                 after,
                 self.fim_prefix,
@@ -174,7 +210,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         if DEBUG {
             info!("cursor position\n{:?}", self.post.inputs.cursor);
             info!("prompt\n{}", prompt);
-            info!("re-encode whole prompt again gives {} tokes", self.t.count_tokens(prompt.as_str())?);
+            info!("re-encode whole prompt again gives {} tokens", self.t.count_tokens(prompt.as_str())?);
         }
         Ok(prompt)
     }
@@ -260,8 +296,100 @@ impl ScratchpadAbstract for SingleFileFIM {
         });
         Ok((ans, finished))
     }
+
+    fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
+        return Err("".to_string());
+    }
 }
 
+async fn ast_search(
+    ast_module: &mut AstModule,
+    file_path: &PathBuf,
+    code: &str,
+    cursor: Point,
+    tokenizer: HasTokenizerAndEot,
+    max_context_size: usize
+) -> (String, i32){
+    let doc = match DocumentInfo::from_pathbuf(file_path).ok() {
+        Some(doc) => doc,
+        None => return ("".to_string(), 0)
+    };
+    let lang = get_language_id_by_filename(&doc.get_path()).unwrap_or_default();
+    let declarations_str = wrap_comments("Useful declarations:\n ", &lang);
+    let references_str = wrap_comments("Useful references:\n ", &lang);
+
+    let search_result = ast_module.search_declarations_by_cursor(
+        &doc, code, cursor, 5, true
+    ).await;
+    let mut extra_context: Vec<String> = vec!();
+    let mut tokens_used = tokenizer.count_tokens(&declarations_str).expect(
+        "Tokenization has failed"
+    );
+
+    match search_result {
+        Ok(res) => {
+            if res.search_results.len() > 0 {
+                extra_context.push(declarations_str.to_string());
+            }
+            for res in res.search_results {
+                let code: String = format!(
+                    "symbol path: {}\ncode: \n{}\n\n",
+                    res.symbol_declaration.meta_path,
+                    res.symbol_declaration.get_content().await.unwrap_or(" ".to_string())
+                );
+                let text = wrap_comments(&code, &lang);
+                let tokens = tokenizer.count_tokens(&text).expect(
+                    "Tokenization has failed"
+                );
+                if (tokens_used + tokens) > (max_context_size / 2) as i32 {
+                    break
+                } else {
+                    extra_context.push(text);
+                    tokens_used += tokens;
+                }
+            }
+        }
+        Err(err) => {
+            info!("Error while calling `search_declarations_by_cursor` {:?}", err);
+        }
+    }
+
+    let search_result = ast_module.search_references_by_cursor(
+        &doc, code, cursor, 5, true
+    ).await;
+    let mut tokens_used = tokenizer.count_tokens(&references_str).expect(
+        "Tokenization has failed"
+    );
+    match search_result {
+        Ok(res) => {
+            if res.search_results.len() > 0 {
+                extra_context.push(references_str.to_string());
+            }
+            for res in res.search_results {
+                let code: String = format!(
+                    "symbol path: {}\ncode: {}\n\n",
+                    res.symbol_declaration.meta_path,
+                    res.symbol_declaration.get_content().await.unwrap_or("".to_string())
+                );
+                let text = wrap_comments(&code, &lang);
+                let tokens = tokenizer.count_tokens(&text).expect(
+                    "Tokenization has failed"
+                );
+                if (tokens_used + tokens) > (max_context_size / 2) as i32 {
+                    break
+                } else {
+                    extra_context.push(text);
+                    tokens_used += tokens;
+                }
+            }
+        }
+        Err(err) => {
+            info!("Error while calling `search_declarations_by_cursor` {:?}", err);
+        }
+    }
+
+    (extra_context.join(""), tokens_used)
+}
 
 fn cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
     let mut cut_at = vec![];

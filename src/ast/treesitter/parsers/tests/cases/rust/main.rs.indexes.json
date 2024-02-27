@@ -1,0 +1,217 @@
+{
+  "main.rs::Point": {
+    "name": "Point",
+    "definition_info": {
+      "path": "main.rs",
+      "range": {
+        "start_byte": 557,
+        "end_byte": 597,
+        "start_point": {
+          "row": 24,
+          "column": 0
+        },
+        "end_point": {
+          "row": 27,
+          "column": 1
+        }
+      }
+    },
+    "children": [],
+    "symbol_type": "Class",
+    "meta_path": "main.rs::Point",
+    "language": "Rust",
+    "extra_declarations": [
+      {
+        "path": "main.rs",
+        "range": {
+          "start_byte": 599,
+          "end_byte": 820,
+          "start_point": {
+            "row": 29,
+            "column": 0
+          },
+          "end_point": {
+            "row": 36,
+            "column": 1
+          }
+        }
+      },
+      {
+        "path": "main.rs",
+        "range": {
+          "start_byte": 821,
+          "end_byte": 859,
+          "start_point": {
+            "row": 37,
+            "column": 0
+          },
+          "end_point": {
+            "row": 39,
+            "column": 1
+          }
+        }
+      }
+    ]
+  },
+  "main.rs::Point::distance": {
+    "name": "distance",
+    "definition_info": {
+      "path": "main.rs",
+      "range": {
+        "start_byte": 662,
+        "end_byte": 818,
+        "start_point": {
+          "row": 31,
+          "column": 4
+        },
+        "end_point": {
+          "row": 35,
+          "column": 5
+        }
+      }
+    },
+    "children": [],
+    "symbol_type": "Function",
+    "meta_path": "main.rs::Point::distance",
+    "language": "Rust",
+    "extra_declarations": []
+  },
+  "main.rs::Print": {
+    "name": "Print",
+    "definition_info": {
+      "path": "main.rs",
+      "range": {
+        "start_byte": 1004,
+        "end_byte": 1040,
+        "start_point": {
+          "row": 49,
+          "column": 0
+        },
+        "end_point": {
+          "row": 51,
+          "column": 1
+        }
+      }
+    },
+    "children": [],
+    "symbol_type": "Class",
+    "meta_path": "main.rs::Print",
+    "language": "Rust",
+    "extra_declarations": []
+  },
+  "main.rs::GLOBAL_VARIABLE": {
+    "name": "GLOBAL_VARIABLE",
+    "definition_info": {
+      "path": "main.rs",
+      "range": {
+        "start_byte": 15,
+        "end_byte": 55,
+        "start_point": {
+          "row": 2,
+          "column": 0
+        },
+        "end_point": {
+          "row": 2,
+          "column": 40
+        }
+      }
+    },
+    "children": [],
+    "symbol_type": "GlobalVar",
+    "meta_path": "main.rs::GLOBAL_VARIABLE",
+    "language": "Rust",
+    "extra_declarations": []
+  },
+  "main.rs::print_direction": {
+    "name": "print_direction",
+    "definition_info": {
+      "path": "main.rs",
+      "range": {
+        "start_byte": 1579,
+        "end_byte": 1646,
+        "start_point": {
+          "row": 66,
+          "column": 0
+        },
+        "end_point": {
+          "row": 68,
+          "column": 1
+        }
+      }
+    },
+    "children": [],
+    "symbol_type": "Function",
+    "meta_path": "main.rs::print_direction",
+    "language": "Rust",
+    "extra_declarations": []
+  },
+  "main.rs::main": {
+    "name": "main",
+    "definition_info": {
+      "path": "main.rs",
+      "range": {
+        "start_byte": 1648,
+        "end_byte": 2052,
+        "start_point": {
+          "row": 70,
+          "column": 0
+        },
+        "end_point": {
+          "row": 82,
+          "column": 1
+        }
+      }
+    },
+    "children": [],
+    "symbol_type": "Function",
+    "meta_path": "main.rs::main",
+    "language": "Rust",
+    "extra_declarations": []
+  },
+  "main.rs::Point::foo": {
+    "name": "foo",
+    "definition_info": {
+      "path": "main.rs",
+      "range": {
+        "start_byte": 846,
+        "end_byte": 857,
+        "start_point": {
+          "row": 38,
+          "column": 4
+        },
+        "end_point": {
+          "row": 38,
+          "column": 15
+        }
+      }
+    },
+    "children": [],
+    "symbol_type": "Function",
+    "meta_path": "main.rs::Point::foo",
+    "language": "Rust",
+    "extra_declarations": []
+  },
+  "main.rs::Direction::print": {
+    "name": "print",
+    "definition_info": {
+      "path": "main.rs",
+      "range": {
+        "start_byte": 1110,
+        "end_byte": 1511,
+        "start_point": {
+          "row": 55,
+          "column": 4
+        },
+        "end_point": {
+          "row": 62,
+          "column": 5
+        }
+      }
+    },
+    "children": [],
+    "symbol_type": "Function",
+    "meta_path": "main.rs::Direction::print",
+    "language": "Rust",
+    "extra_declarations": []
+  }
+}

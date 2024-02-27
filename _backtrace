@@ -1,0 +1,33 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 229c757..0d9ca1a 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -9,6 +9,7 @@ build = "build.rs"
+ shadow-rs = "0.25.0"
+ 
+ [dependencies]
++backtrace = "0.3"
+ shadow-rs = { version = "0.25.0", features = [], default-features = false }
+ hyper = { version = "0.14", features = ["server", "stream"] }
+ reqwest = { version = "0.11", features = ["json", "stream"] }
+diff --git a/src/global_context.rs b/src/global_context.rs
+index 5e49ede..01669ea 100644
+--- a/src/global_context.rs
++++ b/src/global_context.rs
+@@ -16,6 +16,7 @@ use hyper::StatusCode;
+ use tower_lsp::lsp_types::WorkspaceFolder;
+ use crate::receive_workspace_changes::Document;
+ use crate::vecdb::vecdb::VecDb;
++use backtrace::Backtrace;
+ 
+ 
+ #[derive(Debug, StructOpt, Clone)]
+@@ -113,6 +114,8 @@ pub async fn try_load_caps_quickly_if_not_present(
+                 global_context_locked.caps = Some(caps.clone());
+                 info!("quick load caps successful");
+                 write!(std::io::stderr(), "CAPS\n").unwrap();
++                // let backtrace = Backtrace::new();
++                // info!("{:?}", backtrace);
+                 Ok(caps)
+             },
+             Err(e) => {

@@ -1,0 +1,30 @@
+{
+    "cloud_name": "Refact Self-Hosted",
+    "endpoint_template": "http://127.0.0.1:8008/v1/completions",
+    "endpoint_chat_passthrough": "http://127.0.0.1:8008/v1/chat/completions",
+    "endpoint_style": "openai",
+    "running_models": [
+        "mistral/7b/instruct-v0.1",
+        "deepseek-coder/6.7b/instruct",
+        "Refact/1.6B/vllm",
+        "gpt-3.5-turbo",
+        "gpt-4"
+    ],
+
+    "telemetry_basic_dest": "",
+
+    "default_embeddings_model": "thenlper/gte-base",
+    "endpoint_embeddings_template": "http://127.0.0.1:8008/v1/embeddings",
+    "endpoint_embeddings_style": "openai",
+    "size_embeddings": 768,
+
+    "code_completion_default_model": "Refact/1.6B/vllm",
+    "code_chat_default_model": "mistral/7b/instruct-v0.1",
+    "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
+    "tokenizer_rewrite_path": {
+        "mistral/7b/instruct-v0.1": "TheBloke/Mistral-7B-Instruct-v0.1-GPTQ",
+        "deepseek-coder/6.7b/instruct": "TheBloke/deepseek-coder-6.7B-instruct-GPTQ",
+        "Refact/1.6B/vllm": "smallcloudai/Refact-1_6B-fim"
+    }
+}
+

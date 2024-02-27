@@ -4,6 +4,7 @@ use std::sync::RwLock;
 use tokenizers::Tokenizer;
 use crate::call_validation::SamplingParameters;
 use async_trait::async_trait;
+use serde_json::Value;
 
 
 #[async_trait]
@@ -31,6 +32,8 @@ pub trait ScratchpadAbstract: Send {
         stop_toks: bool,
         stop_length: bool,
     ) -> Result<(serde_json::Value, bool), String>;
+
+    fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>;
 }
 
 

@@ -1,7 +1,6 @@
 use std::io::Write;
 use tokio::task::JoinHandle;
-
-use tracing::{error, info, Level};
+use tracing::{info, Level};
 use tracing_appender;
 
 use crate::background_tasks::start_background_tasks;
@@ -20,12 +19,19 @@ mod restream;
 mod custom_error;
 mod completion_cache;
 mod telemetry;
-mod vecdb_search;
 mod lsp;
 mod http;
 mod background_tasks;
-mod receive_workspace_changes;
 mod dashboard;
+mod files_in_workspace;
+mod files_in_jsonl;
+mod vecdb;
+mod fetch_embedding;
+mod at_commands;
+mod nicer_logs;
+mod toolbox;
+mod ast;
+
 
 #[tokio::main]
 async fn main() {
@@ -36,11 +42,12 @@ async fn main() {
         tracing_appender::non_blocking(std::io::stderr())
     } else {
         write!(std::io::stderr(), "This rust binary keeps logs as files, rotated daily. Try\ntail -f {}/logs/\nor use --logs-stderr for debugging.\n\n", cache_dir.display()).unwrap();
-        tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::new(
-            tracing_appender::rolling::Rotation::DAILY,
-            cache_dir.join("logs"),
-            "rustbinary",
-        ))
+        tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::builder()
+            .rotation(tracing_appender::rolling::Rotation::DAILY)
+            .filename_prefix("rustbinary")
+            .max_log_files(30)
+            .build(cache_dir.join("logs")).unwrap()
+        )
     };
     let _tracing = tracing_subscriber::fmt()
         .with_max_level(if cmdline.verbose {Level::DEBUG} else {Level::INFO})
@@ -59,11 +66,16 @@ async fn main() {
             info!("{:>20} {}", k, v);
         }
     }
-    let mut background_tasks = start_background_tasks(gcx.clone());
+    files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone()).await;
+    let mut background_tasks = start_background_tasks(gcx.clone()).await;
+    // vector db will spontaneously start if the downloaded caps and command line parameters are right
 
     let should_start_http = cmdline.http_port != 0;
-    let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) || 
+    let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||
         (cmdline.lsp_port != 0 && cmdline.lsp_stdin_stdout == 0);
+
+    // not really needed, but it's nice to have an error message sooner if there's one
+    let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
 
     let mut main_handle: Option<JoinHandle<()>> = None;
     if should_start_http {
@@ -71,6 +83,7 @@ async fn main() {
     }
     if should_start_lsp {
         if main_handle.is_none() {
+            // FIXME: this ignores crate::global_context::block_until_signal , important because now we have a database to corrupt
             main_handle = spawn_lsp_task(gcx.clone(), cmdline.clone()).await;
         } else {
             background_tasks.push_back(spawn_lsp_task(gcx.clone(), cmdline.clone()).await.unwrap())
@@ -79,7 +92,7 @@ async fn main() {
     if main_handle.is_some() {
         let _ = main_handle.unwrap().await;
     }
-    
+
     background_tasks.abort().await;
     info!("saving telemetry without sending, so should be quick");
     basic_transmit::basic_telemetry_compress(gcx.clone()).await;

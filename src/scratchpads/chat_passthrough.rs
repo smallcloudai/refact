@@ -1,14 +1,15 @@
-use tracing::info;
 use std::sync::Arc;
-use tokio::sync::Mutex as AMutex;
+
 use async_trait::async_trait;
+use serde_json::Value;
+use tracing::{error, info};
+use tokio::sync::RwLock as ARwLock;
 
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
+use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::call_validation::{ChatPost, ChatMessage, SamplingParameters, ContextFile};
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history_in_bytes;
-// use crate::vecdb_search::{VecdbSearch, embed_vecdb_results};
-use crate::vecdb_search::VecdbSearch;
-
+use crate::scratchpads::chat_utils_rag::{run_at_commands, HasVecdbResults};
 
 const DEBUG: bool = true;
 
@@ -18,21 +19,23 @@ pub struct ChatPassthrough {
     pub post: ChatPost,
     pub default_system_message: String,
     pub limit_bytes: usize,
-    pub vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
+    pub has_vecdb_results: HasVecdbResults,
+    pub global_context: Arc<ARwLock<GlobalContext>>,
 }
 
-const DEFAULT_LIMIT_BYTES: usize = 4096*3;
+const DEFAULT_LIMIT_BYTES: usize = 4096*6;
 
 impl ChatPassthrough {
     pub fn new(
         post: ChatPost,
-        vecdb_search: Arc<AMutex<Box<dyn VecdbSearch + Send>>>,
+        global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Self {
         ChatPassthrough {
             post,
             default_system_message: "".to_string(),
             limit_bytes: DEFAULT_LIMIT_BYTES,  // one token translates to 3 bytes (not unicode chars)
-            vecdb_search,
+            has_vecdb_results: HasVecdbResults::new(),
+            global_context,
         }
     }
 }
@@ -53,26 +56,38 @@ impl ScratchpadAbstract for ChatPassthrough {
         _context_size: usize,
         _sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history_in_bytes(&self.post, self.limit_bytes, &self.default_system_message)?;
-        info!("chat passthrough {} messages -> {} messages after applying limits and possibly adding the default system message", &limited_msgs.len(), &limited_msgs.len());
+        info!("chat passthrough {} messages at start", &self.post.messages.len());
+        let top_n = 6;
+        run_at_commands(self.global_context.clone(), &mut self.post, top_n, &mut self.has_vecdb_results).await;
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history_in_bytes(&self.post.messages, self.limit_bytes, &self.default_system_message)?;
+        info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", &self.post.messages.len(), &limited_msgs.len());
         let mut filtered_msgs: Vec<ChatMessage> = Vec::<ChatMessage>::new();
         for msg in &limited_msgs {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" {
                 filtered_msgs.push(msg.clone());
             } else if msg.role == "context_file" {
-                let vector_of_context_files: Vec<ContextFile> = serde_json::from_str(&msg.content).unwrap(); // FIXME unwrap
-                for context_file in &vector_of_context_files {
-                    filtered_msgs.push(ChatMessage {
-                        role: "user".to_string(),
-                        content: format!("{}\n```\n{}```", context_file.file_name, context_file.file_content),
-                    });
+                match serde_json::from_str(&msg.content) {
+                    Ok(res) => {
+                        let vector_of_context_files: Vec<ContextFile> = res;
+                        for context_file in &vector_of_context_files {
+                            filtered_msgs.push(ChatMessage {
+                                role: "user".to_string(),
+                                content: format!("{}:{}-{}\n```\n{}```",
+                                    context_file.file_name,
+                                    context_file.line1,
+                                    context_file.line2,
+                                    context_file.file_content),
+                            });
+                        }
+                    },
+                    Err(e) => { error!("error parsing context file: {}", e); }
                 }
             }
         }
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&filtered_msgs).unwrap();
         if DEBUG {
             for msg in &filtered_msgs {
-                info!("filtered message: {:?}", msg);
+                info!("filtered message role={} {}", msg.role, crate::nicer_logs::first_n_chars(&msg.content, 40));
             }
         }
         Ok(prompt.to_string())
@@ -118,5 +133,9 @@ impl ScratchpadAbstract for ChatPassthrough {
             "choices": json_choices,
         });
         Ok((ans, finished))
+    }
+
+    fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
+        return self.has_vecdb_results.response_streaming();
     }
 }

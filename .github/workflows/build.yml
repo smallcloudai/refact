@@ -7,7 +7,7 @@ on:
   # Trigger the workflow on any pull request
   pull_request:
   workflow_dispatch:
-  repository_dispatch: 
+  repository_dispatch:
 
 
 env:
@@ -34,20 +34,20 @@ jobs:
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             code-target: win32-arm64
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             code-target: linux-x64
             container: ubuntu:18.04
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
             code-target: linux-arm64
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             target: arm-unknown-linux-gnueabihf
             code-target: linux-armhf
-          - os: macos-11
+          - os: macos-12
             target: x86_64-apple-darwin
             code-target: darwin-x64
-          - os: macos-11
+          - os: macos-14
             target: aarch64-apple-darwin
             code-target: darwin-arm64
 
@@ -68,7 +68,12 @@ jobs:
         if: matrix.container == 'ubuntu:18.04'
         shell: bash
         run: |
-          apt-get update && apt-get install -y build-essential curl libssl-dev pkg-config
+          apt-get update && apt install -y build-essential manpages-dev software-properties-common
+          add-apt-repository ppa:ubuntu-toolchain-r/test
+          apt-get install -y sudo build-essential curl libssl-dev pkg-config wget git zlib1g zlib1g-dev gcc-11 g++-11
+          unlink /usr/bin/gcc && ln -s /usr/bin/gcc-11 /usr/bin/gcc && unlink /usr/bin/g++ && ln -s /usr/bin/g++-11 /usr/bin/g++
+          wget https://github.com/Kitware/CMake/releases/download/v3.20.0/cmake-3.20.0.tar.gz
+          tar -zxvf cmake-3.20.0.tar.gz && cd cmake-3.20.0 && ./bootstrap && make && make install && cd.. && cmake --version
           curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --profile minimal --default-toolchain none -y
           echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
 
@@ -88,25 +93,44 @@ jobs:
 
       - name: Install ARM target toolchain
         if: matrix.target == 'arm-unknown-linux-gnueabihf'
-        run: sudo apt-get install gcc-multilib-arm-linux-gnueabihf
-      
+        run: sudo apt-get install gcc-arm-linux-gnueabihf
+
+      - name: Xcode Select Version
+        uses: mobiledevops/xcode-select-version-action@v1
+        if: matrix.target == 'aarch64-apple-darwin'
+        with:
+          xcode-select-version: 14.3.1
+
+      - name: Install toolchain dependencies (MacOS)
+        if: startsWith(matrix.os, 'macos')
+        run: brew install protobuf
+
+      - name: Install toolchain dependencies (Windows)
+        if: startsWith(matrix.os, 'windows')
+        run: choco install protoc
+
+      - name: Build and install protobuf library
+        if: matrix.target == 'arm-unknown-linux-gnueabihf' || matrix.target == 'x86_64-unknown-linux-gnu' || matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          git clone --depth=1 --recursive -b v25.1 https://github.com/protocolbuffers/protobuf
+          cd protobuf && cmake . && cmake --build . --parallel 10 && sudo cmake --install .
+
+      - name: Restore cached cargo
+        uses: swatinem/rust-cache@v1
+        with:
+          key: ${{ matrix.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Build and test artifact
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
-          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo test --release
-          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo build --release --target-dir dist/
-      
+          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo test --release || exit 1
+          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo build --release --target-dir dist/ || exit 1
+
       - name: Build and test artifact
-        if: matrix.target == 'aarch64-apple-darwin'
+        if: matrix.target != 'x86_64-unknown-linux-gnu'
         run: |
-          cargo build --release --target-dir dist/ --target aarch64-apple-darwin
-          mv ./dist/aarch64-apple-darwin/release/refact-lsp ./dist/release/refact-lsp
-      
-      - name: Build and test artifact
-        if: matrix.target != 'x86_64-unknown-linux-gnu' && matrix.target != 'aarch64-apple-darwin'
-        run: |
-          cargo test --release
-          cargo build --release --target-dir dist/
+          cargo test --release || exit 1
+          cargo build --release --target-dir dist/ || exit 1
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -116,68 +140,3 @@ jobs:
           path: |
             ./dist/release/refact-lsp
             ./dist/release/refact-lsp.exe
-
-  dist-x86_64-unknown-linux-musl:
-    name: dist (x86_64-unknown-linux-musl)
-    runs-on: ubuntu-latest
-    env:
-      LLM_LS_TARGET: x86_64-unknown-linux-musl
-      # For some reason `-crt-static` is not working for clang without lld
-      RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C target-feature=-crt-static"
-    container:
-      image: rust:alpine
-      volumes:
-        - /usr/local/cargo/registry:/usr/local/cargo/registry
-
-    steps:
-      - name: Install dependencies
-        run: apk add --no-cache git clang lld musl-dev nodejs npm openssl-dev pkgconfig g++
-
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: ${{ env.FETCH_DEPTH }}
-
-      - name: Build and test artifact
-        run: |
-          cargo test --release
-          cargo build --release --target-dir dist/
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v1
-        with:
-          name: dist-x86_64-unknown-linux-musl
-          path: ./dist/release/refact-lsp
-
-  # dist-arm64-unknown-linux-musl:
-  #   name: dist (arm64-unknown-linux-musl)
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: ${{ env.FETCH_DEPTH }}
-
-  #     - uses: uraimo/run-on-arch-action@v2
-  #       name: Build artifact
-  #       id: build
-  #       with:
-  #         arch: aarch64
-  #         distro: rust:alpine
-  #         dockerRunArgs: |
-  #           --volume "${PWD}:/data"
-  #         env: |
-  #           RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C target-feature=-crt-static"
-  #         shell: /bin/sh
-  #         install: |
-  #           apk add --no-cache git clang lld musl-dev nodejs npm openssl-dev pkgconfig g++
-  #         run: |
-  #           cd /data
-  #           cargo build --release --target-dir dist/
-
-  #     - name: Upload artifacts
-  #       uses: actions/upload-artifact@v1
-  #       with:
-  #         name: dist-arm64-unknown-linux-musl
-  #         path: ./dist/release/refact-lsp

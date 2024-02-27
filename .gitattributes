@@ -1,0 +1,6 @@
+* text=false
+
+*.rs            text eol=lf 
+*.cpp           text eol=lf 
+*.java          text eol=lf 
+*.js            text eol=lf 
