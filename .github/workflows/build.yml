@@ -103,6 +103,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           key: ${{ matrix.os }}-${{ matrix.target }}-cargo
+          shared-key: ${{ matrix.os }}-${{ matrix.target }}-cargo
 
       - name: Build and test artifact
         if: matrix.target == 'x86_64-unknown-linux-gnu'
