@@ -77,30 +77,33 @@ async function create_team_tables(data) {
         });
     });
 
+    async function on_checkbox_change() {
+        let users_checked = [];
+        let teams_tables_checkboxes = document.querySelectorAll(".dusers-teams-table-col input[type=checkbox]");
+        // fill users_checked: for each checkbox: if it's in td, get first field and push to users_checked
+        teams_tables_checkboxes.forEach(el0 => {
+            if (el0.parentElement.tagName === "TD") {
+                if (el0.checked) {
+                    users_checked.push(el0.parentElement.nextElementSibling.innerText);
+                }
+            }
+        });
+        if (users_checked.length !== 0) {
+            let data = await fetch_teams_dashboard_data({"users_selected": users_checked});
+            await render_plots(data);
+        }
+    }
+
     // action on checkbox change
     let teams_tables_checkboxes = document.querySelectorAll(".dusers-teams-table-col input[type=checkbox]");
     teams_tables_checkboxes.forEach(el => {
-        el.addEventListener("change", async () => {
-            let users_checked = [];
-            // fill users_checked: for each checkbox: if it's in td, get first field and push to users_checked
-            teams_tables_checkboxes.forEach(el0 => {
-                if (el0.parentElement.tagName === "TD") {
-                    if (el0.checked) {
-                        users_checked.push(el0.parentElement.nextElementSibling.innerText);
-                    }
-                }
-            });
-            if (users_checked.length !== 0) {
-                let data = await fetch_teams_dashboard_data({"users_selected": users_checked});
-                console.log("data", data);
-                await render_plots(data);
-            }
-        });
+        el.addEventListener('change', on_checkbox_change);
     });
-    // click on first team table checkbox
-    teams_tables_checkboxes[0].click();
+    teams_tables_checkboxes.forEach(el => {
+        el.checked = true;
+    });
+    await on_checkbox_change();
 }
-
 
 export async function init(insert_in_el,) {
     insert_in_el.innerHTML = html;

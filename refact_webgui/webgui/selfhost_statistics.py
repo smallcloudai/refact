@@ -1,4 +1,5 @@
 import json
+import time
 
 from typing import List, Any, Dict
 
@@ -81,6 +82,7 @@ class BaseTabStatisticsRouter(APIRouter):
             raise HTTPException(status_code=500, detail=str(e))
 
     async def _dash_prime_get(self, request: Request):
+        time_start = time.time()
         data_tables = await self._stats_service.compose_data_frames(
             await self._workspace_from_request(request))
 
@@ -92,12 +94,14 @@ class BaseTabStatisticsRouter(APIRouter):
             )
 
         data = dashboard_prime(data_tables)
+        done_in = f"{time.time() - time_start:.3f}s"
         return JSONResponse(
-            content=data,
+            content={**data, "done_in": done_in},
             media_type='application/json'
         )
 
     async def _dash_teams_get(self, request: Request):
+        time_start = time.time()
         data_tables = await self._stats_service.compose_data_frames(
             await self._workspace_from_request(request))
 
@@ -109,12 +113,14 @@ class BaseTabStatisticsRouter(APIRouter):
             )
 
         data = teams_data(data_tables)
+        done_in = f"{time.time() - time_start:.3f}s"
         return JSONResponse(
-            content=data,
+            content={**data, "done_in": done_in},
             media_type='application/json'
         )
 
     async def _dash_teams_post(self, post: DashTeamsGenDashData, request: Request):
+        time_start = time.time()
         data_tables = await self._stats_service.compose_data_frames(
             await self._workspace_from_request(request))
 
@@ -126,8 +132,9 @@ class BaseTabStatisticsRouter(APIRouter):
             )
 
         data = dashboard_teams(data_tables, post.users_selected)
+        done_in = f"{time.time() - time_start:.3f}s"
         return JSONResponse(
-            content=data,
+            content={**data, "done_in": done_in},
             media_type='application/json'
         )
 

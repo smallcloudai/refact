@@ -12,6 +12,18 @@ class StatsDataFrames:
     extra: Dict
 
 
+# has to be ignored as they send deviated statistics
+IGNORE_PLUGIN_VERSION = [
+    "jetbrains-1.2.16",
+    "jetbrains-1.2.15",
+    "jetbrains-1.2.13",
+    "jetbrains-1.2.14",
+    "refact-2.0.125",
+    "refact-2.0.124",
+    "refact-2.0.123",
+]
+
+
 def complete_date_axis(
         data: Dict[Any, Any],
         default_val: Any,
