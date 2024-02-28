@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useConfig } from "../../contexts/config-context";
 import { Theme } from "../Theme";
 
-export type PortalProps = React.PropsWithChildren<{ element?: HTMLElement }>;
+export type PortalProps = { element?: HTMLElement; children: JSX.Element };
 export const Portal: React.FC<PortalProps> = ({
   children,
   element = document.body,

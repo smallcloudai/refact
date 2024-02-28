@@ -1,4 +1,4 @@
-import React, { useEffect, ReactNode } from "react";
+import React, { useEffect } from "react";
 import {
   Theme as RadixTheme,
   IconButton,
@@ -10,9 +10,8 @@ import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
 import { useConfig } from "../../contexts/config-context";
 
-// Imports theme in to events.d.ts
 export type ThemeProps = {
-  children: ReactNode;
+  children: JSX.Element;
   appearance?: "inherit" | "light" | "dark";
 
   accentColor?:
