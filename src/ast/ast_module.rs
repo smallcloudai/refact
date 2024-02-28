@@ -17,6 +17,7 @@ use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, CursorUsa
 use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::files_in_workspace::DocumentInfo;
 use rayon::prelude::*;
+use crate::files_in_jsonl::files_in_jsonl;
 
 pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
@@ -37,14 +38,7 @@ impl AstModule {
         let ast_index = Arc::new(AMutex::new(AstIndex::init()));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(ast_index.clone())));
 
-        let files_jsonl_path = global_context.read().await.cmdline.files_jsonl_path.clone();
-        let documents = match crate::files_in_jsonl::parse_jsonl(&files_jsonl_path).await {
-            Ok(lst) => lst,
-            Err(err) => {
-                error!("failed to parse {}: {}", files_jsonl_path, err);
-                vec![]
-            }
-        };
+        let documents = files_in_jsonl(global_context.clone()).await;
         let me = AstModule {
             ast_index_service,
             ast_index,

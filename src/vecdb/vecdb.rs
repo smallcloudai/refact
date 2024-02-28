@@ -12,6 +12,7 @@ use crate::global_context::{CommandLine, GlobalContext};
 use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
+use crate::files_in_jsonl::files_in_jsonl;
 use crate::files_in_workspace::DocumentInfo;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
@@ -108,14 +109,7 @@ async fn create_vecdb(
     info!("vecdb: test request complete");
 
     // Enqueue files before background task starts: jsonl files
-    let files_jsonl_path = global_context.read().await.cmdline.files_jsonl_path.clone();
-    let files = match crate::files_in_jsonl::parse_jsonl(&files_jsonl_path).await {
-        Ok(lst) => lst,
-        Err(err) => {
-            error!("failed to parse {}: {}", files_jsonl_path, err);
-            vec![]
-        }
-    };
+    let files = files_in_jsonl(global_context.clone()).await;
     vec_db.vectorizer_enqueue_files(&files, true).await;
 
     // Enqueue files before background task starts: workspace files (needs vec_db in global_context)

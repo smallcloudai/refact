@@ -9,6 +9,7 @@ use tokio::sync::RwLock as ARwLock;
 use url::Url;
 
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
+use crate::files_in_jsonl::files_in_jsonl;
 use crate::global_context::GlobalContext;
 
 #[derive(Debug)]
@@ -24,7 +25,8 @@ impl AtParamFilePath {
     }
 }
 
-async fn get_vecdb_file_paths(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<String> {
+// from vecdb or from memory or from jsonl
+async fn get_file_paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<String> {
     let file_paths_from_memory = global_context.read().await.documents_state.document_map.read().await.keys().cloned().collect::<Vec<Url>>();
 
     let file_paths_from_vecdb = match *global_context.read().await.vec_db.lock().await {
@@ -36,15 +38,20 @@ async fn get_vecdb_file_paths(global_context: Arc<ARwLock<GlobalContext>>) -> Ve
         None => vec![]
     };
 
-    let index_file_paths: Vec<_> = file_paths_from_memory.into_iter()
-        .filter_map(|f|f.to_file_path().map(|x|Some(x)).unwrap_or(None))
-        .filter_map(|x|x.to_str().map(|x|Some(x.to_string())).unwrap_or(None))
-        .chain(file_paths_from_vecdb.into_iter())
-        .collect::<HashSet<_>>() // dedup
-        .into_iter()
+    let paths_in_jsonl: Vec<String> = files_in_jsonl(global_context.clone()).await.iter_mut()
+        .filter_map(|doc| {
+            doc.uri.to_file_path().ok().and_then(|path| path.to_str().map(|s| s.to_string()))
+        })
         .collect();
 
-    index_file_paths
+    file_paths_from_memory.into_iter()
+        .filter_map(|f| f.to_file_path().ok())
+        .filter_map(|x| x.to_str().map(|x| x.to_string()))
+        .chain(file_paths_from_vecdb.into_iter())
+        .chain(paths_in_jsonl.into_iter())
+        .collect::<HashSet<_>>() // dedup
+        .into_iter()
+        .collect()
 }
 
 async fn get_ast_file_paths(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<String> {
@@ -63,10 +70,10 @@ impl AtParam for AtParamFilePath {
         &self.name
     }
     async fn is_value_valid(&self, value: &String, context: &AtCommandsContext) -> bool {
-        get_vecdb_file_paths(context.global_context.clone()).await.contains(&value)
+        get_file_paths_from_anywhere(context.global_context.clone()).await.contains(&value)
     }
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
-        let index_file_paths = get_vecdb_file_paths(context.global_context.clone()).await;
+        let index_file_paths = get_file_paths_from_anywhere(context.global_context.clone()).await;
 
         let mapped_paths = index_file_paths.iter().map(|f| {
             let path = PathBuf::from(f);
@@ -106,65 +113,6 @@ impl AtParamFilePathWithRow {
         }
     }
 }
-
-#[async_trait]
-impl AtParam for AtParamFilePathWithRow {
-    fn name(&self) -> &String {
-        &self.name
-    }
-    async fn is_value_valid(&self, value: &String, context: &AtCommandsContext) -> bool {
-        let mut parts = value.split(":");
-        let file_path = match parts.next().ok_or("_") {
-            Ok(res) => res,
-            Err(_) => {
-                return false
-            }
-        };
-        let row_idx_str = match parts.next().ok_or("_") {
-            Ok(res) => res,
-            Err(_) => {
-                return false
-            }
-        };
-        // TODO: check if the row exists
-        let row_idx: usize = match row_idx_str.parse() {
-            Ok(res) => res,
-            Err(_) => {
-                return false
-            }
-        };
-        let paths = get_ast_file_paths(context.global_context.clone()).await;
-        paths.contains(&file_path.to_string())
-    }
-
-    async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
-        let index_file_paths = get_ast_file_paths(context.global_context.clone()).await;
-
-        let mapped_paths = index_file_paths.iter().map(|f| {
-            let path = PathBuf::from(f);
-            (
-                f,
-                normalized_damerau_levenshtein(
-                    if value.starts_with("/") {
-                        f
-                    } else {
-                        path.file_name().unwrap().to_str().unwrap()
-                    },
-                    &value.to_string(),
-                )
-            )
-        });
-
-        let sorted_paths = mapped_paths
-            .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
-            .rev()
-            .map(|(path, _)| path.clone())
-            .take(top_n)
-            .collect::<Vec<String>>();
-        sorted_paths
-    }
-}
-
 
 #[derive(Debug)]
 pub struct AtParamSymbolPathQuery {

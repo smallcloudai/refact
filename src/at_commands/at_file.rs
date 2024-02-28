@@ -29,12 +29,12 @@ impl AtFile {
 }
 
 
-struct ColonLinesRange {
-    start: i32,
-    end: i32,
+pub struct ColonLinesRange {
+    pub start: i32,
+    pub end: i32,
 }
 
-fn colon_lines_range_from_arg(value: &mut String) -> Option<ColonLinesRange> {
+pub fn colon_lines_range_from_arg(value: &mut String) -> Option<ColonLinesRange> {
     let re = Regex::new(r":(\d+)(?:-(\d+))?$").unwrap();
     if let Some(captures) = re.captures(value) {
         let mut res = ColonLinesRange {start: -1, end: -1};

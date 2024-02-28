@@ -8,12 +8,14 @@ use tokio::sync::Mutex as AMutex;
 use tracing::info;
 use tree_sitter::Point;
 
-use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult};
+use crate::ast::structs::AstCursorSearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::at_params::AtParamFilePathWithRow;
+use crate::at_commands::at_file::colon_lines_range_from_arg;
+use crate::at_commands::at_params::AtParamFilePath;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ChatMessage, ContextFile};
 use crate::files_in_workspace::DocumentInfo;
+
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SimplifiedSymbolDeclarationStruct {
@@ -59,7 +61,7 @@ impl AtAstLookupSymbols {
         AtAstLookupSymbols {
             name: "@lookup_symbols_at".to_string(),
             params: vec![
-                Arc::new(AMutex::new(AtParamFilePathWithRow::new()))
+                Arc::new(AMutex::new(AtParamFilePath::new()))
             ],
         }
     }
@@ -76,7 +78,9 @@ impl AtCommand for AtAstLookupSymbols {
     async fn can_execute(&self, args: &Vec<String>, context: &AtCommandsContext) -> bool {
         let param = self.params.get(0).unwrap();
         if let Some(arg) = args.get(0) {
-            if param.lock().await.is_value_valid(arg, context).await {
+            let mut arg_clone = arg.clone();
+            colon_lines_range_from_arg(&mut arg_clone);
+            if param.lock().await.is_value_valid(&arg_clone, context).await {
                 return true;
             }
         }
@@ -89,21 +93,24 @@ impl AtCommand for AtAstLookupSymbols {
         }
         info!("execute @lookup_symbols_at {:?}", args);
 
-        let (file_path, row_idx_str) = match args.get(0) {
-            Some(x) => {
-                let mut parts = x.split(":");
-                let file_path = parts.next().ok_or("missing file path")?;
-                let row_idx = parts.next().ok_or("missing row index")?;
-                (file_path, row_idx)
-            }
+        let mut file_path = match args.get(0) {
+            Some(x) => x.clone(),
             None => return Err("no file path".to_string()),
         };
-        let row_idx: usize = row_idx_str.parse().map_err(|_| "row index is not a valid number")?;
+        let row_idx = match colon_lines_range_from_arg(&mut file_path) {
+            Some(x) => {
+                if x.start < 0 {
+                    return Err("row index is not a valid number".to_string());
+                }
+                x.start as usize
+            },
+            None => return Err("row index is not valid".to_string()),
+        };
 
         let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &file_path.to_string()).await?;
         let binding = context.global_context.read().await;
         let doc_info = match DocumentInfo::from_pathbuf_and_text(
-            &PathBuf::from(file_path), &file_text,
+            &PathBuf::from(&file_path), &file_text,
         ) {
             Ok(doc) => doc,
             Err(err) => {

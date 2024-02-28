@@ -19,14 +19,7 @@ use crate::global_context::GlobalContext;
 pub async fn enqueue_all_files_from_jsonl(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) {
-    let files_jsonl_path = gcx.clone().read().await.cmdline.files_jsonl_path.clone();
-    let docs = match parse_jsonl(&files_jsonl_path).await {
-        Ok(docs) => docs,
-        Err(e) => {
-            info!("invalid jsonl file {:?}: {:?}", files_jsonl_path, e);
-            vec![]
-        }
-    };
+    let docs = files_in_jsonl(gcx.clone()).await;
     let (ast_module, vecdb_module) = {
         let cx_locked = gcx.read().await;
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
@@ -71,6 +64,17 @@ pub async fn parse_jsonl(path: &String) -> Result<Vec<DocumentInfo>, String> {
         }
     }
     Ok(paths)
+}
+
+pub async fn files_in_jsonl(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<DocumentInfo> {
+    let files_jsonl_path = global_context.read().await.cmdline.files_jsonl_path.clone();
+    match parse_jsonl(&files_jsonl_path).await {
+        Ok(docs) => docs,
+        Err(e) => {
+            info!("invalid jsonl file {:?}: {:?}", files_jsonl_path, e);
+            vec![]
+        }
+    }
 }
 
 fn make_async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
