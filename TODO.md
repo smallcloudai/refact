@@ -127,6 +127,7 @@
 [x] use a different way to disable attach than if context file is there
 [ ] remove snippet
 [x] add metering_balance (coins) and model used in chat
+[x] figure out why react is being imported in `dist/event/index.d.ts`
 
 ### EVENTS TODO FOR IDEs
 

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, ReactNode } from "react";
 import {
   Theme as RadixTheme,
   IconButton,
@@ -11,7 +11,8 @@ import "./theme-config.css";
 import { useConfig } from "../../contexts/config-context";
 
 // Imports theme in to events.d.ts
-export type ThemeProps = React.PropsWithChildren<{
+export type ThemeProps = {
+  children: ReactNode;
   appearance?: "inherit" | "light" | "dark";
 
   accentColor?:
@@ -46,7 +47,7 @@ export type ThemeProps = React.PropsWithChildren<{
   panelBackground?: "solid" | "translucent";
   radius?: "none" | "small" | "medium" | "large" | "full";
   scaling?: "90%" | "95%" | "100%" | "105%" | "110%";
-}>;
+};
 
 const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
   const { isDarkMode, toggle } = useDarkMode();
