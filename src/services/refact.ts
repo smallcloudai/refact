@@ -1,9 +1,9 @@
 import { getApiKey } from "../utils/ApiKey";
 const CHAT_URL = `/v1/chat`;
 const CAPS_URL = `/v1/caps`;
+const STATISTIC_URL = `/v1/get-dashboard-plots`;
 const AT_COMMAND_COMPLETION = "/v1/at-command-completion";
 const AT_COMMAND_PREVIEW = "/v1/at-command-preview";
-const STATISTIC_URL = `/v1/get-dashboard-plots`;
 
 export type ChatRole = "user" | "assistant" | "context_file" | "system";
 

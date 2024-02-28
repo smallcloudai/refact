@@ -1,4 +1,4 @@
-const json = {
+export const json = {
   refact_impact_dates: {
     data: {
       daily: {

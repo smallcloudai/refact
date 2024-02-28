@@ -15,10 +15,10 @@ import {
   isSaveChatFromChat,
   isRequestCapsFromChat,
   isStopStreamingFromChat,
+  isRequestDataForStatistic,
   isRequestAtCommandCompletion,
   ReceiveAtCommandCompletion,
   ReceiveAtCommandPreview,
-  isRequestDataForStatistic,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
