@@ -55,6 +55,17 @@ fn _replace_variables_in_messages(config: &mut ToolboxConfig, variables: &HashMa
     }
 }
 
+fn _replace_variables_in_system_prompts(config: &mut ToolboxConfig, variables: &HashMap<String, String>)
+{
+    for (_, prompt) in config.system_prompts.iter_mut() {
+        let mut tmp = prompt.text.clone();
+        for (vname, vtext) in variables.iter() {
+            tmp = tmp.replace(&format!("%{}%", vname), vtext);
+        }
+        prompt.text = tmp;
+    }
+}
+
 fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, String> {
     let default_unstructured: serde_yaml::Value = serde_yaml::from_str(crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML)
         .map_err(|e| format!("Error parsing default YAML: {}", e))?;
@@ -72,6 +83,8 @@ fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, Str
 
     _replace_variables_in_messages(&mut work_config, &variables);
     _replace_variables_in_messages(&mut user_config, &variables);
+    _replace_variables_in_system_prompts(&mut work_config, &variables);
+    _replace_variables_in_system_prompts(&mut user_config, &variables);
 
     work_config.toolbox_commands.extend(user_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.system_prompts.extend(user_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
