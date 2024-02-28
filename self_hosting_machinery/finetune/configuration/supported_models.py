@@ -40,7 +40,24 @@ _starcoder_base = {
     ],
     "force_enable_checkpointing": False
 }
-
+_starcoder2_base = {
+    "lora_target_modules_mapping": {
+        "qkv": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj"],
+        "out": ["self_attn.o_proj"],
+        "backproj": ["self_attn.o_proj"],
+        "mlp": ["mlp.c_fc", "mlp.c_proj"],
+    },
+    "freeze_exceptions_mapping": {
+        "wte": ["embed_tokens"],
+        "lm_head": ["lm_head"],
+        "lora": ["lora"]
+    },
+    "tokenizer": _bigcode_tokenizer_mapping,
+    "train_ds_pipeline": _fim_train_ds_pipeline,
+    "test_ds_pipeline": _fim_test_ds_pipeline,
+    "train_model_modifiers": [],
+    "force_enable_checkpointing": False
+}
 _deepseek_base = {
     "lora_target_modules_mapping": {
         "qkv": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj"],
@@ -100,6 +117,18 @@ config = {
 
     "starcoder/7b/base": {
         **_starcoder_base,
+        "force_enable_checkpointing": True
+    },
+
+    "starcoder2/3b/base": _starcoder2_base,
+
+    "starcoder2/7b/base": {
+        **_starcoder2_base,
+        "force_enable_checkpointing": True
+    },
+
+    "starcoder2/15b/base": {
+        **_starcoder2_base,
         "force_enable_checkpointing": True
     },
 

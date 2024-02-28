@@ -111,6 +111,9 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 | [starcoder/7b/base](https://huggingface.co/smallcloudai/starcoderbase-7b)                         | +          |      | +           |
 | [starcoder/15b/base](https://huggingface.co/TheBloke/starcoder-GPTQ)                              | +          |      |             |
 | [starcoder/15b/plus](https://huggingface.co/TheBloke/starcoderplus-GPTQ)                          | +          |      |             |
+| [starcoder2/3b/base](https://huggingface.co/bigcode/starcoder2-3b)                                | +          |      | +           |
+| [starcoder2/7b/base](https://huggingface.co/bigcode/starcoder2-7b)                                | +          |      | +           |
+| [starcoder2/15b/base](https://huggingface.co/bigcode/starcoder2-15b)                              | +          |      | +           |
 | [wizardcoder/15b](https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GPTQ)                       | +          |      |             |
 | [codellama/7b](https://huggingface.co/TheBloke/CodeLlama-7B-fp16)                                 | +          |      | +           |
 | [starchat/15b/beta](https://huggingface.co/TheBloke/starchat-beta-GPTQ)                           |            | +    |             |
