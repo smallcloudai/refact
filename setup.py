@@ -52,8 +52,8 @@ all_refact_packages = {
               "webgui/static/dashboards/*", "webgui/static/assets/*"]),
     "self_hosting_machinery": PyPackage(
         requires=["python-multipart", "auto-gptq==0.6.0", "accelerate",
-                  "termcolor", "torch", "transformers==4.38.1", "bitsandbytes",
-                  "safetensors", "peft", "triton",
+                  "termcolor", "torch", "transformers @ git+https://github.com/bigcode-project/transformers@starcoder2",
+                  "bitsandbytes", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed==0.12.6",
                   "sentence-transformers", "huggingface-hub>=0.19.3"],
         optional=["ninja", "flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
