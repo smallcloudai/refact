@@ -3,6 +3,7 @@ const CHAT_URL = `/v1/chat`;
 const CAPS_URL = `/v1/caps`;
 const AT_COMMAND_COMPLETION = "/v1/at-command-completion";
 const AT_COMMAND_PREVIEW = "/v1/at-command-preview";
+const STATISTIC_URL = `/v1/get-dashboard-plots`;
 
 export type ChatRole = "user" | "assistant" | "context_file" | "system";
 
@@ -175,6 +176,38 @@ export async function getCaps(lspUrl?: string): Promise<CapsResponse> {
     throw new Error("Invalid response from caps");
   }
 
+  return json;
+}
+
+export function isStatisticDataResponse(
+  json: unknown,
+): json is { data: string } {
+  if (!json || typeof json !== "object") return false;
+  if (!("data" in json)) return false;
+  return typeof json.data === "string";
+}
+
+export async function getStatisticData(
+  lspUrl?: string,
+): Promise<{ data: string }> {
+  const statisticDataEndpoint = lspUrl
+    ? `${lspUrl.replace(/\/*$/, "")}${STATISTIC_URL}`
+    : STATISTIC_URL;
+  const response = await fetch(statisticDataEndpoint, {
+    method: "GET",
+    credentials: "same-origin",
+    headers: {
+      accept: "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
+  const json: unknown = await response.json();
+  if (!isStatisticDataResponse(json)) {
+    throw new Error("Invalid response for statistic data");
+  }
   return json;
 }
 
@@ -378,7 +411,7 @@ export type RefactTableImpactDateObj = {
 export type RefactTableImpactLanguagesRow = {
   [key in ColumnName]: string | number;
 };
-export type RefactTableData = {
+export type StatisticData = {
   refact_impact_dates: {
     data: {
       daily: Record<string, RefactTableImpactDateObj>;

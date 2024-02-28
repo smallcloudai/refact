@@ -1,22 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { Box, Flex, Button, Heading, Responsive } from "@radix-ui/themes";
-import { RefactTableData } from "../services/refact";
-import { Table } from "../components/Table/Table";
-import { Chart } from "../components/Chart/Chart";
-import { Spinner } from "../components/Spinner";
+import React from "react";
+import { Flex, Button, Responsive } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { useConfig } from "../contexts/config-context";
 import { ScrollArea } from "../components/ScrollArea";
-import { TABLE } from "../__fixtures__";
 import { useEventBusForStatistic } from "../hooks";
+import { StatisticView } from "../components/StatisticView/StatisticView";
 
 export const Statistic: React.FC<{
   onCloseStatistic?: () => void;
 }> = ({ onCloseStatistic }) => {
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
-  const [refactTable, setRefactTable] = useState<RefactTableData | null>(null);
   const { host, tabbed } = useConfig();
-  const { backFromStatistic } = useEventBusForStatistic();
+  const { backFromStatistic, state } = useEventBusForStatistic();
   const LeftRightPadding: Responsive<
     "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
   > =
@@ -36,13 +30,6 @@ export const Statistic: React.FC<{
   > = {
     initial: "5",
   };
-
-  useEffect(() => {
-    if (TABLE.data) {
-      setRefactTable(JSON.parse(TABLE.data) as RefactTableData);
-      setIsLoaded(true);
-    }
-  }, []);
 
   return (
     <Flex
@@ -78,38 +65,11 @@ export const Statistic: React.FC<{
             width: "inherit",
           }}
         >
-          {isLoaded ? (
-            <Box
-              style={{
-                width: "inherit",
-              }}
-            >
-              <Flex
-                direction="column"
-                style={{
-                  width: "inherit",
-                }}
-              >
-                <Heading as="h3" align="center" mb="1">
-                  Statistics
-                </Heading>
-                {refactTable !== null && (
-                  <Flex align="center" justify="center" direction="column">
-                    <Table
-                      refactImpactTable={refactTable.table_refact_impact.data}
-                    />
-                    <Chart
-                      refactImpactDatesWeekly={
-                        refactTable.refact_impact_dates.data.weekly
-                      }
-                    />
-                  </Flex>
-                )}
-              </Flex>
-            </Box>
-          ) : (
-            <Spinner />
-          )}
+          <StatisticView
+            statisticData={state.statisticData}
+            isLoading={state.isLoading}
+            error={state.error}
+          />
         </Flex>
       </ScrollArea>
     </Flex>

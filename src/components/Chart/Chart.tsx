@@ -54,6 +54,7 @@ export const Chart: React.FC<{
       left: "3%",
       right: "4%",
       bottom: "3%",
+      top: "10%",
       containLabel: true,
     },
     xAxis: [
@@ -68,6 +69,10 @@ export const Chart: React.FC<{
     yAxis: [
       {
         type: "value",
+        name: "char.",
+        nameTextStyle: {
+          align: "right",
+        },
       },
     ],
     series: [
@@ -77,6 +82,7 @@ export const Chart: React.FC<{
         stack: "Ad",
         data: humanData,
         barWidth: "80%",
+        itemStyle: { normal: { color: "#91cc75" } },
       },
       {
         name: "Refact",
@@ -84,13 +90,14 @@ export const Chart: React.FC<{
         stack: "Ad",
         data: refactData,
         barWidth: "80%",
+        itemStyle: { normal: { color: "#5470c6" } },
       },
     ],
   };
 
   return (
     <Box mt="3" width="100%">
-      <Text as="p" size="2">
+      <Text as="p" size="2" mt="5">
         Refact vs Human
       </Text>
       <ReactEChartsCore
@@ -98,21 +105,6 @@ export const Chart: React.FC<{
         option={option}
         style={{ width: "100%", height: "300px" }}
       />
-      <Box>
-        {dates.map((date: string, index: number) => (
-          <Box key={index}>
-            <Text size="1" as="p">
-              Date: {date}
-            </Text>
-            <Text size="1" as="p">
-              Human: {humanData[index]} ch.
-            </Text>
-            <Text size="1" mb="2" as="p">
-              Refact: {refactData[index]} ch.
-            </Text>
-          </Box>
-        ))}
-      </Box>
     </Box>
   );
 };
