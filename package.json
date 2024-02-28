@@ -1,6 +1,6 @@
 {
   "name": "refact-chat-js",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "license": "BSD-3-Clause",
   "files": [
