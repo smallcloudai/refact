@@ -270,7 +270,7 @@ huggingface_mini_db = {
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "required_memory_mb": 12000,
-        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
+        "T": 4096,
         "filter_caps": ["completion", "finetune"],
     },
     "starcoder2/7b/base": {
