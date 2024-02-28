@@ -40,8 +40,13 @@ export function isActionFromStatistic(
 export interface ActionToStatistic extends BaseAction {
   type: EVENT_NAMES_TO_STATISTIC;
 }
+
 export interface RequestDataForStatistic extends ActionToStatistic {
   type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA;
+}
+
+export interface SetLoadingStatisticData extends ActionToStatistic {
+  type: EVENT_NAMES_TO_STATISTIC.SET_LOADING_STATISTIC_DATA;
 }
 
 export function isActionToStatistic(
@@ -130,4 +135,11 @@ export function isReceiveFillInTheMiddleDataError(
     action.type !==
     EVENT_NAMES_TO_STATISTIC.RECEIVE_FILL_IN_THE_MIDDLE_DATA_ERROR
   );
+}
+
+export function isSetLoadingStatisticData(
+  action: unknown,
+): action is SetLoadingStatisticData {
+  if (!isActionToStatistic(action)) return false;
+  return action.type === EVENT_NAMES_TO_STATISTIC.SET_LOADING_STATISTIC_DATA;
 }

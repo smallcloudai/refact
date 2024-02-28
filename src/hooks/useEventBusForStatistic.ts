@@ -8,6 +8,8 @@ import {
   isReceiveDataForStatisticError,
   isReceiveFillInTheMiddleData,
   isRequestFillInTheMiddleData,
+  isRequestDataForStatistic,
+  isSetLoadingStatisticData,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useCallback, useEffect, useReducer } from "react";
@@ -75,39 +77,42 @@ function reducer(
     };
   }
 
-  switch (action.type) {
-    case EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA:
-      return {
-        ...state,
-        isLoading: true,
-        error: "",
-      };
-    case EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA:
-      return {
-        ...state,
-        statisticData: action.payload
-          ? (action.payload as StatisticData)
-          : null,
-        isLoading: false,
-        error: "",
-      };
-    case EVENT_NAMES_TO_STATISTIC.SET_LOADING_STATISTIC_DATA:
-      return {
-        ...state,
-        isLoading: !!action.payload,
-      };
-    case EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR:
-      return {
-        ...state,
-        error:
-          typeof action.payload?.message === "string"
-            ? action.payload.message
-            : "",
-        isLoading: false,
-      };
-    default:
-      return state;
+  if (isRequestDataForStatistic(action)) {
+    return {
+      ...state,
+      isLoading: true,
+      error: "",
+    };
   }
+
+  if (isReceiveDataForStatistic(action)) {
+    return {
+      ...state,
+      statisticData: action.payload ? (action.payload as StatisticData) : null,
+      isLoading: false,
+      error: "",
+    };
+  }
+
+  if (isSetLoadingStatisticData(action)) {
+    return {
+      ...state,
+      isLoading: !!action.payload,
+    };
+  }
+
+  if (isReceiveDataForStatisticError(action)) {
+    return {
+      ...state,
+      error:
+        typeof action.payload.message === "string"
+          ? action.payload.message
+          : "",
+      isLoading: false,
+    };
+  }
+
+  return state;
 }
 
 export const useEventBusForStatistic = () => {
