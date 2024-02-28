@@ -202,8 +202,8 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
             rh_df.loc[rh_df["dt_end"] >= (datetime.now() - timedelta(days=7))],
             "last week"
         ),
-        "31 days": extract_stats(
-            rh_df.loc[rh_df["dt_end"] >= (datetime.now() - timedelta(days=31))],
+        "30 days": extract_stats(
+            rh_df.loc[rh_df["dt_end"] >= (datetime.now() - timedelta(days=30))],
             "last month"
         ),
         "all time": extract_stats(
@@ -211,7 +211,7 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
             "all time"
         ),
         "btns_data": {
-            "btns_text": ["7 days", "31 days", "all time"],
+            "btns_text": ["7 days", "30 days", "all time"],
             "default": "all time",
         }
     }

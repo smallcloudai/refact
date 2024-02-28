@@ -358,29 +358,29 @@ class StatisticsService:
         user_to_team_dict = await self.select_users_to_team(workspace)
         rh_records = await self.select_rh_from_ts(timestamp_start_of_year, workspace)
 
-        rh_df = pd.DataFrame(rh_records)
-        rh_df = rh_df[~rh_df['enduser_client_version'].str.startswith(tuple(IGNORE_PLUGIN_VERSION))]
+        robot_human_df = pd.DataFrame(rh_records)
+        robot_human_df = robot_human_df[~robot_human_df['enduser_client_version'].str.startswith(tuple(IGNORE_PLUGIN_VERSION))]
 
-        if rh_df.empty:
+        if robot_human_df.empty:
             return
 
-        rh_df['dt_end'] = pd.to_datetime(rh_df['ts_end'], unit='s')
-        rh_df['team'] = rh_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
-        rh_df.sort_values(by='dt_end', inplace=True)
+        robot_human_df['dt_end'] = pd.to_datetime(robot_human_df['ts_end'], unit='s')
+        robot_human_df['team'] = robot_human_df['tenant_name'].map(lambda x: user_to_team_dict.get(x, "unassigned"))
+        robot_human_df.sort_values(by='dt_end', inplace=True)
 
         extra = {"week_n_to_fmt": {
             week_n: datetime.strftime(group["dt_end"].iloc[0], "%b %d")
-            for week_n, group in rh_df.groupby(rh_df['dt_end'].dt.isocalendar().week)
+            for week_n, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.isocalendar().week)
         }, "day_to_fmt": [
             datetime.strftime(group["dt_end"].iloc[0], "%b %d")
-            for date, group in rh_df.groupby(rh_df['dt_end'].dt.date)
+            for date, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.date)
         ], "month_to_fmt": {
             month_n: datetime.strftime(group["dt_end"].iloc[0], "%b")
-            for month_n, group in rh_df.groupby(rh_df['dt_end'].dt.month)
+            for month_n, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.month)
         }}
 
         return StatsDataFrames(
-            robot_human_df=rh_df,
+            robot_human_df=robot_human_df,
             extra=extra,
         )
 
