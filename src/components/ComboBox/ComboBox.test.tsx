@@ -174,7 +174,8 @@ describe("ComboBox", () => {
       <App requestCommandsCompletion={executableSpy} />,
     );
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@{ArrowDown}{Tab}");
+    await user.type(textarea, "@");
+    await user.keyboard("{ArrowDown}{Enter}");
     expect(executableSpy).toHaveBeenLastCalledWith("@workspace ", 11, null);
   });
 
