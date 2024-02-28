@@ -29,7 +29,6 @@ use crate::http::utils::telemetry_wrapper;
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status, handle_v1_vecdb_caps};
 use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview};
-use crate::http::routers::v1::debug_handler::debug_fim_data;
 
 pub mod code_completion;
 pub mod chat;
@@ -43,7 +42,6 @@ pub mod toolbox;
 pub mod vecdb;
 mod at_commands;
 mod ast;
-mod debug_handler;
 
 pub fn make_v1_router() -> Router {
     Router::new()
@@ -66,7 +64,6 @@ pub fn make_v1_router() -> Router {
 
         .route("/get-dashboard-plots", telemetry_get!(get_dashboard_plots))
 
-        .route("/debug-fim-data", telemetry_post!(debug_fim_data))
         .route("/ast-declarations-cursor-search", telemetry_post!(handle_v1_ast_declarations_cursor_search))
         .route("/ast-declarations-query-search", telemetry_post!(handle_v1_ast_declarations_query_search))
         .route("/ast-references-cursor-search", telemetry_post!(handle_v1_ast_references_cursor_search))

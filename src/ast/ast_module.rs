@@ -6,7 +6,7 @@ use serde::Serialize;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
-use tracing::{info, error};
+use tracing::info;
 use tree_sitter::Point;
 
 use crate::global_context::GlobalContext;
@@ -94,8 +94,8 @@ impl AstModule {
             let ast_index_locked = ast_index.lock().await;
             usage_result.search_results.par_iter().map(|sym| {
                 match ast_index_locked.search_declarations(
-                    sym.symbol_path.as_str(), 
-                    1, 
+                    sym.symbol_path.as_str(),
+                    1,
                     Some(doc.clone()),
                     language
                 ) {
@@ -170,6 +170,7 @@ impl AstModule {
                 return Err(format!("Error parsing {}: {}", path.display(), e));
             }
         };
+        info!("usage_result {:?}", usage_result);
         let mut declarations: Vec<SymbolsSearchResultStruct> = vec![];
         {
             let ast_index = self.ast_index.clone();

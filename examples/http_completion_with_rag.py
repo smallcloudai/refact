@@ -1,52 +1,35 @@
 import os, json, requests
-import initialization_for_scripts
 
-sample_code = """use serde::Deserialize;
-use serde::Serialize;
-use std::collections::HashMap;
-use axum::http::StatusCode;
-use ropey::Rope;
-use crate::custom_error::ScratchError;
+sample_code = """import initialization_for_scripts;
 
-fn test_valid_post1() {
-    let post = CodeCompletionPost {
-        inputs: CodeCompletionInputs {
-            sources: HashMap::from_iter([("hello.py".to_string(), "def hello_world():".to_string())]),
-            cursor: CursorPosition {
-                file: "hello.py".to_string(),
-                line: 0,
-                character: 18,
-            },
-            multiline: true,
-        },
-        parameters: SamplingParameters {
-            max_new_tokens: 20,
-            temperature: Some(0.1),
-            top_p: None,
-            stop: None,
-        },
-        model: "".to_string(),
-        scratchpad: "".to_string(),
-        stream: false,
-        no_cache: false,
-|
-    assert!(crate::call_validation::validate_post(post).is_ok());
-}
+def start():
+    initialization_for_scripts.start_rust()|
+
+
+if __name__ == "__main__":
+    start()
 """
+
+
 
 def test_completion_with_rag():
     # target/debug/refact-lsp --address-url Refact --api-key SMALLCLOUD_API_KEY --http-port 8001 --workspace-folder ../refact-lsp --ast --logs-stderr
+    lines = sample_code.split("\n")
+    cursor_line_n = sample_code[:sample_code.find("|")].count("\n");
+    cursor_line = lines[cursor_line_n]
+    print(f"cursor_line_n: {cursor_line_n}")
+    print(f"cursor_line: {cursor_line}")
     response = requests.post(
         "http://127.0.0.1:8001/v1/code-completion",
         json={
             "inputs": {
                 "sources": {
-                    "hello.rs": sample_code,
-                },
+                    "hello.py": sample_code.replace("|", "")
+                 },
                 "cursor": {
-                    "file": "hello.rs",
-                    "line": sample_code[:sample_code.find("|")].count("\n"),
-                    "character": 0
+                    "file": "hello.py",
+                    "line": cursor_line_n,
+                    "character": cursor_line.find("|"),
                 },
                 "multiline": True
             },
@@ -55,7 +38,8 @@ def test_completion_with_rag():
             "parameters": {
                 "temperature": 0.1,
                 "max_new_tokens": 20,
-            }
+            },
+            "use_ast": True,
         },
         headers={
             "Content-Type": "application/json",

@@ -25,7 +25,7 @@ struct SimplifiedSymbolDeclarationStruct {
     pub line2: usize,
 }
 
-async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
+pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
     // info!("results2message {:?}", result);
     let mut symbols = vec![];
     for res in &result.search_results {
