@@ -3,7 +3,8 @@ import {
   ChatResponse,
   CapsResponse,
   isCapsResponse,
-  ChatContextFile,
+  CommandCompletionResponse,
+  ChatContextFileMessage,
 } from "../services/refact";
 
 export enum EVENT_NAMES_FROM_CHAT {
@@ -11,13 +12,13 @@ export enum EVENT_NAMES_FROM_CHAT {
   ASK_QUESTION = "chat_question",
   REQUEST_CAPS = "chat_request_caps",
   STOP_STREAMING = "chat_stop_streaming",
-  REQUEST_FILES = "chat_request_for_file",
   BACK_FROM_CHAT = "chat_back_from_chat",
   OPEN_IN_CHAT_IN_TAB = "open_chat_in_new_tab",
   SEND_TO_SIDE_BAR = "chat_send_to_sidebar",
   READY = "chat_ready",
   NEW_FILE = "chat_create_new_file",
   PASTE_DIFF = "chat_paste_diff",
+  REQUEST_AT_COMMAND_COMPLETION = "chat_request_at_command_completion",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -32,10 +33,16 @@ export enum EVENT_NAMES_TO_CHAT {
   RECEIVE_CAPS_ERROR = "receive_caps_error",
   SET_CHAT_MODEL = "chat_set_chat_model",
   SET_DISABLE_CHAT = "set_disable_chat",
-  RECEIVE_FILES = "receive_context_file",
-  REMOVE_FILES = "remove_context_file",
   ACTIVE_FILE_INFO = "chat_active_file_info",
   TOGGLE_ACTIVE_FILE = "chat_toggle_active_file",
+  RECEIVE_AT_COMMAND_COMPLETION = "chat_receive_at_command_completion",
+  RECEIVE_AT_COMMAND_PREVIEW = "chat_receive_at_command_preview",
+  SET_SELECTED_AT_COMMAND = "chat_set_selected_command",
+  SET_LAST_MODEL_USED = "chat_set_last_model_used",
+  SET_SELECTED_SNIPPET = "chat_set_selected_snippet",
+  REMOVE_PREVIEW_FILE_BY_NAME = "chat_remove_file_from_preview",
+  SET_PREVIOUS_MESSAGES_LENGTH = "chat_set_previous_messages_length",
+  RECEIVE_TOKEN_COUNT = "chat_set_tokens",
 }
 
 export type ChatThread = {
@@ -44,6 +51,11 @@ export type ChatThread = {
   title?: string;
   model: string;
   attach_file?: boolean;
+};
+
+export type Snippet = {
+  language: string;
+  code: string;
 };
 interface BaseAction {
   type: EVENT_NAMES_FROM_CHAT | EVENT_NAMES_TO_CHAT;
@@ -68,6 +80,24 @@ export function isActionFromChat(action: unknown): action is ActionFromChat {
   return Object.values(ALL_EVENT_NAMES).includes(action.type);
 }
 
+export interface RequestAtCommandCompletion extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
+  payload: {
+    id: string;
+    query: string;
+    cursor: number;
+    trigger: string | null;
+    number: number;
+  };
+}
+
+export function isRequestAtCommandCompletion(
+  action: unknown,
+): action is RequestAtCommandCompletion {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
+}
+
 export interface NewFileFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.NEW_FILE;
   payload: {
@@ -75,6 +105,7 @@ export interface NewFileFromChat extends ActionFromChat {
     content: string;
   };
 }
+
 export function isNewFileFromChat(action: unknown): action is NewFileFromChat {
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.NEW_FILE;
@@ -90,18 +121,6 @@ export function isPasteDiffFromChat(
 ): action is PasteDiffFromChat {
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.PASTE_DIFF;
-}
-
-export interface RequestForFileFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_FILES;
-  payload: { id: string };
-}
-
-export function isRequestForFileFromChat(
-  action: unknown,
-): action is RequestForFileFromChat {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_FILES;
 }
 
 export interface QuestionFromChat extends ActionFromChat {
@@ -165,6 +184,42 @@ export function isActionToChat(action: unknown): action is ActionToChat {
   return Object.values(EVENT_NAMES).includes(action.type);
 }
 
+export interface ReceiveAtCommandCompletion extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
+  payload: { id: string } & CommandCompletionResponse;
+}
+
+export function isReceiveAtCommandCompletion(
+  action: unknown,
+): action is ReceiveAtCommandCompletion {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
+}
+
+export interface ReceiveAtCommandPreview extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW;
+  payload: { id: string; preview: ChatContextFileMessage[] };
+}
+
+export function isReceiveAtCommandPreview(
+  action: unknown,
+): action is ReceiveAtCommandPreview {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW;
+}
+
+export interface SetSelectedAtCommand extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND;
+  payload: { id: string; command: string };
+}
+
+export function isSetSelectedAtCommand(
+  action: unknown,
+): action is SetSelectedAtCommand {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND;
+}
+
 export interface ToggleActiveFile extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
   payload: { id: string; attach_file: boolean };
@@ -178,37 +233,21 @@ export function isToggleActiveFile(
 }
 export interface ActiveFileInfo extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
-  payload: { id: string; name: string; can_paste: boolean };
+  payload: {
+    id: string;
+    file: Partial<{
+      name: string;
+      line1: number | null;
+      line2: number | null;
+      can_paste: boolean;
+      attach: boolean;
+    }>;
+  };
 }
 
 export function isActiveFileInfo(action: unknown): action is ActiveFileInfo {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
-}
-
-export interface ReceiveContextFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_FILES;
-  payload: {
-    id: string;
-    files: ChatContextFile[];
-  };
-}
-
-export function isReceiveContextFile(
-  action: unknown,
-): action is ReceiveContextFile {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_FILES;
-}
-
-export interface RemoveContextFile extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.REMOVE_FILES;
-  payload: { id: string };
-}
-
-export function isRemoveContext(action: unknown): action is RemoveContextFile {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.REMOVE_FILES;
 }
 
 export interface SetChatDisable extends ActionToChat {
@@ -257,7 +296,9 @@ export function isBackupMessages(action: unknown): action is BackUpMessages {
 
 export interface RestoreChat extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
-  payload: ChatThread;
+  payload: (ChatThread & { snippet?: Snippet }) & {
+    messages: ChatThread["messages"] | [string, string][];
+  };
 }
 
 export function isRestoreChat(action: unknown): action is RestoreChat {
@@ -267,6 +308,7 @@ export function isRestoreChat(action: unknown): action is RestoreChat {
 
 export interface CreateNewChatThread extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.NEW_CHAT;
+  payload?: { id: string; snippet?: Snippet };
 }
 
 export function isCreateNewChat(
@@ -278,6 +320,7 @@ export function isCreateNewChat(
 
 export interface ChatDoneStreaming extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.DONE_STREAMING;
+  payload: { id: string };
 }
 
 export function isChatDoneStreaming(
@@ -354,4 +397,66 @@ export type Actions = ActionToChat | ActionFromChat;
 
 export function isAction(action: unknown): action is Actions {
   return isActionFromChat(action) || isActionToChat(action);
+}
+
+export interface ChatSetLastModelUsed extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_LAST_MODEL_USED;
+  payload: { id: string; model: string };
+}
+
+export function isChatSetLastModelUsed(
+  action: unknown,
+): action is ChatSetLastModelUsed {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_LAST_MODEL_USED;
+}
+
+export interface ChatSetSelectedSnippet extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
+  payload: { id: string; snippet: Snippet };
+}
+
+export function isSetSelectedSnippet(
+  action: unknown,
+): action is ChatSetSelectedSnippet {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
+}
+
+export interface RemovePreviewFileByName extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME;
+  payload: { id: string; name: string };
+}
+
+export function isRemovePreviewFileByName(
+  action: unknown,
+): action is RemovePreviewFileByName {
+  return (
+    isActionToChat(action) &&
+    action.type === EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME
+  );
+}
+
+export interface setPreviousMessagesLength extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_PREVIOUS_MESSAGES_LENGTH;
+  payload: { id: string; message_length: number };
+}
+
+export function isSetPreviousMessagesLength(
+  action: unknown,
+): action is setPreviousMessagesLength {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_PREVIOUS_MESSAGES_LENGTH;
+}
+
+export interface ReceiveTokenCount extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_TOKEN_COUNT;
+  payload: { id: string; tokens: number | null };
+}
+
+export function isReceiveTokenCount(
+  action: unknown,
+): action is ReceiveTokenCount {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_TOKEN_COUNT;
 }

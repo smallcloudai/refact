@@ -40,12 +40,11 @@ export const RightButton: React.FC<ButtonProps & { className?: string }> = (
   );
 };
 
-export const RightButtonGroup: React.FC<
-  React.PropsWithChildren & {
-    className?: string;
-    direction?: "row" | "column";
-  }
-> = (props) => {
+type FlexProps = React.ComponentProps<typeof Flex>;
+
+export const RightButtonGroup: React.FC<React.PropsWithChildren & FlexProps> = (
+  props,
+) => {
   return (
     <Flex
       {...props}

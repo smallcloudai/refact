@@ -1,3 +1,15 @@
 .content {
   /* max-width: calc(100% - 12px); */
 }
+
+.file {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.retryButton {
+  top: var(--space-2);
+  right: var(--space-3);
+}

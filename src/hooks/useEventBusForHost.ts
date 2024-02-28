@@ -1,5 +1,11 @@
 import { useEffect, useRef } from "react";
-import { sendChat, getCaps, ChatContextFile } from "../services/refact";
+import {
+  sendChat,
+  getCaps,
+  getAtCommandCompletion,
+  getAtCommandPreview,
+  isDetailMessage,
+} from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
   EVENT_NAMES_TO_CHAT,
@@ -9,7 +15,9 @@ import {
   isSaveChatFromChat,
   isRequestCapsFromChat,
   isStopStreamingFromChat,
-  isRequestForFileFromChat,
+  isRequestAtCommandCompletion,
+  ReceiveAtCommandCompletion,
+  ReceiveAtCommandPreview,
   isRequestDataForStatistic,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
@@ -26,6 +34,8 @@ export function useEventBusForHost() {
       if (event.source !== window) {
         return;
       }
+
+      // console.log(event.data);
 
       if (isStopStreamingFromChat(event.data)) {
         controller.current.abort();
@@ -75,51 +85,38 @@ export function useEventBusForHost() {
           });
       }
 
-      if (isRequestForFileFromChat(event.data)) {
-        const { payload } = event.data;
+      if (isRequestAtCommandCompletion(event.data)) {
+        const { id, query, cursor, number, trigger } = event.data.payload;
+        // getAtCommandCompletion(query, cursor, number, lspUrl)
+        const triggerOrQuery = trigger ?? query;
+        const position = trigger ? trigger.length : cursor;
+        getAtCommandCompletion(triggerOrQuery, position, number, lspUrl)
+          .then((res) => {
+            if (isDetailMessage(res)) return;
+            const message: ReceiveAtCommandCompletion = {
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION,
+              payload: { id, ...res },
+            };
 
-        window
-          .showOpenFilePicker({ multiple: true })
-          .then(async (fileHandlers) => {
-            const promises = fileHandlers.map(async (fileHandler) => {
-              const file = await fileHandler.getFile();
-              const content = await file.text();
-              const messageInChat: ChatContextFile = {
-                file_name: fileHandler.name,
-                file_content: content,
-                line1: 1,
-                line2: content.split("\n").length + 1,
-              };
-              return messageInChat;
-            });
-
-            const files = await Promise.all(promises);
-            window.postMessage({
-              type: EVENT_NAMES_TO_CHAT.RECEIVE_FILES,
-              payload: {
-                id: payload.id,
-                files,
-              },
-            });
+            window.postMessage(message, "*");
           })
-          .catch((error: Error) => {
-            if (error instanceof DOMException && error.name === "AbortError") {
-              return;
-            }
+          .catch((error) => {
             // eslint-disable-next-line no-console
             console.error(error);
+          });
 
-            // TODO: add specific error type for this case
-            window.postMessage(
-              {
-                type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
-                payload: {
-                  id: payload.id,
-                  message: error.message || "error attaching file",
-                },
-              },
-              "*",
-            );
+        getAtCommandPreview(query, lspUrl)
+          .then((res) => {
+            if (isDetailMessage(res)) return;
+            const message: ReceiveAtCommandPreview = {
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW,
+              payload: { id, preview: res },
+            };
+            window.postMessage(message, "*");
+          })
+          .catch((error) => {
+            // eslint-disable-next-line no-console
+            console.error(error);
           });
       }
 
@@ -163,6 +160,7 @@ function handleSend(
       const decoder = new TextDecoder();
       const reader = response.body?.getReader();
       if (!reader) return;
+
       return reader.read().then(function pump({ done, value }): Promise<void> {
         if (done) {
           // Do something with last chunk of data then exit reader

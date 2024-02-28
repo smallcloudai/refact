@@ -1,6 +1,7 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useCallback } from "react";
 import {
   ChatContextFile,
+  //  ChatContextFileMessage,
   ChatMessages,
   ChatResponse,
   isChatContextFileMessage,
@@ -10,8 +11,8 @@ import {
   EVENT_NAMES_TO_CHAT,
   EVENT_NAMES_FROM_CHAT,
   isActionToChat,
-  ActionToChat,
-  ChatThread,
+  type ActionToChat,
+  type ChatThread,
   isResponseToChat,
   isBackupMessages,
   isRestoreChat,
@@ -24,23 +25,39 @@ import {
   isChatReceiveCapsError,
   isSetChatModel,
   isSetDisableChat,
-  isReceiveContextFile,
-  isRequestForFileFromChat,
-  isRemoveContext,
   isActiveFileInfo,
-  isToggleActiveFile,
-  ToggleActiveFile,
-  NewFileFromChat,
-  PasteDiffFromChat,
-  ReadyMessage,
+  type NewFileFromChat,
+  type PasteDiffFromChat,
+  type ReadyMessage,
+  type RequestAtCommandCompletion,
+  isReceiveAtCommandCompletion,
+  type SetSelectedAtCommand,
+  isSetSelectedAtCommand,
+  isReceiveAtCommandPreview,
+  isChatUserMessageResponse,
+  isChatSetLastModelUsed,
+  isSetSelectedSnippet,
+  isRemovePreviewFileByName,
+  type RemovePreviewFileByName,
+  isSetPreviousMessagesLength,
+  setPreviousMessagesLength,
+  type Snippet,
+  isReceiveTokenCount,
 } from "../events";
-import { useConfig } from "../contexts/config-context";
 import { usePostMessage } from "./usePostMessage";
+import { useDebounceCallback } from "usehooks-ts";
 
 function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
 ): ChatMessages {
+  if (isChatUserMessageResponse(response)) {
+    if (response.role === "context_file") {
+      return [...messages, [response.role, JSON.parse(response.content)]];
+    }
+    return [...messages, [response.role, response.content]];
+  }
+
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (cur.delta.role === "context_file") {
       return acc.concat([[cur.delta.role, cur.delta.content]]);
@@ -63,6 +80,8 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   const isThisChat =
     action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
+  //  console.log(action.type, action.payload, { isThisChat });
+
   if (isThisChat && isSetDisableChat(action)) {
     return {
       ...state,
@@ -72,11 +91,17 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isThisChat && isResponseToChat(action)) {
-    const messages = formatChatResponse(state.chat.messages, action.payload);
+    const hasUserMessage = isChatUserMessageResponse(action.payload);
+    const current = hasUserMessage
+      ? state.chat.messages.slice(0, state.previous_message_length)
+      : state.chat.messages;
+    const messages = formatChatResponse(current, action.payload);
     return {
       ...state,
       waiting_for_response: false,
       streaming: true,
+      previous_message_length: messages.length,
+      files_in_preview: [],
       chat: {
         ...state.chat,
         messages,
@@ -109,20 +134,32 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
 
       return message;
     });
+
     return {
       ...state,
       waiting_for_response: false,
       streaming: false,
       error: null,
+      previous_message_length: messages.length,
       chat: {
         ...action.payload,
         messages,
       },
+      selected_snippet: action.payload.snippet ?? state.selected_snippet,
     };
   }
 
   if (isCreateNewChat(action)) {
-    return createInitialState();
+    const nextState = createInitialState();
+
+    return {
+      ...nextState,
+      chat: {
+        ...nextState.chat,
+        model: state.chat.model,
+      },
+      selected_snippet: action.payload?.snippet ?? state.selected_snippet,
+    };
   }
 
   if (isRequestCapsFromChat(action)) {
@@ -139,7 +176,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     const default_cap = action.payload.caps.code_chat_default_model;
     const available_caps = Object.keys(action.payload.caps.code_chat_models);
     const error = available_caps.length === 0 ? "No available caps" : null;
-    const rag_commands = action.payload.caps.chat_rag_functions ?? [];
+
     return {
       ...state,
       error,
@@ -152,7 +189,6 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         default_cap: default_cap || available_caps[0] || "",
         available_caps,
       },
-      rag_commands,
     };
   }
 
@@ -168,12 +204,6 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   }
 
   if (isThisChat && isChatDoneStreaming(action)) {
-    // note: should avoid side effects in reducer :/
-    postMessage({
-      type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-      payload: state.chat,
-    });
-
     return {
       ...state,
       waiting_for_response: false,
@@ -186,7 +216,10 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
       ...state,
       streaming: false,
       waiting_for_response: false,
-      error: action.payload.message,
+      error:
+        typeof action.payload.message === "string"
+          ? action.payload.message
+          : "Error streaming",
     };
   }
 
@@ -207,60 +240,97 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
-  if (isThisChat && isRequestForFileFromChat(action)) {
-    return {
-      ...state,
-      waiting_for_response: true,
-    };
-  }
-
-  if (isThisChat && isReceiveContextFile(action)) {
-    return {
-      ...state,
-      waiting_for_response: false,
-      chat: {
-        ...state.chat,
-        messages: [
-          ["context_file", action.payload.files],
-          ...state.chat.messages,
-        ],
-      },
-    };
-  }
-
-  if (isThisChat && isRemoveContext(action)) {
-    const messages = state.chat.messages.filter(
-      (message) => !isChatContextFileMessage(message),
-    );
-
-    return {
-      ...state,
-      chat: {
-        ...state.chat,
-        messages,
-      },
-    };
-  }
-
   if (isThisChat && isActiveFileInfo(action)) {
-    const { name, can_paste } = action.payload;
-    return {
-      ...state,
-      active_file: {
-        name,
-        can_paste,
-        attach: state.active_file.attach,
-      },
-    };
-  }
-
-  if (isThisChat && isToggleActiveFile(action)) {
     return {
       ...state,
       active_file: {
         ...state.active_file,
-        attach: action.payload.attach_file,
+        ...action.payload.file,
       },
+    };
+  }
+
+  if (isThisChat && isReceiveAtCommandCompletion(action)) {
+    const selectedCommand = state.rag_commands.selected_command;
+    const availableCommands = selectedCommand
+      ? state.rag_commands.available_commands
+      : action.payload.completions;
+    const args = selectedCommand ? action.payload.completions : [];
+    return {
+      ...state,
+      rag_commands: {
+        ...state.rag_commands,
+        available_commands: availableCommands,
+        arguments: args,
+        is_cmd_executable: action.payload.is_cmd_executable,
+      },
+    };
+  }
+
+  if (isThisChat && isSetSelectedAtCommand(action)) {
+    return {
+      ...state,
+      rag_commands: {
+        ...state.rag_commands,
+        selected_command: action.payload.command,
+      },
+    };
+  }
+
+  if (isThisChat && isReceiveAtCommandPreview(action)) {
+    const filesInPreview = action.payload.preview.reduce<ChatContextFile[]>(
+      (acc, curr) => {
+        const files = curr[1];
+        return [...acc, ...files];
+      },
+      [],
+    );
+
+    return {
+      ...state,
+      files_in_preview: filesInPreview,
+    };
+  }
+
+  // TODO: this may need to be set by the editor
+  if (isThisChat && isChatSetLastModelUsed(action)) {
+    return {
+      ...state,
+      chat: {
+        ...state.chat,
+        model: action.payload.model,
+      },
+    };
+  }
+
+  if (isThisChat && isSetSelectedSnippet(action)) {
+    return {
+      ...state,
+      selected_snippet: action.payload.snippet,
+    };
+  }
+
+  if (isThisChat && isRemovePreviewFileByName(action)) {
+    const previewFiles = state.files_in_preview.filter(
+      (file) => file.file_name !== action.payload.name,
+    );
+    return {
+      ...state,
+      files_in_preview: previewFiles,
+    };
+  }
+
+  if (isThisChat && isSetPreviousMessagesLength(action)) {
+    return {
+      ...state,
+      previous_message_length: action.payload.message_length,
+    };
+  }
+
+  if (isThisChat && isReceiveTokenCount(action)) {
+    return {
+      ...state,
+      tokens: action.payload.tokens,
     };
   }
 
@@ -277,14 +347,25 @@ export type ChatState = {
   chat: ChatThread;
   waiting_for_response: boolean;
   streaming: boolean;
+  previous_message_length: number;
   error: string | null;
   caps: ChatCapsState;
-  rag_commands: string[];
+  rag_commands: {
+    available_commands: string[];
+    selected_command: string;
+    arguments: string[];
+    is_cmd_executable: boolean;
+  };
+  files_in_preview: ChatContextFile[];
   active_file: {
     name: string;
     attach: boolean;
     can_paste: boolean;
+    line1: null | number;
+    line2: null | number;
   };
+  selected_snippet: Snippet;
+  tokens: number | null;
 };
 
 function createInitialState(): ChatState {
@@ -292,6 +373,12 @@ function createInitialState(): ChatState {
     streaming: false,
     waiting_for_response: false,
     error: null,
+    previous_message_length: 0,
+    selected_snippet: {
+      language: "",
+      code: "",
+    },
+    files_in_preview: [],
     chat: {
       id: uuidv4(),
       messages: [],
@@ -303,20 +390,27 @@ function createInitialState(): ChatState {
       default_cap: "",
       available_caps: [],
     },
-    rag_commands: [],
+    rag_commands: {
+      available_commands: [],
+      selected_command: "",
+      arguments: [],
+      is_cmd_executable: false,
+    },
 
     active_file: {
       name: "",
+      line1: null,
+      line2: null,
       attach: false,
       can_paste: false,
     },
+    tokens: null,
   };
 }
 
 const initialState = createInitialState();
 // Maybe use context to avoid prop drilling?
 export const useEventBusForChat = () => {
-  const config = useConfig();
   const [state, dispatch] = useReducer(reducer, initialState);
   const postMessage = usePostMessage();
 
@@ -347,11 +441,21 @@ export const useEventBusForChat = () => {
   }, [state, dispatch, postMessage]);
 
   function askQuestion(question: string) {
-    const messages = state.chat.messages.concat([["user", question]]);
+    // TODO: delete this if it works
+    // const filesInPreview: ChatContextFileMessage[] =
+    //   state.files_in_preview.length > 0
+    //     ? [["context_file", state.files_in_preview]]
+    //     : [];
+    const messages = state.chat.messages
+      // .concat(filesInPreview)
+      .concat([["user", question]]);
     sendMessages(messages);
   }
 
-  function sendMessages(messages: ChatMessages) {
+  function sendMessages(
+    messages: ChatMessages,
+    attach_file = state.active_file.attach,
+  ) {
     dispatch({
       type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
       payload: { id: state.chat.id },
@@ -360,12 +464,13 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
       payload: { id: state.chat.id, disable: true },
     });
+
     const payload: ChatThread = {
       id: state.chat.id,
       messages: messages,
       title: state.chat.title,
       model: state.chat.model,
-      attach_file: state.active_file.attach,
+      attach_file,
     };
 
     dispatch({
@@ -375,6 +480,11 @@ export const useEventBusForChat = () => {
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
       payload,
+    });
+
+    dispatch({
+      type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET,
+      payload: { id: state.chat.id, snippet: "", language: "" },
     });
   }
 
@@ -421,38 +531,15 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING,
       payload: { id: state.chat.id },
     });
+    dispatch({
+      type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
+      payload: { id: state.chat.id },
+    });
   }
 
   const hasContextFile = state.chat.messages.some((message) =>
     isChatContextFileMessage(message),
   );
-
-  function handleContextFileForWeb() {
-    // TODO: in wed request or remove a file, else toggle the active_file value
-    if (hasContextFile) {
-      dispatch({
-        type: EVENT_NAMES_TO_CHAT.REMOVE_FILES,
-        payload: { id: state.chat.id },
-      });
-    } else {
-      postMessage({
-        type: EVENT_NAMES_FROM_CHAT.REQUEST_FILES,
-        payload: { id: state.chat.id },
-      });
-    }
-  }
-
-  function handleContextFile(toggle?: boolean) {
-    if (config.host === "web") {
-      handleContextFileForWeb();
-    } else {
-      const action: ToggleActiveFile = {
-        type: EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE,
-        payload: { id: state.chat.id, attach_file: !!toggle },
-      };
-      dispatch(action);
-    }
-  }
 
   function backFromChat() {
     postMessage({
@@ -503,6 +590,60 @@ export const useEventBusForChat = () => {
     postMessage(action);
   }
 
+  // TODO: hoise this hook to context so useCallback isn't  needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const requestCommandsCompletion = useCallback(
+    useDebounceCallback(
+      function (
+        query: string,
+        cursor: number,
+        trigger: string | null,
+        // eslint-disable-next-line @typescript-eslint/no-inferrable-types
+        number: number = 5,
+      ) {
+        const action: RequestAtCommandCompletion = {
+          type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
+          payload: { id: state.chat.id, query, cursor, trigger, number },
+        };
+        postMessage(action);
+      },
+      500,
+      { leading: true },
+    ),
+    [state.chat.id],
+  );
+
+  function setSelectedCommand(command: string) {
+    const action: SetSelectedAtCommand = {
+      type: EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND,
+      payload: { id: state.chat.id, command },
+    };
+    dispatch(action);
+  }
+
+  function removePreviewFileByName(name: string) {
+    const action: RemovePreviewFileByName = {
+      type: EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME,
+      payload: { id: state.chat.id, name },
+    };
+
+    dispatch(action);
+  }
+
+  function retryQuestion(messages: ChatMessages) {
+    // set last_messages_length to messages.lent - 1
+    const setMessageLengthAction: setPreviousMessagesLength = {
+      type: EVENT_NAMES_TO_CHAT.SET_PREVIOUS_MESSAGES_LENGTH,
+      payload: {
+        id: state.chat.id,
+        message_length: messages.length > 0 ? messages.length - 1 : 0,
+      },
+    };
+
+    dispatch(setMessageLengthAction);
+    sendMessages(messages, false);
+  }
+
   return {
     state,
     askQuestion,
@@ -510,7 +651,6 @@ export const useEventBusForChat = () => {
     clearError,
     setChatModel,
     stopStreaming,
-    handleContextFile,
     hasContextFile,
     backFromChat,
     openChatInNewTab,
@@ -518,5 +658,9 @@ export const useEventBusForChat = () => {
     sendReadyMessage,
     handleNewFileClick,
     handlePasteDiffClick,
+    requestCommandsCompletion,
+    setSelectedCommand,
+    removePreviewFileByName,
+    retryQuestion,
   };
 };
