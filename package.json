@@ -83,7 +83,6 @@
     "js-cookie": "^3.0.5",
     "jsdom": "^23.0.1",
     "lint-staged": ">=10",
-    "match-sorter": "^6.3.1",
     "prettier": "3.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

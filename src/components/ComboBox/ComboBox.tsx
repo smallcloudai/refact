@@ -1,6 +1,5 @@
 import React from "react";
 import { useComboboxStore, Combobox } from "@ariakit/react";
-// import { matchSorter } from "match-sorter";
 import { getAnchorRect, replaceValue, detectCommand } from "./utils";
 import type { TextAreaProps } from "../TextArea/TextArea";
 import { Item } from "./Item";
