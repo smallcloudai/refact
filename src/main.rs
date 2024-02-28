@@ -1,4 +1,5 @@
 use std::io::Write;
+
 use tokio::task::JoinHandle;
 use tracing::{info, Level};
 use tracing_appender;
@@ -35,6 +36,8 @@ mod ast;
 
 #[tokio::main]
 async fn main() {
+    let cpu_num = std::thread::available_parallelism().unwrap().get();
+    rayon::ThreadPoolBuilder::new().num_threads(cpu_num / 2).build_global().unwrap();
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
     let cache_dir = home_dir.join(".cache/refact");
     let (gcx, ask_shutdown_receiver, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
@@ -50,7 +53,7 @@ async fn main() {
         )
     };
     let _tracing = tracing_subscriber::fmt()
-        .with_max_level(if cmdline.verbose {Level::DEBUG} else {Level::INFO})
+        .with_max_level(if cmdline.verbose { Level::DEBUG } else { Level::INFO })
         .with_writer(logs_writer)
         .with_target(true)
         .with_line_number(true)
