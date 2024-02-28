@@ -85,7 +85,10 @@ const KNOWN_MODELS: &str = r####"
                 "wizardcoder/15b",
                 "starcoder/1b/vllm",
                 "starcoder/3b/vllm",
-                "starcoder/7b/vllm"
+                "starcoder/7b/vllm",
+                "starcoder2/3b/base",
+                "starcoder2/7b/base",
+                "starcoder2/15b/base"
             ]
         },
         "smallcloudai/Refact-1_6B-fim": {
