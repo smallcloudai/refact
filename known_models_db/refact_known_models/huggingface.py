@@ -263,4 +263,34 @@ huggingface_mini_db = {
     #     "T": 4096,
     #     "filter_caps": ["chat"],
     # },
+    "starcoder2/3b/base": {
+        "backend": "transformers",
+        "model_path": "bigcode/starcoder2-3b",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadPSM",
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {},
+        "required_memory_mb": 12000,
+        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
+        "filter_caps": ["completion", "finetune"],
+    },
+    "starcoder2/7b/base": {
+        "backend": "transformers",
+        "model_path": "bigcode/starcoder2-7b",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadPSM",
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {},
+        "required_memory_mb": 20000,
+        "T": 4096,
+        "filter_caps": ["completion", "finetune"],
+    },
+    "starcoder2/15b/base": {
+        "backend": "transformers",
+        "model_path": "bigcode/starcoder2-15b",
+        "diff_scratchpad_class": "refact_scratchpads:ScratchpadPSM",
+        "chat_scratchpad_class": None,
+        "model_class_kwargs": {},
+        "required_memory_mb": 20000,
+        "T": 4096,
+        "filter_caps": ["completion", "finetune"],
+    }
 }
