@@ -104,10 +104,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const state = combobox.getState();
-    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-      combobox.hide();
-      setStartPosition(null);
-    }
+
     if (state.open && event.key === "Tab") {
       event.preventDefault();
     }
@@ -127,11 +124,12 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     if (!ref.current) return;
 
     const state = combobox.getState();
+
     if (
       !state.activeValue &&
       event.key === "Enter" &&
       !event.shiftKey &&
-      !state.open
+      !hasMatches
     ) {
       event.stopPropagation();
       onSubmit(event);
@@ -164,6 +162,15 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       setSelectedCommand("");
       setStartPosition(null);
       combobox.hide();
+    }
+
+    const wasArrowLeftOrRight =
+      event.key === "ArrowLeft" || event.key === "ArrowRight";
+
+    if (wasArrowLeftOrRight && !maybeCommand) {
+      setTrigger("");
+      setSelectedCommand("");
+      setStartPosition(null);
     }
 
     if (event.key === "@" && !state.open && !selectedCommand) {
