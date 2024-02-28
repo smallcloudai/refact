@@ -107,5 +107,8 @@
       "eslint --cache --fix"
     ],
     "*.{js,css,md}": "prettier --write"
+  },
+  "peerDependencies": {
+    "@types/react": "^18.2.0"
   }
 }

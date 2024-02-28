@@ -1,5 +1,5 @@
 import React, { useContext, createContext } from "react";
-import { ThemeProps } from "../components/Theme";
+import type { ThemeProps } from "../components/Theme";
 
 export type Config = {
   host: "web" | "ide" | "vscode" | "jetbrains";
