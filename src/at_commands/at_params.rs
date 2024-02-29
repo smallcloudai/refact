@@ -9,6 +9,7 @@ use tokio::sync::RwLock as ARwLock;
 use url::Url;
 
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
+use crate::at_commands::at_file::{colon_lines_range_from_arg, ColonLinesRange};
 use crate::files_in_jsonl::files_in_jsonl;
 use crate::global_context::GlobalContext;
 
@@ -64,15 +65,34 @@ async fn get_ast_file_paths(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<
     }
 }
 
+fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
+    if colon.is_none() {
+        return;
+    }
+    let colon = colon.as_ref().unwrap();
+    if colon.start > 0 {
+        *value = if colon.end > colon.start {
+            format!("{}:{}-{}", value, colon.start, colon.end)
+        } else {
+            format!("{}:{}", value, colon.start)
+        };
+    }
+}
+
 #[async_trait]
 impl AtParam for AtParamFilePath {
     fn name(&self) -> &String {
         &self.name
     }
     async fn is_value_valid(&self, value: &String, context: &AtCommandsContext) -> bool {
+        let mut value = value.clone();
+        colon_lines_range_from_arg(&mut value);
         get_file_paths_from_anywhere(context.global_context.clone()).await.contains(&value)
     }
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
+        let mut value = value.clone();
+        let colon_mb = colon_lines_range_from_arg(&mut value);
+
         let index_file_paths = get_file_paths_from_anywhere(context.global_context.clone()).await;
 
         let mapped_paths = index_file_paths.iter().map(|f| {
@@ -95,6 +115,7 @@ impl AtParam for AtParamFilePath {
             .rev()
             .map(|(path, _)| path.clone())
             .take(top_n)
+            .map(|mut x| { put_colon_back_to_arg(&mut x, &colon_mb); x.clone() })
             .collect::<Vec<String>>();
         sorted_paths
     }

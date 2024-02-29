@@ -71,7 +71,7 @@ pub async fn correct_arguments_if_needed(
             None => return Err(format!("arg '{}' correction failed: Probably file list is empty", arg)),
         };
         if !param.is_value_valid(arg_completed, context).await {
-            return Err(format!("arg '{}' is not valid even after force completion", arg));
+            return Err(format!("arg '{}' is not valid even after force completion", arg_completed));
         }
         info!("arg '{}' is corrected as '{}'", arg, arg_completed);
         args_new.push(arg_completed.clone());
