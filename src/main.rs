@@ -23,6 +23,7 @@ mod telemetry;
 mod lsp;
 mod http;
 mod background_tasks;
+mod known_models;
 mod dashboard;
 mod files_in_workspace;
 mod files_in_jsonl;

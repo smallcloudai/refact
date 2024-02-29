@@ -9,6 +9,7 @@ use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock;
 use url::Url;
 use crate::global_context::GlobalContext;
+use crate::known_models::KNOWN_MODELS;
 
 const CAPS_FILENAME: &str = "coding_assistant_caps.json";
 
@@ -22,6 +23,12 @@ pub struct ModelRecord {
     pub default_scratchpad: String,
     #[serde(default)]
     pub similar_models: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ModelsOnly {
+    pub code_completion_models: HashMap<String, ModelRecord>,
+    pub code_chat_models: HashMap<String, ModelRecord>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -58,284 +65,6 @@ pub struct CodeAssistantCaps {
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
 }
-
-#[derive(Debug, Deserialize)]
-pub struct ModelsOnly {
-    pub code_completion_models: HashMap<String, ModelRecord>,
-    pub code_chat_models: HashMap<String, ModelRecord>,
-}
-
-const KNOWN_MODELS: &str = r####"
-{
-    "code_completion_models": {
-        "bigcode/starcoder": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "FIM-PSM": {},
-                "FIM-SPM": {}
-            },
-            "default_scratchpad": "FIM-PSM",
-            "similar_models": [
-                "bigcode/starcoderbase",
-                "starcoder/15b/base",
-                "starcoder/15b/plus",
-                "starcoder/1b/base",
-                "starcoder/3b/base",
-                "starcoder/7b/base",
-                "wizardcoder/15b",
-                "starcoder/1b/vllm",
-                "starcoder/3b/vllm",
-                "starcoder/7b/vllm",
-                "starcoder2/3b/base",
-                "starcoder2/7b/base",
-                "starcoder2/15b/base"
-            ]
-        },
-        "smallcloudai/Refact-1_6B-fim": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "FIM-PSM": {},
-                "FIM-SPM": {}
-            },
-            "default_scratchpad": "FIM-SPM",
-            "similar_models": [
-                "Refact/1.6B",
-                "Refact/1.6B/vllm"
-            ]
-        },
-        "codellama/CodeLlama-13b-hf": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "FIM-PSM": {
-                    "fim_prefix": "<PRE>",
-                    "fim_suffix": "<SUF>",
-                    "fim_middle": "<MID>",
-                    "eot": "<EOT>",
-                    "eos": "</s>"
-                }
-            },
-            "default_scratchpad": "FIM-PSM",
-            "similar_models": [
-                "codellama/7b"
-            ]
-        },
-        "deepseek-coder/1.3b/base": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "FIM-PSM": {
-                    "fim_prefix": "<｜fim▁begin｜>",
-                    "fim_suffix": "<｜fim▁hole｜>",
-                    "fim_middle": "<｜fim▁end｜>",
-                    "eot": "<|EOT|>"
-                }
-            },
-            "default_scratchpad": "FIM-PSM",
-            "similar_models": [
-                "deepseek-coder/5.7b/mqa-base",
-                "deepseek-coder/6.7b/instruct-finetune",
-                "deepseek-coder/1.3b/vllm",
-                "deepseek-coder/5.7b/vllm"
-            ]
-        },
-        "stable/3b/code": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "FIM-PSM": {},
-                "FIM-SPM": {}
-            },
-            "default_scratchpad": "FIM-PSM",
-            "similar_models": []
-        }
-    },
-    "code_chat_models": {
-        "meta-llama/Llama-2-70b-chat-hf": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-LLAMA2": {
-                    "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
-                }
-            }
-        },
-        "gpt-3.5-turbo": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "PASSTHROUGH": {
-                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
-                }
-            },
-            "similar_models": [
-            ]
-        },
-        "gpt-3.5-turbo-0125": {
-            "n_ctx": 16384,
-            "supports_scratchpads": {
-                "PASSTHROUGH": {
-                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
-                }
-            },
-            "similar_models": [
-            ]
-        },
-        "gpt-4": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "PASSTHROUGH": {
-                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
-                }
-            },
-            "similar_models": [
-            ]
-        },
-        "claude-instant-1.2": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "PASSTHROUGH": {
-                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
-                }
-            },
-            "similar_models": [
-                "claude-2.1"
-            ]
-        },
-        "starchat/15b/beta": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-GENERIC": {
-                    "token_esc": "",
-                    "keyword_system": "<|system|>\n",
-                    "keyword_user": "<|end|>\n<|user|>\n",
-                    "keyword_assistant": "<|end|>\n<|assistant|>\n",
-                    "stop_list": [
-                        "<|system|>",
-                        "<|user|>",
-                        "<|assistant|>",
-                        "<|end|>",
-                        "<empty_output>"
-                    ],
-                    "default_system_message": "You are a programming assistant."
-                }
-            }
-        },
-        "llama2/7b": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-LLAMA2": {
-                    "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
-                }
-            },
-            "similar_models": [
-                "llama2/13b"
-            ]
-        },
-        "wizardlm/7b": {
-            "n_ctx": 2048,
-            "supports_scratchpads": {
-                "CHAT-GENERIC": {
-                    "token_esc": "",
-                    "keyword_system": "<s>",
-                    "keyword_user": "\nUSER: ",
-                    "keyword_assistant": "\nASSISTANT: ",
-                    "eot": "",
-                    "stop_list": ["\n\n"],
-                    "default_system_message": "You are a helpful AI assistant.\n"
-                }
-            },
-            "similar_models": [
-                "wizardlm/13b",
-                "wizardlm/30b",
-                "wizardlm/70b"
-            ]
-        },
-        "magicoder/6.7b": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-GENERIC": {
-                    "token_esc": "",
-                    "keyword_system": "",
-                    "keyword_user": "\n@@ Instruction\n",
-                    "keyword_assistant": "\n@@ Response\n",
-                    "stop_list": [],
-                    "default_system_message": "You are an exceptionally intelligent coding assistant that consistently delivers accurate and reliable responses to user instructions.",
-                    "eot": "<|EOT|>"
-                }
-            }
-        },
-        "mistral/7b/instruct-v0.1": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-GENERIC": {
-                    "token_esc": "",
-                    "keyword_system": "",
-                    "keyword_user": "[INST] ",
-                    "keyword_assistant": "[/INST]\n",
-                    "stop_list": [],
-                    "default_system_message": "",
-                    "eot": "</s>"
-                }
-            },
-            "similar_models": [
-                "mixtral/8x7b/instruct-v0.1"
-            ]
-        },
-        "phind/34b/v2": {
-            "n_ctx": 4095,
-            "supports_scratchpads": {
-                "CHAT-GENERIC": {
-                    "token_esc": "",
-                    "keyword_system": "### System Prompt\n",
-                    "keyword_user": "\n### User Message\n",
-                    "keyword_assistant": "\n### Assistant\n",
-                    "stop_list": [],
-                    "default_system_message": "You are an intelligent programming assistant.",
-                    "eot": "</s>"
-                }
-            }
-        },
-        "deepseek-coder/6.7b/instruct": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-GENERIC": {
-                    "token_esc": "",
-                    "keyword_system": "",
-                    "keyword_user": "### Instruction:\n",
-                    "keyword_assistant": "### Response:\n",
-                    "stop_list": [],
-                    "default_system_message": "You are an AI programming assistant, utilizing the Deepseek Coder model, developed by Deepseek Company, and you only answer questions related to computer science. For politically sensitive questions, security and privacy issues, and other non-computer science questions, you will refuse to answer.",
-                    "eot": "<|EOT|>"
-                }
-            },
-            "similar_models": [
-                "deepseek-coder/6.7b/instruct-finetune",
-                "deepseek-coder/33b/instruct"
-            ]
-        }
-    }
-}
-"####;
-
-const HF_DEFAULT_CAPS: &str = r#"
-{
-    "cloud_name": "Hugging Face",
-    "endpoint_template": "https://api-inference.huggingface.co/models/$MODEL",
-    "endpoint_style": "hf",
-
-    "default_embeddings_model": "BAAI/bge-small-en-v1.5",
-    "endpoint_embeddings_template": "https://api-inference.huggingface.co/models/$MODEL",
-    "endpoint_embeddings_style": "hf",
-    "size_embeddings": 384,
-
-    "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
-    "tokenizer_rewrite_path": {
-        "meta-llama/Llama-2-70b-chat-hf": "TheBloke/Llama-2-70B-fp16"
-    },
-    "code_completion_default_model": "bigcode/starcoder",
-    "code_completion_n_ctx": 2048,
-    "code_chat_default_model": "meta-llama/Llama-2-70b-chat-hf",
-    "telemetry_basic_dest": "https://staging.smallcloud.ai/v1/telemetry-basic",
-    "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback",
-    "running_models": ["bigcode/starcoder", "meta-llama/Llama-2-70b-chat-hf"]
-}
-"#;
 
 pub async fn load_caps(
     cmdline: crate::global_context::CommandLine,
@@ -398,6 +127,7 @@ pub async fn load_caps(
     r1.telemetry_corrected_snippets_dest = relative_to_full_url(&caps_url, &r1.telemetry_corrected_snippets_dest)?;
     r1.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &r1.telemetry_basic_retrieve_my_own)?;
     r1.endpoint_embeddings_template = relative_to_full_url(&caps_url, &r1.endpoint_embeddings_template)?;
+    r1.tokenizer_path_template = relative_to_full_url(&caps_url, &r1.tokenizer_path_template)?;
     info!("caps {} completion models", r1.code_completion_models.len());
     info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
     info!("caps {} chat models", r1.code_chat_models.len());
@@ -511,3 +241,21 @@ pub fn which_scratchpad_to_use<'a>(
         ));
     }
 }
+
+const HF_DEFAULT_CAPS: &str = r#"
+{
+    "cloud_name": "Hugging Face",
+    "endpoint_template": "https://api-inference.huggingface.co/models/$MODEL",
+    "endpoint_style": "hf",
+    "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
+    "tokenizer_rewrite_path": {
+        "meta-llama/Llama-2-70b-chat-hf": "TheBloke/Llama-2-70B-fp16"
+    },
+    "code_completion_default_model": "bigcode/starcoder",
+    "code_completion_n_ctx": 2048,
+    "code_chat_default_model": "meta-llama/Llama-2-70b-chat-hf",
+    "telemetry_basic_dest": "https://staging.smallcloud.ai/v1/telemetry-basic",
+    "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback",
+    "running_models": ["bigcode/starcoder", "meta-llama/Llama-2-70b-chat-hf"]
+}
+"#;
