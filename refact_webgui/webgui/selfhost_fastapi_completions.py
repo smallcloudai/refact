@@ -19,7 +19,7 @@ from refact_webgui.webgui.selfhost_webutils import log
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_login import RefactSession
-
+from known_models_db.known_models_lsp import KNOWN_MODELS_LSP
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union
 
@@ -239,6 +239,7 @@ class BaseCompletionsRouter(APIRouter):
 
         # API for LSP server
         self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
+        self.add_api_route("/known_models.json", self._known_models, methods=["GET"])
         self.add_api_route("/v1/completions", self._completions, methods=["POST"])
         self.add_api_route("/v1/embeddings", self._embeddings_style_openai, methods=["POST"])
 
@@ -289,6 +290,7 @@ class BaseCompletionsRouter(APIRouter):
             "telemetry_basic_dest": "/stats/telemetry-basic",
             "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
             "telemetry_basic_retrieve_my_own": "/stats/rh-stats",
+            "known_models_url": "/known_models.json",
             "running_models": models_available,
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
@@ -306,6 +308,10 @@ class BaseCompletionsRouter(APIRouter):
             },
             "caps_version": config_mtime,
         }
+        return Response(content=json.dumps(data, indent=4), media_type="application/json")
+
+    async def _known_models(self):
+        data = KNOWN_MODELS_LSP
         return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
     async def _login(self, authorization: str = Header(None)):
