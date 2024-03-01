@@ -20,7 +20,7 @@ from refact_utils.finetune.filtering_defaults import finetune_filtering_defaults
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from typing import Optional
 
@@ -72,6 +72,11 @@ class FilteringSetup(BaseModel):
     # use_gpus_n: Optional[int] = Query(default=1, gt=1, le=8)
 
 
+class RenameRunPost(BaseModel):
+    run_id_old: str = Field(...)
+    run_id_new: str = Field(..., max_length=30)
+
+
 class TabFinetuneTrainingSetup(BaseModel):
     model_name: Optional[str] = Query(default=None)
     limit_time_seconds: Optional[int] = Query(default=600, ge=600, le=3600*48)
@@ -95,6 +100,7 @@ class TabFinetuneRouter(APIRouter):
     def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
+        self.add_api_route("/tab-finetune-rename-run", self._rename_run, methods=["POST"])
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
         self.add_api_route("/tab-finetune-filter-log", self._tab_finetune_filter_log, methods=["GET"])
@@ -109,6 +115,23 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-training-setup", self._tab_finetune_training_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
         self._model_assigner = model_assigner
+
+    async def _rename_run(self, post: RenameRunPost):
+        dir_loras = env.DIR_LORAS
+        runs = get_finetune_runs()
+        if post.run_id_new in [r["run_id"] for r in runs]:
+            raise HTTPException(status_code=400, detail=f"run with name {post.run_id_new} already exists")
+
+        run = [r for r in runs if r["run_id"] == post.run_id_old]
+        if not run:
+            raise HTTPException(status_code=400, detail=f"run {post.run_id_old} not found")
+
+        path_new = os.path.join(dir_loras, post.run_id_new)
+        os.rename(os.path.join(dir_loras, run[0]["run_id"]), path_new)
+        if os.path.isdir(path_new):
+            return Response(status_code=200)
+        else:
+            raise HTTPException(status_code=400, detail=f"failed to rename {post.run_id_old} to {post.run_id_new}")
 
     async def _tab_finetune_get(self):
         prog, status = get_prog_and_status_for_ui()
