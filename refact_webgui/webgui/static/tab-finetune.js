@@ -67,6 +67,31 @@ function tab_finetune_config_and_runs() {
         });
 }
 
+function rename_run_post(run_id, new_name) {
+    console.log("rename_run_post", run_id, new_name);
+    fetch("/tab-finetune-rename-run", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            run_id_old: run_id,
+            run_id_new: new_name
+        })
+    })
+    .then(function (response) {
+        if (!response.ok) {
+            return response.json().then(function(json) {
+                throw new Error(json.detail);
+            });
+        }
+    })
+    .catch(function (error) {
+        console.log('tab-finetune-rename-run',error);
+        general_error(error);
+    });
+}
+
 function render_model_select(force = false) {
     const model_selector = document.querySelector('#finetune-model');
     if (model_selector && model_selector.options.length > 0 && !force) {
@@ -166,6 +191,10 @@ function finetune_activate_run(run_id, checkpoint) {
 
 function render_runs() {
     const runs_table = document.querySelector('.run-table');
+    if (runs_table.dataset.hash == CryptoJS.MD5(JSON.stringify(finetune_configs_and_runs.finetune_runs))) {
+        return;
+    }
+    console.log("===render_runs===");
     if(finetune_configs_and_runs.finetune_runs.length === 0) {
         runs_table.innerHTML = '<tr><td>No runs yet.</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
         return;
@@ -174,6 +203,7 @@ function render_runs() {
 
     if(finetune_configs_and_runs.finetune_runs.length > 0) {
         runs_table.innerHTML = '';
+        runs_table.dataset.hash = CryptoJS.MD5(JSON.stringify(finetune_configs_and_runs.finetune_runs));
     }
     finetune_configs_and_runs.finetune_runs.forEach(run => {
         const run_table_row = document.createElement('tr');
@@ -185,8 +215,6 @@ function render_runs() {
         const run_active = document.createElement("td");
         const run_download = document.createElement("td");
         const run_delete = document.createElement("td");
-
-        run_name.innerHTML = `<div class="run-table-name">${run.run_id}<span>${run.model_name}</span></div>`
 
         let status_colors = {
             'preparing': 'text-bg-warning',
@@ -219,6 +247,22 @@ function render_runs() {
         run_steps.innerHTML = run.worked_steps;
 
         const item_disabled = run_is_working ? "disabled" : ""
+
+        run_name.innerHTML = `
+            <div id="run_name_${run.run_id}" class="run-table-name" data-run="${run.run_id}" ${item_disabled}>
+                <div id="run_div${run.run_id}">
+                    ${run.run_id}
+                    <button class="run-rename btn btn-sm btn-link" data-run="${run.run_id}" style="padding: 0; font-size: 0.875rem;" ${false}><i class="bi bi-pencil-square"></i></button>
+                </div>
+                <div id="run_div_rename${run.run_id}" hidden>
+                    <input type="text" id="run_rename_input${run.run_id}" value="${run.run_id}">
+                    <button id="confirm_btn${run.run_id}" class="btn btn-sm btn-link"><i class="bi bi-check-lg"></i></button>
+                    <button id="cancel_btn${run.run_id}" class="btn btn-sm btn-link"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <span>${run.model_name}</span>
+            </div>
+        `
+
         run_delete.innerHTML = `<button class="btn btn-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
         if (find_checkpoints_by_run(run.run_id).length > 0) {
             run_active.innerHTML = `
@@ -284,6 +328,43 @@ function render_runs() {
             run_checked(run_id);
         });
     });
+
+    document.querySelectorAll(".run-rename").forEach((run) => {
+        run.addEventListener('click', (event) => {
+            event.stopPropagation();
+
+            let rename_div = document.getElementById(`run_div_rename${run.dataset.run}`);
+            let text_div = document.getElementById(`run_div${run.dataset.run}`);
+            rename_div.hidden = false;
+            text_div.hidden = true;
+
+            // removing old event listeners
+            let confirmButton = document.getElementById(`confirm_btn${run.dataset.run}`);
+            let newConfirmButton = confirmButton.cloneNode(true);
+            confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
+            // removing old event listeners
+            let cancelButton = document.getElementById(`cancel_btn${run.dataset.run}`);
+            let newCancelButton = cancelButton.cloneNode(true);
+            cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
+
+            let rename_input = document.getElementById(`run_rename_input${run.dataset.run}`);
+            document.getElementById(`confirm_btn${run.dataset.run}`).addEventListener('click', (event) => {
+                event.stopPropagation();
+                rename_div.disabled = true;
+                rename_run_post(run.dataset.run, rename_input.value);
+                rename_div.disabled = false;
+                render_runs();
+            });
+
+            document.getElementById(`cancel_btn${run.dataset.run}`).addEventListener('click', (event) => {
+                event.stopPropagation();
+                rename_input.value = run.dataset.run;
+                rename_div.hidden = true;
+                text_div.hidden = false;
+            });
+        });
+    });
+
 }
 
 function remove_runs_table_sucess() {
