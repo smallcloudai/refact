@@ -194,7 +194,6 @@ function render_runs() {
     if (runs_table.dataset.hash == CryptoJS.MD5(JSON.stringify(finetune_configs_and_runs.finetune_runs))) {
         return;
     }
-    console.log("===render_runs===");
     if(finetune_configs_and_runs.finetune_runs.length === 0) {
         runs_table.innerHTML = '<tr><td>No runs yet.</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
         return;
