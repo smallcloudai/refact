@@ -369,10 +369,10 @@ class StatisticsService:
         robot_human_df.sort_values(by='dt_end', inplace=True)
 
         extra = {"week_n_to_fmt": {
-            week_n: datetime.strftime(group["dt_end"].iloc[0], "%b %d")
+            week_n: datetime.strftime(group["dt_end"].iloc[0], "%b %d, %y")
             for week_n, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.isocalendar().week)
         }, "day_to_fmt": [
-            datetime.strftime(group["dt_end"].iloc[0], "%b %d")
+            datetime.strftime(group["dt_end"].iloc[0], "%b %d, %y")
             for date, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.date)
         ], "month_to_fmt": {
             month_n: datetime.strftime(group["dt_end"].iloc[0], "%b")

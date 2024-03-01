@@ -31,7 +31,7 @@ def barplot_rh(
 
     res = {}
     day_to_rh = {
-        datetime.strftime(group["dt_end"].iloc[0], "%b %d"): {
+        datetime.strftime(group["dt_end"].iloc[0], "%b %d, %y"): {
             "robot": (robot := int(group["robot_characters"].sum())),
             "human": (human := int(group["human_characters"].sum())),
             "ratio": robot_human_ratio(robot, human),
@@ -85,7 +85,7 @@ def barplot_completions(
         }
     res = {}
     day_to_comp_cnt = {
-        datetime.strftime(group["dt_end"].iloc[0], "%b %d"): {"completions": int(group["completions_cnt"].sum())}
+        datetime.strftime(group["dt_end"].iloc[0], "%b %d, %y"): {"completions": int(group["completions_cnt"].sum())}
         for date, group in rh_df.groupby(rh_df['dt_end'].dt.date)
     }
     week_to_comp_cnt = {
@@ -127,7 +127,7 @@ def barplot_users(
 
     res = {}
     day_to_users_cnt = {
-        datetime.strftime(group["dt_end"].iloc[0], "%b %d"): {"users": int(group["tenant_name"].nunique())}
+        datetime.strftime(group["dt_end"].iloc[0], "%b %d, %y"): {"users": int(group["tenant_name"].nunique())}
         for date, group in rh_df.groupby(rh_df['dt_end'].dt.date)
     }
     week_to_users_cnt = {
