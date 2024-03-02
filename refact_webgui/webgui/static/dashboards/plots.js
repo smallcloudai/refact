@@ -67,7 +67,7 @@ export function barplot_rh(barplot_rh_data, insert_in_el) {
                 }
             }
         }, toolbox: {}, legend: {
-            data: ['Assistant', 'Human', 'A/(A+H)']
+            data: ['Refact', 'Human', 'R/(R+H)']
         }, xAxis: [{
             type: barplot_rh_data["x_axis_type"], data: barplot_rh_data["x_axis"], axisPointer: {
                 type: 'shadow'
@@ -79,7 +79,7 @@ export function barplot_rh(barplot_rh_data, insert_in_el) {
                 formatter: '{value}',
             }
         }], series: [{
-            name: 'Assistant', type: 'bar', tooltip: {
+            name: 'Refact', type: 'bar', tooltip: {
                 valueFormatter: function (value) {
                     return value + ' characters';
                 }
@@ -91,7 +91,7 @@ export function barplot_rh(barplot_rh_data, insert_in_el) {
                 }
             }, data: barplot_rh_data["data"]["human"]
         }, {
-            name: 'A/(A+H)', type: 'line', yAxisIndex: 1, tooltip: {
+            name: 'R/(R+H)', type: 'line', yAxisIndex: 1, tooltip: {
                 valueFormatter: function (value) {
                     return value;
                 }

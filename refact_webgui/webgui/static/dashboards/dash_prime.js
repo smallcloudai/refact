@@ -3,18 +3,21 @@ import {barplot_completions, barplot_rh, barplot_users, render_plot_with_buttons
 
 
 let html = `
-<div id="dprime-table-lang-comp-stats-wrapper" style="width: 1000px; height: auto; margin-top: 10px; margin-bottom: 20px">
-<div class="row" style="margin-bottom: 10px">
+<div id="dprime-table-lang-comp-stats-wrapper" style="width: 1000px; height: auto; margin-top: 10px;">
+<div id="dprime-barplots-completions">
+</div>
+<div id="dprime-barplots-rh" style="margin-top: 60px">
+</div>
+<div class="row" style="margin-top: 60px">
     <div id="dprime-table-lang-comp-stats-title" class="col-md-6"><h5></h5></div>
     <div id="dprime-table-lang-comp-stats-btns" class="col-md-6" style="text-align: right"></div>
     <div id="dprime-table-wrapper"></div>
 </div>
 </div>
-<div id="dprime-barplots-rh" style="margin-top: 40px">
+    <div id="dprime-barplots-users" style="margin-top: 40px">
 </div>
-<div id="dprime-barplots-completions" style="margin-top: 40px">
-</div>
-<div id="dprime-barplots-users" style="margin-top: 40px">
+<div style="margin-top: 100px">
+    <span id="versions-warning" class="ssh-info" style="color: #6c6b6b;"></span>
 </div>
 `
 
@@ -87,7 +90,8 @@ export async function init(insert_in_el,) {
     render_plot_with_buttons('dprime-barplots-completions', plots_data['barplot_completions'], barplot_completions);
     render_plot_with_buttons('dprime-barplots-users', plots_data['barplot_users'], barplot_users);
 
-    console.info('table_lang_comp_stats', plots_data['table_lang_comp_stats']);
+    document.querySelector('#versions-warning').innerText = `Statistics is ignored for following versions of Refact: jetbrains-1.2.16, jetbrains-1.2.15, jetbrains-1.2.13, jetbrains-1.2.14, refact-2.0.125, refact-2.0.124, refact-2.0.123`;
+
 }
 
 

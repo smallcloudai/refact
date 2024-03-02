@@ -12,8 +12,7 @@ from more_itertools import chunked
 from scyllapy import Scylla, InlineBatch, ExecutionProfile, Consistency, SerialConsistency
 from scyllapy.query_builder import Insert, Select
 
-from refact_webgui.dashboards.utils import StatsDataFrames
-
+from refact_webgui.dashboards.utils import StatsDataFrames, IGNORE_PLUGIN_VERSION
 
 os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
 
@@ -339,6 +338,7 @@ class StatisticsService:
                 "tenant_name": r["tenant_name"],
                 "team": r["team"],
                 "completions_cnt": r["completions_cnt"],
+                "enduser_client_version": r["enduser_client_version"],
                 "file_extension": r["file_extension"],
                 "human_characters": r["human_characters"],
                 "model": r["model"],
@@ -359,6 +359,7 @@ class StatisticsService:
         rh_records = await self.select_rh_from_ts(timestamp_start_of_year, workspace)
 
         robot_human_df = pd.DataFrame(rh_records)
+        robot_human_df = robot_human_df[~robot_human_df['enduser_client_version'].str.startswith(tuple(IGNORE_PLUGIN_VERSION))]
 
         if robot_human_df.empty:
             return
@@ -368,10 +369,10 @@ class StatisticsService:
         robot_human_df.sort_values(by='dt_end', inplace=True)
 
         extra = {"week_n_to_fmt": {
-            week_n: datetime.strftime(group["dt_end"].iloc[0], "%b %d")
+            week_n: datetime.strftime(group["dt_end"].iloc[0], "%b %d, %y")
             for week_n, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.isocalendar().week)
         }, "day_to_fmt": [
-            datetime.strftime(group["dt_end"].iloc[0], "%b %d")
+            datetime.strftime(group["dt_end"].iloc[0], "%b %d, %y")
             for date, group in robot_human_df.groupby(robot_human_df['dt_end'].dt.date)
         ], "month_to_fmt": {
             month_n: datetime.strftime(group["dt_end"].iloc[0], "%b")

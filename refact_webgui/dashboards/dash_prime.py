@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Any
 import pandas as pd
 
@@ -31,7 +31,7 @@ def barplot_rh(
 
     res = {}
     day_to_rh = {
-        datetime.strftime(group["dt_end"].iloc[0], "%b %d"): {
+        datetime.strftime(group["dt_end"].iloc[0], "%b %d, %y"): {
             "robot": (robot := int(group["robot_characters"].sum())),
             "human": (human := int(group["human_characters"].sum())),
             "ratio": robot_human_ratio(robot, human),
@@ -60,9 +60,9 @@ def barplot_rh(
     week_to_rh_fmt = complete_date_axis(week_to_rh, default_val, "weekly", extra)
     month_to_rh_fmt = complete_date_axis(month_to_rh, default_val, "monthly", extra)
 
-    res["daily"] = create_chart_data(day_to_rh, day_to_rh.keys(), "Assistant vs Human Daily", "daily")
-    res["weekly"] = create_chart_data(week_to_rh_fmt, week_to_rh_fmt.keys(), "Assistant vs Human Weekly", "weekly")
-    res["monthly"] = create_chart_data(month_to_rh_fmt, month_to_rh_fmt.keys(), "Assistant vs Human Monthly", "monthly")
+    res["daily"] = create_chart_data(day_to_rh, day_to_rh.keys(), "Refact vs Human Daily", "daily")
+    res["weekly"] = create_chart_data(week_to_rh_fmt, week_to_rh_fmt.keys(), "Refact vs Human Weekly", "weekly")
+    res["monthly"] = create_chart_data(month_to_rh_fmt, month_to_rh_fmt.keys(), "Refact vs Human Monthly", "monthly")
 
     res["btns_data"] = {
         "btns_text": ["daily", "weekly", "monthly"],
@@ -85,7 +85,7 @@ def barplot_completions(
         }
     res = {}
     day_to_comp_cnt = {
-        datetime.strftime(group["dt_end"].iloc[0], "%b %d"): {"completions": int(group["completions_cnt"].sum())}
+        datetime.strftime(group["dt_end"].iloc[0], "%b %d, %y"): {"completions": int(group["completions_cnt"].sum())}
         for date, group in rh_df.groupby(rh_df['dt_end'].dt.date)
     }
     week_to_comp_cnt = {
@@ -127,7 +127,7 @@ def barplot_users(
 
     res = {}
     day_to_users_cnt = {
-        datetime.strftime(group["dt_end"].iloc[0], "%b %d"): {"users": int(group["tenant_name"].nunique())}
+        datetime.strftime(group["dt_end"].iloc[0], "%b %d, %y"): {"users": int(group["tenant_name"].nunique())}
         for date, group in rh_df.groupby(rh_df['dt_end'].dt.date)
     }
     week_to_users_cnt = {
@@ -174,6 +174,7 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
         return new_row
 
     def extract_stats(df: pd.DataFrame, date_kind: str) -> Dict:
+        rows_limit = 20
         res_loc = {}
         for lang, group in df.groupby("file_extension"):
             if lang not in languages:
@@ -190,19 +191,19 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
         sorted_vals: List[List] = sorted([[k, *v.values()] for k, v in res_loc.items()], key=lambda x: x[3], reverse=True)
         fmt_vals = [format_row(row) for row in sorted_vals]
         res_loc = {
-            'data': fmt_vals,
+            'data': fmt_vals[:rows_limit],
             'columns': ['Language', *res_loc[list(res_loc.keys())[0]].keys()],
-            'title': f"Refact's impact by language: {date_kind}"
+            'title': f"Refact's impact by language: {date_kind}; TOP-{rows_limit}"
         }
         return res_loc
 
     res = {
-        "last week": extract_stats(
-            rh_df.loc[rh_df["dt_end"].dt.isocalendar().week == rh_df["dt_end"].dt.isocalendar().week.max()],
+        "7 days": extract_stats(
+            rh_df.loc[rh_df["dt_end"] >= (datetime.now() - timedelta(days=7))],
             "last week"
         ),
-        "last month": extract_stats(
-            rh_df.loc[rh_df["dt_end"].dt.month == rh_df["dt_end"].dt.month.max()],
+        "30 days": extract_stats(
+            rh_df.loc[rh_df["dt_end"] >= (datetime.now() - timedelta(days=30))],
             "last month"
         ),
         "all time": extract_stats(
@@ -210,7 +211,7 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
             "all time"
         ),
         "btns_data": {
-            "btns_text": ["last week", "last month", "all time"],
+            "btns_text": ["7 days", "30 days", "all time"],
             "default": "all time",
         }
     }
