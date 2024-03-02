@@ -1,4 +1,4 @@
-# How to Contribute
+# How to Contributes
 
 ## Install for Development
 
