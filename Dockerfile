@@ -13,6 +13,7 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
     expect \
     mpich \
     libmpich-dev \
+    protobuf-compiler \
     python3 python3-pip \
     && rm -rf /var/lib/{apt,dpkg,cache,log}
 
