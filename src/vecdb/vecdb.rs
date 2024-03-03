@@ -267,7 +267,7 @@ impl VecdbSearch for VecDb {
             5
         ).await;
         if embedding_mb.is_err() {
-            return Err("Failed to get embedding".to_string());
+            return Err(embedding_mb.unwrap_err().to_string());
         }
         info!("search query {:?}, it took {:.3}s to vectorize the query", query, t0.elapsed().as_secs_f64());
 
@@ -275,7 +275,7 @@ impl VecdbSearch for VecDb {
         let t1 = std::time::Instant::now();
         let results = match handler_locked.search(embedding_mb.unwrap(), top_n).await {
             Ok(res) => res,
-            Err(_) => {return  Err("error during search occurred".to_string()) },
+            Err(err) => { return Err(err.to_string()) }
         };
         info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
         for rec in results.iter() {
