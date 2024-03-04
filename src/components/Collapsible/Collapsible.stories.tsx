@@ -12,6 +12,7 @@ export default meta;
 
 export const Default: StoryObj<typeof Collapsible> = {
   args: {
+    title: "Collapsible",
     children: (
       <Flex direction="column">
         <Text>Item 1</Text>

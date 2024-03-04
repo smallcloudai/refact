@@ -10,10 +10,12 @@ export type CollapsibleProps = Pick<
   React.PropsWithChildren<{
     className?: string;
     disabled?: boolean;
+    title?: string;
   }>;
 
 export const Collapsible: React.FC<CollapsibleProps> = ({
   children,
+  title,
   ...props
 }) => {
   const [open, setOpen] = React.useState(false);
@@ -27,7 +29,8 @@ export const Collapsible: React.FC<CollapsibleProps> = ({
       <Flex align="center" justify="between">
         <RadixCollapsible.Trigger asChild>
           <Button variant="ghost">
-            Advanced: {open ? <Cross2Icon /> : <RowSpacingIcon />}{" "}
+            {title}
+            {open ? <Cross2Icon /> : <RowSpacingIcon />}
           </Button>
         </RadixCollapsible.Trigger>
       </Flex>
