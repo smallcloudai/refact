@@ -54,6 +54,7 @@ class InferenceQueue:
                 self._models_available.append(model)
             self._models_available_ts = time.time()
             if j.get("openai_api_enable", False):
+                self._models_available.append('gpt-3.5-turbo')
                 self._models_available.append('gpt-3.5-turbo-0125')
                 self._models_available.append('gpt-4')
                 self._models_available.append('gpt-4-0125-preview')
