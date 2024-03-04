@@ -21,6 +21,7 @@ import type { ChatState } from "../../hooks";
 import { ChatContextFile } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { useConfig } from "../../contexts/config-context";
+import { ChatControls } from "./ChatControls";
 
 const CapsSelect: React.FC<{
   value: string;
@@ -158,7 +159,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           disabled={!attachFile.can_paste}
         />
       )}
-      <Flex>
+      <Flex pl="2">
         {canChangeModel && (
           <CapsSelect
             value={model || caps.default_cap}
@@ -166,6 +167,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             options={caps.available_caps}
           />
         )}
+
         {isStreaming && (
           <Button
             ml="auto"
@@ -177,6 +179,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           </Button>
         )}
       </Flex>
+
+      <ChatControls
+        value={value}
+        onChange={setValue}
+        activeFile={attachFile}
+        snippet={selectedSnippet}
+      />
+
       {/** TODO: handle being offline */}
 
       <Form

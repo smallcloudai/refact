@@ -1,7 +1,7 @@
 import React from "react";
 import * as RadixCollapsible from "@radix-ui/react-collapsible";
 import { Cross2Icon, RowSpacingIcon } from "@radix-ui/react-icons";
-import { Flex, Button } from "@radix-ui/themes";
+import { Flex, Button, Text } from "@radix-ui/themes";
 
 export type CollapsibleProps = Pick<
   RadixCollapsible.CollapsibleProps,
@@ -28,10 +28,12 @@ export const Collapsible: React.FC<CollapsibleProps> = ({
     >
       <Flex align="center" justify="between">
         <RadixCollapsible.Trigger asChild>
-          <Button variant="ghost">
-            {title}
-            {open ? <Cross2Icon /> : <RowSpacingIcon />}
-          </Button>
+          <Text>
+            <Button size="2" variant="ghost">
+              {title}
+              {open ? <Cross2Icon /> : <RowSpacingIcon />}
+            </Button>
+          </Text>
         </RadixCollapsible.Trigger>
       </Flex>
 
