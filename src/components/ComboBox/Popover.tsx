@@ -11,8 +11,10 @@ export const Popover: React.FC<
     store: ComboboxStore;
     hidden: boolean;
     getAnchorRect: (anchor: HTMLElement | null) => AnchorRect | null;
+    maxWidth?: number | null;
   }
-> = ({ children, ...props }) => {
+> = ({ maxWidth, children, ...props }) => {
+  const style = maxWidth ? { maxWidth: maxWidth + "px" } : {};
   return (
     <Box
       asChild
@@ -21,9 +23,10 @@ export const Popover: React.FC<
         "rt-HoverCardContent",
         styles.popover,
       )}
+      style={style}
     >
       <ComboboxPopover unmountOnHide fitViewport {...props}>
-        <ScrollArea scrollbars="both" className={styles.popover__scroll}>
+        <ScrollArea scrollbars="vertical" className={styles.popover__scroll}>
           <Box p="1" style={{ overflowY: "hidden", overflowX: "hidden" }}>
             {children}
           </Box>
