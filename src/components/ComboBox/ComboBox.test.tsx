@@ -323,6 +323,15 @@ describe("ComboBox", () => {
     expect(textarea.textContent).toEqual("@file /foo\nhello");
   });
 
+  test("it should close when pressing escape", async () => {
+    const { user, ...app } = render(<App />);
+    const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
+    await user.type(textarea, "@");
+    expect(app.queryByText("@file")).not.toBeNull();
+    await user.keyboard("{Escape}");
+    expect(app.queryByText("@file")).toBeNull();
+  });
+
   // test("textarea should be empty after submit", async () => {
   //   const submitSpy = vi.fn();
   //   const { user, ...app } = render(<App onSubmit={submitSpy} />);

@@ -219,6 +219,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       setTrigger(trigger + " ");
       setSelectedCommand(trigger + " ");
     }
+
+    if (event.key === "Escape") {
+      setTrigger("");
+      setSelectedCommand("");
+      setStartPosition(null);
+      setEndPosition(null);
+    }
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
