@@ -129,6 +129,8 @@
 [x] add metering_balance (coins) and model used in chat
 [x] figure out why react is being imported in `dist/event/index.d.ts`
 [x] prevent react being imported in index.d.ts
+[ ] redo selected snippet
+[ ]
 
 ### EVENTS TODO FOR IDEs
 

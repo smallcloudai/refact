@@ -21,7 +21,7 @@ import type { ChatState } from "../../hooks";
 import { ChatContextFile } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { useConfig } from "../../contexts/config-context";
-import { ChatControls } from "./ChatControls";
+import { ChatControls, type CursorPosition } from "./ChatControls";
 
 const CapsSelect: React.FC<{
   value: string;
@@ -89,6 +89,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 }) => {
   const [value, setValue] = React.useState("");
   const [snippetAdded, setSnippetAdded] = React.useState(false);
+  const [cursorPosition, setCursorPosition] =
+    React.useState<CursorPosition | null>(null);
   const config = useConfig();
 
   // TODO: this won't update the value in the text area
@@ -185,6 +187,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         onChange={setValue}
         activeFile={attachFile}
         snippet={selectedSnippet}
+        cursorPosition={cursorPosition}
       />
 
       {/** TODO: handle being offline */}
@@ -211,6 +214,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           placeholder={
             commands.available_commands.length > 0 ? "Type @ for commands" : ""
           }
+          setCursorPosition={setCursorPosition}
           render={(props) => (
             <TextArea
               disabled={isStreaming}

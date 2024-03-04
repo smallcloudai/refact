@@ -5,6 +5,7 @@ import type { TextAreaProps } from "../TextArea/TextArea";
 import { Item } from "./Item";
 import { Portal } from "../Portal";
 import { Popover } from "./Popover";
+import { CursorPosition } from "../ChatForm/ChatControls";
 
 export type ComboBoxProps = {
   commands: string[];
@@ -22,6 +23,7 @@ export type ComboBoxProps = {
   ) => void;
   setSelectedCommand: (command: string) => void;
   selectedCommand: string;
+  setCursorPosition: (position: CursorPosition) => void;
 };
 
 export const ComboBox: React.FC<ComboBoxProps> = ({
@@ -35,6 +37,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   requestCommandsCompletion,
   setSelectedCommand,
   selectedCommand,
+  setCursorPosition,
 }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [trigger, setTrigger] = React.useState<string>("");
@@ -85,6 +88,19 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   React.useEffect(() => {
     combobox.render();
   }, [combobox, value]);
+
+  React.useEffect(() => {
+    if (!ref.current) return;
+    const position = {
+      start: ref.current.selectionStart,
+      end: ref.current.selectionEnd,
+    };
+    setCursorPosition(position);
+  }, [
+    ref.current?.selectionStart,
+    ref.current?.selectionEnd,
+    setCursorPosition,
+  ]);
 
   React.useEffect(() => {
     if (!trigger && selectedCommand) {
