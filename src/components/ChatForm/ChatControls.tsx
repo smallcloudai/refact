@@ -97,7 +97,7 @@ export const ChatControls: React.FC<{
   return (
     <Box pt="4" pb="4" pl="2">
       <Collapsible title="Advanced: ">
-        <Grid columns="2" width="auto" gap="2">
+        <Grid pt="4" columns="2" width="auto" gap="2">
           <Text size="2">
             <Checkbox
               size="1"
