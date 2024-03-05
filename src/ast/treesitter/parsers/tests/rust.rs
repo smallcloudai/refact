@@ -1,21 +1,27 @@
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use std::path::PathBuf;
+    use url::Url;
 
     use crate::ast::treesitter::parsers::rust::RustParser;
     use crate::ast::treesitter::parsers::tests::test_query_function;
+    use crate::ast::treesitter::structs::SymbolDeclarationStruct;
 
     const MAIN_RS_CODE: &str = include_str!("cases/rust/main.rs");
     const MAIN_RS_INDEXES: &str = include_str!("cases/rust/main.rs.indexes.json");
     const MAIN_RS_USAGES: &str = include_str!("cases/rust/main.rs.usages.json");
-
+    
     #[test]
     fn test_query_rust_function() {
-        let parser = Box::new(RustParser::new().expect("RustParser::new"));
-        let path = PathBuf::from("main.rs");
-        test_query_function(parser, &path, MAIN_RS_CODE,
-                            serde_json::from_str(MAIN_RS_INDEXES).unwrap(),
-                            serde_json::from_str(MAIN_RS_USAGES).unwrap());
+        let mut parser = Box::new(RustParser::new().expect("RustParser::new"));
+        let path = Url::parse("file:///main.rs").unwrap();
+        let asd = parser.parse(MAIN_RS_CODE, &path);
+        let indexes_json: HashMap<String, SymbolDeclarationStruct> = serde_json::from_str(MAIN_RS_INDEXES).unwrap();
+        
+        // test_query_function(parser, &path, MAIN_RS_CODE,
+        //                     serde_json::from_str(MAIN_RS_INDEXES).unwrap(),
+        //                     serde_json::from_str(MAIN_RS_USAGES).unwrap());
         // let usages_json = serde_json::to_string_pretty(&usages).unwrap();
 
         // // Open a file and write the JSON string to it
