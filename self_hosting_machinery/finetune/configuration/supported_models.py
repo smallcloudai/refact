@@ -22,10 +22,9 @@ _bigcode_tokenizer_mapping = {
 }
 _starcoder_base = {
     "lora_target_modules_mapping": {
-        "qkv": ["attn.q_attn", "attn.c_attn"],
-        "out": ["attn.c_proj"],
-        "backproj": ["attn.c_proj"],
-        "mlp": ["mlp.c_fc", "mlp.c_proj"],
+        "qkv": [("attn.q_attn", "attn.c_attn")],
+        "out": [("attn.c_proj", )],
+        "mlp": [("mlp.c_fc", ), ("mlp.c_proj", )],
     },
     "freeze_exceptions_mapping": {
         "wte": ["wte", "wpe"],
@@ -42,10 +41,9 @@ _starcoder_base = {
 }
 _starcoder2_base = {
     "lora_target_modules_mapping": {
-        "qkv": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj"],
-        "out": ["self_attn.o_proj"],
-        "backproj": ["self_attn.o_proj"],
-        "mlp": ["mlp.c_fc", "mlp.c_proj"],
+        "qkv": [("self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj")],
+        "out": [("self_attn.o_proj", )],
+        "mlp": [("mlp.c_fc", ), ("mlp.c_proj", )],
     },
     "freeze_exceptions_mapping": {
         "wte": ["embed_tokens"],
@@ -60,10 +58,9 @@ _starcoder2_base = {
 }
 _deepseek_base = {
     "lora_target_modules_mapping": {
-        "qkv": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj"],
-        "out": ["self_attn.o_proj"],
-        "backproj": ["self_attn.o_proj"],
-        "mlp": ["mlp.gate_proj", "mlp.up_proj", "mlp.down_proj"],
+        "qkv": [("self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj")],
+        "out": [("self_attn.o_proj", )],
+        "mlp": [("mlp.gate_proj", ), ("mlp.up_proj", ), ("mlp.down_proj", )],
     },
     "freeze_exceptions_mapping": {
         "wte": ["embed_tokens"],
@@ -92,10 +89,9 @@ _deepseek_base = {
 config = {
     "Refact/1.6B": {
         "lora_target_modules_mapping": {
-            "qkv": ["attn.q", "attn.kv"],
-            "out": ["attn.c_proj"],
-            "backproj": ["attn.c_proj"],
-            "mlp": ["mlp.gate_up_proj", "mlp.c_proj"],
+            "qkv": [("attn.q", "attn.kv")],
+            "out": [("attn.c_proj", )],
+            "mlp": [("mlp.gate_up_proj", ), ("mlp.c_proj", )],
         },
         "freeze_exceptions_mapping": {
             "wte": ["wte"],
@@ -134,10 +130,9 @@ config = {
 
     "codellama/7b": {
         "lora_target_modules_mapping": {
-            "qkv": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj"],
-            "out": ["self_attn.o_proj"],
-            "backproj": ["self_attn.o_proj"],
-            "mlp": ["mlp.gate_proj", "mlp.up_proj", "mlp.down_proj"],
+            "qkv": [("self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj")],
+            "out": [("self_attn.o_proj", )],
+            "mlp": [("mlp.gate_proj", ), ("mlp.up_proj", ), ("mlp.down_proj", )],
         },
         "freeze_exceptions_mapping": {
             "wte": ["embed_tokens"],

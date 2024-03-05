@@ -1,5 +1,5 @@
 import math
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Tuple
 
 import torch as th
 from torch.nn.init import kaiming_uniform_
@@ -103,19 +103,121 @@ class LoraLinear(LoraLayerMixin, th.nn.Module):
             return self.layer(x)
 
 
+'''
+model.layers.0.self_attn.q_proj.bias	[3072]	F32
+model.layers.0.self_attn.q_proj.weight	[3072,3072]	F32
+
+model.layers.0.self_attn.k_proj.bias	[256]	F32
+model.layers.0.self_attn.k_proj.weight	[256,3072]	F32
+
+model.layers.0.self_attn.v_proj.bias	[256]	F32
+model.layers.0.self_attn.v_proj.weight	[256,3072]	F32
+
+model.layers.0.self_attn.o_proj.bias	[3072]	F32
+model.layers.0.self_attn.o_proj.weight	[3072,3072]	F32
+
+qkv weight 3584 3072
+qkv bias 3584 
+
+o weight 3072 3072
+o bias 3072
+
+qkv 256 32 3584
+q 256 32 3072
+k 256 32 256
+v 256 32 256
+'''
+
+class LoraMultipleLinear(LoraLayerMixin, th.nn.Module):
+    def __init__(
+            self,
+            layers: List[th.nn.Module],
+            cat_dim: int = -1,
+            r: int = 0,
+            lora_alpha: int = 1,
+            lora_dropout: float = 0.0,
+            init_scale: float = 0.0,
+            dummy_output: bool = False,
+            **unused
+    ):
+        th.nn.Module.__init__(self)
+        LoraLayerMixin.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=lora_dropout)
+        self.layers = layers
+        for layer in self.layers:
+            layer.weight.requires_grad = False
+            if layer.bias is not None:
+                layer.bias.requires_grad = False
+        self.init_scale = init_scale
+        self.dummy_output = dummy_output
+        self.cat_dim = cat_dim
+
+        self.out_features, self.in_features = (
+            sum(l.weight.shape[0] for l in self.layers),
+            sum(l.weight.shape[1] for l in self.layers)
+        )
+
+        # Actual trainable parameters
+        if r > 0:
+            self.lora_A = th.nn.Linear(self.in_features, r, bias=False,
+                                       device=self.layer.weight.device, dtype=self.layer.weight.dtype)
+            self.lora_B = th.nn.Linear(r, self.out_features, bias=False,
+                                       device=self.layer.weight.device, dtype=self.layer.weight.dtype)
+            self.scaling = self.lora_alpha / self.r
+
+        self.init_weights()
+
+    def init_weights(self):
+        if self.r > 0:
+            # initialize A the same way as the default for th.nn.Linear and B to zero
+            kaiming_uniform_(self.lora_A.weight, a=math.sqrt(5))
+            self.lora_A.weight.data *= self.init_scale / self.lora_A.weight.data.norm(dim=1, p=2, keepdim=True)
+            th.nn.init.zeros_(self.lora_B.weight)
+
+    @property
+    def weight(self) -> th.nn.Parameter:
+        raise NotImplemented
+
+    @property
+    def bias(self) -> Optional[th.nn.Parameter]:
+        raise NotImplemented
+
+    def _forward_layers(self, x: th.Tensor) -> Union[th.Tensor, Tuple[th.Tensor, None]]:
+        result = th.cat(
+            [layer(x) if not self.dummy_output else layer(x)[0] for layer in self.layers],
+            dim=self.cat_dim
+        )
+        if not self.dummy_output:
+            return result
+        else:
+            return result, None
+
+    def forward(self, x: th.Tensor) -> Union[th.Tensor, List[th.Tensor]]:
+        if self.r > 0:
+            if not self.dummy_output:
+                result1 = self._forward_layers(x)
+            else:
+                result1, *other = self._forward_layers(x)
+            result2 = result1 + self.lora_B(self.lora_A(self.lora_dropout(x))) * self.scaling
+            if not self.dummy_output:
+                return result2
+            else:
+                return result2, *other
+        else:
+            return self._forward_layers(x)
+
+
+
 class LoraMixin:
     @staticmethod
     def apply_lora(
             model: th.nn.Module,
-            lora_target_modules: List[str],
+            lora_target_modules: List[Tuple[str]],
             lora_r: int,
             lora_alpha: int,
             lora_dropout: float,
             lora_init_scale: float = 0.01,
             **unused
     ):
-        # TODO: compat fix, remove in the next iteration of changes
-        lora_target_modules = ['out' if m == 'backproj' else m for m in lora_target_modules]
         for name, module in model.named_modules():
             if not isinstance(module, th.nn.Linear):
                 continue
