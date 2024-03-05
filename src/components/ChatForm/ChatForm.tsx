@@ -65,7 +65,7 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
 
   const markdown = useMemo(() => {
     return "```" + snippet.language + "\n" + snippet.code + "\n```\n";
-  }, [snippet]);
+  }, [snippet.language, snippet.code]);
 
   const [checkboxes, setCheckboxes] = React.useState<
     ChatControlsProps["checkboxes"]
