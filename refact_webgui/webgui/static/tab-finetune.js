@@ -68,8 +68,7 @@ function tab_finetune_config_and_runs() {
 }
 
 function rename_run_post(run_id, new_name) {
-    console.log("rename_run_post", run_id, new_name);
-    fetch("/tab-finetune-rename-run", {
+    return fetch("/tab-finetune-rename-run", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -85,10 +84,12 @@ function rename_run_post(run_id, new_name) {
                 throw new Error(json.detail);
             });
         }
+        return response.ok;
     })
     .catch(function (error) {
-        console.log('tab-finetune-rename-run',error);
+        console.log('tab-finetune-rename-run', error);
         general_error(error);
+        return false; // Return false in case of an error
     });
 }
 
@@ -347,15 +348,23 @@ function render_runs() {
             cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
 
             let rename_input = document.getElementById(`run_rename_input${run.dataset.run}`);
-            document.getElementById(`confirm_btn${run.dataset.run}`).addEventListener('click', (event) => {
+            const confirm_btn = document.getElementById(`confirm_btn${run.dataset.run}`);
+            const cancel_btn = document.getElementById(`cancel_btn${run.dataset.run}`);
+
+            confirm_btn.addEventListener('click', (event) => {
                 event.stopPropagation();
-                rename_div.disabled = true;
-                rename_run_post(run.dataset.run, rename_input.value);
-                rename_div.disabled = false;
+                confirm_btn.hidden = true;
+                cancel_btn.hidden = true;
+                rename_run_post(run.dataset.run, rename_input.value).then((is_ok) => {
+                    if (!is_ok) {
+                        confirm_btn.hidden = false;
+                        cancel_btn.hidden = false;
+                    }
+                })
                 render_runs();
             });
 
-            document.getElementById(`cancel_btn${run.dataset.run}`).addEventListener('click', (event) => {
+            cancel_btn.addEventListener('click', (event) => {
                 event.stopPropagation();
                 rename_input.value = run.dataset.run;
                 rename_div.hidden = true;
