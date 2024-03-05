@@ -20,7 +20,7 @@ from refact_utils.finetune.filtering_defaults import finetune_filtering_defaults
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, validator
 
 from typing import Optional
 
@@ -73,8 +73,16 @@ class FilteringSetup(BaseModel):
 
 
 class RenameRunPost(BaseModel):
-    run_id_old: str = Field(...)
-    run_id_new: str = Field(..., max_length=30)
+    run_id_old: str
+    run_id_new: str
+
+    @validator('run_id_new')
+    def validate_run_id_new(cls, v):
+        if len(v) >= 30:
+            raise HTTPException(status_code=400, detail="must be less than 30 characters")
+        if not re.match("^[a-zA-Z0-9_ ]*$", v):
+            raise HTTPException(status_code=400, detail="must contain only Latin alphabet, numbers, spaces, and underscores")
+        return v
 
 
 class TabFinetuneTrainingSetup(BaseModel):
