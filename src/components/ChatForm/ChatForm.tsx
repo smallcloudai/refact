@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 
 import { Box, Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
@@ -22,6 +22,7 @@ import { ChatContextFile } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { useConfig } from "../../contexts/config-context";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
+import { useEffectOnce } from "../../hooks";
 
 const CapsSelect: React.FC<{
   value: string;
@@ -41,6 +42,123 @@ const CapsSelect: React.FC<{
       ></Select>
     </Flex>
   );
+};
+
+type useCheckboxStateProps = {
+  activeFile: ChatState["active_file"];
+  snippet: ChatState["selected_snippet"];
+};
+const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
+  const lines = useMemo(() => {
+    return activeFile.line1 !== null && activeFile.line2 !== null
+      ? `:${activeFile.line1}-${activeFile.line2}`
+      : "";
+  }, [activeFile.line1, activeFile.line2]);
+
+  const nameWithLines = useMemo(() => {
+    return `${activeFile.name}${lines}`;
+  }, [activeFile.name, lines]);
+
+  const fullPathWithLines = useMemo(() => {
+    return activeFile.path + lines;
+  }, [activeFile.path, lines]);
+
+  const markdown = useMemo(() => {
+    return "```" + snippet.language + "\n" + snippet.code + "\n```\n";
+  }, [snippet]);
+
+  const [checkboxes, setCheckboxes] = React.useState<
+    ChatControlsProps["checkboxes"]
+  >({
+    search_workspace: {
+      name: "search_workspace",
+      checked: false,
+      label: "Search workspace",
+      disabled: false,
+    },
+    lookup_symbols: {
+      name: "lookup_symbols",
+      checked: false,
+      label: "Lookup symbols ",
+      value: fullPathWithLines,
+      disabled: !activeFile.name,
+      fileName: nameWithLines,
+    },
+    selected_lines: {
+      name: "selected_lines",
+      checked: false,
+      label: "Selected lines",
+      value: markdown,
+      disabled: !snippet.code,
+      fileName: nameWithLines,
+    },
+  } as const);
+
+  const toggleCheckbox = useCallback(
+    (name: string, value: boolean | string) => {
+      setCheckboxes((prev) => {
+        const checkbox: Checkbox = { ...prev[name], checked: !!value };
+        const nextValue = { ...prev, [name]: checkbox };
+        return nextValue;
+      });
+    },
+    [setCheckboxes],
+  );
+
+  useEffect(() => {
+    setCheckboxes((prev) => {
+      const lookupValue = prev.lookup_symbols.checked
+        ? prev.lookup_symbols.value
+        : fullPathWithLines;
+
+      const lookupFileName = prev.lookup_symbols.checked
+        ? prev.lookup_symbols.fileName
+        : nameWithLines;
+
+      const lookupDisabled = prev.lookup_symbols.checked
+        ? false
+        : !activeFile.name;
+
+      const selectedLineValue = prev.selected_lines.checked
+        ? prev.selected_lines.value
+        : markdown;
+
+      const selectedLineFileName = prev.selected_lines.checked
+        ? prev.selected_lines.fileName
+        : nameWithLines;
+
+      const selectedLineDisabled = prev.selected_lines.checked
+        ? false
+        : !snippet.code;
+
+      const nextValue = {
+        ...prev,
+        lookup_symbols: {
+          ...prev.lookup_symbols,
+          // TODO: should be full path,
+          value: lookupValue,
+          fileName: lookupFileName,
+          disabled: lookupDisabled,
+        },
+        selected_lines: {
+          ...prev.selected_lines,
+          value: selectedLineValue,
+          fileName: selectedLineFileName,
+          disabled: selectedLineDisabled,
+        },
+      };
+
+      return nextValue;
+    });
+  }, [
+    markdown,
+    nameWithLines,
+    activeFile.name,
+    snippet.code,
+    fullPathWithLines,
+  ]);
+
+  return { checkboxes, toggleCheckbox, markdown, nameWithLines };
 };
 
 export type ChatFormProps = {
@@ -88,43 +206,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onTextAreaHeightChange,
 }) => {
   const [value, setValue] = React.useState("");
-  const [snippetAdded, setSnippetAdded] = React.useState(false);
-  const [checkboxes, setCheckboxes] = React.useState<
-    ChatControlsProps["checkboxes"]
-  >({
-    search_workspace: {
-      name: "search_workspace",
-      checked: false,
-      label: "Search workspace",
-    },
-    lookup_symbols: {
-      name: "lookup_symbols",
-      checked: false,
-      label: "Lookup symbols",
-    },
-    selected_lines: {
-      name: "selected_lines",
-      checked: false,
-      label: "Selected lines",
-    },
-  } as const);
-
-  const lines =
-    attachFile.line1 !== null && attachFile.line2 !== null
-      ? `:${attachFile.line1}-${attachFile.line2}`
-      : "";
-  const nameWithLines = `${attachFile.name}${lines}`;
-
-  const handleCheckChange: ChatControlsProps["onCheckedChange"] = (
-    name,
-    value,
-  ) => {
-    setCheckboxes((prev) => {
-      const checkbox: Checkbox = { ...prev[name], checked: !!value };
-      const nextValue = { ...prev, [name]: checkbox };
-      return nextValue;
+  // const [snippetAdded, setSnippetAdded] = React.useState(false);
+  const { markdown, nameWithLines, checkboxes, toggleCheckbox } =
+    useControlsState({
+      activeFile: attachFile,
+      snippet: selectedSnippet,
     });
-  };
 
   const addCheckboxValuesToInput = (input: string) => {
     let result = input;
@@ -136,37 +223,22 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     }
 
     if (checkboxes.lookup_symbols.checked) {
-      result += `@symbols-at ${nameWithLines}\n`;
+      result += `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n`;
     }
 
     if (checkboxes.selected_lines.checked) {
-      const markdown =
-        "```" +
-        selectedSnippet.language +
-        "\n" +
-        selectedSnippet.code +
-        "\n```\n";
-      result += markdown;
+      result += `${checkboxes.selected_lines.value ?? ""}\n`;
     }
     return result;
   };
 
   const config = useConfig();
 
-  // TODO: this won't update the value in the text area
-  useEffect(() => {
-    if (!snippetAdded && selectedSnippet.code) {
-      setValue(
-        "```" +
-          selectedSnippet.language +
-          "\n" +
-          selectedSnippet.code +
-          "\n```\n" +
-          value,
-      );
-      setSnippetAdded(true);
+  useEffectOnce(() => {
+    if (selectedSnippet.code) {
+      setValue(markdown + value);
     }
-  }, [snippetAdded, selectedSnippet.code, value, selectedSnippet.language]);
+  });
 
   const isOnline = useIsOnline();
 
@@ -238,10 +310,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         )}
       </Flex>
 
-      <ChatControls
-        checkboxes={checkboxes}
-        onCheckedChange={handleCheckChange}
-      />
+      <ChatControls checkboxes={checkboxes} onCheckedChange={toggleCheckbox} />
 
       {/** TODO: handle being offline */}
 

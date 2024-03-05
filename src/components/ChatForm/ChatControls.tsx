@@ -6,6 +6,9 @@ export type Checkbox = {
   name: string;
   label: string;
   checked: boolean;
+  value?: string;
+  disabled: boolean;
+  fileName?: string;
 };
 
 export type ChatControlsProps = {
@@ -28,9 +31,10 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
                   size="1"
                   name={checkbox.name}
                   checked={checkbox.checked}
+                  disabled={checkbox.disabled}
                   onCheckedChange={(value) => onCheckedChange(key, value)}
                 />{" "}
-                {checkbox.label}
+                {checkbox.label} {checkbox.fileName}
               </Text>
             );
           })}

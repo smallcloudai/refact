@@ -8,7 +8,7 @@ const noop = () => ({});
 const App: React.FC<Partial<ChatFormProps>> = (props) => {
   const defaultProps: ChatFormProps = {
     removePreviewFileByName: noop,
-    selectedSnippet: { code: "", language: "" },
+    selectedSnippet: { code: "", language: "", path: "", basename: "" },
     onSubmit: noop,
     isStreaming: false,
     onStopStreaming: noop,
@@ -32,6 +32,7 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
       line2: null,
       can_paste: false,
       attach: false,
+      path: "",
     },
     setSelectedCommand: noop,
     filesInPreview: [],
@@ -96,13 +97,14 @@ describe("ChatForm", () => {
       line2: 2,
       can_paste: false,
       attach: false,
+      path: "path/to/foo.txt",
     };
     const { user, ...app } = render(
       <App onSubmit={fakeOnSubmit} attachFile={activeFile} />,
     );
     await user.click(app.getByText("Advanced:"));
 
-    const label = app.queryByText("Lookup symbols");
+    const label = app.queryByText(/Lookup symbols/);
     expect(label).not.toBeNull();
     const btn = label?.querySelector("button");
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -111,23 +113,25 @@ describe("ChatForm", () => {
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     expect(fakeOnSubmit).toHaveBeenCalledWith(
-      `foo\n@symbols-at ${activeFile.name}:${activeFile.line1}-${activeFile.line2}\n`,
+      `foo\n@symbols-at ${activeFile.path}:${activeFile.line1}-${activeFile.line2}\n`,
     );
   });
 
-  test.skip("checkbox snippet", async () => {
+  test("checkbox snippet", async () => {
     // skipped because if the snippet is there on the first render it's automatically appened
     const fakeOnSubmit = vi.fn();
     const snippet = {
       language: "python",
       code: "print(1)",
+      path: "/Users/refact/projects/print1.py",
+      basename: "print1.py",
     };
     const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
 
     app.rerender(<App onSubmit={fakeOnSubmit} selectedSnippet={snippet} />);
     await user.click(app.getByText("Advanced:"));
 
-    const label = app.queryByText("Selected");
+    const label = app.queryByText(/Selected lines/);
     expect(label).not.toBeNull();
     const btn = label?.querySelector("button");
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -135,7 +139,7 @@ describe("ChatForm", () => {
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
-    const markdown = "```python\nprint(1)\n```";
-    expect(fakeOnSubmit).toHaveBeenCalledWith(`foo\n${markdown}`);
+    const markdown = "```python\nprint(1)\n```\n";
+    expect(fakeOnSubmit).toHaveBeenCalledWith(`foo\n${markdown}\n`);
   });
 });
