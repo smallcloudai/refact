@@ -69,7 +69,7 @@ pub async fn send_telemetry_files_to_mothership(
         let contents = contents_maybe.unwrap();
         let path_str = path.to_str().unwrap();
         let filename = path.file_name().unwrap().to_str().unwrap();
-        if filename.starts_with(&file_prefix) && 
+        if filename.starts_with(&file_prefix) &&
             (path_str.ends_with("-net.json") || path_str.ends_with("-rh.json") || path_str.ends_with("-comp.json")) {
             info!("sending telemetry file\n{}\nto url\n{}", path.to_str().unwrap(), telemetry_basic_dest);
             let resp = send_telemetry_data(contents, &telemetry_basic_dest,
@@ -148,8 +148,8 @@ pub async fn telemetry_background_task(
                 tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_TRANSMIT_EACH_N_SECONDS)).await;
             },
             Err(e) => {
-                error!("telemetry send failed: no caps; trying again in 60s; detailed: {}", e);
-                tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+                error!("telemetry send failed: no caps, trying again in {}, error: {}", TELEMETRY_TRANSMIT_EACH_N_SECONDS, e);
+                tokio::time::sleep(tokio::time::Duration::from_secs(TELEMETRY_TRANSMIT_EACH_N_SECONDS)).await;
             }
         };
     }
