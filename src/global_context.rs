@@ -82,6 +82,7 @@ pub struct GlobalContext {
     pub cache_dir: PathBuf,
     pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
     pub caps_reading_lock: Arc<AMutex<bool>>,
+    pub caps_last_error: String,
     pub caps_last_attempted_ts: u64,
     pub tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
     pub tokenizer_download_lock: Arc<AMutex<bool>>,
@@ -123,7 +124,8 @@ pub async fn try_load_caps_quickly_if_not_present(
             }
         }
         if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
-            return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "server is not reachable, no caps available".to_string()));
+            let global_context_locked = global_context.write().await;
+            return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, global_context_locked.caps_last_error.clone()));
         }
         let caps_result = crate::caps::load_caps(
             CommandLine::from_args(),
@@ -135,13 +137,15 @@ pub async fn try_load_caps_quickly_if_not_present(
             match caps_result {
                 Ok(caps) => {
                     global_context_locked.caps = Some(caps.clone());
+                    global_context_locked.caps_last_error = "".to_string();
                     info!("quick load caps successful");
                     write!(std::io::stderr(), "CAPS\n").unwrap();
                     Ok(caps)
                 },
                 Err(e) => {
-                    error!("load caps failed: \"{}\"", e);
-                    return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("server is not reachable: {}", e)));
+                    error!("caps fetch failed: \"{}\"", e);
+                    global_context_locked.caps_last_error = format!("caps fetch failed: {}", e);
+                    return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, global_context_locked.caps_last_error.clone()));
                 }
             }
         }
@@ -228,6 +232,7 @@ pub async fn create_global_context(
         cache_dir,
         caps: None,
         caps_reading_lock: Arc::new(AMutex::<bool>::new(false)),
+        caps_last_error: String::new(),
         caps_last_attempted_ts: 0,
         tokenizer_map: HashMap::new(),
         tokenizer_download_lock: Arc::new(AMutex::<bool>::new(false)),
