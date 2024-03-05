@@ -63,7 +63,7 @@ describe("Chat", () => {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
           id: "foo",
-          messages: [["user", "hello"]],
+          messages: [["user", "hello\n"]],
           model: "gpt-3.5-turbo",
           title: "",
           attach_file: false,
@@ -210,7 +210,7 @@ describe("Chat", () => {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
           id: "foo",
-          messages: [["user", "hello"]],
+          messages: [["user", "hello\n"]],
           model: "test-model",
           title: "",
           attach_file: false,
