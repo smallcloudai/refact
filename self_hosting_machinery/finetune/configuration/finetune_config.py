@@ -21,11 +21,7 @@ def base_config(model_name: str, models_db: Dict[str, Any]):
             backend=model_info['backend'],
             ctx_size=model_info['T'],
             lora={
-                "lora_target_modules": [
-                    "qkv",
-                    "backproj",
-                    "mlp"
-                ],
+                "lora_target_modules": [],
                 "lora_r": 16,
                 "lora_alpha": 32,
                 "lora_dropout": 0.01,

@@ -12,6 +12,7 @@ import torch
 from safetensors.torch import save_file
 from torchinfo import summary
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from peft import get_peft_config, get_peft_model, LoraConfig, TaskType
 
 from self_hosting_machinery.finetune.configuration import supported_models
 from self_hosting_machinery.finetune.modelling.lora import LoraMixin
@@ -87,7 +88,7 @@ class ModelContext:
                 self.use_deepspeed = True
 
         logging.info("Allocated memory: %0.2fG" % (torch.cuda.max_memory_allocated() / 1e9))
-        summary(self.model, depth=4, col_names=['num_params', 'params_percent', 'trainable'])
+        print(summary(self.model, depth=4, col_names=['num_params', 'params_percent', 'trainable']))
 
         self.loss_fn = partial(
             masked_loss,
@@ -121,24 +122,24 @@ class ModelContext:
             weights_path=self.finetune_cfg['model_info']['weight_path'],
             repo_id=self.finetune_cfg['model_info']['repo_id']
         )
-        freeze_exceptions, lora_target_modules = self._map_model_specific_params(
-            freeze_exceptions, lora_target_modules
-        )
-        self._apply_model_modifiers(
-            model
-        )
-        LoraMixin.apply_lora(
-            model.to(device),
-            lora_target_modules=lora_target_modules,
-            lora_r=int(lora_r),
-            lora_alpha=lora_alpha,
-            lora_dropout=lora_dropout,
-            lora_init_scale=lora_init_scale
-        )
+        if len(lora_target_modules) > 0:
+            freeze_exceptions, lora_target_modules = self._map_model_specific_params(
+                freeze_exceptions, lora_target_modules
+            )
+            model = get_peft_model(model, LoraConfig(
+                target_modules=lora_target_modules,
+                modules_to_save=freeze_exceptions,
+                task_type=TaskType.CAUSAL_LM,
+                inference_mode=False,
+                r=int(lora_r),
+                lora_alpha=lora_alpha,
+                lora_dropout=lora_dropout,
+            ))
         self._freeze_model(
             model,
             freeze_exceptions=freeze_exceptions
         )
+        self._apply_model_modifiers(model)
         model.old_state_dict = model.state_dict
         model.state_dict = partial(
             _lora_state_dict.__get__(model, type(model)),
