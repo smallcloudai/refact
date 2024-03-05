@@ -21,6 +21,7 @@ class FileSetsContext:
     MAX_CACHED_LOSS_ROWS = 1_000_000
 
     def __init__(self, autoselect_test_files_num: int):
+        self.random = random.Random(42)
         self._check_prerequisites()
         self.autoselect_test_files_num = autoselect_test_files_num
         self.train_files: List[Dict[str, Any]] = list(jsonlines.open(TRAIN_UNFILTERED_FILEPATH))
@@ -65,6 +66,7 @@ class FileSetsContext:
             traces.log(f"Manually selected test set contains {len(test_files)} files. "
                        f"It could heavily slow down the training process on the next stage")
 
+
     def dump_filtered(
             self,
             files: List[Dict[str, Any]]
@@ -82,7 +84,7 @@ class FileSetsContext:
                     "It's strongly recommended to choose a test set manually to be able to prevent overfitting"
                 )
             else:
-                random.shuffle(files)
+                self.random.shuffle(files)
                 test_files = files[:test_files_count]
                 train_files = files[test_files_count:]
         else:

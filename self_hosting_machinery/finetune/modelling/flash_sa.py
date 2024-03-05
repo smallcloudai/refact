@@ -88,6 +88,9 @@ def apply_flash_mha_to_refact_model(model):
         logging.warning("Triton flash attention is not supported on gpus with cuda capability < 8")
         return
 
+    logging.warning("Applying flash attention to the model")
+    if type(model).__name__ == 'PeftModelForCausalLM':
+        model = model.base_model.model
     for block in model.transformer.h:
         block.attn.forward = _forward.__get__(block.attn, type(block.attn))
 
@@ -130,6 +133,8 @@ def apply_flash_mha_to_starcoder_model(model):
         return
 
     logging.warning("Applying flash attention to the model")
+    if type(model).__name__ == 'PeftModelForCausalLM':
+        model = model.base_model.model
     for block in model.transformer.h:
         block.attn.forward = _forward.__get__(block.attn, type(block.attn))
 
@@ -178,6 +183,8 @@ def apply_flash_mha_to_codellama_model(model):
         return
 
     logging.warning("Applying flash attention to the model")
+    if type(model).__name__ == 'PeftModelForCausalLM':
+        model = model.base_model.model
     for layer in model.base_model.layers:
         layer.self_attn.forward = _forward.__get__(layer.self_attn, type(layer.self_attn))
 
@@ -226,5 +233,7 @@ def apply_flash_mha_to_starcoder2_model(model):
         return
 
     logging.warning("Applying flash attention to the model")
+    if type(model).__name__ == 'PeftModelForCausalLM':
+        model = model.base_model.model
     for layer in model.base_model.layers:
         layer.self_attn.forward = _forward.__get__(layer.self_attn, type(layer.self_attn))

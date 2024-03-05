@@ -6,7 +6,7 @@ import os
 import signal
 import textwrap
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 import torch
 
@@ -14,7 +14,9 @@ from refact_utils.scripts import env
 from refact_utils.finetune.utils import (get_finetune_config, get_finetune_filter_config)
 import self_hosting_machinery.finetune.utils.traces as traces
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config
-from self_hosting_machinery.finetune.scripts.aux.dataset import create_finetune_filter_dataloader, to_cuda
+from self_hosting_machinery.finetune.scripts.aux.dataset import (
+    create_finetune_filter_dataloader, to_cuda, setup_encoding
+)
 from self_hosting_machinery.finetune.scripts.aux.file_sets_context import FileSetsContext
 from self_hosting_machinery.finetune.scripts.aux.file_status_context import FilesStatusContext
 from self_hosting_machinery.finetune.scripts.aux.finetune_filter_status_tracker import FinetuneFilterStatusTracker
@@ -55,30 +57,34 @@ def force_include_exclude_filter(
 
 @torch.inference_mode()
 def loss_based_filter(
-        model_context: ModelContext,
+        finetune_cfg: Dict[str, Any],
         dataset_context: FileSetsContext,
         files_status_context: FilesStatusContext,
         status_tracker: FinetuneFilterStatusTracker,
         *,
         filter_loss_threshold
 ):
-    def _get_file_loss(file) -> float:
+    def _get_file_loss(model_context, file) -> Tuple[ModelContext, float]:
         file_losses = []
         ds = create_finetune_filter_dataloader(
             file=file,
-            dataset_options=f"n_ctx={model_context.finetune_cfg['model_info']['ctx_size'] + 1},"
+            dataset_options=f"n_ctx={finetune_cfg['model_info']['ctx_size'] + 1},"
                             "quit_on_epoch=1,pack_single=1,pack_complete=0",
-            encoding=model_context.encoding
+            encoding=encoding
         )
         for data in map(to_cuda, ds):
-            content = model_context.encoding.decode(data['input'][0])
+            content = encoding.decode(data['input'][0])
             maybe_loss = dataset_context.get_loss_by_content(
-                model_name=model_context.model_name,
+                model_name=finetune_cfg["model_name"],
                 content=content
             )
             if maybe_loss is not None:
                 loss = maybe_loss
             else:
+                if model_context is None:
+                    model_context = ModelContext(finetune_cfg=finetune_cfg)
+                    model_context.eval()
+
                 logits = model_context.forward(input=data['input'])
                 loss = model_context.loss(
                     logits=logits.to(torch.float32),
@@ -96,15 +102,20 @@ def loss_based_filter(
         if len(file_losses) == 0:
             raise InvalidLossValueException("small file")
 
-        return sum(file_losses) / len(file_losses)
+        return model_context, sum(file_losses) / len(file_losses)
 
-    model_context.eval()
+    encoding = setup_encoding(
+        model_name=finetune_cfg["model_name"],
+        weights_path=finetune_cfg['model_info']['weight_path'],
+        repo_id=finetune_cfg['model_info']['repo_id']
+    )
+    model_context = None
     all_losses = []
     train_files = files_status_context.no_status_train_files()
     with status_tracker(total_steps=len(train_files)) as stats_tracker:
         for file in train_files:
             try:
-                file_loss = _get_file_loss(file)
+                model_context, file_loss = _get_file_loss(model_context, file)
             except InvalidLossValueException as e:
                 files_status_context.reject_file(file, reason=str(e))
                 continue
@@ -139,9 +150,6 @@ def finetune_filter(
     finetune_cfg['model_info']['lora']['lora_dropout'] = 0.0
     finetune_cfg['model_info']['lora']['lora_init_scale'] = 1e-5
     finetune_cfg['model_info']['loss_average_elements'] = 1
-    model_context = ModelContext(
-        finetune_cfg=finetune_cfg,
-    )
 
     _log_everywhere("Running force include/exclude filter...")
     force_include_exclude_filter(
@@ -149,7 +157,7 @@ def finetune_filter(
     )
     _log_everywhere("Running perplexity based filter...")
     loss_based_filter(
-        model_context=model_context,
+        finetune_cfg=finetune_cfg,
         dataset_context=dataset_context,
         files_status_context=file_status_context,
         status_tracker=status_tracker,
@@ -183,6 +191,7 @@ def main(models_db: Dict[str, Any]):
         file_sets_context = FileSetsContext(
             autoselect_test_files_num=finetune_filter_cfg.get("autoselect_test_files_num", 3)
         )
+
         traces.log(textwrap.fill(
             f"This filter calculates perplexity for each file and filters out "
             f"files with perplexity larger than {finetune_filter_cfg['filter_loss_threshold']:.3f}.\n"

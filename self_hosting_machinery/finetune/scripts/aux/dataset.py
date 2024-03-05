@@ -13,6 +13,7 @@ from self_hosting_machinery.finetune.configuration import supported_models
 from refact_utils.scripts.env import TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH
 
 __all__ = [
+    "setup_encoding",
     "create_train_dataloader",
     "create_test_dataloader",
     "create_finetune_filter_dataloader",
