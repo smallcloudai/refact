@@ -3,6 +3,7 @@ use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
+use std::sync::Mutex as StdMutex;
 
 use ropey::Rope;
 use tokio::fs::read_to_string;
@@ -13,7 +14,8 @@ use url::Url;
 use crate::global_context;
 use crate::global_context::GlobalContext;
 use crate::telemetry;
-use crate::vecdb::file_filter;
+use walkdir::WalkDir;
+use which::which;
 use crate::vecdb::file_filter::is_valid_file;
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
@@ -79,7 +81,7 @@ impl DocumentInfo {
             }
         }
     }
-    
+
     pub fn read_file_blocked(&self) -> io::Result<String> {
         match &self.document {
             Some(doc) => Ok(doc.text.to_string()),
@@ -88,7 +90,7 @@ impl DocumentInfo {
             }
         }
     }
-    
+
 }
 
 pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<GlobalContext>>, file_path: &String) -> Result<String, String> {
@@ -121,6 +123,57 @@ pub fn pathbuf_to_url(path: &PathBuf) -> Result<Url, Box<dyn std::error::Error>>
     Ok(url)
 }
 
+async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<PathBuf>> {
+    let output = async_process::Command::new(cmd)
+        .args(args)
+        .current_dir(path)
+        .output()
+        .await
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|s| s.lines().map(|line| path.join(line)).collect())
+}
+
+async fn _ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>> {
+    if path.join(".git").exists() && which("git").is_ok() {
+        // Git repository
+        _run_command("git", &["ls-files"], path).await
+    } else if path.join(".hg").exists() && which("hg").is_ok() {
+        // Mercurial repository
+        _run_command("hg", &["status", "-c"], path).await
+    } else if path.join(".svn").exists() && which("svn").is_ok() {
+        // SVN repository
+        _run_command("svn", &["list", "-R"], path).await
+    } else {
+        None
+    }
+}
+
+async fn _retrieve_files_by_proj_folders(proj_folders: Vec<PathBuf>) -> Vec<DocumentInfo> {
+    let mut all_files: Vec<DocumentInfo> = Vec::new();
+    for proj_folder in proj_folders {
+        let maybe_files = _ls_files_under_version_control(&proj_folder).await;
+        if let Some(files) = maybe_files {
+            all_files.extend(files.iter().filter_map(|x| DocumentInfo::from_pathbuf(x).ok()).collect::<Vec<_>>());
+        } else {
+            let files: Vec<DocumentInfo> = WalkDir::new(proj_folder)
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .filter(|e| !e.path().is_dir())
+                .filter(|e| is_valid_file(&e.path().to_path_buf()))
+                .filter_map(|e| DocumentInfo::from_pathbuf(&e.path().to_path_buf()).ok())
+                .collect::<Vec<DocumentInfo>>();
+            all_files.extend(files);
+        }
+    }
+    all_files
+}
 
 pub async fn enqueue_all_files_from_workspace_folders(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
@@ -131,10 +184,15 @@ pub async fn enqueue_all_files_from_workspace_folders(
         x
     };
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
-    let docs = file_filter::retrieve_files_by_proj_folders(folders).await;
+    let docs = _retrieve_files_by_proj_folders(folders).await;
     info!("enqueue_all_files_from_workspace_folders found {} files", docs.len());
+
     let (ast_module, vecdb_module) = {
-        let cx_locked = gcx.read().await;
+        let cx_locked = gcx.write().await;
+        let tmp = docs.iter().map(|x| x.uri.clone()).collect::<Vec<_>>();
+        let workspace_files: &mut Vec<Url> = &mut cx_locked.documents_state.workspace_files.lock().unwrap();
+        workspace_files.clear();
+        workspace_files.extend(tmp);
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
     match *ast_module.lock().await {

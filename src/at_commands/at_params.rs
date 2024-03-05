@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use async_trait::async_trait;
@@ -26,18 +25,13 @@ impl AtParamFilePath {
     }
 }
 
-// from vecdb or from memory or from jsonl
 async fn get_file_paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<String> {
     let file_paths_from_memory = global_context.read().await.documents_state.document_map.read().await.keys().cloned().collect::<Vec<Url>>();
 
-    let file_paths_from_vecdb = match *global_context.read().await.vec_db.lock().await {
-        Some(ref db) => {
-            let index_file_paths = db.get_indexed_file_paths().await;
-            let index_file_paths = index_file_paths.lock().await.deref().clone();
-            index_file_paths.iter().map(|f| f.to_str().unwrap().to_string()).collect()
-        },
-        None => vec![]
-    };
+    let urls_from_workspace: Vec<Url> = global_context.read().await.documents_state.workspace_files.lock().unwrap().clone();
+    let paths_from_workspace: Vec<String> = urls_from_workspace.iter()
+        .filter_map(|x| x.to_file_path().ok().and_then(|path| path.to_str().map(|s| s.to_string())))
+        .collect();
 
     let paths_in_jsonl: Vec<String> = files_in_jsonl(global_context.clone()).await.iter_mut()
         .filter_map(|doc| {
@@ -48,21 +42,11 @@ async fn get_file_paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>
     file_paths_from_memory.into_iter()
         .filter_map(|f| f.to_file_path().ok())
         .filter_map(|x| x.to_str().map(|x| x.to_string()))
-        .chain(file_paths_from_vecdb.into_iter())
+        .chain(paths_from_workspace.into_iter())
         .chain(paths_in_jsonl.into_iter())
         .collect::<HashSet<_>>() // dedup
         .into_iter()
         .collect()
-}
-
-async fn get_ast_file_paths(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<String> {
-     match *global_context.read().await.ast_module.lock().await {
-        Some(ref ast) => {
-            let index_file_paths = ast.get_indexed_file_paths().await;
-            index_file_paths.iter().map(|f| f.to_str().unwrap().to_string()).collect()
-        },
-        None => vec![]
-    }
 }
 
 fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {

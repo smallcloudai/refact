@@ -68,7 +68,7 @@ pub async fn correct_arguments_if_needed(
         let completion = param.complete(arg, context, 1).await;
         let arg_completed = match completion.get(0) {
             Some(x) => x,
-            None => return Err(format!("arg '{}' correction failed: Probably file list is empty", arg)),
+            None => return Err(format!("arg '{}' correction failed", arg)),
         };
         if !param.is_value_valid(arg_completed, context).await {
             return Err(format!("arg '{}' is not valid even after force completion", arg_completed));

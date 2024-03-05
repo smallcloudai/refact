@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::hash::Hasher;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
 
@@ -72,7 +72,8 @@ impl CommandLine {
 
 pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
-    pub document_map: Arc<ARwLock<HashMap<Url, Document>>>,
+    pub workspace_files: Arc<StdMutex<Vec<Url>>>,
+    pub document_map: Arc<ARwLock<HashMap<Url, Document>>>,   // if a file is open in IDE and it's outside workspace dirs, it will be in this map and not in workspace_files
 }
 
 pub struct GlobalContext {
@@ -90,7 +91,7 @@ pub struct GlobalContext {
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
     pub ast_module: Arc<AMutex<Option<AstModule>>>,   // TODO: don't use AMutex, use StdMutex
-    pub ask_shutdown_sender: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
+    pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
 }
 
@@ -240,9 +241,10 @@ pub async fn create_global_context(
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vec_db: Arc::new(AMutex::new(None)),
         ast_module: Arc::new(AMutex::new(None)),
-        ask_shutdown_sender: Arc::new(Mutex::new(ask_shutdown_sender)),
+        ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState {
             workspace_folders: if cmdline.workspace_folder.is_empty() { Arc::new(StdMutex::new(vec![])) } else { Arc::new(StdMutex::new(vec![PathBuf::from(cmdline.workspace_folder.clone())])) },
+            workspace_files: Arc::new(StdMutex::new(vec![])),
             document_map: Arc::new(ARwLock::new(HashMap::new())),
         },
     };
