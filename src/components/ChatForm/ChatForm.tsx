@@ -21,7 +21,7 @@ import type { ChatState } from "../../hooks";
 import { ChatContextFile } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { useConfig } from "../../contexts/config-context";
-import { ChatControls, type CursorPosition } from "./ChatControls";
+import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 
 const CapsSelect: React.FC<{
   value: string;
@@ -89,8 +89,68 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 }) => {
   const [value, setValue] = React.useState("");
   const [snippetAdded, setSnippetAdded] = React.useState(false);
-  const [cursorPosition, setCursorPosition] =
-    React.useState<CursorPosition | null>(null);
+  const [checkboxes, setCheckboxes] = React.useState<
+    ChatControlsProps["checkboxes"]
+  >({
+    search_workspace: {
+      name: "search_workspace",
+      checked: false,
+      label: "Search workspace",
+    },
+    lookup_symbols: {
+      name: "lookup_symbols",
+      checked: false,
+      label: "Lookup symbols",
+    },
+    selected_lines: {
+      name: "selected_lines",
+      checked: false,
+      label: "Selected lines",
+    },
+  } as const);
+
+  const lines =
+    attachFile.line1 !== null && attachFile.line2 !== null
+      ? `:${attachFile.line1}-${attachFile.line2}`
+      : "";
+  const nameWithLines = `${attachFile.name}${lines}`;
+
+  const handleCheckChange: ChatControlsProps["onCheckedChange"] = (
+    name,
+    value,
+  ) => {
+    setCheckboxes((prev) => {
+      const checkbox: Checkbox = { ...prev[name], checked: !!value };
+      const nextValue = { ...prev, [name]: checkbox };
+      return nextValue;
+    });
+  };
+
+  const addCheckboxValuesToInput = (input: string) => {
+    let result = input;
+    if (!result.endsWith("\n")) {
+      result += "\n";
+    }
+    if (checkboxes.search_workspace.checked) {
+      result += `@workspace\n`;
+    }
+
+    if (checkboxes.lookup_symbols.checked) {
+      result += `@symbols-at ${nameWithLines}\n`;
+    }
+
+    if (checkboxes.selected_lines.checked) {
+      const markdown =
+        "```" +
+        selectedSnippet.language +
+        "\n" +
+        selectedSnippet.code +
+        "\n```\n";
+      result += markdown;
+    }
+    return result;
+  };
+
   const config = useConfig();
 
   // TODO: this won't update the value in the text area
@@ -113,7 +173,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const handleSubmit = () => {
     const trimmedValue = value.trim();
     if (trimmedValue.length > 0 && !isStreaming && isOnline) {
-      onSubmit(trimmedValue);
+      const valueIncludingChecks = addCheckboxValuesToInput(trimmedValue);
+      onSubmit(valueIncludingChecks);
       setValue(() => "");
     }
   };
@@ -134,11 +195,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   // TODO: handle multiple files?
   const commandUpToWhiteSpace = /@file ([^\s]+)/;
   const checked = commandUpToWhiteSpace.test(value);
-  const lines =
-    attachFile.line1 !== null && attachFile.line2 !== null
-      ? `:${attachFile.line1}-${attachFile.line2}`
-      : "";
-  const nameWithLines = `${attachFile.name}${lines}`;
 
   return (
     <Box mt="1" position="relative">
@@ -183,11 +239,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       </Flex>
 
       <ChatControls
-        value={value}
-        onChange={setValue}
-        activeFile={attachFile}
-        snippet={selectedSnippet}
-        cursorPosition={cursorPosition}
+        checkboxes={checkboxes}
+        onCheckedChange={handleCheckChange}
       />
 
       {/** TODO: handle being offline */}
@@ -214,7 +267,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           placeholder={
             commands.available_commands.length > 0 ? "Type @ for commands" : ""
           }
-          setCursorPosition={setCursorPosition}
           render={(props) => (
             <TextArea
               disabled={isStreaming}
