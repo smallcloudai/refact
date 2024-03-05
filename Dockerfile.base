@@ -1,7 +1,6 @@
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 
 ENV INSTALL_OPTIONAL=TRUE
-ENV FLASH_ATTENTION_FORCE_BUILD=TRUE
 ENV MAX_JOBS=8
 
 RUN apt-get update
@@ -30,5 +29,4 @@ ENV PATH="${PATH}:/tmp/linguist/bin"
 RUN pip install --no-cache-dir torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
 RUN pip install --no-cache-dir xformers==0.0.23.post1 --index-url https://download.pytorch.org/whl/cu118
 RUN pip install ninja
-RUN pip install -v git+https://github.com/smallcloudai/flash-attention@feat/alibi
 RUN pip install -v git+https://github.com/smallcloudai/vllm@refact_model_new
