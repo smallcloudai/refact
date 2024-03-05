@@ -32,7 +32,8 @@ impl Point<asd> {
     fn distance<asd>(&self, other: Point<asd, assd>) -> f64 {
         let dx: f64 = self.x - other.x;
         let dy = self.y - other.y;
-        f64::sqrt(!(dx*dx + dy*dy))
+        if dx.abs() < 1e-10 { dx = 0.0; }
+        a.b().sqrt(dx*dx + dy*dy)
     }
 }
 // impl Foo for Point<asd> {

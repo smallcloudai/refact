@@ -317,6 +317,17 @@ impl RustParser {
                 let arg = parent.child(1).unwrap();
                 res.extend(RustParser::parse_argument(&arg, code, path));
             }
+            "try_expression" => {
+                let arg = parent.child(0).unwrap();
+                res.extend(RustParser::parse_argument(&arg, code, path));
+            }
+            "type_cast_expression" => {
+                let value_node = parent.child_by_field_name("value").unwrap();
+                res.extend(RustParser::parse_argument(&value_node, code, path));
+                let type_node = parent.child_by_field_name("type").unwrap();
+                // TODO think about this
+                // res.extend(RustParser::parse_argument(&right, code, path));
+            }
             "reference_expression" => {
                 let arg = parent.child_by_field_name("value").unwrap();
                 res.extend(RustParser::parse_argument(&arg, code, path));
@@ -421,6 +432,59 @@ impl RustParser {
         decl
     }
     
+    pub fn parse_expression_statement(&mut self, parent: &Node, code: &str, path: &Url) -> Vec<Arc<dyn AstSymbolInstance>>  {
+        let mut symbols = vec![];
+        let kind = parent.kind();
+        match kind {
+            "block" => {
+                let v = self.parse_block(parent, code, path);
+                symbols.extend(v);
+            }
+            "try_expression" => {
+                let arg = parent.child(0).unwrap();
+            }
+            "call_expression" => {
+                let f = self.parse_call_expression(&parent, code, path);
+                symbols.push(Arc::new(f));
+            }
+            &_ => {}
+        }
+
+        symbols
+    }
+    
+    pub fn parse_block(&mut self, parent: &Node, code: &str, path: &Url) -> Vec<Arc<dyn AstSymbolInstance>> {
+        let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = vec![];
+        for i in 1..parent.child_count() - 1 {
+            let child = parent.child(i).unwrap();
+            let kind = child.kind();
+            let text = code.slice(child.byte_range()).to_string();
+            match kind {
+                "let_declaration" => {
+                    let v = self.parse_variable_definition(&child, code, path);
+                    // TODO parse right with usages
+                    symbols.push(Arc::new(v));
+                }
+                "expression_statement" => {
+                    let child = child.child(0).unwrap();
+                    let v = self.parse_expression_statement(&child, code, path);
+                    symbols.extend(v);
+                }
+                // return without keyword
+                "identifier" => {
+                    
+                }
+                // return without keyword
+                "call_expression" => {
+                    let f = self.parse_call_expression(&child, code, path);
+                    symbols.push(Arc::new(f));
+                }
+                &_ => {}
+            }
+        }
+        symbols
+    }
+    
     pub fn parse(&mut self, code: &str, path: &Url) -> Vec<String> {
         let tree = self.parser.parse(code, None).unwrap();
         let mut res = vec![];
@@ -438,15 +502,18 @@ impl RustParser {
                     }
                     "function" => {
                         let f = self.parse_function_declaration(&capture.node, code, path);
+                        if let Some(body_node) = capture.node.child_by_field_name("body") {
+                            let x = self.parse_block(&body_node, code, path);
+                        }
                         res.push(text.clone());
                     }
                     "variable" => {
-                        let f = self.parse_variable_definition(&capture.node, code, path);
-                        res.push(text.clone());
+                        // let f = self.parse_variable_definition(&capture.node, code, path);
+                        // res.push(text.clone());
                     }
                     "call" => {
-                        let f = self.parse_call_expression(&capture.node, code, path);
-                        res.push(text.clone());
+                        // let f = self.parse_call_expression(&capture.node, code, path);
+                        // res.push(text.clone());
                     }
                     _ => {}
                 }
