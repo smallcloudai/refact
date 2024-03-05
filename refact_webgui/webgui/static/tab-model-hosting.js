@@ -1,6 +1,20 @@
-import { general_error } from './error.js';
+import {general_error} from './error.js';
+import {get_finetune_config_and_runs} from './tab-finetune.js';
+
+
 let gpus_popup = false;
 let models_data = null;
+let finetune_configs_and_runs;
+
+
+function update_finetune_configs_and_runs() {
+    get_finetune_config_and_runs().then((data) => {
+        if (!data) {
+            return;
+        }
+        finetune_configs_and_runs = data;
+    })
+}
 
 function get_gpus() {
     fetch("/tab-host-have-gpus")
@@ -13,6 +27,35 @@ function get_gpus() {
    .catch(function(error) {
         console.log('tab-host-have-gpus',error);
         general_error(error);
+    });
+}
+
+function finetune_switch_activate(finetune_model, lora_mode, run_id, checkpoint) {
+    let send_this = {
+        "model": finetune_model,
+        "lora_mode": lora_mode,
+        "specific_lora_run_id": run_id || "",
+        "specific_checkpoint": checkpoint || "",
+    }
+    return fetch("/tab-finetune-activate", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(send_this)
+    })
+    .then(function (response) {
+        if (!response.ok) {
+            return response.json().then(function(json) {
+                throw new Error(json.detail);
+            });
+        }
+        return response.ok;
+    })
+    .catch(function (error) {
+        console.log('tab-finetune-activate',error);
+        general_error(error);
+        return false;
     });
 }
 
@@ -159,12 +202,14 @@ function render_models_assigned(models) {
         row.setAttribute('data-model',index);
         const model_name = document.createElement("td");
         const completion = document.createElement("td");
-        const finetune_info = document.createElement("td");
+        let finetune_info = document.createElement("td");
         const select_gpus = document.createElement("td");
         const gpus_share = document.createElement("td");
         const del = document.createElement("td");
 
         model_name.textContent = index;
+        finetune_info.classList.add('model-finetune-info');
+        finetune_info.dataset.model = index;
 
         if (models_info[index].hasOwnProperty('has_completion') && models_info[index].has_completion) {
             const completion_input = document.createElement("input");
@@ -182,20 +227,45 @@ function render_models_assigned(models) {
             completion.appendChild(completion_input);
         }
 
+        let enabled_finetunes = [];
         if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
-            finetune_info.innerHTML = `
-            <table cellpadding="5">
-                <tr>
-                    <td>Run: </td>
-                    <td>${models_info[index].finetune_info.run}</td>
-                </tr>
-                <tr>
-                    <td>Checkpoint: </td>
-                    <td>${models_info[index].finetune_info.checkpoint}</td>
-                </tr>
-            </table>
-            `;
+            let enabled_finetune = document.createElement("div");
+            enabled_finetune.dataset.run = models_info[index].finetune_info.run;
+            enabled_finetune.dataset.checkpoint = models_info[index].finetune_info.checkpoint;
+
+        enabled_finetune.innerHTML = `
+            <div class="model-finetune-item" style="display: flex; align-items: center;" data-run="${enabled_finetune.dataset.run}">
+                <button class="btn btn-outline-danger btn-sm btn-remove-run" style="padding: 0 3px" 
+                data-run="${enabled_finetune.dataset.run}" 
+                data-checkpoint="${enabled_finetune.dataset.checkpoint}"
+                data-model="${index}"
+                >
+                    <i class="bi bi-trash3-fill" style="font-size: 1em"></i>
+                </button>
+                <div style="display: flex; flex-direction: column; margin-left: 15px;">
+                    <div class="model-finetune-item-run">
+                        Run: ${enabled_finetune.dataset.run}
+                    </div>
+                    <span>
+                        Checkpoint: ${enabled_finetune.dataset.checkpoint}
+                    </span>
+                </div>
+            </div>`;
+        enabled_finetunes.push(enabled_finetune);
         }
+
+        let finetune_info_children = document.createElement("div");
+        for (let child of enabled_finetunes) {
+            finetune_info_children.appendChild(child);
+        }
+        finetune_info.appendChild(finetune_info_children);
+
+        let add_finetune_btn = document.createElement("button");
+        add_finetune_btn.classList = "btn btn-sm btn-outline-primary mt-1 add-finetune-btn";
+        add_finetune_btn.dataset.model = index;
+        add_finetune_btn.innerText = 'Add Run';
+
+        finetune_info.appendChild(add_finetune_btn);
 
          if (models_info[index].hasOwnProperty('has_sharding') && models_info[index].has_sharding) {
             const select_gpus_div = document.createElement("div");
@@ -257,7 +327,7 @@ function render_models_assigned(models) {
             delete models_data.model_assign[index];
             save_model_assigned();
         });
-        del_button.classList.add('model-remove','btn','btn-danger');
+        del_button.classList.add('model-remove','btn','btn-outline-danger');
         del.appendChild(del_button);
 
         row.appendChild(model_name);
@@ -268,6 +338,65 @@ function render_models_assigned(models) {
         row.appendChild(del);
         models_table.appendChild(row);
     }
+
+    document.querySelectorAll(".btn-remove-run").forEach(element => {
+        element.addEventListener("click", (event) => {
+            const target = event.currentTarget;
+            finetune_switch_activate(
+                target.dataset.model,
+                "off",
+                target.dataset.run,
+                target.dataset.checkpoint
+            ).then((is_ok) => {
+                if (is_ok) {
+                    document.querySelector(`.model-finetune-item[data-run="${target.dataset.run}"]`).style.display = "none";
+                }
+            });
+        });
+    });
+
+    document.querySelectorAll(".add-finetune-btn").forEach(element => {
+        element.addEventListener("click", (event) => {
+            const target = event.currentTarget;
+            let finetune_info = document.querySelector(`.model-finetune-info[data-model="${target.dataset.model}"]`);
+
+            finetune_info.insertBefore(document.createElement("div"), target);
+        });
+    });
+}
+
+function add_finetune_selectors_factory(model_name) {
+    let el = document.createElement("div");
+    let dropdown_run = document.createElement("div");
+    dropdown_run.classList.add("dropdown");
+
+    let dropdown_btn = document.createElement("button");
+    dropdown_btn.id = "add-finetune-select-run-btn";
+    dropdown_btn.classList = "btn btn-secondary dropdown-toggle";
+    dropdown_btn.type = "button";
+    dropdown_btn.dataset.toggle = "dropdown";
+    dropdown_btn.setAttribute("aria-haspopup", "true");
+    dropdown_btn.setAttribute("aria-expanded", "false");
+    dropdown_btn.innerHTML = "Select Run";
+    dropdown_run.appendChild(dropdown_btn);
+
+    let dropdown_menu = document.createElement("div");
+    dropdown_menu.classList.add("dropdown-menu");
+    dropdown_menu.setAttribute("aria-labelledby", "add-finetune-select-run-btn");
+
+    let runs = finetune_configs_and_runs.finetune_runs.filter(run => run.model_name === model_name && run.checkpoints.length !== 0);
+    for (let run of runs) {
+        let child = document.createElement("a");
+        child.setAttribute("href", "#");
+        child.setAttribute("class", "dropdown-item");
+        child.setAttribute("data-run", run.run_id);
+        child.innerText = `${run.run_id}`;
+
+    }
+
+    el.innerHTML = `
+        
+    `;
 }
 
 function render_models(models) {
@@ -360,8 +489,7 @@ function render_models(models) {
 }
 
 function format_memory(memory_in_mb, decimalPlaces = 2) {
-    const memory_in_gb = (memory_in_mb / 1024).toFixed(decimalPlaces);
-    return memory_in_gb;
+    return (memory_in_mb / 1024).toFixed(decimalPlaces);
 }
 
 export async function init(general_error) {
@@ -383,6 +511,7 @@ export async function init(general_error) {
 export function tab_switched_here() {
     get_gpus();
     get_models();
+    update_finetune_configs_and_runs();
 }
 
 export function tab_switched_away() {
@@ -390,4 +519,5 @@ export function tab_switched_away() {
 
 export function tab_update_each_couple_of_seconds() {
     get_gpus();
+    update_finetune_configs_and_runs();
 }

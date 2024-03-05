@@ -48,23 +48,35 @@ function tab_finetune_get() {
     });
 }
 
-function tab_finetune_config_and_runs() {
-    fetch("/tab-finetune-config-and-runs")
+
+export function get_finetune_config_and_runs() {
+    return fetch("/tab-finetune-config-and-runs")
         .then(function (response) {
+            if (!response.ok) {
+                return response.json().then(function(json) {
+                    throw new Error(json.detail);
+                });
+            }
             return response.json();
-        })
-        .then(function (data) {
-            finetune_configs_and_runs = data;
-            render_runs();
-            render_model_select();
-            render_finetune_settings(data);
-            render_lora_switch();
-            finetune_controls_state();
         })
         .catch(function (error) {
             console.log('tab-finetune-config-and-runs',error);
             general_error(error);
         });
+}
+
+function tab_finetune_config_and_runs() {
+    get_finetune_config_and_runs().then((data) => {
+        if (!data) {
+            return;
+        }
+        finetune_configs_and_runs = data;
+        render_runs();
+        render_model_select();
+        render_finetune_settings(data);
+        render_lora_switch();
+        finetune_controls_state();
+    });
 }
 
 function rename_run_post(run_id, new_name) {
@@ -89,7 +101,7 @@ function rename_run_post(run_id, new_name) {
     .catch(function (error) {
         console.log('tab-finetune-rename-run', error);
         general_error(error);
-        return false; // Return false in case of an error
+        return false;
     });
 }
 

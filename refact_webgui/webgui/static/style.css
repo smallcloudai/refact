@@ -700,6 +700,29 @@ h3 {
     margin-top: -6px;
     font-weight: bold;
 }
+
+.model-finetune-item {
+    position: relative;
+}
+.model-finetune-item-run {
+    /*opacity: 0.35;*/
+    font-size: 15px;
+    display: block;
+    margin-top: -6px;
+    font-weight: bold;
+}
+.model-finetune-item span {
+    opacity: 0.35;
+    font-size: 10px;
+    display: block;
+    margin-top: -6px;
+    font-weight: bold;
+}
+.add-finetune-btn {
+    margin-top: 30px;
+    padding: 0 5px;
+}
+
 .table-checkpoints tr:hover .btn-hover {
     opacity: 1 !important;
     pointer-events: auto;
