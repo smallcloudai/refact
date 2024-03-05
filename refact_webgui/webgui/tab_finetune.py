@@ -77,7 +77,9 @@ class RenameRunPost(BaseModel):
     run_id_new: str
 
     @validator('run_id_new')
-    def validate_run_id_new(cls, v):
+    def validate_run_id_new(cls, v: str):
+        if not v.strip():
+            raise HTTPException(status_code=400, detail="must be non-empty")
         if len(v) >= 30:
             raise HTTPException(status_code=400, detail="must be less than 30 characters")
         if not re.match("^[a-zA-Z0-9_ ]*$", v):
