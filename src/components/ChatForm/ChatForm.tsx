@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 
-import { Box, Flex, Text } from "@radix-ui/themes";
+import { Box, Flex } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
@@ -12,9 +12,6 @@ import {
   useIsOnline,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
-
-import { Select } from "../Select/Select";
-import { FileUpload } from "../FileUpload";
 import { Button } from "@radix-ui/themes";
 import { ComboBox, type ComboBoxProps } from "../ComboBox";
 import type { ChatState } from "../../hooks";
@@ -23,26 +20,6 @@ import { FilesPreview } from "./FilesPreview";
 import { useConfig } from "../../contexts/config-context";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { useEffectOnce } from "../../hooks";
-
-const CapsSelect: React.FC<{
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-  disabled?: boolean;
-}> = ({ options, value, onChange, disabled }) => {
-  return (
-    <Flex gap="2" align="center">
-      <Text size="2">Use model:</Text>
-      <Select
-        disabled={disabled}
-        title="chat model"
-        options={options}
-        value={value}
-        onChange={onChange}
-      ></Select>
-    </Flex>
-  );
-};
 
 type useCheckboxStateProps = {
   activeFile: ChatState["active_file"];
@@ -70,6 +47,14 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
   const [checkboxes, setCheckboxes] = React.useState<
     ChatControlsProps["checkboxes"]
   >({
+    file_upload: {
+      name: "file_upload",
+      checked: false,
+      label: "Attach",
+      value: fullPathWithLines,
+      disabled: !activeFile.name,
+      fileName: nameWithLines,
+    },
     search_workspace: {
       name: "search_workspace",
       checked: false,
@@ -131,6 +116,18 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
         ? false
         : !snippet.code;
 
+      const fileUploadValue = prev.file_upload.checked
+        ? prev.file_upload.value
+        : fullPathWithLines;
+
+      const fileUploadFileName = prev.file_upload.checked
+        ? prev.file_upload.fileName
+        : nameWithLines;
+
+      const fileUploadDisabled = prev.file_upload.checked
+        ? false
+        : !activeFile.name;
+
       const nextValue = {
         ...prev,
         lookup_symbols: {
@@ -146,6 +143,12 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
           fileName: selectedLineFileName,
           disabled: selectedLineDisabled,
         },
+        file_upload: {
+          ...prev.file_upload,
+          value: fileUploadValue,
+          fileName: fileUploadFileName,
+          disabled: fileUploadDisabled,
+        },
       };
 
       return nextValue;
@@ -158,7 +161,13 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
     fullPathWithLines,
   ]);
 
-  return { checkboxes, toggleCheckbox, markdown, nameWithLines };
+  return {
+    checkboxes,
+    toggleCheckbox,
+    markdown,
+    nameWithLines,
+    fullPathWithLines,
+  };
 };
 
 export type ChatFormProps = {
@@ -206,12 +215,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onTextAreaHeightChange,
 }) => {
   const [value, setValue] = React.useState("");
-  // const [snippetAdded, setSnippetAdded] = React.useState(false);
-  const { markdown, nameWithLines, checkboxes, toggleCheckbox } =
-    useControlsState({
-      activeFile: attachFile,
-      snippet: selectedSnippet,
-    });
+  const { markdown, checkboxes, toggleCheckbox } = useControlsState({
+    activeFile: attachFile,
+    snippet: selectedSnippet,
+  });
 
   const addCheckboxValuesToInput = (input: string) => {
     let result = input;
@@ -229,6 +236,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     if (checkboxes.selected_lines.checked) {
       result += `${checkboxes.selected_lines.value ?? ""}\n`;
     }
+
+    if (checkboxes.file_upload.checked) {
+      result += `@file ${checkboxes.file_upload.value ?? ""}\n`;
+    }
+
     return result;
   };
 
@@ -264,40 +276,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }
 
-  // TODO: handle multiple files?
-  const commandUpToWhiteSpace = /@file ([^\s]+)/;
-  const checked = commandUpToWhiteSpace.test(value);
-
   return (
     <Box mt="1" position="relative">
       {!isOnline && <Callout type="info">Offline</Callout>}
-      {config.host !== "web" && (
-        <FileUpload
-          fileName={nameWithLines}
-          onClick={() =>
-            setValue((preValue) => {
-              if (checked) {
-                return preValue.replace(commandUpToWhiteSpace, "");
-              }
-              const command = `@file ${nameWithLines}${
-                value.length > 0 ? "\n" : ""
-              }`;
-              return `${command}${preValue}`;
-            })
-          }
-          checked={checked}
-          disabled={!attachFile.can_paste}
-        />
-      )}
       <Flex pl="2">
-        {canChangeModel && (
-          <CapsSelect
-            value={model || caps.default_cap}
-            onChange={onSetChatModel}
-            options={caps.available_caps}
-          />
-        )}
-
         {isStreaming && (
           <Button
             ml="auto"
@@ -310,7 +292,18 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         )}
       </Flex>
 
-      <ChatControls checkboxes={checkboxes} onCheckedChange={toggleCheckbox} />
+      {canChangeModel && (
+        <ChatControls
+          host={config.host}
+          checkboxes={checkboxes}
+          onCheckedChange={toggleCheckbox}
+          selectProps={{
+            value: model || caps.default_cap,
+            onChange: onSetChatModel,
+            options: caps.available_caps,
+          }}
+        />
+      )}
 
       {/** TODO: handle being offline */}
 
