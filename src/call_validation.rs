@@ -189,8 +189,8 @@ mod tests {
 pub struct ContextFile {
     pub file_name: String,
     pub file_content: String,
-    pub line1: i32,   // starts from 1, zero means nonvalid
-    pub line2: i32,   // starts from 1
+    pub line1: usize,   // starts from 1, zero means nonvalid
+    pub line2: usize,   // starts from 1
     #[serde(default)]
     pub usefulness: f32,  // the higher the better
 }

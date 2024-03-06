@@ -40,8 +40,8 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
         symbols.push(ContextFile {
             file_name: file_path,
             file_content: content,
-            line1: res.symbol_declaration.definition_info.range.start_point.row as i32,
-            line2: res.symbol_declaration.definition_info.range.end_point.row as i32,
+            line1: res.symbol_declaration.definition_info.range.start_point.row + 1,
+            line2: res.symbol_declaration.definition_info.range.end_point.row + 1,
             usefulness: res.sim_to_query,
         });
     }
@@ -100,7 +100,7 @@ impl AtCommand for AtAstLookupSymbols {
         let row_idx = match colon_lines_range_from_arg(&mut file_path) {
             Some(x) => {
                 if x.kind == RangeKind::GradToCursorTwosided {
-                    x.line1 as usize
+                    x.line1
                 } else {
                     return Err("line number is not a valid".to_string());
                 }

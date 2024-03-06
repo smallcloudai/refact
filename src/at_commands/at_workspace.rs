@@ -28,8 +28,8 @@ fn results2message(results: &Vec<Record>) -> ChatMessage {
         vector_of_context_file.push(ContextFile {
             file_name: r.file_path.to_str().unwrap().to_string(),
             file_content: r.window_text.clone(),
-            line1: r.start_line as i32,
-            line2: r.end_line as i32,
+            line1: r.start_line as usize + 1,
+            line2: r.end_line as usize + 1,
             usefulness: 100.0 / ((i + 1) as f32),
         });
     }

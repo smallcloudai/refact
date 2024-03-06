@@ -17,8 +17,8 @@ fn results2message(result: &FileReferencesResult) -> ChatMessage {
         ContextFile {
             file_name: x.meta_path.replace(path.as_str(), ""),
             file_content: format!("{:?}", x.symbol_type),
-            line1: x.definition_info.range.start_point.row as i32,
-            line2: x.definition_info.range.end_point.row as i32,
+            line1: x.definition_info.range.start_point.row + 1,
+            line2: x.definition_info.range.end_point.row + 1,
             usefulness: 100.0
         }
     }).collect();

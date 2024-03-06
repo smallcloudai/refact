@@ -39,8 +39,8 @@ pub enum RangeKind {
 #[derive(Debug, PartialEq)]
 pub struct ColonLinesRange {
     pub kind: RangeKind,
-    pub line1: i32,
-    pub line2: i32,
+    pub line1: usize,
+    pub line2: usize,
 }
 
 pub fn range_print(range: &ColonLinesRange) -> String {
@@ -58,17 +58,17 @@ pub fn colon_lines_range_from_arg(value: &mut String) -> Option<ColonLinesRange>
         *value = re_hyphen.replace(value, "").to_string();
         return match (captures.get(1), captures.get(2)) {
             (Some(line1), Some(line2)) => {
-                let line1 = line1.as_str().parse::<i32>().unwrap_or(-1);
-                let line2 = line2.as_str().parse::<i32>().unwrap_or(-1);
+                let line1 = line1.as_str().parse::<usize>().unwrap_or(0);
+                let line2 = line2.as_str().parse::<usize>().unwrap_or(0);
                 Some(ColonLinesRange { kind: RangeKind::Range, line1, line2 })
             },
             (Some(line1), None) => {
-                let line1 = line1.as_str().parse::<i32>().unwrap_or(-1);
-                Some(ColonLinesRange { kind: RangeKind::GradToCursorSuffix, line1, line2: -1 })
+                let line1 = line1.as_str().parse::<usize>().unwrap_or(0);
+                Some(ColonLinesRange { kind: RangeKind::GradToCursorSuffix, line1, line2: 0 })
             },
             (None, Some(line2)) => {
-                let line2 = line2.as_str().parse::<i32>().unwrap_or(-1);
-                Some(ColonLinesRange { kind: RangeKind::GradToCursorPrefix, line1: -1, line2 })
+                let line2 = line2.as_str().parse::<usize>().unwrap_or(0);
+                Some(ColonLinesRange { kind: RangeKind::GradToCursorPrefix, line1: 0, line2 })
             },
             _ => None,
         }
@@ -77,8 +77,8 @@ pub fn colon_lines_range_from_arg(value: &mut String) -> Option<ColonLinesRange>
     if let Some(captures) = re_one_number.captures(value.clone().as_str()) {
         *value = re_one_number.replace(value, "").to_string();
         if let Some(line1) = captures.get(1) {
-            let line = line1.as_str().parse::<i32>().unwrap_or(-1);
-            return Some(ColonLinesRange { kind: RangeKind::GradToCursorTwosided, line1: line, line2: -1 });
+            let line = line1.as_str().parse::<usize>().unwrap_or(0);
+            return Some(ColonLinesRange { kind: RangeKind::GradToCursorTwosided, line1: line, line2: 0 });
         }
     }
     None
@@ -98,17 +98,17 @@ mod tests {
         {
             let mut value = String::from(":5-");
             let result = colon_lines_range_from_arg(&mut value);
-            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorSuffix, line1: 5, line2: -1 }));
+            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorSuffix, line1: 5, line2: 0 }));
         }
         {
             let mut value = String::from(":-15");
             let result = colon_lines_range_from_arg(&mut value);
-            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorPrefix, line1: -1, line2: 15 }));
+            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorPrefix, line1: 0, line2: 15 }));
         }
         {
             let mut value = String::from(":25");
             let result = colon_lines_range_from_arg(&mut value);
-            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorTwosided, line1: 25, line2: -1 }));
+            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorTwosided, line1: 25, line2: 0 }));
         }
         {
             let mut value = String::from("invalid");
@@ -120,8 +120,8 @@ mod tests {
 }
 
 fn chunks_into_context_file(
-    result_above: Vec<((i32, i32), String)>,
-    results_below: Vec<((i32, i32), String)>,
+    result_above: Vec<((usize, usize), String)>,
+    results_below: Vec<((usize, usize), String)>,
     file_name: &String,
 ) -> Vec<ContextFile> {
     let max_val = result_above.len().max(results_below.len());
@@ -193,9 +193,9 @@ impl AtCommand for AtFile {
         };
 
         let mut split_into_chunks = false;
-        let mut cursor = -1;
-        let mut line1 = -1;
-        let mut line2 = -1;
+        let mut cursor = 0;
+        let mut line1 = 0;
+        let mut line2 = 0;
 
         let colon = match colon_lines_range_from_arg(&mut file_path) {
             Some(x) => {
@@ -218,11 +218,11 @@ impl AtCommand for AtFile {
                 }
                 x
             },
-            None => ColonLinesRange { kind: RangeKind::Range, line1: -1, line2: -1 }
+            None => ColonLinesRange { kind: RangeKind::Range, line1: 0, line2: 0 }
         };
 
         let mut file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &file_path).await?;
-        let lines_cnt = file_text.lines().count() as i32;
+        let lines_cnt = file_text.lines().count();
 
         if split_into_chunks {
             cursor = cursor.max(0).min(lines_cnt);
@@ -249,7 +249,7 @@ impl AtCommand for AtFile {
         line1 = (line1 - 1).max(0).min(lines_cnt);
         line2 = line2.max(0).min(lines_cnt);
         let lines: Vec<&str> = file_text.lines().collect();
-        file_text = lines[line1 as usize .. line2 as usize].join("\n");
+        file_text = lines[line1 .. line2].join("\n");
 
         let mut vector_of_context_file: Vec<ContextFile> = vec![];
         vector_of_context_file.push(ContextFile {

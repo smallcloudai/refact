@@ -35,8 +35,8 @@ async fn results2message(result: &AstQuerySearchResult) -> ChatMessage {
         symbols.push(ContextFile {
             file_name: file_path,
             file_content: content,
-            line1: res.symbol_declaration.definition_info.range.start_point.row as i32,
-            line2: res.symbol_declaration.definition_info.range.end_point.row as i32,
+            line1: res.symbol_declaration.definition_info.range.start_point.row + 1,
+            line2: res.symbol_declaration.definition_info.range.end_point.row + 1,
             usefulness: 50.0 * res.sim_to_query
         });
     }

@@ -9,7 +9,7 @@ use crate::call_validation::{ChatMessage, ChatPost, ContextFile};
 use crate::global_context::GlobalContext;
 
 
-const SMALL_GAP_LINES: i32 = 10;  // lines
+const SMALL_GAP_LINES: usize = 10;  // lines
 
 pub fn postprocess_at_results(
     messages: Vec<ChatMessage>,
@@ -101,7 +101,7 @@ pub async fn reload_files(
             continue;
         }
         let file_text = file_text_maybe.unwrap();
-        if m.line1 < 0 || m.line2 < 0 {
+        if m.line1 == 0 || m.line2 == 0 {
             info!("file {} has invalid line range {}-{}", file_path, m.line1, m.line2);
             continue;
         }
