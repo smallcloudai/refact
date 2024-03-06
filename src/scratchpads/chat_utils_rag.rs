@@ -107,18 +107,6 @@ pub async fn run_at_commands(
     let mut user_posted = post.messages.last().unwrap().content.clone();
     post.messages.pop();  // this deletes the last user message to rewrite
 
-    // TODO: chat sends preview as files, remove when that's fixed
-    while post.messages.len() > 0 {
-        let last_message_role = post.messages.last().unwrap().role.clone();
-        info!("last_message_role {}", last_message_role);
-        if last_message_role == "context_file" {
-            post.messages.pop();
-            info!("popped");
-        } else {
-            break;
-        }
-    }
-
     let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut user_posted, &context).await;
     let mut messages_for_postprocessing = vec![];
     for cmd in valid_commands {
