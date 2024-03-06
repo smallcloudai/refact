@@ -244,6 +244,14 @@ pub struct TypeAlias {
     pub types: Vec<TypeDef>,
 }
 
+impl Default for TypeAlias {
+    fn default() -> Self {
+        Self {
+            ast_fields: AstSymbolFields::default(),
+            types: vec![],
+        }
+    }
+}
 
 #[async_trait]
 #[typetag::serde]
@@ -269,6 +277,15 @@ ClassFieldDeclaration
 pub struct ClassFieldDeclaration {
     pub ast_fields: AstSymbolFields,
     pub type_: TypeDef,
+}
+
+impl Default for ClassFieldDeclaration {
+    fn default() -> Self {
+        Self {
+            ast_fields: AstSymbolFields::default(),
+            type_: TypeDef::default(),
+        }
+    }
 }
 
 #[async_trait]
@@ -411,8 +428,16 @@ impl AstSymbolInstance for FunctionDeclaration {
 CommentDefinition
 */
 #[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
-struct CommentDefinition {
+pub struct CommentDefinition {
     pub ast_fields: AstSymbolFields,
+}
+
+impl Default for CommentDefinition {
+    fn default() -> Self {
+        Self {
+            ast_fields: AstSymbolFields::default(),
+        }
+    }
 }
 
 #[async_trait]
@@ -475,9 +500,18 @@ impl AstSymbolInstance for FunctionCall {
 VariableUsage
 */
 #[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
-struct VariableUsage {
+pub struct VariableUsage {
     pub ast_fields: AstSymbolFields,
     pub var_decl_guid: Option<String>,
+}
+
+impl Default for VariableUsage {
+    fn default() -> Self {
+        Self {
+            ast_fields: AstSymbolFields::default(),
+            var_decl_guid: None,
+        }
+    }
 }
 
 #[async_trait]
