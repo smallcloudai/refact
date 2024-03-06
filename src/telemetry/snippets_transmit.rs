@@ -52,8 +52,11 @@ pub async fn send_finished_snippets(gcx: Arc<ARwLock<global_context::GlobalConte
                 continue;
             }
         }
-        for idx in to_remove.iter().rev() {
-            storage_locked.tele_snippets.remove(*idx);
+        // Sort in reverse order to remove from the end
+        to_remove.sort_by(|a, b| b.cmp(a));
+        to_remove.dedup();
+        for idx in to_remove {
+            storage_locked.tele_snippets.remove(idx);
         }
     }
 
