@@ -141,35 +141,53 @@ pub async fn run_at_commands(
 ) {
     // TODO: don't operate on `post`, return a copy of the messages
     let context = AtCommandsContext::new(global_context.clone()).await;
-    let mut user_posted = post.messages.last().unwrap().content.clone();
-    post.messages.pop();  // this deletes the last user message to rewrite
 
-    let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut user_posted, &context).await;
-    let mut messages_for_postprocessing = vec![];
-    for cmd in valid_commands {
-        match cmd.command.lock().await.execute(&user_posted, &cmd.args, top_n, &context).await {
-            Ok(msg) => {
-                messages_for_postprocessing.push(msg);
-            },
-            Err(_) => {}
+    let mut nearest_user = post.messages.len();
+    while nearest_user > 0 {
+        let role = post.messages.get(nearest_user - 1).unwrap().role.clone();
+        info!("nearest_user {} {}", nearest_user - 1, role);
+        if role == "user" {
+            nearest_user -= 1;
+        } else {
+            break;
         }
     }
-    let max_bytes = 7*1024;
-    let processed = postprocess_at_results(
-        messages_for_postprocessing,
-        max_bytes
-    );
-    let reloaded = reload_files(global_context.clone(), processed).await;
-    for msg in reloaded {
-        post.messages.push(msg.clone());
-        stream_back_to_user.push_in_json(json!(msg));
+
+    // take only 0..nearest_user
+    let mut rebuilt_messages: Vec<ChatMessage> = post.messages.iter().take(nearest_user).map(|m| m.clone()).collect();
+
+    for user_idx in nearest_user..post.messages.len() {
+        let mut user_posted = post.messages[user_idx].content.clone();
+        let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut user_posted, &context).await;
+        let mut messages_for_postprocessing = vec![];
+        for cmd in valid_commands {
+            match cmd.command.lock().await.execute(&user_posted, &cmd.args, top_n, &context).await {
+                Ok(msg) => {
+                    messages_for_postprocessing.push(msg);
+                },
+                Err(_) => {}
+            }
+        }
+        let max_bytes = 7*1024;
+        let processed = postprocess_at_results(
+            messages_for_postprocessing,
+            max_bytes
+        );
+        let reloaded = reload_files(global_context.clone(), processed).await;
+        for msg in reloaded {
+            rebuilt_messages.push(msg.clone());
+            stream_back_to_user.push_in_json(json!(msg));
+        }
+        if user_posted.trim().len() > 0 {
+            let msg = ChatMessage {
+                role: "user".to_string(),
+                content: user_posted,  // stream back to the user, without commands
+            };
+            rebuilt_messages.push(msg.clone());
+            stream_back_to_user.push_in_json(json!(msg));
+        }
     }
-    let msg = ChatMessage {
-        role: "user".to_string(),
-        content: user_posted,  // stream back to the user, without commands
-    };
-    post.messages.push(msg.clone());
-    stream_back_to_user.push_in_json(json!(msg));
+    post.messages = rebuilt_messages;
 }
 
 

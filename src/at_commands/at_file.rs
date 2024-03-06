@@ -246,6 +246,9 @@ impl AtCommand for AtFile {
             })
         }
 
+        if line1 == 0 || line2 == 0 {
+            return Err(format!("{} incorrect range: {}-{}", file_path, colon.line1, colon.line2));
+        }
         line1 = (line1 - 1).max(0).min(lines_cnt);
         line2 = line2.max(0).min(lines_cnt);
         let lines: Vec<&str> = file_text.lines().collect();
