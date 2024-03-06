@@ -17,7 +17,7 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     caps: { fetching: false, default_cap: "foo", available_caps: [] },
     error: "",
     clearError: noop,
-    canChangeModel: false,
+    showControls: true,
     hasContextFile: false,
     commands: {
       available_commands: [],
@@ -76,14 +76,14 @@ describe("ChatForm", () => {
   test("checkbox workspace", async () => {
     const fakeOnSubmit = vi.fn();
     const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
-    await user.click(app.getByText("Advanced:"));
 
     const label = app.queryByText("Search workspace");
     expect(label).not.toBeNull();
     const btn = label?.querySelector("button");
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await user.click(btn!);
-    const textarea = app.getByRole("combobox");
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const textarea = app.container.querySelector("textarea")!;
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     expect(fakeOnSubmit).toHaveBeenCalledWith("foo\n@workspace\n");
@@ -102,14 +102,14 @@ describe("ChatForm", () => {
     const { user, ...app } = render(
       <App onSubmit={fakeOnSubmit} attachFile={activeFile} />,
     );
-    await user.click(app.getByText("Advanced:"));
 
     const label = app.queryByText(/Lookup symbols/);
     expect(label).not.toBeNull();
     const btn = label?.querySelector("button");
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await user.click(btn!);
-    const textarea = app.getByRole("combobox");
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const textarea = app.container.querySelector("textarea")!;
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     expect(fakeOnSubmit).toHaveBeenCalledWith(
@@ -129,14 +129,14 @@ describe("ChatForm", () => {
     const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
 
     app.rerender(<App onSubmit={fakeOnSubmit} selectedSnippet={snippet} />);
-    await user.click(app.getByText("Advanced:"));
 
     const label = app.queryByText(/Selected lines/);
     expect(label).not.toBeNull();
     const btn = label?.querySelector("button");
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await user.click(btn!);
-    const textarea = app.getByRole("combobox");
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const textarea = app.container.querySelector("textarea")!;
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     const markdown = "```python\nprint(1)\n```\n";
