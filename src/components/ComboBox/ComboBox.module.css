@@ -3,6 +3,7 @@
   z-index: 50;
   min-width: 180px;
   /* max-width: 280px; */
+  max-width: 50dvw;
   border-radius: max(var(--radius-2), var(--radius-full));
 }
 

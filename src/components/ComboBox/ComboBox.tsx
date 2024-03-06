@@ -5,6 +5,7 @@ import type { TextAreaProps } from "../TextArea/TextArea";
 import { Item } from "./Item";
 import { Portal } from "../Portal";
 import { Popover } from "./Popover";
+import { TruncateLeft } from "../Text";
 
 export type ComboBoxProps = {
   commands: string[];
@@ -269,6 +270,10 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       setEndPosition(nextValue.endPosition);
     };
 
+  const popoverWidth = ref.current
+    ? ref.current.getBoundingClientRect().width - 8
+    : null;
+
   return (
     <>
       <Combobox
@@ -299,6 +304,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
             if (!textarea) return null;
             return getAnchorRect(textarea, trigger);
           }}
+          maxWidth={popoverWidth}
         >
           {matches.map((item, index) => (
             <Item
@@ -306,7 +312,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
               value={item}
               onClick={onItemClick(item)}
             >
-              {item.slice(selectedCommand.length)}
+              <TruncateLeft>{item.slice(selectedCommand.length)}</TruncateLeft>
             </Item>
           ))}
         </Popover>
