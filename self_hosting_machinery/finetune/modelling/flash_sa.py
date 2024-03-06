@@ -164,6 +164,54 @@ def apply_flash_mha_to_codellama_model(model):
         k = einops.rearrange(k, "b t (h d) -> b h t d", h=self.num_key_value_heads)
         v = einops.rearrange(v, "b t (h d) -> b t h d", h=self.num_key_value_heads)
 
+        cos, sin = self.rotary_emb(v, position_ids)
+        q, k = apply_rotary_pos_emb(q, k, cos, sin)
+
+        q = einops.rearrange(q, "b h t d -> b t h d")
+        k = einops.rearrange(k, "b h t d -> b t h d")
+
+        attn_output = flash_attn_func(
+            q, k, v, softmax_scale=self.head_dim ** -0.5, causal=True
+        )
+
+        attn_output = einops.rearrange(attn_output, "b t h d -> b t (h d)")
+        attn_output = self.o_proj(attn_output)
+        return attn_output, None, None
+
+    if torch.cuda.get_device_capability() < (8, 0):
+        model.force_low_gpu_mem_mode = True
+        torch.backends.cuda.enable_mem_efficient_sdp(False)
+        logging.warning("Flash attention is not supported on gpus with cuda capability < 8")
+        return
+
+    logging.warning("Applying flash attention to the model")
+    for layer in model.base_model.layers:
+        layer.self_attn.forward = _forward.__get__(layer.self_attn, type(layer.self_attn))
+
+
+def apply_flash_mha_to_starcoder2_model(model):
+    if not _prerequisites_are_ok(model, try_triton_kernel=False):
+        return
+
+    from flash_attn import flash_attn_func
+
+    def _forward(
+            self,
+            hidden_states: torch.Tensor,
+            attention_mask: Optional[torch.Tensor] = None,
+            position_ids: Optional[torch.LongTensor] = None,
+            past_key_value: Optional[Tuple[torch.Tensor]] = None,
+            output_attentions: bool = False,
+            use_cache: bool = False,
+            *args, **kwargs
+    ):
+        from transformers.models.starcoder2.modeling_starcoder2 import apply_rotary_pos_emb
+
+        q, k, v = self.q_proj(hidden_states), self.k_proj(hidden_states), self.v_proj(hidden_states)
+        q = einops.rearrange(q, "b t (h d) -> b h t d", h=self.num_heads)
+        k = einops.rearrange(k, "b t (h d) -> b h t d", h=self.num_key_value_heads)
+        v = einops.rearrange(v, "b t (h d) -> b t h d", h=self.num_key_value_heads)
+
         cos, sin = self.rotary_emb(v, seq_len=k.shape[-2])
         q, k = apply_rotary_pos_emb(q, k, cos, sin, position_ids)
 

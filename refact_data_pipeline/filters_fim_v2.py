@@ -229,10 +229,9 @@ class FIMv2:
         assert len(set(self.special_tokens)) == len(self.special_tokens)
         self.random = np.random.RandomState(dataopts.get("seed", 42))
         self.splitters_probs = [
-            (InsideSingleRow(random=self.random), 0.2),
-            (MiddleToEndSingleRow(random=self.random), 0.399),
-            (MiddleToEndMultipleRows(random=self.random), 0.4),
-            (EmptyMiddle(random=self.random), 0.001)
+            (InsideSingleRow(random=self.random), 0.05),
+            (MiddleToEndSingleRow(random=self.random), 0.5),
+            (MiddleToEndMultipleRows(random=self.random), 0.45),
         ]
         self.extra_payload_size = int(self.n_ctx * 0.03)
 
