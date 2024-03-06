@@ -14,7 +14,7 @@ const SMALL_GAP_LINES: i32 = 10;  // lines
 pub fn postprocess_at_results(
     messages: Vec<ChatMessage>,
     max_bytes: usize,
-) -> Vec<ChatMessage> {
+) -> Vec<ContextFile> {
     // 1. Decode all
     let mut cxfile_list: Vec<ContextFile> = vec![];
     for msg in messages {
@@ -83,14 +83,51 @@ pub fn postprocess_at_results(
         merged.push(cxfile_list[i].clone());
         info!("merged {}:{}-{}", crate::nicer_logs::last_n_chars(&cxfile_list[i].file_name, 30), cxfile_list[i].line1, cxfile_list[i].line2);
     }
-    // 5. Encode back into a single message
+    merged
+}
+
+pub async fn reload_files(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    merged: Vec<ContextFile>,
+) -> Vec<ChatMessage>
+{
+    // drop old text in file_content, load new using get_file_text_from_memory_or_disk
+    let mut was_able_to_reload: Vec<ContextFile> = vec![];
+    for m in merged.iter() {
+        let file_path = m.file_name.clone();
+        let file_text_maybe: Result<String, String> = crate::files_in_workspace::get_file_text_from_memory_or_disk(global_context.clone(), &file_path).await;
+        if file_text_maybe.is_err() {
+            info!("file {} not found", file_path);
+            continue;
+        }
+        let file_text = file_text_maybe.unwrap();
+        if m.line1 < 0 || m.line2 < 0 {
+            info!("file {} has invalid line range {}-{}", file_path, m.line1, m.line2);
+            continue;
+        }
+        let line1: usize = m.line1 as usize;
+        let line2: usize = m.line2 as usize;
+        let content_line1_line2 = file_text.lines().skip(line1 - 1).take(line2 - line1 + 1).collect::<Vec<&str>>();
+        for s in content_line1_line2.clone() {
+            info!("reloading {}", s);
+        }
+        was_able_to_reload.push(ContextFile {
+            file_name: m.file_name.clone(),
+            file_content: content_line1_line2.join("\n"),
+            line1: m.line1,
+            line2: m.line2,
+            usefulness: m.usefulness,
+        });
+    }
+
+    // Encode back into a single message
     let mut processed_messages: Vec<ChatMessage> = vec![];
     if merged.len() == 0 {
         return processed_messages;
     }
     let message = ChatMessage {
         role: "context_file".to_string(),
-        content: serde_json::to_string(&merged).unwrap(),
+        content: serde_json::to_string(&was_able_to_reload).unwrap(),
     };
     processed_messages.push(message);
     processed_messages
@@ -122,7 +159,8 @@ pub async fn run_at_commands(
         messages_for_postprocessing,
         max_bytes
     );
-    for msg in processed {
+    let reloaded = reload_files(global_context.clone(), processed).await;
+    for msg in reloaded {
         post.messages.push(msg.clone());
         stream_back_to_user.push_in_json(json!(msg));
     }
@@ -133,6 +171,7 @@ pub async fn run_at_commands(
     post.messages.push(msg.clone());
     stream_back_to_user.push_in_json(json!(msg));
 }
+
 
 pub struct HasVecdbResults {
     pub was_sent: bool,

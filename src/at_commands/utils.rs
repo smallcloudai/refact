@@ -85,6 +85,10 @@ pub fn split_file_into_chunks_from_line_inside(
     Vec<((i32, i32), String)>,
     Vec<((i32, i32), String)>
 ) {
+    // Line number start from 1 in ContextFile
+
+    // FIXME: don't operate on text, postprocess will reload the text anyway
+
     let cursor_line = cursor_line + 1;
     let (
         mut result_above, mut result_below, mut buffer_above, mut buffer_below

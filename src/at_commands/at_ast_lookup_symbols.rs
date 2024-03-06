@@ -10,7 +10,7 @@ use tree_sitter::Point;
 
 use crate::ast::structs::AstCursorSearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::at_file::colon_lines_range_from_arg;
+use crate::at_commands::at_file::{RangeKind, colon_lines_range_from_arg};
 use crate::at_commands::at_params::AtParamFilePath;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ChatMessage, ContextFile};
@@ -99,12 +99,13 @@ impl AtCommand for AtAstLookupSymbols {
         };
         let row_idx = match colon_lines_range_from_arg(&mut file_path) {
             Some(x) => {
-                if x.start < 0 {
-                    return Err("row index is not a valid number".to_string());
+                if x.kind == RangeKind::GradToCursorTwosided {
+                    x.line1 as usize
+                } else {
+                    return Err("line number is not a valid".to_string());
                 }
-                x.start as usize
             },
-            None => return Err("row index is not valid".to_string()),
+            None => return Err("line number is not a valid".to_string()),
         };
 
         let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &file_path.to_string()).await?;
