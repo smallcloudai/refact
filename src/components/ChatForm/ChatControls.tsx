@@ -1,5 +1,5 @@
 import React from "react";
-import { Checkbox, Box, Grid, Text, Flex } from "@radix-ui/themes";
+import { Checkbox, Grid, Text, Flex } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../contexts/config-context";
 
@@ -53,27 +53,25 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   host,
 }) => {
   return (
-    <Box pt="4" pb="4" pl="2">
-      <Grid pt="4" columns="2" width="auto" gap="2">
-        {Object.entries(checkboxes).map(([key, checkbox]) => {
-          if (host === "web" && checkbox.name === "file_upload") {
-            return null;
-          }
-          return (
-            <Text key={key} size="2">
-              <Checkbox
-                size="1"
-                name={checkbox.name}
-                checked={checkbox.checked}
-                disabled={checkbox.disabled}
-                onCheckedChange={(value) => onCheckedChange(key, value)}
-              />{" "}
-              {checkbox.label} {checkbox.fileName}
-            </Text>
-          );
-        })}
-        <CapsSelect {...selectProps} />
-      </Grid>
-    </Box>
+    <Grid pt="4" pb="4" columns="2" width="auto" gap="2">
+      {Object.entries(checkboxes).map(([key, checkbox]) => {
+        if (host === "web" && checkbox.name === "file_upload") {
+          return null;
+        }
+        return (
+          <Text key={key} size="2">
+            <Checkbox
+              size="1"
+              name={checkbox.name}
+              checked={checkbox.checked}
+              disabled={checkbox.disabled}
+              onCheckedChange={(value) => onCheckedChange(key, value)}
+            />{" "}
+            {checkbox.label} {checkbox.fileName}
+          </Text>
+        );
+      })}
+      <CapsSelect {...selectProps} />
+    </Grid>
   );
 };

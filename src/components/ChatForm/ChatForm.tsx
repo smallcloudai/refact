@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 
-import { Box, Flex } from "@radix-ui/themes";
+import { Flex, Card } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
@@ -179,7 +179,6 @@ export type ChatFormProps = {
   caps: ChatCapsState;
   model: string;
   onSetChatModel: (model: string) => void;
-  canChangeModel: boolean;
   isStreaming: boolean;
   onStopStreaming: () => void;
   commands: ChatState["rag_commands"];
@@ -191,6 +190,7 @@ export type ChatFormProps = {
   selectedSnippet: ChatState["selected_snippet"];
   removePreviewFileByName: (name: string) => void;
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
+  showControls: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -202,7 +202,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   caps,
   model,
   onSetChatModel,
-  canChangeModel,
   isStreaming,
   onStopStreaming,
   commands,
@@ -213,6 +212,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   selectedSnippet,
   removePreviewFileByName,
   onTextAreaHeightChange,
+  showControls,
 }) => {
   const [value, setValue] = React.useState("");
   const { markdown, checkboxes, toggleCheckbox } = useControlsState({
@@ -277,22 +277,21 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   }
 
   return (
-    <Box mt="1" position="relative">
+    <Card mt="1" style={{ position: "relative" }}>
       {!isOnline && <Callout type="info">Offline</Callout>}
-      <Flex pl="2">
-        {isStreaming && (
-          <Button
-            ml="auto"
-            color="red"
-            title="stop streaming"
-            onClick={onStopStreaming}
-          >
-            Stop
-          </Button>
-        )}
-      </Flex>
 
-      {canChangeModel && (
+      {isStreaming && (
+        <Button
+          ml="auto"
+          color="red"
+          title="stop streaming"
+          onClick={onStopStreaming}
+        >
+          Stop
+        </Button>
+      )}
+
+      {showControls && (
         <ChatControls
           host={config.host}
           checkboxes={checkboxes}
@@ -356,6 +355,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           />
         </Flex>
       </Form>
-    </Box>
+    </Card>
   );
 };
