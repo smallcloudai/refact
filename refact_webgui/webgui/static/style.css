@@ -711,16 +711,12 @@ h3 {
     margin-top: -6px;
     font-weight: bold;
 }
-.model-finetune-item span {
+.model-finetune-item-checkpoint {
     opacity: 0.35;
     font-size: 10px;
     display: block;
-    margin-top: -6px;
+    margin-top: -3px;
     font-weight: bold;
-}
-.add-finetune-btn {
-    margin-top: 30px;
-    padding: 0 5px;
 }
 
 .table-checkpoints tr:hover .btn-hover {

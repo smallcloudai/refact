@@ -49,7 +49,7 @@ all_refact_packages = {
                   "scyllapy==1.3.0", "pandas>=2.0.3", "litellm"],
         requires_packages=["known_models_db", "refact_utils"],
         data=["webgui/static/*", "webgui/static/components/modals/*",
-              "webgui/static/dashboards/*", "webgui/static/assets/*"]),
+              "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",]),
     "self_hosting_machinery": PyPackage(
         requires=["python-multipart", "auto-gptq==0.6.0", "accelerate",
                   "termcolor", "torch", "transformers @ git+https://github.com/bigcode-project/transformers@starcoder2",

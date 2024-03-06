@@ -1,5 +1,6 @@
 import {general_error} from './error.js';
 import {get_finetune_config_and_runs} from './tab-finetune.js';
+import {add_finetune_selectors_factory, upd_checkpoints_list, finetune_info_factory, enabled_finetune_factory} from './utils/tab-model-hosting-utils.js';
 
 
 let gpus_popup = false;
@@ -158,7 +159,7 @@ function get_models()
         }
     })
     .catch(function(error) {
-        console.log('tab-host-models-get',error);
+        console.log('tab-host-models-get', error);
         general_error(error);
     });
 }
@@ -200,12 +201,18 @@ function render_models_assigned(models) {
     for(let index in models) {
         const row = document.createElement('tr');
         row.setAttribute('data-model',index);
-        const model_name = document.createElement("td");
-        const completion = document.createElement("td");
+        let model_name = document.createElement("td");
+        model_name.style.width = "20%";
+        let completion = document.createElement("td");
+        completion.style.width = "15%";
         let finetune_info = document.createElement("td");
-        const select_gpus = document.createElement("td");
-        const gpus_share = document.createElement("td");
-        const del = document.createElement("td");
+        finetune_info.style.width = "35%";
+        let select_gpus = document.createElement("td");
+        select_gpus.style.width = "15%";
+        let gpus_share = document.createElement("td");
+        gpus_share.style.width = "10%";
+        let del = document.createElement("td");
+        del.style.width = "5%";
 
         model_name.textContent = index;
         finetune_info.classList.add('model-finetune-info');
@@ -226,46 +233,7 @@ function render_models_assigned(models) {
             });
             completion.appendChild(completion_input);
         }
-
-        let enabled_finetunes = [];
-        if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
-            let enabled_finetune = document.createElement("div");
-            enabled_finetune.dataset.run = models_info[index].finetune_info.run;
-            enabled_finetune.dataset.checkpoint = models_info[index].finetune_info.checkpoint;
-
-        enabled_finetune.innerHTML = `
-            <div class="model-finetune-item" style="display: flex; align-items: center;" data-run="${enabled_finetune.dataset.run}">
-                <button class="btn btn-outline-danger btn-sm btn-remove-run" style="padding: 0 3px" 
-                data-run="${enabled_finetune.dataset.run}" 
-                data-checkpoint="${enabled_finetune.dataset.checkpoint}"
-                data-model="${index}"
-                >
-                    <i class="bi bi-trash3-fill" style="font-size: 1em"></i>
-                </button>
-                <div style="display: flex; flex-direction: column; margin-left: 15px;">
-                    <div class="model-finetune-item-run">
-                        Run: ${enabled_finetune.dataset.run}
-                    </div>
-                    <span>
-                        Checkpoint: ${enabled_finetune.dataset.checkpoint}
-                    </span>
-                </div>
-            </div>`;
-        enabled_finetunes.push(enabled_finetune);
-        }
-
-        let finetune_info_children = document.createElement("div");
-        for (let child of enabled_finetunes) {
-            finetune_info_children.appendChild(child);
-        }
-        finetune_info.appendChild(finetune_info_children);
-
-        let add_finetune_btn = document.createElement("button");
-        add_finetune_btn.classList = "btn btn-sm btn-outline-primary mt-1 add-finetune-btn";
-        add_finetune_btn.dataset.model = index;
-        add_finetune_btn.innerText = 'Add Run';
-
-        finetune_info.appendChild(add_finetune_btn);
+        finetune_info_factory(models_info, finetune_info, index);
 
          if (models_info[index].hasOwnProperty('has_sharding') && models_info[index].has_sharding) {
             const select_gpus_div = document.createElement("div");
@@ -339,64 +307,100 @@ function render_models_assigned(models) {
         models_table.appendChild(row);
     }
 
-    document.querySelectorAll(".btn-remove-run").forEach(element => {
-        element.addEventListener("click", (event) => {
-            const target = event.currentTarget;
-            finetune_switch_activate(
-                target.dataset.model,
-                "off",
-                target.dataset.run,
-                target.dataset.checkpoint
-            ).then((is_ok) => {
-                if (is_ok) {
-                    document.querySelector(`.model-finetune-item[data-run="${target.dataset.run}"]`).style.display = "none";
-                }
-            });
-        });
-    });
+    finetune_delete_events();
 
     document.querySelectorAll(".add-finetune-btn").forEach(element => {
         element.addEventListener("click", (event) => {
             const target = event.currentTarget;
+            target.hidden = true;
+
             let finetune_info = document.querySelector(`.model-finetune-info[data-model="${target.dataset.model}"]`);
 
-            finetune_info.insertBefore(document.createElement("div"), target);
+            let finetune_selectors = add_finetune_selectors_factory(finetune_configs_and_runs, target.dataset.model);
+            finetune_info.insertBefore(finetune_selectors, target);
+
+            let finetune_add_btn = document.querySelector("#finetune-select-run-btn-add");
+            finetune_add_btn.disabled = true;
+
+            let finetune_select_run_btn = document.getElementById('add-finetune-select-run-btn');
+
+            let run_menu = document.getElementById('add-finetune-select-run-menu');
+
+            let finetune_select_checkpoint_btn = document.getElementById('add-finetune-select-checkpoint-btn');
+            let checkpoint_menu = document.getElementById('add-finetune-select-checkpoint-menu');
+
+            let toggle_menu_display = (menu) => {
+                menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'block' : 'none';
+            }
+
+            finetune_select_run_btn.addEventListener('click', (event) => {
+                toggle_menu_display(run_menu);
+            });
+
+            finetune_select_checkpoint_btn.addEventListener('click', (event) => {
+                toggle_menu_display(checkpoint_menu);
+            });
+
+            document.addEventListener('click', function(event) {
+                if (!run_menu.contains(event.target) && event.target !== finetune_select_run_btn) {
+                    run_menu.style.display = 'none';
+                }
+                if (!checkpoint_menu.contains(event.target) && event.target !== finetune_select_checkpoint_btn) {
+                    checkpoint_menu.style.display = 'none';
+                }
+            });
+
+            document.querySelectorAll('.add-finetune-select-run-di').forEach(element => {
+               element.addEventListener('click', function(e) {
+                   finetune_select_run_btn.innerText = `${e.currentTarget.innerText}`;
+                   finetune_select_run_btn.dataset.run = e.currentTarget.dataset.run;
+                   run_menu.style.display = 'none';
+
+                   upd_checkpoints_list(finetune_configs_and_runs, finetune_select_checkpoint_btn, e.currentTarget.dataset.run, checkpoint_menu);
+
+                   finetune_select_checkpoint_btn.disabled = false;
+                   finetune_add_btn.disabled = false;
+
+                   document.querySelectorAll('.add-finetune-select-checkpoint-di').forEach(element => {
+                        element.addEventListener('click', (e) => {
+                            finetune_select_checkpoint_btn.innerText = `${e.currentTarget.innerText}`;
+                            finetune_select_checkpoint_btn.dataset.name = e.currentTarget.dataset.name;
+                            checkpoint_menu.style.display = 'none';
+                        });
+                    });
+
+               });
+            });
+
+            finetune_add_btn.addEventListener('click', (el) => {
+                finetune_switch_activate(
+                    target.dataset.model,
+                    "specific",
+                    finetune_select_run_btn.dataset.run,
+                    finetune_select_checkpoint_btn.dataset.name
+                ).then((is_ok) => {
+                if (is_ok) {
+                    finetune_selectors.remove();
+
+                    let enabled_finetune_new = document.createElement("div");
+                    enabled_finetune_new.dataset.run = finetune_select_run_btn.dataset.run;
+                    enabled_finetune_new.dataset.checkpoint = finetune_select_checkpoint_btn.dataset.name;
+                    enabled_finetune_factory(enabled_finetune_new, target.dataset.model);
+                    finetune_info.insertBefore(enabled_finetune_new, target);
+                    finetune_delete_events();
+
+                    target.hidden = false;
+                }
+            });
+
+            });
+            document.querySelector("#finetune-select-run-btn-discard").addEventListener('click', (el) => {
+                finetune_selectors.remove();
+                target.hidden = false;
+            });
+
         });
     });
-}
-
-function add_finetune_selectors_factory(model_name) {
-    let el = document.createElement("div");
-    let dropdown_run = document.createElement("div");
-    dropdown_run.classList.add("dropdown");
-
-    let dropdown_btn = document.createElement("button");
-    dropdown_btn.id = "add-finetune-select-run-btn";
-    dropdown_btn.classList = "btn btn-secondary dropdown-toggle";
-    dropdown_btn.type = "button";
-    dropdown_btn.dataset.toggle = "dropdown";
-    dropdown_btn.setAttribute("aria-haspopup", "true");
-    dropdown_btn.setAttribute("aria-expanded", "false");
-    dropdown_btn.innerHTML = "Select Run";
-    dropdown_run.appendChild(dropdown_btn);
-
-    let dropdown_menu = document.createElement("div");
-    dropdown_menu.classList.add("dropdown-menu");
-    dropdown_menu.setAttribute("aria-labelledby", "add-finetune-select-run-btn");
-
-    let runs = finetune_configs_and_runs.finetune_runs.filter(run => run.model_name === model_name && run.checkpoints.length !== 0);
-    for (let run of runs) {
-        let child = document.createElement("a");
-        child.setAttribute("href", "#");
-        child.setAttribute("class", "dropdown-item");
-        child.setAttribute("data-run", run.run_id);
-        child.innerText = `${run.run_id}`;
-
-    }
-
-    el.innerHTML = `
-        
-    `;
 }
 
 function render_models(models) {
@@ -486,6 +490,34 @@ function render_models(models) {
             });
         });
     }
+}
+
+function finetune_delete_events() {
+    document.querySelectorAll(".btn-remove-run").forEach(element => {
+        spawn_finetune_delete_event(element);
+    });
+
+}
+
+function spawn_finetune_delete_event(element) {
+    let handle_event = (event) => {
+        const target = event.currentTarget;
+        finetune_switch_activate(
+            target.dataset.model,
+            "off",
+            target.dataset.run,
+            target.dataset.checkpoint
+        ).then((is_ok) => {
+            if (is_ok) {
+                document.querySelector(`.model-finetune-item[data-run="${target.dataset.run}"]`).remove();
+            }
+        });
+    };
+
+    let clone = element.cloneNode(true);
+    // discarding old event handlers
+    element.parentNode.replaceChild(clone, element);
+    clone.addEventListener("click", handle_event);
 }
 
 function format_memory(memory_in_mb, decimalPlaces = 2) {
