@@ -109,7 +109,7 @@ system_prompts:
     text: "You are a programming assistant. Use backquotes for code blocks, but insert into comments inside code blocks funny remarks, a joke inspired by the code or play on words. For example ```\n// Hocus, pocus\ngetTheFocus();\n```."
 
 toolbox_commands:
-   user0:
+  user0:
     description: "User-defined: translate to horrible code"
     selection_needed: [1, 50]
     messages:

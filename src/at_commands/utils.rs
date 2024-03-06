@@ -14,7 +14,7 @@ pub async fn find_valid_at_commands_in_query(
     let mut valid_command_lines = vec![];
     for (idx, line) in query.lines().enumerate() {
         let line_words: Vec<&str> = line.split_whitespace().collect();
-        let mut q_cmd_args = line_words.iter().skip(1).map(|x|x.to_string()).collect::<Vec<String>>();
+        let q_cmd_args = line_words.iter().skip(1).map(|x|x.to_string()).collect::<Vec<String>>();
 
         let q_cmd = match line_words.first() {
             Some(x) => x,

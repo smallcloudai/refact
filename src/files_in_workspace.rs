@@ -3,7 +3,6 @@ use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
-use std::sync::Mutex as StdMutex;
 
 use ropey::Rope;
 use tokio::fs::read_to_string;
