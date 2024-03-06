@@ -330,6 +330,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           }
           render={(props) => (
             <TextArea
+              required={true}
               disabled={isStreaming}
               {...props}
               onTextAreaHeightChange={onTextAreaHeightChange}
