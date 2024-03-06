@@ -63,7 +63,7 @@ const meta = {
     },
     error: null,
     clearError: noop,
-    canChangeModel: true,
+    showControls: true,
     hasContextFile: false,
     commands: {
       available_commands: testCommands,
