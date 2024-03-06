@@ -63,7 +63,7 @@ const meta = {
     },
     error: null,
     clearError: noop,
-    canChangeModel: true,
+    showControls: true,
     hasContextFile: false,
     commands: {
       available_commands: testCommands,
@@ -77,6 +77,7 @@ const meta = {
       attach: false,
       line1: 1,
       line2: 100,
+      path: "/Users/refact/Projects/smallcloudai/refact-chat-js/todo.md",
     },
     filesInPreview: [
       {
@@ -136,7 +137,7 @@ const meta = {
         line2: 100,
       },
     ],
-    selectedSnippet: { code: "", language: "" },
+    selectedSnippet: { code: "", language: "", basename: "", path: "" },
     removePreviewFileByName: () => ({}),
     requestCommandsCompletion: () => ({}),
     setSelectedCommand: () => ({}),

@@ -56,6 +56,8 @@ export type ChatThread = {
 export type Snippet = {
   language: string;
   code: string;
+  path: string;
+  basename: string;
 };
 interface BaseAction {
   type: EVENT_NAMES_FROM_CHAT | EVENT_NAMES_TO_CHAT;
@@ -231,17 +233,23 @@ export function isToggleActiveFile(
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.TOGGLE_ACTIVE_FILE;
 }
+
+export type FileInfo = {
+  name: string;
+  line1: number | null;
+  line2: number | null;
+  can_paste: boolean;
+  attach: boolean;
+  path: string;
+  content?: string;
+  usefulness?: number;
+};
+
 export interface ActiveFileInfo extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.ACTIVE_FILE_INFO;
   payload: {
     id: string;
-    file: Partial<{
-      name: string;
-      line1: number | null;
-      line2: number | null;
-      can_paste: boolean;
-      attach: boolean;
-    }>;
+    file: Partial<FileInfo>;
   };
 }
 

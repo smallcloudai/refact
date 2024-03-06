@@ -43,6 +43,7 @@ import {
   setPreviousMessagesLength,
   type Snippet,
   isReceiveTokenCount,
+  FileInfo,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -357,13 +358,7 @@ export type ChatState = {
     is_cmd_executable: boolean;
   };
   files_in_preview: ChatContextFile[];
-  active_file: {
-    name: string;
-    attach: boolean;
-    can_paste: boolean;
-    line1: null | number;
-    line2: null | number;
-  };
+  active_file: FileInfo;
   selected_snippet: Snippet;
   tokens: number | null;
 };
@@ -377,6 +372,8 @@ function createInitialState(): ChatState {
     selected_snippet: {
       language: "",
       code: "",
+      path: "",
+      basename: "",
     },
     files_in_preview: [],
     chat: {
@@ -403,6 +400,7 @@ function createInitialState(): ChatState {
       line2: null,
       attach: false,
       can_paste: false,
+      path: "",
     },
     tokens: null,
   };

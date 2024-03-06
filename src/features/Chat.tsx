@@ -3,7 +3,6 @@ import { ChatForm } from "../components/ChatForm";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
 import { Flex, Responsive, Button, Text } from "@radix-ui/themes";
-import { isChatContextFileMessage } from "../services/refact";
 import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { useEffectOnce } from "../hooks";
@@ -102,13 +101,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
 
       <ChatForm
         isStreaming={state.streaming}
-        canChangeModel={
-          state.chat.messages.filter(
-            (message) => !isChatContextFileMessage(message),
-          ).length === 0 &&
-          !state.streaming &&
-          state.files_in_preview.length === 0
-        }
+        showControls={state.chat.messages.length === 0 && !state.streaming}
         error={state.error}
         clearError={clearError}
         onSubmit={(value) => {
