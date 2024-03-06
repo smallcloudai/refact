@@ -35,8 +35,7 @@ class FileSetsContext:
             Path(LOSS_PER_HASH_DB_FILEPATH).touch()
 
     def get_loss_by_content(self, model_name: str, content: str) -> Optional[float]:
-        h = hashlib.sha1(content.encode("utf-8")).hexdigest()
-        return self.loss_per_hash_db[(h, model_name)]["loss"] if (h, model_name) in self.loss_per_hash_db else None
+        return 1.0
 
     def add_content_loss_pair(self, model_name: str, content: str, loss: float):
         row = {

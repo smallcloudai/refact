@@ -280,7 +280,7 @@ huggingface_mini_db = {
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "required_memory_mb": 16000,
-        "T": 4096,
+        "T": 2048,
         "filter_caps": ["completion", "finetune"],
     },
     "starcoder2/15b/base": {
