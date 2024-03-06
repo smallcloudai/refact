@@ -13,12 +13,12 @@ import torch as th
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_finetune_config
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config, ConfigBuilder
-from self_hosting_machinery.finetune.scripts.aux.dataset import (
+from self_hosting_machinery.finetune.scripts.auxiliary.dataset import (
     create_train_dataloader, create_test_dataloader, get_ds_len_per_epoch, to_cuda
 )
-from self_hosting_machinery.finetune.scripts.aux.early_stopper import EarlyStopper
-from self_hosting_machinery.finetune.scripts.aux.finetune_status_tracker import FinetuneStatusTracker
-from self_hosting_machinery.finetune.scripts.aux.model import ModelContext
+from self_hosting_machinery.finetune.scripts.auxiliary.early_stopper import EarlyStopper
+from self_hosting_machinery.finetune.scripts.auxiliary.finetune_status_tracker import FinetuneStatusTracker
+from self_hosting_machinery.finetune.scripts.auxiliary.model import ModelContext
 from self_hosting_machinery.finetune.utils import traces
 
 

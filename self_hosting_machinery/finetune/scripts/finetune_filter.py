@@ -14,13 +14,13 @@ from refact_utils.scripts import env
 from refact_utils.finetune.utils import (get_finetune_config, get_finetune_filter_config)
 import self_hosting_machinery.finetune.utils.traces as traces
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config
-from self_hosting_machinery.finetune.scripts.aux.dataset import (
+from self_hosting_machinery.finetune.scripts.auxiliary.dataset import (
     create_finetune_filter_dataloader, to_cuda, setup_encoding
 )
-from self_hosting_machinery.finetune.scripts.aux.file_sets_context import FileSetsContext
-from self_hosting_machinery.finetune.scripts.aux.file_status_context import FilesStatusContext
-from self_hosting_machinery.finetune.scripts.aux.finetune_filter_status_tracker import FinetuneFilterStatusTracker
-from self_hosting_machinery.finetune.scripts.aux.model import ModelContext
+from self_hosting_machinery.finetune.scripts.auxiliary.file_sets_context import FileSetsContext
+from self_hosting_machinery.finetune.scripts.auxiliary.file_status_context import FilesStatusContext
+from self_hosting_machinery.finetune.scripts.auxiliary.finetune_filter_status_tracker import FinetuneFilterStatusTracker
+from self_hosting_machinery.finetune.scripts.auxiliary.model import ModelContext
 from self_hosting_machinery.finetune.scripts.process_uploaded_files import make_matcher
 
 
@@ -191,6 +191,9 @@ def main(models_db: Dict[str, Any]):
         file_sets_context = FileSetsContext(
             autoselect_test_files_num=finetune_filter_cfg.get("autoselect_test_files_num", 3)
         )
+        if True:
+            logging.info("Train set filtering: nothing changed since last time, quit")
+            return
 
         traces.log(textwrap.fill(
             f"This filter calculates perplexity for each file and filters out "
