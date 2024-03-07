@@ -9,7 +9,8 @@ import jsonlines
 from self_hosting_machinery.finetune.utils import traces
 from refact_utils.scripts.env import (TRAIN_UNFILTERED_FILEPATH, TEST_UNFILTERED_FILEPATH,
                                       TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH,
-                                      LOSS_PER_HASH_DB_FILEPATH)
+                                      LOSS_PER_HASH_DB_FILEPATH, CONFIG_HOW_TO_FILTER,
+                                      CONFIG_HOW_TO_FILETYPES)
 
 __all__ = ['FileSetsContext']
 
@@ -35,7 +36,31 @@ class FileSetsContext:
             Path(LOSS_PER_HASH_DB_FILEPATH).touch()
 
     def get_loss_by_content(self, model_name: str, content: str) -> Optional[float]:
-        return 1.0
+        h = hashlib.sha1(content.encode("utf-8")).hexdigest()
+        return self.loss_per_hash_db[(h, model_name)]["loss"] if (h, model_name) in self.loss_per_hash_db else None
+
+    def is_up_to_date(self) -> bool:
+        unfiltered_train, filtered_train = (
+            Path(TRAIN_UNFILTERED_FILEPATH), Path(TRAIN_FILTERED_FILEPATH)
+        )
+        unfiltered_test, filtered_test = (
+            Path(TEST_UNFILTERED_FILEPATH), Path(TEST_FILTERED_FILEPATH)
+        )
+        how_to_filter = Path(CONFIG_HOW_TO_FILTER)
+        how_to_filetypes = Path(CONFIG_HOW_TO_FILETYPES)
+
+        try:
+            has_updates = [
+                unfiltered_train.lstat().st_mtime > filtered_train.lstat().st_mtime,
+                unfiltered_test.lstat().st_mtime > filtered_test.lstat().st_mtime,
+            ]
+            if how_to_filter.exists():
+                has_updates.append(how_to_filter.lstat().st_mtime > filtered_train.lstat().st_mtime)
+            if how_to_filetypes.exists():
+                has_updates.append(how_to_filetypes.lstat().st_mtime > filtered_train.lstat().st_mtime)
+        except OSError:
+            return False
+        return not any(has_updates)
 
     def add_content_loss_pair(self, model_name: str, content: str, loss: float):
         row = {
