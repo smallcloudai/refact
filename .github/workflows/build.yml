@@ -8,6 +8,10 @@ on:
   pull_request:
   workflow_dispatch:
   repository_dispatch:
+  workflow_run:
+    workflows: ["Cache cleanup"]
+    types:
+      - completed
 
 
 env:
