@@ -6,14 +6,14 @@ import { Chart } from "../Chart/Chart";
 import { StatisticData } from "../../services/refact";
 import { Spinner } from "../Spinner";
 import { ErrorCallout } from "../Callout";
-// import { FimFiles } from "./FimFiles";
+import { FimFiles } from "./FimFiles";
 
 export const StatisticView: React.FC<{
   statisticData: StatisticData | null;
   isLoading: boolean;
   error: string;
   fimFiles: StatisticState["fill_in_the_middle"];
-}> = ({ statisticData, isLoading, error, fimFiles: _fimFiles }) => {
+}> = ({ statisticData, isLoading, error, fimFiles }) => {
   if (isLoading) {
     return <Spinner />;
   }
@@ -44,7 +44,7 @@ export const StatisticView: React.FC<{
               statisticData.refact_impact_dates.data.weekly
             }
           />
-          {/* <FimFiles fimFiles={fimFiles} /> */}
+          <FimFiles fimFiles={fimFiles} />
         </Flex>
       </Flex>
     </Box>
