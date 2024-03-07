@@ -92,10 +92,19 @@ class WebGUI(FastAPI):
                          stats_service: StatisticsService,
                          *args, **kwargs):
                 self._stats_service = stats_service
+                self._stats_routes = {
+                    "/rh-stats",
+                    "/telemetry-basic",
+                    "/telemetry-snippets",
+                    "/dash-prime",
+                    "/dash-teams",
+                    "/dash-teams",
+                }
                 super().__init__(*args, **kwargs)
 
             async def dispatch(self, request: Request, call_next: Callable):
-                if not self._stats_service.is_ready:
+                if request.url.path in self._stats_routes \
+                        and not self._stats_service.is_ready:
                     raise HTTPException(
                         status_code=500,
                         detail="Statistics service is not ready, waiting for database connection")
