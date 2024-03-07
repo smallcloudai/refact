@@ -239,10 +239,20 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   });
 
   useEffect(() => {
-    if (caps.available_caps.length === 0) {
+    if (
+      caps.available_caps.length === 0 &&
+      !caps.default_cap &&
+      !caps.fetching
+    ) {
       requestCaps();
     }
-  }, [requestCaps, caps.available_caps.length, value]);
+  }, [
+    requestCaps,
+    caps.available_caps.length,
+    caps.default_cap,
+    caps.fetching,
+    value,
+  ]);
 
   const addCheckboxValuesToInput = (input: string) => {
     let result = input;

@@ -14,7 +14,12 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     onStopStreaming: noop,
     onSetChatModel: noop,
     model: "gpt-3.5-turbo",
-    caps: { fetching: false, default_cap: "foo", available_caps: [] },
+    caps: {
+      fetching: false,
+      default_cap: "foo",
+      available_caps: [],
+      error: "",
+    },
     error: "",
     clearError: noop,
     showControls: true,
@@ -38,6 +43,7 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     setSelectedCommand: noop,
     filesInPreview: [],
     onTextAreaHeightChange: noop,
+    requestCaps: noop,
     ...props,
   };
 

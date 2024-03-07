@@ -60,6 +60,7 @@ const meta = {
       fetching: false,
       default_cap: "foo",
       available_caps: ["bar", "baz"],
+      error: "",
     },
     error: null,
     clearError: noop,
