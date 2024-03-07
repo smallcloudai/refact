@@ -156,8 +156,9 @@ pub async fn run_at_commands(
     // take only 0..nearest_user
     let mut rebuilt_messages: Vec<ChatMessage> = post.messages.iter().take(nearest_user).map(|m| m.clone()).collect();
 
-    for user_idx in nearest_user..post.messages.len() {
-        let mut user_posted = post.messages[user_idx].content.clone();
+    for msg_idx in nearest_user..post.messages.len() {
+        let mut user_posted = post.messages[msg_idx].content.clone();
+        info!("msg {} user_posted {:?}", msg_idx, user_posted);
         let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut user_posted, &context).await;
         let mut messages_for_postprocessing = vec![];
         for cmd in valid_commands {
@@ -165,7 +166,9 @@ pub async fn run_at_commands(
                 Ok(msg) => {
                     messages_for_postprocessing.push(msg);
                 },
-                Err(_) => {}
+                Err(e) => {
+                    tracing::warn!("can't execute command that indicated it can execute: {}", e);
+                }
             }
         }
         let max_bytes = 7*1024;

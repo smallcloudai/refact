@@ -218,15 +218,21 @@ impl AtCommand for AtFile {
                 }
                 x
             },
-            None => ColonLinesRange { kind: RangeKind::Range, line1: 0, line2: 0 }
+            None => {
+                split_into_chunks = true;
+                cursor = 0;
+                ColonLinesRange { kind: RangeKind::GradToCursorSuffix, line1: 0, line2: 0 }  // not used if split_into_chunks is true
+            }
         };
+        info!("@file execute range {:?}", colon);
 
         let mut file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &file_path).await?;
-        let lines_cnt = file_text.lines().count();
+        let mut file_lines: Vec<String> = file_text.lines().map(String::from).collect();
+        let lines_cnt = file_lines.len();
 
         if split_into_chunks {
             cursor = cursor.max(0).min(lines_cnt);
-            let (mut res_above, mut res_below) = split_file_into_chunks_from_line_inside(cursor, &file_text, 20);
+            let (mut res_above, mut res_below) = split_file_into_chunks_from_line_inside(cursor, &mut file_lines, 20);
             info!("split_into_chunks cursor: {} <= {}", cursor, lines_cnt);
             if colon.kind == RangeKind::GradToCursorPrefix {
                 res_below.clear();

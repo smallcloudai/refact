@@ -71,7 +71,7 @@ pub async fn correct_arguments_if_needed(
             None => return Err(format!("arg '{}' correction failed", arg)),
         };
         if !param.is_value_valid(arg_completed, context).await {
-            return Err(format!("arg '{}' is not valid even after force completion", arg_completed));
+            return Err(format!("arg '{}' is not valid even after a typo correction attempt", arg_completed));
         }
         info!("arg '{}' is corrected as '{}'", arg, arg_completed);
         args_new.push(arg_completed.clone());
@@ -80,15 +80,18 @@ pub async fn correct_arguments_if_needed(
 }
 
 pub fn split_file_into_chunks_from_line_inside(
-    cursor_line: usize, file_text: &String, chunk_size_lines: usize
+    cursor_line: usize,
+    file_lines: &mut Vec<String>,
+    chunk_size_lines: usize
 ) -> (
     Vec<((usize, usize), String)>,
     Vec<((usize, usize), String)>
 ) {
+    if cursor_line == file_lines.len() {  // otherwise the last block doesn't get added
+        file_lines.push("".to_string());
+    }
+
     // Line number start from 1 in ContextFile
-
-    // FIXME: don't operate on text, postprocess will reload the text anyway
-
     let cursor_line = cursor_line + 1;
     let (
         mut result_above, mut result_below, mut buffer_above, mut buffer_below
@@ -96,12 +99,12 @@ pub fn split_file_into_chunks_from_line_inside(
         Vec::new(), Vec::new(), Vec::new(), Vec::new()
     );
 
-    for (idx, line) in file_text.lines().enumerate() {
+    for (idx, line) in file_lines.iter().enumerate() {
         let idx = idx + 2;
         if idx <= cursor_line {
-            buffer_above.push(line);
+            buffer_above.push(line.clone());
             if buffer_above.len() >= chunk_size_lines {
-                result_above.push(((idx - buffer_above.len(), idx - 1), buffer_above.join("\n")));
+                result_above.push(((idx - buffer_above.len(), idx - 1), buffer_above.join("\n").to_string()));
                 buffer_above.clear();
             }
         } else if idx > cursor_line {
@@ -110,7 +113,7 @@ pub fn split_file_into_chunks_from_line_inside(
                 buffer_above.clear();
             }
 
-            buffer_below.push(line);
+            buffer_below.push(line.clone());
             if buffer_below.len() >= chunk_size_lines {
                 result_below.push(((idx - buffer_below.len(), idx - 1), buffer_below.join("\n")));
                 buffer_below.clear();
@@ -119,7 +122,7 @@ pub fn split_file_into_chunks_from_line_inside(
     }
 
     if !buffer_below.is_empty() {
-        result_below.push(((file_text.lines().count() - buffer_below.len() + 1, file_text.lines().count()), buffer_below.join("\n")));
+        result_below.push(((file_lines.len() - buffer_below.len() + 1, file_lines.len()), buffer_below.join("\n")));
     }
 
     (result_above, result_below)

@@ -51,10 +51,12 @@ async fn get_file_paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>
 
 fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
     if let Some(colon) = colon {
-        *value = range_print(colon);
+        value.push_str(":");
+        value.push_str(range_print(colon).as_str());
     }
 }
 
+// TODO: move to at_file
 #[async_trait]
 impl AtParam for AtParamFilePath {
     fn name(&self) -> &String {
@@ -68,8 +70,9 @@ impl AtParam for AtParamFilePath {
     }
 
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
-        let mut value = value.clone();
-        let colon_mb = colon_lines_range_from_arg(&mut value);
+        let mut correction_candidate = value.clone();
+        let colon_mb = colon_lines_range_from_arg(&mut correction_candidate);
+        tracing::info!("correction_candidate: {}", correction_candidate);
 
         let index_file_paths = get_file_paths_from_anywhere(context.global_context.clone()).await;
 
@@ -78,12 +81,12 @@ impl AtParam for AtParamFilePath {
             (
                 f,
                 normalized_damerau_levenshtein(
-                    if value.starts_with("/") {
+                    if correction_candidate.starts_with("/") {
                         f
                     } else {
                         path.file_name().unwrap().to_str().unwrap()
                     },
-                    &value.to_string(),
+                    &correction_candidate.to_string(),
                 )
             )
         });
@@ -91,10 +94,11 @@ impl AtParam for AtParamFilePath {
         let sorted_paths = mapped_paths
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
             .rev()
-            .map(|(path, _)| path.clone())
+            .map(|(p, _)| p.clone())
             .take(top_n)
             .map(|mut x| { put_colon_back_to_arg(&mut x, &colon_mb); x.clone() })
             .collect::<Vec<String>>();
+        tracing::info!("sorted_paths: {:?}", sorted_paths);
         sorted_paths
     }
 }
@@ -105,13 +109,13 @@ pub struct AtParamFilePathWithRow {
     pub name: String,
 }
 
-impl AtParamFilePathWithRow {
-    pub fn new() -> Self {
-        Self {
-            name: "file_path".to_string()
-        }
-    }
-}
+// impl AtParamFilePathWithRow {
+//     pub fn new() -> Self {
+//         Self {
+//             name: "file_path".to_string()
+//         }
+//     }
+// }
 
 #[derive(Debug)]
 pub struct AtParamSymbolPathQuery {
@@ -126,6 +130,7 @@ impl AtParamSymbolPathQuery {
     }
 }
 
+// TODO: move to at_lookup_symbols
 #[async_trait]
 impl AtParam for AtParamSymbolPathQuery {
     fn name(&self) -> &String {
@@ -134,15 +139,11 @@ impl AtParam for AtParamSymbolPathQuery {
     async fn is_value_valid(&self, _: &String, _: &AtCommandsContext) -> bool {
         return true;
     }
-    async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
-        let ast_module_ptr = context.global_context.read().await.ast_module.clone();
-        let index_paths = match *ast_module_ptr.lock().await {
-            Some(ref ast) => ast.get_indexed_symbol_paths().await,
-            None => vec![]
-        };
 
+    async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
+        let all_paths = get_file_paths_from_anywhere(context.global_context.clone()).await;
         let value_lower = value.to_lowercase();
-        let mapped_paths = index_paths
+        let mapped_paths = all_paths
             .iter()
             .filter(|x| x.to_lowercase().contains(&value_lower))
             .map(|f| {
@@ -167,6 +168,7 @@ impl AtParam for AtParamSymbolPathQuery {
             .collect::<Vec<String>>();
         return sorted_paths;
     }
+
     fn complete_if_valid(&self) -> bool {
         true
     }
