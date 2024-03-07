@@ -58,13 +58,6 @@ class TabFinetuneConfig(BaseModel):
     auto_delete_n_runs: int = Query(default=5, ge=2, le=100)
 
 
-class TabFinetuneActivate(BaseModel):
-    model: str
-    lora_mode: str = Query(default="off", regex="off|latest-best|specific")
-    specific_lora_run_id: str = Query(default="")
-    specific_checkpoint: str = Query(default="")
-
-
 class FilteringSetup(BaseModel):
     autoselect_test_files_num: Optional[int] = Query(default=3, gt=1, le=1000)
     filter_loss_threshold: Optional[float] = Query(default=3.0, gt=1.0, le=10.0)
@@ -72,18 +65,16 @@ class FilteringSetup(BaseModel):
     # use_gpus_n: Optional[int] = Query(default=1, gt=1, le=8)
 
 
-class RenameRunPost(BaseModel):
-    run_id_old: str
-    run_id_new: str
+class ModifyLorasPost(BaseModel):
+    model: str
+    mode: str
+    run_id: str
+    checkpoint: str
 
-    @validator('run_id_new')
-    def validate_run_id_new(cls, v: str):
-        if not v.strip():
-            raise HTTPException(status_code=400, detail="must be non-empty")
-        if len(v) >= 30:
-            raise HTTPException(status_code=400, detail="must be less than 30 characters")
-        if not re.match("^[a-zA-Z0-9_ ]*$", v):
-            raise HTTPException(status_code=400, detail="must contain only Latin alphabet, numbers, spaces, and underscores")
+    @validator('mode')
+    def validate_mode(cls, v: str):
+        if v not in ['add', 'remove']:
+            raise HTTPException(status_code=400, detail="mode must be 'add' or 'remove'")
         return v
 
 
@@ -109,14 +100,14 @@ class TabFinetuneRouter(APIRouter):
 
     def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.add_api_route("/tab-finetune-models", self._models, methods=["GET"])
         self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
-        self.add_api_route("/tab-finetune-rename-run", self._rename_run, methods=["POST"])
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
         self.add_api_route("/tab-finetune-filter-log", self._tab_finetune_filter_log, methods=["GET"])
         self.add_api_route("/tab-finetune-progress-svg/{run_id}", self._tab_funetune_progress_svg, methods=["GET"])
         self.add_api_route("/tab-finetune-schedule-save", self._tab_finetune_schedule_save, methods=["POST"])
-        self.add_api_route("/tab-finetune-activate", self._tab_finetune_activate, methods=["POST"])
+        self.add_api_route("/tab-finetune-modify-loras", self._modify_loras, methods=["POST"])
         self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
         self.add_api_route("/tab-finetune-stop-now", self._tab_finetune_stop_now, methods=["GET"])
         self.add_api_route("/tab-finetune-remove/{run_id}", self._tab_finetune_remove, methods=["GET"])
@@ -126,22 +117,41 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
         self._model_assigner = model_assigner
 
-    async def _rename_run(self, post: RenameRunPost):
-        dir_loras = env.DIR_LORAS
-        runs = get_finetune_runs()
-        if post.run_id_new in [r["run_id"] for r in runs]:
-            raise HTTPException(status_code=400, detail=f"run with name {post.run_id_new} already exists")
+    async def _models(self):
+        active_loras = get_active_loras(self._model_assigner.models_db)
+        completion_models = []
+        for k, v in active_loras.items():
+            completion_models.append(k)
+            for run in v.get('loras', []):
+                completion_models.append(f'{k}:{run["run_id"]}:{run["checkpoint"]}')
 
-        run = [r for r in runs if r["run_id"] == post.run_id_old]
-        if not run:
-            raise HTTPException(status_code=400, detail=f"run {post.run_id_old} not found")
+        result = {
+            "completion_models": completion_models,
+            "chat_models": []
+        }
+        return Response(json.dumps(result, indent=4) + "\n")
 
-        path_new = os.path.join(dir_loras, post.run_id_new)
-        os.rename(os.path.join(dir_loras, run[0]["run_id"]), path_new)
-        if os.path.isdir(path_new):
-            return Response(status_code=200)
-        else:
-            raise HTTPException(status_code=400, detail=f"failed to rename {post.run_id_old} to {post.run_id_new}")
+    async def _modify_loras(self, post: ModifyLorasPost):
+        active_loras = get_active_loras(self._model_assigner.models_db)
+
+        lora_model_cfg = active_loras.get(post.model, {})
+        lora_model_cfg.setdefault('loras', [])
+
+        if post.mode == "remove":
+            lora_model_cfg['loras'] = [l for l in lora_model_cfg['loras'] if l['run_id'] != post.run_id and l['checkpoint'] != post.checkpoint]
+        if post.mode == "add":
+            if (post.run_id, post.checkpoint) not in [(l['run_id'], l['checkpoint']) for l in lora_model_cfg['loras']]:
+                lora_model_cfg['loras'].append({
+                    'run_id': post.run_id,
+                    'checkpoint': post.checkpoint,
+                })
+            else:
+                raise HTTPException(status_code=400, detail=f"lora {post.run_id} {post.checkpoint} already exists")
+
+        active_loras[post.model] = lora_model_cfg
+
+        with open(env.CONFIG_ACTIVE_LORA, "w") as f:
+            json.dump(active_loras, f, indent=4)
 
     async def _tab_finetune_get(self):
         prog, status = get_prog_and_status_for_ui()
@@ -297,11 +307,4 @@ class TabFinetuneRouter(APIRouter):
         if not os.path.exists(home_path):
             return Response("Run id '%s' not found" % home_path, status_code=404)
         shutil.rmtree(home_path)
-        return JSONResponse("OK")
-
-    async def _tab_finetune_activate(self, activate: TabFinetuneActivate):
-        active_loras = get_active_loras(self._model_assigner.models_db)
-        active_loras[activate.model] = activate.dict()
-        with open(env.CONFIG_ACTIVE_LORA, "w") as f:
-            json.dump(active_loras, f, indent=4)
         return JSONResponse("OK")

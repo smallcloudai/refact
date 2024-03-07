@@ -1,12 +1,12 @@
 import {general_error} from './error.js';
 import {get_finetune_config_and_runs} from './tab-finetune.js';
-import {add_finetune_selectors_factory, upd_checkpoints_list, finetune_info_factory, enabled_finetune_factory} from './utils/tab-model-hosting-utils.js';
+import {add_finetune_selectors_factory, upd_checkpoints_list, finetune_info_factory} from './utils/tab-model-hosting-utils.js';
 
 
 let gpus_popup = false;
 let models_data = null;
 let finetune_configs_and_runs;
-
+let force_render_models_assigned = false;
 
 function update_finetune_configs_and_runs() {
     get_finetune_config_and_runs().then((data) => {
@@ -31,14 +31,14 @@ function get_gpus() {
     });
 }
 
-function finetune_switch_activate(finetune_model, lora_mode, run_id, checkpoint) {
+function finetune_switch_activate(finetune_model, mode, run_id, checkpoint) {
     let send_this = {
         "model": finetune_model,
-        "lora_mode": lora_mode,
-        "specific_lora_run_id": run_id || "",
-        "specific_checkpoint": checkpoint || "",
+        "mode": mode,
+        "run_id": run_id,
+        "checkpoint": checkpoint,
     }
-    return fetch("/tab-finetune-activate", {
+    return fetch("/tab-finetune-modify-loras", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
@@ -191,6 +191,17 @@ function save_model_assigned() {
     });
 }
 
+function set_finetune_info_into_state(model_name, is_enabled) {
+    const finetune_info = document.querySelector(`.model-finetune-info[data-model="${model_name}"]`);
+    if (is_enabled) {
+        finetune_info.style.pointerEvents = 'auto';
+        finetune_info.style.opacity = '1';
+    } else {
+        finetune_info.style.pointerEvents = 'none';
+        finetune_info.style.opacity = '0.5';
+    }
+}
+
 function render_models_assigned(models) {
     const models_info = models_data.models.reduce(function(obj, item) {
       obj[item["name"]] = item;
@@ -316,7 +327,7 @@ function render_models_assigned(models) {
 
             let finetune_info = document.querySelector(`.model-finetune-info[data-model="${target.dataset.model}"]`);
 
-            let finetune_selectors = add_finetune_selectors_factory(finetune_configs_and_runs, target.dataset.model);
+            let finetune_selectors = add_finetune_selectors_factory(finetune_configs_and_runs, models_info, target.dataset.model);
             finetune_info.insertBefore(finetune_selectors, target);
 
             let finetune_add_btn = document.querySelector("#finetune-select-run-btn-add");
@@ -373,23 +384,21 @@ function render_models_assigned(models) {
             });
 
             finetune_add_btn.addEventListener('click', (el) => {
+                set_finetune_info_into_state(target.dataset.model, false);
+                const spinner = get_spinner();
+                el.target.replaceWith(spinner);
+
                 finetune_switch_activate(
                     target.dataset.model,
-                    "specific",
+                    "add",
                     finetune_select_run_btn.dataset.run,
                     finetune_select_checkpoint_btn.dataset.name
                 ).then((is_ok) => {
-                if (is_ok) {
-                    finetune_selectors.remove();
-
-                    let enabled_finetune_new = document.createElement("div");
-                    enabled_finetune_new.dataset.run = finetune_select_run_btn.dataset.run;
-                    enabled_finetune_new.dataset.checkpoint = finetune_select_checkpoint_btn.dataset.name;
-                    enabled_finetune_factory(enabled_finetune_new, target.dataset.model);
-                    finetune_info.insertBefore(enabled_finetune_new, target);
-                    finetune_delete_events();
-
-                    target.hidden = false;
+                if (!is_ok) {
+                    spinner.replaceWith(el.target);
+                    set_finetune_info_into_state(target.dataset.model, true);
+                } else {
+                    force_render_models_assigned = true;
                 }
             });
 
@@ -499,17 +508,35 @@ function finetune_delete_events() {
 
 }
 
+function get_spinner() {
+    const spinner = document.createElement('div');
+    const spinner_span = document.createElement('span');
+    spinner.className = 'spinner-border';
+    spinner.role ='status';
+    spinner_span.className ='sr-only';
+    spinner.style.scale = '0.5';
+    spinner.appendChild(spinner_span);
+    return spinner;
+}
+
 function spawn_finetune_delete_event(element) {
     let handle_event = (event) => {
         const target = event.currentTarget;
+        const spinner = get_spinner();
+        set_finetune_info_into_state(target.dataset.model, false);
+        target.replaceWith(spinner);
+
         finetune_switch_activate(
             target.dataset.model,
-            "off",
+            "remove",
             target.dataset.run,
             target.dataset.checkpoint
         ).then((is_ok) => {
-            if (is_ok) {
-                document.querySelector(`.model-finetune-item[data-run="${target.dataset.run}"]`).remove();
+            if (!is_ok) {
+                set_finetune_info_into_state(target.dataset.model, true);
+                spinner.replaceWith(target);
+            } else {
+                force_render_models_assigned = true;
             }
         });
     };
@@ -552,4 +579,8 @@ export function tab_switched_away() {
 export function tab_update_each_couple_of_seconds() {
     get_gpus();
     update_finetune_configs_and_runs();
+    if (force_render_models_assigned) {
+        get_models();
+        force_render_models_assigned = false;
+    }
 }

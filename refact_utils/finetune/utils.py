@@ -62,8 +62,7 @@ def get_finetune_runs() -> List[Dict]:
 
         return d
 
-    dir_loras = env.DIR_LORAS
-    runs = [get_run_info(os.path.join(dir_loras, dirname), dirname) for dirname in os.listdir(dir_loras) if os.path.isdir(os.path.join(dir_loras, dirname))]
+    runs = [get_run_info(os.path.join(env.DIR_LORAS, dirname), dirname) for dirname in os.listdir(env.DIR_LORAS) if os.path.isdir(os.path.join(env.DIR_LORAS, dirname))]
     runs.sort(key=lambda x: x.get("started_ts", 0), reverse=True)
     return runs
 
@@ -77,21 +76,29 @@ def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
                 legacy_finetune_model: active_loras,
             }
 
+    def migrate_active_lora(lora_dict: Dict) -> Dict:
+        if lora_dict.get('specific_lora_run_id') and lora_dict.get('specific_checkpoint'):
+            lora_dict.update({
+                "loras": [{
+                    "run_id": lora_dict.get('specific_lora_run_id'),
+                    "checkpoint": lora_dict.get('specific_checkpoint'),
+                }]
+            })
+        lora_dict.pop('specific_lora_run_id', None)
+        lora_dict.pop('specific_checkpoint', None)
+        lora_dict.pop('lora_mode', None)
+        lora_dict.pop('model', None)
+
+        return lora_dict
+
     def get_active_lora(model_name: str, model_info: Dict[str, Any]) -> Dict:
         finetune_model = model_info.get("finetune_model", model_name)
         if finetune_model not in active_loras:
             return {}
-        else:
-            return {
-                **active_loras[finetune_model],
-                "model": model_name
-            }
+        return migrate_active_lora(active_loras[finetune_model])
 
     return {
-        model_name: {
-            "lora_mode": "latest-best",
-            **get_active_lora(model_name, model_info),
-        }
+        model_name: get_active_lora(model_name, model_info)
         for model_name, model_info in models_db.items()
         if "finetune_model" in model_info or "finetune" in model_info["filter_caps"]
     }
