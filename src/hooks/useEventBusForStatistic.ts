@@ -2,14 +2,13 @@ import {
   ActionToStatistic,
   EVENT_NAMES_FROM_STATISTIC,
   EVENT_NAMES_TO_STATISTIC,
-  RequestFillInTheMiddleData,
   isActionToStatistic,
   isReceiveDataForStatistic,
   isReceiveDataForStatisticError,
   isReceiveFillInTheMiddleData,
-  isRequestFillInTheMiddleData,
   isRequestDataForStatistic,
   isSetLoadingStatisticData,
+  isReceiveFillInTheMiddleDataError,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useCallback, useEffect, useReducer } from "react";
@@ -22,7 +21,6 @@ export type StatisticState = {
   fill_in_the_middle: {
     files: ChatContextFile[];
     error: string;
-    fetching: boolean;
   };
 };
 
@@ -34,7 +32,6 @@ function createInitialState(): StatisticState {
     fill_in_the_middle: {
       files: [],
       error: "",
-      fetching: false,
     },
   };
 }
@@ -50,29 +47,17 @@ function reducer(
       ...state,
       fill_in_the_middle: {
         error: "",
-        fetching: false,
         files: action.payload.files,
       },
     };
   }
 
-  if (isReceiveDataForStatisticError(action)) {
+  if (isReceiveFillInTheMiddleDataError(action)) {
     return {
       ...state,
       fill_in_the_middle: {
         ...state.fill_in_the_middle,
         error: action.payload.message,
-        fetching: false,
-      },
-    };
-  }
-
-  if (isRequestFillInTheMiddleData(action)) {
-    return {
-      ...state,
-      fill_in_the_middle: {
-        ...state.fill_in_the_middle,
-        fetching: true,
       },
     };
   }
@@ -133,15 +118,6 @@ export const useEventBusForStatistic = () => {
       type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA,
     });
   }, [postMessage]);
-
-  const requestFillInTheMiddleData = useCallback(() => {
-    const action: RequestFillInTheMiddleData = {
-      type: EVENT_NAMES_FROM_STATISTIC.REQUEST_FILL_IN_THE_MIDDLE_DATA,
-    };
-    postMessage(action);
-  }, [postMessage]);
-
-  useEffect(requestFillInTheMiddleData, [requestFillInTheMiddleData]);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {

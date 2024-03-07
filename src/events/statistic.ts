@@ -2,7 +2,6 @@ import type { ChatContextFile } from ".";
 
 export enum EVENT_NAMES_FROM_STATISTIC {
   BACK_FROM_STATISTIC = "back_from_statistic",
-  REQUEST_FILL_IN_THE_MIDDLE_DATA = "statistics_request_fill_in_the_middle_data",
 }
 
 export enum EVENT_NAMES_TO_STATISTIC {
@@ -89,19 +88,6 @@ export function isReceiveDataForStatisticError(
 ): action is ReceiveDataForStatisticError {
   if (!isActionToStatistic(action)) return false;
   return action.type === EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR;
-}
-
-export interface RequestFillInTheMiddleData extends ActionFromStatistic {
-  type: EVENT_NAMES_FROM_STATISTIC.REQUEST_FILL_IN_THE_MIDDLE_DATA;
-}
-
-export function isRequestFillInTheMiddleData(
-  action: unknown,
-): action is RequestFillInTheMiddleData {
-  if (!isActionFromStatistic(action)) return false;
-  return (
-    action.type === EVENT_NAMES_FROM_STATISTIC.REQUEST_FILL_IN_THE_MIDDLE_DATA
-  );
 }
 
 export interface ReceiveFillInTheMiddleData extends ActionToStatistic {

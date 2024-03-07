@@ -12,7 +12,6 @@ const meta = {
     error: "",
     fimFiles: {
       error: "",
-      fetching: false,
       files: CONTEXT_FILES,
     },
   },
