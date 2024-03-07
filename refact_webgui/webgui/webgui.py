@@ -11,7 +11,7 @@ import weakref
 from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
-from fastapi.exceptions import HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -92,22 +92,13 @@ class WebGUI(FastAPI):
                          stats_service: StatisticsService,
                          *args, **kwargs):
                 self._stats_service = stats_service
-                self._stats_routes = {
-                    "/rh-stats",
-                    "/telemetry-basic",
-                    "/telemetry-snippets",
-                    "/dash-prime",
-                    "/dash-teams",
-                    "/dash-teams",
-                }
                 super().__init__(*args, **kwargs)
 
             async def dispatch(self, request: Request, call_next: Callable):
-                if request.url.path in self._stats_routes \
-                        and not self._stats_service.is_ready:
-                    raise HTTPException(
+                if request.url.path.startswith("/stats") and not self._stats_service.is_ready:
+                    return JSONResponse(
                         status_code=500,
-                        detail="Statistics service is not ready, waiting for database connection")
+                        content={"reason": "Statistics service is not ready, waiting for database connection"})
                 return await call_next(request)
 
         self.add_middleware(
