@@ -207,6 +207,7 @@ export type ChatFormProps = {
   removePreviewFileByName: (name: string) => void;
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
+  requestCaps: () => void;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -229,12 +230,19 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   removePreviewFileByName,
   onTextAreaHeightChange,
   showControls,
+  requestCaps,
 }) => {
   const [value, setValue] = React.useState("");
   const { markdown, checkboxes, toggleCheckbox } = useControlsState({
     activeFile: attachFile,
     snippet: selectedSnippet,
   });
+
+  useEffect(() => {
+    if (caps.available_caps.length === 0) {
+      requestCaps();
+    }
+  }, [requestCaps, caps.available_caps.length, value]);
 
   const addCheckboxValuesToInput = (input: string) => {
     let result = input;

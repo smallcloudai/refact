@@ -34,6 +34,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     setSelectedCommand,
     removePreviewFileByName,
     retryQuestion,
+    maybeRequestCaps,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -130,6 +131,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
               block: "end",
             });
         }}
+        requestCaps={maybeRequestCaps}
       />
 
       <Flex justify="between" pl="1" pr="1" pt="1">

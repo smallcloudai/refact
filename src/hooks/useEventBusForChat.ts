@@ -188,6 +188,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
         fetching: false,
         default_cap: default_cap || available_caps[0] || "",
         available_caps,
+        error: null,
       },
     };
   }
@@ -195,10 +196,11 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
   if (isThisChat && isChatReceiveCapsError(action)) {
     return {
       ...state,
-      error: action.payload.message,
+      error: state.caps.error ? null : action.payload.message,
       caps: {
         ...state.caps,
         fetching: false,
+        error: action.payload.message,
       },
     };
   }
@@ -341,6 +343,7 @@ export type ChatCapsState = {
   fetching: boolean;
   default_cap: string;
   available_caps: string[];
+  error: null | string;
 };
 
 export type ChatState = {
@@ -385,6 +388,7 @@ function createInitialState(): ChatState {
       fetching: false,
       default_cap: "",
       available_caps: [],
+      error: null,
     },
     rag_commands: {
       available_commands: [],
@@ -494,7 +498,7 @@ export const useEventBusForChat = () => {
     });
   }, [postMessage, state.chat.id]);
 
-  useEffect(() => {
+  const maybeRequestCaps = useCallback(() => {
     if (
       state.chat.messages.length === 0 &&
       state.caps.available_caps.length === 0 &&
@@ -506,9 +510,14 @@ export const useEventBusForChat = () => {
     state.chat.messages.length,
     state.caps.available_caps.length,
     state.caps.fetching,
-    state.chat.id,
     requestCaps,
   ]);
+
+  useEffect(() => {
+    if (!state.error) {
+      maybeRequestCaps();
+    }
+  }, [state.error, maybeRequestCaps]);
 
   function clearError() {
     dispatch({
@@ -665,6 +674,6 @@ export const useEventBusForChat = () => {
     setSelectedCommand,
     removePreviewFileByName,
     retryQuestion,
-    requestCaps,
+    maybeRequestCaps,
   };
 };
