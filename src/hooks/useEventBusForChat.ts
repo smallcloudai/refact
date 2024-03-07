@@ -401,6 +401,7 @@ function createInitialState(): ChatState {
       attach: false,
       can_paste: false,
       path: "",
+      cursor: null,
     },
     tokens: null,
   };

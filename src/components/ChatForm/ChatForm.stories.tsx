@@ -78,6 +78,7 @@ const meta = {
       line1: 1,
       line2: 100,
       path: "/Users/refact/Projects/smallcloudai/refact-chat-js/todo.md",
+      cursor: 50,
     },
     filesInPreview: [
       {

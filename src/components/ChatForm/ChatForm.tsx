@@ -36,9 +36,23 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
     return `${activeFile.name}${lines}`;
   }, [activeFile.name, lines]);
 
+  const nameWithCursor = useMemo(() => {
+    if (activeFile.cursor === null) {
+      return activeFile.name;
+    }
+    return `${activeFile.name}:${activeFile.cursor}`;
+  }, [activeFile.name, activeFile.cursor]);
+
   const fullPathWithLines = useMemo(() => {
     return activeFile.path + lines;
   }, [activeFile.path, lines]);
+
+  const fullPathWithCursor = useMemo(() => {
+    if (activeFile.cursor === null) {
+      return activeFile.path;
+    }
+    return `${activeFile.path}:${activeFile.cursor}`;
+  }, [activeFile.path, activeFile.cursor]);
 
   const markdown = useMemo(() => {
     return "```" + snippet.language + "\n" + snippet.code + "\n```\n";
@@ -47,19 +61,19 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
   const [checkboxes, setCheckboxes] = React.useState<
     ChatControlsProps["checkboxes"]
   >({
+    search_workspace: {
+      name: "search_workspace",
+      checked: false,
+      label: "Search workspace",
+      disabled: false,
+    },
     file_upload: {
       name: "file_upload",
       checked: false,
       label: "Attach",
       value: fullPathWithLines,
       disabled: !activeFile.name,
-      fileName: nameWithLines,
-    },
-    search_workspace: {
-      name: "search_workspace",
-      checked: false,
-      label: "Search workspace",
-      disabled: false,
+      fileName: nameWithCursor,
     },
     lookup_symbols: {
       name: "lookup_symbols",
@@ -67,7 +81,7 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
       label: "Lookup symbols ",
       value: fullPathWithLines,
       disabled: !activeFile.name,
-      fileName: nameWithLines,
+      fileName: nameWithCursor,
     },
     selected_lines: {
       name: "selected_lines",
@@ -94,11 +108,11 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
     setCheckboxes((prev) => {
       const lookupValue = prev.lookup_symbols.checked
         ? prev.lookup_symbols.value
-        : fullPathWithLines;
+        : fullPathWithCursor;
 
       const lookupFileName = prev.lookup_symbols.checked
         ? prev.lookup_symbols.fileName
-        : nameWithLines;
+        : nameWithCursor;
 
       const lookupDisabled = prev.lookup_symbols.checked
         ? false
@@ -118,11 +132,11 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
 
       const fileUploadValue = prev.file_upload.checked
         ? prev.file_upload.value
-        : fullPathWithLines;
+        : fullPathWithCursor;
 
       const fileUploadFileName = prev.file_upload.checked
         ? prev.file_upload.fileName
-        : nameWithLines;
+        : nameWithCursor;
 
       const fileUploadDisabled = prev.file_upload.checked
         ? false
@@ -156,9 +170,11 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
   }, [
     markdown,
     nameWithLines,
+    nameWithCursor,
     activeFile.name,
     snippet.code,
     fullPathWithLines,
+    fullPathWithCursor,
   ]);
 
   return {

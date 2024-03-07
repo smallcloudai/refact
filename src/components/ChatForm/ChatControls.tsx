@@ -1,5 +1,5 @@
 import React from "react";
-import { Checkbox, Grid, Text, Flex } from "@radix-ui/themes";
+import { Checkbox, Text, Flex } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../contexts/config-context";
 
@@ -53,7 +53,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   host,
 }) => {
   return (
-    <Grid pt="4" pb="4" columns="2" width="auto" gap="2">
+    <Flex pt="2" pb="2" gap="2" direction="column">
       {Object.entries(checkboxes).map(([key, checkbox]) => {
         if (host === "web" && checkbox.name === "file_upload") {
           return null;
@@ -72,6 +72,6 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
         );
       })}
       <CapsSelect {...selectProps} />
-    </Grid>
+    </Flex>
   );
 };

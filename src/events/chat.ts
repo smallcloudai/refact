@@ -243,6 +243,7 @@ export type FileInfo = {
   path: string;
   content?: string;
   usefulness?: number;
+  cursor: number | null;
 };
 
 export interface ActiveFileInfo extends ActionToChat {

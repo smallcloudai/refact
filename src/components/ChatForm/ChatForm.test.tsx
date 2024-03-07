@@ -33,6 +33,7 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
       can_paste: false,
       attach: false,
       path: "",
+      cursor: null,
     },
     setSelectedCommand: noop,
     filesInPreview: [],
@@ -98,6 +99,7 @@ describe("ChatForm", () => {
       can_paste: false,
       attach: false,
       path: "path/to/foo.txt",
+      cursor: 2,
     };
     const { user, ...app } = render(
       <App onSubmit={fakeOnSubmit} attachFile={activeFile} />,
