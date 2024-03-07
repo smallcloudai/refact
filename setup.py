@@ -56,7 +56,7 @@ all_refact_packages = {
                   "bitsandbytes", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed==0.12.6",
                   "sentence-transformers", "huggingface-hub>=0.19.3"],
-        optional=["ninja", "flash_attn @ git+https://github.com/smallcloudai/flash-attention@feat/alibi"],
+        optional=["ninja", "flash-attn"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
                            "known_models_db", "refact_data_pipeline",
                            "refact_webgui", "refact_utils"],

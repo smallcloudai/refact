@@ -8,45 +8,38 @@ from typing import Tuple, Optional
 
 
 @functools.lru_cache(maxsize=2)
-def generate_alibi(
-        max_seq_len: int,
-        num_attention_heads: int,
-        batch_size: Optional[int] = None,
-        use_flash_attn: bool = True,
-        tp_world_size: int = 1,
-        tp_index: int = 0
-) -> Tuple[torch.Tensor, float, float]:
-    def get_slopes(n):
-        def get_slopes_power_of_2(n):
-            start = (2 ** (-2 ** -(math.log2(n) - 3)))
-            ratio = start
-            return [start * ratio ** i for i in range(n)]
+def _get_alibi_slopes(attn_heads: int, dev: str) -> torch.Tensor:
+    """
+    ## Get head-specific slope $m$ for each head
+    * `n_heads` is the number of heads in the attention layer $n$
+    The slope for first head is
+    $$\frac{1}{2^{\frac{8}{n}}} = 2^{-\frac{8}{n}}$$
+    The slopes for the rest of the heads are in a geometric series with a ratio same as above.
+    For instance when the number of heads is $8$ the slopes are
+    $$\frac{1}{2^1}, \frac{1}{2^2}, \dots, \frac{1}{2^8}$$
+    """
 
-        assert math.log2(n).is_integer(
-        ), "it works only when num_attention_heads is power of 2"
-        return get_slopes_power_of_2(n)
+    # Get the closest power of 2 to `n_heads`.
+    # If `n_heads` is not a power of 2, then we first calculate slopes to the closest (smaller) power of 2,
+    # and then add the remaining slopes.
+    n = 2 ** math.floor(math.log2(attn_heads))
+    # $2^{-\frac{8}{n}}$
+    m_0 = 2.0 ** (-8.0 / n)
+    # $2^{-1\frac{8}{n}}, 2^{-2 \frac{8}{n}}, 2^{-3 \frac{8}{n}}, \dots$
+    m = torch.pow(m_0, torch.arange(1, 1 + n, device=dev))
 
-    slopes = torch.Tensor(get_slopes(num_attention_heads))
-    alibi = slopes.unsqueeze(1).unsqueeze(1) * torch.arange(max_seq_len).unsqueeze(0).unsqueeze(0).expand(
-        num_attention_heads, -1, -1)
-
-    # Select the part of the tensor that corresponds to our tensor parallel index.
-    alibi = alibi.reshape((tp_world_size, -1, *alibi.shape[1:]))[tp_index]
-
-    if use_flash_attn:
-        alibi = alibi.unsqueeze(0).contiguous()
-        # (1, nheads, 1, seqlen_k)
-    else:
-        alibi = alibi.repeat(batch_size, 1, 1).contiguous()
-
-    assert (num_attention_heads / tp_world_size).is_integer(
-    ), "it works only when (num_attention_heads/tp_world_size) is integer"
-    nh_tp = num_attention_heads // tp_world_size
-    alibi_ratio = (2 ** (-2 ** -(math.log2(num_attention_heads) - 3)))
-    alibi_start = (2 ** (-2 ** -(math.log2(num_attention_heads) - 3))) * alibi_ratio ** (nh_tp * tp_index)
-
-    return alibi, alibi_start, alibi_ratio
-
+    # If `n_heads` is not a power of 2, then we add the remaining slopes.
+    # We calculate the remaining slopes for $n * 2$ (avoiding slopes added previously).
+    # And pick the slopes upto `n_heads`.
+    if n < attn_heads:
+        # $2^{-\frac{8}{2n}}$
+        m_hat_0 = 2.0 ** (-4.0 / n)
+        # $2^{-1\frac{8}{2n}}, 2^{-3 \frac{8}{2n}}, 2^{-5 \frac{8}{2n}}, \dots$
+        # Note that we take steps by $2$ to avoid slopes added previously.
+        m_hat = torch.pow(m_hat_0, torch.arange(1, 1 + 2 * (attn_heads - n), 2, device=dev))
+        # Concatenate the slopes with the remaining slopes.
+        m = torch.cat([m, m_hat])
+    return m
 
 def _prerequisites_are_ok(model, try_triton_kernel: bool):
     try:
@@ -81,10 +74,10 @@ def apply_flash_mha_to_refact_model(model):
         kv = einops.rearrange(self.kv(x), "b t (h d) -> b t h d", h=2)
         k, v = kv.chunk(2, dim=2)
 
-        _, alibi_start, alibi_ratio = generate_alibi(q.shape[1], self.num_heads)
+        slopes = _get_alibi_slopes(self.num_heads, dev=q.device)
         attn_output = flash_attn_func(
             q, k, v, softmax_scale=self.scale_factor, causal=True,
-            alibi=True, alibi_start=alibi_start, alibi_ratio=alibi_ratio
+            alibi_slopes=slopes
         )
 
         attn_output = einops.rearrange(attn_output, "b t h d -> b t (h d)")
