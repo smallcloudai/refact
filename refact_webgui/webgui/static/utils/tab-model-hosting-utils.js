@@ -1,12 +1,15 @@
 
 export function finetune_info_factory(models_info, finetune_info, index) {
     let enabled_finetunes = [];
+
     if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
-        let enabled_finetune = document.createElement("div");
-        enabled_finetune.dataset.run = models_info[index].finetune_info.run;
-        enabled_finetune.dataset.checkpoint = models_info[index].finetune_info.checkpoint;
-        enabled_finetune_factory(enabled_finetune, index);
-        enabled_finetunes.push(enabled_finetune);
+        for (let run of models_info[index].finetune_info) {
+            let enabled_finetune = document.createElement("div");
+            enabled_finetune.dataset.run = run.run_id;
+            enabled_finetune.dataset.checkpoint = run.checkpoint;
+            enabled_finetune_factory(enabled_finetune, index);
+            enabled_finetunes.push(enabled_finetune);
+        }
     }
 
     let tech_msg = document.createElement("div");
@@ -33,29 +36,34 @@ export function finetune_info_factory(models_info, finetune_info, index) {
     }
 }
 
-export function enabled_finetune_factory(enabled_finetune, model) {
-        enabled_finetune.innerHTML = `
-            <div class="model-finetune-item" style="display: flex; align-items: center; margin-bottom: 5px" data-run="${enabled_finetune.dataset.run}">
-                <button class="btn btn-outline-danger btn-sm btn-remove-run" style="padding: 0 3px" 
-                data-run="${enabled_finetune.dataset.run}" 
-                data-checkpoint="${enabled_finetune.dataset.checkpoint}"
-                data-model="${model}"
-                >
-                    <i class="bi bi-trash3-fill" style="font-size: 1em"></i>
-                </button>
-                <div style="display: flex; flex-direction: column; margin-left: 10px;">
-                    <div class="model-finetune-item-run">
-                        Run: ${enabled_finetune.dataset.run}
-                    </div>
-                    <div class="model-finetune-item-checkpoint">
-                        Checkpoint: ${enabled_finetune.dataset.checkpoint}
-                    </div>
+function enabled_finetune_factory(enabled_finetune, model) {
+    enabled_finetune.innerHTML = `
+        <div class="model-finetune-item" style="display: flex; align-items: center; margin-bottom: 5px" data-run="${enabled_finetune.dataset.run}">
+            <button class="btn btn-outline-danger btn-sm btn-remove-run" style="padding: 0 3px" 
+            data-run="${enabled_finetune.dataset.run}" 
+            data-checkpoint="${enabled_finetune.dataset.checkpoint}"
+            data-model="${model}"
+            >
+                <i class="bi bi-trash3-fill" style="font-size: 1em"></i>
+            </button>
+            <div style="display: flex; flex-direction: column; margin-left: 10px;">
+                <div class="model-finetune-item-run">
+                    Run: ${enabled_finetune.dataset.run}
+                </div>
+                <div class="model-finetune-item-checkpoint">
+                    Checkpoint: ${enabled_finetune.dataset.checkpoint}
                 </div>
             </div>
-        `;
+        </div>
+    `;
 }
 
-export function add_finetune_selectors_factory(finetune_configs_and_runs, model_name) {
+export function add_finetune_selectors_factory(finetune_configs_and_runs, models_info, model_name) {
+    let existing_runs = []
+    if (models_info[model_name].hasOwnProperty('finetune_info') && models_info[model_name].finetune_info) {
+        existing_runs = models_info[model_name].finetune_info.map(run => run.run_id);
+    }
+
     let el = document.createElement("div");
     let title = document.createElement("div");
     title.classList.add("model-finetune-item-run")
@@ -86,7 +94,7 @@ export function add_finetune_selectors_factory(finetune_configs_and_runs, model_
     dropdown_menu.id = "add-finetune-select-run-menu";
     dropdown_menu.classList.add("dropdown-menu");
 
-    let runs = finetune_configs_and_runs.finetune_runs.filter(run => run.model_name === model_name && run.checkpoints.length !== 0);
+    let runs = finetune_configs_and_runs.finetune_runs.filter(run => run.model_name === model_name && run.checkpoints.length !== 0 && !existing_runs.includes(run.run_id));
     for (let run of runs) {
         let child = document.createElement("a");
         child.setAttribute("class", "dropdown-item add-finetune-select-run-di");

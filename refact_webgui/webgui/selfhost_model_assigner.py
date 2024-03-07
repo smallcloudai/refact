@@ -193,18 +193,13 @@ class ModelAssigner:
                 continue
             finetune_info = None
             if k in active_loras:
-                lora_mode = active_loras[k]["lora_mode"]
-                latest_best_lora_info = find_best_lora(rec.get("finetune_model", k))
-                if lora_mode == "latest-best" and latest_best_lora_info["latest_run_id"]:
-                    finetune_info = {
-                        "run": latest_best_lora_info["latest_run_id"],
-                        "checkpoint": latest_best_lora_info["best_checkpoint_id"],
-                    }
-                elif lora_mode == "specific" and active_loras[k].get("specific_lora_run_id", ""):
-                    finetune_info = {
-                        "run": active_loras[k]["specific_lora_run_id"],
-                        "checkpoint": active_loras[k]["specific_checkpoint"],
-                    }
+                finetune_info = [
+                    {
+                        "run_id": l["run_id"],
+                        "checkpoint": l["checkpoint"],
+                    } for l in active_loras[k].get('loras', [])
+                ]
+
             info.append({
                 "name": k,
                 "backend": rec["backend"],

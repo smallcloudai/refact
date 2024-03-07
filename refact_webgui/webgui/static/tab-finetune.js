@@ -9,11 +9,7 @@ let finetune_state,
     finetune_configs_and_runs,
     reference_finetune_configs_and_runs;
 
-let selected_lora,
-    loras_switch_off,
-    loras_switch_latest,
-    loras_switch_specific,
-    loras_switch_no_reaction;
+let selected_lora;
 let finetune_settings_defaults = [];
 
 let finetune_filter_panel,
@@ -27,8 +23,7 @@ let finetune_panel,
     finetune_button,
     finetune_settings;
 
-let select_model_panel,
-    use_model_panel;
+let select_model_panel;
 
 let current_accepted,
     current_rejected;
@@ -74,34 +69,7 @@ function tab_finetune_config_and_runs() {
         render_runs();
         render_model_select();
         render_finetune_settings(data);
-        render_lora_switch();
         finetune_controls_state();
-    });
-}
-
-function rename_run_post(run_id, new_name) {
-    return fetch("/tab-finetune-rename-run", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            run_id_old: run_id,
-            run_id_new: new_name
-        })
-    })
-    .then(function (response) {
-        if (!response.ok) {
-            return response.json().then(function(json) {
-                throw new Error(json.detail);
-            });
-        }
-        return response.ok;
-    })
-    .catch(function (error) {
-        console.log('tab-finetune-rename-run', error);
-        general_error(error);
-        return false;
     });
 }
 
@@ -174,34 +142,6 @@ function run_checked(run_id) {
     }
 }
 
-function finetune_activate_run(run_id, checkpoint) {
-    const finetune_run = finetune_configs_and_runs.finetune_runs.find((run) => run.run_id === run_id);
-    if (!finetune_run) {
-        return;
-    }
-    if (!checkpoint) {
-        checkpoint = finetune_run["best_checkpoint"]["best_checkpoint_id"];
-    }
-    if (finetune_run.model_name !== finetune_configs_and_runs.completion_model.finetune) {
-        const modal = document.getElementById('finetune-tab-model-warning-modal');
-        const modal_instance = bootstrap.Modal.getOrCreateInstance(modal);
-        let warning_text = `
-            This fine-tuning checkpoint is for <b>${finetune_run.model_name}</b> base model.
-            Your currently active model is <b>${finetune_configs_and_runs.completion_model.name}</b>,
-            you can change it in the Model Hosting tab.
-        `;
-        if (!finetune_configs_and_runs.completion_model.name) {
-            warning_text = `Choose completion model first to activate checkpoint.`;
-        }
-        document.querySelector('#finetune-tab-model-warning-modal #model-warning-message').innerHTML = `
-            <label>${warning_text}</label>
-        `;
-        modal_instance.show();
-    } else if (checkpoint) {
-        finetune_switch_activate("specific", run_id, checkpoint);
-    }
-}
-
 function render_runs() {
     const runs_table = document.querySelector('.run-table');
     if (runs_table.dataset.hash == CryptoJS.MD5(JSON.stringify(finetune_configs_and_runs.finetune_runs))) {
@@ -224,7 +164,6 @@ function render_runs() {
         const run_status = document.createElement("td");
         const run_minutes = document.createElement("td");
         const run_steps = document.createElement("td");
-        const run_active = document.createElement("td");
         const run_download = document.createElement("td");
         const run_delete = document.createElement("td");
 
@@ -260,49 +199,25 @@ function render_runs() {
 
         const item_disabled = run_is_working ? "disabled" : ""
 
-        run_name.innerHTML = `
-            <div id="run_name_${run.run_id}" class="run-table-name" data-run="${run.run_id}" ${item_disabled}>
-                <div id="run_div${run.run_id}">
-                    ${run.run_id}
-                    <button class="run-rename btn btn-sm btn-link" data-run="${run.run_id}" style="padding: 0; font-size: 0.875rem;" ${false}><i class="bi bi-pencil-square"></i></button>
-                </div>
-                <div id="run_div_rename${run.run_id}" hidden>
-                    <input type="text" id="run_rename_input${run.run_id}" value="${run.run_id}">
-                    <button id="confirm_btn${run.run_id}" class="btn btn-sm btn-link"><i class="bi bi-check-lg"></i></button>
-                    <button id="cancel_btn${run.run_id}" class="btn btn-sm btn-link"><i class="bi bi-x-lg"></i></button>
-                </div>
-                <span>${run.model_name}</span>
-            </div>
-        `
+        run_name.innerHTML = `<div class="run-table-name">${run.run_id}<span>${run.model_name}</span></div>`
 
-        run_delete.innerHTML = `<button class="btn btn-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
+        run_delete.innerHTML = `<button class="btn btn-outline-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
         if (find_checkpoints_by_run(run.run_id).length > 0) {
-            run_active.innerHTML = `
-                <button class="btn btn-hover btn-primary btn-sm" ${item_disabled}>
-                <i class="bi bi-play-fill"></i>
-                </button>`;
             run_download.innerHTML = `
                 <a href="/lora-download?run_id=${run.run_id}"
                    download class="btn btn-hover btn-primary btn-sm" ${item_disabled}>
                 <i class="bi bi-download"></i>
                 </a>`;
             if (!run_is_working) {
-                run_active.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    finetune_activate_run(run_table_row.dataset.run);
-                });
                 run_download.addEventListener('click', (event) => {
                     event.stopPropagation();
                 });
             }
-        } else {
-            run_active.innerHTML = ``;
         }
         run_table_row.appendChild(run_name);
         run_table_row.appendChild(run_status);
         run_table_row.appendChild(run_minutes);
         run_table_row.appendChild(run_steps);
-        run_table_row.appendChild(run_active);
         run_table_row.appendChild(run_download);
         run_table_row.appendChild(run_delete);
 
@@ -322,12 +237,6 @@ function render_runs() {
             run_table_row.classList.add('table-success');
             run_checked(run.run_id);
         }
-        // if(is_working) {
-            //     start_finetune_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + 'Stop';
-            // } else {
-                //     start_finetune_button.innerHTML = '<i class="bi bi-gpu-card"></i> Run Now';
-                // }
-                // start_finetune_button.setAttribute("need_to_stop", is_working)
     });
     const runs_table_rows = runs_table.querySelectorAll('tr');
     runs_table_rows.forEach(function (row) {
@@ -338,50 +247,6 @@ function render_runs() {
             const run_id = this.dataset.run;
             selected_lora = run_id;
             run_checked(run_id);
-        });
-    });
-
-    document.querySelectorAll(".run-rename").forEach((run) => {
-        run.addEventListener('click', (event) => {
-            event.stopPropagation();
-
-            let rename_div = document.getElementById(`run_div_rename${run.dataset.run}`);
-            let text_div = document.getElementById(`run_div${run.dataset.run}`);
-            rename_div.hidden = false;
-            text_div.hidden = true;
-
-            // removing old event listeners
-            let confirmButton = document.getElementById(`confirm_btn${run.dataset.run}`);
-            let newConfirmButton = confirmButton.cloneNode(true);
-            confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
-            // removing old event listeners
-            let cancelButton = document.getElementById(`cancel_btn${run.dataset.run}`);
-            let newCancelButton = cancelButton.cloneNode(true);
-            cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
-
-            let rename_input = document.getElementById(`run_rename_input${run.dataset.run}`);
-            const confirm_btn = document.getElementById(`confirm_btn${run.dataset.run}`);
-            const cancel_btn = document.getElementById(`cancel_btn${run.dataset.run}`);
-
-            confirm_btn.addEventListener('click', (event) => {
-                event.stopPropagation();
-                confirm_btn.hidden = true;
-                cancel_btn.hidden = true;
-                rename_run_post(run.dataset.run, rename_input.value).then((is_ok) => {
-                    if (!is_ok) {
-                        confirm_btn.hidden = false;
-                        cancel_btn.hidden = false;
-                    }
-                })
-                render_runs();
-            });
-
-            cancel_btn.addEventListener('click', (event) => {
-                event.stopPropagation();
-                rename_input.value = run.dataset.run;
-                rename_div.hidden = true;
-                text_div.hidden = false;
-            });
         });
     });
 
@@ -422,59 +287,6 @@ const find_checkpoints_by_run = (run_id) => {
     }
 };
 
-function render_lora_switch() {
-    const model_name = finetune_configs_and_runs.completion_model.name;
-    const finetune_model = finetune_configs_and_runs.completion_model.finetune;
-    let lora_switch_model = document.querySelector('#lora-switch-model');
-    lora_switch_model.innerHTML = `
-        <b>Model:</b> ${model_name}
-    `;
-    let mode = finetune_configs_and_runs.active[finetune_model] ? finetune_configs_and_runs.active[finetune_model].lora_mode : "latest-best";
-    loras_switch_no_reaction = true; // avoid infinite loop when setting .checked
-    if (mode === 'off') {
-        loras_switch_off.checked = true;
-    } else if (mode === 'latest-best') {
-        loras_switch_latest.checked = true;
-    } else if (mode === 'specific') {
-        loras_switch_specific.checked = true
-    }
-    loras_switch_no_reaction = false;
-    let lora_switch_run_id = document.querySelector('#lora-switch-run-id');
-    let lora_switch_checkpoint = document.querySelector('#lora-switch-checkpoint');
-    if (mode === 'specific') {
-        lora_switch_run_id.style.display = 'block';
-        lora_switch_checkpoint.style.display = 'block';
-        lora_switch_run_id.style.opacity = 1;
-        lora_switch_checkpoint.style.opacity = 1;
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.active[finetune_model].specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.active[finetune_model].specific_checkpoint}`;
-    } else if (mode == 'latest-best') {
-        lora_switch_run_id.style.display = 'block';
-        lora_switch_checkpoint.style.display = 'block';
-        lora_switch_run_id.style.opacity = 0.5;
-        lora_switch_checkpoint.style.opacity = 0.5;
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.finetune_latest_best.latest_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.finetune_latest_best.best_checkpoint_id}`;
-    } else {
-        lora_switch_run_id.style.display = 'none';
-        lora_switch_checkpoint.style.display = 'none';
-        lora_switch_run_id.innerHTML = `<b>Run:</b> ${finetune_configs_and_runs.active[finetune_model].specific_lora_run_id}`;
-        lora_switch_checkpoint.innerHTML = `<b>Checkpoint:</b> ${finetune_configs_and_runs.active[finetune_model].specific_checkpoint}`;
-    }
-}
-
-function loras_switch_clicked() {
-    if (loras_switch_no_reaction)
-        return;
-    if (loras_switch_off.checked === true) {
-        finetune_switch_activate("off");
-    } else if (loras_switch_latest.checked === true) {
-        finetune_switch_activate("latest-best");
-    } else if (loras_switch_specific.checked === true) {
-        finetune_switch_activate("specific");
-    }
-}
-
 function render_checkpoints(data = []) {
     const checkpoints = document.querySelector('.table-checkpoints');
     checkpoints.innerHTML = '';
@@ -488,71 +300,20 @@ function render_checkpoints(data = []) {
             if(cell.dataset.checkpoint === finetune_configs_and_runs.active.specific_checkpoint) {
                 row.classList.add('table-success');
             }
-            const activate_cell = document.createElement('td');
             const download_cell = document.createElement('td');
 
-            activate_cell.innerHTML = `
-                <button class="btn btn-hover btn-primary btn-sm">
-                <i class="bi bi-play-fill"></i>
-                </button>`;
             download_cell.innerHTML = `
                 <a href="/lora-download?run_id=${selected_lora}&checkpoint_id=${element.checkpoint_name}"
                    download class="btn btn-hover btn-primary btn-sm">
                 <i class="bi bi-download"></i>
                 </a>`;
 
-            row.appendChild(activate_cell);
             row.appendChild(download_cell);
             row.appendChild(cell);
 
             checkpoints.appendChild(row);
-            activate_cell.addEventListener('click', (event) => {
-                if(!row.classList.contains('table-success')) {
-                    let prev = document.querySelector('.table-checkpoints .table-success');
-                    if (prev) {
-                        prev.classList.remove('table-success');
-                    }
-                    row.classList.add('table-success');
-                }
-                finetune_activate_run(selected_lora, cell.dataset.checkpoint);
-            });
-            activate_cell.addEventListener('click', (event) => {
-                event.stopPropagation();
-            });
         });
     }
-}
-
-function animate_use_model() {
-    use_model_panel.classList.add('animate-pane');
-    setTimeout(() => {
-        use_model_panel.classList.remove('animate-pane');
-    }, 1000);
-}
-
-function finetune_switch_activate(lora_mode, run_id, checkpoint) {
-    animate_use_model();
-    const finetune_model = finetune_configs_and_runs.completion_model.finetune;
-    let send_this = {
-        "model": finetune_model,
-        "lora_mode": lora_mode,
-        "specific_lora_run_id": run_id ? run_id : finetune_configs_and_runs.active[finetune_model].specific_lora_run_id,
-        "specific_checkpoint": checkpoint ? checkpoint : finetune_configs_and_runs.active[finetune_model].specific_checkpoint,
-    }
-    fetch("/tab-finetune-activate", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(send_this)
-    })
-    .then(function (response) {
-        tab_finetune_get();
-    })
-    .catch(function (error) {
-        console.log('tab-finetune-activate',error);
-        general_error(error);
-    });
 }
 
 function render_schedule_dialog() {
@@ -962,12 +723,10 @@ function finetune_controls_state()
     if (linguist_working_or_starting) {
         finetune_panel.classList.add('pane-disabled');
         finetune_filter_panel.classList.add('pane-disabled');
-        use_model_panel.classList.add('pane-disabled');
         select_model_panel.classList.add('pane-disabled');
     } else {
         finetune_panel.classList.remove('pane-disabled');
         finetune_filter_panel.classList.remove('pane-disabled');
-        use_model_panel.classList.remove('pane-disabled');
         select_model_panel.classList.remove('pane-disabled');
     }
 
@@ -1118,7 +877,6 @@ export async function init() {
     finetune_button = document.querySelector('.tab-finetune-run-now');
     finetune_settings = document.querySelector('.tab-finetune-fine-settings');
 
-    use_model_panel = document.querySelector('.use-model-pane');
     select_model_panel = document.querySelector('.start-funetune-select-model');
 
     const log_container = document.querySelector('.log-container');
@@ -1145,18 +903,6 @@ export async function init() {
             })
     });
 
-    const loras = document.querySelectorAll('.lora-switch');
-    loras.forEach(element => {
-        if (element.value === 'off')
-            loras_switch_off = element;
-        if (element.value === 'latest')
-            loras_switch_latest = element;
-        if (element.value === 'specific')
-            loras_switch_specific = element;
-    });
-    loras_switch_off.addEventListener('change', loras_switch_clicked);
-    loras_switch_latest.addEventListener('change', loras_switch_clicked);
-    loras_switch_specific.addEventListener('change', loras_switch_clicked);
     const loras_table = document.querySelector('.run-table-wrapper');
     loras_table.scrollTop = loras_table.scrollHeight;
 
