@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useCallback } from "react";
+import { useEffect, useReducer, useCallback, useMemo } from "react";
 import {
   ChatContextFile,
   //  ChatContextFileMessage,
@@ -411,7 +411,7 @@ const initialState = createInitialState();
 // Maybe use context to avoid prop drilling?
 export const useEventBusForChat = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const postMessage = usePostMessage();
+  const postMessage = useMemo(usePostMessage, []);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -455,10 +455,7 @@ export const useEventBusForChat = () => {
     messages: ChatMessages,
     attach_file = state.active_file.attach,
   ) {
-    dispatch({
-      type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
-      payload: { id: state.chat.id },
-    });
+    clearError();
     dispatch({
       type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
       payload: { id: state.chat.id, disable: true },
@@ -487,25 +484,30 @@ export const useEventBusForChat = () => {
     });
   }
 
-  useEffect(() => {
-    function requestCaps() {
-      postMessage({
-        type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS,
-        payload: {
-          id: state.chat.id,
-        },
-      });
-    }
+  const requestCaps = useCallback(() => {
+    postMessage({
+      type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS,
+      payload: {
+        id: state.chat.id,
+      },
+    });
+  }, [postMessage, state.chat.id]);
 
+  useEffect(() => {
     if (
       state.chat.messages.length === 0 &&
       state.caps.available_caps.length === 0 &&
-      !state.caps.fetching &&
-      !state.error
+      !state.caps.fetching
     ) {
       requestCaps();
     }
-  }, [state, postMessage]);
+  }, [
+    state.chat.messages.length,
+    state.caps.available_caps.length,
+    state.caps.fetching,
+    state.chat.id,
+    requestCaps,
+  ]);
 
   function clearError() {
     dispatch({
@@ -541,6 +543,7 @@ export const useEventBusForChat = () => {
   );
 
   function backFromChat() {
+    clearError();
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.BACK_FROM_CHAT,
       payload: { id: state.chat.id },
@@ -661,5 +664,6 @@ export const useEventBusForChat = () => {
     setSelectedCommand,
     removePreviewFileByName,
     retryQuestion,
+    requestCaps,
   };
 };
