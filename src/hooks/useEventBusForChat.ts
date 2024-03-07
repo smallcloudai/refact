@@ -1,7 +1,6 @@
-import { useEffect, useReducer, useCallback, useMemo } from "react";
+import { useEffect, useReducer, useCallback } from "react";
 import {
   ChatContextFile,
-  //  ChatContextFileMessage,
   ChatMessages,
   ChatResponse,
   isChatContextFileMessage,
@@ -411,7 +410,9 @@ const initialState = createInitialState();
 // Maybe use context to avoid prop drilling?
 export const useEventBusForChat = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const postMessage = useMemo(usePostMessage, []);
+  const postMessage = usePostMessage();
+
+  console.log({ state });
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
