@@ -416,8 +416,6 @@ export const useEventBusForChat = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const postMessage = usePostMessage();
 
-  console.log({ state });
-
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (isActionToChat(event.data)) {
