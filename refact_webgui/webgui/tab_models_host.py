@@ -8,7 +8,7 @@ from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
 from pydantic import BaseModel, validator
-from typing import Dict, List
+from typing import Dict
 
 
 __all__ = ["TabHostRouter"]
@@ -41,28 +41,11 @@ class TabHostModelsAssign(BaseModel):
     anthropic_api_enable: bool = False
 
 
-def running_models_and_loras(model_assigner: ModelAssigner) -> List[str]:
-    data = {
-        **model_assigner.models_info,
-        **model_assigner.model_assignment,
-    }
-    result = []
-    for k, v in data["model_assign"].items():
-        if model_dict := [d for d in data['models'] if d['name'] == k]:
-            model_dict = model_dict[0]
-            result.append(k)
-            for run in model_dict.get('finetune_info', []):
-                result.append(f"{k}:{run['run_id']}:{run['checkpoint']}")
-
-    return result
-
-
 class TabHostRouter(APIRouter):
     def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._model_assigner = model_assigner
         self.add_api_route("/tab-host-modify-loras", self._modify_loras, methods=["POST"])
-        self.add_api_route("/tab-host-running-models-and-loras", self._running_models_and_loras, methods=["GET"])
         self.add_api_route("/tab-host-have-gpus", self._tab_host_have_gpus, methods=["GET"])
         self.add_api_route("/tab-host-models-get", self._tab_host_models_get, methods=["GET"])
         self.add_api_route("/tab-host-models-assign", self._tab_host_models_assign, methods=["POST"])
@@ -88,10 +71,6 @@ class TabHostRouter(APIRouter):
 
         with open(env.CONFIG_ACTIVE_LORA, "w") as f:
             json.dump(active_loras, f, indent=4)
-
-    async def _running_models_and_loras(self):
-        result = running_models_and_loras(self._model_assigner)
-        return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_host_have_gpus(self):
         return Response(json.dumps(self._model_assigner.gpus, indent=4) + "\n")
