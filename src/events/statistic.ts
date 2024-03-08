@@ -118,7 +118,7 @@ export function isReceiveFillInTheMiddleDataError(
 ): action is ReceiveFillInTheMiddleDataError {
   if (!isActionToStatistic(action)) return false;
   return (
-    action.type !==
+    action.type ===
     EVENT_NAMES_TO_STATISTIC.RECEIVE_FILL_IN_THE_MIDDLE_DATA_ERROR
   );
 }
