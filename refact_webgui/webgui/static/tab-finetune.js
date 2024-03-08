@@ -379,7 +379,6 @@ function get_finetune_settings(defaults = false) {
         document.querySelector('#finetune-tab-settings-modal #lr_decay_steps').value = settings_data.lr_decay_steps;
         document.querySelector('#finetune-tab-settings-modal #lora_r').value = settings_data.lora_r;
         document.querySelector('#finetune-tab-settings-modal #lora_alpha').value = settings_data.lora_alpha;
-        document.querySelector('#finetune-tab-settings-modal #lora_init_scale').value = settings_data.lora_init_scale;
         document.querySelector('#finetune-tab-settings-modal #lora_dropout').value = settings_data.lora_dropout;
         const low_gpu_mem_mode = settings_data.low_gpu_mem_mode;
         if(low_gpu_mem_mode) {
@@ -426,7 +425,6 @@ function change_finetune_model() {
             lr_decay_steps: finetune_settings.lr_decay_steps,
             lora_r: finetune_settings.lora_r,
             lora_alpha: finetune_settings.lora_alpha,
-            lora_init_scale: finetune_settings.lora_init_scale,
             lora_dropout: finetune_settings.lora_dropout,
             low_gpu_mem_mode: finetune_settings.low_gpu_mem_mode,
         })
@@ -477,7 +475,6 @@ function save_finetune_settings() {
             lr_decay_steps: document.querySelector('#finetune-tab-settings-modal #lr_decay_steps').value,
             lora_r: document.querySelector('#finetune-tab-settings-modal #lora_r').value,
             lora_alpha: document.querySelector('#finetune-tab-settings-modal #lora_alpha').value,
-            lora_init_scale: document.querySelector('#finetune-tab-settings-modal #lora_init_scale').value,
             lora_dropout: document.querySelector('#finetune-tab-settings-modal #lora_dropout').value,
             trainable_embeddings: trainable_embeddings,
             low_gpu_mem_mode: low_gpu

@@ -49,7 +49,6 @@ def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str,
          .set_lr_decay_steps(user_cfg['lr_decay_steps'])
          .set_lora_r(user_cfg['lora_r'])
          .set_lora_alpha(user_cfg['lora_alpha'])
-         .set_lora_init_scale(user_cfg['lora_init_scale'])
          .set_lora_dropout(user_cfg['lora_dropout'])
          .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
          .set_trainable_embeddings(user_cfg['trainable_embeddings']))
