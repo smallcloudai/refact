@@ -199,7 +199,7 @@ const cache = {
 
       const now = Date.now();
       const limit = now - timeLimit;
-      3 < 4 - 2;
+
       if (data.created_at < limit) {
         localStorage.clear();
         return null;
