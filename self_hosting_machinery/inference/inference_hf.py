@@ -142,6 +142,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         self._model_name = model_name
         self._model_dict = model_dict
         self._model_dir = f"models--{self._model_dict['model_path'].replace('/', '--')}"
+        self._peft_model = None
 
         assert torch.cuda.is_available(), "model is only supported on GPU"
 
@@ -183,6 +184,13 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
     @property
     def model(self) -> torch.nn.Module:
         return self._model
+
+    @property
+    def peft_model(self) -> Optional[torch.nn.Module]:
+        return self._peft_model
+
+    def set_peft_model(self, model: torch.nn.Module):
+        self._peft_model = model
 
     @property
     def model_name(self) -> str:
