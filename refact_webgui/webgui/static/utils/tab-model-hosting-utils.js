@@ -23,13 +23,15 @@ export function finetune_info_factory(models_info, finetune_info, index) {
         }
         finetune_info.appendChild(finetune_info_children);
 
-        let add_finetune_btn = document.createElement("button");
-        add_finetune_btn.classList = "btn btn-sm btn-outline-primary mt-1 add-finetune-btn";
-        add_finetune_btn.style = "padding: 0 5px";
-        add_finetune_btn.dataset.model = index;
-        add_finetune_btn.innerText = 'Add Run';
+        if (models_info[index].max_loras > models_info[index].finetune_info.length) {
+            let add_finetune_btn = document.createElement("button");
+            add_finetune_btn.classList = "btn btn-sm btn-outline-primary mt-1 add-finetune-btn";
+            add_finetune_btn.style = "padding: 0 5px";
+            add_finetune_btn.dataset.model = index;
+            add_finetune_btn.innerText = 'Add Run';
+            finetune_info.appendChild(add_finetune_btn);
+        }
 
-        finetune_info.appendChild(add_finetune_btn);
     } else {
         tech_msg.innerText = "not supported";
         finetune_info.appendChild(tech_msg);

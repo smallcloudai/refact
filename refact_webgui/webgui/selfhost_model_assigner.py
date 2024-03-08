@@ -204,6 +204,7 @@ class ModelAssigner:
                 "name": k,
                 "backend": rec["backend"],
                 "finetune_info": finetune_info,
+                "max_loras": rec.get("max_loras", 0),
                 "has_completion": bool("completion" in rec["filter_caps"]),
                 "has_finetune": bool("finetune" in rec["filter_caps"]),
                 "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),
