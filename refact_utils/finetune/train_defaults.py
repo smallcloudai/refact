@@ -10,7 +10,6 @@ finetune_train_defaults = {
     "lr_decay_steps": 250,
     "lora_r": 16,
     "lora_alpha": 32,
-    "lora_init_scale": 0.01,
     "lora_dropout": 0.01,
     "trainable_embeddings": False,
     "low_gpu_mem_mode": True

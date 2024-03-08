@@ -148,7 +148,6 @@ def finetune_filter(
 
     _log_everywhere("Loading model...")
     finetune_cfg['model_info']['lora']['lora_dropout'] = 0.0
-    finetune_cfg['model_info']['lora']['lora_init_scale'] = 1e-5
     finetune_cfg['model_info']['loss_average_elements'] = 1
 
     _log_everywhere("Running force include/exclude filter...")

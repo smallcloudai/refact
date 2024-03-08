@@ -66,7 +66,6 @@ class ModelContext:
                 lora_r=self.finetune_cfg['model_info']['lora']['lora_r'],
                 lora_alpha=self.finetune_cfg['model_info']['lora']['lora_alpha'],
                 lora_dropout=self.finetune_cfg['model_info']['lora']['lora_dropout'],
-                lora_init_scale=self.finetune_cfg['model_info']['lora']['lora_init_scale'],
                 dtype=(torch.bfloat16 if 'bf16' in self.finetune_cfg and self.finetune_cfg['bf16']['enabled']
                        else torch.float16),
                 init_device="cuda",
@@ -107,7 +106,6 @@ class ModelContext:
             lora_r: int,
             lora_alpha: int,
             lora_dropout: float,
-            lora_init_scale: float,
             dtype: torch.dtype,
             init_device: str = "cpu",
             device: str = "cuda",

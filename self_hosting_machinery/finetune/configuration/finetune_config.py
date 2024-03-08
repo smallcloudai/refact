@@ -25,7 +25,6 @@ def base_config(model_name: str, models_db: Dict[str, Any]):
                 "lora_r": 16,
                 "lora_alpha": 32,
                 "lora_dropout": 0.01,
-                "lora_init_scale": 0.01
             },
             freeze_exceptions=[
                 "lora"
@@ -130,10 +129,6 @@ class ConfigBuilder:
         self.cfg['model_info']['lora']['lora_dropout'] = dropout
         return self
 
-    def set_lora_init_scale(self, init_scale: float) -> 'ConfigBuilder':
-        self.cfg['model_info']['lora']['lora_init_scale'] = init_scale
-        return self
-    
     def set_freeze_exceptions(self, exceptions: List[str]) -> 'ConfigBuilder':
         self.cfg['model_info']['freeze_exceptions'] = exceptions
         return self
@@ -183,13 +178,13 @@ class ConfigBuilder:
         scores_per_loraconfigs = {
             (0, 8): dict(lora_target_modules=[
                 "qkv", "out", "mlp",
-            ], lora_r=64, lora_alpha=128, lora_dropout=0.01, lora_init_scale=0.01,
+            ], lora_r=64, lora_alpha=128, lora_dropout=0.01,
                 freeze_exceptions=[
                     "lora"
                 ]),
             (8, 1000): dict(lora_target_modules=[
                 "qkv", "out", "mlp",
-            ], lora_r=64, lora_alpha=128, lora_dropout=0.01, lora_init_scale=0.01,
+            ], lora_r=64, lora_alpha=128, lora_dropout=0.01,
                 freeze_exceptions=[
                     "wte", "lm_head", "lora"
                 ])
