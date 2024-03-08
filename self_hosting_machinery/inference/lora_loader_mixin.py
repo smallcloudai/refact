@@ -94,37 +94,44 @@ class LoraLoaderMixin:
             self._lora_on = True
             log("using lora %s" % lora_checkpoint_dir)
 
-    def lora_switch_according_to_config(self):
-        if "finetune" not in self.model_dict.get("filter_caps", []):
-            log(f"Model {self.model_name} does not support finetune")
-            self.lora_switch(lora_checkpoint_dir="")
-            return
-
-        cfg = get_active_loras({
-            self.model_name: self.model_dict
-        })[self.model_name]
-        # {
-        #     "lora_mode": "specific",
-        #     "specific_lora_run_id": "lora-20230614-164840",
-        #     "specific_checkpoint": "iter0666"
-        # }
-
-        if cfg["lora_mode"] not in ["specific", "latest-best"]:
-            self.lora_switch(lora_checkpoint_dir="")
-            return
+    def lora_switch_according_to_request(self, lora_config: Optional[Dict[str, str]]):
         lora_checkpoint_dir = ""
-        some_problem_with_explicit = False
-        if cfg["lora_mode"] == "specific":
-            t = os.path.join(env.DIR_LORAS, cfg["specific_lora_run_id"], "checkpoints", cfg["specific_checkpoint"])
-            if os.path.isdir(t):
-                lora_checkpoint_dir = t
-            else:
-                log("lora cannot find \"%s\", switching to latest-best" % t)
-                some_problem_with_explicit = True
-        if cfg["lora_mode"] == "latest-best" or some_problem_with_explicit:
-            tmp = best_lora.find_best_lora(self.model_name)
-            lora_checkpoint_dir = tmp["path"]
+        if lora_config is not None:
+            lora_checkpoint_dir = str(
+                Path(env.DIR_LORAS) / lora_config.get("run_id") / "checkpoints" / lora_config.get("checkpoint_id"))
         self.lora_switch(lora_checkpoint_dir=lora_checkpoint_dir)
+
+    # def lora_switch_according_to_config(self):
+    #     if "finetune" not in self.model_dict.get("filter_caps", []):
+    #         log(f"Model {self.model_name} does not support finetune")
+    #         self.lora_switch(lora_checkpoint_dir="")
+    #         return
+    #
+    #     cfg = get_active_loras({
+    #         self.model_name: self.model_dict
+    #     })[self.model_name]
+    #     # {
+    #     #     "lora_mode": "specific",
+    #     #     "specific_lora_run_id": "lora-20230614-164840",
+    #     #     "specific_checkpoint": "iter0666"
+    #     # }
+    #
+    #     if cfg["lora_mode"] not in ["specific", "latest-best"]:
+    #         self.lora_switch(lora_checkpoint_dir="")
+    #         return
+    #     lora_checkpoint_dir = ""
+    #     some_problem_with_explicit = False
+    #     if cfg["lora_mode"] == "specific":
+    #         t = os.path.join(env.DIR_LORAS, cfg["specific_lora_run_id"], "checkpoints", cfg["specific_checkpoint"])
+    #         if os.path.isdir(t):
+    #             lora_checkpoint_dir = t
+    #         else:
+    #             log("lora cannot find \"%s\", switching to latest-best" % t)
+    #             some_problem_with_explicit = True
+    #     if cfg["lora_mode"] == "latest-best" or some_problem_with_explicit:
+    #         tmp = best_lora.find_best_lora(self.model_name)
+    #         lora_checkpoint_dir = tmp["path"]
+    #     self.lora_switch(lora_checkpoint_dir=lora_checkpoint_dir)
 
     def load_checkpoint(
             self,

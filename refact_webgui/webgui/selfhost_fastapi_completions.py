@@ -12,6 +12,7 @@ from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
+from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
@@ -21,7 +22,7 @@ from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_login import RefactSession
 
 from pydantic import BaseModel, Required
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional, Tuple
 
 
 __all__ = ["BaseCompletionsRouter", "CompletionsRouter"]
@@ -68,7 +69,7 @@ class NlpSamplingParams(BaseModel):
 
 
 class NlpCompletion(NlpSamplingParams):
-    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
+    model: str = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-\:]+$")
     prompt: str
     n: int = 1
     echo: bool = False
@@ -363,18 +364,58 @@ class BaseCompletionsRouter(APIRouter):
             "human_readable_message": "API key verified",
         }
 
+    def _resolve_model_lora(self, model_name: str) -> Tuple[str, Optional[Dict[str, str]]]:
+        model_name, run_id, checkpoint_id = (*model_name.split(":"), None, None)[:3]
+
+        if model_name not in self._model_assigner.models_db:
+            return model_name, None
+
+        active_loras: List[Dict[str, str]] = get_active_loras({
+            model_name: self._model_assigner.models_db[model_name]
+        })[model_name]
+
+        if not active_loras:
+            return model_name, None
+
+        if run_id is None:
+            run_id = active_loras[0]["run_id"]
+            checkpoint_id = active_loras[0]["checkpoint"]
+        else:
+            run_checkpoints = [
+                lora_info["checkpoint"]
+                for lora_info in active_loras
+                if lora_info["run_id"] == run_id
+            ]
+            if not run_checkpoints:
+                return model_name, None
+
+            if checkpoint_id is None:
+                checkpoint_id = run_checkpoints[0]
+            elif checkpoint_id not in run_checkpoints:
+                return model_name, None
+
+        return model_name, {
+            "run_id": run_id,
+            "checkpoint_id": checkpoint_id,
+        }
+
     async def _completions(self, post: NlpCompletion, authorization: str = Header(None)):
         account = await self._account_from_bearer(authorization)
 
         ticket = Ticket("comp-")
         req = post.clamp()
         caps_version = self._model_assigner.config_inference_mtime()       # use mtime as a version, if that changes the client will know to refresh caps
+
+        model_name, lora_config = self._resolve_model_lora(post.model)
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
         if err_msg:
             log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
             return Response(status_code=400, content=json.dumps({"detail": err_msg, "caps_version": caps_version}, indent=4), media_type="application/json")
 
-        log("%s model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
+        if lora_config:
+            log(f'{ticket.id()} model resolve "{post.model}" -> "{model_name}" lora {lora_config} from {account}')
+        else:
+            log(f'{ticket.id()} model resolve "{post.model}" -> "{model_name}" from {account}')
         req.update({
             "object": "text_completion_req",
             "account": account,
@@ -382,6 +423,7 @@ class BaseCompletionsRouter(APIRouter):
             "model": model_name,
             "stream": post.stream,
             "echo": post.echo,
+            "lora_config": lora_config,
         })
         ticket.call.update(req)
         q = self._inference_queue.model_name_to_queue(ticket, model_name)
@@ -393,6 +435,7 @@ class BaseCompletionsRouter(APIRouter):
             media_type=("text/event-stream" if post.stream else "application/json"),
         )
 
+    # deprecated, no loras
     async def _chat(self, post: ChatContext, request: Request, authorization: str = Header(None)):
         account = await self._account_from_bearer(authorization)
 
