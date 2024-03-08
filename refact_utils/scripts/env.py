@@ -32,6 +32,7 @@ CONFIG_FINETUNE_FILTER_STAT = os.path.join(DIR_CONFIG, "finetune_filter_stats.ou
 CONFIG_FINETUNE_STATUS = os.path.join(DIR_CONFIG, "finetune_status.out")
 CONFIG_HOW_TO_FILTER = os.path.join(DIR_CONFIG, "finetune_filter.cfg")
 CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
+CONFIG_LORA_SWITCH = os.path.join(DIR_CONFIG, "lora_switch.cfg")
 
 LOG_FILES_ACCEPTED_SCAN = os.path.join(DIR_CONFIG, "files_accepted_scan.log")
 LOG_FILES_REJECTED_SCAN = os.path.join(DIR_CONFIG, "files_rejected_scan.log")
