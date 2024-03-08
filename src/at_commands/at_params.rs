@@ -141,9 +141,14 @@ impl AtParam for AtParamSymbolPathQuery {
     }
 
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
-        let all_paths = get_file_paths_from_anywhere(context.global_context.clone()).await;
+        let ast_module_ptr = context.global_context.read().await.ast_module.clone();
+        let index_paths = match *ast_module_ptr.lock().await {
+            Some(ref ast) => ast.get_indexed_symbol_paths().await,
+            None => vec![]
+        };
+
         let value_lower = value.to_lowercase();
-        let mapped_paths = all_paths
+        let mapped_paths = index_paths
             .iter()
             .filter(|x| x.to_lowercase().contains(&value_lower))
             .map(|f| {
