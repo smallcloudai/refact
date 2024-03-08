@@ -138,7 +138,7 @@ describe("ChatForm", () => {
 
     app.rerender(<App onSubmit={fakeOnSubmit} selectedSnippet={snippet} />);
 
-    const label = app.queryByText(/Selected lines/);
+    const label = app.queryByText(/Selected N lines/);
     expect(label).not.toBeNull();
     const btn = label?.querySelector("button");
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
