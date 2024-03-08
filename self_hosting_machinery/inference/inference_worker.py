@@ -92,7 +92,6 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
             req_session, description_dict, verbose=False)
         ts_arrived = time.time()
         if retcode == "OK":
-            inference_model.lora_switch_according_to_config()
             for request in request_batch:
                 upload_proxy_args = {
                     "description_dict": description_dict,
@@ -105,6 +104,7 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
                     "ts_first_token": 0,
                     "ts_batch_finished": 0,
                 }
+                inference_model.lora_switch_according_to_request(request.get("lora_config", None))
                 inference_model.infer(request, upload_proxy, upload_proxy_args)
         elif retcode == "WAIT":
             # Normal, no requests
