@@ -58,44 +58,47 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
     return "```" + snippet.language + "\n" + snippet.code + "\n```\n";
   }, [snippet.language, snippet.code]);
 
-  const defaultState = {
-    search_workspace: {
-      name: "search_workspace",
-      checked: false,
-      label: "Search workspace",
-      disabled: false,
-    },
-    file_upload: {
-      name: "file_upload",
-      checked: false,
-      label: "Attach",
-      value: fullPathWithLines,
-      disabled: !activeFile.name,
-      fileName: nameWithCursor,
-    },
-    lookup_symbols: {
-      name: "lookup_symbols",
-      checked: false,
-      label: "Lookup symbols at cursor",
-      value: fullPathWithCursor,
-      disabled: !activeFile.name,
-      // fileName: " at cursor",
-      // fileName: nameWithCursor,
-    },
-    selected_lines: {
-      name: "selected_lines",
-      checked: false,
-      label: "Selected N lines",
-      value: markdown,
-      disabled: !snippet.code,
-      // fileName: nameWithLines,
-    },
-  } as const;
+  const defaultState = useMemo(() => {
+    return {
+      search_workspace: {
+        name: "search_workspace",
+        checked: false,
+        label: "Search workspace",
+        disabled: false,
+      },
+      file_upload: {
+        name: "file_upload",
+        checked: false,
+        label: "Attach",
+        value: fullPathWithLines,
+        disabled: !activeFile.name,
+        fileName: nameWithCursor,
+      },
+      lookup_symbols: {
+        name: "lookup_symbols",
+        checked: false,
+        label: "Lookup symbols at cursor",
+        value: fullPathWithCursor,
+        disabled: !activeFile.name,
+        // fileName: " at cursor",
+        // fileName: nameWithCursor,
+      },
+      selected_lines: {
+        name: "selected_lines",
+        checked: false,
+        label: "Selected N lines",
+        value: markdown,
+        disabled: !snippet.code,
+        // fileName: nameWithLines,
+      },
+    } as const;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [checkboxes, setCheckboxes] =
     React.useState<ChatControlsProps["checkboxes"]>(defaultState);
 
-  const reset = () => setCheckboxes(defaultState);
+  const reset = useCallback(() => setCheckboxes(defaultState), [defaultState]);
 
   const toggleCheckbox = useCallback(
     (name: string, value: boolean | string) => {
@@ -380,6 +383,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           }
           render={(props) => (
             <TextArea
+              data-testid="chat-form-textarea"
               required={true}
               disabled={isStreaming}
               {...props}

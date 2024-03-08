@@ -29,7 +29,7 @@ describe("Chat", () => {
     vi.restoreAllMocks();
   });
 
-  it.skip("should send and receive messages from the window", async () => {
+  it("should send and receive messages from the window", async () => {
     vi.mock("uuid", () => ({ v4: () => "foo" }));
 
     const postMessageSpy = vi.spyOn(window, "postMessage");
@@ -46,17 +46,16 @@ describe("Chat", () => {
     setUpCapsForChat("foo");
 
     const select = await app.findByTitle("chat model");
-    // app.debug(select.parentElement);
+
     expect(select.textContent).toContain("gpt-3.5-turbo");
 
-    const textarea: HTMLTextAreaElement | null =
-      app.container.querySelector("textarea");
+    const textarea = app.getByTestId("chat-form-textarea");
 
     expect(textarea).not.toBeNull();
-    if (textarea) {
-      await user.type(textarea, "hello");
-      await user.type(textarea, "{enter}");
-    }
+
+    await user.type(textarea, "hello");
+
+    await user.keyboard("{Enter}");
 
     expect(postMessageSpy).toHaveBeenLastCalledWith(
       {
@@ -139,7 +138,7 @@ describe("Chat", () => {
     await waitFor(() => expect(app.queryByText(/Certainly!/)).not.toBeNull());
   });
 
-  it.skip("when creating a new chat I can select which model to use", async () => {
+  it("when creating a new chat I can select which model to use", async () => {
     vi.mock("uuid", () => ({ v4: () => "foo" }));
 
     // Missing props in jsdom
@@ -220,7 +219,7 @@ describe("Chat", () => {
     );
   });
 
-  it.skip("retry chat", async () => {
+  it("retry chat", async () => {
     const postMessageSpy = vi.spyOn(window, "postMessage");
 
     const { user, ...app } = render(<Chat />);
