@@ -66,4 +66,5 @@
 .checkbox_container {
   display: flex;
   white-space: nowrap;
+  gap: var(--space-2);
 }
