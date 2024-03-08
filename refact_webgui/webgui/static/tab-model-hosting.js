@@ -244,7 +244,13 @@ function render_models_assigned(models) {
             });
             completion.appendChild(completion_input);
         }
-        finetune_info_factory(models_data, models_info, finetune_info, index);
+        let finetune_runs = [];
+        if (finetune_configs_and_runs) {
+            finetune_runs = finetune_configs_and_runs.finetune_runs;
+        } else {
+            force_render_models_assigned = true;
+        }
+        finetune_info_factory(models_data, models_info, finetune_info, finetune_runs, index);
 
          if (models_info[index].hasOwnProperty('has_sharding') && models_info[index].has_sharding) {
             const select_gpus_div = document.createElement("div");
@@ -569,8 +575,8 @@ export async function init(general_error) {
 
 export function tab_switched_here() {
     get_gpus();
-    get_models();
     update_finetune_configs_and_runs();
+    get_models();
 }
 
 export function tab_switched_away() {
