@@ -9,7 +9,6 @@ refact_mini_db = {
         },
         "T": 4096,
         "required_memory_mb": 6000,
-        "max_loras": 1,
         "filter_caps": ["Refact", "completion", "finetune"],
     },
 }
