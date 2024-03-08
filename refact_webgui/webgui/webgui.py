@@ -113,10 +113,10 @@ class WebGUI(FastAPI):
             LoginMiddleware,
             session=self._session,
         )
-        # self.add_middleware(
-        #     StatsMiddleware,
-        #     stats_service=self._stats_service,
-        # )
+        self.add_middleware(
+            StatsMiddleware,
+            stats_service=self._stats_service,
+        )
 
         self.add_event_handler("startup", self._startup_event)
 
@@ -171,8 +171,8 @@ class WebGUI(FastAPI):
             await self._database.connect()
             await self._stats_service.init_models()
 
-        # loop = asyncio.get_event_loop()
-        # await loop.create_task(init_database(), name="database_initialization")
+        loop = asyncio.get_event_loop()
+        await loop.create_task(init_database(), name="database_initialization")
 
 
 if __name__ == "__main__":
