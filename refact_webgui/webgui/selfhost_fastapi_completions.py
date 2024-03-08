@@ -372,7 +372,7 @@ class BaseCompletionsRouter(APIRouter):
 
         active_loras: List[Dict[str, str]] = get_active_loras({
             model_name: self._model_assigner.models_db[model_name]
-        })[model_name]
+        })[model_name].get("loras", [])
 
         if not active_loras:
             return model_name, None
