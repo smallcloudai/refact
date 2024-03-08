@@ -162,7 +162,7 @@ class LoraLoaderMixin:
         LoraMixin.exclude_lora(self.model)
 
         load_path = Path(load_path)
-        tag = f"{load_path.parent.parent.name}_{load_path.name}"
+        tag = f"{load_path.parent.parent.name}_{load_path.name}".replace(".", "_")
         embeddings_path = load_path / "new_embeddings.safetensors"
 
         adapter_config = PeftConfig.from_pretrained(load_path)
