@@ -30,9 +30,25 @@ class TabHostRouter(APIRouter):
     def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._model_assigner = model_assigner
+        self.add_api_route("/tab-host-running-models-and-loras", self._running_models_and_loras, methods=["GET"])
         self.add_api_route("/tab-host-have-gpus", self._tab_host_have_gpus, methods=["GET"])
         self.add_api_route("/tab-host-models-get", self._tab_host_models_get, methods=["GET"])
         self.add_api_route("/tab-host-models-assign", self._tab_host_models_assign, methods=["POST"])
+
+    async def _running_models_and_loras(self):
+        data = {
+            **self._model_assigner.models_info,
+            **self._model_assigner.model_assignment,
+        }
+        result = []
+        for k, v in data["model_assign"].items():
+            if model_dict := [d for d in data['models'] if d['name'] == k]:
+                model_dict = model_dict[0]
+                result.append(k)
+                for run in model_dict.get('finetune_info', []):
+                    result.append(f"{k}:{run['run_id']}:{run['checkpoint']}")
+
+        return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_host_have_gpus(self):
         return Response(json.dumps(self._model_assigner.gpus, indent=4) + "\n")

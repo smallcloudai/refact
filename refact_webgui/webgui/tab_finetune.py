@@ -100,7 +100,6 @@ class TabFinetuneRouter(APIRouter):
 
     def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.add_api_route("/tab-finetune-models", self._models, methods=["GET"])
         self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
@@ -116,20 +115,6 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-training-setup", self._tab_finetune_training_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
         self._model_assigner = model_assigner
-
-    async def _models(self):
-        active_loras = get_active_loras(self._model_assigner.models_db)
-        completion_models = []
-        for k, v in active_loras.items():
-            completion_models.append(k)
-            for run in v.get('loras', []):
-                completion_models.append(f'{k}:{run["run_id"]}:{run["checkpoint"]}')
-
-        result = {
-            "completion_models": completion_models,
-            "chat_models": []
-        }
-        return Response(json.dumps(result, indent=4) + "\n")
 
     async def _modify_loras(self, post: ModifyLorasPost):
         active_loras = get_active_loras(self._model_assigner.models_db)
