@@ -20,7 +20,7 @@ from refact_utils.finetune.filtering_defaults import finetune_filtering_defaults
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 from typing import Optional
 
@@ -65,19 +65,6 @@ class FilteringSetup(BaseModel):
     # use_gpus_n: Optional[int] = Query(default=1, gt=1, le=8)
 
 
-class ModifyLorasPost(BaseModel):
-    model: str
-    mode: str
-    run_id: str
-    checkpoint: str
-
-    @validator('mode')
-    def validate_mode(cls, v: str):
-        if v not in ['add', 'remove']:
-            raise HTTPException(status_code=400, detail="mode must be 'add' or 'remove'")
-        return v
-
-
 class TabFinetuneTrainingSetup(BaseModel):
     model_name: Optional[str] = Query(default=None)
     limit_time_seconds: Optional[int] = Query(default=600, ge=600, le=3600*48)
@@ -106,7 +93,6 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-filter-log", self._tab_finetune_filter_log, methods=["GET"])
         self.add_api_route("/tab-finetune-progress-svg/{run_id}", self._tab_funetune_progress_svg, methods=["GET"])
         self.add_api_route("/tab-finetune-schedule-save", self._tab_finetune_schedule_save, methods=["POST"])
-        self.add_api_route("/tab-finetune-modify-loras", self._modify_loras, methods=["POST"])
         self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
         self.add_api_route("/tab-finetune-stop-now", self._tab_finetune_stop_now, methods=["GET"])
         self.add_api_route("/tab-finetune-remove/{run_id}", self._tab_finetune_remove, methods=["GET"])
@@ -115,28 +101,6 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-training-setup", self._tab_finetune_training_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
         self._model_assigner = model_assigner
-
-    async def _modify_loras(self, post: ModifyLorasPost):
-        active_loras = get_active_loras(self._model_assigner.models_db)
-
-        lora_model_cfg = active_loras.get(post.model, {})
-        lora_model_cfg.setdefault('loras', [])
-
-        if post.mode == "remove":
-            lora_model_cfg['loras'] = [l for l in lora_model_cfg['loras'] if l['run_id'] != post.run_id and l['checkpoint'] != post.checkpoint]
-        if post.mode == "add":
-            if (post.run_id, post.checkpoint) not in [(l['run_id'], l['checkpoint']) for l in lora_model_cfg['loras']]:
-                lora_model_cfg['loras'].append({
-                    'run_id': post.run_id,
-                    'checkpoint': post.checkpoint,
-                })
-            else:
-                raise HTTPException(status_code=400, detail=f"lora {post.run_id} {post.checkpoint} already exists")
-
-        active_loras[post.model] = lora_model_cfg
-
-        with open(env.CONFIG_ACTIVE_LORA, "w") as f:
-            json.dump(active_loras, f, indent=4)
 
     async def _tab_finetune_get(self):
         prog, status = get_prog_and_status_for_ui()

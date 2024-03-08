@@ -1,6 +1,6 @@
 import {general_error} from './error.js';
 import {get_finetune_config_and_runs} from './tab-finetune.js';
-import {add_finetune_selectors_factory, upd_checkpoints_list, finetune_info_factory} from './utils/tab-model-hosting-utils.js';
+import {add_finetune_selectors_factory, update_checkpoints_list, finetune_info_factory} from './utils/tab-model-hosting-utils.js';
 
 
 let gpus_popup = false;
@@ -38,7 +38,7 @@ function finetune_switch_activate(finetune_model, mode, run_id, checkpoint) {
         "run_id": run_id,
         "checkpoint": checkpoint,
     }
-    return fetch("/tab-finetune-modify-loras", {
+    return fetch("/tab-host-modify-loras", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
@@ -244,7 +244,7 @@ function render_models_assigned(models) {
             });
             completion.appendChild(completion_input);
         }
-        finetune_info_factory(models_info, finetune_info, index);
+        finetune_info_factory(models_data, models_info, finetune_info, index);
 
          if (models_info[index].hasOwnProperty('has_sharding') && models_info[index].has_sharding) {
             const select_gpus_div = document.createElement("div");
@@ -367,7 +367,7 @@ function render_models_assigned(models) {
                    finetune_select_run_btn.dataset.run = e.currentTarget.dataset.run;
                    run_menu.style.display = 'none';
 
-                   upd_checkpoints_list(finetune_configs_and_runs, finetune_select_checkpoint_btn, e.currentTarget.dataset.run, checkpoint_menu);
+                   update_checkpoints_list(finetune_configs_and_runs, finetune_select_checkpoint_btn, e.currentTarget.dataset.run, checkpoint_menu);
 
                    finetune_select_checkpoint_btn.disabled = false;
                    finetune_add_btn.disabled = false;

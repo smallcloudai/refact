@@ -1,5 +1,5 @@
 
-export function finetune_info_factory(models_info, finetune_info, index) {
+export function finetune_info_factory(models_data, models_info, finetune_info, index) {
     let enabled_finetunes = [];
 
     if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
@@ -23,7 +23,7 @@ export function finetune_info_factory(models_info, finetune_info, index) {
         }
         finetune_info.appendChild(finetune_info_children);
 
-        if (models_info[index].max_loras > models_info[index].finetune_info.length) {
+        if (models_info[index].finetune_info.length === 0 || (models_data.hasOwnProperty('multiple_loras') && models_data.multiple_loras) ) {
             let add_finetune_btn = document.createElement("button");
             add_finetune_btn.classList = "btn btn-sm btn-outline-primary mt-1 add-finetune-btn";
             add_finetune_btn.style = "padding: 0 5px";
@@ -147,7 +147,7 @@ export function add_finetune_selectors_factory(finetune_configs_and_runs, models
     return el;
 }
 
-export function upd_checkpoints_list(finetune_configs_and_runs, finetune_select_checkpoint_btn, run_id, checkpoint_menu) {
+export function update_checkpoints_list(finetune_configs_and_runs, finetune_select_checkpoint_btn, run_id, checkpoint_menu) {
     let runs = finetune_configs_and_runs.finetune_runs.filter(run => run.run_id === run_id);
     if (runs.length === 0) {
         return;

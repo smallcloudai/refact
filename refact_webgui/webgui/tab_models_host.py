@@ -1,15 +1,30 @@
 import json
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response, JSONResponse
 
+from refact_utils.scripts import env
+from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel
-from typing import Dict
+from pydantic import BaseModel, validator
+from typing import Dict, List
 
 
 __all__ = ["TabHostRouter"]
+
+
+class ModifyLorasPost(BaseModel):
+    model: str
+    mode: str
+    run_id: str
+    checkpoint: str
+
+    @validator('mode')
+    def validate_mode(cls, v: str):
+        if v not in ['add', 'remove']:
+            raise HTTPException(status_code=400, detail="mode must be 'add' or 'remove'")
+        return v
 
 
 class TabHostModelRec(BaseModel):
@@ -26,28 +41,56 @@ class TabHostModelsAssign(BaseModel):
     anthropic_api_enable: bool = False
 
 
+def running_models_and_loras(model_assigner: ModelAssigner) -> List[str]:
+    data = {
+        **model_assigner.models_info,
+        **model_assigner.model_assignment,
+    }
+    result = []
+    for k, v in data["model_assign"].items():
+        if model_dict := [d for d in data['models'] if d['name'] == k]:
+            model_dict = model_dict[0]
+            result.append(k)
+            for run in model_dict.get('finetune_info', []):
+                result.append(f"{k}:{run['run_id']}:{run['checkpoint']}")
+
+    return result
+
+
 class TabHostRouter(APIRouter):
     def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._model_assigner = model_assigner
+        self.add_api_route("/tab-host-modify-loras", self._modify_loras, methods=["POST"])
         self.add_api_route("/tab-host-running-models-and-loras", self._running_models_and_loras, methods=["GET"])
         self.add_api_route("/tab-host-have-gpus", self._tab_host_have_gpus, methods=["GET"])
         self.add_api_route("/tab-host-models-get", self._tab_host_models_get, methods=["GET"])
         self.add_api_route("/tab-host-models-assign", self._tab_host_models_assign, methods=["POST"])
 
-    async def _running_models_and_loras(self):
-        data = {
-            **self._model_assigner.models_info,
-            **self._model_assigner.model_assignment,
-        }
-        result = []
-        for k, v in data["model_assign"].items():
-            if model_dict := [d for d in data['models'] if d['name'] == k]:
-                model_dict = model_dict[0]
-                result.append(k)
-                for run in model_dict.get('finetune_info', []):
-                    result.append(f"{k}:{run['run_id']}:{run['checkpoint']}")
+    async def _modify_loras(self, post: ModifyLorasPost):
+        active_loras = get_active_loras(self._model_assigner.models_db)
 
+        lora_model_cfg = active_loras.get(post.model, {})
+        lora_model_cfg.setdefault('loras', [])
+
+        if post.mode == "remove":
+            lora_model_cfg['loras'] = [l for l in lora_model_cfg['loras'] if l['run_id'] != post.run_id and l['checkpoint'] != post.checkpoint]
+        if post.mode == "add":
+            if (post.run_id, post.checkpoint) not in [(l['run_id'], l['checkpoint']) for l in lora_model_cfg['loras']]:
+                lora_model_cfg['loras'].append({
+                    'run_id': post.run_id,
+                    'checkpoint': post.checkpoint,
+                })
+            else:
+                raise HTTPException(status_code=400, detail=f"lora {post.run_id} {post.checkpoint} already exists")
+
+        active_loras[post.model] = lora_model_cfg
+
+        with open(env.CONFIG_ACTIVE_LORA, "w") as f:
+            json.dump(active_loras, f, indent=4)
+
+    async def _running_models_and_loras(self):
+        result = running_models_and_loras(self._model_assigner)
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_host_have_gpus(self):

@@ -297,9 +297,6 @@ function render_checkpoints(data = []) {
             const cell = document.createElement('td');
             cell.textContent = `${element.checkpoint_name}`;
             cell.dataset.checkpoint = element.checkpoint_name;
-            if(cell.dataset.checkpoint === finetune_configs_and_runs.active.specific_checkpoint) {
-                row.classList.add('table-success');
-            }
             const download_cell = document.createElement('td');
 
             download_cell.innerHTML = `
