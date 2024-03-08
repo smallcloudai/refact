@@ -53,7 +53,7 @@ def get_ds_len_per_epoch(model_name, cfg_builder):
     ds = create_train_dataloader(
         model_name=model_name,
         encoding=encoding,
-        num_workers=16,
+        num_workers=multiprocessing.cpu_count(),
         batch_size=cfg_builder.cfg['micro_batch_size'],
         ctx_size=cfg_builder.cfg['model_info']['ctx_size'],
         extra_options="quit_on_epoch=1"
@@ -95,7 +95,7 @@ def create_train_dataloader(
     return DataLoader(
         dataset,
         batch_size=batch_size * world_size,
-        num_workers=8,
+        num_workers=min(dataset.files_len - 1, num_workers),
         shuffle=False,
         drop_last=True,
         pin_memory=False,
