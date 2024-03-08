@@ -130,10 +130,9 @@ export const useEventBusForStatistic = () => {
             type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA,
             payload: parsedStatisticData,
           });
-          localStorage.setItem(
-            "statisticData",
-            JSON.stringify(parsedStatisticData),
-          );
+
+          cache.saveData(parsedStatisticData);
+
           dispatch({
             type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
             payload: { message: "" },
@@ -150,21 +149,19 @@ export const useEventBusForStatistic = () => {
     };
 
     window.addEventListener("message", listener);
+    const oneHour = 1000 * 60 * 60;
 
-    const cachedStatisticData = localStorage.getItem("statisticData");
+    const cachedStatisticData = cache.getData<StatisticData>(oneHour);
 
     if (cachedStatisticData) {
-      const parsedStatisticData = JSON.parse(
-        cachedStatisticData,
-      ) as StatisticData;
       dispatch({
         type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA,
-        payload: parsedStatisticData,
+        payload: cachedStatisticData,
       });
     } else {
       fetchData();
     }
-    setInterval(fetchData, 3600000);
+    setInterval(fetchData, oneHour);
 
     return () => {
       window.removeEventListener("message", listener);
@@ -175,4 +172,51 @@ export const useEventBusForStatistic = () => {
     backFromStatistic,
     state,
   };
+};
+
+type CacheData<T> = {
+  created_at: number;
+  data: T;
+};
+
+function isCacheData<T>(data: unknown): data is CacheData<T> {
+  return (
+    data !== null &&
+    typeof data === "object" &&
+    "created_at" in data &&
+    "data" in data
+  );
+}
+
+const cache = {
+  getData<T>(timeLimit: number) {
+    const str = localStorage.getItem("statisticData");
+    if (!str) return null;
+
+    try {
+      const data: unknown = JSON.parse(str);
+      if (!isCacheData<T>(data)) return null;
+
+      const now = Date.now();
+      const limit = now - timeLimit;
+      3 < 4 - 2;
+      if (data.created_at < limit) {
+        localStorage.clear();
+        return null;
+      }
+
+      return data.data;
+    } catch (e) {
+      localStorage.clear();
+      return null;
+    }
+  },
+  saveData<T>(data: T) {
+    const payload: CacheData<T> = {
+      created_at: Date.now(),
+      data,
+    };
+
+    localStorage.setItem("statisticData", JSON.stringify(payload));
+  },
 };
