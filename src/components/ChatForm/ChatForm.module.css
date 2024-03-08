@@ -62,3 +62,8 @@
   font-size: unset;
   vertical-align: unset;
 }
+
+.checkbox_container {
+  display: flex;
+  white-space: nowrap;
+}

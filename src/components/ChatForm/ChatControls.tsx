@@ -2,6 +2,8 @@ import React from "react";
 import { Checkbox, Text, Flex } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../contexts/config-context";
+import { TruncateLeft } from "../Text";
+import styles from "./ChatForm.module.css";
 
 type CapsSelectProps = {
   value: string;
@@ -59,7 +61,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           return null;
         }
         return (
-          <Text key={key} size="2">
+          <Text key={key} size="2" className={styles.checkbox_container}>
             <Checkbox
               size="1"
               name={checkbox.name}
@@ -67,7 +69,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
               disabled={checkbox.disabled}
               onCheckedChange={(value) => onCheckedChange(key, value)}
             />{" "}
-            {checkbox.label} {checkbox.fileName}
+            {checkbox.label} <TruncateLeft>{checkbox.fileName}</TruncateLeft>
           </Text>
         );
       })}
