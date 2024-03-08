@@ -5,12 +5,14 @@ import struct
 from pathlib import Path
 from typing import Optional, Dict, Any
 
+import safetensors
 import torch
+from peft import PeftConfig, get_peft_model
 from safetensors.torch import load_file
 
-from refact_utils.scripts import env
-from refact_utils.scripts import best_lora
 from refact_utils.finetune.utils import get_active_loras
+from refact_utils.scripts import best_lora
+from refact_utils.scripts import env
 from self_hosting_machinery.finetune.modelling.lora import LoraMixin
 from self_hosting_machinery.finetune.modelling.utils import map_model_specific_params
 
@@ -47,6 +49,13 @@ class LoraLoaderMixin:
         raise NotImplementedError()
 
     @property
+    def peft_model(self) -> Optional[torch.nn.Module]:
+        raise NotImplementedError()
+
+    def set_peft_model(self, model: torch.nn.Module):
+        raise NotImplementedError()
+
+    @property
     def model_name(self) -> str:
         raise NotImplementedError()
 
@@ -67,11 +76,16 @@ class LoraLoaderMixin:
         if load_lora is not None:
             self.lora_switch(lora_checkpoint_dir=load_lora)
 
+    def _disable_lora(self):
+        if self.peft_model is not None:
+            self.peft_model.disable_adapter()
+        LoraMixin.exclude_lora(self.model)
+
     def lora_switch(self, *, lora_checkpoint_dir: str):
         on = not not lora_checkpoint_dir
         if self._lora_on and not on:
             log("deactivating lora")
-            LoraMixin.exclude_lora(self.model)
+            self._disable_lora()
             self.load_embeddings()
             self._lora_on = False
         elif not self._lora_on and on:
@@ -86,7 +100,7 @@ class LoraLoaderMixin:
             except RuntimeError as e:
                 log("failed to quick load lora checkpoint: %s" % e)
                 log("will try to remove lora and add again")
-                LoraMixin.exclude_lora(self.model)
+                self._disable_lora()
                 self._lora_checkpoint_dir = ""
                 self._lora_on = False
                 self.load_checkpoint(lora_checkpoint_dir, reinstall_lora=True)
@@ -131,6 +145,54 @@ class LoraLoaderMixin:
             load_path: str,
             reinstall_lora: bool = False
     ):
+        load_cp_paths = [p for p in Path(load_path).iterdir() if p.suffix in {".pt", ".pth", ".safetensors"}]
+        names = set(p.name for p in load_cp_paths)
+        if "adapter_model.safetensors" in names:
+            self._load_checkpoint(load_path, reinstall_lora)
+        else:
+            self._legacy_load_checkpoint(load_path, reinstall_lora)
+
+    def _load_checkpoint(
+            self,
+            load_path: str,
+            reinstall_lora: bool = False
+    ):
+        log("Loading peft format checkpoint")
+
+        LoraMixin.exclude_lora(self.model)
+
+        load_path = Path(load_path)
+        tag = f"{load_path.parent.parent.name}_{load_path.name}"
+        embeddings_path = load_path / "new_embeddings.safetensors"
+
+        adapter_config = PeftConfig.from_pretrained(load_path)
+        adapter_config.inference_mode = True
+
+        if self.peft_model is None:
+            self.set_peft_model(get_peft_model(self.model, adapter_config, tag))
+
+        if reinstall_lora:
+            self.peft_model.disable_adapter()
+
+        self.peft_model.add_adapter(tag, adapter_config)
+        self.peft_model.set_adapter(tag)
+
+        if embeddings_path.exists():
+            weights = safetensors.torch.load_file(str(embeddings_path))
+            missing, unexpected = self.peft_model.load_state_dict(weights, strict=False)
+            if len(unexpected) > 0:
+                raise RuntimeError(f"Unexpected keys in finetune checkpoint: {unexpected}")
+
+    def _legacy_load_checkpoint(
+            self,
+            load_path: str,
+            reinstall_lora: bool = False
+    ):
+        log("Loading legacy format checkpoint")
+
+        if self.peft_model is not None:
+            self.peft_model.disable_adapter()
+
         load_cp_paths = [p for p in Path(load_path).iterdir() if p.suffix in {".pt", ".pth", ".safetensors"}]
         if len(load_cp_paths) == 0:
             raise FileNotFoundError(f"No checkpoint found in {load_path}")

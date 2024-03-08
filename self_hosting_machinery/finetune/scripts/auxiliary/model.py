@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Tuple
 
 import deepspeed
+import safetensors
 import torch
 from safetensors.torch import save_file
 from torchinfo import summary
@@ -140,11 +141,6 @@ class ModelContext:
             freeze_exceptions=freeze_exceptions
         )
         self._apply_model_modifiers(model)
-        model.old_state_dict = model.state_dict
-        model.state_dict = partial(
-            _lora_state_dict.__get__(model, type(model)),
-            layer_names=freeze_exceptions
-        )
         return model
 
     def forward(
@@ -215,29 +211,17 @@ class ModelContext:
             save_path: str,
             tag: str
     ):
-        self.model.save_checkpoint(save_path, tag=tag)
-        cp_path = Path(save_path) / tag
-        model_cps = [p for p in cp_path.iterdir() if 'model_states' in p.name]
-        _ = [p.unlink() for p in cp_path.iterdir() if 'model_states' not in p.name]
-        for cp_path in model_cps:
-            cp = torch.load(str(cp_path), map_location='cpu')
-            shared = _shared_pointers(cp["module"])
-            for shared_weights in shared:
-                for name in shared_weights[1:]:
-                    cp["module"].pop(name)
-            tensors = {k: v.contiguous() for k, v in cp["module"].items()}
-
-            meta: Dict[str, str] = {
-                "skipped_steps": str(cp["skipped_steps"]),
-                "global_steps": str(cp["global_steps"]),
-                "global_samples": str(cp["global_samples"]),
-                "dp_world_size": str(cp["dp_world_size"]),
-                "mp_world_size": str(cp["mp_world_size"]),
-                "ds_config": json.dumps(cp["ds_config"]),
-                "ds_version": str(cp["ds_version"]),
-            }
-            save_file(tensors, cp_path.with_suffix(".safetensors"), metadata=meta)
-            cp_path.unlink()
+        output_path = os.path.join(save_path, tag)
+        self.model.save_pretrained(output_path, safe_serialization=True)
+        weights = safetensors.torch.load_file(os.path.join(output_path, "adapter_model.safetensors"))
+        lora_weights, embeddings_weights = {}, {}
+        for key in weights.keys():
+            if "lora" in key:
+                lora_weights[key] = weights[key]
+            else:
+                embeddings_weights[key] = weights[key]
+        safetensors.torch.save_file(lora_weights, os.path.join(output_path, "adapter_model.safetensors"))
+        safetensors.torch.save_file(embeddings_weights, os.path.join(output_path, "new_embeddings.safetensors"))
 
     def _freeze_model(
             self,

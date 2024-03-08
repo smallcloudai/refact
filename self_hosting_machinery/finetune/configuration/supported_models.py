@@ -58,7 +58,7 @@ _starcoder2_base = {
     "train_model_modifiers": [
         "flash_sa.apply_flash_mha_to_starcoder2_model"
     ],
-    "force_enable_checkpointing": False
+    "force_enable_checkpointing": True
 }
 _deepseek_base = {
     "lora_target_modules_mapping": {
