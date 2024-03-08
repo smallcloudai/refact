@@ -1,5 +1,4 @@
-
-export function finetune_info_factory(models_data, models_info, finetune_info, index) {
+export function finetune_info_factory(models_data, models_info, finetune_info, finetune_runs, index) {
     let enabled_finetunes = [];
 
     if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
@@ -16,14 +15,23 @@ export function finetune_info_factory(models_data, models_info, finetune_info, i
     tech_msg.classList = "model-finetune-item-checkpoint";
     tech_msg.style = "font-size: 1em; margin: 0";
 
-    if (models_info[index].has_finetune) {
+    const runs = finetune_runs.filter(run => run.model_name === index && run.checkpoints.length !== 0);
+    if (!models_info[index].has_finetune) {
+        tech_msg.innerText = "not supported";
+        finetune_info.appendChild(tech_msg);
+    } else if (runs.length == 0) {
+        tech_msg.innerText = "no runs";
+        finetune_info.appendChild(tech_msg);
+    } else {
         let finetune_info_children = document.createElement("div");
         for (let child of enabled_finetunes) {
             finetune_info_children.appendChild(child);
         }
         finetune_info.appendChild(finetune_info_children);
 
-        if (models_info[index].finetune_info.length === 0 || (models_data.hasOwnProperty('multiple_loras') && models_data.multiple_loras) ) {
+        const selected_runs = models_info[index].finetune_info.map(run => run.run_id);
+        const not_selected_runs = runs.filter(run => !selected_runs.includes(run.run_id));
+        if (not_selected_runs.length > 0 && (selected_runs.length === 0 || models_data.multiple_loras || true)) {
             let add_finetune_btn = document.createElement("button");
             add_finetune_btn.classList = "btn btn-sm btn-outline-primary mt-1 add-finetune-btn";
             add_finetune_btn.style = "padding: 0 5px";
@@ -31,10 +39,6 @@ export function finetune_info_factory(models_data, models_info, finetune_info, i
             add_finetune_btn.innerText = 'Add Run';
             finetune_info.appendChild(add_finetune_btn);
         }
-
-    } else {
-        tech_msg.innerText = "not supported";
-        finetune_info.appendChild(tech_msg);
     }
 }
 
