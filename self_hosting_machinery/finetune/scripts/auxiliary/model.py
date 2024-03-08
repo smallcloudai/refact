@@ -1,38 +1,25 @@
 import importlib
-import json
 import logging
 import os
 from collections import defaultdict
 from functools import partial
-from pathlib import Path
 from typing import Dict, Any, List, Tuple
 
 import deepspeed
 import safetensors
 import torch
+from peft import get_peft_model, LoraConfig, TaskType
 from safetensors.torch import save_file
 from torchinfo import summary
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import get_peft_config, get_peft_model, LoraConfig, TaskType
 
 from self_hosting_machinery.finetune.configuration import supported_models
-from self_hosting_machinery.finetune.modelling.lora import LoraMixin
 from self_hosting_machinery.finetune.modelling.loss import masked_loss
 from self_hosting_machinery.finetune.modelling.utils import map_model_specific_params
 from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery.finetune.utils.timer import Timer
 
 __all__ = ["ModelContext"]
-
-
-def _lora_state_dict(model, *args, destination=None, prefix='', keep_vars=False, layer_names):
-    return {
-        name: p
-        for name, p in model.old_state_dict(
-            *args, destination=destination, prefix=prefix, keep_vars=keep_vars
-        ).items()
-        if any(n in name for n in layer_names)
-    }
 
 
 def _shared_pointers(tensors):
