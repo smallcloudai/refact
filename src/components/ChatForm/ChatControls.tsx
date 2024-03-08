@@ -19,7 +19,7 @@ const CapsSelect: React.FC<CapsSelectProps> = ({
   disabled,
 }) => {
   return (
-    <Flex gap="2" align="center">
+    <Flex gap="2" align="center" wrap="wrap">
       <Text size="2">Use model:</Text>
       <Select
         disabled={disabled}
