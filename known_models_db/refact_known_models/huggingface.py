@@ -37,7 +37,6 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 8000,
         "T": 8192,
-        "max_loras": 1,
         "filter_caps": ["completion", "finetune"],
     },
     "starcoder/3b/base": {
@@ -48,7 +47,6 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 12000,
         "T": 4096,
-        "max_loras": 1,
         "filter_caps": ["completion", "finetune"],
     },
     "starcoder/7b/base": {
@@ -59,7 +57,6 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 20000,
         "T": 4096,
-        "max_loras": 1,
         "filter_caps": ["completion", "finetune"],
     },
     "wizardcoder/15b": {
@@ -120,7 +117,6 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 14000,
         "T": 2048,
-        "max_loras": 1,
         "filter_caps": ["completion", "finetune"],
     },
     "wizardlm/30b": {
@@ -141,7 +137,6 @@ huggingface_mini_db = {
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "T": 4096,
-        "max_loras": 1,
         "filter_caps": ["completion", "finetune"],
     },
     "deepseek-coder/5.7b/mqa-base": {
@@ -151,7 +146,6 @@ huggingface_mini_db = {
         "chat_scratchpad_class": None,
         "model_class_kwargs": {},
         "T": 4096,
-        "max_loras": 1,
         "filter_caps": ["completion", "finetune"],
     },
     "deepseek-coder/6.7b/base": {
@@ -162,7 +156,6 @@ huggingface_mini_db = {
         "hidden": True,  # we see some kind of problem with this model (nan's while loss calculation)
         "model_class_kwargs": {},
         "T": 4096,
-        "max_loras": 1,
         "filter_caps": ["completion", "finetune"],
     },
     "magicoder/6.7b": {
@@ -278,7 +271,6 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 8000,
         "T": 4096,
-        "max_loras": 1,
         "filter_caps": ["completion", "finetune"],
     },
     "starcoder2/7b/base": {
@@ -289,7 +281,6 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 16000,
         "T": 4096,
-        "max_loras": 1,
         "filter_caps": ["completion", "finetune"],
     },
     "starcoder2/15b/base": {
@@ -300,7 +291,6 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 20000,
         "T": 4096,
-        "max_loras": 1,
         "filter_caps": ["completion", "finetune"],
     }
 }
