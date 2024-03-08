@@ -4,6 +4,7 @@ import { Select } from "../Select";
 import { type Config } from "../../contexts/config-context";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
+import classNames from "classnames";
 
 type CapsSelectProps = {
   value: string;
@@ -55,7 +56,13 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   host,
 }) => {
   return (
-    <Flex pt="2" pb="2" gap="2" direction="column">
+    <Flex
+      pt="2"
+      pb="2"
+      gap="2"
+      direction="column"
+      className={classNames(styles.controls)}
+    >
       {Object.entries(checkboxes).map(([key, checkbox]) => {
         if (host === "web" && checkbox.name === "file_upload") {
           return null;

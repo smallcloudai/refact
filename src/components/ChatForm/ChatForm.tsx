@@ -76,18 +76,19 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
     lookup_symbols: {
       name: "lookup_symbols",
       checked: false,
-      label: "Lookup symbols ",
-      value: fullPathWithLines,
+      label: "Lookup symbols at cursor",
+      value: fullPathWithCursor,
       disabled: !activeFile.name,
-      fileName: nameWithCursor,
+      // fileName: " at cursor",
+      // fileName: nameWithCursor,
     },
     selected_lines: {
       name: "selected_lines",
       checked: false,
-      label: "Selected lines",
+      label: "Selected N lines",
       value: markdown,
       disabled: !snippet.code,
-      fileName: nameWithLines,
+      // fileName: nameWithLines,
     },
   } as const;
 
@@ -113,21 +114,21 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
         ? prev.lookup_symbols.value
         : fullPathWithCursor;
 
-      const lookupFileName = prev.lookup_symbols.checked
-        ? prev.lookup_symbols.fileName
-        : nameWithCursor;
+      // const lookupFileName = prev.lookup_symbols.checked
+      //   ? prev.lookup_symbols.fileName
+      //   : nameWithCursor;
 
       const lookupDisabled = prev.lookup_symbols.checked
         ? false
         : !activeFile.name;
 
-      const selectedLineValue = prev.selected_lines.checked
-        ? prev.selected_lines.value
-        : markdown;
+      // const selectedLineValue = prev.selected_lines.checked
+      //   ? prev.selected_lines.value
+      //   : markdown;
 
-      const selectedLineFileName = prev.selected_lines.checked
-        ? prev.selected_lines.fileName
-        : nameWithLines;
+      // const selectedLineFileName = prev.selected_lines.checked
+      //   ? prev.selected_lines.fileName
+      //   : nameWithLines;
 
       const selectedLineDisabled = prev.selected_lines.checked
         ? false
@@ -139,7 +140,7 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
 
       const fileUploadFileName = prev.file_upload.checked
         ? prev.file_upload.fileName
-        : nameWithCursor;
+        : activeFile.name;
 
       const fileUploadDisabled = prev.file_upload.checked
         ? false
@@ -149,15 +150,16 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
         ...prev,
         lookup_symbols: {
           ...prev.lookup_symbols,
-          // TODO: should be full path,
           value: lookupValue,
-          fileName: lookupFileName,
+          // fileName: lookupFileName,
           disabled: lookupDisabled,
         },
         selected_lines: {
           ...prev.selected_lines,
-          value: selectedLineValue,
-          fileName: selectedLineFileName,
+          // maybe allow this to change?
+          // value: selectedLineValue,
+          value: markdown,
+          // fileName: selectedLineFileName,
           disabled: selectedLineDisabled,
         },
         file_upload: {
