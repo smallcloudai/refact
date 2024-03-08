@@ -3,6 +3,7 @@ import { Text, Flex } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ChatContextFile } from "../../services/refact";
 import classnames from "classnames";
+import { TruncateLeft } from "../Text";
 
 export const ContextFile: React.FC<{
   name: string;
@@ -11,11 +12,11 @@ export const ContextFile: React.FC<{
 }> = ({ name, ...props }) => {
   return (
     <Text
-      size="2"
+      size="1"
       title={props.children}
       className={classnames(styles.file, props.className)}
     >
-      📎 {name}
+      📎 <TruncateLeft>{name}</TruncateLeft>
     </Text>
   );
 };
@@ -26,7 +27,7 @@ export const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({
   if (files.length === 0) return null;
   return (
     <pre>
-      <Flex gap="4" wrap="wrap">
+      <Flex gap="4" wrap="nowrap" direction="column" px="2">
         {files.map((file, index) => {
           const lineText =
             file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
