@@ -221,7 +221,8 @@ class ModelContext:
             else:
                 embeddings_weights[key] = weights[key]
         safetensors.torch.save_file(lora_weights, os.path.join(output_path, "adapter_model.safetensors"))
-        safetensors.torch.save_file(embeddings_weights, os.path.join(output_path, "new_embeddings.safetensors"))
+        if len(embeddings_weights) > 0:
+            safetensors.torch.save_file(embeddings_weights, os.path.join(output_path, "new_embeddings.safetensors"))
 
     def _freeze_model(
             self,
