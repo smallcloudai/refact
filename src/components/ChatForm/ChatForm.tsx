@@ -58,9 +58,7 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
     return "```" + snippet.language + "\n" + snippet.code + "\n```\n";
   }, [snippet.language, snippet.code]);
 
-  const [checkboxes, setCheckboxes] = React.useState<
-    ChatControlsProps["checkboxes"]
-  >({
+  const defaultState = {
     search_workspace: {
       name: "search_workspace",
       checked: false,
@@ -91,7 +89,12 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
       disabled: !snippet.code,
       fileName: nameWithLines,
     },
-  } as const);
+  } as const;
+
+  const [checkboxes, setCheckboxes] =
+    React.useState<ChatControlsProps["checkboxes"]>(defaultState);
+
+  const reset = () => setCheckboxes(defaultState);
 
   const toggleCheckbox = useCallback(
     (name: string, value: boolean | string) => {
@@ -183,6 +186,7 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
     markdown,
     nameWithLines,
     fullPathWithLines,
+    reset,
   };
 };
 
@@ -233,7 +237,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   requestCaps,
 }) => {
   const [value, setValue] = React.useState("");
-  const { markdown, checkboxes, toggleCheckbox } = useControlsState({
+  const { markdown, checkboxes, toggleCheckbox, reset } = useControlsState({
     activeFile: attachFile,
     snippet: selectedSnippet,
   });
@@ -255,6 +259,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   ]);
 
   const addCheckboxValuesToInput = (input: string) => {
+    if (!showControls) {
+      return input;
+    }
+
     let result = input;
     if (!result.endsWith("\n")) {
       result += "\n";
@@ -285,6 +293,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       setValue(markdown + value);
     }
   });
+
+  useEffect(() => {
+    if (!showControls) {
+      reset();
+    }
+  }, [showControls, reset]);
 
   const isOnline = useIsOnline();
 
