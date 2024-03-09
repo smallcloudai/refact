@@ -4,7 +4,7 @@ import os
 import time
 from pathlib import Path
 from typing import Dict, Any, Optional
-
+import torch.distributed as dist
 from refact_utils.scripts import env
 from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery.finetune.utils.eta import EtaTracker
@@ -63,7 +63,7 @@ class FinetuneStatusTracker:
 
     def __init__(self):
         self._stats_dict = get_finetune_status()
-        self._rank = os.environ.get('RANK', 0)
+        self._rank = dist.get_rank()
         self._tracker_extra_kwargs: Dict[str, Any] = dict()
         self._status_filename = Path(traces.context().path) / "status.json"
 
@@ -84,7 +84,9 @@ class FinetuneStatusTracker:
             error_message: Optional[str] = None,
             dump: bool = True
     ):
-        env.report_status("ftune", status)
+        if self._rank == 0:
+            env.report_status("ftune", status)
+
         self._stats_dict["status"] = status
         if error_message is not None:
             assert status in {"failed", "interrupted"}

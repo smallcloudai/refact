@@ -1,5 +1,6 @@
 import math
 import torch
+import torch.distributed as dist
 
 from refact_utils.scripts import env
 from self_hosting_machinery.finetune.utils import traces
@@ -54,7 +55,6 @@ def base_config(model_name: str, models_db: Dict[str, Any]):
         steps_per_print=int(1e9),
         train_batch_size=128,
         micro_batch_size=1,
-        gradient_accumulation_steps=128,
         fp16={
             "enabled": True,
             "auto_cast": False,
@@ -101,7 +101,7 @@ class ConfigBuilder:
 
     def set_batch_size(self, bs: int) -> 'ConfigBuilder':
         self.cfg['train_batch_size'] = bs
-        self.cfg['gradient_accumulation_steps'] = bs
+        self.cfg['gradient_accumulation_steps'] = bs // self.cfg["micro_batch_size"] // dist.get_world_size()
         return self
 
     def set_lr(self, lr: float) -> 'ConfigBuilder':

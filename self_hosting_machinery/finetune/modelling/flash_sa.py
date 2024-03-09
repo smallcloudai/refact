@@ -1,10 +1,11 @@
 import functools
-import logging
 import math
 
 import einops
 import torch
 from typing import Tuple, Optional
+
+from self_hosting_machinery.finetune.utils import traces
 
 
 @functools.lru_cache(maxsize=2)
@@ -46,7 +47,7 @@ def _prerequisites_are_ok(model, try_triton_kernel: bool):
         from flash_attn import flash_attn_func
         return True
     except ImportError:
-        logging.warning("Original flash attention is not installed, trying to use triton implementation...")
+        traces.log("Original flash attention is not installed, trying to use triton implementation...")
         from self_hosting_machinery.finetune.modelling.triton_flash_sa import (apply_flash_mha_to_refact_model
                                                                                as apply_triton_flash)
         if try_triton_kernel:
@@ -85,10 +86,10 @@ def apply_flash_mha_to_refact_model(model):
         return attn_output, None
 
     if torch.cuda.get_device_capability() < (8, 0):
-        logging.warning("Triton flash attention is not supported on gpus with cuda capability < 8")
+        traces.log("Triton flash attention is not supported on gpus with cuda capability < 8")
         return
 
-    logging.warning("Applying flash attention to the model")
+    traces.log("Applying flash attention to the model")
     if type(model).__name__ == 'PeftModelForCausalLM':
         model = model.base_model.model
     for block in model.transformer.h:
@@ -129,10 +130,10 @@ def apply_flash_mha_to_starcoder_model(model):
 
     if torch.cuda.get_device_capability() < (8, 0):
         model.force_low_gpu_mem_mode = True
-        logging.warning("Flash attention is not supported on gpus with cuda capability < 8")
+        traces.log("Flash attention is not supported on gpus with cuda capability < 8")
         return
 
-    logging.warning("Applying flash attention to the model")
+    traces.log("Applying flash attention to the model")
     if type(model).__name__ == 'PeftModelForCausalLM':
         model = model.base_model.model
     for block in model.transformer.h:
@@ -179,10 +180,10 @@ def apply_flash_mha_to_codellama_model(model):
     if torch.cuda.get_device_capability() < (8, 0):
         model.force_low_gpu_mem_mode = True
         torch.backends.cuda.enable_mem_efficient_sdp(False)
-        logging.warning("Flash attention is not supported on gpus with cuda capability < 8")
+        traces.log("Flash attention is not supported on gpus with cuda capability < 8")
         return
 
-    logging.warning("Applying flash attention to the model")
+    traces.log("Applying flash attention to the model")
     if type(model).__name__ == 'PeftModelForCausalLM':
         model = model.base_model.model
     for layer in model.base_model.layers:
@@ -229,10 +230,10 @@ def apply_flash_mha_to_starcoder2_model(model):
     if torch.cuda.get_device_capability() < (8, 0):
         model.force_low_gpu_mem_mode = True
         torch.backends.cuda.enable_mem_efficient_sdp(False)
-        logging.warning("Flash attention is not supported on gpus with cuda capability < 8")
+        traces.log("Flash attention is not supported on gpus with cuda capability < 8")
         return
 
-    logging.warning("Applying flash attention to the model")
+    traces.log("Applying flash attention to the model")
     if type(model).__name__ == 'PeftModelForCausalLM':
         model = model.base_model.model
     for layer in model.base_model.layers:

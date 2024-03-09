@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, Any, Iterable, Tuple
 
 import torch as th
+import torch.distributed as dist
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_finetune_config
@@ -23,6 +24,8 @@ from self_hosting_machinery.finetune.utils import traces
 
 
 def _log_everywhere(message):
+    if dist.get_rank() != 0:
+        return
     logging.info(message)
     traces.log(message)
 
@@ -39,6 +42,7 @@ def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str,
         ds_len = get_ds_len_per_epoch(user_cfg['model_name'], cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
         (cfg_builder
+         .set_batch_size(cfg_builder.cfg['train_batch_size'])
          .set_lora_quality_by_heuristics(ds_len=ds_len, initial_loss=initial_loss)
          .set_schedule_by_heuristics(ds_len=ds_len)
          .set_low_gpu_mem_mode_by_heuristics())
@@ -59,13 +63,13 @@ def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str,
          .set_limit_time_seconds(user_cfg['limit_time_seconds'])
          .set_weight_decay(user_cfg['weight_decay']))
 
-    traces.log(f'Freeze exceptions: {cfg_builder.cfg["model_info"]["freeze_exceptions"]}')
-    traces.log(f'Low memory mode: {user_cfg["low_gpu_mem_mode"]}')
-    for k, v in cfg_builder.cfg["model_info"]["lora"].items():
-        traces.log(f'Lora config: {k:>20} {v}')
-
-    with open(os.path.join(traces.context().path, "config.json"), "w") as f:
-        json.dump(cfg_builder.cfg, f, indent=4)
+    if dist.get_rank() == 0:
+        traces.log(f'Freeze exceptions: {cfg_builder.cfg["model_info"]["freeze_exceptions"]}')
+        traces.log(f'Low memory mode: {user_cfg["low_gpu_mem_mode"]}')
+        for k, v in cfg_builder.cfg["model_info"]["lora"].items():
+            traces.log(f'Lora config: {k:>20} {v}')
+        with open(os.path.join(traces.context().path, "config.json"), "w") as f:
+            json.dump(cfg_builder.cfg, f, indent=4)
 
     assert cfg_builder.cfg['train_iters'] % cfg_builder.cfg['test_every'] == 0
     assert cfg_builder.cfg['save_every'] % cfg_builder.cfg['test_every'] == 0
@@ -80,14 +84,15 @@ def _train_iteration(
         finetune_cfg: Dict[str, Any],
         status_tracker: FinetuneStatusTracker,
 ) -> Tuple[float, int]:
-    world_size = int(os.environ.get('WORLD_SIZE', 1))
+    world_size = dist.get_world_size()
+    zero_rank = dist.get_rank() == 0
 
-    if finetune_cfg['debug']:
+    if zero_rank and finetune_cfg['debug']:
         data_path = Path(traces.context().path) / ('debug_data/iter%04d' % iter_n)
         data_path.mkdir(exist_ok=True, parents=True)
 
     losses, tokens_n = [], 0
-    for b0 in range(0, finetune_cfg["train_batch_size"], finetune_cfg["micro_batch_size"]):
+    for b0 in range(0, finetune_cfg["train_batch_size"] // world_size, finetune_cfg["micro_batch_size"]):
         input = data['input'][b0:b0 + finetune_cfg["micro_batch_size"]].contiguous()
         logits = model_context.forward(input=input)
         loss = model_context.loss(
@@ -101,7 +106,7 @@ def _train_iteration(
         losses.append(loss.item())
         status_tracker.update_status("working")
 
-        if finetune_cfg['debug']:
+        if zero_rank and finetune_cfg['debug']:
             with open(data_path / ('%d_%0.3f.txt' % (b0, loss.item())), 'w') as f:
                 f.write(model_context.encoding.decode(input[0].cpu().numpy()))
 
@@ -137,6 +142,8 @@ def loop(
         status_tracker: FinetuneStatusTracker
 ):
     def _save_checkpoint(iter_n: int, loss: float, force: bool = False):
+        if not zero_rank:
+            return
         if force or (iter_n != 0 and iter_n % finetune_cfg['save_every'] == 0):
             tag = f"iter{iter_n:04d}-testloss{loss:.3f}"
             traces.log(f"Saving checkpoint {tag}")
@@ -146,6 +153,7 @@ def loop(
     model_context.train()
     train_iters = finetune_cfg['train_iters']
     overall_tokens_n = 0
+    zero_rank = dist.get_rank() == 0
     t0 = time.time()
 
     train_ds = create_train_dataloader(
@@ -167,11 +175,12 @@ def loop(
     with status_tracker(total_steps=train_iters) as stats_tracker:
         for iter_n in range(1, train_iters + 1):
             data = to_cuda(next(train_ds_iter))
-            traces.log(
-                f"iter {iter_n}/{finetune_cfg['train_iters']}  tokens {overall_tokens_n / 1e9:0.3f} "
-                f"input={traces.p(data['input'])}  mask={traces.p(data['mask'])} "
-                f"({data['mask'].sum()}/{data['mask'].numel()})"
-            )
+            if zero_rank:
+                traces.log(
+                    f"iter {iter_n}/{finetune_cfg['train_iters']}  tokens {overall_tokens_n / 1e9:0.3f} "
+                    f"input={traces.p(data['input'])}  mask={traces.p(data['mask'])} "
+                    f"({data['mask'].sum()}/{data['mask'].numel()}) * {dist.get_world_size()} replicas"
+                )
             train_loss, tokens_n = _train_iteration(
                 data=data,
                 iter_n=iter_n,
@@ -179,7 +188,7 @@ def loop(
                 finetune_cfg=finetune_cfg,
                 status_tracker=status_tracker
             )
-            overall_tokens_n += tokens_n
+            overall_tokens_n += tokens_n * dist.get_world_size()
 
             test_loss = _test_iteration(
                 test_ds=test_ds,
@@ -255,4 +264,11 @@ if __name__ == "__main__":
 
     YMD_hms = os.environ.get("LORA_LOGDIR", "") or time.strftime("lora-%Y%m%d-%H%M%S")
     traces.configure(task_dir="loras", task_name=YMD_hms, work_dir=env.PERMDIR)
+    if "RANK" not in os.environ:
+        os.environ["WORLD_SIZE"] = "1"
+        os.environ["LOCAL_RANK"] = os.environ["RANK"] = "0"
+        dist.init_process_group(backend='nccl', init_method="tcp://localhost:23456", world_size=1, rank=0)
+    else:
+        dist.init_process_group(backend='nccl', init_method="env://")
+        th.cuda.set_device(dist.get_rank())
     main(models_mini_db)
