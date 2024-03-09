@@ -29,4 +29,4 @@ ENV PATH="${PATH}:/tmp/linguist/bin"
 RUN pip install --no-cache-dir torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
 RUN pip install --no-cache-dir xformers==0.0.23.post1 --index-url https://download.pytorch.org/whl/cu118
 RUN pip install ninja
-RUN pip install -v git+https://github.com/smallcloudai/vllm@refact_model_new
+RUN VLLM_INSTALL_PUNICA_KERNELS=1 pip install -v --no-build-isolation git+https://github.com/smallcloudai/vllm@refact_model_lora_support
