@@ -74,7 +74,7 @@ class ModelContext:
                 self.use_deepspeed = True
 
         traces.log("Allocated memory: %0.2fG" % (torch.cuda.max_memory_allocated() / 1e9))
-        traces.log(summary(self.model, depth=4, col_names=['num_params', 'params_percent', 'trainable']))
+        traces.log(summary(self.model, depth=4, col_names=['num_params', 'params_percent', 'trainable'], verbose=0))
 
         self.loss_fn = partial(
             masked_loss,
