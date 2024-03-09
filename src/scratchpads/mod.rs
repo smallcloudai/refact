@@ -38,11 +38,11 @@ pub async fn create_code_completion_scratchpad(
     ast_module: Arc<AMutex<Option<AstModule>>>,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
-    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context, model_name_for_tokenizer).await?;
+    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
     if scratchpad_name == "FIM-PSM" {
-        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "PSM".to_string(), cache_arc, tele_storage, ast_module));
+        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
     } else if scratchpad_name == "FIM-SPM" {
-        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "SPM".to_string(), cache_arc, tele_storage, ast_module));
+        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "SPM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }
@@ -67,7 +67,8 @@ pub async fn create_chat_scratchpad(
         let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
         result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post, global_context.clone()));
     } else if scratchpad_name == "PASSTHROUGH" {
-        result = Box::new(chat_passthrough::ChatPassthrough::new(post, global_context.clone()));
+        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
+        result = Box::new(chat_passthrough::ChatPassthrough::new(tokenizer_arc, post, global_context.clone()));
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }

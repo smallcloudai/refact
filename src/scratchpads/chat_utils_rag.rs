@@ -1,7 +1,9 @@
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::cmp::Ordering;
 use tracing::info;
 use serde_json::{json, Value};
+use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use crate::at_commands::at_commands::AtCommandsContext;
 
@@ -11,15 +13,29 @@ use crate::global_context::GlobalContext;
 
 const SMALL_GAP_LINES: usize = 10;  // lines
 
-pub fn postprocess_at_results(
+pub fn count_tokens(
+    tokenizer: &Tokenizer,
+    text: &str,
+) -> usize {
+    match tokenizer.encode(text, false) {
+        Ok(tokens) => tokens.len(),
+        Err(_) => 0,
+    }
+}
+
+pub async fn postprocess_at_results(
+    global_context: Arc<ARwLock<GlobalContext>>,
     messages: Vec<ChatMessage>,
-    max_bytes: usize,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokens_limit: usize,
 ) -> Vec<ContextFile> {
     // 1. Decode all
     let mut cxfile_list: Vec<ContextFile> = vec![];
     for msg in messages {
         cxfile_list.extend(serde_json::from_str::<Vec<ContextFile>>(&msg.content).unwrap()); // TODO: this unwrap() is not good
     }
+    // This check_only==true is for debugging only, can be safely removed (the result is already ignored)
+    let _ = reload_files(global_context.clone(), &cxfile_list, true).await;
     // 2. Sort by usefulness
     cxfile_list.sort_by(|a, b| {
         b.usefulness.partial_cmp(&a.usefulness).unwrap_or(Ordering::Equal)
@@ -27,16 +43,18 @@ pub fn postprocess_at_results(
     for cxfile in cxfile_list.iter() {
         info!("sorted file {}:{}-{} usefulness {:.1}", crate::nicer_logs::last_n_chars(&cxfile.file_name, 30), cxfile.line1, cxfile.line2, cxfile.usefulness);
     }
-    // 3. Truncate less useful to max_bytes
-    let mut total_bytes: usize = cxfile_list.iter().map(|x| x.file_content.len()).sum();
-    while total_bytes > max_bytes {
-        let least_useful = cxfile_list.pop();
-        match least_useful {
-            Some(x) => {
-                info!("drop less useful {}:{}-{}, because {} still greater than max {}", crate::nicer_logs::last_n_chars(&x.file_name, 30), x.line1, x.line2, total_bytes, max_bytes);
-                total_bytes -= x.file_content.len();
-            },
-            None => break,
+    // 3. Truncate less useful to tokens_limit
+    let mut total_tokens: usize = 0;
+    let mut idx = 0;
+    while idx < cxfile_list.len() {
+        let x: ContextFile = cxfile_list[idx].clone();
+        let tokens_count = if total_tokens < tokens_limit { count_tokens(&tokenizer.read().unwrap(), x.file_content.as_str()) } else { 0 };
+        total_tokens += tokens_count;
+        if total_tokens > tokens_limit {
+            cxfile_list.remove(idx);
+            info!("drop less useful {}:{}-{} because {} tokens greater than limit {}", crate::nicer_logs::last_n_chars(&x.file_name, 30), x.line1, x.line2, total_tokens, tokens_limit);
+        } else {
+            idx += 1;
         }
     }
     // 4. Remove small gaps in lines and deduplicate
@@ -68,6 +86,7 @@ pub fn postprocess_at_results(
                     x.line1 = possible_merge_line1;
                     x.line2 = possible_merge_line2;
                     x.usefulness = x.usefulness.max(y.usefulness);
+                    // file_content is broken here and needs to be reloaded, see reload_files()
                     merged_anything = true;
                 }
             }
@@ -88,7 +107,8 @@ pub fn postprocess_at_results(
 
 pub async fn reload_files(
     global_context: Arc<ARwLock<GlobalContext>>,
-    merged: Vec<ContextFile>,
+    merged: &Vec<ContextFile>,
+    check_only: bool,
 ) -> Vec<ChatMessage>
 {
     // drop old text in file_content, load new using get_file_text_from_memory_or_disk
@@ -111,9 +131,18 @@ pub async fn reload_files(
         for s in content_line1_line2.clone() {
             info!("reloading {}", s);
         }
+        let content_line1_line2_str = content_line1_line2.join("\n") + "\n";
+        if check_only {
+            if content_line1_line2_str != m.file_content {
+                info!("content of {}:{}-{} doesn't match file_content, bug or maybe the file has changed?", file_path, m.line1, m.line2);
+                info!("file  : {:?}", m.file_content);
+                info!("loaded: {:?}", content_line1_line2_str);
+            }
+            continue;
+        }
         was_able_to_reload.push(ContextFile {
             file_name: m.file_name.clone(),
-            file_content: content_line1_line2.join("\n"),
+            file_content: content_line1_line2_str,
             line1: m.line1,
             line2: m.line2,
             usefulness: m.usefulness,
@@ -135,6 +164,8 @@ pub async fn reload_files(
 
 pub async fn run_at_commands(
     global_context: Arc<ARwLock<GlobalContext>>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+    n_ctx: usize,
     post: &mut ChatPost,
     top_n: usize,
     stream_back_to_user: &mut HasVecdbResults,
@@ -142,23 +173,41 @@ pub async fn run_at_commands(
     // TODO: don't operate on `post`, return a copy of the messages
     let context = AtCommandsContext::new(global_context.clone()).await;
 
-    let mut nearest_user = post.messages.len();
-    while nearest_user > 0 {
-        let role = post.messages.get(nearest_user - 1).unwrap().role.clone();
-        info!("nearest_user {} {}", nearest_user - 1, role);
+    let mut user_msg_starts = post.messages.len();
+    let mut user_messages_with_at: usize = 0;
+    while user_msg_starts > 0 {
+        let message = post.messages.get(user_msg_starts - 1).unwrap().clone();
+        let role = message.role.clone();
+        let content = message.content.clone();
+        info!("user_msg_starts {} {}", user_msg_starts - 1, role);
         if role == "user" {
-            nearest_user -= 1;
+            user_msg_starts -= 1;
+            if content.contains("@") {
+                user_messages_with_at += 1;
+            }
         } else {
             break;
         }
     }
+    user_messages_with_at = user_messages_with_at.max(1);
 
-    // take only 0..nearest_user
-    let mut rebuilt_messages: Vec<ChatMessage> = post.messages.iter().take(nearest_user).map(|m| m.clone()).collect();
+    // Token limit works like this:
+    // - if there's only 1 user message at the bottom, it receives n_ctx/2 tokens for context
+    // - if there are N user messages, they receive n_ctx/2/N tokens each (and there's no taking from one to give to the other)
+    // This is useful to give prefix and suffix of the same file precisely the position necessary for FIM-like operation of a chat model
 
-    for msg_idx in nearest_user..post.messages.len() {
+    let mut rebuilt_messages: Vec<ChatMessage> = post.messages.iter().take(user_msg_starts).map(|m| m.clone()).collect();
+    for msg_idx in user_msg_starts..post.messages.len() {
         let mut user_posted = post.messages[msg_idx].content.clone();
-        info!("msg {} user_posted {:?}", msg_idx, user_posted);
+        let user_posted_ntokens = count_tokens(&tokenizer.read().unwrap(), &user_posted);
+        let mut context_ctx_this_message = n_ctx / 2 / user_messages_with_at;
+        if context_ctx_this_message <= user_posted_ntokens {
+            context_ctx_this_message = 0;
+        } else {
+            context_ctx_this_message -= user_posted_ntokens;
+        }
+        info!("msg {} user_posted {:?} that's {} tokens, that leaves {} tokens for context for this message (n_ctx={})",
+            msg_idx, user_posted, user_posted_ntokens, context_ctx_this_message, n_ctx);
         let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut user_posted, &context).await;
         let mut messages_for_postprocessing = vec![];
         for cmd in valid_commands {
@@ -171,12 +220,13 @@ pub async fn run_at_commands(
                 }
             }
         }
-        let max_bytes = 7*1024;
         let processed = postprocess_at_results(
+            global_context.clone(),
             messages_for_postprocessing,
-            max_bytes
-        );
-        let reloaded = reload_files(global_context.clone(), processed).await;
+            tokenizer.clone(),
+            context_ctx_this_message
+        ).await;
+        let reloaded = reload_files(global_context.clone(), &processed, false).await;
         for msg in reloaded {
             rebuilt_messages.push(msg.clone());
             stream_back_to_user.push_in_json(json!(msg));

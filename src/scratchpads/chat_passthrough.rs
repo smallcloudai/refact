@@ -1,12 +1,15 @@
 use std::sync::Arc;
+use std::sync::RwLock as StdRwLock;
 
 use async_trait::async_trait;
 use serde_json::Value;
-use tracing::{error, info};
+use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
+use tracing::{error, info};
 
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
+use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history_in_bytes;
 use crate::scratchpads::chat_utils_rag::{run_at_commands, HasVecdbResults};
@@ -16,6 +19,7 @@ const DEBUG: bool = true;
 
 // #[derive(Debug)]
 pub struct ChatPassthrough {
+    pub t: HasTokenizerAndEot,
     pub post: ChatPost,
     pub default_system_message: String,
     pub limit_bytes: usize,
@@ -27,10 +31,12 @@ const DEFAULT_LIMIT_BYTES: usize = 4096*6;
 
 impl ChatPassthrough {
     pub fn new(
+        tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: ChatPost,
         global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Self {
         ChatPassthrough {
+            t: HasTokenizerAndEot::new(tokenizer),
             post,
             default_system_message: "".to_string(),
             limit_bytes: DEFAULT_LIMIT_BYTES,  // one token translates to 3 bytes (not unicode chars)
@@ -53,12 +59,12 @@ impl ScratchpadAbstract for ChatPassthrough {
 
     async fn prompt(
         &mut self,
-        _context_size: usize,
+        context_size: usize,
         _sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
         let top_n = 6;
-        run_at_commands(self.global_context.clone(), &mut self.post, top_n, &mut self.has_vecdb_results).await;
+        run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), context_size, &mut self.post, top_n, &mut self.has_vecdb_results).await;
         let limited_msgs: Vec<ChatMessage> = limit_messages_history_in_bytes(&self.post.messages, self.limit_bytes, &self.default_system_message)?;
         info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", &self.post.messages.len(), &limited_msgs.len());
         let mut filtered_msgs: Vec<ChatMessage> = Vec::<ChatMessage>::new();

@@ -73,7 +73,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        run_at_commands(self.global_context.clone(), &mut self.post, 6, &mut self.has_vecdb_results).await;
+        run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), context_size, &mut self.post, 6, &mut self.has_vecdb_results).await;
 
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, self.post.parameters.max_new_tokens, context_size, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());

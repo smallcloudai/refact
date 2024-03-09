@@ -8,13 +8,14 @@ use ropey::Rope;
 use serde_json::{Value, json};
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 use tracing::{info, error};
 use tree_sitter::Point;
 
 use crate::ast::ast_module::AstModule;
 use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
-use crate::call_validation::CodeCompletionPost;
-use crate::call_validation::SamplingParameters;
+use crate::call_validation::{CodeCompletionPost, SamplingParameters};
+use crate::global_context::GlobalContext;
 use crate::completion_cache;
 use crate::files_in_workspace::DocumentInfo;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
@@ -37,6 +38,7 @@ pub struct SingleFileFIM {
     pub data4cache: completion_cache::CompletionSaveToCache,
     pub data4snippet: snippets_collection::SaveSnippet,
     pub ast_module: Arc<AMutex<Option<AstModule>>>,
+    pub global_context: Arc<ARwLock<GlobalContext>>,
 }
 
 impl SingleFileFIM {
@@ -47,12 +49,17 @@ impl SingleFileFIM {
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
         tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
         ast_module: Arc<AMutex<Option<AstModule>>>,
+        global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
         let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
         SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(),
-            fim_suffix: String::new(), fim_middle: String::new(), context_used: json!([]), data4cache, data4snippet,
-            ast_module
+            fim_suffix: String::new(), fim_middle: String::new(),
+            context_used: json!([]),
+            data4cache,
+            data4snippet,
+            ast_module,
+            global_context,
         }
     }
 
@@ -141,7 +148,13 @@ impl ScratchpadAbstract for SingleFileFIM {
         } else {
             vec![]
         };
-        let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results(ast_messages, 7000);
+        let context_ctx_this_message = 1024;  // FIXME: calculate better, subtract from limit
+        let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results(
+            self.global_context.clone(),
+            ast_messages,
+            self.t.tokenizer.clone(),
+            context_ctx_this_message,
+        ).await;
         self.context_used = json!(postprocessed_messages);
 
         let mut before_line = before_iter.next();
