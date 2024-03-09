@@ -246,11 +246,13 @@ function render_models_assigned(models) {
         }
         let finetune_runs = [];
         if (finetune_configs_and_runs) {
-            finetune_runs = finetune_configs_and_runs.finetune_runs;
+            finetune_runs = finetune_configs_and_runs.finetune_runs.filter(
+                run => run.model_name === models_info[index].finetune_model
+                && run.checkpoints.length !== 0);
         } else {
             force_render_models_assigned = true;
         }
-        finetune_info_factory(models_data, models_info, finetune_info, finetune_runs, index);
+        finetune_info_factory(index, models_info, finetune_info, finetune_runs, models_data.multiple_loras);
 
          if (models_info[index].hasOwnProperty('has_sharding') && models_info[index].has_sharding) {
             const select_gpus_div = document.createElement("div");
