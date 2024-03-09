@@ -1,4 +1,4 @@
-export function finetune_info_factory(models_data, models_info, finetune_info, finetune_runs, index) {
+export function finetune_info_factory(index, models_info, finetune_info, finetune_runs, multiple_loras) {
     let enabled_finetunes = [];
 
     if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
@@ -15,11 +15,10 @@ export function finetune_info_factory(models_data, models_info, finetune_info, f
     tech_msg.classList = "model-finetune-item-checkpoint";
     tech_msg.style = "font-size: 1em; margin: 0";
 
-    const runs = finetune_runs.filter(run => run.model_name === index && run.checkpoints.length !== 0);
     if (!models_info[index].has_finetune) {
         tech_msg.innerText = "not supported";
         finetune_info.appendChild(tech_msg);
-    } else if (runs.length == 0) {
+    } else if (finetune_runs.length == 0) {
         tech_msg.innerText = "no runs";
         finetune_info.appendChild(tech_msg);
     } else {
@@ -30,8 +29,8 @@ export function finetune_info_factory(models_data, models_info, finetune_info, f
         finetune_info.appendChild(finetune_info_children);
 
         const selected_runs = models_info[index].finetune_info.map(run => run.run_id);
-        const not_selected_runs = runs.filter(run => !selected_runs.includes(run.run_id));
-        if (not_selected_runs.length > 0 && (selected_runs.length === 0 || models_data.multiple_loras || true)) {
+        const not_selected_runs = finetune_runs.filter(run => !selected_runs.includes(run.run_id));
+        if (not_selected_runs.length > 0 && (selected_runs.length === 0 || multiple_loras || true)) {
             let add_finetune_btn = document.createElement("button");
             add_finetune_btn.classList = "btn btn-sm btn-outline-primary mt-1 add-finetune-btn";
             add_finetune_btn.style = "padding: 0 5px";

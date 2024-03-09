@@ -198,13 +198,15 @@ class ModelAssigner:
                         "checkpoint": l["checkpoint"],
                     } for l in active_loras[k].get('loras', [])
                 ]
-
+            has_finetune = bool("finetune" in rec["filter_caps"])
+            finetune_model = rec.get("finetune_model", k if has_finetune else None)
             info.append({
                 "name": k,
                 "backend": rec["backend"],
                 "finetune_info": finetune_info,
+                "finetune_model": finetune_model,
                 "has_completion": bool("completion" in rec["filter_caps"]),
-                "has_finetune": bool("finetune" in rec["filter_caps"]),
+                "has_finetune": has_finetune,
                 "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),
                 "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
