@@ -11,7 +11,9 @@ use crate::call_validation::{ChatMessage, ChatPost, ContextFile};
 use crate::global_context::GlobalContext;
 
 
+const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 const SMALL_GAP_LINES: usize = 10;  // lines
+
 
 pub fn count_tokens(
     tokenizer: &Tokenizer,
@@ -167,7 +169,8 @@ pub async fn reload_files(
 pub async fn run_at_commands(
     global_context: Arc<ARwLock<GlobalContext>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
-    ntokens_minus_maxgen: usize,
+    maxgen: usize,
+    n_ctx: usize,
     post: &mut ChatPost,
     top_n: usize,
     stream_back_to_user: &mut HasVecdbResults,
@@ -192,6 +195,8 @@ pub async fn run_at_commands(
         }
     }
     user_messages_with_at = user_messages_with_at.max(1);
+    let reserve_for_context = n_ctx - maxgen - RESERVE_FOR_QUESTION_AND_FOLLOWUP;
+    info!("reserve_for_context {} tokens", reserve_for_context);
 
     // Token limit works like this:
     // - if there's only 1 user message at the bottom, it receives ntokens_minus_maxgen tokens for context
@@ -202,14 +207,14 @@ pub async fn run_at_commands(
     for msg_idx in user_msg_starts..post.messages.len() {
         let mut user_posted = post.messages[msg_idx].content.clone();
         let user_posted_ntokens = count_tokens(&tokenizer.read().unwrap(), &user_posted);
-        let mut context_limit = ntokens_minus_maxgen / user_messages_with_at;
+        let mut context_limit = reserve_for_context / user_messages_with_at;
         if context_limit <= user_posted_ntokens {
             context_limit = 0;
         } else {
             context_limit -= user_posted_ntokens;
         }
         info!("msg {} user_posted {:?} that's {} tokens", msg_idx, user_posted, user_posted_ntokens);
-        info!("that leaves {} tokens for context of this message (ntokens_minus_maxgen={})", context_limit, ntokens_minus_maxgen);
+        info!("that leaves {} tokens for context of this message", context_limit);
 
         let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut user_posted, &context).await;
         let mut messages_for_postprocessing = vec![];

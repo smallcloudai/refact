@@ -59,7 +59,7 @@ impl ScratchpadAbstract for ChatPassthrough {
     ) -> Result<String, String> {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
         let top_n: usize = 6;
-        let last_user_msg_starts = run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), context_size/2 - sampling_parameters_to_patch.max_new_tokens, &mut self.post, top_n, &mut self.has_vecdb_results).await;
+        let last_user_msg_starts = run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_vecdb_results).await;
         let limited_msgs: Vec<ChatMessage> = match limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message) {
             Ok(res) => res,
             Err(e) => {
