@@ -16,7 +16,7 @@ use crate::scratchpads;
 async fn _lookup_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     chat_post: &ChatPost,
-) -> Result<(String, String, serde_json::Value), String> {
+) -> Result<(String, String, serde_json::Value, usize), String> {
     let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
         caps::which_model_to_use(
@@ -29,7 +29,7 @@ async fn _lookup_chat_scratchpad(
         &chat_post.scratchpad,
         &recommended_model_record.default_scratchpad,
     )?;
-    Ok((model_name, sname.clone(), patch.clone()))
+    Ok((model_name, sname.clone(), patch.clone(), recommended_model_record.n_ctx))
 }
 
 pub async fn handle_v1_chat(
@@ -40,14 +40,14 @@ pub async fn handle_v1_chat(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     )?;
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let (model_name, scratchpad_name, scratchpad_patch) = _lookup_chat_scratchpad(
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = _lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", e))
     })?;
     if chat_post.parameters.max_new_tokens == 0 {
-        chat_post.parameters.max_new_tokens = 2048;
+        chat_post.parameters.max_new_tokens = 1024;
     }
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(0.2));
     chat_post.model = model_name.clone();
@@ -67,7 +67,7 @@ pub async fn handle_v1_chat(
     )?;
     let t1 = std::time::Instant::now();
     let prompt = scratchpad.prompt(
-        2048,
+        n_ctx,
         &mut chat_post.parameters,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))

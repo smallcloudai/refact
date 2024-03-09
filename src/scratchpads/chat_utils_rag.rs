@@ -54,6 +54,7 @@ pub async fn postprocess_at_results(
             cxfile_list.remove(idx);
             info!("drop less useful {}:{}-{} because {} tokens greater than limit {}", crate::nicer_logs::last_n_chars(&x.file_name, 30), x.line1, x.line2, total_tokens, tokens_limit);
         } else {
+            info!("take {}:{}-{} tokens {} < {}", crate::nicer_logs::last_n_chars(&x.file_name, 30), x.line1, x.line2, total_tokens, tokens_limit);
             idx += 1;
         }
     }
@@ -128,12 +129,13 @@ pub async fn reload_files(
         let line1: usize = m.line1 as usize;
         let line2: usize = m.line2 as usize;
         let content_line1_line2 = file_text.lines().skip(line1 - 1).take(line2 - line1 + 1).collect::<Vec<&str>>();
-        for s in content_line1_line2.clone() {
-            info!("reloading {}", s);
-        }
+        // for s in content_line1_line2.clone() {
+        //     info!("reloading {}", s);
+        // }
         let content_line1_line2_str = content_line1_line2.join("\n") + "\n";
         if check_only {
-            if content_line1_line2_str != m.file_content {
+            if m.file_content != content_line1_line2_str && m.file_content.clone() + "\n" != content_line1_line2_str {
+                // this is mostly important because tokens limit might not work correctly (or a logical bug is a bad thing, too)
                 info!("content of {}:{}-{} doesn't match file_content, bug or maybe the file has changed?", file_path, m.line1, m.line2);
                 info!("file  : {:?}", m.file_content);
                 info!("loaded: {:?}", content_line1_line2_str);
@@ -165,11 +167,11 @@ pub async fn reload_files(
 pub async fn run_at_commands(
     global_context: Arc<ARwLock<GlobalContext>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
-    n_ctx: usize,
+    ntokens_minus_maxgen: usize,
     post: &mut ChatPost,
     top_n: usize,
     stream_back_to_user: &mut HasVecdbResults,
-) {
+) -> usize {
     // TODO: don't operate on `post`, return a copy of the messages
     let context = AtCommandsContext::new(global_context.clone()).await;
 
@@ -192,22 +194,23 @@ pub async fn run_at_commands(
     user_messages_with_at = user_messages_with_at.max(1);
 
     // Token limit works like this:
-    // - if there's only 1 user message at the bottom, it receives n_ctx/2 tokens for context
-    // - if there are N user messages, they receive n_ctx/2/N tokens each (and there's no taking from one to give to the other)
+    // - if there's only 1 user message at the bottom, it receives ntokens_minus_maxgen tokens for context
+    // - if there are N user messages, they receive ntokens_minus_maxgen/N tokens each (and there's no taking from one to give to the other)
     // This is useful to give prefix and suffix of the same file precisely the position necessary for FIM-like operation of a chat model
 
     let mut rebuilt_messages: Vec<ChatMessage> = post.messages.iter().take(user_msg_starts).map(|m| m.clone()).collect();
     for msg_idx in user_msg_starts..post.messages.len() {
         let mut user_posted = post.messages[msg_idx].content.clone();
         let user_posted_ntokens = count_tokens(&tokenizer.read().unwrap(), &user_posted);
-        let mut context_ctx_this_message = n_ctx / 2 / user_messages_with_at;
-        if context_ctx_this_message <= user_posted_ntokens {
-            context_ctx_this_message = 0;
+        let mut context_limit = ntokens_minus_maxgen / user_messages_with_at;
+        if context_limit <= user_posted_ntokens {
+            context_limit = 0;
         } else {
-            context_ctx_this_message -= user_posted_ntokens;
+            context_limit -= user_posted_ntokens;
         }
-        info!("msg {} user_posted {:?} that's {} tokens, that leaves {} tokens for context for this message (n_ctx={})",
-            msg_idx, user_posted, user_posted_ntokens, context_ctx_this_message, n_ctx);
+        info!("msg {} user_posted {:?} that's {} tokens", msg_idx, user_posted, user_posted_ntokens);
+        info!("that leaves {} tokens for context of this message (ntokens_minus_maxgen={})", context_limit, ntokens_minus_maxgen);
+
         let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut user_posted, &context).await;
         let mut messages_for_postprocessing = vec![];
         for cmd in valid_commands {
@@ -224,7 +227,7 @@ pub async fn run_at_commands(
             global_context.clone(),
             messages_for_postprocessing,
             tokenizer.clone(),
-            context_ctx_this_message
+            context_limit
         ).await;
         let reloaded = reload_files(global_context.clone(), &processed, false).await;
         for msg in reloaded {
@@ -241,6 +244,7 @@ pub async fn run_at_commands(
         }
     }
     post.messages = rebuilt_messages;
+    user_msg_starts
 }
 
 
