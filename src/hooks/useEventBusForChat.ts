@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useCallback } from "react";
+import { useEffect, useReducer, useCallback, useMemo } from "react";
 import {
   ChatContextFile,
   ChatMessages,
@@ -442,50 +442,60 @@ export const useEventBusForChat = () => {
     };
   }, [state, dispatch, postMessage]);
 
-  function askQuestion(question: string) {
-    // TODO: delete this if it works
-    // const filesInPreview: ChatContextFileMessage[] =
-    //   state.files_in_preview.length > 0
-    //     ? [["context_file", state.files_in_preview]]
-    //     : [];
-    const messages = state.chat.messages
-      // .concat(filesInPreview)
-      .concat([["user", question]]);
-    sendMessages(messages);
-  }
-
-  function sendMessages(
-    messages: ChatMessages,
-    attach_file = state.active_file.attach,
-  ) {
-    clearError();
+  const clearError = useCallback(() => {
     dispatch({
-      type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
-      payload: { id: state.chat.id, disable: true },
+      type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
+      payload: { id: state.chat.id },
     });
+  }, [state.chat.id]);
 
-    const payload: ChatThread = {
-      id: state.chat.id,
-      messages: messages,
-      title: state.chat.title,
-      model: state.chat.model,
-      attach_file,
-    };
+  const sendMessages = useCallback(
+    (messages: ChatMessages, attach_file = state.active_file.attach) => {
+      clearError();
+      dispatch({
+        type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
+        payload: { id: state.chat.id, disable: true },
+      });
 
-    dispatch({
-      type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES,
-      payload,
-    });
-    postMessage({
-      type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-      payload,
-    });
+      const payload: ChatThread = {
+        id: state.chat.id,
+        messages: messages,
+        title: state.chat.title,
+        model: state.chat.model,
+        attach_file,
+      };
 
-    dispatch({
-      type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET,
-      payload: { id: state.chat.id, snippet: "", language: "" },
-    });
-  }
+      dispatch({
+        type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES,
+        payload,
+      });
+      postMessage({
+        type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
+        payload,
+      });
+
+      dispatch({
+        type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET,
+        payload: { id: state.chat.id, snippet: "", language: "" },
+      });
+    },
+    [
+      clearError,
+      postMessage,
+      state.active_file.attach,
+      state.chat.id,
+      state.chat.model,
+      state.chat.title,
+    ],
+  );
+
+  const askQuestion = useCallback(
+    (question: string) => {
+      const messages = state.chat.messages.concat([["user", question]]);
+      sendMessages(messages);
+    },
+    [sendMessages, state.chat.messages],
+  );
 
   const requestCaps = useCallback(() => {
     postMessage({
@@ -517,25 +527,21 @@ export const useEventBusForChat = () => {
     }
   }, [state.error, maybeRequestCaps]);
 
-  function clearError() {
-    dispatch({
-      type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
-      payload: { id: state.chat.id },
-    });
-  }
+  const setChatModel = useCallback(
+    (model: string) => {
+      const action = {
+        type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL,
+        payload: {
+          id: state.chat.id,
+          model,
+        },
+      };
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
 
-  function setChatModel(model: string) {
-    const action = {
-      type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL,
-      payload: {
-        id: state.chat.id,
-        model,
-      },
-    };
-    dispatch(action);
-  }
-
-  function stopStreaming() {
+  const stopStreaming = useCallback(() => {
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING,
       payload: { id: state.chat.id },
@@ -544,61 +550,69 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
       payload: { id: state.chat.id },
     });
-  }
+  }, [postMessage, state.chat.id]);
 
-  const hasContextFile = state.chat.messages.some((message) =>
-    isChatContextFileMessage(message),
-  );
+  const hasContextFile = useMemo(() => {
+    return state.chat.messages.some((message) =>
+      isChatContextFileMessage(message),
+    );
+  }, [state.chat.messages]);
 
-  function backFromChat() {
+  const backFromChat = useCallback(() => {
     clearError();
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.BACK_FROM_CHAT,
       payload: { id: state.chat.id },
     });
-  }
+  }, [clearError, postMessage, state.chat.id]);
 
-  function openChatInNewTab() {
+  const openChatInNewTab = useCallback(() => {
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.OPEN_IN_CHAT_IN_TAB,
       payload: { id: state.chat.id },
     });
-  }
+  }, [postMessage, state.chat.id]);
 
-  function sendToSideBar() {
+  const sendToSideBar = useCallback(() => {
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.SEND_TO_SIDE_BAR,
       payload: { id: state.chat.id },
     });
-  }
+  }, [postMessage, state.chat.id]);
 
-  function sendReadyMessage() {
+  const sendReadyMessage = useCallback(() => {
     const action: ReadyMessage = {
       type: EVENT_NAMES_FROM_CHAT.READY,
       payload: { id: state.chat.id },
     };
     postMessage(action);
-  }
+  }, [postMessage, state.chat.id]);
 
-  function handleNewFileClick(value: string) {
-    const action: NewFileFromChat = {
-      type: EVENT_NAMES_FROM_CHAT.NEW_FILE,
-      payload: {
-        id: state.chat.id,
-        content: value,
-      },
-    };
+  const handleNewFileClick = useCallback(
+    (value: string) => {
+      const action: NewFileFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.NEW_FILE,
+        payload: {
+          id: state.chat.id,
+          content: value,
+        },
+      };
 
-    postMessage(action);
-  }
+      postMessage(action);
+    },
+    [postMessage, state.chat.id],
+  );
 
-  function handlePasteDiffClick(value: string) {
-    const action: PasteDiffFromChat = {
-      type: EVENT_NAMES_FROM_CHAT.PASTE_DIFF,
-      payload: { id: state.chat.id, content: value },
-    };
-    postMessage(action);
-  }
+  const handlePasteDiffClick = useCallback(
+    (value: string) => {
+      const action: PasteDiffFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.PASTE_DIFF,
+        payload: { id: state.chat.id, content: value },
+      };
+      postMessage(action);
+    },
+    [postMessage, state.chat.id],
+  );
 
   // TODO: hoise this hook to context so useCallback isn't  needed
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -623,36 +637,45 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
-  function setSelectedCommand(command: string) {
-    const action: SetSelectedAtCommand = {
-      type: EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND,
-      payload: { id: state.chat.id, command },
-    };
-    dispatch(action);
-  }
+  const setSelectedCommand = useCallback(
+    (command: string) => {
+      const action: SetSelectedAtCommand = {
+        type: EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND,
+        payload: { id: state.chat.id, command },
+      };
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
 
-  function removePreviewFileByName(name: string) {
-    const action: RemovePreviewFileByName = {
-      type: EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME,
-      payload: { id: state.chat.id, name },
-    };
+  const removePreviewFileByName = useCallback(
+    (name: string) => {
+      const action: RemovePreviewFileByName = {
+        type: EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME,
+        payload: { id: state.chat.id, name },
+      };
 
-    dispatch(action);
-  }
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
 
-  function retryQuestion(messages: ChatMessages) {
-    // set last_messages_length to messages.lent - 1
-    const setMessageLengthAction: setPreviousMessagesLength = {
-      type: EVENT_NAMES_TO_CHAT.SET_PREVIOUS_MESSAGES_LENGTH,
-      payload: {
-        id: state.chat.id,
-        message_length: messages.length > 0 ? messages.length - 1 : 0,
-      },
-    };
+  const retryQuestion = useCallback(
+    (messages: ChatMessages) => {
+      // set last_messages_length to messages.lent - 1
+      const setMessageLengthAction: setPreviousMessagesLength = {
+        type: EVENT_NAMES_TO_CHAT.SET_PREVIOUS_MESSAGES_LENGTH,
+        payload: {
+          id: state.chat.id,
+          message_length: messages.length > 0 ? messages.length - 1 : 0,
+        },
+      };
 
-    dispatch(setMessageLengthAction);
-    sendMessages(messages, false);
-  }
+      dispatch(setMessageLengthAction);
+      sendMessages(messages, false);
+    },
+    [sendMessages, state.chat.id],
+  );
 
   return {
     state,
