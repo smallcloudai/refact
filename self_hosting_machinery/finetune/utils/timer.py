@@ -1,5 +1,6 @@
-import logging
 import time
+
+from self_hosting_machinery.finetune.utils import traces
 
 
 class Timer:
@@ -15,7 +16,7 @@ class Timer:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         elapsed_time = time.time() - self._start_time
-        logging.info(self._message_template.format(
+        traces.log(self._message_template.format(
             time_s=elapsed_time,
             time_ms=elapsed_time * 1000
         ))

@@ -1,9 +1,10 @@
 import multiprocessing
-import os
+from functools import partial
 from typing import Any, Dict
 
 import psutil
 import torch
+import torch.distributed as dist
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
@@ -54,11 +55,11 @@ def get_ds_len_per_epoch(model_name, cfg_builder):
         model_name=model_name,
         encoding=encoding,
         num_workers=multiprocessing.cpu_count(),
-        batch_size=cfg_builder.cfg['micro_batch_size'],
+        batch_size=int(cfg_builder.cfg['micro_batch_size'] * dist.get_world_size()),
         ctx_size=cfg_builder.cfg['model_info']['ctx_size'],
         extra_options="quit_on_epoch=1"
     )
-    return sum(1 for _ in ds) * int(os.environ.get('WORLD_SIZE', 1))
+    return sum(1 for _ in ds) * int(dist.get_world_size())
 
 
 def create_train_dataloader(
@@ -69,7 +70,6 @@ def create_train_dataloader(
         num_workers: int,
         extra_options: str = "",
 ) -> DataLoader:
-    world_size = int(os.environ.get('WORLD_SIZE', 1))
     model_config = supported_models.config[model_name]
     ds_name = model_config["train_ds_pipeline"]["ds_name"]
     ds_opts = model_config["train_ds_pipeline"]["ds_opts"].format(
@@ -94,12 +94,12 @@ def create_train_dataloader(
 
     return DataLoader(
         dataset,
-        batch_size=batch_size * world_size,
-        num_workers=min(dataset.files_len - 1, num_workers),
+        batch_size=batch_size,
+        num_workers=0 if dist.get_world_size() > 1 else num_workers,
         shuffle=False,
         drop_last=True,
         pin_memory=False,
-        collate_fn=data_parallel_split_and_collate_fn
+        collate_fn=partial(data_parallel_split_and_collate_fn, global_batch_size=batch_size)
     )
 
 

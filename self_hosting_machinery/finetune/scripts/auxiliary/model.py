@@ -1,5 +1,4 @@
 import importlib
-import logging
 import os
 from collections import defaultdict
 from functools import partial
@@ -70,12 +69,12 @@ class ModelContext:
                     config=self.finetune_cfg,
                     model=self.model,
                     model_parameters=[p for p in self.model.parameters() if p.requires_grad],
-                    dist_init_required=True
+                    dist_init_required=False
                 )
                 self.use_deepspeed = True
 
-        logging.info("Allocated memory: %0.2fG" % (torch.cuda.max_memory_allocated() / 1e9))
-        summary(self.model, depth=4, col_names=['num_params', 'params_percent', 'trainable'])
+        traces.log("Allocated memory: %0.2fG" % (torch.cuda.max_memory_allocated() / 1e9))
+        traces.log(summary(self.model, depth=4, col_names=['num_params', 'params_percent', 'trainable']))
 
         self.loss_fn = partial(
             masked_loss,
@@ -264,7 +263,7 @@ class ModelContext:
             try:
                 mod(model)
             except Exception as e:
-                logging.error(f"Applying model modifier {mod_path} wasn't successful: {e}")
+                traces.log(f"Applying model modifier {mod_path} wasn't successful: {e}")
 
     def _set_low_gpu_mode(
             self,
@@ -272,7 +271,7 @@ class ModelContext:
     ):
         force_low_gpu_mem_mode = hasattr(self.model, "force_low_gpu_mem_mode") and self.model.force_low_gpu_mem_mode
         self.low_gpu_mem_mode = low_gpu_mode or force_low_gpu_mem_mode
-        logging.warning(f"Setting low_gpu_mem_mode={self.low_gpu_mem_mode} for the model")
+        traces.log(f"Setting low_gpu_mem_mode={self.low_gpu_mem_mode} for the model")
 
         if self.low_gpu_mem_mode:
             self.model.gradient_checkpointing_enable()

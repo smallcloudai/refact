@@ -10,6 +10,8 @@ from typing import Optional, Tuple
 
 from einops import einops
 
+from self_hosting_machinery.finetune.utils import traces
+
 
 @functools.lru_cache(maxsize=1)
 def _get_alibi_slopes(attn_heads: int, dev: str) -> th.Tensor:
@@ -591,9 +593,9 @@ def apply_flash_mha_to_refact_model(model):
 
     if th.cuda.get_device_capability() < (8, 0):
         model.force_low_gpu_mem_mode = True
-        logging.warning("Triton flash attention is not supported on gpus with cuda capability < 8")
+        traces.log("Triton flash attention is not supported on gpus with cuda capability < 8")
         return
 
-    logging.warning("Applying triton flash attention to the model")
+    traces.log("Applying triton flash attention to the model")
     for block in model.transformer.h:
         block.attn.forward = _forward.__get__(block.attn, type(block.attn))

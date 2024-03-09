@@ -5,6 +5,8 @@ import os
 import sys
 import traceback
 
+import torch.distributed as dist
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -134,6 +136,9 @@ def progress_dump(
 
 
 def log(*args) -> None:
+    if dist.is_initialized() and dist.get_rank() != 0:
+        return
+
     s = " ".join(map(str, args))
     if not _cx:
         # not configured, will work as print to stderr

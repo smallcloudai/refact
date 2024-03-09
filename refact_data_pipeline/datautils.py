@@ -1,8 +1,8 @@
-import os
 from collections import defaultdict
 from typing import Iterator, Tuple, Dict, Any, Callable, Iterable, List
 
 import torch as th
+import torch.distributed as dist
 
 from refact_data_pipeline import DatasetOpts
 
@@ -55,9 +55,11 @@ def collate_fn(records: List[Dict[str, Any]]) -> Dict[str, Any]:
     })
 
 
-def data_parallel_split_and_collate_fn(records: List[Dict[str, Any]]) -> Dict[str, Any]:
-    rank = int(os.environ.get('RANK', 0))
-    world_size = int(os.environ.get('WORLD_SIZE', 1))
+def data_parallel_split_and_collate_fn(records: List[Dict[str, Any]], global_batch_size: int) -> Dict[str, Any]:
+    rank = dist.get_rank()
+    world_size = dist.get_world_size()
+    effective_bs = global_batch_size // world_size
+    assert effective_bs * world_size == len(records), "effective batch size %s" % len(records)
 
     output = defaultdict(list)
     last_stats = None
@@ -69,8 +71,7 @@ def data_parallel_split_and_collate_fn(records: List[Dict[str, Any]]) -> Dict[st
             output[k].append(
                 th.tensor(record[k], dtype=_prefer_dtypes.get(k, th.int64))
             )
-    assert len(records) % world_size == 0, "effective batch size %s" % len(records)
-    effective_bs = len(records) // world_size
+
     from_, to = rank * effective_bs, (rank + 1) * effective_bs
     return _after_collate({
         "stats": last_stats,
