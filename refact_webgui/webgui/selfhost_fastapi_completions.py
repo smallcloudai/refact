@@ -364,40 +364,8 @@ class BaseCompletionsRouter(APIRouter):
             "human_readable_message": "API key verified",
         }
 
-    def _resolve_model_lora(self, model_name: str) -> Tuple[str, Optional[Dict[str, str]]]:
-        model_name, run_id, checkpoint_id = (*model_name.split(":"), None, None)[:3]
-
-        if model_name not in self._model_assigner.models_db:
-            return model_name, None
-
-        active_loras: List[Dict[str, str]] = get_active_loras({
-            model_name: self._model_assigner.models_db[model_name]
-        })[model_name].get("loras", [])
-
-        if not active_loras:
-            return model_name, None
-
-        if run_id is None:
-            run_id = active_loras[0]["run_id"]
-            checkpoint_id = active_loras[0]["checkpoint"]
-        else:
-            run_checkpoints = [
-                lora_info["checkpoint"]
-                for lora_info in active_loras
-                if lora_info["run_id"] == run_id
-            ]
-            if not run_checkpoints:
-                return model_name, None
-
-            if checkpoint_id is None:
-                checkpoint_id = run_checkpoints[0]
-            elif checkpoint_id not in run_checkpoints:
-                return model_name, None
-
-        return model_name, {
-            "run_id": run_id,
-            "checkpoint_id": checkpoint_id,
-        }
+    async def _resolve_model_lora(self, model_name: str, account: str) -> Tuple[str, Optional[Dict[str, str]]]:
+        raise NotImplementedError()
 
     async def _completions(self, post: NlpCompletion, authorization: str = Header(None)):
         account = await self._account_from_bearer(authorization)
@@ -406,7 +374,7 @@ class BaseCompletionsRouter(APIRouter):
         req = post.clamp()
         caps_version = self._model_assigner.config_inference_mtime()       # use mtime as a version, if that changes the client will know to refresh caps
 
-        model_name, lora_config = self._resolve_model_lora(post.model)
+        model_name, lora_config = await self._resolve_model_lora(post.model, account)
         model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
         if err_msg:
             log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
@@ -630,3 +598,38 @@ class CompletionsRouter(BaseCompletionsRouter):
             return self._session.header_authenticate(authorization)
         except BaseException as e:
             raise HTTPException(status_code=401, detail=str(e))
+
+    async def _resolve_model_lora(self, model_name: str, account: str) -> Tuple[str, Optional[Dict[str, str]]]:
+        model_name, run_id, checkpoint_id = (*model_name.split(":"), None, None)[:3]
+
+        if model_name not in self._model_assigner.models_db:
+            return model_name, None
+
+        active_loras: List[Dict[str, str]] = get_active_loras({
+            model_name: self._model_assigner.models_db[model_name]
+        })[model_name].get("loras", [])
+
+        if not active_loras:
+            return model_name, None
+
+        if run_id is None:
+            run_id = active_loras[0]["run_id"]
+            checkpoint_id = active_loras[0]["checkpoint"]
+        else:
+            run_checkpoints = [
+                lora_info["checkpoint"]
+                for lora_info in active_loras
+                if lora_info["run_id"] == run_id
+            ]
+            if not run_checkpoints:
+                return model_name, None
+
+            if checkpoint_id is None:
+                checkpoint_id = run_checkpoints[0]
+            elif checkpoint_id not in run_checkpoints:
+                return model_name, None
+
+        return model_name, {
+            "run_id": run_id,
+            "checkpoint_id": checkpoint_id,
+        }
