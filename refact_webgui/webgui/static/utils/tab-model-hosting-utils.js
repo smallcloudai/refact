@@ -99,7 +99,9 @@ export function add_finetune_selectors_factory(finetune_configs_and_runs, models
     dropdown_menu.id = "add-finetune-select-run-menu";
     dropdown_menu.classList.add("dropdown-menu");
 
-    let runs = finetune_configs_and_runs.finetune_runs.filter(run => run.model_name === model_name && run.checkpoints.length !== 0 && !existing_runs.includes(run.run_id));
+    let runs = finetune_configs_and_runs.finetune_runs.filter(
+        run => run.model_name === models_info[model_name].finetune_model
+        && run.checkpoints.length !== 0 && !existing_runs.includes(run.run_id));
     for (let run of runs) {
         let child = document.createElement("a");
         child.setAttribute("class", "dropdown-item add-finetune-select-run-di");
