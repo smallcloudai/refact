@@ -230,6 +230,11 @@ pub const KNOWN_MODELS: &str = r####"
                 "deepseek-coder/6.7b/instruct-finetune"
             ]
         }
+    },
+    "tokenizer_rewrite_path": {
+        "gpt-3.5-turbo": "Xenova/gpt-3.5-turbo-16k",
+        "gpt-3.5-turbo-1106": "Xenova/gpt-3.5-turbo-16k",
+        "gpt-4": "Xenova/gpt-4"
     }
 }
 "####;

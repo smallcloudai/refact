@@ -29,6 +29,7 @@ pub struct ModelRecord {
 pub struct ModelsOnly {
     pub code_completion_models: HashMap<String, ModelRecord>,
     pub code_chat_models: HashMap<String, ModelRecord>,
+    pub tokenizer_rewrite_path: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -187,6 +188,12 @@ fn _inherit_r1_from_r0(
     for k in r1.running_models.iter() {
         if !r1.code_completion_models.contains_key(k) && !r1.code_chat_models.contains_key(k) {
             info!("indicated as running, unknown model {}", k);
+        }
+    }
+
+    for k in r0.tokenizer_rewrite_path.keys() {
+        if !r1.tokenizer_rewrite_path.contains_key(k) {
+            r1.tokenizer_rewrite_path.insert(k.to_string(), r0.tokenizer_rewrite_path[k].clone());
         }
     }
 }
