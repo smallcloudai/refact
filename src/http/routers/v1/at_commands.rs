@@ -3,15 +3,19 @@ use axum::Extension;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use serde_json::{json, Value};
+use std::sync::RwLock as StdRwLock;
+use serde_json::json;
 use tokio::sync::RwLock as ARwLock;
 use strsim::jaro_winkler;
 use itertools::Itertools;
+use tokenizers::Tokenizer;
+
+use crate::cached_tokenizers;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::query::QueryLine;
-
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
+
 
 #[derive(Serialize, Deserialize, Clone)]
 struct CommandCompletionPost {
@@ -29,11 +33,8 @@ struct CommandCompletionResponse {
 #[derive(Serialize, Deserialize, Clone)]
 struct CommandPreviewPost {
     query: String,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-struct CommandPreviewResponse {
-    messages: Vec<Value>,
+    #[serde(default)]
+    model: String,
 }
 
 pub async fn handle_v1_command_completion(
@@ -70,29 +71,61 @@ pub async fn handle_v1_command_preview(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let context = AtCommandsContext::new(global_context.clone()).await;
     let post = serde_json::from_slice::<CommandPreviewPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let mut query = post.query.clone();
-    let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &context).await;
 
-    let mut preview_msgs = vec![];
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
+    let (model_name, recommended_model_record) = {
+        let caps_locked = caps.read().unwrap();
+        let tmp = crate::caps::which_model_to_use(
+                &caps_locked.code_chat_models,
+                &post.model,
+                &caps_locked.code_chat_default_model,
+            );
+        match tmp {
+            Ok(x) => (x.0, x.1.clone()),
+            Err(e) => {
+                tracing::warn!("can't find model: {}", e);
+                return Err(ScratchError::new(StatusCode::EXPECTATION_FAILED, format!("can't find model: {}", e)))?;
+            }
+        }
+    };
+    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = match cached_tokenizers::cached_tokenizer(caps.clone(), global_context.clone(), model_name.clone()).await {
+        Ok(x) => x,
+        Err(e) => {
+            tracing::warn!("can't load tokenizer for preview: {}", e);
+            return Err(ScratchError::new(StatusCode::EXPECTATION_FAILED, format!("can't load tokenizer for preview: {}", e)))?;
+        }
+    };
+
+    let mut messages_for_postprocessing = vec![];
+    let top_n = 5;
+    let at_context = AtCommandsContext::new(global_context.clone()).await;
+    let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &at_context).await;
     for cmd in valid_commands {
-        match cmd.command.lock().await.execute(&post.query, &cmd.args, 5, &context).await {
+        match cmd.command.lock().await.execute(&query, &cmd.args, top_n, &at_context).await {
             Ok(msg) => {
-                preview_msgs.push(json!(msg));
+                messages_for_postprocessing.push(msg);
             },
-            Err(_) => {}
+            Err(e) => {
+                tracing::warn!("can't execute command that indicated it can execute: {}", e);
+            }
         }
     }
-
-    let response = CommandPreviewResponse {
-        messages: preview_msgs,
-    };
+    let processed = crate::scratchpads::chat_utils_rag::postprocess_at_results(
+        global_context.clone(),
+        messages_for_postprocessing,
+        tokenizer_arc.clone(),
+        recommended_model_record.n_ctx,
+    ).await;
+    let reloaded = crate::scratchpads::chat_utils_rag::reload_files(global_context.clone(), &processed, false).await;
 
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(serde_json::to_string(&response).unwrap()))
+        .body(Body::from(serde_json::to_string(
+            &json!({"messages": reloaded, "model": model_name})
+        ).unwrap()))
         .unwrap())
 }
 
