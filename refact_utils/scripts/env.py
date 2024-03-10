@@ -17,6 +17,7 @@ CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
 CONFIG_ENUM_GPUS = os.path.join(DIR_CONFIG, "gpus_enum_result.out")
 CONFIG_BUSY_GPUS = os.path.join(DIR_CONFIG, "gpus_busy_result.out")
 CONFIG_INFERENCE = os.path.join(DIR_CONFIG, "inference.cfg")
+CONFIG_TOOLBOX = os.path.join(DIR_CONFIG, "toolbox.yaml")
 CONFIG_ACTIVE_LORA = os.path.join(DIR_CONFIG, "inference_active_lora.cfg")
 
 # Per project:
