@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 import asyncio
 
@@ -183,11 +184,24 @@ if __name__ == "__main__":
     parser.add_argument("--port", default=8008, type=int)
     args = parser.parse_args()
 
+    # Suppress messages like this:
+    # -- 45643 -- 20240310 08:58:23 WEBUI 127.0.0.1:55610 - "POST /infengine-v1/completions-wait-batch HTTP/1.1" 200
+    boring1 = re.compile("completions-wait-batch.* 200")
+    class CustomHandler(logging.Handler):
+        def emit(self, record):
+            log_entry = self.format(record)
+            if boring1.match(log_entry):
+                return
+            sys.stderr.write(log_entry)
+            sys.stderr.write("\n")
+            sys.stderr.flush()
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s WEBUI %(message)s',
         datefmt='%Y%m%d %H:%M:%S',
-        handlers=[logging.StreamHandler(stream=sys.stderr)])
+        handlers=[CustomHandler()]
+    )
 
     model_assigner = ModelAssigner()
     database = RefactDatabase()
