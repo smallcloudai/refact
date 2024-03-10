@@ -13,6 +13,7 @@ class PluginsRouter(APIRouter):
             {"label": "Stats", "tab": "stats"},
             {"label": "Chat", "tab": "chat"},
             {"label": "Credentials", "tab": "settings", "hamburger": True},
+            {"label": "Toolbox", "tab": "toolbox", "hamburger": True},
             {"label": "About", "tab": "about", "hamburger": True},
         ]
         self.add_api_route("/list-plugins", self._list_plugins, methods=["GET"])
