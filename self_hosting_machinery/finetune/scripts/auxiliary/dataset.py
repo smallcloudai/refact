@@ -59,7 +59,7 @@ def get_ds_len_per_epoch(model_name, cfg_builder):
         ctx_size=cfg_builder.cfg['model_info']['ctx_size'],
         extra_options="quit_on_epoch=1"
     )
-    return sum(1 for _ in ds) * int(dist.get_world_size())
+    return sum(1 for _ in ds)
 
 
 def create_train_dataloader(
