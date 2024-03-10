@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any
 
 import safetensors
 import torch
-from peft import PeftConfig, get_peft_model
+from peft import PeftConfig, get_peft_model, load_peft_weights, set_peft_model_state_dict
 from safetensors.torch import load_file
 
 from refact_utils.finetune.utils import get_active_loras
@@ -141,6 +141,7 @@ class LoraLoaderMixin:
         embeddings_path = load_path / "new_embeddings.safetensors"
 
         adapter_config = PeftConfig.from_pretrained(load_path)
+        adapter_config.init_lora_weights = False
         adapter_config.inference_mode = True
 
         if self.peft_model is None:
@@ -151,6 +152,10 @@ class LoraLoaderMixin:
 
         self.peft_model.add_adapter(tag, adapter_config)
         self.peft_model.set_adapter(tag)
+        adapters_weights = load_peft_weights(str(load_path), device='cuda')
+        missing, unexpected = set_peft_model_state_dict(self.peft_model, adapters_weights, adapter_name=tag)
+        if len(unexpected) > 0:
+            raise RuntimeError(f"Unexpected keys in finetune checkpoint: {unexpected}")
 
         if embeddings_path.exists():
             weights = safetensors.torch.load_file(str(embeddings_path))
