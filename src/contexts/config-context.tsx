@@ -6,7 +6,6 @@ export type Config = {
   tabbed?: boolean;
   lspUrl?: string;
   dev?: boolean;
-  statsHash?: string;
   themeProps?: ThemeProps;
   features: {
     statistics: boolean;

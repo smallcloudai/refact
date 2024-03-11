@@ -10,11 +10,14 @@ import {
   isSetLoadingStatisticData,
   isReceiveFillInTheMiddleDataError,
   isSetStatisticData,
+  isSetStatisticHash,
+  ReadyMessageFromStatistic,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useCallback, useEffect, useReducer } from "react";
 import { ChatContextFile, StatisticData } from "../services/refact";
-import { useConfig } from "../contexts/config-context";
+import { useEffectOnce } from "./useEffectOnce";
+import { useInterval } from "usehooks-ts";
 
 export type StatisticState = {
   statisticData: StatisticData | null;
@@ -24,10 +27,12 @@ export type StatisticState = {
     files: ChatContextFile[];
     error: string;
   };
+  hash: string;
 };
 
 function createInitialState(): StatisticState {
   return {
+    hash: "",
     statisticData: null,
     isLoading: true,
     error: "",
@@ -99,11 +104,17 @@ function reducer(
     };
   }
 
+  if (isSetStatisticHash(action)) {
+    return {
+      ...state,
+      hash: action.payload.data,
+    };
+  }
+
   return state;
 }
 
 export const useEventBusForStatistic = () => {
-  const config = useConfig();
   const postMessage = usePostMessage();
   const [state, dispatch] = useReducer(reducer, initialState);
 
@@ -114,13 +125,22 @@ export const useEventBusForStatistic = () => {
   };
 
   const fetchData = useCallback(() => {
+    if (!state.hash) return;
+
     dispatch({
       type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA,
     });
     postMessage({
       type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA,
     });
-  }, [postMessage]);
+  }, [postMessage, state.hash]);
+
+  useEffectOnce(() => {
+    const message: ReadyMessageFromStatistic = {
+      type: EVENT_NAMES_FROM_STATISTIC.READY,
+    };
+    postMessage(message);
+  });
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -134,7 +154,7 @@ export const useEventBusForStatistic = () => {
           payload: parsedStatisticData,
         });
 
-        cache.saveData(parsedStatisticData, config.statsHash);
+        cache.saveData(parsedStatisticData, state.hash);
 
         dispatch({
           type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
@@ -151,27 +171,32 @@ export const useEventBusForStatistic = () => {
     };
 
     window.addEventListener("message", listener);
-    const oneHour = 1000 * 60 * 60;
 
+    return () => {
+      window.removeEventListener("message", listener);
+    };
+  }, [fetchData, postMessage, state.hash]);
+
+  const oneHour = 1000 * 60 * 60;
+
+  useEffect(() => {
+    if (!state.hash) return;
     const cachedStatisticData = cache.getData<StatisticData>(
       oneHour,
-      config.statsHash,
+      state.hash,
     );
 
     if (cachedStatisticData) {
       dispatch({
-        type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA,
+        type: EVENT_NAMES_TO_STATISTIC.SET_STATISTIC_DATA,
         payload: cachedStatisticData,
       });
     } else {
       fetchData();
     }
-    setInterval(fetchData, oneHour);
+  }, [fetchData, state.hash, oneHour]);
 
-    return () => {
-      window.removeEventListener("message", listener);
-    };
-  }, [fetchData, postMessage, config.statsHash]);
+  useInterval(fetchData, oneHour);
 
   return {
     backFromStatistic,
@@ -196,7 +221,7 @@ function isCacheData<T>(data: unknown): data is CacheData<T> {
 }
 
 const cache = {
-  getData<T>(timeLimit: number, hash = ""): T | null {
+  getData<T>(timeLimit: number, hash: string): T | null {
     const str = localStorage.getItem("statisticData");
     if (!str) return null;
 

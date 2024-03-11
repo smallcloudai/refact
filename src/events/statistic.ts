@@ -2,6 +2,7 @@ import type { ChatContextFile, StatisticData } from ".";
 
 export enum EVENT_NAMES_FROM_STATISTIC {
   BACK_FROM_STATISTIC = "back_from_statistic",
+  READY = "statistic_ready",
 }
 
 export enum EVENT_NAMES_TO_STATISTIC {
@@ -10,6 +11,7 @@ export enum EVENT_NAMES_TO_STATISTIC {
   RECEIVE_STATISTIC_DATA_ERROR = "receive_statistic_data_error",
   SET_LOADING_STATISTIC_DATA = "set_loading_statistic_data",
   SET_STATISTIC_DATA = "set_statistic_data",
+  SET_STATISTIC_HASH = "set_statistic_hash",
 
   RECEIVE_FILL_IN_THE_MIDDLE_DATA = "fill_in_the_middle_data_response",
   RECEIVE_FILL_IN_THE_MIDDLE_DATA_ERROR = "fill_in_the_middle_data_error",
@@ -37,6 +39,17 @@ export function isActionFromStatistic(
   return Object.values(ALL_EVENT_NAMES).includes(action.type);
 }
 
+export interface ReadyMessageFromStatistic extends ActionFromStatistic {
+  type: EVENT_NAMES_FROM_STATISTIC.READY;
+}
+
+export function isReadyMessageFromStatistic(
+  action: unknown,
+): action is ReadyMessageFromStatistic {
+  if (!isActionFromStatistic(action)) return false;
+  return action.type === EVENT_NAMES_FROM_STATISTIC.READY;
+}
+
 export interface ActionToStatistic extends BaseAction {
   type: EVENT_NAMES_TO_STATISTIC;
 }
@@ -54,6 +67,11 @@ export interface SetLoadingStatisticData extends ActionToStatistic {
   type: EVENT_NAMES_TO_STATISTIC.SET_LOADING_STATISTIC_DATA;
 }
 
+export interface SetStatisticsHash extends ActionToStatistic {
+  type: EVENT_NAMES_TO_STATISTIC.SET_STATISTIC_HASH;
+  payload: { data: string };
+}
+
 export function isActionToStatistic(
   action: unknown,
 ): action is ActionToStatistic {
@@ -65,6 +83,19 @@ export function isActionToStatistic(
     ...EVENT_NAMES_TO_STATISTIC,
   };
   return Object.values(ALL_EVENT_NAMES).includes(action.type);
+}
+
+export function isSetStatisticHash(
+  action: unknown,
+): action is SetStatisticsHash {
+  if (!isActionToStatistic(action)) return false;
+  if (action.type !== EVENT_NAMES_TO_STATISTIC.SET_STATISTIC_HASH) return false;
+  if (!("payload" in action)) return false;
+  if (!action.payload) return false;
+  if (typeof action.payload !== "object") return false;
+  if (!("data" in action.payload)) return false;
+  if (typeof action.payload.data !== "string") return false;
+  return true;
 }
 
 export function isRequestDataForStatistic(
