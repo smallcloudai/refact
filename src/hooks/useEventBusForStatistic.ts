@@ -120,9 +120,6 @@ export const useEventBusForStatistic = () => {
   };
 
   const fetchData = useCallback(() => {
-    dispatch({
-      type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA,
-    });
     postMessage({
       type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA,
     });
@@ -138,11 +135,6 @@ export const useEventBusForStatistic = () => {
         dispatch({
           type: EVENT_NAMES_TO_STATISTIC.SET_STATISTIC_DATA,
           payload: parsedStatisticData,
-        });
-
-        dispatch({
-          type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
-          payload: { message: "" },
         });
       } else if (isReceiveDataForStatisticError(event.data)) {
         dispatch({
