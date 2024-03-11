@@ -1,4 +1,4 @@
-import type { ChatContextFile } from ".";
+import type { ChatContextFile, StatisticData } from ".";
 
 export enum EVENT_NAMES_FROM_STATISTIC {
   BACK_FROM_STATISTIC = "back_from_statistic",
@@ -9,6 +9,7 @@ export enum EVENT_NAMES_TO_STATISTIC {
   RECEIVE_STATISTIC_DATA = "receive_statistic_data",
   RECEIVE_STATISTIC_DATA_ERROR = "receive_statistic_data_error",
   SET_LOADING_STATISTIC_DATA = "set_loading_statistic_data",
+  SET_STATISTIC_DATA = "set_statistic_data",
 
   RECEIVE_FILL_IN_THE_MIDDLE_DATA = "fill_in_the_middle_data_response",
   RECEIVE_FILL_IN_THE_MIDDLE_DATA_ERROR = "fill_in_the_middle_data_error",
@@ -44,6 +45,11 @@ export interface RequestDataForStatistic extends ActionToStatistic {
   type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA;
 }
 
+export interface ReceiveDataForStatistic extends ActionToStatistic {
+  type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA;
+  payload: { data: string };
+}
+
 export interface SetLoadingStatisticData extends ActionToStatistic {
   type: EVENT_NAMES_TO_STATISTIC.SET_LOADING_STATISTIC_DATA;
 }
@@ -70,9 +76,16 @@ export function isRequestDataForStatistic(
 
 export function isReceiveDataForStatistic(
   action: unknown,
-): action is RequestDataForStatistic {
+): action is ReceiveDataForStatistic {
   if (!isActionToStatistic(action)) return false;
-  return action.type === EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA;
+  if (action.type !== EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA)
+    return false;
+  if (!("payload" in action)) return false;
+  if (!action.payload) return false;
+  if (typeof action.payload !== "object") return false;
+  if (!("data" in action.payload)) return false;
+  if (typeof action.payload.data !== "string") return false;
+  return true;
 }
 
 export interface ReceiveDataForStatisticError extends ActionToStatistic {
@@ -106,6 +119,18 @@ export function isReceiveFillInTheMiddleData(
   if (typeof action.payload !== "object") return false;
   if (!("files" in action.payload)) return false;
   return Array.isArray(action.payload.files);
+}
+
+export interface SetStatisticsData extends ActionToStatistic {
+  type: EVENT_NAMES_TO_STATISTIC.SET_STATISTIC_DATA;
+  payload: StatisticData;
+}
+
+export function isSetStatisticData(
+  action: unknown,
+): action is SetStatisticsData {
+  if (!isActionToStatistic(action)) return false;
+  return action.type === EVENT_NAMES_TO_STATISTIC.SET_STATISTIC_DATA;
 }
 
 export interface ReceiveFillInTheMiddleDataError extends ActionToStatistic {

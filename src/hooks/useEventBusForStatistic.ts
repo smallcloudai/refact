@@ -9,6 +9,7 @@ import {
   isRequestDataForStatistic,
   isSetLoadingStatisticData,
   isReceiveFillInTheMiddleDataError,
+  isSetStatisticData,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useCallback, useEffect, useReducer } from "react";
@@ -73,7 +74,15 @@ function reducer(
   if (isReceiveDataForStatistic(action)) {
     return {
       ...state,
-      statisticData: action.payload ? (action.payload as StatisticData) : null,
+      isLoading: false,
+      error: "",
+    };
+  }
+
+  if (isSetStatisticData(action)) {
+    return {
+      ...state,
+      statisticData: action.payload,
       isLoading: false,
       error: "",
     };
@@ -111,9 +120,6 @@ export const useEventBusForStatistic = () => {
   };
 
   const fetchData = useCallback(() => {
-    dispatch({
-      type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA,
-    });
     postMessage({
       type: EVENT_NAMES_TO_STATISTIC.REQUEST_STATISTIC_DATA,
     });
@@ -122,22 +128,14 @@ export const useEventBusForStatistic = () => {
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (isReceiveDataForStatistic(event.data)) {
-        if (event.data.payload?.data !== undefined) {
-          const parsedStatisticData = JSON.parse(
-            event.data.payload.data,
-          ) as StatisticData;
-          dispatch({
-            type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA,
-            payload: parsedStatisticData,
-          });
+        const parsedStatisticData = JSON.parse(
+          event.data.payload.data,
+        ) as StatisticData;
 
-          cache.saveData(parsedStatisticData);
-
-          dispatch({
-            type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
-            payload: { message: "" },
-          });
-        }
+        dispatch({
+          type: EVENT_NAMES_TO_STATISTIC.SET_STATISTIC_DATA,
+          payload: parsedStatisticData,
+        });
       } else if (isReceiveDataForStatisticError(event.data)) {
         dispatch({
           type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
@@ -149,74 +147,16 @@ export const useEventBusForStatistic = () => {
     };
 
     window.addEventListener("message", listener);
-    const oneHour = 1000 * 60 * 60;
-
-    const cachedStatisticData = cache.getData<StatisticData>(oneHour);
-
-    if (cachedStatisticData) {
-      dispatch({
-        type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA,
-        payload: cachedStatisticData,
-      });
-    } else {
-      fetchData();
-    }
-    setInterval(fetchData, oneHour);
 
     return () => {
       window.removeEventListener("message", listener);
     };
   }, [fetchData, postMessage]);
 
+  useEffect(fetchData, [fetchData]);
+
   return {
     backFromStatistic,
     state,
   };
-};
-
-type CacheData<T> = {
-  created_at: number;
-  data: T;
-};
-
-function isCacheData<T>(data: unknown): data is CacheData<T> {
-  return (
-    data !== null &&
-    typeof data === "object" &&
-    "created_at" in data &&
-    "data" in data
-  );
-}
-
-const cache = {
-  getData<T>(timeLimit: number) {
-    const str = localStorage.getItem("statisticData");
-    if (!str) return null;
-
-    try {
-      const data: unknown = JSON.parse(str);
-      if (!isCacheData<T>(data)) return null;
-
-      const now = Date.now();
-      const limit = now - timeLimit;
-
-      if (data.created_at < limit) {
-        localStorage.clear();
-        return null;
-      }
-
-      return data.data;
-    } catch (e) {
-      localStorage.clear();
-      return null;
-    }
-  },
-  saveData<T>(data: T) {
-    const payload: CacheData<T> = {
-      created_at: Date.now(),
-      data,
-    };
-
-    localStorage.setItem("statisticData", JSON.stringify(payload));
-  },
 };
