@@ -116,21 +116,21 @@ class LoraLoaderMixin:
         if is_new_format:
             adapter_config = json.load(open(load_path / "adapter_config.json", 'r'))
             lora_cfg = {
-                "lora_target_modules": adapter_config["target_modules"],
                 "lora_r": adapter_config["r"],
                 "lora_alpha": adapter_config["lora_alpha"],
                 "lora_dropout": adapter_config["lora_dropout"]
             }
+            lora_target_modules = adapter_config["target_modules"]
         else:
             old_format_finetune_cp = _load_filename(load_path / "mp_rank_00_model_states.pt")
             lora_cfg = old_format_finetune_cp['ds_config']['model_info']['lora']
-
-        if reinstall_lora:
-            freeze_exceptions, lora_target_modules = map_model_specific_params(
+            _, lora_target_modules = map_model_specific_params(
                 model_name=self.model_name,
                 freeze_exceptions=[],
                 lora_target_modules=lora_cfg.pop('lora_target_modules')
             )
+
+        if reinstall_lora:
             LoraMixin.apply_lora(
                 self.model,
                 lora_target_modules=lora_target_modules,
