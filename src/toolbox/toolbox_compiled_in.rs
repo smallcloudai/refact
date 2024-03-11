@@ -90,7 +90,7 @@ toolbox_commands:
       content: "%DEFAULT_PROMPT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRewrite this specific code block to fix typos, especially inside strings and comments:\n\n```\n%CODE_SELECTION%```\n"
-  new:
+  gen:
     selection_unwanted: true
     insert_at_cursor: true
     description: "Create new code, provide a description after the command"
