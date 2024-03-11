@@ -703,13 +703,62 @@ h3 {
 
 .model-finetune-item {
     position: relative;
+    display: flex;
+    margin-bottom: 5px;
+    align-items: center;
+    width: 70%;
+    background-color: #EEEEEEFF; /* or #f7f7f9 */
+    border-radius: 5px;
+    padding: 5px;
 }
+
+.model-finetune-item-inner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.model-finetune-item-upper-row {
+    display: flex;
+    flex-direction: row
+}
+
+.btn-remove-run {
+    border: none;
+    padding: 0;
+}
+
+.add-finetune-btn {
+    padding: 0 5px;
+}
+
 .model-finetune-item-run {
     /*opacity: 0.35;*/
     font-size: 15px;
     display: block;
-    margin-top: -6px;
+    /*margin-top: -6px;*/
     font-weight: bold;
+}
+
+.tech-msg {
+    opacity: 0.35;
+    font-size: 1rem;
+    display: block;
+    margin: 0;
+    font-weight: bold;
+    width: 100%;
+
+}
+
+.dropdown-panel-add-finetune {
+    display: none;
+    position: absolute;
+    z-index: 1;
+    background-color: #f9f9f9;
+    min-width: 240px;
+    box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+    padding: 12px 16px;
+    cursor: pointer;
 }
 .model-finetune-item-checkpoint {
     opacity: 0.35;
@@ -717,6 +766,7 @@ h3 {
     display: block;
     margin-top: -3px;
     font-weight: bold;
+    width: 100%;
 }
 
 .table-checkpoints tr:hover .btn-hover {
