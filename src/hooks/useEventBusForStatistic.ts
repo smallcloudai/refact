@@ -9,10 +9,12 @@ import {
   isRequestDataForStatistic,
   isSetLoadingStatisticData,
   isReceiveFillInTheMiddleDataError,
+  isSetStatisticData,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useCallback, useEffect, useReducer } from "react";
 import { ChatContextFile, StatisticData } from "../services/refact";
+import { useConfig } from "../contexts/config-context";
 
 export type StatisticState = {
   statisticData: StatisticData | null;
@@ -70,10 +72,10 @@ function reducer(
     };
   }
 
-  if (isReceiveDataForStatistic(action)) {
+  if (isSetStatisticData(action)) {
     return {
       ...state,
-      statisticData: action.payload ? (action.payload as StatisticData) : null,
+      statisticData: action.payload,
       isLoading: false,
       error: "",
     };
@@ -101,6 +103,7 @@ function reducer(
 }
 
 export const useEventBusForStatistic = () => {
+  const config = useConfig();
   const postMessage = usePostMessage();
   const [state, dispatch] = useReducer(reducer, initialState);
 
@@ -122,22 +125,21 @@ export const useEventBusForStatistic = () => {
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (isReceiveDataForStatistic(event.data)) {
-        if (event.data.payload?.data !== undefined) {
-          const parsedStatisticData = JSON.parse(
-            event.data.payload.data,
-          ) as StatisticData;
-          dispatch({
-            type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA,
-            payload: parsedStatisticData,
-          });
+        const parsedStatisticData = JSON.parse(
+          event.data.payload.data,
+        ) as StatisticData;
 
-          cache.saveData(parsedStatisticData);
+        dispatch({
+          type: EVENT_NAMES_TO_STATISTIC.SET_STATISTIC_DATA,
+          payload: parsedStatisticData,
+        });
 
-          dispatch({
-            type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
-            payload: { message: "" },
-          });
-        }
+        cache.saveData(parsedStatisticData, config.statsHash);
+
+        dispatch({
+          type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
+          payload: { message: "" },
+        });
       } else if (isReceiveDataForStatisticError(event.data)) {
         dispatch({
           type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
@@ -151,7 +153,10 @@ export const useEventBusForStatistic = () => {
     window.addEventListener("message", listener);
     const oneHour = 1000 * 60 * 60;
 
-    const cachedStatisticData = cache.getData<StatisticData>(oneHour);
+    const cachedStatisticData = cache.getData<StatisticData>(
+      oneHour,
+      config.statsHash,
+    );
 
     if (cachedStatisticData) {
       dispatch({
@@ -166,7 +171,7 @@ export const useEventBusForStatistic = () => {
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [fetchData, postMessage]);
+  }, [fetchData, postMessage, config.statsHash]);
 
   return {
     backFromStatistic,
@@ -176,6 +181,7 @@ export const useEventBusForStatistic = () => {
 
 type CacheData<T> = {
   created_at: number;
+  hash: string;
   data: T;
 };
 
@@ -184,12 +190,13 @@ function isCacheData<T>(data: unknown): data is CacheData<T> {
     data !== null &&
     typeof data === "object" &&
     "created_at" in data &&
-    "data" in data
+    "data" in data &&
+    "hash" in data
   );
 }
 
 const cache = {
-  getData<T>(timeLimit: number) {
+  getData<T>(timeLimit: number, hash = ""): T | null {
     const str = localStorage.getItem("statisticData");
     if (!str) return null;
 
@@ -200,7 +207,7 @@ const cache = {
       const now = Date.now();
       const limit = now - timeLimit;
 
-      if (data.created_at < limit) {
+      if (data.created_at < limit || data.hash !== hash) {
         localStorage.clear();
         return null;
       }
@@ -211,10 +218,11 @@ const cache = {
       return null;
     }
   },
-  saveData<T>(data: T) {
+  saveData<T>(data: T, hash = "") {
     const payload: CacheData<T> = {
       created_at: Date.now(),
       data,
+      hash,
     };
 
     localStorage.setItem("statisticData", JSON.stringify(payload));
