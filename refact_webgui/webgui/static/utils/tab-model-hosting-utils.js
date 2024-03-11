@@ -1,66 +1,54 @@
-export function finetune_info_factory(index, models_info, finetune_info, finetune_runs, multiple_loras) {
-    let enabled_finetunes = [];
+import {general_error} from "../error.js";
 
-    if (models_info[index].hasOwnProperty('finetune_info') && models_info[index].finetune_info) {
-        for (let run of models_info[index].finetune_info) {
-            let enabled_finetune = document.createElement("div");
-            enabled_finetune.dataset.run = run.run_id;
-            enabled_finetune.dataset.checkpoint = run.checkpoint;
-            enabled_finetune_factory(enabled_finetune, index);
-            enabled_finetunes.push(enabled_finetune);
-        }
+export function finetune_switch_activate(finetune_model, mode, run_id, checkpoint) {
+    let send_this = {
+        "model": finetune_model,
+        "mode": mode,
+        "run_id": run_id,
+        "checkpoint": checkpoint,
     }
-
-    let tech_msg = document.createElement("div");
-    tech_msg.classList = "model-finetune-item-checkpoint";
-    tech_msg.style = "font-size: 1em; margin: 0";
-
-    if (!models_info[index].has_finetune) {
-        tech_msg.innerText = "not supported";
-        finetune_info.appendChild(tech_msg);
-    } else if (finetune_runs.length == 0) {
-        tech_msg.innerText = "no runs";
-        finetune_info.appendChild(tech_msg);
-    } else {
-        let finetune_info_children = document.createElement("div");
-        for (let child of enabled_finetunes) {
-            finetune_info_children.appendChild(child);
+    return fetch("/tab-host-modify-loras", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(send_this)
+    })
+    .then(function (response) {
+        if (!response.ok) {
+            return response.json().then(function(json) {
+                throw new Error(json.detail);
+            });
         }
-        finetune_info.appendChild(finetune_info_children);
-
-        const selected_runs = models_info[index].finetune_info.map(run => run.run_id);
-        const not_selected_runs = finetune_runs.filter(run => !selected_runs.includes(run.run_id));
-        if (not_selected_runs.length > 0 && (selected_runs.length === 0 || multiple_loras || true)) {
-            let add_finetune_btn = document.createElement("button");
-            add_finetune_btn.classList = "btn btn-sm btn-outline-primary mt-1 add-finetune-btn";
-            add_finetune_btn.style = "padding: 0 5px";
-            add_finetune_btn.dataset.model = index;
-            add_finetune_btn.innerText = 'Add Run';
-            finetune_info.appendChild(add_finetune_btn);
-        }
-    }
+        return response.ok;
+    })
+    .catch(function (error) {
+        console.log('tab-finetune-activate',error);
+        general_error(error);
+        return false;
+    });
 }
 
-function enabled_finetune_factory(enabled_finetune, model) {
-    enabled_finetune.innerHTML = `
-        <div class="model-finetune-item" style="display: flex; align-items: center; margin-bottom: 5px" data-run="${enabled_finetune.dataset.run}">
-            <button class="btn btn-outline-danger btn-sm btn-remove-run" style="padding: 0 3px" 
-            data-run="${enabled_finetune.dataset.run}" 
-            data-checkpoint="${enabled_finetune.dataset.checkpoint}"
-            data-model="${model}"
-            >
-                <i class="bi bi-trash3-fill" style="font-size: 1em"></i>
-            </button>
-            <div style="display: flex; flex-direction: column; margin-left: 10px;">
-                <div class="model-finetune-item-run">
-                    Run: ${enabled_finetune.dataset.run}
-                </div>
-                <div class="model-finetune-item-checkpoint">
-                    Checkpoint: ${enabled_finetune.dataset.checkpoint}
-                </div>
-            </div>
-        </div>
-    `;
+export function get_spinner() {
+    const spinner = document.createElement('div');
+    const spinner_span = document.createElement('span');
+    spinner.className = 'spinner-border';
+    spinner.role ='status';
+    spinner_span.className ='sr-only';
+    spinner.style.scale = '0.5';
+    spinner.appendChild(spinner_span);
+    return spinner;
+}
+
+export function set_finetune_info_into_state(model_name, is_enabled) {
+    const finetune_info = document.querySelector(`.model-finetune-info[data-model="${model_name}"]`);
+    if (is_enabled) {
+        finetune_info.style.pointerEvents = 'auto';
+        finetune_info.style.opacity = '1';
+    } else {
+        finetune_info.style.pointerEvents = 'none';
+        finetune_info.style.opacity = '0.5';
+    }
 }
 
 export function add_finetune_selectors_factory(finetune_configs_and_runs, models_info, model_name) {
@@ -72,8 +60,9 @@ export function add_finetune_selectors_factory(finetune_configs_and_runs, models
     let el = document.createElement("div");
     let title = document.createElement("div");
     title.classList.add("model-finetune-item-run")
-    title.style.marginTop = "10px"
-    title.innerText = "Adding Run";
+    title.style.marginTop = "5px"
+    title.style.marginBottom = "10px"
+    title.innerText = "Finetune for " + model_name;
     el.appendChild(title);
 
     let dropdown_run = document.createElement("div");
@@ -83,7 +72,7 @@ export function add_finetune_selectors_factory(finetune_configs_and_runs, models
     dropdown_btn_div.style = "display: flex; align-items: center;";
     let text = document.createElement("div");
     text.style = "font-size: 1em; margin-right: 5px;";
-    text.innerText = "Run: ";
+    text.innerText = "Finetune: ";
     dropdown_btn_div.appendChild(text);
     let dropdown_btn = document.createElement("button");
     dropdown_btn.id = "add-finetune-select-run-btn";
@@ -91,7 +80,7 @@ export function add_finetune_selectors_factory(finetune_configs_and_runs, models
     dropdown_btn.type = "button";
     dropdown_btn.dataset.toggle = "dropdown";
     dropdown_btn.style = "padding: 0; font-size: 1em; text-align: center;";
-    dropdown_btn.innerHTML = "Select Run";
+    dropdown_btn.innerHTML = "Select Finetune";
     dropdown_btn_div.appendChild(dropdown_btn);
     dropdown_run.appendChild(dropdown_btn_div);
 
@@ -130,19 +119,19 @@ export function add_finetune_selectors_factory(finetune_configs_and_runs, models
     el.appendChild(dropdown_run.cloneNode(true));
 
     let control_btns_div = document.createElement("div");
-    control_btns_div.style = "display: flex; align-items: center; margin-top: 7px;";
+    control_btns_div.style = "display: flex; align-items: center; margin-top: 14px;";
 
     let add_btn = document.createElement("button");
     add_btn.id = "finetune-select-run-btn-add";
     add_btn.classList = "btn btn-outline-primary";
     add_btn.style = "padding: 0px 5px; margin-right: 7px;";
-    add_btn.innerText = "add";
+    add_btn.innerText = "Ok";
 
     let discard_btn = document.createElement("button");
     discard_btn.id = "finetune-select-run-btn-discard";
     discard_btn.classList = "btn btn-outline-secondary";
     discard_btn.style = "padding: 0px 5px;"
-    discard_btn.innerText = "discard";
+    discard_btn.innerText = "Cancel";
 
     control_btns_div.appendChild(add_btn);
     control_btns_div.appendChild(discard_btn);
