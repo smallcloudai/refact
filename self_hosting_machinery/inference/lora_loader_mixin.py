@@ -1,13 +1,11 @@
 import json
 import logging
-import os
 import struct
 from pathlib import Path
 from typing import Optional, Dict, Any
 
 import safetensors
 import torch
-from peft import PeftConfig, get_peft_model, load_peft_weights, set_peft_model_state_dict
 from safetensors.torch import load_file
 
 from refact_utils.finetune.utils import get_active_loras
@@ -49,13 +47,6 @@ class LoraLoaderMixin:
         raise NotImplementedError()
 
     @property
-    def peft_model(self) -> Optional[torch.nn.Module]:
-        raise NotImplementedError()
-
-    def set_peft_model(self, model: torch.nn.Module):
-        raise NotImplementedError()
-
-    @property
     def model_name(self) -> str:
         raise NotImplementedError()
 
@@ -76,16 +67,11 @@ class LoraLoaderMixin:
         if load_lora is not None:
             self.lora_switch(lora_checkpoint_dir=load_lora)
 
-    def _disable_lora(self):
-        if self.peft_model is not None:
-            self.peft_model.disable_adapter()
-        LoraMixin.exclude_lora(self.model)
-
     def lora_switch(self, *, lora_checkpoint_dir: str):
         on = not not lora_checkpoint_dir
         if self._lora_on and not on:
             log("deactivating lora")
-            self._disable_lora()
+            LoraMixin.exclude_lora(self.model)
             self.load_embeddings()
             self._lora_on = False
         elif not self._lora_on and on:
@@ -100,7 +86,7 @@ class LoraLoaderMixin:
             except RuntimeError as e:
                 log("failed to quick load lora checkpoint: %s" % e)
                 log("will try to remove lora and add again")
-                self._disable_lora()
+                LoraMixin.exclude_lora(self.model)
                 self._lora_checkpoint_dir = ""
                 self._lora_on = False
                 self.load_checkpoint(lora_checkpoint_dir, reinstall_lora=True)
@@ -120,70 +106,26 @@ class LoraLoaderMixin:
             load_path: str,
             reinstall_lora: bool = False
     ):
-        load_cp_paths = [p for p in Path(load_path).iterdir() if p.suffix in {".pt", ".pth", ".safetensors"}]
-        names = set(p.name for p in load_cp_paths)
-        if "adapter_model.safetensors" in names:
-            self._load_checkpoint(load_path, reinstall_lora)
-        else:
-            self._legacy_load_checkpoint(load_path, reinstall_lora)
-
-    def _load_checkpoint(
-            self,
-            load_path: str,
-            reinstall_lora: bool = False
-    ):
-        log("Loading peft format checkpoint")
-
-        LoraMixin.exclude_lora(self.model)
-
         load_path = Path(load_path)
-        tag = f"{load_path.parent.parent.name}_{load_path.name}".replace(".", "_")
-        embeddings_path = load_path / "new_embeddings.safetensors"
-
-        adapter_config = PeftConfig.from_pretrained(load_path)
-        adapter_config.init_lora_weights = False
-        adapter_config.inference_mode = True
-
-        if self.peft_model is None:
-            self.set_peft_model(get_peft_model(self.model, adapter_config, tag))
-
-        if reinstall_lora:
-            self.peft_model.disable_adapter()
-
-        self.peft_model.add_adapter(tag, adapter_config)
-        self.peft_model.set_adapter(tag)
-        adapters_weights = load_peft_weights(str(load_path), device='cuda')
-        missing, unexpected = set_peft_model_state_dict(self.peft_model, adapters_weights, adapter_name=tag)
-        if len(unexpected) > 0:
-            raise RuntimeError(f"Unexpected keys in finetune checkpoint: {unexpected}")
-
-        if embeddings_path.exists():
-            weights = safetensors.torch.load_file(str(embeddings_path))
-            missing, unexpected = self.peft_model.load_state_dict(weights, strict=False)
-            if len(unexpected) > 0:
-                raise RuntimeError(f"Unexpected keys in finetune checkpoint: {unexpected}")
-
-    def _legacy_load_checkpoint(
-            self,
-            load_path: str,
-            reinstall_lora: bool = False
-    ):
-        log("Loading legacy format checkpoint")
-
-        if self.peft_model is not None:
-            self.peft_model.disable_adapter()
-
-        load_cp_paths = [p for p in Path(load_path).iterdir() if p.suffix in {".pt", ".pth", ".safetensors"}]
+        load_cp_paths = [p for p in load_path.iterdir() if p.suffix in {".pt", ".pth", ".safetensors"}]
         if len(load_cp_paths) == 0:
             raise FileNotFoundError(f"No checkpoint found in {load_path}")
 
-        finetune_cps = [_load_filename(p) for p in load_cp_paths]
-        if len(finetune_cps) > 1:
-            raise NotImplementedError("Loading of sharded checkpoint is not implemented")
-        finetune_cp = finetune_cps[0]
+        is_new_format = "adapter_config.json" in set(p.name for p in load_path.iterdir())
+        old_format_finetune_cp = None
+        if is_new_format:
+            adapter_config = json.load(open(load_path / "adapter_config.json", 'r'))
+            lora_cfg = {
+                "lora_target_modules": adapter_config["target_modules"],
+                "lora_r": adapter_config["r"],
+                "lora_alpha": adapter_config["lora_alpha"],
+                "lora_dropout": adapter_config["lora_dropout"]
+            }
+        else:
+            old_format_finetune_cp = _load_filename(load_path / "mp_rank_00_model_states.pt")
+            lora_cfg = old_format_finetune_cp['ds_config']['model_info']['lora']
 
         if reinstall_lora:
-            lora_cfg = finetune_cp['ds_config']['model_info']['lora']
             freeze_exceptions, lora_target_modules = map_model_specific_params(
                 model_name=self.model_name,
                 freeze_exceptions=[],
@@ -195,6 +137,22 @@ class LoraLoaderMixin:
                 **lora_cfg
             )
 
-        missing, unexpected = self.model.load_state_dict(finetune_cp['module'], strict=False)
-        if len(unexpected) > 0:
-            raise RuntimeError(f"Unexpected keys in finetune checkpoint: {unexpected}")
+        if is_new_format:
+            embeddings_path = load_path / "new_embeddings.safetensors"
+            finetune_weights = safetensors.torch.load_file(Path(load_path) / "adapter_model.safetensors")
+            finetune_weights = {k.replace("base_model.model.", ""): v for k, v in finetune_weights.items()}
+            missing, unexpected = self.model.load_state_dict(finetune_weights, strict=False)
+            if len(unexpected) > 0:
+                raise RuntimeError(f"Unexpected keys in finetune checkpoint: {unexpected}")
+
+            if embeddings_path.exists():
+                weights = safetensors.torch.load_file(str(embeddings_path))
+                weights = {k.replace("base_model.model.", ""): v for k, v in weights.items()}
+                missing, unexpected = self.model.load_state_dict(weights, strict=False)
+                if len(unexpected) > 0:
+                    raise RuntimeError(f"Unexpected keys in finetune checkpoint: {unexpected}")
+        else:
+            assert old_format_finetune_cp is not None
+            missing, unexpected = self.model.load_state_dict(old_format_finetune_cp['module'], strict=False)
+            if len(unexpected) > 0:
+                raise RuntimeError(f"Unexpected keys in finetune checkpoint: {unexpected}")
