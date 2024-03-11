@@ -10,7 +10,6 @@ export enum EVENT_NAMES_TO_STATISTIC {
   RECEIVE_STATISTIC_DATA_ERROR = "receive_statistic_data_error",
   SET_LOADING_STATISTIC_DATA = "set_loading_statistic_data",
   SET_STATISTIC_DATA = "set_statistic_data",
-  SET_STATISTIC_HASH = "set_statistic_hash",
 
   RECEIVE_FILL_IN_THE_MIDDLE_DATA = "fill_in_the_middle_data_response",
   RECEIVE_FILL_IN_THE_MIDDLE_DATA_ERROR = "fill_in_the_middle_data_error",

@@ -71,6 +71,14 @@ function reducer(
     };
   }
 
+  if (isReceiveDataForStatistic(action)) {
+    return {
+      ...state,
+      isLoading: false,
+      error: "",
+    };
+  }
+
   if (isSetStatisticData(action)) {
     return {
       ...state,
