@@ -23,7 +23,7 @@ function makeConfig(library: "browser" | "node") {
         emptyOutDir: true,
         outDir: OUT_DIR,
         copyPublicDir: false,
-        sourcemap: library === "browser" ? "inline" : false,
+        sourcemap: library === "browser",
         rollupOptions: {
           // TODO: remove when this issue is closed https://github.com/vitejs/vite/issues/15012
           onwarn(warning, defaultHandler) {
