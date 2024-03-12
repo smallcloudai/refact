@@ -726,6 +726,8 @@ h3 {
 .btn-remove-run {
     border: none;
     padding: 0;
+    margin-right: 4px;
+    font-size: 1rem;
 }
 
 .add-finetune-btn {
