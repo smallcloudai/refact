@@ -230,7 +230,8 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "deepseek-coder/33b/instruct",
-                "deepseek-coder/6.7b/instruct-finetune"
+                "deepseek-coder/6.7b/instruct-finetune",
+                "deepseek-coder/6.7b/instruct-finetune/vllm"
             ]
         }
     },
