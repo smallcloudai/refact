@@ -9,3 +9,4 @@ export * from "./useEffectOnce";
 export * from "./usePostMessage";
 export * from "./useUndoRedo";
 export * from "./useEventBusForStatistic";
+export * from "./useMutationObserver";

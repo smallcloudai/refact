@@ -9,6 +9,7 @@ import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
 import { useConfig } from "../../contexts/config-context";
+import { useMutationObserver } from "../../hooks";
 
 export type ThemeProps = {
   children: JSX.Element;
@@ -72,46 +73,34 @@ const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
 
 export const Theme: React.FC<ThemeProps> = (props) => {
   const { host, themeProps } = useConfig();
-  const [isDarkMode, setDarkMode] = React.useState(false);
+  const [appearance, setAppearance] = React.useState<
+    "dark" | "light" | "inherit"
+  >("inherit");
 
   const handleChange = useCallback(() => {
     const maybeDark = document.body.classList.contains("vscode-dark");
-    setDarkMode(() => maybeDark);
-  }, [setDarkMode]);
+    const maybeLight = document.body.classList.contains("vscode-light");
+    if (maybeDark) {
+      setAppearance("dark");
+    } else if (maybeLight) {
+      setAppearance("light");
+    } else {
+      setAppearance("inherit");
+    }
+  }, [setAppearance]);
 
   useEffect(handleChange, [handleChange]);
 
-  useWatchBodyClassList(document.body, handleChange);
+  useMutationObserver(document.body, handleChange, {
+    attributes: true,
+    characterData: false,
+    childList: false,
+    subtree: false,
+  });
 
   if (host === "web") {
     return <ThemeWithDarkMode {...themeProps} {...props} />;
   }
 
-  return (
-    <RadixTheme
-      {...themeProps}
-      {...props}
-      appearance={isDarkMode ? "dark" : "inherit"}
-    />
-  );
-};
-
-const useWatchBodyClassList = (
-  elem: Node,
-  callback: MutationCallback,
-  options: MutationObserverInit = {},
-) => {
-  useEffect(() => {
-    const opts: MutationObserverInit = {
-      attributes: true,
-      characterData: false,
-      childList: false,
-      subtree: false,
-      ...options,
-    };
-    const observer = new MutationObserver(callback);
-    observer.observe(elem, opts);
-
-    return () => observer.disconnect();
-  }, [elem, callback, options]);
+  return <RadixTheme {...themeProps} {...props} appearance={appearance} />;
 };

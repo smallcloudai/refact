@@ -123,7 +123,7 @@
 [x] ctrl-z then enter, cursor is at wrong position
 [x] @, enter, enter, ctrl-z, enter
 [x] allow paste when no code is selected (A convenient way to insert code from the chat into the active tab (where the cursor is) is needed.)
-[ ] combobox theme not working in vscode
+[x] combobox theme not working in vscode
 [x] use a different way to disable attach than if context file is there
 [ ] remove snippet
 [x] add metering_balance (coins) and model used in chat
