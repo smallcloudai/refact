@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import {
   Theme as RadixTheme,
   IconButton,
@@ -74,15 +74,18 @@ export const Theme: React.FC<ThemeProps> = (props) => {
   const { host, themeProps } = useConfig();
   const [isDarkMode, setDarkMode] = React.useState(false);
 
-  useEffect(() => {
+  const handleChange = useCallback(() => {
     const maybeDark = document.body.classList.contains("vscode-dark");
     setDarkMode(() => maybeDark);
-  }, []);
+  }, [setDarkMode]);
+
+  useEffect(handleChange, [handleChange]);
+
+  useWatchBodyClassList(document.body, handleChange);
 
   if (host === "web") {
     return <ThemeWithDarkMode {...themeProps} {...props} />;
   }
-  // todo make this a hook
 
   return (
     <RadixTheme
@@ -91,4 +94,24 @@ export const Theme: React.FC<ThemeProps> = (props) => {
       appearance={isDarkMode ? "dark" : "inherit"}
     />
   );
+};
+
+const useWatchBodyClassList = (
+  elem: Node,
+  callback: MutationCallback,
+  options: MutationObserverInit = {},
+) => {
+  useEffect(() => {
+    const opts: MutationObserverInit = {
+      attributes: true,
+      characterData: false,
+      childList: false,
+      subtree: false,
+      ...options,
+    };
+    const observer = new MutationObserver(callback);
+    observer.observe(elem, opts);
+
+    return () => observer.disconnect();
+  }, [elem, callback, options]);
 };
