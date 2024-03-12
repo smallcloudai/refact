@@ -1,6 +1,7 @@
 import os
 import json
 import httpx
+import traceback
 
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
@@ -10,6 +11,7 @@ from starlette.responses import StreamingResponse
 from starlette.background import BackgroundTask
 
 from refact_utils.scripts import env
+from refact_webgui.webgui.selfhost_webutils import log_error
 from refact_webgui.webgui.selfhost_login import RefactSession
 
 __all__ = ["LspProxy"]
@@ -41,7 +43,8 @@ class LspProxy(APIRouter):
     async def _account_from_bearer(self, authorization: str) -> str:
         try:
             return self._session.header_authenticate(authorization)
-        except BaseException as e:
+        except Exception as e:
+            log_error(traceback.format_exc())
             raise HTTPException(status_code=401, detail=str(e))
 
     async def _reverse_proxy_chat(self, request: Request):
