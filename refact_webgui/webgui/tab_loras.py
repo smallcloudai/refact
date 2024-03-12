@@ -73,6 +73,7 @@ class TabLorasRouter(APIRouter):
             if os.path.exists(file_path):
                 return JSONResponse({"detail": f"File with this name already exists"}, status_code=409)
             try:
+                # TODO: use aiofiles!
                 with open(tmp_path, "wb") as f:
                     while True:
                         if not (contents := await file.read(1024 * 1024)):

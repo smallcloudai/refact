@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import time
@@ -153,6 +154,14 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
                     self._model_dict["model_path"], cache_dir=self.cache_dir, trust_remote_code=True,
                     local_files_only=local_files_only,
                     )
+
+                tokenizer_json_dir = os.path.join(self.cache_dir, self._model_dir)
+                self._tokenizer.save_pretrained(tokenizer_json_dir)
+                if os.path.isfile(os.path.join(tokenizer_json_dir, "tokenizer.json")):
+                    logging.getLogger("MODEL").info(f"tokenizer is saved into {tokenizer_json_dir}")
+                else:
+                    logging.getLogger("MODEL").info(f"failed to save tokenizer")
+
                 if model_dict["backend"] == "transformers":
                     torch_dtype_mapping = {
                         "auto": "auto",
