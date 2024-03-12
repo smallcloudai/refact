@@ -553,7 +553,7 @@ function enabled_finetune_factory(enabled_finetune, model) {
     button.dataset.run = enabled_finetune.dataset.run;
     button.dataset.checkpoint = enabled_finetune.dataset.checkpoint;
     button.dataset.model = model;
-    button.textContent = '🞪';
+    button.textContent = 'x';
     checkpoint_div.textContent = 'Checkpoint: ' + enabled_finetune.dataset.checkpoint;
 
     upper_row_div.appendChild(run_div);
