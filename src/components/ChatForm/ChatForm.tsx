@@ -236,6 +236,7 @@ const useControlsState = ({
     nameWithLines,
     fullPathWithLines,
     reset,
+    setInteracted,
   };
 };
 
@@ -287,12 +288,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 }) => {
   const config = useConfig();
   const [value, setValue] = React.useState("");
-  const { markdown, checkboxes, toggleCheckbox, reset } = useControlsState({
-    activeFile: attachFile,
-    snippet: selectedSnippet,
-    vecdb: config.features?.vecdb ?? false,
-    ast: config.features?.ast ?? false,
-  });
+  const { markdown, checkboxes, toggleCheckbox, reset, setInteracted } =
+    useControlsState({
+      activeFile: attachFile,
+      snippet: selectedSnippet,
+      vecdb: config.features?.vecdb ?? false,
+      ast: config.features?.ast ?? false,
+    });
 
   useEffect(() => {
     if (
@@ -346,7 +348,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     ) {
       result += `@file ${checkboxes.file_upload.value ?? ""}\n`;
     }
-
     return result;
   };
 
@@ -376,6 +377,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const handleEnter = useOnPressedEnter(handleSubmit);
 
   const handleChange = (command: string) => {
+    setInteracted(true);
     setValue(command);
   };
   if (error) {

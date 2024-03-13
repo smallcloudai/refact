@@ -43,6 +43,7 @@ import {
   type Snippet,
   isReceiveTokenCount,
   FileInfo,
+  type ChatSetSelectedSnippet,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -474,10 +475,14 @@ export const useEventBusForChat = () => {
         payload,
       });
 
-      dispatch({
+      const snippetMessage: ChatSetSelectedSnippet = {
         type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET,
-        payload: { id: state.chat.id, snippet: "", language: "" },
-      });
+        payload: {
+          id: state.chat.id,
+          snippet: { language: "", code: "", path: "", basename: "" },
+        },
+      };
+      dispatch(snippetMessage);
     },
     [
       clearError,
