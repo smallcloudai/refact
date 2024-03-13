@@ -44,6 +44,8 @@ import {
   isReceiveTokenCount,
   FileInfo,
   type ChatSetSelectedSnippet,
+  CreateNewChatThread,
+  SaveChatFromChat,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -150,7 +152,7 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
-  if (isCreateNewChat(action)) {
+  if (isThisChat && isCreateNewChat(action)) {
     const nextState = createInitialState();
 
     return {
@@ -682,6 +684,20 @@ export const useEventBusForChat = () => {
     [sendMessages, state.chat.id],
   );
 
+  const startNewChat = useCallback(() => {
+    const saveMessage: SaveChatFromChat = {
+      type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+      payload: state.chat,
+    };
+    postMessage(saveMessage);
+
+    const message: CreateNewChatThread = {
+      type: EVENT_NAMES_TO_CHAT.NEW_CHAT,
+      payload: { id: state.chat.id },
+    };
+    dispatch(message);
+  }, [postMessage, state.chat]);
+
   return {
     state,
     askQuestion,
@@ -701,5 +717,6 @@ export const useEventBusForChat = () => {
     removePreviewFileByName,
     retryQuestion,
     maybeRequestCaps,
+    startNewChat,
   };
 };

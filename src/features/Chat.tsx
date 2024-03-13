@@ -35,6 +35,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     removePreviewFileByName,
     retryQuestion,
     maybeRequestCaps,
+    startNewChat,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -80,13 +81,16 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
       }}
     >
       {host === "vscode" && !tabbed && (
-        <Flex gap="2" pb="3">
-          <Button variant="surface" onClick={backFromChat}>
+        <Flex gap="2" pb="3" wrap="wrap">
+          <Button size="1" variant="surface" onClick={backFromChat}>
             <ArrowLeftIcon width="16" height="16" />
             Back
           </Button>
-          <Button variant="surface" onClick={openChatInNewTab}>
+          <Button size="1" variant="surface" onClick={openChatInNewTab}>
             Open In Tab
+          </Button>
+          <Button size="1" variant="surface" onClick={startNewChat}>
+            New Chat
           </Button>
         </Flex>
       )}
