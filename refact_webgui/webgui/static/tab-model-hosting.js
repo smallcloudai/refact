@@ -1,12 +1,14 @@
 import {general_error} from './error.js';
 import {get_finetune_config_and_runs} from './tab-finetune.js';
-import {add_finetune_selectors_factory, update_checkpoints_list, set_finetune_info_into_state, get_spinner, finetune_switch_activate} from './utils/tab-model-hosting-utils.js';
+import {add_finetune_selectors_factory, update_checkpoints_list, set_finetune_info_into_state, finetune_switch_activate} from './utils/tab-model-hosting-utils.js';
+import {get_spinner} from "./utils/utils.js";
 
 
 let gpus_popup = false;
 let models_data = null;
 let finetune_configs_and_runs;
 let force_render_models_assigned = false;
+
 
 function update_finetune_configs_and_runs() {
     get_finetune_config_and_runs().then((data) => {
@@ -30,7 +32,6 @@ function get_gpus() {
         general_error(error);
     });
 }
-
 
 function render_gpus(gpus) {
     if(gpus_popup) { return; }

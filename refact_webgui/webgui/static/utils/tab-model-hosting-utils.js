@@ -29,17 +29,6 @@ export function finetune_switch_activate(finetune_model, mode, run_id, checkpoin
     });
 }
 
-export function get_spinner() {
-    const spinner = document.createElement('div');
-    const spinner_span = document.createElement('span');
-    spinner.className = 'spinner-border';
-    spinner.role ='status';
-    spinner_span.className ='sr-only';
-    spinner.style.scale = '0.5';
-    spinner.appendChild(spinner_span);
-    return spinner;
-}
-
 export function set_finetune_info_into_state(model_name, is_enabled) {
     const finetune_info = document.querySelector(`.model-finetune-info[data-model="${model_name}"]`);
     if (is_enabled) {
