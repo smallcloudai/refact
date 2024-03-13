@@ -58,12 +58,14 @@ def get_finetune_runs() -> List[Dict]:
                 d.update(json.load(f))
 
         if d["status"] not in ["finished", "interrupted", "failed"] and os.path.getmtime(dir_path) + 300 < time.time():
-            d["status"] = "interrupted" if d["status"] in ["preparing"] else "failed"
-
+            d["status"] = "interrupted" if (d["status"] in ["preparing"]) else "failed"
         return d
 
-    runs = [get_run_info(os.path.join(env.DIR_LORAS, dirname), dirname) for dirname in os.listdir(env.DIR_LORAS) if os.path.isdir(os.path.join(env.DIR_LORAS, dirname))]
-    runs.sort(key=lambda x: x.get("started_ts", 0), reverse=True)
+    runs = [
+        get_run_info(os.path.join(env.DIR_LORAS, dirname), dirname)
+        for dirname in sorted(os.listdir(env.DIR_LORAS))
+        if os.path.isdir(os.path.join(env.DIR_LORAS, dirname))
+    ]
     return runs
 
 
