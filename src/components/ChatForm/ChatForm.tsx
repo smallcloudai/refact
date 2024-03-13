@@ -163,7 +163,7 @@ const useControlsState = ({
         ...prev,
         search_workspace: {
           ...prev.search_workspace,
-          hide: vecdb,
+          hide: !vecdb,
         },
         lookup_symbols: {
           ...prev.lookup_symbols,

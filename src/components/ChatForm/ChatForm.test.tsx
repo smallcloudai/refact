@@ -1,6 +1,7 @@
 import { render } from "../../utils/test-utils";
 import { describe, expect, test, vi } from "vitest";
 import { ChatForm, ChatFormProps } from "./ChatForm";
+import { ConfigProvider } from "../../contexts/config-context";
 import React from "react";
 
 const noop = () => ({});
@@ -47,7 +48,19 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     ...props,
   };
 
-  return <ChatForm {...defaultProps} />;
+  return (
+    <ConfigProvider
+      config={{
+        host: "web",
+        features: {
+          vecdb: true,
+          ast: true,
+        },
+      }}
+    >
+      <ChatForm {...defaultProps} />
+    </ConfigProvider>
+  );
 };
 
 describe("ChatForm", () => {
