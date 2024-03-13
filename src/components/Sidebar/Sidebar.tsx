@@ -50,7 +50,7 @@ export const Sidebar: React.FC<
           />
           <Flex p="2" gap="1">
             <Settings />
-            {features.statistics && (
+            {features?.statistics && (
               <IconButton
                 variant="outline"
                 title="Bar Chart"

@@ -24,8 +24,16 @@ import { useEffectOnce } from "../../hooks";
 type useCheckboxStateProps = {
   activeFile: ChatState["active_file"];
   snippet: ChatState["selected_snippet"];
+  vecdb: boolean;
+  ast: boolean;
 };
-const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
+
+const useControlsState = ({
+  activeFile,
+  snippet,
+  vecdb,
+  ast,
+}: useCheckboxStateProps) => {
   const lines = useMemo(() => {
     return activeFile.line1 !== null && activeFile.line2 !== null
       ? `:${activeFile.line1}-${activeFile.line2}`
@@ -65,6 +73,7 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
         checked: false,
         label: "Search workspace",
         disabled: false,
+        hide: !vecdb,
       },
       file_upload: {
         name: "file_upload",
@@ -80,6 +89,7 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
         label: "Lookup symbols at cursor",
         value: fullPathWithCursor,
         disabled: !activeFile.name,
+        hide: !ast,
         // fileName: " at cursor",
         // fileName: nameWithCursor,
       },
@@ -151,11 +161,16 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
 
       const nextValue = {
         ...prev,
+        search_workspace: {
+          ...prev.search_workspace,
+          hide: vecdb,
+        },
         lookup_symbols: {
           ...prev.lookup_symbols,
           value: lookupValue,
           // fileName: lookupFileName,
           disabled: lookupDisabled,
+          hide: !ast,
         },
         selected_lines: {
           ...prev.selected_lines,
@@ -183,6 +198,8 @@ const useControlsState = ({ activeFile, snippet }: useCheckboxStateProps) => {
     snippet.code,
     fullPathWithLines,
     fullPathWithCursor,
+    vecdb,
+    ast,
   ]);
 
   return {
@@ -241,10 +258,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   showControls,
   requestCaps,
 }) => {
+  const config = useConfig();
   const [value, setValue] = React.useState("");
   const { markdown, checkboxes, toggleCheckbox, reset } = useControlsState({
     activeFile: attachFile,
     snippet: selectedSnippet,
+    vecdb: config.features?.vecdb ?? false,
+    ast: config.features?.ast ?? false,
   });
 
   useEffect(() => {
@@ -272,26 +292,36 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     if (!result.endsWith("\n")) {
       result += "\n";
     }
-    if (checkboxes.search_workspace.checked) {
+    if (
+      checkboxes.search_workspace.checked &&
+      checkboxes.search_workspace.hide !== true
+    ) {
       result += `@workspace\n`;
     }
 
-    if (checkboxes.lookup_symbols.checked) {
+    if (
+      checkboxes.lookup_symbols.checked &&
+      checkboxes.lookup_symbols.hide !== true
+    ) {
       result += `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n`;
     }
 
-    if (checkboxes.selected_lines.checked) {
+    if (
+      checkboxes.selected_lines.checked &&
+      checkboxes.selected_lines.hide !== true
+    ) {
       result += `${checkboxes.selected_lines.value ?? ""}\n`;
     }
 
-    if (checkboxes.file_upload.checked) {
+    if (
+      checkboxes.file_upload.checked &&
+      checkboxes.file_upload.hide !== true
+    ) {
       result += `@file ${checkboxes.file_upload.value ?? ""}\n`;
     }
 
     return result;
   };
-
-  const config = useConfig();
 
   useEffectOnce(() => {
     if (selectedSnippet.code) {

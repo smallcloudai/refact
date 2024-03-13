@@ -46,9 +46,9 @@
 [x] attach file (this will be different between docker and IDE's)
 [x] use the event bus to handle the file upload in the browser this can be done with the file system api using `window.showOpenFilePicker()`
 [x] should we allow multiple context files?
-[ ] context file display could be an accordion button
+[x] context file display could be an accordion button
 
-[-] confirm if the lsp only responds with assistant deltas
+[x] confirm if the lsp only responds with assistant deltas
 
 [x] should context file be an array of files?
 [x] disable adding a file after a question has been asked
@@ -72,8 +72,8 @@
 [x] paste diff button
 
 [ ] check what happens when the lsp isn't on in vscode
-[ ] in vscode attach shouldn't show if there's no files (like when opening the ide)
-[ ] canceling chat doesn't seems to work (the spinner keeps spinning) :/
+[x] in vscode attach shouldn't show if there's no files (like when opening the ide)
+[x] canceling chat doesn't seems to work (the spinner keeps spinning) :/
 [x] build the events (+ types) as a dedicated file
 [ ] automate publishing the main branch
 [x] export the chat history component

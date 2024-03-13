@@ -40,6 +40,7 @@ export type Checkbox = {
   value?: string;
   disabled: boolean;
   fileName?: string;
+  hide?: boolean;
 };
 
 export type ChatControlsProps = {
@@ -65,6 +66,9 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
     >
       {Object.entries(checkboxes).map(([key, checkbox]) => {
         if (host === "web" && checkbox.name === "file_upload") {
+          return null;
+        }
+        if (checkbox.hide === true) {
           return null;
         }
         return (
