@@ -7,6 +7,7 @@ import termcolor
 import os
 import re
 import litellm
+import traceback
 
 from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
@@ -588,7 +589,6 @@ class BaseCompletionsRouter(APIRouter):
 
 
 class CompletionsRouter(BaseCompletionsRouter):
-
     def __init__(self, session: RefactSession, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._session = session
@@ -596,7 +596,9 @@ class CompletionsRouter(BaseCompletionsRouter):
     async def _account_from_bearer(self, authorization: str) -> str:
         try:
             return self._session.header_authenticate(authorization)
-        except BaseException as e:
+        except Exception as e:
+            traceback_str = traceback.format_exc()
+            log(traceback_str)
             raise HTTPException(status_code=401, detail=str(e))
 
     async def _resolve_model_lora(self, model_name: str, account: str) -> Tuple[str, Optional[Dict[str, str]]]:
