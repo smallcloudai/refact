@@ -176,21 +176,18 @@ class WebGUI(FastAPI):
         await loop.create_task(init_database(), name="database_initialization")
 
 
-if __name__ == "__main__":
-    from argparse import ArgumentParser
-
-    parser = ArgumentParser()
-    parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", default=8008, type=int)
-    args = parser.parse_args()
-
+def setup_logger():
     # Suppress messages like this:
-    # -- 45643 -- 20240310 08:58:23 WEBUI 127.0.0.1:55610 - "POST /infengine-v1/completions-wait-batch HTTP/1.1" 200
+    # WEBUI 127.0.0.1:55610 - "POST /infengine-v1/completions-wait-batch HTTP/1.1" 200
+    # WEBUI 127.0.0.1:41574 - "POST /infengine-v1/completion-upload-results
     boring1 = re.compile("completions-wait-batch.* 200")
+    boring2 = re.compile("completion-upload-results.* 200")
     class CustomHandler(logging.Handler):
         def emit(self, record):
             log_entry = self.format(record)
             if boring1.match(log_entry):
+                return
+            if boring2.match(log_entry):
                 return
             sys.stderr.write(log_entry)
             sys.stderr.write("\n")
@@ -202,6 +199,16 @@ if __name__ == "__main__":
         datefmt='%Y%m%d %H:%M:%S',
         handlers=[CustomHandler()]
     )
+
+
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", default=8008, type=int)
+    args = parser.parse_args()
+    setup_logger()
 
     model_assigner = ModelAssigner()
     database = RefactDatabase()
