@@ -34,6 +34,8 @@ const useControlsState = ({
   vecdb,
   ast,
 }: useCheckboxStateProps) => {
+  const [interacted, setInteracted] = React.useState(false);
+
   const lines = useMemo(() => {
     return activeFile.line1 !== null && activeFile.line2 !== null
       ? `:${activeFile.line1}-${activeFile.line2}`
@@ -66,6 +68,10 @@ const useControlsState = ({
     return "```" + snippet.language + "\n" + snippet.code + "\n```\n";
   }, [snippet.language, snippet.code]);
 
+  const codeLineCount = useMemo(() => {
+    return snippet.code.split("\n").length - 1;
+  }, [snippet.code]);
+
   const defaultState = useMemo(() => {
     return {
       search_workspace: {
@@ -77,26 +83,28 @@ const useControlsState = ({
       },
       file_upload: {
         name: "file_upload",
-        checked: false,
+        checked: !!snippet.code && !!activeFile.name,
         label: "Attach",
         value: fullPathWithLines,
         disabled: !activeFile.name,
         fileName: nameWithCursor,
+        defaultChecked: !!snippet.code && !!activeFile.name,
       },
       lookup_symbols: {
         name: "lookup_symbols",
-        checked: false,
+        checked: !!snippet.code && !!activeFile.name,
         label: "Lookup symbols at cursor",
         value: fullPathWithCursor,
         disabled: !activeFile.name,
         hide: !ast,
+        defaultChecked: !!snippet.code && !!activeFile.name,
         // fileName: " at cursor",
         // fileName: nameWithCursor,
       },
       selected_lines: {
         name: "selected_lines",
-        checked: false,
-        label: "Selected N lines",
+        checked: !!snippet.code,
+        label: `Selected ${codeLineCount} lines`,
         value: markdown,
         disabled: !snippet.code,
         // fileName: nameWithLines,
@@ -108,17 +116,21 @@ const useControlsState = ({
   const [checkboxes, setCheckboxes] =
     React.useState<ChatControlsProps["checkboxes"]>(defaultState);
 
-  const reset = useCallback(() => setCheckboxes(defaultState), [defaultState]);
+  const reset = useCallback(() => {
+    setInteracted(false);
+    setCheckboxes(defaultState), [defaultState];
+  }, [setCheckboxes, setInteracted, defaultState]);
 
   const toggleCheckbox = useCallback(
     (name: string, value: boolean | string) => {
+      setInteracted(true);
       setCheckboxes((prev) => {
         const checkbox: Checkbox = { ...prev[name], checked: !!value };
         const nextValue = { ...prev, [name]: checkbox };
         return nextValue;
       });
     },
-    [setCheckboxes],
+    [setCheckboxes, setInteracted],
   );
 
   useEffect(() => {
@@ -171,20 +183,28 @@ const useControlsState = ({
           // fileName: lookupFileName,
           disabled: lookupDisabled,
           hide: !ast,
+          checked: interacted
+            ? prev.lookup_symbols.checked
+            : !!snippet.code && !!activeFile.name,
         },
         selected_lines: {
           ...prev.selected_lines,
           // maybe allow this to change?
           // value: selectedLineValue,
+          label: `Selected ${codeLineCount} lines`,
           value: markdown,
           // fileName: selectedLineFileName,
           disabled: selectedLineDisabled,
+          checked: interacted ? prev.selected_lines.checked : !!snippet.code,
         },
         file_upload: {
           ...prev.file_upload,
           value: fileUploadValue,
           fileName: fileUploadFileName,
           disabled: fileUploadDisabled,
+          checked: interacted
+            ? prev.file_upload.checked
+            : !!snippet.code && !!activeFile.name,
         },
       };
 
@@ -200,6 +220,13 @@ const useControlsState = ({
     fullPathWithCursor,
     vecdb,
     ast,
+    codeLineCount,
+    setCheckboxes,
+    interacted,
+    checkboxes.search_workspace.checked,
+    checkboxes.lookup_symbols.checked,
+    checkboxes.selected_lines.checked,
+    checkboxes.file_upload.checked,
   ]);
 
   return {
