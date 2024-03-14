@@ -3,6 +3,7 @@ import logging
 import time
 import signal
 import socket
+import traceback
 
 from refact_scratchpads_no_gpu.stream_results import infserver_session
 from refact_scratchpads_no_gpu.stream_results import validate_description_dict
@@ -104,8 +105,12 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
                     "ts_first_token": 0,
                     "ts_batch_finished": 0,
                 }
-                inference_model.lora_switch_according_to_request(request.get("lora_config", None))
-                inference_model.infer(request, upload_proxy, upload_proxy_args)
+                try:
+                    inference_model.lora_switch_according_to_request(request.get("lora_config", None))
+                    inference_model.infer(request, upload_proxy, upload_proxy_args)
+                except Exception as e:
+                    log(f"inference failed with {e}")
+                    log(traceback.format_exc())
         elif retcode == "WAIT":
             # Normal, no requests
             pass

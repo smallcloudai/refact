@@ -122,7 +122,10 @@ class LoraLoaderMixin:
             }
             lora_target_modules = adapter_config["target_modules"]
         else:
-            old_format_finetune_cp = _load_filename(load_path / "mp_rank_00_model_states.pt")
+            finetune_cps = [_load_filename(p) for p in load_cp_paths]
+            if len(finetune_cps) > 1:
+                raise NotImplementedError("Loading of sharded checkpoint is not implemented")
+            old_format_finetune_cp = finetune_cps[0]
             lora_cfg = old_format_finetune_cp['ds_config']['model_info']['lora']
             _, lora_target_modules = map_model_specific_params(
                 model_name=self.model_name,
