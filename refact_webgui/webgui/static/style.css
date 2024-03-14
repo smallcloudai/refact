@@ -900,3 +900,78 @@ h3 {
 .modelsub-row.active {
     display: table-row;
 }
+
+.badge-square {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 4px;
+    border: 1px solid #0b161a;
+    min-width: 10px;
+    line-height: 1;
+    color: #0b161a;
+    text-align: left;
+    white-space: nowrap;
+    /*justify-content: center;*/
+    background-color: transparent;
+}
+
+.badge-square.solid {
+    background-color: #0b161a;
+    color: #fff;
+}
+
+.badge-square.danger {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.badge-square.solid.danger {
+    border-color: #dc3545;
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.badge-square.secondary {
+    border-color: #6c757d;
+    color: #6c757d;
+}
+
+.badge-square.solid.secondary {
+    border-color: #6c757d;
+    background-color: #6c757d;
+    color: #fff;
+}
+
+.badge-square.success {
+    border-color: #1a8754;
+    color: #1a8754;
+}
+
+.badge-square.success.solid {
+    border-color: #1a8754;
+    background-color: #1a8754;
+    color: #fff;
+}
+
+.badge-square.warning {
+    border-color: #ffc107;
+    color: #ffc107;
+}
+
+.badge-square.solid.warning {
+    border-color: #ffc107;
+    background-color: #ffc107;
+    color: #fff;
+}
+
+.ft-status-pill-div {
+    margin: 0;
+    padding: 0;
+    display: inline-flex;
+    justify-content: left;
+}
+
+.run-table-row td {
+    vertical-align: middle;
+}

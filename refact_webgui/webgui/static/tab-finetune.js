@@ -159,6 +159,7 @@ function render_runs() {
     }
     finetune_configs_and_runs.finetune_runs.forEach(run => {
         const run_table_row = document.createElement('tr');
+        run_table_row.classList.add('run-table-row');
         run_table_row.style.whiteSpace = 'nowrap';
         const run_name = document.createElement("td");
         const run_status = document.createElement("td");
@@ -167,31 +168,56 @@ function render_runs() {
         const run_download = document.createElement("td");
         const run_delete = document.createElement("td");
 
+        let run_status_div = document.createElement('div');
+        run_status_div.style = "display: flex; justify-content: center; flex-direction: column;";
+
         let status_colors = {
-            'preparing': 'text-bg-warning',
-            'starting': 'text-bg-secondary',
-            'working': 'text-bg-secondary',
-            'completed': 'text-bg-success',
-            'finished': 'text-bg-success',
-            'failed': 'text-bg-danger'
+            'preparing': 'warning',
+            'starting': 'secondary',
+            'working': 'secondary',
+            'completed': 'success',
+            'finished': 'success',
+            'failed': 'danger',
         };
 
-        let run_status_color = status_colors[run.status] || 'text-bg-info';
+        let run_status_color = status_colors[run.status] || 'secondary';
         run_table_row.dataset.run = run.run_id;
 
         const run_is_working = !(['interrupted', 'failed', 'finished'].includes(run.status));
+
+        let status_pill_div = document.createElement('div');
+        status_pill_div.classList.add('ft-status-pill-div');
+        status_pill_div.style.marginBottom = "3px";
+        let status_pill = document.createElement('div');
+        status_pill.className = `badge-square solid ${run_status_color}`;
+
         if (run_is_working) {
-            run_status.innerHTML = `
-                <span class="badge rounded-pill ${run_status_color}">
-                    <div class="finetune-spinner spinner-border spinner-border-sm" role="status"></div>
-                    ${run.status}
-                </span>`;
+            let status_div = document.createElement('div');
+            status_div.className = 'finetune-spinner spinner-border spinner-border-sm';
+            status_div.role = 'status';
+            status_pill.appendChild(status_div);
+            status_pill.appendChild(document.createTextNode(run.status));
             if (!selected_lora) {
                 selected_lora = run.run_id;
             }
         } else {
-            run_status.innerHTML = `<span class="badge rounded-pill ${run_status_color}">${run.status}</span>`;
+            status_pill.appendChild(document.createTextNode(run.status));
         }
+        status_pill_div.appendChild(status_pill);
+        run_status_div.appendChild(status_pill_div);
+
+
+        if (run['deprecated']) {
+            let deprecated_pill_div = document.createElement('div');
+            deprecated_pill_div.classList.add('ft-status-pill-div')
+            let deprecated_pill = document.createElement('div');
+            deprecated_pill.classList.add('badge-square', 'secondary');
+            deprecated_pill.innerText = 'deprecated';
+            deprecated_pill_div.appendChild(deprecated_pill);
+            run_status_div.appendChild(deprecated_pill_div);
+        }
+        run_status.appendChild(run_status_div);
+
         if (run.worked_minutes) {
             run_minutes.innerHTML = run.worked_minutes;
         }

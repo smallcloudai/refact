@@ -24,6 +24,15 @@ def get_run_model_name(run_dir: str) -> str:
         return json.load(f).get("model_name", legacy_finetune_model)
 
 
+def is_lora_deprecated(checkpoints_dir) -> bool:
+    if (checkpoints_dir := Path(checkpoints_dir)).is_dir():
+        for d in checkpoints_dir.iterdir():
+            load_cp_names = [p.name for p in d.iterdir() if p.suffix in {".pt", ".pth", ".safetensors"}]
+            if "adapter_model.safetensors" not in load_cp_names:
+                return True
+    return False
+
+
 def get_finetune_runs() -> List[Dict]:
     if not os.path.isdir(env.DIR_LORAS):
         return []
@@ -50,7 +59,8 @@ def get_finetune_runs() -> List[Dict]:
             "worked_steps": "0",
             "status": "preparing",
             "model_name": model_name(dir_path),
-            "checkpoints": checkpoints
+            "checkpoints": checkpoints,
+            "deprecated": is_lora_deprecated(checkpoints_dir),
         }
 
         if os.path.exists(status_fn := os.path.join(dir_path, "status.json")):
