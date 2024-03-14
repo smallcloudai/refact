@@ -173,7 +173,7 @@ describe("Chat", () => {
 
     const createNewChatAction: CreateNewChatThread = {
       type: EVENT_NAMES_TO_CHAT.NEW_CHAT,
-      payload: { id: "foo" },
+      payload: { id: "bar" },
     };
 
     postMessage(createNewChatAction);
@@ -181,7 +181,6 @@ describe("Chat", () => {
     setUpCapsForChat("foo");
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
-
     await waitFor(() => expect(app.queryByTitle("chat model")).not.toBeNull());
     await waitFor(() =>
       expect(
