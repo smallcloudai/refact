@@ -38,7 +38,7 @@ function tab_finetune_get() {
         return response.json();
     })
     .then(function (data) {
-        console.log('tab-finetune-get',data);
+        // console.log('tab-finetune-get',data);
         finetune_state = data;
     })
    .catch(function (error) {
@@ -782,7 +782,6 @@ function render_ftf_stats(data) {
 }
 
 function render_ftf_progress(filtering_progress) {
-    console.log('filtering_progress',filtering_progress);
     const ftf_bar = document.querySelector('.ftf-bar');
     ftf_bar.style.width = filtering_progress + "%";
 }
