@@ -1,3 +1,4 @@
+import click
 import copy
 import json
 import logging
@@ -21,6 +22,7 @@ from self_hosting_machinery.finetune.scripts.auxiliary.early_stopper import Earl
 from self_hosting_machinery.finetune.scripts.auxiliary.finetune_status_tracker import FinetuneStatusTracker
 from self_hosting_machinery.finetune.scripts.auxiliary.model import ModelContext
 from self_hosting_machinery.finetune.utils import traces
+from refact_utils.finetune.utils import default_finetune_model
 
 
 def _log_everywhere(message):
@@ -30,16 +32,43 @@ def _log_everywhere(message):
     traces.log(message)
 
 
-def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str, Any]:
+from refact_utils.finetune.train_defaults import finetune_train_defaults
+
+@click.command()
+@click.option('--project', default='')
+@click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
+@click.option('--lr', default=finetune_train_defaults['lr'])
+@click.option('--batch_size', default=finetune_train_defaults['batch_size'])
+@click.option('--warmup_num_steps', default=finetune_train_defaults['warmup_num_steps'])
+@click.option('--weight_decay', default=finetune_train_defaults['weight_decay'])
+@click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
+@click.option('--train_steps', default=finetune_train_defaults['train_steps'])
+@click.option('--lr_decay_steps', default=finetune_train_defaults['lr_decay_steps'])
+@click.option('--lora_r', default=finetune_train_defaults['lora_r'])
+@click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'])
+@click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
+@click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
+@click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
+@click.option('--model_name', default=default_finetune_model)
+def _build_finetune_config_by_heuristics(**kwargs) -> Dict[str, Any]:
+    print("kwargs = %s" % kwargs)
+    from known_models_db.refact_known_models import models_mini_db
+    models_db: Dict[str, Any] = copy.deepcopy(models_mini_db)
     with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
         initial_loss = json.load(f)["avg_loss"]
+    user_cfg = copy.deepcopy(finetune_train_defaults)
+    user_cfg_nondefault = {}
+    for k, v in kwargs.items():
+        traces.log("Command line parameter: %s = %s" % (k, v))
+        user_cfg[k] = v
+        if finetune_train_defaults.get(k, 0) != v:
+            user_cfg_nondefault[k] = v
 
-    user_cfg = get_finetune_config(models_db, logger=traces.log)
-    cfg_builder = ConfigBuilder(base_config(user_cfg['model_name'], models_db))
+    cfg_builder = ConfigBuilder(base_config(kwargs['model_name'], models_db))
     if user_cfg['use_heuristics']:
         _log_everywhere("Calculating finetune optimal parameters")
         _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
-        ds_len = get_ds_len_per_epoch(user_cfg['model_name'], cfg_builder)
+        ds_len = get_ds_len_per_epoch(kwargs['model_name'], cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
         (cfg_builder
          .set_batch_size(cfg_builder.cfg['train_batch_size'])
@@ -70,6 +99,8 @@ def _build_finetune_config_by_heuristics(models_db: Dict[str, Any]) -> Dict[str,
             traces.log(f'Lora config: {k:>20} {v}')
         with open(os.path.join(traces.context().path, "config.json"), "w") as f:
             json.dump(cfg_builder.cfg, f, indent=4)
+        with open(os.path.join(traces.context().path, "parameters_nondefault.json"), "w") as f:
+            json.dump(user_cfg_nondefault, f, indent=4)
 
     assert cfg_builder.cfg['train_iters'] % cfg_builder.cfg['test_every'] == 0
     assert cfg_builder.cfg['save_every'] % cfg_builder.cfg['test_every'] == 0
@@ -216,7 +247,7 @@ def loop(
                 _save_checkpoint(force=False, iter_n=iter_n, loss=test_loss)
 
 
-def main(models_db: Dict[str, Any]):
+def main():
     _log_everywhere("Loading status tracker...")
     status_tracker = FinetuneStatusTracker()
 
@@ -229,8 +260,11 @@ def main(models_db: Dict[str, Any]):
 
     try:
         status_tracker.update_status("working")
-        _log_everywhere("Loading finetune configs...")
-        finetune_cfg = copy.deepcopy(_build_finetune_config_by_heuristics(models_db))
+        _log_everywhere("Dest dir is %s" % traces.context().path)
+        with click.Context(_build_finetune_config_by_heuristics) as ctx:
+            finetune_cfg = _build_finetune_config_by_heuristics()
+        finetune_cfg = copy.deepcopy(finetune_cfg)
+        quit()
 
         _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
         model_context = ModelContext(
@@ -254,14 +288,12 @@ def main(models_db: Dict[str, Any]):
         # this has to be there, even if catch_sigusr1() already called exit with 99, otherwise exit code is zero
         exit(99)
     except Exception as e:
-        _log_everywhere(f"Finetune is failed\nException: {e}")
+        _log_everywhere(f"Finetune has failed\nException: {e}")
         status_tracker.update_status("failed", error_message=str(e) or str(type(e)))
         raise e
 
 
 if __name__ == "__main__":
-    from known_models_db.refact_known_models import models_mini_db
-
     YMD_hms = os.environ.get("LORA_LOGDIR", "") or time.strftime("lora-%Y%m%d-%H%M%S")
     traces.configure(task_dir="loras", task_name=YMD_hms, work_dir=env.PERMDIR)
     if "RANK" not in os.environ:
@@ -271,4 +303,4 @@ if __name__ == "__main__":
     else:
         dist.init_process_group(backend='nccl', init_method="env://")
         th.cuda.set_device(dist.get_rank())
-    main(models_mini_db)
+    main()
