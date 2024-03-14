@@ -8,9 +8,9 @@
         <table class="table table-responsive mt-3 table-sm table-hover table-types">
           <thead>
             <tr>
-              <th>Name</th>
               <th></th>
-              <th>Time,<br/>minutes</th>
+              <th></th>
+              <th>Time</th>
               <th>Steps</th>
               <th></th>
               <th></th>
@@ -58,8 +58,8 @@
       <div class="start-funetune-step2">
         <h6>Step 2: Training<span></span></h6>
         <div class="start-funetune__inline">
-          <button id="run_now" type="button" class="btn btn-primary tab-finetune-run-now"><i class="bi bi-gpu-card"></i> Run Now</button>
-          <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn btn-outline-primary tab-finetune-fine-settings">Finetune Settings</button>
+          <!-- <button id="run_now" type="button" class="btn btn-primary tab-finetune-run-now"><i class="bi bi-gpu-card"></i> Run Now</button> -->
+          <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn btn-primary tab-finetune-fine-settings">Start Finetune...</button>
         </div>
         <div class="start-finetune-stats callout">
           <div class="ftune-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
@@ -157,7 +157,7 @@
         <div class="modal-body">
 
           <div class="row">
-            <div class="col">
+            <!-- <div class="col">
               <div class="mb-3">
                 <label for="limit_time_seconds" class="form-label">Limit time seconds</label>
                 <input type="text" data-min="600" data-max="172800" class="validate form-control" id="limit_time_seconds">
@@ -166,7 +166,20 @@
                   Min 600, Max 3600 * 48
                 </div>
               </div>
+            </div> -->
+
+            <div class="col">
+              <label class="form-label">LoRA Size</label>
+              <div class="btn-group" role="group" aria-label="basic radio toggle button group">
+                <input type="radio" class="btn-check" name="trainable_embeddings" id="trainable_embeddings0" value="0" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="trainable_embeddings0">Small</label>
+                <input type="radio" class="btn-check" name="trainable_embeddings" id="trainable_embeddings1" value="1" autocomplete="off">
+                <label class="btn btn-outline-primary" for="trainable_embeddings1">Large</label>
+              </div>
             </div>
+
+            <!-- set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off" checked><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off"><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>` -->
+
             <div class="col">
               <div class="mb-3">
                 <label for="lr" class="form-label">Lr</label>
@@ -213,7 +226,7 @@
             </div>
           </div>
 
-          <div class="row">
+          <!-- <div class="row">
             <div class="col">
               <div class="mb-3">
                 <input class="form-check-input" type="checkbox" name="use_heuristics" id="use_heuristics">
@@ -222,9 +235,9 @@
                 </label>
               </div>
             </div>
-          </div>
+          </div> -->
 
-          <div class="finetune-settings-optional finetune-settings-optional-disabled">
+          <!-- <div class="finetune-settings-optional finetune-settings-optional-disabled"> -->
             <div class="row">
               <div class="col">
                 <div class="mb-3">
@@ -292,7 +305,7 @@
                 </div>
               </div>
             </div>
-            <div class="row">
+            <!-- <div class="row">
               <div class="col">
                 <div class="mb-3">
                   <div class="form-check">
@@ -303,8 +316,8 @@
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </div> -->
+          <!-- </div> -->
           <div class="finetune-settings-error d-none"></div>
         </div>
         <div class="modal-footer">
