@@ -309,13 +309,20 @@ function render_runs() {
             const confirm_btn = document.getElementById(`confirm_btn${run.dataset.run}`);
             const cancel_btn = document.getElementById(`cancel_btn${run.dataset.run}`);
 
-            confirm_btn.addEventListener('click', (event) => {
+            let new_confirm_btn = document.createElement("button");
+            new_confirm_btn.id = confirm_btn.id;
+            new_confirm_btn.classList = confirm_btn.classList;
+            new_confirm_btn.innerHTML = confirm_btn.innerHTML;
+            confirm_btn.replaceWith(new_confirm_btn)
+
+            new_confirm_btn.addEventListener('click', (event) => {
                 event.stopPropagation();
-                confirm_btn.replaceWith(spinner);
+                new_confirm_btn.replaceWith(spinner);
                 cancel_btn.hidden = true;
                 rename_post(run.dataset.run, rename_input.value).then((is_ok) => {
                     if (!is_ok) {
-                        spinner.replaceWith(confirm_btn);
+                        rename_input.value = run.dataset.run;
+                        spinner.replaceWith(new_confirm_btn);
                         cancel_btn.hidden = false;
                     }
                 })
