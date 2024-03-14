@@ -286,7 +286,9 @@ def main():
     try:
         status_tracker.update_status("working")
         _log_everywhere("Dest dir is %s" % traces.context().path)
-        finetune_cfg = _build_finetune_config_by_heuristics.main(sys.argv[1:], standalone_mode=False)
+        argv_copy = copy.deepcopy(sys.argv[1:])
+        argv_copy = [x for x in argv_copy if not x.startswith("--local-rank")]  # --local-rank=5 is used by torch.distributed, ignore it
+        finetune_cfg = _build_finetune_config_by_heuristics.main(argv_copy, standalone_mode=False)
         finetune_cfg = copy.deepcopy(finetune_cfg)
 
         _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
