@@ -30,7 +30,7 @@ def main(filter_only, project, the_rest_of_args):
 if __name__ == '__main__':
     signal.signal(signal.SIGUSR1, catch_sigusr1)
     try:
-        main()
+        main.main(sys.argv[1:], standalone_mode=False)
     except subprocess.CalledProcessError as e:
         print("finetune_sequence: %s" % e)
         sys.exit(1)
