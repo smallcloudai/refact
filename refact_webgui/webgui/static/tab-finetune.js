@@ -232,7 +232,7 @@ function render_runs() {
             <div id="run_name_${run.run_id}" class="run-table-name" data-run="${run.run_id}" ${item_disabled}>
                 <div id="run_div${run.run_id}">
                     ${run.run_id}
-                    <button class="run-rename btn btn-sm btn-link" data-run="${run.run_id}" style="padding: 0; font-size: 0.7rem;" ${false}><i class="bi bi-pencil-square"></i></button>
+                    <button class="run-rename btn btn-sm btn-hover btn-link" data-run="${run.run_id}" style="padding: 0; font-size: 0.7rem;" ${false}><i class="bi bi-pencil-square"></i></button>
                 </div>
                 <div id="run_div_rename${run.run_id}" hidden>
                     <input type="text" id="run_rename_input${run.run_id}" value="${run.run_id}">

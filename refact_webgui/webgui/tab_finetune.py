@@ -86,18 +86,14 @@ class RenamePost(BaseModel):
     run_id_old: str
     run_id_new: str
 
-    @validator('run_id_old', 'run_id_new')
-    def validate_run_id(cls, v: str) -> str:
+    @validator('run_id_new')
+    def validate_run_ids(cls, v, values) -> str:
         if not v.strip():
             raise HTTPException(status_code=400, detail="must be non-empty")
         if len(v) >= 30:
             raise HTTPException(status_code=400, detail="must be less than 30 characters")
-        if not re.match("^[a-zA-Z0-9_ -]*$", v):
+        if not re.match("^[a-zA-Z0-9_-]*$", v):
             raise HTTPException(status_code=400, detail="must contain only Latin alphabet, numbers, spaces, and underscores")
-        return v
-
-    @validator('run_id_new')
-    def validate_run_ids(cls, v, values) -> str:
         if 'run_id_old' in values and v == values['run_id_old']:
             raise HTTPException(status_code=400, detail="run_id_new is similar to run_id_old")
         return v
