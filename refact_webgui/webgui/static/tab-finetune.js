@@ -38,7 +38,7 @@ function tab_finetune_get() {
         return response.json();
     })
     .then(function (data) {
-        console.log('tab-finetune-get',data);
+        // console.log('tab-finetune-get',data);
         finetune_state = data;
     })
    .catch(function (error) {
@@ -308,7 +308,7 @@ function render_runs() {
             </div>
         `
 
-        run_delete.innerHTML = `<button class="btn btn-outline-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
+        run_delete.innerHTML = `<button class="btn btn-hover btn-outline-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
         if (find_checkpoints_by_run(run.run_id).length > 0) {
             run_download.innerHTML = `
                 <a href="/lora-download?run_id=${run.run_id}"
@@ -781,7 +781,6 @@ function render_ftf_stats(data) {
 }
 
 function render_ftf_progress(filtering_progress) {
-    console.log('filtering_progress',filtering_progress);
     const ftf_bar = document.querySelector('.ftf-bar');
     ftf_bar.style.width = filtering_progress + "%";
 }
