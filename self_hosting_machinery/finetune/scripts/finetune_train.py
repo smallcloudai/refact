@@ -1,3 +1,4 @@
+import sys
 import click
 import copy
 import json
@@ -16,13 +17,15 @@ from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_finetune_config
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config, ConfigBuilder
 from self_hosting_machinery.finetune.scripts.auxiliary.dataset import (
-    create_train_dataloader, create_test_dataloader, get_ds_len_per_epoch, to_cuda
+    create_train_dataloader, create_test_dataloader, get_ds_len_per_epoch, to_cuda, count_file_types
 )
 from self_hosting_machinery.finetune.scripts.auxiliary.early_stopper import EarlyStopper
 from self_hosting_machinery.finetune.scripts.auxiliary.finetune_status_tracker import FinetuneStatusTracker
 from self_hosting_machinery.finetune.scripts.auxiliary.model import ModelContext
 from self_hosting_machinery.finetune.utils import traces
 from refact_utils.finetune.utils import default_finetune_model
+
+from refact_utils.scripts.env import TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH
 
 
 def _log_everywhere(message):
@@ -50,8 +53,7 @@ from refact_utils.finetune.train_defaults import finetune_train_defaults
 @click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
 @click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
 @click.option('--model_name', default=default_finetune_model)
-def _build_finetune_config_by_heuristics(**kwargs) -> Dict[str, Any]:
-    print("kwargs = %s" % kwargs)
+def _build_finetune_config_by_heuristics(project, **kwargs) -> Dict[str, Any]:
     from known_models_db.refact_known_models import models_mini_db
     models_db: Dict[str, Any] = copy.deepcopy(models_mini_db)
     with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
@@ -59,16 +61,15 @@ def _build_finetune_config_by_heuristics(**kwargs) -> Dict[str, Any]:
     user_cfg = copy.deepcopy(finetune_train_defaults)
     user_cfg_nondefault = {}
     for k, v in kwargs.items():
-        traces.log("Command line parameter: %s = %s" % (k, v))
+        # traces.log("Command line parameter: %s = %s" % (k, v))
         user_cfg[k] = v
         if finetune_train_defaults.get(k, 0) != v:
             user_cfg_nondefault[k] = v
 
     cfg_builder = ConfigBuilder(base_config(kwargs['model_name'], models_db))
     if user_cfg['use_heuristics']:
-        _log_everywhere("Calculating finetune optimal parameters")
         _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
-        ds_len = get_ds_len_per_epoch(kwargs['model_name'], cfg_builder)
+        ds_len = get_ds_len_per_epoch(env.TRAIN_FILTERED_FILEPATH, kwargs['model_name'], cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
         (cfg_builder
          .set_batch_size(cfg_builder.cfg['train_batch_size'])
@@ -93,14 +94,34 @@ def _build_finetune_config_by_heuristics(**kwargs) -> Dict[str, Any]:
          .set_weight_decay(user_cfg['weight_decay']))
 
     if dist.get_rank() == 0:
+        filetypes_train = count_file_types(env.TRAIN_FILTERED_FILEPATH)
+        filetypes_test = count_file_types(env.TEST_FILTERED_FILEPATH)
+        traces.log(f'Train file types:')
+        for k, v in filetypes_train.items():
+            traces.log(f'    {v} {k}')
+        traces.log(f'')
+        traces.log(f'Test file types:')
+        for k, v in filetypes_test.items():
+            traces.log(f'    {v} {k}')
+        traces.log(f'')
+        with open(os.path.join(traces.context().path, "source_files.json"), "w") as f:
+            json.dump({
+                "project": project,
+                "train": filetypes_train,
+                "test": filetypes_test,
+            }, f, indent=4)
+
+    if dist.get_rank() == 0:
+        for k, v in user_cfg_nondefault.items():
+            traces.log(f'Non-default parameter: {k:>20} {v}')
+        with open(os.path.join(traces.context().path, "parameters_nondefault.json"), "w") as f:
+            json.dump(user_cfg_nondefault, f, indent=4)
         traces.log(f'Freeze exceptions: {cfg_builder.cfg["model_info"]["freeze_exceptions"]}')
-        traces.log(f'Low memory mode: {user_cfg["low_gpu_mem_mode"]}')
         for k, v in cfg_builder.cfg["model_info"]["lora"].items():
             traces.log(f'Lora config: {k:>20} {v}')
         with open(os.path.join(traces.context().path, "config.json"), "w") as f:
             json.dump(cfg_builder.cfg, f, indent=4)
-        with open(os.path.join(traces.context().path, "parameters_nondefault.json"), "w") as f:
-            json.dump(user_cfg_nondefault, f, indent=4)
+        traces.log(f'Low memory mode: {user_cfg["low_gpu_mem_mode"]}')
 
     assert cfg_builder.cfg['train_iters'] % cfg_builder.cfg['test_every'] == 0
     assert cfg_builder.cfg['save_every'] % cfg_builder.cfg['test_every'] == 0
@@ -168,9 +189,11 @@ def _test_iteration(
 
 
 def loop(
-        finetune_cfg: Dict[str, Any],
-        model_context: ModelContext,
-        status_tracker: FinetuneStatusTracker
+    train_jsonl_path: str,
+    test_jsonl_path: str,
+    finetune_cfg: Dict[str, Any],
+    model_context: ModelContext,
+    status_tracker: FinetuneStatusTracker
 ):
     def _save_checkpoint(iter_n: int, loss: float, force: bool = False):
         if not zero_rank:
@@ -188,6 +211,7 @@ def loop(
     t0 = time.time()
 
     train_ds = create_train_dataloader(
+        jsonl_path=train_jsonl_path,
         model_name=model_context.model_name,
         encoding=model_context.encoding,
         num_workers=max(multiprocessing.cpu_count() // 2, 1),
@@ -196,6 +220,7 @@ def loop(
     )
     train_ds_iter = iter(train_ds)
     test_ds = create_test_dataloader(
+        jsonl_path=test_jsonl_path,
         model_name=model_context.model_name,
         encoding=model_context.encoding,
         ctx_size=finetune_cfg['model_info']['ctx_size']
@@ -261,10 +286,8 @@ def main():
     try:
         status_tracker.update_status("working")
         _log_everywhere("Dest dir is %s" % traces.context().path)
-        with click.Context(_build_finetune_config_by_heuristics) as ctx:
-            finetune_cfg = _build_finetune_config_by_heuristics()
+        finetune_cfg = _build_finetune_config_by_heuristics.main(sys.argv[1:], standalone_mode=False)
         finetune_cfg = copy.deepcopy(finetune_cfg)
-        quit()
 
         _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
         model_context = ModelContext(
@@ -274,6 +297,8 @@ def main():
 
         _log_everywhere(f"Starting finetune at {traces.context().path}\n\n")
         loop(
+            train_jsonl_path=TRAIN_FILTERED_FILEPATH,
+            test_jsonl_path=TEST_FILTERED_FILEPATH,
             finetune_cfg=finetune_cfg,
             model_context=model_context,
             status_tracker=status_tracker
