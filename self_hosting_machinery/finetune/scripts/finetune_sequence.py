@@ -15,15 +15,20 @@ def catch_sigusr1(signum, frame):
 @click.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
 @click.option('--filter-only', is_flag=True, help='Filter only flag')
 @click.option('--project', default='', help='Project name')
+@click.option('--run_id', default='', help='Finetune run name')
 @click.argument('the_rest_of_args', nargs=-1)
-def main(filter_only, project, the_rest_of_args):
+def main(filter_only, project, run_id, the_rest_of_args):
     # print("filter_only: %s, project: %s, the_rest_of_args: %s" % (filter_only, project, the_rest_of_args))
     if not filter_only:
-        os.environ["LORA_LOGDIR"] = time.strftime("lora-%Y%m%d-%H%M%S")
+        if not run_id:
+            run_id = time.strftime("lora-%Y%m%d-%H%M%S")
+        os.environ["LORA_LOGDIR"] = run_id
     else:
         os.environ["LORA_LOGDIR"] = "NO_LOGS"
-    subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.finetune.scripts.process_uploaded_files", "--project", project])
-    subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.finetune.scripts.finetune_filter", "--project", project])
+    # subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.finetune.scripts.process_uploaded_files", "--project", project])
+    # subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.finetune.scripts.finetune_filter", "--project", project])
+    # TODO: gpus > 1
+    # python -m torch.distributed.launch --nproc_per_node=8 ~/code/refact/self_hosting_machinery/finetune/scripts/finetune_train.py
     if not filter_only:
         subprocess.check_call([sys.executable, "-m", "self_hosting_machinery.finetune.scripts.finetune_train", "--project", project, *the_rest_of_args])
 
