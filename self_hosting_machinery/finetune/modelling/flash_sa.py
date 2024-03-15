@@ -1,10 +1,11 @@
 import functools
 import math
+from typing import Tuple, Optional
 
 import einops
 import torch
-from typing import Tuple, Optional
 
+from self_hosting_machinery.finetune.modelling.utils import get_base_model
 from self_hosting_machinery.finetune.utils import traces
 
 
@@ -41,6 +42,7 @@ def _get_alibi_slopes(attn_heads: int, dev: str) -> torch.Tensor:
         # Concatenate the slopes with the remaining slopes.
         m = torch.cat([m, m_hat])
     return m
+
 
 def _prerequisites_are_ok(model, try_triton_kernel: bool):
     try:
@@ -90,8 +92,7 @@ def apply_flash_mha_to_refact_model(model):
         return
 
     traces.log("Applying flash attention to the model")
-    if type(model).__name__ == 'PeftModelForCausalLM':
-        model = model.base_model.model
+    model = get_base_model(model)
     for block in model.transformer.h:
         block.attn.forward = _forward.__get__(block.attn, type(block.attn))
 
@@ -134,8 +135,7 @@ def apply_flash_mha_to_starcoder_model(model):
         return
 
     traces.log("Applying flash attention to the model")
-    if type(model).__name__ == 'PeftModelForCausalLM':
-        model = model.base_model.model
+    model = get_base_model(model)
     for block in model.transformer.h:
         block.attn.forward = _forward.__get__(block.attn, type(block.attn))
 
@@ -184,8 +184,7 @@ def apply_flash_mha_to_codellama_model(model):
         return
 
     traces.log("Applying flash attention to the model")
-    if type(model).__name__ == 'PeftModelForCausalLM':
-        model = model.base_model.model
+    model = get_base_model(model)
     for layer in model.base_model.layers:
         layer.self_attn.forward = _forward.__get__(layer.self_attn, type(layer.self_attn))
 
@@ -234,7 +233,6 @@ def apply_flash_mha_to_starcoder2_model(model):
         return
 
     traces.log("Applying flash attention to the model")
-    if type(model).__name__ == 'PeftModelForCausalLM':
-        model = model.base_model.model
+    model = get_base_model(model)
     for layer in model.base_model.layers:
         layer.self_attn.forward = _forward.__get__(layer.self_attn, type(layer.self_attn))

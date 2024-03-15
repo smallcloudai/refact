@@ -1,15 +1,13 @@
 import functools
-import logging
 import math
+from typing import Optional
 
 import torch as th
 import triton
 import triton.language as tl
-
-from typing import Optional, Tuple
-
 from einops import einops
 
+from self_hosting_machinery.finetune.modelling.utils import get_base_model
 from self_hosting_machinery.finetune.utils import traces
 
 
@@ -597,5 +595,6 @@ def apply_flash_mha_to_refact_model(model):
         return
 
     traces.log("Applying triton flash attention to the model")
+    model = get_base_model(model)
     for block in model.transformer.h:
         block.attn.forward = _forward.__get__(block.attn, type(block.attn))

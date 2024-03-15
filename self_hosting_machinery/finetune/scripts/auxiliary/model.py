@@ -2,6 +2,7 @@ import importlib
 import os
 from collections import defaultdict
 from functools import partial
+from pathlib import Path
 from typing import Dict, Any, List, Tuple
 
 import deepspeed
@@ -14,7 +15,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from self_hosting_machinery.finetune.configuration import supported_models
 from self_hosting_machinery.finetune.modelling.loss import masked_loss
-from self_hosting_machinery.finetune.modelling.utils import map_model_specific_params
+from self_hosting_machinery.finetune.modelling.utils import map_model_specific_params, get_base_model
 from self_hosting_machinery.finetune.utils import traces
 from self_hosting_machinery.finetune.utils.timer import Timer
 
@@ -73,8 +74,9 @@ class ModelContext:
                 )
                 self.use_deepspeed = True
 
+        traces.log(summary(get_base_model(self.model), depth=4,
+                           col_names=['num_params', 'params_percent', 'trainable'], verbose=0))
         traces.log("Allocated memory: %0.2fG" % (torch.cuda.max_memory_allocated() / 1e9))
-        traces.log(summary(self.model, depth=4, col_names=['num_params', 'params_percent', 'trainable'], verbose=0))
 
         self.loss_fn = partial(
             masked_loss,
@@ -195,18 +197,21 @@ class ModelContext:
             save_path: str,
             tag: str
     ):
-        output_path = os.path.join(save_path, tag)
+        output_path = Path(save_path) / tag
+        weights_path = output_path / "adapter_model.safetensors"
+        embeddings_path = output_path / "new_embeddings.safetensors"
         self.model.save_pretrained(output_path, safe_serialization=True)
-        weights = safetensors.torch.load_file(os.path.join(output_path, "adapter_model.safetensors"))
+        weights = safetensors.torch.load_file(weights_path)
         lora_weights, embeddings_weights = {}, {}
         for key in weights.keys():
             if "lora" in key:
                 lora_weights[key] = weights[key]
             else:
                 embeddings_weights[key] = weights[key]
-        safetensors.torch.save_file(lora_weights, os.path.join(output_path, "adapter_model.safetensors"))
         if len(embeddings_weights) > 0:
-            safetensors.torch.save_file(embeddings_weights, os.path.join(output_path, "new_embeddings.safetensors"))
+            weights_path.unlink()
+            safetensors.torch.save_file(lora_weights, weights_path)
+            safetensors.torch.save_file(embeddings_weights, embeddings_path)
 
     def _freeze_model(
             self,
