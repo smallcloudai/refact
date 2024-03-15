@@ -36,26 +36,12 @@ const useControlsState = ({
 }: useCheckboxStateProps) => {
   const [interacted, setInteracted] = React.useState(false);
 
-  const lines = useMemo(() => {
-    return activeFile.line1 !== null && activeFile.line2 !== null
-      ? `:${activeFile.line1}-${activeFile.line2}`
-      : "";
-  }, [activeFile.line1, activeFile.line2]);
-
-  const nameWithLines = useMemo(() => {
-    return `${activeFile.name}${lines}`;
-  }, [activeFile.name, lines]);
-
   const nameWithCursor = useMemo(() => {
     if (activeFile.cursor === null) {
       return activeFile.name;
     }
     return `${activeFile.name}:${activeFile.cursor}`;
   }, [activeFile.name, activeFile.cursor]);
-
-  const fullPathWithLines = useMemo(() => {
-    return activeFile.path + lines;
-  }, [activeFile.path, lines]);
 
   const fullPathWithCursor = useMemo(() => {
     if (activeFile.cursor === null) {
@@ -85,10 +71,9 @@ const useControlsState = ({
         name: "file_upload",
         checked: !!snippet.code && !!activeFile.name,
         label: "Attach",
-        value: fullPathWithLines,
+        value: fullPathWithCursor,
         disabled: !activeFile.name,
         fileName: nameWithCursor,
-        defaultChecked: !!snippet.code && !!activeFile.name,
       },
       lookup_symbols: {
         name: "lookup_symbols",
@@ -98,8 +83,6 @@ const useControlsState = ({
         disabled: !activeFile.name,
         hide: !ast,
         defaultChecked: !!snippet.code && !!activeFile.name,
-        // fileName: " at cursor",
-        // fileName: nameWithCursor,
       },
       selected_lines: {
         name: "selected_lines",
@@ -107,7 +90,6 @@ const useControlsState = ({
         label: `Selected ${codeLineCount} lines`,
         value: markdown,
         disabled: !snippet.code,
-        // fileName: nameWithLines,
       },
     } as const;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,37 +117,13 @@ const useControlsState = ({
 
   useEffect(() => {
     setCheckboxes((prev) => {
-      const lookupValue = prev.lookup_symbols.checked
-        ? prev.lookup_symbols.value
-        : fullPathWithCursor;
-
-      // const lookupFileName = prev.lookup_symbols.checked
-      //   ? prev.lookup_symbols.fileName
-      //   : nameWithCursor;
-
       const lookupDisabled = prev.lookup_symbols.checked
         ? false
         : !activeFile.name;
 
-      // const selectedLineValue = prev.selected_lines.checked
-      //   ? prev.selected_lines.value
-      //   : markdown;
-
-      // const selectedLineFileName = prev.selected_lines.checked
-      //   ? prev.selected_lines.fileName
-      //   : nameWithLines;
-
       const selectedLineDisabled = prev.selected_lines.checked
         ? false
         : !snippet.code;
-
-      const fileUploadValue = prev.file_upload.checked
-        ? prev.file_upload.value
-        : fullPathWithCursor;
-
-      const fileUploadFileName = prev.file_upload.checked
-        ? prev.file_upload.fileName
-        : activeFile.name;
 
       const fileUploadDisabled = prev.file_upload.checked
         ? false
@@ -179,8 +137,7 @@ const useControlsState = ({
         },
         lookup_symbols: {
           ...prev.lookup_symbols,
-          value: lookupValue,
-          // fileName: lookupFileName,
+          value: fullPathWithCursor,
           disabled: lookupDisabled,
           hide: !ast,
           checked: interacted
@@ -189,18 +146,15 @@ const useControlsState = ({
         },
         selected_lines: {
           ...prev.selected_lines,
-          // maybe allow this to change?
-          // value: selectedLineValue,
           label: `Selected ${codeLineCount} lines`,
           value: markdown,
-          // fileName: selectedLineFileName,
           disabled: selectedLineDisabled,
           checked: interacted ? prev.selected_lines.checked : !!snippet.code,
         },
         file_upload: {
           ...prev.file_upload,
-          value: fileUploadValue,
-          fileName: fileUploadFileName,
+          value: fullPathWithCursor,
+          fileName: activeFile.name,
           disabled: fileUploadDisabled,
           checked: interacted
             ? prev.file_upload.checked
@@ -212,11 +166,9 @@ const useControlsState = ({
     });
   }, [
     markdown,
-    nameWithLines,
     nameWithCursor,
     activeFile.name,
     snippet.code,
-    fullPathWithLines,
     fullPathWithCursor,
     vecdb,
     ast,
@@ -233,8 +185,6 @@ const useControlsState = ({
     checkboxes,
     toggleCheckbox,
     markdown,
-    nameWithLines,
-    fullPathWithLines,
     reset,
     setInteracted,
   };
