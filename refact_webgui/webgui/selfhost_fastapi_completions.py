@@ -13,7 +13,7 @@ from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
-from refact_utils.finetune.utils import get_active_loras
+from refact_utils.finetune.utils import get_active_loras, running_models_and_loras
 from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
@@ -23,8 +23,7 @@ from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_login import RefactSession
 
 from pydantic import BaseModel, Required
-from typing import List, Dict, Union, Optional, Tuple
-
+from typing import List, Dict, Union, Optional, Tuple, Any
 
 __all__ = ["BaseCompletionsRouter", "CompletionsRouter"]
 
@@ -270,7 +269,9 @@ class BaseCompletionsRouter(APIRouter):
         _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
         _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
 
-    async def _coding_assistant_caps(self):
+    async def _coding_assistant_caps_base_data(self, request: Request) -> Dict[str, Any]:
+        client_version = request.headers.get("client_version")
+
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
         code_chat_default_model = ""
@@ -308,7 +309,22 @@ class BaseCompletionsRouter(APIRouter):
             },
             "caps_version": config_mtime,
         }
-        return Response(content=json.dumps(data, indent=4), media_type="application/json")
+
+        if client_version >= "0.7.1":
+            running = running_models_and_loras(self._model_assigner)
+
+            if cc_default := data.get("code_completion_default_model"):
+                if cc_variants := [r for r in running['completion'] if r.startswith(cc_default) and r != cc_default]:
+                    data["code_completion_default_model"] = cc_variants[0]
+
+            if cc_chat_default := data.get("code_chat_default_model"):
+                if cc_variants := [r for r in running['chat'] if r.startswith(cc_chat_default) and r != cc_chat_default]:
+                    data["code_chat_default_model"] = cc_variants[0]
+
+        return data
+
+    async def _coding_assistant_caps(self, request: Request, authorization: str = Header(None)):
+        return Response(content=json.dumps(await self._coding_assistant_caps_base_data(request), indent=4), media_type="application/json")
 
     async def _login(self, authorization: str = Header(None)):
         await self._account_from_bearer(authorization)
@@ -365,8 +381,17 @@ class BaseCompletionsRouter(APIRouter):
             "human_readable_message": "API key verified",
         }
 
-    async def _resolve_model_lora(self, model_name: str, account: str) -> Tuple[str, Optional[Dict[str, str]]]:
-        raise NotImplementedError()
+    async def _resolve_model_lora(self, model_name: str) -> Tuple[str, Optional[Dict[str, str]]]:
+        running = running_models_and_loras(self._model_assigner)
+        if model_name not in {r for r in [*running['completion'], *running['chat']]}:
+            return model_name, None
+
+        model_name, run_id, checkpoint_id = (*model_name.split(":"), None, None)[:3]
+
+        return model_name, {
+            "run_id": run_id,
+            "checkpoint_id": checkpoint_id,
+        }
 
     async def _completions(self, post: NlpCompletion, authorization: str = Header(None)):
         account = await self._account_from_bearer(authorization)
@@ -375,8 +400,9 @@ class BaseCompletionsRouter(APIRouter):
         req = post.clamp()
         caps_version = self._model_assigner.config_inference_mtime()       # use mtime as a version, if that changes the client will know to refresh caps
 
-        model_name, lora_config = await self._resolve_model_lora(post.model, account)
-        model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
+        model_name, lora_config = await self._resolve_model_lora(post.model)
+        model_name, err_msg = static_resolve_model(model_name, self._inference_queue)
+
         if err_msg:
             log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
             return Response(status_code=400, content=json.dumps({"detail": err_msg, "caps_version": caps_version}, indent=4), media_type="application/json")
@@ -385,6 +411,7 @@ class BaseCompletionsRouter(APIRouter):
             log(f'{ticket.id()} model resolve "{post.model}" -> "{model_name}" lora {lora_config} from {account}')
         else:
             log(f'{ticket.id()} model resolve "{post.model}" -> "{model_name}" from {account}')
+
         req.update({
             "object": "text_completion_req",
             "account": account,
@@ -410,11 +437,17 @@ class BaseCompletionsRouter(APIRouter):
 
         ticket = Ticket("comp-")
 
-        model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
+        model_name, lora_config = await self._resolve_model_lora(post.model)
+        model_name, err_msg = static_resolve_model(model_name, self._inference_queue)
+
         if err_msg:
-            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
+            log("%s chat model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)
-        log("%s chat model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
+
+        if lora_config:
+            log(f'{ticket.id()} chat model resolve "{post.model}" -> "{model_name}" lora {lora_config} from {account}')
+        else:
+            log(f'{ticket.id()} chat model resolve "{post.model}" -> "{model_name}" from {account}')
 
         req = post.clamp()
         post_raw = await request.json()
@@ -600,38 +633,3 @@ class CompletionsRouter(BaseCompletionsRouter):
             traceback_str = traceback.format_exc()
             log(traceback_str)
             raise HTTPException(status_code=401, detail=str(e))
-
-    async def _resolve_model_lora(self, model_name: str, account: str) -> Tuple[str, Optional[Dict[str, str]]]:
-        model_name, run_id, checkpoint_id = (*model_name.split(":"), None, None)[:3]
-
-        if model_name not in self._model_assigner.models_db:
-            return model_name, None
-
-        active_loras: List[Dict[str, str]] = get_active_loras({
-            model_name: self._model_assigner.models_db[model_name]
-        })[model_name].get("loras", [])
-
-        if not active_loras:
-            return model_name, None
-
-        if run_id is None:
-            run_id = active_loras[0]["run_id"]
-            checkpoint_id = active_loras[0]["checkpoint"]
-        else:
-            run_checkpoints = [
-                lora_info["checkpoint"]
-                for lora_info in active_loras
-                if lora_info["run_id"] == run_id
-            ]
-            if not run_checkpoints:
-                return model_name, None
-
-            if checkpoint_id is None:
-                checkpoint_id = run_checkpoints[0]
-            elif checkpoint_id not in run_checkpoints:
-                return model_name, None
-
-        return model_name, {
-            "run_id": run_id,
-            "checkpoint_id": checkpoint_id,
-        }
