@@ -325,6 +325,8 @@ class BaseCompletionsRouter(APIRouter):
             if cc_chat_default := data.get("code_chat_default_model"):
                 if cc_variants := [r for r in running['chat'] if r.split(':')[0] == cc_chat_default and r != cc_chat_default]:
                     data["code_chat_default_model"] = cc_variants[0]
+        else:
+            log(f"refact-lsp version {client_version} is deprecated. Finetune is not available")
 
         return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
