@@ -471,6 +471,20 @@ h3 {
     margin-top: -25px;
     margin-left: 236px;
 }
+
+.run-rename-popup {
+    display: none;
+    position: absolute;
+    padding: 10px 10px 4px;
+    border: 1px solid #dee2e6;
+    background-color: #fff;
+    box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.2);
+    /*text-align: left;*/
+    z-index: 999;
+    margin-top: -25px;
+    margin-left: 100px;
+}
+
 #upload-tab-table-body-files td:nth-child(3) {
     text-align: right;
     padding-right: 15px;

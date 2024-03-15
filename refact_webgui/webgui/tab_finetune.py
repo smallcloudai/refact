@@ -103,6 +103,7 @@ class TabFinetuneRouter(APIRouter):
 
     def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.add_api_route("/running-models-and-loras", self._running_models_and_loras, methods=["GET"])
         self.add_api_route("/tab-finetune-rename", self._tab_finetune_rename, methods=["POST"])
         self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
@@ -118,6 +119,9 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-training-setup", self._tab_finetune_training_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
         self._model_assigner = model_assigner
+
+    async def _running_models_and_loras(self):
+        return Response(json.dumps(running_models_and_loras(self._model_assigner), indent=4) + "\n")
 
     async def _tab_finetune_rename(self, post: RenamePost):
         running = running_models_and_loras(self._model_assigner)

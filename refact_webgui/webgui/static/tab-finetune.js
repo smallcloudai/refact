@@ -9,7 +9,8 @@ let gfx_showing_run_id = "";
 let finetune_state,
     reference_finetune_state,
     finetune_configs_and_runs,
-    reference_finetune_configs_and_runs;
+    reference_finetune_configs_and_runs,
+    running_models_and_loras;
 
 let selected_lora;
 let finetune_settings_defaults = [];
@@ -63,16 +64,36 @@ export function get_finetune_config_and_runs() {
         });
 }
 
+function get_running_models_and_loras() {
+    return fetch("/running-models-and-loras")
+       .then(function (response) {
+            if (!response.ok) {
+                return response.json().then(function(json) {
+                    throw new Error(json.detail);
+                });
+            }
+            return response.json();
+        })
+      .catch(function (error) {
+            console.log('tab-finetune-running-models-and-loras',error);
+            general_error(error);
+        });
+}
+
+
 function tab_finetune_config_and_runs() {
     get_finetune_config_and_runs().then((data) => {
-        if (!data) {
-            return;
-        }
-        finetune_configs_and_runs = data;
-        render_runs();
-        render_model_select();
-        render_finetune_settings(data);
-        finetune_controls_state();
+        get_running_models_and_loras().then((running_data) => {
+            if (!data) {
+                return;
+            }
+            finetune_configs_and_runs = data;
+            running_models_and_loras = running_data;
+            render_runs();
+            render_model_select();
+            render_finetune_settings(data);
+            finetune_controls_state();
+        });
     });
 }
 
@@ -181,6 +202,14 @@ function render_runs() {
         return;
     }
     let finetune_is_working = false;
+    let running_loras = [];
+    for (let [k, v] of Object.entries(running_models_and_loras)) {
+        for (let i of v) {
+            if (i.includes(":")) {
+                running_loras.push(i.split(":")[0] + ":" + i.split(":")[1]);
+            }
+        }
+    }
 
     if(finetune_configs_and_runs.finetune_runs.length > 0) {
         runs_table.innerHTML = '';
@@ -227,12 +256,22 @@ function render_runs() {
         run_steps.innerHTML = run.worked_steps;
 
         const item_disabled = run_is_working ? "disabled" : ""
+        const rename_disabled = running_loras.includes(`${run.model_name}:${run.run_id}`) ? "disabled" : "";
 
         run_name.innerHTML = `
             <div id="run_name_${run.run_id}" class="run-table-name" data-run="${run.run_id}" ${item_disabled}>
-                <div id="run_div${run.run_id}">
-                    ${run.run_id}
-                    <button class="run-rename btn btn-sm btn-hover btn-link" data-run="${run.run_id}" style="padding: 0; font-size: 0.7rem;" ${false}><i class="bi bi-pencil-square"></i></button>
+                <div id="run_div${run.run_id}" style="display: flex; flex-direction: row">
+                    <div>
+                         ${run.run_id}
+                    </div>
+                    <div>
+                        <button class="run-rename btn btn-sm btn-hover btn-link" 
+                        data-run="${run.run_id}"
+                        style="padding: 0; font-size: 0.9rem;" ${false}
+                        ${rename_disabled}
+                        ><i class="bi bi-pencil-square"></i></button>
+                        <div class="run-rename-popup" data-run="${run.run_id}"><pre>Cannot rename: currently in use</pre></div>
+                    </div>
                 </div>
                 <div id="run_div_rename${run.run_id}" hidden>
                     <input type="text" id="run_rename_input${run.run_id}" value="${run.run_id}">
@@ -292,12 +331,24 @@ function render_runs() {
         });
     });
 
-    document.querySelectorAll(".run-rename").forEach((run) => {
-        run.addEventListener('click', (event) => {
+    document.querySelectorAll(".run-rename").forEach((run_rename) => {
+
+        if (run_rename.disabled) {
+            run_rename.addEventListener('mouseover', () => {
+            let popup_div = document.querySelector(`.run-rename-popup[data-run='${run_rename.dataset.run}']`);
+                popup_div.style.display = 'block';
+            });
+            run_rename.addEventListener('mouseout', () => {
+                let popup_div = document.querySelector(`.run-rename-popup[data-run='${run_rename.dataset.run}']`);
+                popup_div.style.display = 'none';
+            });
+        }
+
+        run_rename.addEventListener('click', (event) => {
             event.stopPropagation();
 
-            let rename_div = document.getElementById(`run_div_rename${run.dataset.run}`);
-            let text_div = document.getElementById(`run_div${run.dataset.run}`);
+            let rename_div = document.getElementById(`run_div_rename${run_rename.dataset.run}`);
+            let text_div = document.getElementById(`run_div${run_rename.dataset.run}`);
             rename_div.hidden = false;
             text_div.hidden = true;
 
@@ -305,9 +356,9 @@ function render_runs() {
             spinner.style.scale = "0.5";
             spinner.style.position = "absolute";
 
-            let rename_input = document.getElementById(`run_rename_input${run.dataset.run}`);
-            const confirm_btn = document.getElementById(`confirm_btn${run.dataset.run}`);
-            const cancel_btn = document.getElementById(`cancel_btn${run.dataset.run}`);
+            let rename_input = document.getElementById(`run_rename_input${run_rename.dataset.run}`);
+            const confirm_btn = document.getElementById(`confirm_btn${run_rename.dataset.run}`);
+            const cancel_btn = document.getElementById(`cancel_btn${run_rename.dataset.run}`);
 
             let new_confirm_btn = document.createElement("button");
             new_confirm_btn.id = confirm_btn.id;
@@ -316,12 +367,11 @@ function render_runs() {
             confirm_btn.replaceWith(new_confirm_btn)
 
             new_confirm_btn.addEventListener('click', (event) => {
-                event.stopPropagation();
                 new_confirm_btn.replaceWith(spinner);
                 cancel_btn.hidden = true;
-                rename_post(run.dataset.run, rename_input.value).then((is_ok) => {
+                rename_post(run_rename.dataset.run, rename_input.value).then((is_ok) => {
                     if (!is_ok) {
-                        rename_input.value = run.dataset.run;
+                        rename_input.value = run_rename.dataset.run;
                         spinner.replaceWith(new_confirm_btn);
                         cancel_btn.hidden = false;
                     }
@@ -330,8 +380,7 @@ function render_runs() {
             });
 
             cancel_btn.addEventListener('click', (event) => {
-                event.stopPropagation();
-                rename_input.value = run.dataset.run;
+                rename_input.value = run_rename.dataset.run;
                 rename_div.hidden = true;
                 text_div.hidden = false;
             });
