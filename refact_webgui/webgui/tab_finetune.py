@@ -6,7 +6,7 @@ import os
 import re
 import asyncio
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Request, Header, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse, JSONResponse
 
 from refact_utils.scripts import env
@@ -19,10 +19,9 @@ from refact_utils.finetune.utils import get_finetune_runs
 from refact_utils.finetune.filtering_defaults import finetune_filtering_defaults
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
+from pydantic import BaseModel, validator, Field, Required
 
-from pydantic import BaseModel, validator
-
-from typing import Optional
+from typing import Optional, List
 
 
 __all__ = ["TabFinetuneRouter"]
@@ -52,10 +51,10 @@ async def stream_text_file(ft_path):
         f.close()
 
 
-class TabFinetuneConfig(BaseModel):
-    run_at_night: bool = False
-    run_at_night_time: str = Query(default="04:00", regex="([0-9]{1,2}):([0-9]{2})")
-    auto_delete_n_runs: int = Query(default=5, ge=2, le=100)
+# class TabFinetuneConfig(BaseModel):
+#     run_at_night: bool = False
+#     run_at_night_time: str = Query(default="04:00", regex="([0-9]{1,2}):([0-9]{2})")
+#     auto_delete_n_runs: int = Query(default=5, ge=2, le=100)
 
 
 class FilteringSetup(BaseModel):
@@ -66,20 +65,23 @@ class FilteringSetup(BaseModel):
 
 
 class TabFinetuneTrainingSetup(BaseModel):
-    model_name: Optional[str] = Query(default=None)
-    limit_time_seconds: Optional[int] = Query(default=600, ge=600, le=3600*48)
+    run_id: Optional[str] = Query(default=Required, regex="^[0-9a-zA-Z-\.\-]{1,30}$")
+    model_name: Optional[str] = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
+    # limit_time_seconds: Optional[int] = Query(default=600, ge=600, le=3600*48)
+    trainable_embeddings: Optional[bool] = Query(default=False)
+    low_gpu_mem_mode: Optional[bool] = Query(default=True)
     lr: Optional[float] = Query(default=30e-5, ge=1e-5, le=300e-5)
     batch_size: Optional[int] = Query(default=128, ge=4, le=1024)
     warmup_num_steps: Optional[int] = Query(default=10, ge=1, le=100)
     weight_decay: Optional[float] = Query(default=0.1, ge=0.0, le=1.0)
-    use_heuristics: Optional[bool] = Query(default=True)
+    # use_heuristics: Optional[bool] = Query(default=True)
     train_steps: Optional[int] = Query(default=250, ge=10, le=5000)
     lr_decay_steps: Optional[int] = Query(default=250, ge=10, le=5000)
     lora_r: Optional[int] = Query(default=16, ge=4, le=64)
     lora_alpha: Optional[float] = Query(default=32, ge=4, le=128)
     lora_dropout: Optional[float] = Query(default=0.01, ge=0.0, le=0.5)
-    trainable_embeddings: Optional[bool] = Query(default=False)
-    low_gpu_mem_mode: Optional[bool] = Query(default=True)
+    # gpus: Optional[List[int]] = Query(default=[0], ge=0, le=8)
+    gpus: List[int] = Field(..., example=[0], ge=0, le=8)
 
 
 class RenamePost(BaseModel):
@@ -110,9 +112,9 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
         self.add_api_route("/tab-finetune-filter-log", self._tab_finetune_filter_log, methods=["GET"])
         self.add_api_route("/tab-finetune-progress-svg/{run_id}", self._tab_funetune_progress_svg, methods=["GET"])
-        self.add_api_route("/tab-finetune-schedule-save", self._tab_finetune_schedule_save, methods=["POST"])
-        self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
-        self.add_api_route("/tab-finetune-stop-now", self._tab_finetune_stop_now, methods=["GET"])
+        # self.add_api_route("/tab-finetune-schedule-save", self._tab_finetune_schedule_save, methods=["POST"])
+        # self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
+        # self.add_api_route("/tab-finetune-stop-now", self._tab_finetune_stop_now, methods=["GET"])
         self.add_api_route("/tab-finetune-remove/{run_id}", self._tab_finetune_remove, methods=["GET"])
         self.add_api_route("/tab-finetune-smart-filter-setup", self._tab_finetune_smart_filter_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-smart-filter-get", self._tab_finetune_smart_filter_get, methods=["GET"])
@@ -187,13 +189,13 @@ class TabFinetuneRouter(APIRouter):
         config = get_finetune_config(self._model_assigner.models_db)
         result = {
             "finetune_runs": runs,
-            "config": {
-                "limit_training_time_minutes": "60",
-                "run_at_night": "True",
-                "run_at_night_time": "04:00",
-                "auto_delete_n_runs": "5",
-                **config,  # TODO: why we mix finetune config for training and schedule?
-            },
+            "config": config,
+            #     "limit_training_time_minutes": "60",
+            #     "run_at_night": "True",
+            #     "run_at_night_time": "04:00",
+            #     "auto_delete_n_runs": "5",
+            #     **config,  # TODO: why we mix finetune config for training and schedule?
+            # },
         }
         return Response(json.dumps(result, indent=4) + "\n")
 
@@ -217,14 +219,69 @@ class TabFinetuneRouter(APIRouter):
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_finetune_training_setup(self, post: TabFinetuneTrainingSetup):
+        # {
+        #     "run_id": "xxxx-20240315-090039",
+        #     "model_name": "deepseek-coder/1.3b/base",
+        #     "trainable_embeddings": false,
+        #     "low_gpu_mem_mode": true,
+        #     "lr": "0.0003",
+        #     "batch_size": "128",
+        #     "warmup_num_steps": "20",
+        #     "weight_decay": "0.1",
+        #     "train_steps": "250",
+        #     "lr_decay_steps": "250",
+        #     "lora_r": "16",
+        #     "lora_alpha": "32",
+        #     "lora_dropout": "0.01",
+        #     "gpus": [0, 1, 2]
+        # }
         validated = post.dict()
+        run_id = post.run_id
         for dkey, dval in finetune_train_defaults.items():
             if dkey in validated and (validated[dkey] == dval or validated[dkey] is None):
                 del validated[dkey]
+
+        # values will be used to fill form for the next run
         with open(env.CONFIG_FINETUNE + ".tmp", "w") as f:
             json.dump(validated, f, indent=4)
         os.rename(env.CONFIG_FINETUNE + ".tmp", env.CONFIG_FINETUNE)
+        # {
+        #     "policy": ["single_shot"],
+        #     "interrupt_when_file_appears": "%%",
+        #     "save_status": "%%",
+        #     "save_status_nickname": "prog_ftune",
+        #     "command_line": ["python", "-m", "self_hosting_machinery.finetune.scripts.finetune_sequence"],
+        #     "gpus": []
+        # }
+        ftune_cfg_j = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "filetune.cfg")))
+        fn = os.path.join(env.DIR_WATCHDOG_D, "ftune-%s.cfg" % run_id)
+        os.make_dirs(os.path.join(env.DIR_LORAS, run_id), exist_ok=False)
+        ftune_cfg_j["gpus"] = post.gpus
+        ftune_cfg_j["interrupt_when_file_appears"] = os.path.join(env.DIR_LORAS, run_id, "stop.flag")
+        ftune_cfg_j["save_status"] = os.path.join(env.DIR_LORAS, run_id, "watchdog_status.out")
+        ftune_cfg_j["save_status_nickname"] = run_id
+        del ftune_cfg_j["unfinished"]
+        for k in validated:
+            if k == "gpus":
+                continue
+            ftune_cfg_j["command_line"].append("--" + k)
+            ftune_cfg_j["command_line"].append(str(validated[k]))
+        with open(fn + ".tmp", "w") as f:
+            json.dump(ftune_cfg_j, f, indent=4)
+        os.rename(fn + ".tmp", fn)
         return JSONResponse("OK")
+
+    # async def _tab_finetune_run_now(self, filter_only: bool = False):
+    #     flag = env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY if filter_only else env.FLAG_LAUNCH_FINETUNE
+    #     with open(flag, "w") as f:
+    #         f.write("")
+    #     return JSONResponse("OK")
+
+    # async def _tab_finetune_stop_now(self):
+    #     # TODO: add run_id to POST, delete cfg
+    #     with open(env.FLAG_STOP_FINETUNE, "w") as f:
+    #         f.write("")
+    #     return JSONResponse("OK")
 
     async def _tab_finetune_training_get(self):
         result = {
@@ -273,19 +330,8 @@ class TabFinetuneRouter(APIRouter):
             svg += '</svg>'
         return Response(svg, media_type="image/svg+xml")
 
-    async def _tab_finetune_schedule_save(self, config: TabFinetuneConfig):
-        pass
-
-    async def _tab_finetune_run_now(self, filter_only: bool = False):
-        flag = env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY if filter_only else env.FLAG_LAUNCH_FINETUNE
-        with open(flag, "w") as f:
-            f.write("")
-        return JSONResponse("OK")
-
-    async def _tab_finetune_stop_now(self):
-        with open(env.FLAG_STOP_FINETUNE, "w") as f:
-            f.write("")
-        return JSONResponse("OK")
+    # async def _tab_finetune_schedule_save(self, config: TabFinetuneConfig):
+    #     pass
 
     async def _tab_finetune_remove(self, run_id: str):
         sanitize_run_id(run_id)
