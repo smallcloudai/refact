@@ -24,6 +24,11 @@ def get_run_model_name(run_dir: str) -> str:
         return json.load(f).get("model_name", legacy_finetune_model)
 
 
+def is_checkpoint_deprecated(checkpoint_dir: Path) -> bool:
+    load_cp_names = [p.name for p in checkpoint_dir.iterdir() if p.suffix in {".pt", ".pth", ".safetensors"}]
+    return "adapter_model.safetensors" not in load_cp_names
+
+
 def get_finetune_runs() -> List[Dict]:
     if not os.path.isdir(env.DIR_LORAS):
         return []
@@ -44,13 +49,18 @@ def get_finetune_runs() -> List[Dict]:
             if os.path.isdir(os.path.join(checkpoints_dir, checkpoint_dir))
         ] if os.path.isdir(checkpoints_dir) else []
 
+        deprecated = any([
+            is_checkpoint_deprecated(Path(checkpoints_dir) / checkpoint_info["checkpoint_name"])
+            for checkpoint_info in checkpoints
+        ])
         d = {
             "run_id": dirname,
             "worked_minutes": "0",
             "worked_steps": "0",
             "status": "preparing",
             "model_name": model_name(dir_path),
-            "checkpoints": checkpoints
+            "checkpoints": checkpoints,
+            "deprecated": deprecated,
         }
 
         if os.path.exists(status_fn := os.path.join(dir_path, "status.json")):
@@ -131,7 +141,16 @@ def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         finetune_model = model_info.get("finetune_model", model_name)
         if finetune_model not in active_loras:
             return {}
-        return migrate_active_lora(active_loras[finetune_model])
+        active_lora = migrate_active_lora(active_loras[finetune_model]).get("loras", [])
+        if finetune_model != model_name:
+            active_lora = [
+                lora_info for lora_info in active_lora
+                if not is_checkpoint_deprecated(
+                    Path(env.DIR_LORAS) / lora_info["run_id"] / "checkpoints" / lora_info["checkpoint"])
+            ]
+        return {
+            "loras": active_lora
+        }
 
     return {
         model_name: get_active_lora(model_name, model_info)

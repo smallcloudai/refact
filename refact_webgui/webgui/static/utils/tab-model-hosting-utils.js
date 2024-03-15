@@ -80,6 +80,9 @@ export function add_finetune_selectors_factory(finetune_configs_and_runs, models
     let runs = finetune_configs_and_runs.finetune_runs.filter(
         run => run.model_name === models_info[model_name].finetune_model
         && run.checkpoints.length !== 0 && !existing_runs.includes(run.run_id));
+    if (models_info[model_name].finetune_model !== model_name) {
+        runs = runs.filter(run => !run.deprecated);
+    }
     for (let run of runs) {
         let child = document.createElement("a");
         child.setAttribute("class", "dropdown-item add-finetune-select-run-di");
