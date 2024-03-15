@@ -67,7 +67,7 @@
           </div>
           <div class="ftune-eta"></div>
         </div>
-        <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn finetune-autorun btn-sm btn-outline-primary mt-1"><i class="bi bi-stopwatch-fill"></i>Autorun Settings</button>
+        <!-- <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn finetune-autorun btn-sm btn-outline-primary mt-1"><i class="bi bi-stopwatch-fill"></i>Autorun Settings</button> -->
       </div>
     </div>
   </div>
@@ -157,17 +157,12 @@
         <div class="modal-body">
 
           <div class="row">
-            <!-- <div class="col">
-              <div class="mb-3">
-                <label for="limit_time_seconds" class="form-label">Limit time seconds</label>
-                <input type="text" data-min="600" data-max="172800" class="validate form-control" id="limit_time_seconds">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 600, Max 3600 * 48
-                </div>
-              </div>
-            </div> -->
+            <div class="col">
+              <label for="finetune_name" class="form-label">Finetune Name:</label><input type="text" class="validate form-control" id="finetune_name" maxlength="30">
+            </div>
+          </div>
 
+          <div class="row">
             <div class="col">
               <label class="form-label">LoRA Size</label>
               <div class="btn-group" role="group" aria-label="basic radio toggle button group">
@@ -187,6 +182,19 @@
                 <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
                 <div class="form-text">
                   Min 1e-5, Max 300e-5
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <div class="form-check">
+                  <input tabindex="-1" class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
+                  <label class="form-check-label" for="low_gpu_mem_mode_finetune">
+                    Low GPU memory mode
+                  </label>
                 </div>
               </div>
             </div>
@@ -237,87 +245,142 @@
             </div>
           </div> -->
 
-          <!-- <div class="finetune-settings-optional finetune-settings-optional-disabled"> -->
-            <div class="row">
-              <div class="col">
-                <div class="mb-3">
-                  <label for="train_steps" class="form-label">Train steps</label>
-                  <input tabindex="-1" type="text" data-min="10" data-max="5000" class="validate form-control" id="train_steps">
-                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                  <div class="form-text">
-                    Min 10, Max 5000
-                  </div>
-                </div>
-              </div>
-              <div class="col">
-                <div class="mb-3">
-                  <label for="lr_decay_steps" class="form-label">Lr decay steps</label>
-                  <input tabindex="-1" type="text" data-min="10" data-max="5000" class="validate form-control" id="lr_decay_steps">
-                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                  <div class="form-text">
-                    Min 10, Max 5000
-                  </div>
-                </div>
-              </div>
-              <div class="col">
-                <div class="mb-3">
-                  <label for="lora_r" class="form-label">Lora R</label>
-                  <input tabindex="-1" type="text" data-min="4" data-max="64" class="validate form-control" id="lora_r">
-                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                  <div class="form-text">
-                    Min 4, Max 64
-                  </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="train_steps" class="form-label">Train steps</label>
+                <input tabindex="-1" type="text" data-min="10" data-max="5000" class="validate form-control" id="train_steps">
+                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                <div class="form-text">
+                  Min 10, Max 5000
                 </div>
               </div>
             </div>
-            <div class="row">
-              <div class="col">
-                <div class="mb-3">
-                  <label for="lora_alpha" class="form-label">Lora Alpha</label>
-                  <input tabindex="-1" type="text" data-min="4" data-max="128" class="validate form-control" id="lora_alpha">
-                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                  <div class="form-text">
-                    Min 4, Max 128
-                  </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="lr_decay_steps" class="form-label">Lr decay steps</label>
+                <input tabindex="-1" type="text" data-min="10" data-max="5000" class="validate form-control" id="lr_decay_steps">
+                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                <div class="form-text">
+                  Min 10, Max 5000
                 </div>
               </div>
-              <div class="col">
-                <div class="mb-3">
-                  <label for="lora_dropout" class="form-label">Lora Dropout</label>
-                  <input tabindex="-1" type="text" data-min="0.0" data-max="0.2" class="validate form-control" id="lora_dropout">
-                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                  <div class="form-text">
-                    Min 0.0, Max 0.2
-                  </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="lora_r" class="form-label">Lora R</label>
+                <input tabindex="-1" type="text" data-min="4" data-max="64" class="validate form-control" id="lora_r">
+                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                <div class="form-text">
+                  Min 4, Max 64
                 </div>
               </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="lora_alpha" class="form-label">Lora Alpha</label>
+                <input tabindex="-1" type="text" data-min="4" data-max="128" class="validate form-control" id="lora_alpha">
+                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                <div class="form-text">
+                  Min 4, Max 128
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="lora_dropout" class="form-label">Lora Dropout</label>
+                <input tabindex="-1" type="text" data-min="0.0" data-max="0.2" class="validate form-control" id="lora_dropout">
+                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
+                <div class="form-text">
+                  Min 0.0, Max 0.2
+                </div>
+              </div>
+            </div>
+          </div>
 
-            </div>
-            <div class="row">
-              <div class="col">
-                <div class="mb-3">
-                  <div class="form-check">
-                    <input tabindex="-1" class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
-                    <label class="form-check-label" for="low_gpu_mem_mode_finetune">
-                      Low GPU memory mode
-                    </label>
-                  </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <div class="form-check">
+                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu0" value="1" name="launch_gpu0">
+                  <label class="form-check-label" for="launch_gpu0">GPU0</label>
                 </div>
               </div>
             </div>
-            <!-- <div class="row">
-              <div class="col">
-                <div class="mb-3">
-                  <div class="form-check">
-                    <input tabindex="-1" class="form-check-input" type="checkbox" name="trainable_embeddings" value="" id="trainable_embeddings">
-                    <label class="form-check-label" for="trainable_embeddings">
-                      Trainable embeddings
-                    </label>
-                  </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <div class="form-check">
+                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu1" value="1"" name="launch_gpu1">
+                  <label class="form-check-label" for="launch_gpu1">GPU1</label>
                 </div>
               </div>
-            </div> -->
-          <!-- </div> -->
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <div class="form-check">
+                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu2" value="1" name="launch_gpu2">
+                  <label class="form-check-label" for="launch_gpu2">GPU2</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <div class="form-check">
+                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu3" value="1" name="launch_gpu3">
+                  <label class="form-check-label" for="launch_gpu3">GPU3</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <div class="form-check">
+                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu4" value="1" name="launch_gpu4">
+                  <label class="form-check-label" for="launch_gpu4">GPU4</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <div class="form-check">
+                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu5" value="1" name="launch_gpu5">
+                  <label class="form-check-label" for="launch_gpu5">GPU5</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <div class="form-check">
+                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu6" value="1" name="launch_gpu6">
+                  <label class="form-check-label" for="launch_gpu6">GPU6</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <div class="form-check">
+                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu7" value="1" name="launch_gpu7">
+                  <label class="form-check-label" for="launch_gpu7">GPU7</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="finetune-settings-error d-none"></div>
         </div>
         <div class="modal-footer">
@@ -329,7 +392,7 @@
   </div>
 
 
-  <div class="modal fade" id="finetune-tab-autorun-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-autorun-settings-modal" aria-hidden="true">
+  <!-- <div class="modal fade" id="finetune-tab-autorun-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-autorun-settings-modal" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -395,7 +458,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </div> -->
 
   <div class="modal fade" id="finetune-tab-model-warning-modal" tabindex="-1" aria-labelledby="finetune-tab-invalid-model-modal" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">

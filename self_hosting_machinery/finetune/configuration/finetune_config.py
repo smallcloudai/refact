@@ -141,9 +141,9 @@ class ConfigBuilder:
         self.cfg['save_every'] = save_every
         return self
 
-    def set_limit_time_seconds(self, seconds: int) -> 'ConfigBuilder':
-        self.cfg['limit_time_seconds'] = seconds
-        return self
+    # def set_limit_time_seconds(self, seconds: int) -> 'ConfigBuilder':
+    #     self.cfg['limit_time_seconds'] = seconds
+    #     return self
 
     def set_low_gpu_mem_mode(self, low_gpu_mode: bool) -> 'ConfigBuilder':
         self.cfg['low_gpu_mem_mode'] = low_gpu_mode
@@ -157,65 +157,65 @@ class ConfigBuilder:
         #     self.cfg['zero_optimization'].pop('offload_optimizer', None)
         return self
 
-    def set_lora_quality_by_heuristics(
-            self,
-            initial_loss: float,
-            ds_len: int
-    ) -> 'ConfigBuilder':
-        loss2score = {
-            (0.0, 0.7): 0,
-            (0.7, 0.8): 1,
-            (0.8, 1.1): 2,
-            (1.1, 1.5): 3,
-            (1.5, 2.5): 4,
-            (2.5, 100.0): 5
-        }
-        dslen2score = {
-            (0, 500): 0,
-            (500, 1000): 1,
-            (1000, 2500): 2,
-            (2500, 5000): 3,
-            (5000, 10000): 5,
-            (10000, 100000000): 8
-        }
+    # def set_lora_quality_by_heuristics(
+    #         self,
+    #         initial_loss: float,
+    #         ds_len: int
+    # ) -> 'ConfigBuilder':
+    #     loss2score = {
+    #         (0.0, 0.7): 0,
+    #         (0.7, 0.8): 1,
+    #         (0.8, 1.1): 2,
+    #         (1.1, 1.5): 3,
+    #         (1.5, 2.5): 4,
+    #         (2.5, 100.0): 5
+    #     }
+    #     dslen2score = {
+    #         (0, 500): 0,
+    #         (500, 1000): 1,
+    #         (1000, 2500): 2,
+    #         (2500, 5000): 3,
+    #         (5000, 10000): 5,
+    #         (10000, 100000000): 8
+    #     }
 
-        complexity2config = {
-            (0, 8): dict(lora_target_modules=[
-                "qkv", "out", "mlp",
-            ], lora_r=64, lora_alpha=128, lora_dropout=0.01,
-                freeze_exceptions=[
-                    "lora"
-                ]),
-            (8, 1000): dict(lora_target_modules=[
-                "qkv", "out", "mlp",
-            ], lora_r=64, lora_alpha=128, lora_dropout=0.01,
-                freeze_exceptions=[
-                    "wte", "lm_head", "lora"
-                ])
-        }
+    #     complexity2config = {
+    #         (0, 8): dict(lora_target_modules=[
+    #             "qkv", "out", "mlp",
+    #         ], lora_r=64, lora_alpha=128, lora_dropout=0.01,
+    #             freeze_exceptions=[
+    #                 "lora"
+    #             ]),
+    #         (8, 1000): dict(lora_target_modules=[
+    #             "qkv", "out", "mlp",
+    #         ], lora_r=64, lora_alpha=128, lora_dropout=0.01,
+    #             freeze_exceptions=[
+    #                 "wte", "lm_head", "lora"
+    #             ])
+    #     }
 
-        complexity_score = 0
-        for (lhs_loss, rhs_loss), score in loss2score.items():
-            if lhs_loss <= initial_loss < rhs_loss:
-                complexity_score += score
-                break
-        for (lhs_dslen, rhs_dslen), score in dslen2score.items():
-            if lhs_dslen <= ds_len < rhs_dslen:
-                complexity_score += score
-                break
+    #     complexity_score = 0
+    #     for (lhs_loss, rhs_loss), score in loss2score.items():
+    #         if lhs_loss <= initial_loss < rhs_loss:
+    #             complexity_score += score
+    #             break
+    #     for (lhs_dslen, rhs_dslen), score in dslen2score.items():
+    #         if lhs_dslen <= ds_len < rhs_dslen:
+    #             complexity_score += score
+    #             break
 
-        for (lhs_score, rhs_score), lora_cfg in complexity2config.items():
-            if lhs_score <= complexity_score < rhs_score:
-                self.cfg['model_info']['freeze_exceptions'] = lora_cfg.pop('freeze_exceptions')
-                self.cfg['model_info']['lora'] = lora_cfg
-                break
+    #     for (lhs_score, rhs_score), lora_cfg in complexity2config.items():
+    #         if lhs_score <= complexity_score < rhs_score:
+    #             self.cfg['model_info']['freeze_exceptions'] = lora_cfg.pop('freeze_exceptions')
+    #             self.cfg['model_info']['lora'] = lora_cfg
+    #             break
 
-        traces.log(
-            f'Lora parameters heuristic avg_loss={initial_loss:.2f}, '
-            f'ds_len={ds_len} => complexity score={complexity_score}'
-        )
+    #     traces.log(
+    #         f'Lora parameters heuristic avg_loss={initial_loss:.2f}, '
+    #         f'ds_len={ds_len} => complexity score={complexity_score}'
+    #     )
 
-        return self
+    #     return self
 
     def set_schedule_by_heuristics(
             self,
@@ -246,11 +246,11 @@ class ConfigBuilder:
 
         return self
 
-    def set_low_gpu_mem_mode_by_heuristics(self) -> 'ConfigBuilder':
-        gpu_mem = torch.cuda.get_device_properties('cuda').total_memory
-        self.set_low_gpu_mem_mode(gpu_mem < 20_000_000_000)
-        traces.log(f'heuristic says low_gpu_mem_mode={gpu_mem < 20_000_000_000} by looking at gpu memory size')
-        return self
+    # def set_low_gpu_mem_mode_by_heuristics(self) -> 'ConfigBuilder':
+    #     gpu_mem = torch.cuda.get_device_properties('cuda').total_memory
+    #     self.set_low_gpu_mem_mode(gpu_mem < 20_000_000_000)
+    #     traces.log(f'heuristic says low_gpu_mem_mode={gpu_mem < 20_000_000_000} by looking at gpu memory size')
+    #     return self
 
     def set_trainable_embeddings(self, trainable_embeddings: bool) -> 'ConfigBuilder':
         if not trainable_embeddings:
