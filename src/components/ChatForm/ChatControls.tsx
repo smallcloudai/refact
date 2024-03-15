@@ -5,6 +5,7 @@ import { type Config } from "../../contexts/config-context";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
 import classNames from "classnames";
+import { PromptSelect, PromptSelectProps } from "./PromptSelect";
 
 type CapsSelectProps = {
   value: string;
@@ -47,6 +48,7 @@ export type ChatControlsProps = {
   checkboxes: Record<string, Checkbox>;
   onCheckedChange: (name: string, checked: boolean | string) => void;
   selectProps: CapsSelectProps;
+  promptsProps: PromptSelectProps;
   host: Config["host"];
 };
 
@@ -54,6 +56,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   checkboxes,
   onCheckedChange,
   selectProps,
+  promptsProps,
   host,
 }) => {
   return (
@@ -85,6 +88,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
         );
       })}
       <CapsSelect {...selectProps} />
+      <PromptSelect {...promptsProps} />
     </Flex>
   );
 };

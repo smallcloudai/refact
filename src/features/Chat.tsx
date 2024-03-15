@@ -36,6 +36,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     retryQuestion,
     maybeRequestCaps,
     startNewChat,
+    setSelectedSystemPrompt,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -136,6 +137,9 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
             });
         }}
         requestCaps={maybeRequestCaps}
+        prompts={state.system_prompts.prompts}
+        onSetSystemPrompt={setSelectedSystemPrompt}
+        selectedSystemPrompt={state.selected_system_prompt}
       />
 
       <Flex justify="between" pl="1" pr="1" pt="1">

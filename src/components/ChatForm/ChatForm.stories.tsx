@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
 import { ChatForm } from "./ChatForm";
+import { SYSTEM_PROMPTS } from "../../__fixtures__";
 
 const testCommands = [
   "@workspace",
@@ -144,6 +145,8 @@ const meta = {
     requestCommandsCompletion: () => ({}),
     setSelectedCommand: () => ({}),
     onTextAreaHeightChange: noop,
+    prompts: SYSTEM_PROMPTS,
+    onSetSystemPrompt: noop,
   },
 } satisfies Meta<typeof ChatForm>;
 

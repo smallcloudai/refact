@@ -5,6 +5,7 @@ import {
   getAtCommandCompletion,
   getAtCommandPreview,
   isDetailMessage,
+  getPrompts,
 } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
@@ -19,6 +20,9 @@ import {
   isRequestAtCommandCompletion,
   ReceiveAtCommandCompletion,
   ReceiveAtCommandPreview,
+  isRequestPrompts,
+  ReceivePrompts,
+  ReceivePromptsError,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
@@ -123,18 +127,45 @@ export function useEventBusForHost() {
       if (isRequestDataForStatistic(event.data)) {
         getStatisticData(lspUrl)
           .then((data) => {
-            window.postMessage({
-              type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA,
-              payload: data,
-            });
+            window.postMessage(
+              {
+                type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA,
+                payload: data,
+              },
+              "*",
+            );
           })
           .catch((error: Error) => {
-            window.postMessage({
-              type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
-              payload: {
-                message: error.message,
+            window.postMessage(
+              {
+                type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
+                payload: {
+                  message: error.message,
+                },
               },
-            });
+              "*",
+            );
+          });
+      }
+
+      if (isRequestPrompts(event.data)) {
+        const id = event.data.payload.id;
+        getPrompts(lspUrl)
+          .then((prompts) => {
+            const message: ReceivePrompts = {
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS,
+              payload: { id, prompts },
+            };
+
+            window.postMessage(message, "*");
+          })
+          .catch((error: Error) => {
+            const message: ReceivePromptsError = {
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS_ERROR,
+              payload: { id, error: `Prompts: ${error.message}` },
+            };
+
+            window.postMessage(message, "*");
           });
       }
     };

@@ -15,7 +15,7 @@ import { ErrorCallout, Callout } from "../Callout";
 import { Button } from "@radix-ui/themes";
 import { ComboBox, type ComboBoxProps } from "../ComboBox";
 import type { ChatState } from "../../hooks";
-import { ChatContextFile } from "../../services/refact";
+import { ChatContextFile, SystemPrompts } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { useConfig } from "../../contexts/config-context";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
@@ -212,6 +212,9 @@ export type ChatFormProps = {
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
   requestCaps: () => void;
+  prompts: SystemPrompts;
+  onSetSystemPrompt: (prompt: string) => void;
+  selectedSystemPrompt: null | string;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -235,6 +238,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onTextAreaHeightChange,
   showControls,
   requestCaps,
+  prompts,
+  onSetSystemPrompt,
+  selectedSystemPrompt,
 }) => {
   const config = useConfig();
   const [value, setValue] = React.useState("");
@@ -362,6 +368,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             value: model || caps.default_cap,
             onChange: onSetChatModel,
             options: caps.available_caps,
+          }}
+          promptsProps={{
+            value: selectedSystemPrompt ?? "",
+            prompts: prompts,
+            onChange: onSetSystemPrompt,
           }}
         />
       )}

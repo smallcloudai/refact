@@ -46,6 +46,12 @@ import {
   type ChatSetSelectedSnippet,
   CreateNewChatThread,
   SaveChatFromChat,
+  isReceivePrompts,
+  isRequestPrompts,
+  isReceivePromptsError,
+  RequestPrompts,
+  isSetSelectedSystemPrompt,
+  SetSelectedSystemPrompt,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -339,6 +345,49 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
     };
   }
 
+  if (isThisChat && isRequestPrompts(action)) {
+    return {
+      ...state,
+      system_prompts: {
+        ...state.system_prompts,
+        fetching: true,
+      },
+    };
+  }
+
+  if (isThisChat && isReceivePrompts(action)) {
+    const maybeDefault: string | null =
+      "default" in action.payload ? action.payload.prompts.default.text : null;
+    return {
+      ...state,
+      selected_system_prompt: state.selected_system_prompt ?? maybeDefault,
+      system_prompts: {
+        error: null,
+        fetching: false,
+        prompts: action.payload.prompts,
+      },
+    };
+  }
+
+  if (isThisChat && isReceivePromptsError(action)) {
+    return {
+      ...state,
+      error: state.system_prompts.error ? null : action.payload.error,
+      system_prompts: {
+        ...state.system_prompts,
+        error: action.payload.error,
+        fetching: false,
+      },
+    };
+  }
+
+  if (isThisChat && isSetSelectedSystemPrompt(action)) {
+    return {
+      ...state,
+      selected_system_prompt: action.payload.prompt,
+    };
+  }
+
   return state;
 }
 
@@ -348,6 +397,13 @@ export type ChatCapsState = {
   available_caps: string[];
   error: null | string;
 };
+
+type SystemPrompt = {
+  text: string;
+  description: string;
+};
+
+type SystemPrompts = Record<string, SystemPrompt>;
 
 export type ChatState = {
   chat: ChatThread;
@@ -366,6 +422,12 @@ export type ChatState = {
   active_file: FileInfo;
   selected_snippet: Snippet;
   tokens: number | null;
+  system_prompts: {
+    error: null | string;
+    prompts: SystemPrompts;
+    fetching: boolean;
+  };
+  selected_system_prompt: null | string;
 };
 
 function createInitialState(): ChatState {
@@ -410,6 +472,12 @@ function createInitialState(): ChatState {
       cursor: null,
     },
     tokens: null,
+    system_prompts: {
+      error: null,
+      prompts: {},
+      fetching: false,
+    },
+    selected_system_prompt: null,
   };
 }
 
@@ -528,11 +596,34 @@ export const useEventBusForChat = () => {
     requestCaps,
   ]);
 
+  const requestPrompts = useCallback(() => {
+    const message: RequestPrompts = {
+      type: EVENT_NAMES_FROM_CHAT.REQUEST_PROMPTS,
+      payload: { id: state.chat.id },
+    };
+    postMessage(message);
+  }, [postMessage, state.chat.id]);
+
+  const maybeRequestPrompts = useCallback(() => {
+    const hasPrompts = Object.keys(state.system_prompts.prompts).length > 0;
+    const hasChat = state.chat.messages.length > 0;
+    const isFetching = state.system_prompts.fetching;
+    if (!hasPrompts && !hasChat && !isFetching) {
+      requestPrompts();
+    }
+  }, [
+    requestPrompts,
+    state.chat.messages.length,
+    state.system_prompts.fetching,
+    state.system_prompts.prompts,
+  ]);
+
   useEffect(() => {
     if (!state.error) {
       maybeRequestCaps();
+      maybeRequestPrompts();
     }
-  }, [state.error, maybeRequestCaps]);
+  }, [state.error, maybeRequestCaps, maybeRequestPrompts]);
 
   const setChatModel = useCallback(
     (model: string) => {
@@ -698,6 +789,17 @@ export const useEventBusForChat = () => {
     dispatch(message);
   }, [postMessage, state.chat]);
 
+  const setSelectedSystemPrompt = useCallback(
+    (prompt: string) => {
+      const action: SetSelectedSystemPrompt = {
+        type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SYSTEM_PROMPT,
+        payload: { id: state.chat.id, prompt },
+      };
+      dispatch(action);
+    },
+    [dispatch, state.chat.id],
+  );
+
   return {
     state,
     askQuestion,
@@ -718,5 +820,6 @@ export const useEventBusForChat = () => {
     retryQuestion,
     maybeRequestCaps,
     startNewChat,
+    setSelectedSystemPrompt,
   };
 };

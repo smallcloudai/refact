@@ -7,6 +7,11 @@ export type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   title?: string;
 };
 
+export const Root = RadixSelect.Root;
+export const Trigger = RadixSelect.Trigger;
+export const Content = RadixSelect.Content;
+export const Item = RadixSelect.Item;
+
 export const Select: React.FC<SelectProps> = ({
   title,
   options,
