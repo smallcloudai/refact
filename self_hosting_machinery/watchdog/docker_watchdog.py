@@ -67,13 +67,13 @@ def cfg_to_compile_key(cfg):
 
 
 class TrackedJob:
-    def __init__(self, cfg, cfg_filename):
+    def __init__(self, cfg, cfg_filename: Path):
         self.p: Optional[subprocess.Popen] = None
         self.cmdline_str = cfg_to_cmdline(cfg)
         self.compile_str = cfg_to_compile_key(cfg)
         self.start_ts = 0
         self.cfg = cfg
-        self.cfg_filename = cfg_filename
+        self.cfg_filename: Path = cfg_filename
         self.please_shutdown = False
         self.remove_this = False
         self.sent_sigusr1_ts = 0
@@ -196,7 +196,7 @@ class TrackedJob:
             self.please_shutdown = False
             policy = self.cfg.get("policy", [])
             if "single_shot" in policy:
-                os.remove(self.cfg_filename)
+                self.cfg_filename.unlink()
         return not self.p
 
     def maybe_needs_stop(self):
@@ -297,7 +297,7 @@ def create_tracked_jobs_from_configs():
                 tracked[fn].please_shutdown = True
                 tracked[fn].remove_this = True
         else:
-            tracked[fn] = TrackedJob(cfg, cfg_filename=fn)
+            tracked[fn] = TrackedJob(cfg, cfg_filename=filename)
             log("%s adding job %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
             tracked[fn].set_status("idle")
         now_missing.discard(fn)
