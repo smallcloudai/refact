@@ -1,5 +1,7 @@
 import { general_error } from './error.js';
 import { init as init_upload_files_modal, switch_away as upload_files_modal_switch_away } from './components/modals/modal-upload-files.js'
+import {get_spinner} from "./utils/utils.js";
+
 
 let logs_streamer_run_id = "";
 let gfx_showing_run_id = "";
@@ -7,7 +9,8 @@ let gfx_showing_run_id = "";
 let finetune_state,
     reference_finetune_state,
     finetune_configs_and_runs,
-    reference_finetune_configs_and_runs;
+    reference_finetune_configs_and_runs,
+    running_models_and_loras;
 
 let selected_lora;
 let finetune_settings_defaults = [];
@@ -27,6 +30,7 @@ let select_model_panel;
 
 let current_accepted,
     current_rejected;
+
 
 function tab_finetune_get() {
     fetch("tab-finetune-get")
@@ -60,16 +64,62 @@ export function get_finetune_config_and_runs() {
         });
 }
 
+function get_running_models_and_loras() {
+    return fetch("/running-models-and-loras")
+       .then(function (response) {
+            if (!response.ok) {
+                return response.json().then(function(json) {
+                    throw new Error(json.detail);
+                });
+            }
+            return response.json();
+        })
+      .catch(function (error) {
+            console.log('tab-finetune-running-models-and-loras',error);
+            general_error(error);
+        });
+}
+
+
 function tab_finetune_config_and_runs() {
     get_finetune_config_and_runs().then((data) => {
-        if (!data) {
-            return;
+        get_running_models_and_loras().then((running_data) => {
+            if (!data) {
+                return;
+            }
+            finetune_configs_and_runs = data;
+            running_models_and_loras = running_data;
+            render_runs();
+            render_model_select();
+            render_finetune_settings(data);
+            finetune_controls_state();
+        });
+    });
+}
+
+function rename_post(run_id, new_name) {
+    return fetch("/tab-finetune-rename", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            run_id_old: run_id,
+            run_id_new: new_name
+        })
+    })
+    .then(function (response) {
+        if (!response.ok) {
+            return response.json().then(function(json) {
+                throw new Error(json.detail);
+            });
         }
-        finetune_configs_and_runs = data;
-        render_runs();
-        render_model_select();
-        render_finetune_settings(data);
-        finetune_controls_state();
+        return true;
+    })
+    .catch(function (error) {
+        console.log('tab-finetune-rename-run', error);
+        general_error(error);
+        return false;
     });
 }
 
@@ -144,7 +194,7 @@ function run_checked(run_id) {
 
 function render_runs() {
     const runs_table = document.querySelector('.run-table');
-    if (runs_table.dataset.hash == CryptoJS.MD5(JSON.stringify(finetune_configs_and_runs.finetune_runs))) {
+    if (runs_table.dataset.hash == CryptoJS.MD5(JSON.stringify([finetune_configs_and_runs.finetune_runs, running_models_and_loras]))) {
         return;
     }
     if(finetune_configs_and_runs.finetune_runs.length === 0) {
@@ -152,10 +202,18 @@ function render_runs() {
         return;
     }
     let finetune_is_working = false;
+    let running_loras = [];
+    for (let [k, v] of Object.entries(running_models_and_loras)) {
+        for (let i of v) {
+            if (i.includes(":")) {
+                running_loras.push(i.split(":")[0] + ":" + i.split(":")[1]);
+            }
+        }
+    }
 
     if(finetune_configs_and_runs.finetune_runs.length > 0) {
         runs_table.innerHTML = '';
-        runs_table.dataset.hash = CryptoJS.MD5(JSON.stringify(finetune_configs_and_runs.finetune_runs));
+        runs_table.dataset.hash = CryptoJS.MD5(JSON.stringify([finetune_configs_and_runs.finetune_runs, running_models_and_loras]));
     }
     finetune_configs_and_runs.finetune_runs.forEach(run => {
         const run_table_row = document.createElement('tr');
@@ -198,8 +256,31 @@ function render_runs() {
         run_steps.innerHTML = run.worked_steps;
 
         const item_disabled = run_is_working ? "disabled" : ""
+        const rename_disabled = running_loras.includes(`${run.model_name}:${run.run_id}`) ? "disabled" : "";
 
-        run_name.innerHTML = `<div class="run-table-name">${run.run_id}<span>${run.model_name}</span></div>`
+        run_name.innerHTML = `
+            <div id="run_name_${run.run_id}" class="run-table-name" data-run="${run.run_id}" ${item_disabled}>
+                <div id="run_div${run.run_id}" style="display: flex; flex-direction: row">
+                    <div>
+                         ${run.run_id}
+                    </div>
+                    <div>
+                        <button class="run-rename btn btn-sm btn-hover btn-link" 
+                        data-run="${run.run_id}"
+                        style="padding: 0; font-size: 0.9rem;" ${false}
+                        ${rename_disabled}
+                        ><i class="bi bi-pencil-square"></i></button>
+                        <div class="run-rename-popup" data-run="${run.run_id}"><pre>Cannot rename: currently in use</pre></div>
+                    </div>
+                </div>
+                <div id="run_div_rename${run.run_id}" class="run-table-rename" data-run="${run.run_id}" hidden>
+                    <input type="text" id="run_rename_input${run.run_id}" value="${run.run_id}">
+                    <button id="confirm_btn${run.run_id}" class="btn btn-sm btn-link"><i class="bi bi-check-lg"></i></button>
+                    <button id="cancel_btn${run.run_id}" class="btn btn-sm btn-link"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <span>${run.model_name}</span>
+            </div>
+        `
 
         run_delete.innerHTML = `<button class="btn btn-outline-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
         if (find_checkpoints_by_run(run.run_id).length > 0) {
@@ -246,7 +327,82 @@ function render_runs() {
             event.stopPropagation();
             const run_id = this.dataset.run;
             selected_lora = run_id;
+            document.querySelectorAll('.run-table-rename').forEach((rename_div) => {
+                const div_run_id = rename_div.dataset.run;
+                if (!rename_div.hidden && div_run_id !== run_id) {
+                    const text_div = document.getElementById(`run_div${div_run_id}`);
+                    const rename_input = document.getElementById(`run_rename_input${div_run_id}`);
+                    rename_input.value = div_run_id;
+                    rename_div.hidden = true;
+                    text_div.hidden = false;
+                }
+            });
             run_checked(run_id);
+        });
+    });
+
+    document.querySelectorAll(".run-rename").forEach((run_rename) => {
+
+        if (run_rename.disabled) {
+            run_rename.addEventListener('mouseover', () => {
+            let popup_div = document.querySelector(`.run-rename-popup[data-run='${run_rename.dataset.run}']`);
+                popup_div.style.display = 'block';
+            });
+            run_rename.addEventListener('mouseout', () => {
+                let popup_div = document.querySelector(`.run-rename-popup[data-run='${run_rename.dataset.run}']`);
+                popup_div.style.display = 'none';
+            });
+        }
+
+        run_rename.addEventListener('click', (event) => {
+            event.stopPropagation();
+
+            document.querySelectorAll('.run-table-rename').forEach((rename_div) => {
+                const div_run_id = rename_div.dataset.run;
+                const text_div = document.getElementById(`run_div${div_run_id}`);
+                const rename_input = document.getElementById(`run_rename_input${div_run_id}`);
+                rename_input.value = div_run_id;
+                rename_div.hidden = true;
+                text_div.hidden = false;
+            });
+
+            let rename_div = document.getElementById(`run_div_rename${run_rename.dataset.run}`);
+            let text_div = document.getElementById(`run_div${run_rename.dataset.run}`);
+            rename_div.hidden = false;
+            text_div.hidden = true;
+
+            let spinner = get_spinner();
+            spinner.style.scale = "0.5";
+            spinner.style.position = "absolute";
+
+            let rename_input = document.getElementById(`run_rename_input${run_rename.dataset.run}`);
+            const confirm_btn = document.getElementById(`confirm_btn${run_rename.dataset.run}`);
+            const cancel_btn = document.getElementById(`cancel_btn${run_rename.dataset.run}`);
+
+            let new_confirm_btn = document.createElement("button");
+            new_confirm_btn.id = confirm_btn.id;
+            new_confirm_btn.classList = confirm_btn.classList;
+            new_confirm_btn.innerHTML = confirm_btn.innerHTML;
+            confirm_btn.replaceWith(new_confirm_btn)
+
+            new_confirm_btn.addEventListener('click', (event) => {
+                new_confirm_btn.replaceWith(spinner);
+                cancel_btn.hidden = true;
+                rename_post(run_rename.dataset.run, rename_input.value).then((is_ok) => {
+                    if (!is_ok) {
+                        rename_input.value = run_rename.dataset.run;
+                        spinner.replaceWith(new_confirm_btn);
+                        cancel_btn.hidden = false;
+                    }
+                })
+                tab_finetune_config_and_runs();
+            });
+
+            cancel_btn.addEventListener('click', (event) => {
+                rename_input.value = run_rename.dataset.run;
+                rename_div.hidden = true;
+                text_div.hidden = false;
+            });
         });
     });
 

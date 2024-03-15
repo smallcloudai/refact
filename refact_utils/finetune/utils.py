@@ -69,6 +69,40 @@ def get_finetune_runs() -> List[Dict]:
     return runs
 
 
+def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
+    data = {
+        **model_assigner.models_info,
+        **model_assigner.model_assignment,
+    }
+    result = {}
+
+    def add_result(k: str, model_dict: Dict):
+        if model_dict.get('has_completion'):
+            result.setdefault('completion', []).append(k)
+        if model_dict.get('has_chat'):
+            result.setdefault('chat', []).append(k)
+
+    if data.get("openai_api_enable"):
+        add_result("gpt-3.5-turbo", {'has_chat': True})
+        add_result("gpt-4", {'has_chat': True})
+
+    for k, v in data.get("model_assign", {}).items():
+        if model_dict := [d for d in data['models'] if d['name'] == k]:
+            model_dict = model_dict[0]
+
+            add_result(k, model_dict)
+
+            if not model_dict.get('has_finetune'):
+                continue
+
+            finetune_info = model_dict.get('finetune_info', []) or []
+            for run in finetune_info:
+                val = f"{k}:{run['run_id']}:{run['checkpoint']}"
+                add_result(val, model_dict)
+
+    return result
+
+
 def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     active_loras = {}
     if os.path.exists(env.CONFIG_ACTIVE_LORA):

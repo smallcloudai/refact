@@ -11,7 +11,7 @@ from fastapi.responses import Response, StreamingResponse, JSONResponse
 
 from refact_utils.scripts import env
 from refact_utils.scripts import best_lora
-from refact_utils.finetune.utils import get_active_loras
+from refact_utils.finetune.utils import running_models_and_loras
 from refact_utils.finetune.utils import get_finetune_config
 from refact_utils.finetune.utils import get_finetune_filter_stat
 from refact_utils.finetune.utils import get_prog_and_status_for_ui
@@ -20,7 +20,7 @@ from refact_utils.finetune.filtering_defaults import finetune_filtering_defaults
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 from typing import Optional
 
@@ -82,10 +82,29 @@ class TabFinetuneTrainingSetup(BaseModel):
     low_gpu_mem_mode: Optional[bool] = Query(default=True)
 
 
+class RenamePost(BaseModel):
+    run_id_old: str
+    run_id_new: str
+
+    @validator('run_id_new')
+    def validate_run_ids(cls, v, values) -> str:
+        if not v.strip():
+            raise HTTPException(status_code=400, detail="must be non-empty")
+        if len(v) >= 30:
+            raise HTTPException(status_code=400, detail="must be less than 30 characters")
+        if not re.match("^[a-zA-Z0-9_-]*$", v):
+            raise HTTPException(status_code=400, detail="must contain only Latin alphabet, numbers, spaces, and underscores")
+        if 'run_id_old' in values and v == values['run_id_old']:
+            raise HTTPException(status_code=400, detail="run_id_new is similar to run_id_old")
+        return v
+
+
 class TabFinetuneRouter(APIRouter):
 
     def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.add_api_route("/running-models-and-loras", self._running_models_and_loras, methods=["GET"])
+        self.add_api_route("/tab-finetune-rename", self._tab_finetune_rename, methods=["POST"])
         self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
@@ -100,6 +119,24 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-training-setup", self._tab_finetune_training_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
         self._model_assigner = model_assigner
+
+    async def _running_models_and_loras(self):
+        return Response(json.dumps(running_models_and_loras(self._model_assigner), indent=4) + "\n")
+
+    async def _tab_finetune_rename(self, post: RenamePost):
+        running = running_models_and_loras(self._model_assigner)
+        active_loras = {[*i.split(":"), None, None][:3][1] for v in running.values() for i in v}
+        active_loras = {i for i in active_loras if i}
+        if post.run_id_old in active_loras:
+            raise HTTPException(status_code=400, detail=f"cannot rename {post.run_id_old}: currently in use")
+
+        path_old = os.path.join(env.DIR_LORAS, post.run_id_old)
+        path_new = os.path.join(env.DIR_LORAS, post.run_id_new)
+
+        try:
+            os.rename(path_old, path_new)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"cannot rename {post.run_id_old}: {str(e)}")
 
     async def _tab_finetune_get(self):
         prog, status = get_prog_and_status_for_ui()
