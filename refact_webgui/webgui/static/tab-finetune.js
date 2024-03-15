@@ -273,7 +273,7 @@ function render_runs() {
                         <div class="run-rename-popup" data-run="${run.run_id}"><pre>Cannot rename: currently in use</pre></div>
                     </div>
                 </div>
-                <div id="run_div_rename${run.run_id}" hidden>
+                <div id="run_div_rename${run.run_id}" class="run-table-rename" data-run="${run.run_id}" hidden>
                     <input type="text" id="run_rename_input${run.run_id}" value="${run.run_id}">
                     <button id="confirm_btn${run.run_id}" class="btn btn-sm btn-link"><i class="bi bi-check-lg"></i></button>
                     <button id="cancel_btn${run.run_id}" class="btn btn-sm btn-link"><i class="bi bi-x-lg"></i></button>
@@ -327,6 +327,16 @@ function render_runs() {
             event.stopPropagation();
             const run_id = this.dataset.run;
             selected_lora = run_id;
+            document.querySelectorAll('.run-table-rename').forEach((rename_div) => {
+                const div_run_id = rename_div.dataset.run;
+                if (!rename_div.hidden && div_run_id !== run_id) {
+                    const text_div = document.getElementById(`run_div${div_run_id}`);
+                    const rename_input = document.getElementById(`run_rename_input${div_run_id}`);
+                    rename_input.value = div_run_id;
+                    rename_div.hidden = true;
+                    text_div.hidden = false;
+                }
+            });
             run_checked(run_id);
         });
     });
@@ -346,6 +356,15 @@ function render_runs() {
 
         run_rename.addEventListener('click', (event) => {
             event.stopPropagation();
+
+            document.querySelectorAll('.run-table-rename').forEach((rename_div) => {
+                const div_run_id = rename_div.dataset.run;
+                const text_div = document.getElementById(`run_div${div_run_id}`);
+                const rename_input = document.getElementById(`run_rename_input${div_run_id}`);
+                rename_input.value = div_run_id;
+                rename_div.hidden = true;
+                text_div.hidden = false;
+            });
 
             let rename_div = document.getElementById(`run_div_rename${run_rename.dataset.run}`);
             let text_div = document.getElementById(`run_div${run_rename.dataset.run}`);
