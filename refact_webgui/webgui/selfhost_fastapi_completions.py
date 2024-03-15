@@ -269,9 +269,7 @@ class BaseCompletionsRouter(APIRouter):
         _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
         _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
 
-    async def _coding_assistant_caps_base_data(self, request: Request) -> Dict[str, Any]:
-        client_version = request.headers.get("client_version")
-
+    async def _coding_assistant_caps_base_data(self) -> Dict[str, Any]:
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
         code_chat_default_model = ""
@@ -310,21 +308,24 @@ class BaseCompletionsRouter(APIRouter):
             "caps_version": config_mtime,
         }
 
+        return data
+
+    async def _coding_assistant_caps(self, request: Request, authorization: str = Header(None)):
+        client_version = request.headers.get("client_version", "0")
+
+        data = await self._coding_assistant_caps_base_data()
         if client_version >= "0.7.1":
             running = running_models_and_loras(self._model_assigner)
 
             if cc_default := data.get("code_completion_default_model"):
-                if cc_variants := [r for r in running['completion'] if r.startswith(cc_default) and r != cc_default]:
+                if cc_variants := [r for r in running['completion'] if r.split(":")[0] == cc_default and r != cc_default]:
                     data["code_completion_default_model"] = cc_variants[0]
 
             if cc_chat_default := data.get("code_chat_default_model"):
-                if cc_variants := [r for r in running['chat'] if r.startswith(cc_chat_default) and r != cc_chat_default]:
+                if cc_variants := [r for r in running['chat'] if r.split(':')[0] == cc_chat_default and r != cc_chat_default]:
                     data["code_chat_default_model"] = cc_variants[0]
 
-        return data
-
-    async def _coding_assistant_caps(self, request: Request, authorization: str = Header(None)):
-        return Response(content=json.dumps(await self._coding_assistant_caps_base_data(request), indent=4), media_type="application/json")
+        return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
     async def _login(self, authorization: str = Header(None)):
         await self._account_from_bearer(authorization)
@@ -437,17 +438,11 @@ class BaseCompletionsRouter(APIRouter):
 
         ticket = Ticket("comp-")
 
-        model_name, lora_config = await self._resolve_model_lora(post.model)
-        model_name, err_msg = static_resolve_model(model_name, self._inference_queue)
-
+        model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
         if err_msg:
-            log("%s chat model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
+            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
             raise HTTPException(status_code=400, detail=err_msg)
-
-        if lora_config:
-            log(f'{ticket.id()} chat model resolve "{post.model}" -> "{model_name}" lora {lora_config} from {account}')
-        else:
-            log(f'{ticket.id()} chat model resolve "{post.model}" -> "{model_name}" from {account}')
+        log("%s chat model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
 
         req = post.clamp()
         post_raw = await request.json()
