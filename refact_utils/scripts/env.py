@@ -29,7 +29,7 @@ CONFIG_HOW_TO_FILETYPES = os.path.join(DIR_CONFIG, "sources_filetypes.cfg")
 CONFIG_PROCESSING_STATS = os.path.join(DIR_CONFIG, "sources_stats.out")
 CONFIG_FINETUNE = os.path.join(DIR_CONFIG, "finetune.cfg")
 CONFIG_FINETUNE_FILTER_STAT = os.path.join(DIR_CONFIG, "finetune_filter_stats.out")
-CONFIG_FINETUNE_STATUS = os.path.join(DIR_CONFIG, "finetune_status.out")
+CONFIG_FILTER_STATUS = os.path.join(DIR_CONFIG, "filter_status.out")
 CONFIG_HOW_TO_FILTER = os.path.join(DIR_CONFIG, "finetune_filter.cfg")
 CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
 
@@ -41,9 +41,9 @@ LOG_FILES_REJECTED_FTF = os.path.join(DIR_CONFIG, "files_rejected_ftf.log")
 ADMIN_SESSION_KEY = os.path.join(DIR_CONFIG, "admin_session.key")
 
 FLAG_LAUNCH_PROCESS_UPLOADS = os.path.join(DIR_WATCHDOG_D, "_launch_process_uploaded.flag")
-FLAG_LAUNCH_FINETUNE_FILTER_ONLY = os.path.join(DIR_WATCHDOG_D, "_launch_finetune_filter_only.flag")
-FLAG_LAUNCH_FINETUNE = os.path.join(DIR_WATCHDOG_D, "_launch_finetune.flag")
-FLAG_STOP_FINETUNE = os.path.join(DIR_WATCHDOG_D, "_stop_finetune.flag")
+# FLAG_LAUNCH_FINETUNE_FILTER_ONLY = os.path.join(DIR_WATCHDOG_D, "_launch_finetune_filter_only.flag")
+# FLAG_LAUNCH_FINETUNE = os.path.join(DIR_WATCHDOG_D, "ftune.flag")
+# FLAG_STOP_FILTER = os.path.join(DIR_WATCHDOG_D, "_stop_filter.flag")
 
 def create_dirs():
     os.makedirs(DIR_WATCHDOG_D, exist_ok=True)

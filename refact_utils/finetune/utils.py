@@ -52,6 +52,8 @@ def get_finetune_runs() -> List[Dict]:
             "model_name": model_name(dir_path),
             "checkpoints": checkpoints
         }
+        # TODO: integrate
+        # ftune_cfg_j["save_status"] = os.path.join(env.DIR_LORAS, run_id, "watchdog_status.out")
 
         if os.path.exists(status_fn := os.path.join(dir_path, "status.json")):
             with open(status_fn, "r") as f:
@@ -146,10 +148,10 @@ def _get_status_by_watchdog() -> (str, str):
     # "linguist", "starting"
     # "filter", "interrupted"
     # "ftune", "working"
-    if os.path.isfile(env.CONFIG_FINETUNE_STATUS):
-        mtime = os.path.getmtime(env.CONFIG_FINETUNE_STATUS)
+    if os.path.isfile(env.CONFIG_FILTER_STATUS):
+        mtime = os.path.getmtime(env.CONFIG_FILTER_STATUS)
         if mtime + 600 > time.time():
-            d = json.load(open(env.CONFIG_FINETUNE_STATUS))
+            d = json.load(open(env.CONFIG_FILTER_STATUS))
             return d["prog"], d["status"]
     return "", "idle"
 
@@ -165,14 +167,14 @@ def get_prog_and_status_for_ui() -> (str, str):
 
     prog, status = _get_status_by_watchdog()
 
-    if os.path.exists(env.FLAG_LAUNCH_PROCESS_UPLOADS):
-        return "prog_linguist", "starting"
+    # if os.path.exists(env.FLAG_LAUNCH_PROCESS_UPLOADS):
+    #     return "prog_linguist", "starting"
 
-    if os.path.exists(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY):
-        return "prog_filter", "starting"
+    # if os.path.exists(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY):
+    #     return "prog_filter", "starting"
 
-    if os.path.exists(env.FLAG_LAUNCH_FINETUNE):
-        return "prog_ftune", "starting"
+    # if os.path.exists(env.FLAG_LAUNCH_FINETUNE):
+    #     return "prog_ftune", "starting"
 
     return prog, status
 
