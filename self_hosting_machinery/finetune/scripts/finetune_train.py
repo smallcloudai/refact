@@ -39,6 +39,7 @@ from refact_utils.finetune.train_defaults import finetune_train_defaults
 
 @click.command()
 @click.option('--project', default='')
+@click.option('--run_id', default='')
 # @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
 @click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
 @click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
@@ -53,7 +54,7 @@ from refact_utils.finetune.train_defaults import finetune_train_defaults
 @click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'])
 @click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
 @click.option('--model_name', default=default_finetune_model)
-def _build_finetune_config_by_heuristics(project, **kwargs) -> Dict[str, Any]:
+def _build_finetune_config_by_heuristics(project, run_id, **kwargs) -> Dict[str, Any]:
     from known_models_db.refact_known_models import models_mini_db
     models_db: Dict[str, Any] = copy.deepcopy(models_mini_db)
     with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
