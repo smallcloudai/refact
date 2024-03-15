@@ -39,19 +39,19 @@ from refact_utils.finetune.train_defaults import finetune_train_defaults
 
 @click.command()
 @click.option('--project', default='')
-@click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
+# @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
+@click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
+@click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
 @click.option('--lr', default=finetune_train_defaults['lr'])
 @click.option('--batch_size', default=finetune_train_defaults['batch_size'])
 @click.option('--warmup_num_steps', default=finetune_train_defaults['warmup_num_steps'])
 @click.option('--weight_decay', default=finetune_train_defaults['weight_decay'])
-@click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
+# @click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
 @click.option('--train_steps', default=finetune_train_defaults['train_steps'])
 @click.option('--lr_decay_steps', default=finetune_train_defaults['lr_decay_steps'])
 @click.option('--lora_r', default=finetune_train_defaults['lora_r'])
 @click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'])
 @click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
-@click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
-@click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
 @click.option('--model_name', default=default_finetune_model)
 def _build_finetune_config_by_heuristics(project, **kwargs) -> Dict[str, Any]:
     from known_models_db.refact_known_models import models_mini_db
@@ -67,15 +67,28 @@ def _build_finetune_config_by_heuristics(project, **kwargs) -> Dict[str, Any]:
             user_cfg_nondefault[k] = v
 
     cfg_builder = ConfigBuilder(base_config(kwargs['model_name'], models_db))
-    if user_cfg['use_heuristics']:
+    # if user_cfg['use_heuristics']:
+    if user_cfg['train_steps'] == 0:
         _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
         ds_len = get_ds_len_per_epoch(env.TRAIN_FILTERED_FILEPATH, kwargs['model_name'], cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
+        # set_lora_quality_by_heuristics sets inside:
+        # lora_target_modules=[
+        #             "qkv", "out", "mlp",
+        #         ], lora_r=64, lora_alpha=128, lora_dropout=0.01,
+        #             freeze_exceptions=[
+        #                 "wte", "lm_head", "lora"
+        #             ]
         (cfg_builder
          .set_batch_size(cfg_builder.cfg['train_batch_size'])
-         .set_lora_quality_by_heuristics(ds_len=ds_len, initial_loss=initial_loss)
-         .set_schedule_by_heuristics(ds_len=ds_len)
-         .set_low_gpu_mem_mode_by_heuristics())
+        #  .set_lora_quality_by_heuristics(ds_len=ds_len, initial_loss=initial_loss)
+         .set_schedule_by_heuristics(ds_len=ds_len)    # analog of set_train_steps + set_lr_decay_steps
+         .set_lora_r(user_cfg['lora_r'])
+         .set_lora_alpha(user_cfg['lora_alpha'])
+         .set_lora_dropout(user_cfg['lora_dropout'])
+         .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
+         .set_trainable_embeddings(user_cfg['trainable_embeddings']))
+        #  .set_low_gpu_mem_mode_by_heuristics())
     else:
         _log_everywhere("Using finetune setup parameters")
         (cfg_builder
@@ -86,12 +99,12 @@ def _build_finetune_config_by_heuristics(project, **kwargs) -> Dict[str, Any]:
          .set_lora_dropout(user_cfg['lora_dropout'])
          .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
          .set_trainable_embeddings(user_cfg['trainable_embeddings']))
-        (cfg_builder
-         .set_lr(user_cfg['lr'])
-         .set_batch_size(user_cfg['batch_size'])
-         .set_warmup_steps(user_cfg['warmup_num_steps'])
-         .set_limit_time_seconds(user_cfg['limit_time_seconds'])
-         .set_weight_decay(user_cfg['weight_decay']))
+    (cfg_builder
+        .set_lr(user_cfg['lr'])
+        .set_batch_size(user_cfg['batch_size'])
+        .set_warmup_steps(user_cfg['warmup_num_steps'])
+        # .set_limit_time_seconds(user_cfg['limit_time_seconds'])
+        .set_weight_decay(user_cfg['weight_decay']))
 
     if dist.get_rank() == 0:
         filetypes_train = count_file_types(env.TRAIN_FILTERED_FILEPATH)
