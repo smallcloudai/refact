@@ -50,7 +50,7 @@ def get_finetune_runs() -> List[Dict]:
         ] if os.path.isdir(checkpoints_dir) else []
 
         deprecated = any([
-            is_checkpoint_deprecated(Path(checkpoint_info["checkpoint_name"]))
+            is_checkpoint_deprecated(Path(checkpoints_dir) / checkpoint_info["checkpoint_name"])
             for checkpoint_info in checkpoints
         ])
         d = {
