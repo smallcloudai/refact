@@ -67,12 +67,13 @@ def cfg_to_compile_key(cfg):
 
 
 class TrackedJob:
-    def __init__(self, cfg):
+    def __init__(self, cfg, cfg_filename):
         self.p: Optional[subprocess.Popen] = None
         self.cmdline_str = cfg_to_cmdline(cfg)
         self.compile_str = cfg_to_compile_key(cfg)
         self.start_ts = 0
         self.cfg = cfg
+        self.cfg_filename = cfg_filename
         self.please_shutdown = False
         self.remove_this = False
         self.sent_sigusr1_ts = 0
@@ -193,6 +194,9 @@ class TrackedJob:
             self.p = None
             self.sent_sigusr1_ts = 0
             self.please_shutdown = False
+            policy = self.cfg.get("policy", [])
+            if "single_shot" in policy:
+                os.remove(self.cfg_filename)
         return not self.p
 
     def maybe_needs_stop(self):
@@ -234,7 +238,7 @@ class TrackedJob:
             return
 
         policy = self.cfg.get("policy", [])
-        assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority",
+        assert set(policy) <= {"always_on", "when_file_appears", "single_shot", "always_on_low_priority",
                                "periodic"}, policy
         if "when_file_appears" in policy:
             the_file = replace_variable_names_from_env(self.cfg["when_file_appears"])
@@ -251,8 +255,10 @@ class TrackedJob:
             can_start = low_priority_can_start(self)
             if can_start:
                 self._start()
-        elif "at_night" in policy:
-            pass
+        elif "single_shot" in policy:
+            can_start = preempt_low_priority(self.cfg.get("gpus", []))
+            if can_start:
+                self._start()
         elif "periodic" in policy:
             if self.start_ts + self.cfg["restart_every"] < time.time():
                 self._start()
@@ -291,7 +297,7 @@ def create_tracked_jobs_from_configs():
                 tracked[fn].please_shutdown = True
                 tracked[fn].remove_this = True
         else:
-            tracked[fn] = TrackedJob(cfg)
+            tracked[fn] = TrackedJob(cfg, cfg_filename=fn)
             log("%s adding job %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
             tracked[fn].set_status("idle")
         now_missing.discard(fn)
