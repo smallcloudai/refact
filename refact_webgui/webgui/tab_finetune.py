@@ -75,8 +75,8 @@ class TabFinetuneTrainingSetup(BaseModel):
     warmup_num_steps: Optional[int] = Query(default=10, ge=1, le=100)
     weight_decay: Optional[float] = Query(default=0.1, ge=0.0, le=1.0)
     # use_heuristics: Optional[bool] = Query(default=True)
-    train_steps: Optional[int] = Query(default=250, ge=10, le=5000)
-    lr_decay_steps: Optional[int] = Query(default=250, ge=10, le=5000)
+    train_steps: Optional[int] = Query(default=250, ge=0, le=5000)
+    lr_decay_steps: Optional[int] = Query(default=250, ge=0, le=5000)
     lora_r: Optional[int] = Query(default=16, ge=4, le=64)
     lora_alpha: Optional[float] = Query(default=32, ge=4, le=128)
     lora_dropout: Optional[float] = Query(default=0.01, ge=0.0, le=0.5)
@@ -255,7 +255,7 @@ class TabFinetuneRouter(APIRouter):
         # }
         ftune_cfg_j = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "filetune.cfg")))
         fn = os.path.join(env.DIR_WATCHDOG_D, "ftune-%s.cfg" % run_id)
-        os.make_dirs(os.path.join(env.DIR_LORAS, run_id), exist_ok=False)
+        os.makedirs(os.path.join(env.DIR_LORAS, run_id), exist_ok=False)
         ftune_cfg_j["gpus"] = post.gpus
         ftune_cfg_j["interrupt_when_file_appears"] = os.path.join(env.DIR_LORAS, run_id, "stop.flag")
         ftune_cfg_j["save_status"] = os.path.join(env.DIR_LORAS, run_id, "watchdog_status.out")
