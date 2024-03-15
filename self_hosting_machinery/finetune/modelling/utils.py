@@ -1,6 +1,16 @@
 from typing import List, Tuple
 
+import torch
+
 from self_hosting_machinery.finetune.configuration import supported_models
+
+
+def get_base_model(model: torch.nn.Module) -> torch.nn.Module:
+    if type(model).__name__ == "DeepSpeedEngine":
+        model = model.base_model
+    if type(model).__name__ in ("LoraModel", "PeftModelForCausalLM"):
+        model = model.model
+    return model
 
 
 def map_model_specific_params(
