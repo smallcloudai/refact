@@ -13,7 +13,7 @@ from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
-from refact_utils.finetune.utils import get_active_loras, running_models_and_loras
+from refact_utils.finetune.utils import running_models_and_loras
 from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
