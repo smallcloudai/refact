@@ -270,6 +270,7 @@ class BaseCompletionsRouter(APIRouter):
         _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
 
     async def _coding_assistant_caps_base_data(self) -> Dict[str, Any]:
+        running = running_models_and_loras(self._model_assigner)
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
         code_chat_default_model = ""
@@ -290,7 +291,7 @@ class BaseCompletionsRouter(APIRouter):
             "telemetry_basic_dest": "/stats/telemetry-basic",
             "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
             "telemetry_basic_retrieve_my_own": "/stats/rh-stats",
-            "running_models": models_available,
+            "running_models": [r for r in [*running['completion'], *running['chat']]],
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
 
