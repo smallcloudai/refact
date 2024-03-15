@@ -194,7 +194,7 @@ function run_checked(run_id) {
 
 function render_runs() {
     const runs_table = document.querySelector('.run-table');
-    if (runs_table.dataset.hash == CryptoJS.MD5(JSON.stringify(finetune_configs_and_runs.finetune_runs))) {
+    if (runs_table.dataset.hash == CryptoJS.MD5(JSON.stringify([finetune_configs_and_runs.finetune_runs, running_models_and_loras]))) {
         return;
     }
     if(finetune_configs_and_runs.finetune_runs.length === 0) {
@@ -213,7 +213,7 @@ function render_runs() {
 
     if(finetune_configs_and_runs.finetune_runs.length > 0) {
         runs_table.innerHTML = '';
-        runs_table.dataset.hash = CryptoJS.MD5(JSON.stringify(finetune_configs_and_runs.finetune_runs));
+        runs_table.dataset.hash = CryptoJS.MD5(JSON.stringify([finetune_configs_and_runs.finetune_runs, running_models_and_loras]));
     }
     finetune_configs_and_runs.finetune_runs.forEach(run => {
         const run_table_row = document.createElement('tr');
