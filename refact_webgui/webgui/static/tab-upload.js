@@ -8,6 +8,7 @@ let sort_type = 'filetype';
 let sort_order = 'asc';
 let sort_started = false;
 let dont_disable_file_types = false;
+let pname = "project1"
 
 let sources_pane = null;
 let filetypes_pane = null;
@@ -21,9 +22,13 @@ function do_starting_state() {
 }
 
 function get_tab_files() {
-    fetch("/tab-files-get")
+    fetch(`/tab-files-get/${pname}`)
         .then(function(response) {
             return response.json();
+        })
+        .catch(function(error) {
+            console.log('tab-files-get',error);
+            general_error(error);
         })
         .then(function(data) {
             // console.log('tab-files-get',data);
@@ -49,14 +54,10 @@ function get_tab_files() {
             render_tab_files(data);
             render_filetypes(data.mime_types, data.filetypes);
             render_force_filetypes(data.filetypes);
-            if (data.finetune_working_now) {
+            if (data.disable_ui) {
                 sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
             }
-        })
-        .catch(function(error) {
-            console.log('tab-files-get',error);
-            general_error(error);
         });
 }
 
@@ -311,7 +312,7 @@ function save_filter_setup() {
     });
     const force_include = document.querySelector('#force_include').value;
     const force_exclude = document.querySelector('#force_exclude').value;
-    fetch("/tab-files-filetypes-setup", {
+    fetch(`/tab-files-filetypes-setup/${pname}`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
@@ -362,7 +363,7 @@ function upload_repo() {
         formData['branch'] = gitBranch.value;
     }
 
-    fetch('/tab-files-repo-upload', {
+    fetch(`/tab-files-repo-upload/${pname}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -391,20 +392,20 @@ function upload_repo() {
 }
 
 function delete_file(file) {
-    fetch("/tab-files-delete", {
+    fetch(`/tab-files-delete/${pname}`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({'delete_this':file})
     })
+    .catch(function(error) {
+        console.log('tab-files-delete',error);
+        general_error(error);
+    })
     .then(function(response) {
         process_now_update_until_finished();
         console.log(response);
-    })
-   .catch(function(error) {
-        console.log('tab-files-delete',error);
-        general_error(error);
     });
 }
 
@@ -432,21 +433,22 @@ function save_tab_files() {
     });
     data.uploaded_files = uploaded_files;
     console.log('data', data);
-    fetch("/tab-files-save-config", {
+
+    fetch(`/tab-files-save-config/${pname}`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(data)
     })
+    .catch(function(error) {
+        console.log('tab-files-save-config',error);
+        general_error(error);
+    })
     .then(function(response) {
         if(response.ok) {
             get_tab_files();
         }
-    })
-   .catch(function(error) {
-        console.log('tab-files-save-config',error);
-        general_error(error);
     });
 }
 
@@ -489,7 +491,7 @@ export async function init(general_error) {
 
     const process_button = document.querySelector('.tab-files-process-now');
     process_button.addEventListener('click', function() {
-        fetch("/tab-files-process-now")
+        fetch(`/tab-files-process-now/${pname}`)
             .then(function(response) {
                 process_now_update_until_finished();
             });
@@ -614,7 +616,7 @@ export function tab_switched_here() {
         document.querySelector('#open-upload-files-modal'),
         'Upload Files',
         'input',
-        '/tab-files-upload-url', '/tab-files-upload',
+        '/tab-files-upload-url', `/tab-files-upload/${pname}`,
         "Wrapping up. Please wait...",
         "https://yourserver.com/file.zip",
         "You can upload .zip, .tar.gz, .tar.bz2 archives, or an individual file such as \"my_program.py\""
