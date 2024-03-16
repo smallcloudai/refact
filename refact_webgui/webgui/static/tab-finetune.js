@@ -176,7 +176,6 @@ function tab_finetune_config_and_runs() {
             running_models_and_loras = running_data;
             render_runs();
             render_model_select();
-            render_finetune_settings(data);
             finetune_controls_state();
         });
     });
@@ -235,28 +234,6 @@ function render_model_select(force = false) {
             general_error(error);
         });
 }
-
-// function render_finetune_settings(data = {}) {
-    // if (data.config.auto_delete_n_runs) {
-    //     document.querySelector('.store-input').value = data.config.auto_delete_n_runs;
-    // }
-    // if (data.config.limit_training_time_minutes) {
-    //     const radio_limit_time = document.querySelector(`input[name="limit_training_time_minutes"][value="${data.config.limit_training_time_minutes}"]`);
-    //     if (radio_limit_time) {
-    //         radio_limit_time.checked = true;
-    //     }
-    // }
-    // if (data.config.run_at_night) {
-    //     document.querySelector('#night_run').checked = true;
-    // }
-    // if (data.config.run_at_night_time) {
-    //     const selectElement = document.querySelector('.night-time');
-    //     const optionToSelect = selectElement.querySelector(`option[value="${data.config.run_at_night_time}"]`);
-    //     if (optionToSelect) {
-    //         optionToSelect.selected = true;
-    //     }
-    // }
-// }
 
 function run_checked(run_id) {
     if (gfx_showing_run_id != run_id) {
