@@ -151,7 +151,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="urlModalLabel">Finetune Settings</h5>
+          <h5 class="modal-title" id="urlModalLabel">Launch Finetune</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -160,22 +160,15 @@
               <label for="finetune_name" class="form-label">Finetune Name:</label>
               <input type="text" class="validate form-control" id="finetune_name" maxlength="30">
             </div>
-            
+
             <div class="finetune-settings-inline">
               <label class="form-label">Do you have large codebase?</label>
               <div class="btn-group" role="group" aria-label="basic radio toggle button group">
-                <input type="radio" class="btn-check" name="trainable_embeddings" id="trainable_embeddings0" value="0" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="trainable_embeddings0">Small LoRA</label>
                 <input type="radio" class="btn-check" name="trainable_embeddings" id="trainable_embeddings1" value="1" autocomplete="off">
-                <label class="btn btn-outline-primary" for="trainable_embeddings1">Big LoRA</label>
+                <label class="btn btn-outline-primary" for="trainable_embeddings1">Train Embeddings</label>
+                <input type="radio" class="btn-check" name="trainable_embeddings" id="trainable_embeddings0" value="0" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="trainable_embeddings0">Don't</label>
               </div>
-            </div>
-
-            <div class="finetune-settings-inline finetune-settings-inline-low">
-              <input tabindex="-1" class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
-              <label class="form-check-label" for="low_gpu_mem_mode_finetune">
-                Low GPU memory mode (< 24Gb) 
-              </label>
             </div>
 
             <div class="finetune-settings-options">
@@ -192,13 +185,20 @@
                 </div>
               </div>
             </div>
-          </div>
 
+            <div class="finetune-settings-inline finetune-settings-inline-low">
+              <input tabindex="-1" class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
+              <label class="form-check-label" for="low_gpu_mem_mode_finetune">
+                Low GPU memory mode (< 24Gb)
+              </label>
+            </div>
+
+          </div>
 
           <div class="finetune-settings-error d-none"></div>
         </div>
         <div class="modal-footer">
-          <button class="finetune-tab-settings-submit btn btn-primary">Start Finetune</button>
+          <button class="finetune-tab-settings-submit btn btn-primary">Launch</button>
         </div>
       </div>
     </div>
