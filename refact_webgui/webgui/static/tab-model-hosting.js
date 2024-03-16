@@ -218,6 +218,9 @@ function render_models_assigned(models) {
             finetune_runs = finetune_configs_and_runs.finetune_runs.filter(
                 run => run.model_name === models_info[index].finetune_model
                 && run.checkpoints.length !== 0);
+            if (models_info[index].finetune_model !== index) {
+                finetune_runs = finetune_runs.filter(run => !run.deprecated);
+            }
         } else {
             force_render_models_assigned = true;
         }

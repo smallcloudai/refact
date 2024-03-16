@@ -72,6 +72,8 @@ class TabHostRouter(APIRouter):
         with open(env.CONFIG_ACTIVE_LORA, "w") as f:
             json.dump(active_loras, f, indent=4)
 
+        return JSONResponse("OK")
+
     async def _tab_host_have_gpus(self):
         return Response(json.dumps(self._model_assigner.gpus, indent=4) + "\n")
 
