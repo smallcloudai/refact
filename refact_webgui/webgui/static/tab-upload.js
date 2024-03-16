@@ -8,7 +8,7 @@ let sort_type = 'filetype';
 let sort_order = 'asc';
 let sort_started = false;
 let dont_disable_file_types = false;
-let pname = "project1"
+let pname = "project1";
 
 let sources_pane = null;
 let filetypes_pane = null;
@@ -23,60 +23,69 @@ let projects_list = null;
 // }
 
 function get_projects_list() {
-    // fetch("/tab-project-list")
-    //     .catch(function(error) {
-    //         console.log('tab-project-list',error);
-    //         general_error(error);
-    //     })       
-    //    .then(function(response) {
-    //         return response.json();
-    //     })
-    //     .then(function(data) {
-    //         projects_list = data;
-    //     });
-    projects_list = [
-        {
-            name: 'Project_1',
-        },
-        {
-            name: 'Project_2',
-        },
-        {
-            name: 'Project_3',
-        },
-    ];
+    projects_list = [];
+    fetch("/tab-project-list")
+    .catch(function(error) {
+        console.log('tab-project-list',error);
+        general_error(error);
+        project_list_ready([]);
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        project_list_ready(data.projects);
+    });
+}
+
+function project_list_ready(projects_list)
+{
     projects_dropdown();
     projects_list.reverse().forEach(function(project) {
         const list_item = document.createElement('li');
         const link = document.createElement('button');
         link.classList.add('dropdown-item');
+        link.classList.add('main-tab-button');
         link.value = project.name;
+        link.dataset.tab = 'upload';
         link.innerHTML = project.name;
         list_item.appendChild(link);
         document.querySelector('.projects-dropdown').prepend(list_item);
     });
     const start_project_button = document.querySelector('.start-project');
     start_project_button.addEventListener('click', start_new_project);
-    const project_buttons = document.querySelectorAll('.projects-dropdown.dropdown-item');
+    const project_buttons = document.querySelectorAll('.projects-dropdown .dropdown-item');
     project_buttons.forEach(function(project_button) {
-        project_button.addEventListener('click', show_project(project_button.value));
+        project_button.addEventListener('click', function() {
+            show_project(project_button.value);
+        });
     });
 }
 
-function show_project() {
-
+function show_project(new_pname) {
+    pname = new_pname;
+    get_tab_files();
 }
 
 function start_new_project() {
-    fetch("/tab-project-new")
+    fetch("/tab-project-new", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            project: "Project2"
+        })
+    })
     .catch(function(error) {
         console.log('tab-project-list',error);
         general_error(error);
-    }) 
-   .then(function(response) {
+    })
+    .then(function(response) {
         return response.json();
     })
     .then(function(data) {
+        get_projects_list();
     });
 }
 
@@ -93,7 +102,7 @@ function projects_dropdown() {
     link.setAttribute('aria-expanded', 'false');
     link.innerHTML = "Projects";
     project_dropdown.appendChild(link);
-    
+
     const dropdown = document.createElement('ul');
     dropdown.classList.add('dropdown-menu');
     dropdown.classList.add('projects-dropdown');
@@ -101,18 +110,6 @@ function projects_dropdown() {
     dropdown.innerHTML = `<li><hr class="dropdown-divider"></li>
                         <li><button class="dropdown-item start-project">New Project &hellip;</button></li>`;
     project_dropdown.appendChild(dropdown);
-
-    // <li class="nav-item dropdown">
-    //       <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-    //         Dropdown
-    //       </a>
-    //       <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-    //         <li><a class="dropdown-item" href="#">Action</a></li>
-    //         <li><a class="dropdown-item" href="#">Another action</a></li>
-    //         <li><hr class="dropdown-divider"></li>
-    //         <li><a class="dropdown-item" href="#">Something else here</a></li>
-    //       </ul>
-    //     </li>
 }
 
 function get_tab_files() {
