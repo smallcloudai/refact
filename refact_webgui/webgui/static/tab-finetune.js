@@ -383,6 +383,13 @@ function render_runs() {
         run_rename.addEventListener('click', (event) => {
             event.stopPropagation();
 
+            const ready_to_rename_runs = finetune_configs_and_runs.finetune_runs.filter(
+                run => run.run_id === run_rename.dataset.run
+                && (['interrupted', 'failed', 'finished'].includes(run.status)));
+            if (ready_to_rename_runs.length === 0) {
+                return;
+            }
+
             document.querySelectorAll('.run-table-rename').forEach((rename_div) => {
                 const div_run_id = rename_div.dataset.run;
                 const text_div = document.getElementById(`run_div${div_run_id}`);
