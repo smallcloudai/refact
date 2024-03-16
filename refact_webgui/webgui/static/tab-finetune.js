@@ -33,62 +33,17 @@ let current_accepted,
 
 let gpus_block, options_block, tooltipList;
 
-const finetune_settings_inputs = {
-    "lr": {
+const finetune_settings_inputs = [
+    { // column 0
         "name": "lr",
-        "label": "Lr",
+        "label": "LR",
         "type": "text",
         "min": "1e-5",
         "max": "300e-5",
         "info": "Min 1e-5, Max 300e-5",
         "hint": "",
     },
-    "batch_size": {
-        "name": "batch_size",
-        "label": "Batch size",
-        "type": "text",
-        "min": "4",
-        "max": "1024",
-        "info": "Min 4, Max 1024",
-        "hint": "",
-    },
-    "train_steps": {
-        "name": "train_steps",
-        "label": "Train steps",
-        "type": "text",
-        "min": "10",
-        "max": "5000",
-        "info": "Min 10, Max 5000",
-        "hint": "",
-    },
-    "weight_decay": {
-        "name": "weight_decay",
-        "label": "Weight Decay",
-        "type": "text",
-        "min": "0.0",
-        "max": "1.0",
-        "info": "Min 0.0, Max 1.0",
-        "hint": "",
-    },
-    "warmup_num_steps": {
-        "name": "warmup_num_steps",
-        "label": "Warmup steps",
-        "type": "text",
-        "min": "1",
-        "max": "100",
-        "info": "Min 1, Max 100",
-        "hint": "",
-    },
-    "lr_decay_steps": {
-        "name": "lr_decay_steps",
-        "label": "Lr decay steps",
-        "type": "text",
-        "min": "10",
-        "max": "5000",
-        "info": "Min 10, Max 5000",
-        "hint": "",
-    },
-    "lora_r": {
+    { // column 1
         "name": "lora_r",
         "label": "Lora R",
         "type": "text",
@@ -97,7 +52,34 @@ const finetune_settings_inputs = {
         "info": "Min 4, Max 64",
         "hint": "",
     },
-    "lora_dropout": {
+    { // column 0
+        "name": "train_steps",
+        "label": "Train steps",
+        "type": "text",
+        "min": "0",
+        "max": "5000",
+        "info": "Min 0, Max 5000, leave 0 if not sure",
+        "hint": "",
+    },
+    { // column 1
+        "name": "lora_alpha",
+        "label": "Lora Alpha",
+        "type": "text",
+        "min": "4",
+        "max": "128",
+        "info": "Min 4, Max 128",
+        "hint": "",
+    },
+    { // column 0
+        "name": "lr_decay_steps",
+        "label": "LR decay steps",
+        "type": "text",
+        "min": "0",
+        "max": "5000",
+        "info": "Min 0, Max 5000, leave 0 if not sure",
+        "hint": "",
+    },
+    { // column 1
         "name": "lora_dropout",
         "label": "Lora Dropout",
         "type": "text",
@@ -106,16 +88,34 @@ const finetune_settings_inputs = {
         "info": "Min 0.0, Max 0.2",
         "hint": "",
     },
-    "lora_alpha": {
-        "name": "lora_alpha",
-        "label": "Lora Alpha",
+    { // column 0
+        "name": "warmup_num_steps",
+        "label": "Warmup steps",
+        "type": "text",
+        "min": "1",
+        "max": "100",
+        "info": "Min 1, Max 100",
+        "hint": "",
+    },
+    { // column 1
+        "name": "weight_decay",
+        "label": "Weight Decay",
+        "type": "text",
+        "min": "0.0",
+        "max": "1.0",
+        "info": "Min 0.0, Max 1.0",
+        "hint": "",
+    },
+    { // column 0
+        "name": "batch_size",
+        "label": "Batch size",
         "type": "text",
         "min": "4",
-        "max": "128",
-        "info": "Min 4, Max 128",
+        "max": "1024",
+        "info": "Min 4, Max 1024",
         "hint": "",
-    }
-}
+    },
+]
 
 function tab_finetune_get() {
     fetch("tab-finetune-get")
@@ -655,7 +655,7 @@ function get_finetune_settings(defaults = false) {
         ftname_input.setSelectionRange(0, 4);
         setTimeout(() => {
             ftname_input.focus();
-        }, 100);
+        }, 500);
         if(settings_data.trainable_embeddings) {
             document.querySelector('#finetune-tab-settings-modal #trainable_embeddings1').checked = true;
         } else {
@@ -666,29 +666,47 @@ function get_finetune_settings(defaults = false) {
             options_block.innerHTML = '';
             tooltipList = [];
         }
+        // .finetune-settings-options {
+        //     border: 1px solid #5bc0de;
+        //     display: grid;
+        //     grid-template-columns: 3fr 1fr;
+        //     column-gap: 20px;
+        //     align-items: flex-start;
+        //     padding: 15px;
+        //     border-radius: var(--bs-border-radius);
+        // }
+        // .finetune-settings-options div {
+        //     display: grid;
+        //     grid-template-columns: 1fr 1fr;
+        //     column-gap: 20px;
+        //     row-gap: 10px;
+        //     align-items: center;
+        // }
+
         if(options_block.innerHTML.trim() == "") {
-            Object.entries(finetune_settings_inputs).forEach(function(entry) {
+            for (let i = 0; i < finetune_settings_inputs.length; i++) {
+                let entry = finetune_settings_inputs[i];
                 let item_group = document.createElement('div');
                 let item_label = document.createElement('label');
                 let item = document.createElement('input');
 
-                item_label.innerHTML = entry[1].label;
+                item_label.innerHTML = entry["label"];
 
                 item.type = 'text';
-                item.id = entry[0];
-                item.name = entry[0];
+                item.id = entry["name"];
+                item.name = entry["name"];
                 item.classList.add('form-control');
-                item.dataset.min = entry[1].min;
-                item.dataset.max = entry[1].max;
+                item.dataset.min = entry["min"];
+                item.dataset.max = entry["max"];
                 item.setAttribute('data-bs-toggle', 'tooltip');
                 item.setAttribute('data-bs-placement', 'right');
-                item.setAttribute('title', entry[1].info);
-                item.value = settings_data[entry[0]];
+                item.setAttribute('title', entry["info"]);
+                item.value = settings_data[entry["name"]];
 
                 item_group.appendChild(item_label);
                 item_group.appendChild(item);
                 options_block.appendChild(item_group);
-            });
+            }
         }
 
         if(gpus_block.innerHTML.trim() == "") {
