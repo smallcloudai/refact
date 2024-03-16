@@ -391,6 +391,8 @@ class BaseCompletionsRouter(APIRouter):
             return model_name, None
 
         model_name, run_id, checkpoint_id = (*model_name.split(":"), None, None)[:3]
+        if run_id is None or checkpoint_id is None:
+            return model_name, None
 
         return model_name, {
             "run_id": run_id,
