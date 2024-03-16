@@ -7,6 +7,7 @@ import sys
 import time
 import jsonlines
 import logging
+import filelock
 
 from itertools import chain
 from collections import Counter
@@ -174,7 +175,7 @@ def _make_git_env():
     }
 
 
-def _prepare_git_repo(filepath: str) -> bool:
+def _prepare_git_repo(filepath: str, want_pull: bool) -> bool:
     sources_dir = os.path.join(filepath, "sources")
 
     def get_current_hash():
@@ -196,12 +197,15 @@ def _prepare_git_repo(filepath: str) -> bool:
             return f.read()
 
     if os.path.exists(sources_dir):
+        if not want_pull:
+            return False
+
         completed_process = subprocess.run(
             ["expect", "-f", GIT_EXE, "git", "-C", sources_dir, "pull"],
             env=_make_git_env(),
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL)
-        log(f"update {filepath} repo => {'error' if completed_process.returncode else 'success'}")
+        log(f"git pull {filepath} => {'error' if completed_process.returncode else 'success'}")
         if completed_process.returncode != 0:
             raise Exception(completed_process.stdout.decode())
         last_commit_hash = load_last_hash()
@@ -231,7 +235,7 @@ def _prepare_git_repo(filepath: str) -> bool:
     return True
 
 
-def prepare_and_copy(pname, stats_json, upload_dir: str, unpack_dir: str):
+def prepare_and_copy(pname, stats_json, upload_dir: str, unpack_dir: str, want_pull: bool):
     huge_list = []
     if os.path.exists(env.PP_CONFIG_HOW_TO_UNZIP(pname)):
         config = json.load(open(env.PP_CONFIG_HOW_TO_UNZIP(pname)))
@@ -256,8 +260,9 @@ def prepare_and_copy(pname, stats_json, upload_dir: str, unpack_dir: str):
             continue
 
         stats_json["filtering_progress"] = int(100 * file_n / len(all_filenames))
-        stats_json["uploaded_files"][filename] = {"status": "working"}
-        stats_save(pname)
+        if want_pull:
+            stats_json["uploaded_files"][filename] = {"status": "working"}
+            stats_save(pname)
 
         if not os.path.exists(upload_filename):
             if os.path.isdir(unpack_filename):
@@ -274,7 +279,7 @@ def prepare_and_copy(pname, stats_json, upload_dir: str, unpack_dir: str):
         need_force_rescan = False
         if source_type == "git":
             try:
-                need_force_rescan = _prepare_git_repo(upload_filename)
+                need_force_rescan = _prepare_git_repo(upload_filename, want_pull)
             except Exception as e:
                 log("ERROR: %s" % (e or str(type(e))))
                 msg = str(e)
@@ -294,8 +299,10 @@ def prepare_and_copy(pname, stats_json, upload_dir: str, unpack_dir: str):
             if not ff_mtime or src_mtime > ff_mtime or need_force_rescan:
                 log("mtime of %s = %s" % (upload_filename, time.ctime(src_mtime)))
                 log("mtime of %s = %s" % (files_found_jsonl, time.ctime(ff_mtime)))
+                log("need_force_rescan = %s" % need_force_rescan)
                 log(f"{filename} needs update => copy, unpack, find files")
             else:
+                log("reusing existing file list %s" % files_found_jsonl)
                 extracted_files = list(jsonlines.open(files_found_jsonl))
                 stats_json["uploaded_files"][filename] = {
                     "status": "completed",
@@ -306,6 +313,8 @@ def prepare_and_copy(pname, stats_json, upload_dir: str, unpack_dir: str):
                 continue
 
             try:
+                stats_json["uploaded_files"][filename] = {"status": "working"}
+                stats_save(pname)
                 rm_and_unpack(pname, upload_filename, unpack_filename, source_type, filename)
                 assert os.path.isdir(unpack_filename)
                 success, extracted_files = process_files_in_single_subdir(pname, stats_json, config, filename)
@@ -638,25 +647,29 @@ def save_jsonl_if_changed(fn, a_list):
 
 @click.command()
 @click.option("--pname", default="project1", help="Project name")
-def main(pname: str):
+@click.option("--want-pull", is_flag=True, default=False, help="Run git pull before filtering")
+def main(pname: str, want_pull: bool):
     stats_json["filtering_progress"] = 0
     stats_json["scan_status"] = "working"
-    stats_save(pname)  # saves CONFIG_PROCESSING_STATS
-    try:
-        huge_list = prepare_and_copy(pname, stats_json, env.PP_DIR_UPLOADS(pname), env.PP_DIR_UNPACKED(pname))
-        stats_json["filtering_progress"] = 100
-        stats_save(pname)
-        huge_list, dups = dedup(pname, huge_list)
-        save_into_sets(pname, huge_list, dups)
-        stats_json["scan_status"] = "finished"
-        stats_json["scan_finished"] = True
-        stats_json["scan_finished_ts"] = time.time()
-        stats_save(pname)
-    except BaseException as e:
-        stats_json["scan_status"] = "failed"
-        stats_json["scan_error"] = str(e) or str(type(e))
-        stats_save(pname)
-        raise
+    log("locking project '%s'" % pname)
+    with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+        log("locked project '%s' successfully" % pname)
+        stats_save(pname)  # saves CONFIG_PROCESSING_STATS
+        try:
+            huge_list = prepare_and_copy(pname, stats_json, env.PP_DIR_UPLOADS(pname), env.PP_DIR_UNPACKED(pname), want_pull)
+            stats_json["filtering_progress"] = 100
+            stats_save(pname)
+            huge_list, dups = dedup(pname, huge_list)
+            save_into_sets(pname, huge_list, dups)
+            stats_json["scan_status"] = "finished"
+            stats_json["scan_finished"] = True
+            stats_json["scan_finished_ts"] = time.time()
+            stats_save(pname)
+        except Exception as e:
+            stats_json["scan_status"] = "failed"
+            stats_json["scan_error"] = str(e) or str(type(e))
+            stats_save(pname)
+            raise
 
 
 if __name__ == '__main__':
