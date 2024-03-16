@@ -989,3 +989,44 @@ h3 {
 .run-table-row td {
     vertical-align: middle;
 }
+
+.finetune-settings-inline {
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    align-items: center;
+}
+.finetune-settings-inline:not(:last-child) {
+    margin-bottom: 15px;
+}
+.finetune-settings-options {
+    border: 1px solid #5bc0de;
+    display: grid;
+    grid-template-columns: 3fr 1fr;
+    column-gap: 20px;
+    align-items: flex-start;
+    padding: 15px;
+    border-radius: var(--bs-border-radius);
+}
+.finetune-settings-options div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+    row-gap: 10px;
+    align-items: center;
+}
+.finetune-settings-inline-low {
+    display: flex;
+    align-items: center;
+}
+.finetune-settings-inline-low input {
+    margin-right: 5px;
+    margin-top: 0;
+}
+.finetune-settings-inline-gpus {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+}
+.finetune-settings-inline-gpus > label {
+    margin-right: 10px;
+}
