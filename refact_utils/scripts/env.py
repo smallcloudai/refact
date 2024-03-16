@@ -37,6 +37,7 @@ PP_TRAIN_FILTERED_FILEPATH   = lambda pname: os.path.join(PP_DIR_UNPACKED(pname)
 PP_TEST_UNFILTERED_FILEPATH  = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "test_set.jsonl")
 PP_TEST_FILTERED_FILEPATH    = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "test_set_filtered.jsonl")
 PP_LOSS_PER_HASH_DB_FILEPATH = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "loss_per_hash_db.json")
+PP_PROJECT_LOCK              = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "project.lock")
 
 
 # finetune
