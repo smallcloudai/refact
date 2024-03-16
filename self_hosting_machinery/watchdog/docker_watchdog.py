@@ -401,7 +401,7 @@ def factory_reset():
         env.DIR_SSH_KEYS,
         env.DIR_UPLOADS,
         env.DIR_WEIGHTS,
-        env.DIR_UNPACKED
+        env.DIR_PROJECTS,
     ]:
         try:
             shutil.rmtree(todel)
