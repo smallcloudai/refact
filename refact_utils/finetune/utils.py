@@ -206,10 +206,10 @@ def _get_status_by_watchdog(pname: str) -> (str, str):
     # this returns:
     # "linguist", "starting"
     # "filter", "interrupted"
-    if os.path.isfile(env.PP_CONFIG_FILTER_STATUS(pname)):
-        mtime = os.path.getmtime(env.PP_CONFIG_FILTER_STATUS(pname))
+    if os.path.isfile(env.PP_SCAN_STATUS(pname)):
+        mtime = os.path.getmtime(env.PP_SCAN_STATUS(pname))
         if mtime + 600 > time.time():
-            d = json.load(open(env.PP_CONFIG_FILTER_STATUS(pname), "r"))
+            d = json.load(open(env.PP_SCAN_STATUS(pname), "r"))
             return d["prog"], d["status"]
     return "", "idle"
 
