@@ -180,14 +180,14 @@ function render_tab_files(data) {
 
     const process_button = document.querySelector('.tab-files-process-now');
     if (any_working) {
-        let process_button_text = "Scanning...";
-        process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
+        // let process_button_text = "Scanning...";
+        // process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
     } else {
         if (process_button.dataset.loading) {
             process_button.dataset.loading = false;
             process_button.disabled = false;
         }
-        process_button.innerHTML = "Scan sources";
+        // process_button.innerHTML = "Scan sources";
     }
 }
 
@@ -494,10 +494,10 @@ export async function init(general_error) {
 
     const process_button = document.querySelector('.tab-files-process-now');
     process_button.addEventListener('click', function() {
-        fetch(`/tab-files-process-now/${pname}`)
-            .then(function(response) {
-                process_now_update_until_finished();
-            });
+        fetch(`/tab-files-process-now/${pname}?git_pull=1`)
+        .then(function(response) {
+            process_now_update_until_finished();
+        });
     });
 
     const git_modal = document.getElementById('upload-tab-git-modal');
