@@ -125,7 +125,9 @@ class TabUploadRouter(APIRouter):
 
         scan_stats = {"uploaded_files": {}}
         stats_uploaded_files = {}
+        no_stats_at_all = True
         if os.path.isfile(env.PP_CONFIG_PROCESSING_STATS(pname)):
+            no_stats_at_all = False
             scan_stats = json.load(open(env.PP_CONFIG_PROCESSING_STATS(pname), "r"))
             mtime = os.path.getmtime(env.PP_CONFIG_PROCESSING_STATS(pname))
             stats_uploaded_files = scan_stats.get("uploaded_files", {})
@@ -169,7 +171,7 @@ class TabUploadRouter(APIRouter):
         prog, status = get_prog_and_status_for_ui(pname)
         working = status in ["starting", "working"]
         result["finetune_working_now"] = False   # TODO remove
-        result["disable_ui"] = working
+        result["disable_ui"] = no_stats_at_all
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_files_save_config(self, pname, config: TabFilesConfig):
@@ -199,7 +201,7 @@ class TabUploadRouter(APIRouter):
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
-        _reset_process_stats(pname)
+        _start_process_now(pname)
         return JSONResponse("OK")
 
     async def _upload_file_from_url(self, pname, post: UploadViaURL):
@@ -209,7 +211,8 @@ class TabUploadRouter(APIRouter):
         except Exception as e:
             return JSONResponse({"message": f"Cannot download: {e}"}, status_code=500)
         log("/download")
-        _reset_process_stats(pname)
+        # _reset_process_stats(pname)
+        _start_process_now(pname)
         return JSONResponse("OK")
 
     def _make_git_command(self):
@@ -264,7 +267,7 @@ class TabUploadRouter(APIRouter):
             return JSONResponse({"message": f"Error: incorrect url"}, status_code=500)
         except Exception as e:
             return JSONResponse({"message": f"Error: {e}"}, status_code=500)
-        _reset_process_stats(pname)
+        _start_process_now(pname)
         return JSONResponse("OK")
 
     async def _tab_files_delete(self, pname, request: Request, delete_entry: TabFilesDeleteEntry):
@@ -277,13 +280,13 @@ class TabUploadRouter(APIRouter):
             shutil.rmtree(file_path)
         except OSError as e:
             pass
-        _reset_process_stats(pname)
         try:
             # So it starts with the default once files are added again
             if not os.listdir(env.PP_DIR_UPLOADS(pname)) and os.path.exists(env.PP_CONFIG_HOW_TO_FILETYPES(pname)):
                 os.remove(env.PP_CONFIG_HOW_TO_FILETYPES(pname))
         except OSError as e:
             pass
+        _start_process_now(pname)
         return JSONResponse("OK")
 
     async def _tab_files_log(self, pname, accepted_or_rejected: str):
@@ -316,7 +319,7 @@ def _start_process_now(pname: str, dont_delete_stats=False):
         _reset_process_stats(pname)
     process_cfg_j = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "process_uploaded.cfg")))
     fn = os.path.join(env.DIR_WATCHDOG_D, "process_uploaded_%s.cfg" % pname)
-    process_cfg_j["save_status"] = env.PP_CONFIG_FILTER_STATUS(pname)
+    process_cfg_j["save_status"] = env.PP_SCAN_STATUS(pname)
     process_cfg_j["command_line"] += ["--pname", pname]
     del process_cfg_j["unfinished"]
     with open(fn + ".tmp", "w") as f:

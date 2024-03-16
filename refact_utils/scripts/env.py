@@ -28,7 +28,7 @@ PP_LOG_FILES_ACCEPTED_SCAN = lambda pname: os.path.join(PERMDIR, "projects", pna
 PP_LOG_FILES_REJECTED_SCAN = lambda pname: os.path.join(PERMDIR, "projects", pname, "files_rejected_scan.log")
 PP_LOG_FILES_ACCEPTED_FTF  = lambda pname: os.path.join(PERMDIR, "projects", pname, "files_accepted_ftf.log")
 PP_LOG_FILES_REJECTED_FTF  = lambda pname: os.path.join(PERMDIR, "projects", pname, "files_rejected_ftf.log")
-PP_CONFIG_FILTER_STATUS    = lambda pname: os.path.join(PERMDIR, "projects", pname, "filter_status.out")
+PP_SCAN_STATUS             = lambda pname: os.path.join(PERMDIR, "projects", pname, "scan_status.out")
 PP_CONFIG_FINETUNE_FILTER_STAT = lambda pname: os.path.join(PERMDIR, "projects", pname, "finetune_filter_stats.out")
 
 PP_DIR_UNPACKED = lambda pname: os.path.join(PERMDIR, "projects", pname, "unpacked")
