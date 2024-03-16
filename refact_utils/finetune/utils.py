@@ -96,6 +96,10 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
         add_result("gpt-3.5-turbo", {'has_chat': True})
         add_result("gpt-4", {'has_chat': True})
 
+    if data.get('anthropic_api_enable'):
+        add_result('claude-instant-1.2', {'has_chat': True})
+        add_result('claude-2.1', {'has_chat': True})
+
     for k, v in data.get("model_assign", {}).items():
         if model_dict := [d for d in data['models'] if d['name'] == k]:
             model_dict = model_dict[0]
