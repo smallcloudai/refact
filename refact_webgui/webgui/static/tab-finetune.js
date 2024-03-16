@@ -31,6 +31,91 @@ let select_model_panel;
 let current_accepted,
     current_rejected;
 
+let gpus_block, options_block, tooltipList;
+
+const finetune_settings_inputs = {
+    "lr": {
+        "name": "lr",
+        "label": "Lr",
+        "type": "text",
+        "min": "1e-5",
+        "max": "300e-5",
+        "info": "Min 1e-5, Max 300e-5",
+        "hint": "",
+    },
+    "batch_size": {
+        "name": "batch_size",
+        "label": "Batch size",
+        "type": "text",
+        "min": "4",
+        "max": "1024",
+        "info": "Min 4, Max 1024",
+        "hint": "",
+    },
+    "train_steps": {
+        "name": "train_steps",
+        "label": "Train steps",
+        "type": "text",
+        "min": "10",
+        "max": "5000",
+        "info": "Min 10, Max 5000",
+        "hint": "",
+    },
+    "weight_decay": {
+        "name": "weight_decay",
+        "label": "Weight Decay",
+        "type": "text",
+        "min": "0.0",
+        "max": "1.0",
+        "info": "Min 0.0, Max 1.0",
+        "hint": "",
+    },
+    "warmup_num_steps": {
+        "name": "warmup_num_steps",
+        "label": "Warmup steps",
+        "type": "text",
+        "min": "1",
+        "max": "100",
+        "info": "Min 1, Max 100",
+        "hint": "",
+    },
+    "lr_decay_steps": {
+        "name": "lr_decay_steps",
+        "label": "Lr decay steps",
+        "type": "text",
+        "min": "10",
+        "max": "5000",
+        "info": "Min 10, Max 5000",
+        "hint": "",
+    },
+    "lora_r": {
+        "name": "lora_r",
+        "label": "Lora R",
+        "type": "text",
+        "min": "4",
+        "max": "64",
+        "info": "Min 4, Max 64",
+        "hint": "",
+    },
+    "lora_dropout": {
+        "name": "lora_dropout",
+        "label": "Lora Dropout",
+        "type": "text",
+        "min": "0.0",
+        "max": "0.2",
+        "info": "Min 0.0, Max 0.2",
+        "hint": "",
+    },
+    "lora_alpha": {
+        "name": "lora_alpha",
+        "label": "Lora Alpha",
+        "type": "text",
+        "min": "4",
+        "max": "128",
+        "info": "Min 4, Max 128",
+        "hint": "",
+    }
+}
 
 function tab_finetune_get() {
     fetch("tab-finetune-get")
@@ -576,21 +661,67 @@ function get_finetune_settings(defaults = false) {
         } else {
             document.querySelector('#finetune-tab-settings-modal #trainable_embeddings0').checked = true;
         }
-        document.querySelector('#finetune-tab-settings-modal #lr').value = settings_data.lr;
-        document.querySelector('#finetune-tab-settings-modal #batch_size').value = settings_data.batch_size;
-        document.querySelector('#finetune-tab-settings-modal #warmup_num_steps').value = settings_data.warmup_num_steps;
-        document.querySelector('#finetune-tab-settings-modal #weight_decay').value = settings_data.weight_decay;
-        document.querySelector('#finetune-tab-settings-modal #train_steps').value = settings_data.train_steps;
-        document.querySelector('#finetune-tab-settings-modal #lr_decay_steps').value = settings_data.lr_decay_steps;
-        document.querySelector('#finetune-tab-settings-modal #lora_r').value = settings_data.lora_r;
-        document.querySelector('#finetune-tab-settings-modal #lora_alpha').value = settings_data.lora_alpha;
-        document.querySelector('#finetune-tab-settings-modal #lora_dropout').value = settings_data.lora_dropout;
+
+        if(defaults) {
+            options_block.innerHTML = '';
+            tooltipList = [];
+        }
+        if(options_block.innerHTML.trim() == "") {
+            Object.entries(finetune_settings_inputs).forEach(function(entry) {
+                let item_group = document.createElement('div');
+                let item_label = document.createElement('label');
+                let item = document.createElement('input');
+
+                item_label.innerHTML = entry[1].label;
+
+                item.type = 'text';
+                item.id = entry[0];
+                item.name = entry[0];
+                item.classList.add('form-control');
+                item.dataset.min = entry[1].min;
+                item.dataset.max = entry[1].max;
+                item.setAttribute('data-bs-toggle', 'tooltip');
+                item.setAttribute('data-bs-placement', 'right');
+                item.setAttribute('title', entry[1].info);
+                item.value = settings_data[entry[0]];
+
+                item_group.appendChild(item_label);
+                item_group.appendChild(item);
+                options_block.appendChild(item_group);
+            });
+        }
+
+        if(gpus_block.innerHTML.trim() == "") {
+            for (let i = 0; i < 8; i++) {
+                let gpu_input = document.createElement('input');
+                gpu_input.type = 'checkbox';
+                gpu_input.id = `launch_gpu${i}`;
+                gpu_input.value = i;
+                gpu_input.name = `launch_gpu${i}`;
+                gpu_input.classList.add('btn-check');
+                gpu_input.autocomplete = 'off';
+
+                let gpu_label = document.createElement('label');
+                gpu_label.htmlFor = gpu_input.id;
+                gpu_label.textContent = `${i}`;
+                gpu_label.classList.add('btn','btn-outline-primary');
+                gpus_block.appendChild(gpu_input);
+                gpus_block.appendChild(gpu_label);
+            }
+        }
+
+        let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+
         const low_gpu_mem_mode = settings_data.low_gpu_mem_mode;
         if (low_gpu_mem_mode) {
             document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked = true;
         } else {
             document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked = false;
         }
+
         // const trainable_embeddings = settings_data.trainable_embeddings;
         // if(trainable_embeddings) {
         //     document.querySelector('#finetune-tab-settings-modal #trainable_embeddings').checked = true;
@@ -659,23 +790,9 @@ function save_finetune_settings() {
     // if (document.querySelector('#finetune-tab-settings-modal #use_heuristics').checked) {
     //     use_heuristics = true;
     // }
-    let launch_gpu0 = document.querySelector('#finetune-tab-settings-modal #launch_gpu0').checked;
-    let launch_gpu1 = document.querySelector('#finetune-tab-settings-modal #launch_gpu1').checked;
-    let launch_gpu2 = document.querySelector('#finetune-tab-settings-modal #launch_gpu2').checked;
-    let launch_gpu3 = document.querySelector('#finetune-tab-settings-modal #launch_gpu3').checked;
-    let launch_gpu4 = document.querySelector('#finetune-tab-settings-modal #launch_gpu4').checked;
-    let launch_gpu5 = document.querySelector('#finetune-tab-settings-modal #launch_gpu5').checked;
-    let launch_gpu6 = document.querySelector('#finetune-tab-settings-modal #launch_gpu6').checked;
-    let launch_gpu7 = document.querySelector('#finetune-tab-settings-modal #launch_gpu7').checked;
-    let gpus = [];
-    if (launch_gpu0) gpus.push(0);
-    if (launch_gpu1) gpus.push(1);
-    if (launch_gpu2) gpus.push(2);
-    if (launch_gpu3) gpus.push(3);
-    if (launch_gpu4) gpus.push(4);
-    if (launch_gpu5) gpus.push(5);
-    if (launch_gpu6) gpus.push(6);
-    if (launch_gpu7) gpus.push(7);
+
+    const checkboxes = document.querySelectorAll('.gpu-group input[type="checkbox"]:checked');
+    const gpus = Array.from(checkboxes).map(checkbox => parseInt(checkbox.value));
 
     fetch("/tab-finetune-training-setup", {
         method: "POST",
@@ -1122,6 +1239,8 @@ export async function init() {
 
     const finetune_modal = document.getElementById('finetune-tab-settings-modal');
     finetune_modal.addEventListener('show.bs.modal', function () {
+        gpus_block = document.querySelector('.finetune-settings-gpus .gpu-group');
+        options_block = document.querySelector('.finetune-settings-options div');
         get_finetune_settings();
     });
 
