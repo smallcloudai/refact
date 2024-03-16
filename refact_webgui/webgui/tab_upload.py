@@ -109,7 +109,9 @@ class TabUploadRouter(APIRouter):
         projects_list = os.listdir(env.DIR_PROJECTS)
         projects_list = [p for p in projects_list if re.match(r'^[A-Za-z0-9_\-\.]+$', p)]
         if len(projects_list) == 0:
-            projects_list = ["Project1"]
+            projects_list = [{"name": "Project1"}]
+        else:
+            projects_list = [{"name": p} for p in projects_list]
         return Response(json.dumps({
             "projects": projects_list,
         }, indent=4) + "\n")
