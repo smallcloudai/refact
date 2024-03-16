@@ -30,7 +30,7 @@ pub fn is_valid_file(path: &PathBuf) -> bool {
             .map(|name| name.to_string_lossy().starts_with('.'))
             .unwrap_or(false)
     }) {
-        info!("path is in a hidden directory, skipping it: {}", path.display());
+        // info!("path is in a hidden directory, skipping it: {}", path.display());
         return false;
     }
 
