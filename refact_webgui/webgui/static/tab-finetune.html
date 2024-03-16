@@ -155,242 +155,54 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-
-          <div class="row">
-            <div class="col">
-              <label for="finetune_name" class="form-label">Finetune Name:</label><input type="text" class="validate form-control" id="finetune_name" maxlength="30">
+          <div class="finetune-settings">
+            <div class="finetune-settings-inline">
+              <label for="finetune_name" class="form-label">Finetune Name:</label>
+              <input type="text" class="validate form-control" id="finetune_name" maxlength="30">
             </div>
-          </div>
-
-          <div class="row">
-            <div class="col">
-              <label class="form-label">LoRA Size</label>
+            
+            <div class="finetune-settings-inline">
+              <label class="form-label">Do you have large codebase?</label>
               <div class="btn-group" role="group" aria-label="basic radio toggle button group">
                 <input type="radio" class="btn-check" name="trainable_embeddings" id="trainable_embeddings0" value="0" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="trainable_embeddings0">Small</label>
+                <label class="btn btn-outline-primary" for="trainable_embeddings0">Small LoRA</label>
                 <input type="radio" class="btn-check" name="trainable_embeddings" id="trainable_embeddings1" value="1" autocomplete="off">
-                <label class="btn btn-outline-primary" for="trainable_embeddings1">Large</label>
+                <label class="btn btn-outline-primary" for="trainable_embeddings1">Big LoRA</label>
               </div>
             </div>
 
-            <!-- set.innerHTML = `<div class="btn-group" role="group" aria-label="basic radio toggle button group"><input type="radio" class="file-radio btn-check" name="file-which[${i}]" id="file-radio-auto${i}" value="train" autocomplete="off" checked><label for="file-radio-auto${i}" class="btn btn-outline-primary">Auto</label><input type="radio" class="lora-input btn-check" name="file-which[${i}]" value="test" id="file-radio-test${i}" autocomplete="off"><label for="file-radio-test${i}" class="btn btn-outline-primary">Test set</label></div>` -->
-
-            <div class="col">
-              <div class="mb-3">
-                <label for="lr" class="form-label">Lr</label>
-                <input type="text" data-min="1e-5" data-max="300e-5" class="validate form-control" id="lr">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 1e-5, Max 300e-5
-                </div>
-              </div>
+            <div class="finetune-settings-inline finetune-settings-inline-low">
+              <input tabindex="-1" class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
+              <label class="form-check-label" for="low_gpu_mem_mode_finetune">
+                Low GPU memory mode (< 24Gb) 
+              </label>
             </div>
-          </div>
 
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <div class="form-check">
-                  <input tabindex="-1" class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
-                  <label class="form-check-label" for="low_gpu_mem_mode_finetune">
-                    Low GPU memory mode
-                  </label>
+            <div class="finetune-settings-options">
+              <div></div>
+              <button type="button" class="finetune-tab-settings-default btn btn-secondary">Reset to defaults</button>
+            </div>
+
+            <div class="finetune-settings-inline finetune-settings-inline-gpus">
+              <label class="form-check-label">
+                GPUs
+              </label>
+              <div class="finetune-settings-gpus">
+                <div class="btn-group gpu-group" role="group">
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <label for="batch_size" class="form-label">Batch size</label>
-                <input type="text" data-min="4" data-max="1024" class="validate form-control" id="batch_size">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 4, Max 1024
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="warmup_num_steps" class="form-label">Warmup num steps</label>
-                <input type="text" data-min="1" data-max="100" class="validate form-control" id="warmup_num_steps">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 1, Max 100
-                </div>
-              </div>
-            </div>
-
-            <div class="col">
-              <div class="mb-3">
-                <label for="weight_decay" class="form-label">Weight Decay</label>
-                <input type="text" data-min="0.0" data-max="1.0" class="validate form-control" id="weight_decay">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 0.0, Max 1.0
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <input class="form-check-input" type="checkbox" name="use_heuristics" id="use_heuristics">
-                <label class="form-check-label" for="use_heuristics">
-                  Auto
-                </label>
-              </div>
-            </div>
-          </div> -->
-
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <label for="train_steps" class="form-label">Train steps</label>
-                <input tabindex="-1" type="text" data-min="10" data-max="5000" class="validate form-control" id="train_steps">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 10, Max 5000
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="lr_decay_steps" class="form-label">Lr decay steps</label>
-                <input tabindex="-1" type="text" data-min="10" data-max="5000" class="validate form-control" id="lr_decay_steps">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 10, Max 5000
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="lora_r" class="form-label">Lora R</label>
-                <input tabindex="-1" type="text" data-min="4" data-max="64" class="validate form-control" id="lora_r">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 4, Max 64
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <label for="lora_alpha" class="form-label">Lora Alpha</label>
-                <input tabindex="-1" type="text" data-min="4" data-max="128" class="validate form-control" id="lora_alpha">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 4, Max 128
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="lora_dropout" class="form-label">Lora Dropout</label>
-                <input tabindex="-1" type="text" data-min="0.0" data-max="0.2" class="validate form-control" id="lora_dropout">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 0.0, Max 0.2
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <div class="form-check">
-                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu0" value="1" name="launch_gpu0">
-                  <label class="form-check-label" for="launch_gpu0">GPU0</label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <div class="form-check">
-                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu1" value="1"" name="launch_gpu1">
-                  <label class="form-check-label" for="launch_gpu1">GPU1</label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <div class="form-check">
-                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu2" value="1" name="launch_gpu2">
-                  <label class="form-check-label" for="launch_gpu2">GPU2</label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <div class="form-check">
-                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu3" value="1" name="launch_gpu3">
-                  <label class="form-check-label" for="launch_gpu3">GPU3</label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <div class="form-check">
-                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu4" value="1" name="launch_gpu4">
-                  <label class="form-check-label" for="launch_gpu4">GPU4</label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <div class="form-check">
-                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu5" value="1" name="launch_gpu5">
-                  <label class="form-check-label" for="launch_gpu5">GPU5</label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <div class="form-check">
-                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu6" value="1" name="launch_gpu6">
-                  <label class="form-check-label" for="launch_gpu6">GPU6</label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <div class="form-check">
-                  <input tabindex="-1" class="form-check-input" type="checkbox" id="launch_gpu7" value="1" name="launch_gpu7">
-                  <label class="form-check-label" for="launch_gpu7">GPU7</label>
-                </div>
-              </div>
-            </div>
-          </div>
 
           <div class="finetune-settings-error d-none"></div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="finetune-tab-settings-default btn btn-secondary">Reset to defaults</button>
-          <button class="finetune-tab-settings-submit btn btn-primary">Save</button>
+          <button class="finetune-tab-settings-submit btn btn-primary">Start Finetune</button>
         </div>
       </div>
     </div>
   </div>
-
 
   <!-- <div class="modal fade" id="finetune-tab-autorun-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-autorun-settings-modal" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
