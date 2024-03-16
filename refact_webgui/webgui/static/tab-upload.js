@@ -12,6 +12,7 @@ let pname = "project1"
 
 let sources_pane = null;
 let filetypes_pane = null;
+let projects_list = null;
 
 // function do_starting_state() {
 //     filetypes_pane.classList.add('pane-disabled');
@@ -20,6 +21,99 @@ let filetypes_pane = null;
 //         sources_status.innerHTML = 'starting';
 //     }
 // }
+
+function get_projects_list() {
+    // fetch("/tab-project-list")
+    //     .catch(function(error) {
+    //         console.log('tab-project-list',error);
+    //         general_error(error);
+    //     })       
+    //    .then(function(response) {
+    //         return response.json();
+    //     })
+    //     .then(function(data) {
+    //         projects_list = data;
+    //     });
+    projects_list = [
+        {
+            name: 'Project_1',
+        },
+        {
+            name: 'Project_2',
+        },
+        {
+            name: 'Project_3',
+        },
+    ];
+    projects_dropdown();
+    projects_list.reverse().forEach(function(project) {
+        const list_item = document.createElement('li');
+        const link = document.createElement('button');
+        link.classList.add('dropdown-item');
+        link.value = project.name;
+        link.innerHTML = project.name;
+        list_item.appendChild(link);
+        document.querySelector('.projects-dropdown').prepend(list_item);
+    });
+    const start_project_button = document.querySelector('.start-project');
+    start_project_button.addEventListener('click', start_new_project);
+    const project_buttons = document.querySelectorAll('.projects-dropdown.dropdown-item');
+    project_buttons.forEach(function(project_button) {
+        project_button.addEventListener('click', show_project(project_button.value));
+    });
+}
+
+function show_project() {
+
+}
+
+function start_new_project() {
+    fetch("/tab-project-new")
+    .catch(function(error) {
+        console.log('tab-project-list',error);
+        general_error(error);
+    }) 
+   .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+    });
+}
+
+function projects_dropdown() {
+    const project_dropdown = document.querySelector('.main-tab-button[data-tab="upload"]').parentNode;
+    project_dropdown.classList.add('dropdown');
+    project_dropdown.innerHTML = '';
+    const link = document.createElement('a');
+    link.href = "#";
+    link.classList.add('dropdown-toggle');
+    link.classList.add('nav-link');
+    link.setAttribute('data-bs-toggle', 'dropdown');
+    link.setAttribute('role', 'button');
+    link.setAttribute('aria-expanded', 'false');
+    link.innerHTML = "Projects";
+    project_dropdown.appendChild(link);
+    
+    const dropdown = document.createElement('ul');
+    dropdown.classList.add('dropdown-menu');
+    dropdown.classList.add('projects-dropdown');
+    dropdown.setAttribute('aria-labelledby', 'navbarDropdown');
+    dropdown.innerHTML = `<li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item start-project">New Project &hellip;</button></li>`;
+    project_dropdown.appendChild(dropdown);
+
+    // <li class="nav-item dropdown">
+    //       <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    //         Dropdown
+    //       </a>
+    //       <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+    //         <li><a class="dropdown-item" href="#">Action</a></li>
+    //         <li><a class="dropdown-item" href="#">Another action</a></li>
+    //         <li><hr class="dropdown-divider"></li>
+    //         <li><a class="dropdown-item" href="#">Something else here</a></li>
+    //       </ul>
+    //     </li>
+}
 
 function get_tab_files() {
     fetch(`/tab-files-get/${pname}`)
@@ -483,6 +577,7 @@ function file_status_color(status) {
 export async function init(general_error) {
     let req = await fetch('/tab-upload.html');
     document.querySelector('#upload').innerHTML = await req.text();
+    get_projects_list();
     sources_pane = document.querySelector('.sources-pane');
     filetypes_pane = document.querySelector('.filetypes-pane');
 
