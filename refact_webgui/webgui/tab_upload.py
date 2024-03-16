@@ -4,6 +4,7 @@ import json
 import time
 import shutil
 import subprocess
+import filelock
 from typing import Dict, Optional
 
 import aiohttp
@@ -175,42 +176,48 @@ class TabUploadRouter(APIRouter):
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_files_save_config(self, pname, config: TabFilesConfig):
-        with open(env.PP_CONFIG_HOW_TO_UNZIP(pname) + ".tmp", "w") as f:
-            json.dump(config.dict(), f, indent=4)
-        os.rename(env.PP_CONFIG_HOW_TO_UNZIP(pname) + ".tmp", env.PP_CONFIG_HOW_TO_UNZIP(pname))
+        log("to save sources config locking project \"%s\"" % pname)
+        with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+            with open(env.PP_CONFIG_HOW_TO_UNZIP(pname) + ".tmp", "w") as f:
+                json.dump(config.dict(), f, indent=4)
+            os.rename(env.PP_CONFIG_HOW_TO_UNZIP(pname) + ".tmp", env.PP_CONFIG_HOW_TO_UNZIP(pname))
         # _reset_process_stats(pname)  -- this requires process script restart, but it flashes too much in GUI
         return JSONResponse("OK")
 
     async def _tab_files_upload(self, pname, file: UploadFile):
-        tmp_path = os.path.join(env.PP_DIR_UPLOADS(pname), file.filename + ".tmp")
-        file_path = os.path.join(env.PP_DIR_UPLOADS(pname), file.filename)
-        if os.path.exists(file_path):
-            response_data = {"message": f"File with this name already exists"}
-            return JSONResponse(content=response_data, status_code=409)
-        try:
-            with open(tmp_path, "wb") as f:
-                while True:
-                    contents = await file.read(1024 * 1024)
-                    if not contents:
-                        break
-                    f.write(contents)
-            os.rename(tmp_path, file_path)
-        except OSError as e:
-            log("Error while uploading file: %s" % (e or str(type(e))))
-            return JSONResponse({"message": "Cannot upload file, see logs for details"}, status_code=500)
-        finally:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+        log("to upload \"%s\" locking project \"%s\"" % (file.filename, pname))
+        with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+            tmp_path = os.path.join(env.PP_DIR_UPLOADS(pname), file.filename + ".tmp")
+            file_path = os.path.join(env.PP_DIR_UPLOADS(pname), file.filename)
+            if os.path.exists(file_path):
+                response_data = {"message": f"File with this name already exists"}
+                return JSONResponse(content=response_data, status_code=409)
+            try:
+                with open(tmp_path, "wb") as f:
+                    while True:
+                        contents = await file.read(1024 * 1024)
+                        if not contents:
+                            break
+                        f.write(contents)
+                os.rename(tmp_path, file_path)
+            except OSError as e:
+                log("Error while uploading file: %s" % (e or str(type(e))))
+                return JSONResponse({"message": "Cannot upload file, see logs for details"}, status_code=500)
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+
         _start_process_now(pname)
         return JSONResponse("OK")
 
     async def _upload_file_from_url(self, pname, post: UploadViaURL):
-        log("downloading \"%s\"" % post.url)
-        try:
-            await download_file_from_url(post.url, env.PP_DIR_UPLOADS(pname))
-        except Exception as e:
-            return JSONResponse({"message": f"Cannot download: {e}"}, status_code=500)
-        log("/download")
+        log("to downloading url \"%s\" locking project \"%s\"" % (post.url, pname))
+        with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+            try:
+                await download_file_from_url(post.url, env.PP_DIR_UPLOADS(pname))
+            except Exception as e:
+                return JSONResponse({"message": f"Cannot download: {e}"}, status_code=500)
+            log("/download")
         # _reset_process_stats(pname)
         _start_process_now(pname)
         return JSONResponse("OK")
@@ -250,42 +257,46 @@ class TabUploadRouter(APIRouter):
                 raise Exception("Badly formatted url {}".format(url))
 
             return url[last_slash_index + 1:last_suffix_index]
-        try:
-            url = cleanup_url(repo.url)
-            url = check_url(url)
-            repo_name = get_repo_name_from_url(url)
-            repo_base_dir = os.path.join(env.PP_DIR_UPLOADS(pname), repo_name)
-            os.makedirs(repo_base_dir, exist_ok=False)
-            with open(os.path.join(repo_base_dir, "git_config.json"), 'w') as f:
-                json.dump({
-                    "url": url,
-                    "branch": repo.branch,
-                }, f)
-        except FileExistsError as _:
-            return JSONResponse({"message": f"Error: {repo_name} exists"}, status_code=500)
-        except IncorrectUrl:
-            return JSONResponse({"message": f"Error: incorrect url"}, status_code=500)
-        except Exception as e:
-            return JSONResponse({"message": f"Error: {e}"}, status_code=500)
-        _start_process_now(pname)
+        log("to clone repo \"%s\" locking project \"%s\"" % (repo.url, pname))
+        with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+            try:
+                url = cleanup_url(repo.url)
+                url = check_url(url)
+                repo_name = get_repo_name_from_url(url)
+                repo_base_dir = os.path.join(env.PP_DIR_UPLOADS(pname), repo_name)
+                os.makedirs(repo_base_dir, exist_ok=False)
+                with open(os.path.join(repo_base_dir, "git_config.json"), 'w') as f:
+                    json.dump({
+                        "url": url,
+                        "branch": repo.branch,
+                    }, f)
+            except FileExistsError as _:
+                return JSONResponse({"message": f"Error: {repo_name} exists"}, status_code=500)
+            except IncorrectUrl:
+                return JSONResponse({"message": f"Error: incorrect url"}, status_code=500)
+            except Exception as e:
+                return JSONResponse({"message": f"Error: {e}"}, status_code=500)
+        _start_process_now(pname, git_pull=True)   # git_pull is not necessary, but it useful for git call inside process_uploaded_files to show stats immediately (before git clone starts)
         return JSONResponse("OK")
 
     async def _tab_files_delete(self, pname, request: Request, delete_entry: TabFilesDeleteEntry):
-        file_path = os.path.join(env.PP_DIR_UPLOADS(pname), delete_entry.delete_this)
-        try:
-            os.unlink(file_path)
-        except OSError as e:
-            pass
-        try:
-            shutil.rmtree(file_path)
-        except OSError as e:
-            pass
-        try:
-            # So it starts with the default once files are added again
-            if not os.listdir(env.PP_DIR_UPLOADS(pname)) and os.path.exists(env.PP_CONFIG_HOW_TO_FILETYPES(pname)):
-                os.remove(env.PP_CONFIG_HOW_TO_FILETYPES(pname))
-        except OSError as e:
-            pass
+        log("to delete \"%s\" locking project \"%s\"" % (delete_entry.delete_this, pname))
+        with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+            file_path = os.path.join(env.PP_DIR_UPLOADS(pname), delete_entry.delete_this)
+            try:
+                os.unlink(file_path)
+            except OSError as e:
+                pass
+            try:
+                shutil.rmtree(file_path)
+            except OSError as e:
+                pass
+            try:
+                # So it starts with the default once files are added again
+                if not os.listdir(env.PP_DIR_UPLOADS(pname)) and os.path.exists(env.PP_CONFIG_HOW_TO_FILETYPES(pname)):
+                    os.remove(env.PP_CONFIG_HOW_TO_FILETYPES(pname))
+            except OSError as e:
+                pass
         _start_process_now(pname)
         return JSONResponse("OK")
 
@@ -303,24 +314,29 @@ class TabUploadRouter(APIRouter):
             return Response("File list empty\n", media_type="text/plain")
 
     async def _tab_files_filetypes_setup(self, pname, post: FileTypesSetup):
-        with open(env.PP_CONFIG_HOW_TO_FILETYPES(pname) + ".tmp", "w") as f:
-            json.dump(post.dict(), f, indent=4)
-        os.rename(env.PP_CONFIG_HOW_TO_FILETYPES(pname) + ".tmp", env.PP_CONFIG_HOW_TO_FILETYPES(pname))
+        log("to save file types config locking project \"%s\"" % pname)
+        with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+            with open(env.PP_CONFIG_HOW_TO_FILETYPES(pname) + ".tmp", "w") as f:
+                json.dump(post.dict(), f, indent=4)
+            os.rename(env.PP_CONFIG_HOW_TO_FILETYPES(pname) + ".tmp", env.PP_CONFIG_HOW_TO_FILETYPES(pname))
         _start_process_now(pname, dont_delete_stats=True)
         return JSONResponse("OK")
 
-    async def _upload_files_process_now(self, pname):
-        _start_process_now(pname)
+    async def _upload_files_process_now(self, pname: str, git_pull: bool):
+        log("_upload_files_process_now for project \"%s\", git_pull=%s" % (pname, git_pull))
+        _start_process_now(pname, git_pull=git_pull)
         return JSONResponse("OK")
 
 
-def _start_process_now(pname: str, dont_delete_stats=False):
+def _start_process_now(pname: str, dont_delete_stats=False, git_pull=False):
     if not dont_delete_stats:
         _reset_process_stats(pname)
     process_cfg_j = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "process_uploaded.cfg")))
     fn = os.path.join(env.DIR_WATCHDOG_D, "process_uploaded_%s.cfg" % pname)
     process_cfg_j["save_status"] = env.PP_SCAN_STATUS(pname)
     process_cfg_j["command_line"] += ["--pname", pname]
+    if git_pull:
+        process_cfg_j["command_line"] += ["--want-pull"]
     del process_cfg_j["unfinished"]
     with open(fn + ".tmp", "w") as f:
         json.dump(process_cfg_j, f, indent=4)
