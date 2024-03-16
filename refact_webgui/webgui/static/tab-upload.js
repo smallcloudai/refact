@@ -13,13 +13,13 @@ let pname = "project1"
 let sources_pane = null;
 let filetypes_pane = null;
 
-function do_starting_state() {
-    filetypes_pane.classList.add('pane-disabled');
-    if(!document.querySelector('.sources-run-button .spinner-border')) {
-        sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
-        sources_status.innerHTML = 'starting';
-    }
-}
+// function do_starting_state() {
+//     filetypes_pane.classList.add('pane-disabled');
+//     if(!document.querySelector('.sources-run-button .spinner-border')) {
+//         sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
+//         sources_status.innerHTML = 'starting';
+//     }
+// }
 
 function get_tab_files() {
     fetch(`/tab-files-get/${pname}`)
@@ -57,6 +57,9 @@ function get_tab_files() {
             if (data.disable_ui) {
                 sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
+            } else {
+                sources_pane.classList.remove('pane-disabled');
+                filetypes_pane.classList.remove('pane-disabled');
             }
         });
 }
