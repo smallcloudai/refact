@@ -10,37 +10,42 @@ DIR_WATCHDOG_D = os.path.join(PERMDIR, "cfg", "watchdog.d")
 DIR_WEIGHTS    = os.path.join(PERMDIR, "weights")
 DIR_LORAS      = os.path.join(PERMDIR, "loras")
 DIR_LOGS       = os.path.join(PERMDIR, "logs")
-DIR_UPLOADS    = os.path.join(PERMDIR, "uploaded-files")
+DIR_PROJECTS   = os.path.join(PERMDIR, "projects")
 DIR_SSH_KEYS   = os.path.join(PERMDIR, "ssh-keys")
 
-DIR_UNPACKED = os.path.join(TMPDIR, "unpacked-files")
-TRAIN_UNFILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "train_set.jsonl")
-TRAIN_FILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "train_set_filtered.jsonl")
-TEST_UNFILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "test_set.jsonl")
-TEST_FILTERED_FILEPATH = os.path.join(DIR_UNPACKED, "test_set_filtered.jsonl")
-LOSS_PER_HASH_DB_FILEPATH = os.path.join(DIR_UNPACKED, "loss_per_hash_db.json")
-
+CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
 CONFIG_ENUM_GPUS = os.path.join(DIR_CONFIG, "gpus_enum_result.out")
 CONFIG_BUSY_GPUS = os.path.join(DIR_CONFIG, "gpus_busy_result.out")
 CONFIG_INFERENCE = os.path.join(DIR_CONFIG, "inference.cfg")
 CONFIG_ACTIVE_LORA = os.path.join(DIR_CONFIG, "inference_active_lora.cfg")
-CONFIG_HOW_TO_UNZIP = os.path.join(DIR_CONFIG, "sources_scan.cfg")
-CONFIG_HOW_TO_FILETYPES = os.path.join(DIR_CONFIG, "sources_filetypes.cfg")
-CONFIG_PROCESSING_STATS = os.path.join(DIR_CONFIG, "sources_stats.out")
-CONFIG_FINETUNE = os.path.join(DIR_CONFIG, "finetune.cfg")
-CONFIG_FINETUNE_FILTER_STAT = os.path.join(DIR_CONFIG, "finetune_filter_stats.out")
-CONFIG_FILTER_STATUS = os.path.join(DIR_CONFIG, "filter_status.out")
-CONFIG_HOW_TO_FILTER = os.path.join(DIR_CONFIG, "finetune_filter.cfg")
-CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
 
-LOG_FILES_ACCEPTED_SCAN = os.path.join(DIR_CONFIG, "files_accepted_scan.log")
-LOG_FILES_REJECTED_SCAN = os.path.join(DIR_CONFIG, "files_rejected_scan.log")
-LOG_FILES_ACCEPTED_FTF = os.path.join(DIR_CONFIG, "files_accepted_ftf.log")
-LOG_FILES_REJECTED_FTF = os.path.join(DIR_CONFIG, "files_rejected_ftf.log")
+# Per project:
+PP_DIR_UPLOADS             = lambda pname: os.path.join(PERMDIR, "projects", pname, "uploaded-files")
+PP_CONFIG_HOW_TO_UNZIP     = lambda pname: os.path.join(PERMDIR, "projects", pname, "sources_scan.cfg")
+PP_CONFIG_HOW_TO_FILETYPES = lambda pname: os.path.join(PERMDIR, "projects", pname, "sources_filetypes.cfg")
+PP_CONFIG_PROCESSING_STATS = lambda pname: os.path.join(PERMDIR, "projects", pname, "sources_stats.out")
+PP_LOG_FILES_ACCEPTED_SCAN = lambda pname: os.path.join(PERMDIR, "projects", pname, "files_accepted_scan.log")
+PP_LOG_FILES_REJECTED_SCAN = lambda pname: os.path.join(PERMDIR, "projects", pname, "files_rejected_scan.log")
+PP_LOG_FILES_ACCEPTED_FTF  = lambda pname: os.path.join(PERMDIR, "projects", pname, "files_accepted_ftf.log")
+PP_LOG_FILES_REJECTED_FTF  = lambda pname: os.path.join(PERMDIR, "projects", pname, "files_rejected_ftf.log")
+PP_CONFIG_FILTER_STATUS    = lambda pname: os.path.join(PERMDIR, "projects", pname, "filter_status.out")
+PP_CONFIG_FINETUNE_FILTER_STAT = lambda pname: os.path.join(PERMDIR, "projects", pname, "finetune_filter_stats.out")
+
+PP_DIR_UNPACKED = lambda pname: os.path.join(PERMDIR, "projects", pname, "unpacked")
+PP_TRAIN_UNFILTERED_FILEPATH = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "train_set.jsonl")
+PP_TRAIN_FILTERED_FILEPATH   = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "train_set_filtered.jsonl")
+PP_TEST_UNFILTERED_FILEPATH  = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "test_set.jsonl")
+PP_TEST_FILTERED_FILEPATH    = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "test_set_filtered.jsonl")
+PP_LOSS_PER_HASH_DB_FILEPATH = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "loss_per_hash_db.json")
+
+
+# finetune
+CONFIG_FINETUNE = os.path.join(DIR_CONFIG, "finetune.cfg")    # non project-specific config to start again
+CONFIG_HOW_TO_FILTER = os.path.join(DIR_CONFIG, "finetune_filter.cfg")
 
 ADMIN_SESSION_KEY = os.path.join(DIR_CONFIG, "admin_session.key")
 
-FLAG_LAUNCH_PROCESS_UPLOADS = os.path.join(DIR_WATCHDOG_D, "_launch_process_uploaded.flag")
+# FLAG_LAUNCH_PROCESS_UPLOADS = os.path.join(DIR_WATCHDOG_D, "_launch_process_uploaded.flag")
 # FLAG_LAUNCH_FINETUNE_FILTER_ONLY = os.path.join(DIR_WATCHDOG_D, "_launch_finetune_filter_only.flag")
 # FLAG_LAUNCH_FINETUNE = os.path.join(DIR_WATCHDOG_D, "ftune.flag")
 # FLAG_STOP_FILTER = os.path.join(DIR_WATCHDOG_D, "_stop_filter.flag")
@@ -50,9 +55,7 @@ def create_dirs():
     os.makedirs(DIR_WEIGHTS, exist_ok=True)
     os.makedirs(DIR_LORAS, exist_ok=True)
     os.makedirs(DIR_LOGS, exist_ok=True)
-    os.makedirs(DIR_UPLOADS, exist_ok=True)
     os.makedirs(DIR_SSH_KEYS, exist_ok=True)
-    os.makedirs(DIR_UNPACKED, exist_ok=True)
 
 create_dirs()
 
@@ -60,7 +63,6 @@ create_dirs()
 DIR_WATCHDOG_TEMPLATES = os.path.join(
     os.path.dirname(__file__), "..", "..", "self_hosting_machinery", "watchdog", "watchdog.d")
 
-GIT_CONFIG_FILENAME = 'git_config.json'
 
 private_key_ext = 'private_key'
 fingerprint_ext = 'fingerprint'

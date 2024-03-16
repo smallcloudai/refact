@@ -204,20 +204,19 @@ def get_finetune_filter_stat(default: bool = False) -> Dict[str, Any]:
     return filter_stats
 
 
-def _get_status_by_watchdog() -> (str, str):
+def _get_status_by_watchdog(pname: str) -> (str, str):
     # this returns:
     # "linguist", "starting"
     # "filter", "interrupted"
-    # "ftune", "working"
-    if os.path.isfile(env.CONFIG_FILTER_STATUS):
-        mtime = os.path.getmtime(env.CONFIG_FILTER_STATUS)
+    if os.path.isfile(env.PP_CONFIG_FILTER_STATUS(pname)):
+        mtime = os.path.getmtime(env.PP_CONFIG_FILTER_STATUS(pname))
         if mtime + 600 > time.time():
-            d = json.load(open(env.CONFIG_FILTER_STATUS))
+            d = json.load(open(env.PP_CONFIG_FILTER_STATUS(pname), "r"))
             return d["prog"], d["status"]
     return "", "idle"
 
 
-def get_prog_and_status_for_ui() -> (str, str):
+def get_prog_and_status_for_ui(pname: str) -> (str, str):
     # def get_sources_stats():
     #     scan_stats = {
     #         "scan_status": "idle",
@@ -226,7 +225,7 @@ def get_prog_and_status_for_ui() -> (str, str):
     #         scan_stats.update(**json.load(open(env.CONFIG_PROCESSING_STATS, "r")))
     #     return scan_stats
 
-    prog, status = _get_status_by_watchdog()
+    prog, status = _get_status_by_watchdog(pname)
 
     # if os.path.exists(env.FLAG_LAUNCH_PROCESS_UPLOADS):
     #     return "prog_linguist", "starting"
