@@ -291,7 +291,7 @@ class BaseCompletionsRouter(APIRouter):
             "telemetry_basic_dest": "/stats/telemetry-basic",
             "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
             "telemetry_basic_retrieve_my_own": "/stats/rh-stats",
-            "running_models": [r for r in [*running['completion'], *running['chat']]],
+            "running_models": [r for r in [*running.get('completion', []), *running.get('chat', [])]],
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
 
@@ -319,11 +319,11 @@ class BaseCompletionsRouter(APIRouter):
             running = running_models_and_loras(self._model_assigner)
 
             if cc_default := data.get("code_completion_default_model"):
-                if cc_variants := [r for r in running['completion'] if r.split(":")[0] == cc_default and r != cc_default]:
+                if cc_variants := [r for r in running.get('completion', []) if r.split(":")[0] == cc_default and r != cc_default]:
                     data["code_completion_default_model"] = cc_variants[0]
 
             if cc_chat_default := data.get("code_chat_default_model"):
-                if cc_variants := [r for r in running['chat'] if r.split(':')[0] == cc_chat_default and r != cc_chat_default]:
+                if cc_variants := [r for r in running.get('chat', []) if r.split(':')[0] == cc_chat_default and r != cc_chat_default]:
                     data["code_chat_default_model"] = cc_variants[0]
         else:
             log(f"refact-lsp version {client_version} is deprecated, finetune is unavailable. Update your plugin")
@@ -387,7 +387,7 @@ class BaseCompletionsRouter(APIRouter):
 
     async def _resolve_model_lora(self, model_name: str) -> Tuple[str, Optional[Dict[str, str]]]:
         running = running_models_and_loras(self._model_assigner)
-        if model_name not in {r for r in [*running['completion'], *running['chat']]}:
+        if model_name not in {r for r in [*running.get('completion', []), *running.get('chat', [])]}:
             return model_name, None
 
         model_name, run_id, checkpoint_id = (*model_name.split(":"), None, None)[:3]
