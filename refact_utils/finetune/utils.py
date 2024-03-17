@@ -84,13 +84,16 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
         **model_assigner.models_info,
         **model_assigner.model_assignment,
     }
-    result = {}
+    result = {
+        "completion": [],
+        "chat": [],
+    }
 
     def add_result(k: str, model_dict: Dict):
         if model_dict.get('has_completion'):
-            result.setdefault('completion', []).append(k)
+            result['completion'].append(k)
         if model_dict.get('has_chat'):
-            result.setdefault('chat', []).append(k)
+            result['chat'].append(k)
 
     if data.get("openai_api_enable"):
         add_result("gpt-3.5-turbo", {'has_chat': True})
