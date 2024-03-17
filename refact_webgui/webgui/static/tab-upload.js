@@ -8,11 +8,10 @@ let sort_type = 'filetype';
 let sort_order = 'asc';
 let sort_started = false;
 let dont_disable_file_types = false;
-let pname = "project1";
+let pname = "";
 
 let sources_pane = null;
 let filetypes_pane = null;
-let projects_list = null;
 
 // function do_starting_state() {
 //     filetypes_pane.classList.add('pane-disabled');
@@ -23,7 +22,6 @@ let projects_list = null;
 // }
 
 function get_projects_list() {
-    projects_list = [];
     fetch("/tab-project-list")
     .catch(function(error) {
         console.log('tab-project-list',error);
@@ -113,6 +111,7 @@ function projects_dropdown() {
 }
 
 function get_tab_files() {
+    if (!pname) return;
     fetch(`/tab-files-get/${pname}`)
         .then(function(response) {
             return response.json();
@@ -145,12 +144,20 @@ function get_tab_files() {
             render_tab_files(data);
             render_filetypes(data.mime_types, data.filetypes);
             render_force_filetypes(data.filetypes);
+            // "source-files-table-itself"
+            let table_itself = document.querySelector(".source-files-table-itself");
             if (data.disable_ui) {
-                sources_pane.classList.add('pane-disabled');
+                // sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
+                // table_itself.classList.add('pane-disabled');
+                table_itself.style.opacity = 0.5;
+                table_itself.style.pointerEvents = 'none';
             } else {
-                sources_pane.classList.remove('pane-disabled');
+                // sources_pane.classList.remove('pane-disabled');
                 filetypes_pane.classList.remove('pane-disabled');
+                // table_itself.classList.remove('pane-disabled');
+                table_itself.style.opacity = 1;
+                table_itself.style.pointerEvents = 'auto';
             }
         });
 }
@@ -436,9 +443,9 @@ function render_stats() {
             stats_finetune.style.display = 'flex';
             stats_finetune.style.whiteSpace = 'nowrap';
             const fine_accepted = document.querySelector('.sources-stats-fine-accepted span');
-            fine_accepted.innerHTML = `${tab_files_data.filestats_scan_finetune.accepted} <a target="_blank" class="sources-stats-fine-accepted" href="/tab-files-log?accepted_or_rejected=accepted">Full List</a>`;
+            fine_accepted.innerHTML = `${tab_files_data.filestats_scan_finetune.accepted} <a target="_blank" class="sources-stats-fine-accepted" href="/tab-files-log/${pname}?accepted_or_rejected=accepted">Full List</a>`;
             const fine_rejected = document.querySelector('.sources-stats-fine-rejected span');
-            fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log?accepted_or_rejected=rejected">Full List</a>`;
+            fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log/${pname}?accepted_or_rejected=rejected">Full List</a>`;
         }
     }
 }
