@@ -20,11 +20,12 @@ __all__ = [
 class ReadFileByFile:
     def __init__(
             self,
-            pname,
+            basedir: str,
             inner_filter: Iterable[Dict[str, Any]],
             dataopts: DatasetOpts,
     ):
-        self.pname = pname
+        assert isinstance(basedir, str), f"basedir must be a string, not {type(basedir).__name__}"
+        self.basedir = basedir
         self.inner_filter = inner_filter
         self.dataopts = dataopts
         self.quit_on_epoch = dataopts.get("quit_on_epoch", 0)
@@ -42,7 +43,7 @@ class ReadFileByFile:
         epoch = 0
         while 1:
             for j in self.inner_filter:
-                code = open(os.path.join(env.PP_DIR_UNPACKED(self.pname), j["path"]), encoding="utf-8").read()
+                code = open(os.path.join(self.basedir, j["path"]), encoding="utf-8").read()
                 yield {
                     "path": ReadFileByFile._cut_zip_name(j),
                     "code": code,
@@ -80,12 +81,12 @@ class CodeToPrefixCompletion:
 class RefactDataset(torch.utils.data.IterableDataset):
     def __init__(
             self,
-            pname,
+            basedir: str,
             files: List[Dict[str, Any]],
             dataset_options: str,
             encoding: 'Encoding'
     ):
-        self.pname = pname
+        self.basedir = basedir
         self._files = files
         self._ds_options = DatasetOpts(dataset_options)
         self._encoding = encoding
@@ -94,23 +95,23 @@ class RefactDataset(torch.utils.data.IterableDataset):
     @staticmethod
     def from_a_single_file(
             cls,
-            pname,
+            basedir: str,
             file: Dict[str, Any],
             dataset_options: str,
             encoding: 'Encoding'
     ) -> 'RefactDataset':
-        return cls(pname, [file], dataset_options, encoding)
+        return cls(basedir, [file], dataset_options, encoding)
 
     @staticmethod
     def from_a_jsonl(
             cls,
-            pname,
             jsonl_path: str,
             dataset_options: str,
             encoding: 'Encoding'
     ) -> 'RefactDataset':
-        files = list(jsonlines.open(Path(env.PP_DIR_UNPACKED(pname)) / jsonl_path))
-        return cls(files, dataset_options, encoding)
+        basedir = os.path.dirname(jsonl_path)
+        files = list(jsonlines.open(jsonl_path))
+        return cls(basedir, files, dataset_options, encoding)
 
     @property
     def files_len(self) -> int:
@@ -135,7 +136,7 @@ class RefactDataset(torch.utils.data.IterableDataset):
 
 class RefactPlainCodeDataset(RefactDataset):
     def _build_pipeline(self, files: List[Dict[str, Any]]):
-        ds = ReadFileByFile(self.pname, files, self._ds_options)
+        ds = ReadFileByFile(self.basedir, files, self._ds_options)
         ds = CodeToPrefixCompletion(ds, self._ds_options)
         ds = pp.Tokenizer(ds, self._ds_options)
         ds = pp.PromptCompletionToTokensMask(ds, self._ds_options)
@@ -146,7 +147,7 @@ class RefactPlainCodeDataset(RefactDataset):
 
 class RefactFIMCodeDataset(RefactDataset):
     def _build_pipeline(self, files: List[Dict[str, Any]]):
-        ds = ReadFileByFile(self.pname, files, self._ds_options)
+        ds = ReadFileByFile(self.basedir, files, self._ds_options)
         ds = FIMv2(ds, self._ds_options)
         ds = pp.DensePacker(ds, self._ds_options)
         ds = pp.Shuffle(ds, self._ds_options)
@@ -155,7 +156,7 @@ class RefactFIMCodeDataset(RefactDataset):
 
 class CodeLLamaFIMDataset(RefactDataset):
     def _build_pipeline(self, files: List[Dict[str, Any]]):
-        ds = ReadFileByFile(self.pname, files, self._ds_options)
+        ds = ReadFileByFile(self.basedir, files, self._ds_options)
         ds = FIMv2CodeLlama(ds, self._ds_options)
         ds = pp.DensePacker(ds, self._ds_options)
         ds = pp.Shuffle(ds, self._ds_options)
