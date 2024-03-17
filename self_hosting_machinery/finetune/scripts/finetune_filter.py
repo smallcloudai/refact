@@ -1,3 +1,4 @@
+import click
 import copy
 import json
 import logging
@@ -5,6 +6,7 @@ import math
 import os
 import signal
 import textwrap
+import traceback
 import time
 from typing import Dict, Any, Tuple
 
@@ -34,15 +36,16 @@ def _log_everywhere(message):
 
 
 def force_include_exclude_filter(
-        files_status: FilesStatusContext
+    pname: str,
+    files_status: FilesStatusContext
 ):
     fcfg = {
         "filetypes_finetune": {},
         "filetypes_db": {}
     }
-    if os.path.exists(env.CONFIG_HOW_TO_FILETYPES):
-        _log_everywhere("Reading %s" % env.CONFIG_HOW_TO_FILETYPES)
-        with open(env.CONFIG_HOW_TO_FILETYPES, "r") as f:
+    if os.path.exists(env.PP_CONFIG_HOW_TO_FILETYPES(pname)):
+        _log_everywhere("Reading %s" % env.PP_CONFIG_HOW_TO_FILETYPES(pname))
+        with open(env.PP_CONFIG_HOW_TO_FILETYPES(pname), "r") as f:
             fcfg.update(**json.load(f))
 
     is_force_included, _ = make_matcher(fcfg.get('force_include', ''))
@@ -57,6 +60,7 @@ def force_include_exclude_filter(
 
 @torch.inference_mode()
 def loss_based_filter(
+        pname: str,
         finetune_cfg: Dict[str, Any],
         dataset_context: FileSetsContext,
         files_status_context: FilesStatusContext,
@@ -67,6 +71,7 @@ def loss_based_filter(
     def _get_file_loss(model_context, file) -> Tuple[ModelContext, float]:
         file_losses = []
         ds = create_finetune_filter_dataloader(
+            pname=pname,
             file=file,
             dataset_options=f"n_ctx={finetune_cfg['model_info']['ctx_size'] + 1},"
                             "quit_on_epoch=1,pack_single=1,pack_complete=0",
@@ -120,6 +125,8 @@ def loss_based_filter(
                 files_status_context.reject_file(file, reason=str(e))
                 continue
             except Exception as e:
+                import traceback
+                traces.log(traceback.format_exc())
                 files_status_context.reject_file(file, reason=str(e))
                 continue
 
@@ -134,6 +141,7 @@ def loss_based_filter(
 
 
 def finetune_filter(
+        pname,
         status_tracker: FinetuneFilterStatusTracker,
         dataset_context: FileSetsContext,
         finetune_cfg: Dict[str, Any],
@@ -141,6 +149,7 @@ def finetune_filter(
 ):
     _log_everywhere("Loading files statuses...")
     file_status_context = FilesStatusContext(
+        pname=pname,
         train_files=dataset_context.train_files,
         test_files=dataset_context.test_files,
         status_tracker=status_tracker
@@ -152,10 +161,12 @@ def finetune_filter(
 
     _log_everywhere("Running force include/exclude filter...")
     force_include_exclude_filter(
+        pname,
         files_status=file_status_context
     )
     _log_everywhere("Running perplexity based filter...")
     loss_based_filter(
+        pname,
         finetune_cfg=finetune_cfg,
         dataset_context=dataset_context,
         files_status_context=file_status_context,
@@ -169,9 +180,13 @@ def finetune_filter(
     )
 
 
-def main(models_db: Dict[str, Any]):
+@click.command()
+@click.option('--pname', default='')
+def main(pname):
     _log_everywhere("Loading status tracker...")
-    status_tracker = FinetuneFilterStatusTracker()
+    status_tracker = FinetuneFilterStatusTracker(pname)
+    from known_models_db.refact_known_models import models_mini_db
+    models_db: Dict[str, Any] = models_mini_db
 
     def catch_sigusr1(signum, frame):
         _log_everywhere("catched SIGUSR1, interrupted")
@@ -188,6 +203,7 @@ def main(models_db: Dict[str, Any]):
     try:
         _log_everywhere("Loading file sets context...")
         file_sets_context = FileSetsContext(
+            pname=pname,
             autoselect_test_files_num=finetune_filter_cfg.get("autoselect_test_files_num", 3)
         )
         if file_sets_context.is_up_to_date():
@@ -202,6 +218,7 @@ def main(models_db: Dict[str, Any]):
 
         status_tracker.update_status("starting")
         finetune_filter(
+            pname=pname,
             status_tracker=status_tracker,
             dataset_context=file_sets_context,
             finetune_cfg=finetune_cfg,
@@ -215,14 +232,13 @@ def main(models_db: Dict[str, Any]):
         # this has to be there, even if catch_sigusr1() already called exit with 99, otherwise exit code is zero
         exit(99)
     except Exception as e:
+        traces.log(traceback.format_exc())
         _log_everywhere(f"Finetune gpu filter is failed\nException: {e}")
         status_tracker.update_status("failed", error_message=str(e) or str(type(e)))
         raise e
 
 
 if __name__ == "__main__":
-    from known_models_db.refact_known_models import models_mini_db
-
     task_name = os.environ.get("LORA_LOGDIR", "") or time.strftime("lora-%Y%m%d-%H%M%S")
     traces.configure(task_dir="loras", task_name=task_name, work_dir=env.PERMDIR)
-    main(models_mini_db)
+    main()
