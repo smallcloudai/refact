@@ -733,42 +733,43 @@ function get_finetune_settings(defaults = false) {
     })
 }
 
-function change_finetune_model() {
-    let finetune_settings = finetune_configs_and_runs.config;
-    fetch("/tab-finetune-training-setup", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model_name: document.querySelector('#finetune-model').value,
-            limit_time_seconds: finetune_settings.limit_time_seconds,
-            lr: finetune_settings.lr,
-            batch_size: finetune_settings.batch_size,
-            warmup_num_steps: finetune_settings.warmup_num_steps,
-            weight_decay: finetune_settings.weight_decay,
-            use_heuristics: finetune_settings.use_heuristics,
-            train_steps: finetune_settings.train_steps,
-            lr_decay_steps: finetune_settings.lr_decay_steps,
-            lora_r: finetune_settings.lora_r,
-            lora_alpha: finetune_settings.lora_alpha,
-            lora_dropout: finetune_settings.lora_dropout,
-            low_gpu_mem_mode: finetune_settings.low_gpu_mem_mode,
-        })
-    })
-    .then(function(response) {
-        if(!response.ok) {
-            return response.json();
-        }
-        tab_finetune_config_and_runs();
-        render_checkpoints();
-        document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/none`;
-        document.querySelector('.tab-upload-finetune-logs').textContent = '';
-    })
-    .catch(error => {
-        console.log('tab-finetune-training-setup', error);
-        general_error(error);
-    });
+function change_finetune_model()
+{
+    // let finetune_settings = finetune_configs_and_runs.config;
+    // fetch("/tab-finetune-training-launch", {
+    //     method: "POST",
+    //     headers: {
+    //         'Content-Type': 'application/json'
+    //     },
+    //     body: JSON.stringify({
+    //         model_name: document.querySelector('#finetune-model').value,
+    //         limit_time_seconds: finetune_settings.limit_time_seconds,
+    //         lr: finetune_settings.lr,
+    //         batch_size: finetune_settings.batch_size,
+    //         warmup_num_steps: finetune_settings.warmup_num_steps,
+    //         weight_decay: finetune_settings.weight_decay,
+    //         use_heuristics: finetune_settings.use_heuristics,
+    //         train_steps: finetune_settings.train_steps,
+    //         lr_decay_steps: finetune_settings.lr_decay_steps,
+    //         lora_r: finetune_settings.lora_r,
+    //         lora_alpha: finetune_settings.lora_alpha,
+    //         lora_dropout: finetune_settings.lora_dropout,
+    //         low_gpu_mem_mode: finetune_settings.low_gpu_mem_mode,
+    //     })
+    // })
+    // .then(function(response) {
+    //     if(!response.ok) {
+    //         return response.json();
+    //     }
+    //     tab_finetune_config_and_runs();
+    //     render_checkpoints();
+    //     document.querySelector('.fine-gfx').src = `/tab-finetune-progress-svg/none`;
+    //     document.querySelector('.tab-upload-finetune-logs').textContent = '';
+    // })
+    // .catch(error => {
+    //     console.log('tab-finetune-training-???', error);
+    //     general_error(error);
+    // });
 }
 
 function save_finetune_settings() {
@@ -789,7 +790,7 @@ function save_finetune_settings() {
     const checkboxes = document.querySelectorAll('.gpu-group input[type="checkbox"]:checked');
     const gpus = Array.from(checkboxes).map(checkbox => parseInt(checkbox.value));
 
-    fetch("/tab-finetune-training-setup", {
+    fetch("/tab-finetune-training-launch", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
@@ -804,7 +805,6 @@ function save_finetune_settings() {
             batch_size: document.querySelector('#finetune-tab-settings-modal #batch_size').value,
             warmup_num_steps: document.querySelector('#finetune-tab-settings-modal #warmup_num_steps').value,
             weight_decay: document.querySelector('#finetune-tab-settings-modal #weight_decay').value,
-            // use_heuristics: use_heuristics,
             train_steps: document.querySelector('#finetune-tab-settings-modal #train_steps').value,
             lr_decay_steps: document.querySelector('#finetune-tab-settings-modal #lr_decay_steps').value,
             lora_r: document.querySelector('#finetune-tab-settings-modal #lora_r').value,
