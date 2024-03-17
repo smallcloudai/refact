@@ -90,11 +90,16 @@ class TabFilesDeleteEntry(BaseModel):
     delete_this: str = Query(default=Required, regex=r'^(?!.*\/)(?!.*\.\.)[\s\S]+$')
 
 
+class ProjectNameOnly(BaseModel):
+    pname: str = Query(default=Required, regex=r'^[A-Za-z0-9_\-\.]+$')
+
+
 class TabUploadRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_api_route("/tab-project-list", self._tab_project_list, methods=["GET"])
+        self.add_api_route("/tab-project-new", self._tab_project_new, methods=["POST"])
         self.add_api_route("/tab-files-get/{pname}", self._tab_files_get, methods=["GET"])
         self.add_api_route("/tab-files-save-config/{pname}", self._tab_files_save_config, methods=["POST"])
         self.add_api_route("/tab-files-upload/{pname}", self._tab_files_upload, methods=["POST"])
@@ -105,7 +110,16 @@ class TabUploadRouter(APIRouter):
         self.add_api_route("/tab-files-filetypes-setup/{pname}", self._tab_files_filetypes_setup, methods=["POST"])
         self.add_api_route("/tab-files-log/{pname}", self._tab_files_log, methods=["GET"])
 
-    async def _tab_project_list(self, request: Request):
+    async def _tab_project_new(self, project: ProjectNameOnly):
+        if not project.pname:
+            raise HTTPException(status_code=400, detail="Project name not provided")
+        if os.path.exists(env.PP_DIR_UPLOADS(project.pname)):
+            raise HTTPException(status_code=400, detail="Project already exists")
+        os.makedirs(env.PP_DIR_UPLOADS(project.pname))
+        os.makedirs(env.PP_DIR_UNPACKED(project.pname))
+        return Response(json.dumps({"status": "success"}, indent=4) + "\n")
+
+    async def _tab_project_list(self):
         projects_list = os.listdir(env.DIR_PROJECTS)
         projects_list = [p for p in projects_list if re.match(r'^[A-Za-z0-9_\-\.]+$', p)]
         if len(projects_list) == 0:
