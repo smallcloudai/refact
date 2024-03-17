@@ -39,6 +39,12 @@ function get_projects_list() {
 function project_list_ready(projects_list)
 {
     projects_dropdown();
+    const old_list_items = document.querySelectorAll('.projects-dropdown .dropdown-item');
+    if(old_list_items && old_list_items.length > 0) {
+        for(let i = 0; i < (old_list_items.length - 1); i++) {
+            old_list_items[i].remove();
+        }
+    }
     projects_list.reverse().forEach(function(project) {
         const list_item = document.createElement('li');
         const link = document.createElement('button');
@@ -50,9 +56,15 @@ function project_list_ready(projects_list)
         list_item.appendChild(link);
         document.querySelector('.projects-dropdown').prepend(list_item);
     });
-    const start_project_button = document.querySelector('.start-project');
-    start_project_button.addEventListener('click', start_new_project);
-    const project_buttons = document.querySelectorAll('.projects-dropdown .dropdown-item');
+    const start_project_button = document.querySelector('.new-project-modal-submit');
+    start_project_button.addEventListener('click', () => {
+        const project_name = document.querySelector('#tab-upload-new-project').value;
+        document.querySelector('#tab-upload-new-project').value = '';
+        start_new_project(project_name);
+        const project_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-new-project-modal'));
+        project_modal.hide();
+    });
+    const project_buttons = document.querySelectorAll('.projects-dropdown .main-tab-button');
     project_buttons.forEach(function(project_button) {
         project_button.addEventListener('click', function() {
             show_project(project_button.value);
@@ -66,16 +78,15 @@ function show_project(new_pname) {
     document.querySelector('.sources-pane h3').innerHTML = `Project "${pname}"`;
 }
 
-function start_new_project()
+function start_new_project(project_name)
 {
-    let new_pname = "Project2";
     fetch("/tab-project-new", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            pname: new_pname,
+            pname: project_name,
         })
     })
     .catch(function(error) {
@@ -87,13 +98,17 @@ function start_new_project()
     })
     .then(function(data) {
         get_projects_list();
-        show_project(new_pname);
+        show_project(project_name);
     });
 }
 
 function projects_dropdown() {
+    if(document.querySelector('.project-dropdown')) {
+        return;
+    }
     const project_dropdown = document.querySelector('.main-tab-button[data-tab="upload"]').parentNode;
     project_dropdown.classList.add('dropdown');
+    project_dropdown.classList.add('project-dropdown');
     project_dropdown.innerHTML = '';
     const link = document.createElement('a');
     link.href = "#";
@@ -110,7 +125,7 @@ function projects_dropdown() {
     dropdown.classList.add('projects-dropdown');
     dropdown.setAttribute('aria-labelledby', 'navbarDropdown');
     dropdown.innerHTML = `<li><hr class="dropdown-divider"></li>
-                        <li><button class="dropdown-item start-project">New Project &hellip;</button></li>`;
+                        <li><button data-bs-toggle="modal" data-bs-target="#upload-tab-new-project-modal" class="dropdown-item start-project">New Project &hellip;</button></li>`;
     project_dropdown.appendChild(dropdown);
 }
 
@@ -712,6 +727,23 @@ export async function init(general_error) {
         let nav_link = document.querySelector('[data-tab="finetune"]');
         nav_link.classList.add('main-active');
     });
+
+    const new_project_input = document.querySelector('#tab-upload-new-project');
+    if(new_project_input) {
+        new_project_input.addEventListener('keyup', function() {
+            const regex_pattern = /^[A-Za-z0-9_\-.]+$/;
+            const input_value = new_project_input.value;
+            const new_project_button = document.querySelector('.new-project-modal-submit');
+    
+            if (!regex_pattern.test(input_value)) {
+                new_project_button.disabled = true;
+                new_project_input.setCustomValidity('Input does not match the required pattern');
+            } else {
+                new_project_button.disabled = false;
+                new_project_input.setCustomValidity('');
+            }
+        });
+    }
 }
 
 export function tab_switched_here() {
