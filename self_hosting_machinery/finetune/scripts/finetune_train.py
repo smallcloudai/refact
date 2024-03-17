@@ -2,12 +2,15 @@ import sys
 import click
 import copy
 import json
+import shutil
 import logging
 import multiprocessing
 import os
 import signal
 import time
 import traceback
+import filelock
+import jsonlines
 from pathlib import Path
 from typing import Dict, Any, Iterable, Tuple
 
@@ -23,10 +26,11 @@ from self_hosting_machinery.finetune.scripts.auxiliary.dataset import (
 from self_hosting_machinery.finetune.scripts.auxiliary.early_stopper import EarlyStopper
 from self_hosting_machinery.finetune.scripts.auxiliary.finetune_status_tracker import FinetuneStatusTracker
 from self_hosting_machinery.finetune.scripts.auxiliary.model import ModelContext
+from self_hosting_machinery.finetune.scripts import finetune_filter
 from self_hosting_machinery.finetune.utils import traces
 from refact_utils.finetune.utils import default_finetune_model
 
-from refact_utils.scripts.env import TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH
+from refact_utils.scripts import env
 
 
 def _log_everywhere(message):
@@ -38,28 +42,9 @@ def _log_everywhere(message):
 
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 
-@click.command()
-@click.option('--pname', default='')
-@click.option('--run_id', default='')
-# @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
-@click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
-@click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
-@click.option('--lr', default=finetune_train_defaults['lr'])
-@click.option('--batch_size', default=finetune_train_defaults['batch_size'])
-@click.option('--warmup_num_steps', default=finetune_train_defaults['warmup_num_steps'])
-@click.option('--weight_decay', default=finetune_train_defaults['weight_decay'])
-# @click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
-@click.option('--train_steps', default=finetune_train_defaults['train_steps'])
-@click.option('--lr_decay_steps', default=finetune_train_defaults['lr_decay_steps'])
-@click.option('--lora_r', default=finetune_train_defaults['lora_r'])
-@click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'])
-@click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
-@click.option('--model_name', default=default_finetune_model)
 def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, Any]:
     from known_models_db.refact_known_models import models_mini_db
     models_db: Dict[str, Any] = copy.deepcopy(models_mini_db)
-    with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
-        initial_loss = json.load(f)["avg_loss"]
     user_cfg = copy.deepcopy(finetune_train_defaults)
     user_cfg_nondefault = {}
     for k, v in kwargs.items():
@@ -72,7 +57,7 @@ def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, A
     # if user_cfg['use_heuristics']:
     if user_cfg['train_steps'] == 0:
         _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
-        ds_len = get_ds_len_per_epoch(env.TRAIN_FILTERED_FILEPATH, kwargs['model_name'], cfg_builder)
+        ds_len = get_ds_len_per_epoch(env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), kwargs['model_name'], cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
         # set_lora_quality_by_heuristics sets inside:
         # lora_target_modules=[
@@ -109,8 +94,8 @@ def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, A
         .set_weight_decay(user_cfg['weight_decay']))
 
     if dist.get_rank() == 0:
-        filetypes_train = count_file_types(env.TRAIN_FILTERED_FILEPATH)
-        filetypes_test = count_file_types(env.TEST_FILTERED_FILEPATH)
+        filetypes_train = count_file_types(env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id))
+        filetypes_test = count_file_types(env.PERRUN_TEST_FILTERED_FILEPATH(run_id))
         traces.log(f'Train file types:')
         for k, v in filetypes_train.items():
             traces.log(f'    {v} {k}')
@@ -121,7 +106,7 @@ def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, A
         traces.log(f'')
         with open(os.path.join(traces.context().path, "source_files.json"), "w") as f:
             json.dump({
-                "pname": pname,
+                "run_id": run_id,
                 "train": filetypes_train,
                 "test": filetypes_test,
             }, f, indent=4)
@@ -141,7 +126,45 @@ def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, A
     assert cfg_builder.cfg['train_iters'] % cfg_builder.cfg['test_every'] == 0
     assert cfg_builder.cfg['save_every'] % cfg_builder.cfg['test_every'] == 0
 
-    return cfg_builder.cfg
+    return run_id, cfg_builder.cfg
+
+@click.command()
+@click.option('--pname', default='')
+@click.option('--run_id', default='')
+# @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
+@click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
+@click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
+@click.option('--lr', default=finetune_train_defaults['lr'])
+@click.option('--batch_size', default=finetune_train_defaults['batch_size'])
+@click.option('--warmup_num_steps', default=finetune_train_defaults['warmup_num_steps'])
+@click.option('--weight_decay', default=finetune_train_defaults['weight_decay'])
+# @click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
+@click.option('--train_steps', default=finetune_train_defaults['train_steps'])
+@click.option('--lr_decay_steps', default=finetune_train_defaults['lr_decay_steps'])
+@click.option('--lora_r', default=finetune_train_defaults['lora_r'])
+@click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'])
+@click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
+@click.option('--model_name', default=default_finetune_model)
+def gpu_filter_and_build_config(pname, run_id, **kwargs) -> Dict[str, Any]:
+    assert run_id, "Please specify --run-id"
+    traces.log("locking \"%s\" for filtering" % pname)
+    with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+        traces.log("locked \"%s\" successfully" % pname)
+        finetune_filter.finetune_gpu_filter(pname)
+        traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
+        _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
+        _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
+    return _build_finetune_config_by_heuristics(pname, run_id, **kwargs)
+
+
+def _copy_source_files(jsonl_src, jsonl_dst, pname, run_id):
+    for d in jsonlines.open(jsonl_src):
+        print(d["path"])
+        src_path = os.path.join(env.PP_DIR_UNPACKED(pname), d["path"])
+        dst_path = os.path.join(env.PERRUN_DIR_UNPACKED(run_id), d["path"])
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        shutil.copyfile(src_path, dst_path)
+    shutil.copyfile(jsonl_src, jsonl_dst)
 
 
 def _train_iteration(
@@ -303,7 +326,7 @@ def main():
         _log_everywhere("Dest dir is %s" % traces.context().path)
         argv_copy = copy.deepcopy(sys.argv[1:])
         argv_copy = [x for x in argv_copy if not x.startswith("--local-rank")]  # --local-rank=5 is used by torch.distributed, ignore it
-        finetune_cfg = _build_finetune_config_by_heuristics.main(argv_copy, standalone_mode=False)
+        run_id, finetune_cfg = gpu_filter_and_build_config.main(argv_copy, standalone_mode=False)
         finetune_cfg = copy.deepcopy(finetune_cfg)
 
         _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
@@ -314,8 +337,8 @@ def main():
 
         _log_everywhere(f"Starting finetune at {traces.context().path}\n\n")
         loop(
-            train_jsonl_path=TRAIN_FILTERED_FILEPATH,
-            test_jsonl_path=TEST_FILTERED_FILEPATH,
+            train_jsonl_path=env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id),
+            test_jsonl_path=env.PERRUN_TEST_FILTERED_FILEPATH(run_id),
             finetune_cfg=finetune_cfg,
             model_context=model_context,
             status_tracker=status_tracker
