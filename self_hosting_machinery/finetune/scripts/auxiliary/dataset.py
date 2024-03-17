@@ -79,6 +79,7 @@ def count_file_types(
 
 
 def create_train_dataloader(
+        pname,
         jsonl_path,
         model_name: str,
         encoding: 'Encoding',
@@ -97,6 +98,7 @@ def create_train_dataloader(
 
     dataset_cls = getattr(finetune_datasource, ds_name)
     dataset = getattr(finetune_datasource, ds_name).from_a_jsonl(
+        pname=pname,
         cls=dataset_cls,
         jsonl_path=jsonl_path,
         dataset_options=ds_opts,
@@ -121,6 +123,7 @@ def create_train_dataloader(
 
 
 def create_test_dataloader(
+    pname,
     jsonl_path,
     model_name: str,
     encoding: 'Encoding',
@@ -137,6 +140,7 @@ def create_test_dataloader(
 
     dataset_cls = getattr(finetune_datasource, ds_name)
     dataset = getattr(finetune_datasource, ds_name).from_a_jsonl(
+        pname=pname,
         cls=dataset_cls,
         jsonl_path=jsonl_path,
         dataset_options=ds_opts,
@@ -157,12 +161,14 @@ def create_test_dataloader(
 
 
 def create_finetune_filter_dataloader(
+        pname: str,
         file: Dict[str, Any],
         dataset_options: str,
         encoding: str,
 ) -> DataLoader:
     dataset = finetune_datasource.RefactDataset.from_a_single_file(
         cls=finetune_datasource.RefactPlainCodeDataset,
+        pname=pname,
         file=file,
         dataset_options=dataset_options,
         encoding=encoding

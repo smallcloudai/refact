@@ -14,7 +14,7 @@ from refact_utils.scripts import best_lora
 from refact_utils.finetune.utils import running_models_and_loras
 from refact_utils.finetune.utils import get_finetune_config
 from refact_utils.finetune.utils import get_finetune_filter_stat
-from refact_utils.finetune.utils import get_prog_and_status_for_ui
+# from refact_utils.finetune.utils import get_prog_and_status_for_ui
 from refact_utils.finetune.utils import get_finetune_runs
 from refact_utils.finetune.filtering_defaults import finetune_filtering_defaults
 from refact_utils.finetune.train_defaults import finetune_train_defaults
@@ -110,7 +110,7 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
-        self.add_api_route("/tab-finetune-filter-log", self._tab_finetune_filter_log, methods=["GET"])
+        self.add_api_route("/tab-finetune-filter-log/{pname}", self._tab_finetune_filter_log, methods=["GET"])
         self.add_api_route("/tab-finetune-progress-svg/{run_id}", self._tab_funetune_progress_svg, methods=["GET"])
         # self.add_api_route("/tab-finetune-schedule-save", self._tab_finetune_schedule_save, methods=["POST"])
         # self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
@@ -151,16 +151,18 @@ class TabFinetuneRouter(APIRouter):
 
         return JSONResponse("OK")
 
-    async def _tab_finetune_get(self):
-        prog, status = get_prog_and_status_for_ui()
-        working = status in ["starting", "working"]
+    async def _tab_finetune_get(self, pname: str):
+        # prog, status = get_prog_and_status_for_ui()
+        # working = status in ["starting", "working"]
         result = {
-            "prog_name": prog,
-            "prog_status": status,
-            "filter_working_now": (prog == "prog_filter" and working),
-            "finetune_working_now": (prog == "prog_ftune" and working),
+            "prog_name": "",
+            "prog_status": "idle",
+            # "filter_working_now": (prog == "prog_filter" and working),
+            # "finetune_working_now": (prog == "prog_ftune" and working),
+            "filter_working_now": False,
+            "finetune_working_now": False,
             "finetune_filter_stats": {
-                **get_finetune_filter_stat(),
+                **get_finetune_filter_stat(pname),
             },
             "sources_ready": await self._tab_finetune_get_sources_status(),
         }
@@ -300,11 +302,11 @@ class TabFinetuneRouter(APIRouter):
             media_type="text/event-stream"
         )
 
-    async def _tab_finetune_filter_log(self, accepted_or_rejected: str):
+    async def _tab_finetune_filter_log(self, pname: str, accepted_or_rejected: str):
         if accepted_or_rejected == "accepted":
-            fn = env.LOG_FILES_ACCEPTED_FTF
+            fn = env.PP_LOG_FILES_ACCEPTED_FTF(pname)
         else:
-            fn = env.LOG_FILES_REJECTED_FTF
+            fn = env.PP_LOG_FILES_REJECTED_FTF(pname)
         if os.path.isfile(fn):
             return Response(
                 open(fn, "r").read(),

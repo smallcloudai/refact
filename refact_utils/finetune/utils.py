@@ -188,7 +188,7 @@ def get_finetune_config(models_db: Dict[str, Any], logger: Optional[Callable] = 
     return cfg
 
 
-def get_finetune_filter_stat(default: bool = False) -> Dict[str, Any]:
+def get_finetune_filter_stat(pname: str, default: bool = False) -> Dict[str, Any]:
     filter_stats = {
         "filterting_status": "",
         "total_steps": 0,
@@ -199,8 +199,8 @@ def get_finetune_filter_stat(default: bool = False) -> Dict[str, Any]:
         "rejected": 0,
         "avg_loss": 0.0,
     }
-    if not default and os.path.isfile(env.CONFIG_FINETUNE_FILTER_STAT):
-        filter_stats.update(**json.load(open(env.CONFIG_FINETUNE_FILTER_STAT)))
+    if not default and os.path.isfile(env.PP_CONFIG_FINETUNE_FILTER_STAT(pname)):
+        filter_stats.update(**json.load(open(env.PP_CONFIG_FINETUNE_FILTER_STAT(pname))))
     return filter_stats
 
 
