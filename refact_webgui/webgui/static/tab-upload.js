@@ -63,20 +63,23 @@ function project_list_ready(projects_list)
 function show_project(new_pname) {
     pname = new_pname;
     get_tab_files();
+    document.querySelector('.sources-pane h3').innerHTML = `Project "${pname}"`;
 }
 
-function start_new_project() {
+function start_new_project()
+{
+    let new_pname = "Project2";
     fetch("/tab-project-new", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            project: "Project2"
+            pname: new_pname,
         })
     })
     .catch(function(error) {
-        console.log('tab-project-list',error);
+        console.log('start_new_project', error);
         general_error(error);
     })
     .then(function(response) {
@@ -84,6 +87,7 @@ function start_new_project() {
     })
     .then(function(data) {
         get_projects_list();
+        show_project(new_pname);
     });
 }
 
