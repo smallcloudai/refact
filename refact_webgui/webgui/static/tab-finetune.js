@@ -913,6 +913,7 @@ function render_ftf_stats(data) {
         current_accepted = data.accepted;
         current_rejected = data.rejected;
         ftf_wrapper.innerHTML = '';
+        // TODO: pname
         const content = `<h6>GPU Filtering stats</h6><div style="display:flex;"><div class="margin-right: 20px;">Accepted: ${data.accepted} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=rejected">Full list</a></div></div>`;
         ftf_wrapper.innerHTML = content;
         const total_steps = data.total_steps;
@@ -1034,15 +1035,17 @@ function finetune_controls_state()
     if(finetune_state === reference_finetune_state && finetune_configs_and_runs === reference_finetune_configs_and_runs) { return }
     const progress_container = document.querySelector('.ftf-progress');
     const eta_state = document.querySelector('.ftf-eta');
-    const ftf_bar = document.querySelector('.ftf-bar');
 
     // "prog_name": ["prog_linguist", "prog_filter", "prog_ftune"],
     // "prog_status": ["starting", "working", "finished", "failed", "interrupted", "idle"]
-    let prog_status = finetune_state.prog_status;
-    let prog_name = finetune_state.prog_name;
+    // let prog_status = finetune_state.prog_status;
+    // let prog_name = finetune_state.prog_name;
+    let prog_status = "idle";
+    let prog_name = "";
     const working_or_starting = prog_status === "starting" || prog_status === "working";
     const show_stop = prog_status === "starting" || prog_status === "working";
     const can_start = prog_status === "finished" || prog_status === "failed" || prog_status === "interrupted" || prog_status === "idle";
+
     finetune_filter_settings.disabled = working_or_starting;
     const linguist_working_or_starting = prog_name === "prog_linguist" && show_stop;
 
