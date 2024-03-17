@@ -8,6 +8,7 @@ import os
 import re
 import litellm
 import traceback
+import packaging.version
 
 from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
@@ -269,7 +270,7 @@ class BaseCompletionsRouter(APIRouter):
         _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
         _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
 
-    async def _coding_assistant_caps_base_data(self) -> Dict[str, Any]:
+    def _coding_assistant_caps_base_data(self) -> Dict[str, Any]:
         running = running_models_and_loras(self._model_assigner)
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
@@ -312,10 +313,10 @@ class BaseCompletionsRouter(APIRouter):
         return data
 
     async def _coding_assistant_caps(self, request: Request, authorization: str = Header(None)):
-        client_version = request.headers.get("client_version", "0")
+        client_version = packaging.version.parse(request.headers.get("client_version", "0"))
 
-        data = await self._coding_assistant_caps_base_data()
-        if client_version >= "0.7.1":
+        data = self._coding_assistant_caps_base_data()
+        if client_version >= packaging.version.parse("0.7.1"):
             running = running_models_and_loras(self._model_assigner)
 
             if cc_default := data.get("code_completion_default_model"):
