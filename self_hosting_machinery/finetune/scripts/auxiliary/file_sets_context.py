@@ -7,12 +7,7 @@ from typing import List, Dict, Any, Optional
 import jsonlines
 
 from self_hosting_machinery.finetune.utils import traces
-from refact_utils.scripts.env import (TRAIN_UNFILTERED_FILEPATH, TEST_UNFILTERED_FILEPATH,
-                                      TRAIN_FILTERED_FILEPATH, TEST_FILTERED_FILEPATH,
-                                      LOSS_PER_HASH_DB_FILEPATH, CONFIG_HOW_TO_FILTER,
-                                      CONFIG_HOW_TO_FILETYPES)
-
-__all__ = ['FileSetsContext']
+from refact_utils.scripts import env
 
 
 class FileSetsContext:
@@ -21,19 +16,20 @@ class FileSetsContext:
     TEST_FILES_COUNT_WARNING = 64
     MAX_CACHED_LOSS_ROWS = 1_000_000
 
-    def __init__(self, autoselect_test_files_num: int):
+    def __init__(self, pname, autoselect_test_files_num: int):
+        self.pname = pname
         self.random = random.Random(42)
         self._check_prerequisites()
         self.autoselect_test_files_num = autoselect_test_files_num
-        self.train_files: List[Dict[str, Any]] = list(jsonlines.open(TRAIN_UNFILTERED_FILEPATH))
-        self.test_files: List[Dict[str, Any]] = list(jsonlines.open(TEST_UNFILTERED_FILEPATH))
+        self.train_files: List[Dict[str, Any]] = list(jsonlines.open(env.PP_TRAIN_UNFILTERED_FILEPATH(pname)))
+        self.test_files: List[Dict[str, Any]] = list(jsonlines.open(env.PP_TEST_UNFILTERED_FILEPATH(pname)))
         try:
-            hash_db = list(jsonlines.open(LOSS_PER_HASH_DB_FILEPATH))
+            hash_db = list(jsonlines.open(env.PP_LOSS_PER_HASH_DB_FILEPATH(pname)))
             self.loss_per_hash_db = {(item["hash"], item["model"]): item for item in
                                      hash_db[-FileSetsContext.MAX_CACHED_LOSS_ROWS:]}
         except Exception:
             self.loss_per_hash_db = dict()
-            Path(LOSS_PER_HASH_DB_FILEPATH).touch()
+            Path(env.PP_LOSS_PER_HASH_DB_FILEPATH(pname)).touch()
 
     def get_loss_by_content(self, model_name: str, content: str) -> Optional[float]:
         h = hashlib.sha1(content.encode("utf-8")).hexdigest()
@@ -41,13 +37,13 @@ class FileSetsContext:
 
     def is_up_to_date(self) -> bool:
         unfiltered_train, filtered_train = (
-            Path(TRAIN_UNFILTERED_FILEPATH), Path(TRAIN_FILTERED_FILEPATH)
+            Path(env.PP_TRAIN_UNFILTERED_FILEPATH(self.pname)), Path(env.PP_TRAIN_FILTERED_FILEPATH(self.pname))
         )
         unfiltered_test, filtered_test = (
-            Path(TEST_UNFILTERED_FILEPATH), Path(TEST_FILTERED_FILEPATH)
+            Path(env.PP_TEST_UNFILTERED_FILEPATH(self.pname)), Path(env.PP_TEST_FILTERED_FILEPATH(self.pname))
         )
-        how_to_filter = Path(CONFIG_HOW_TO_FILTER)
-        how_to_filetypes = Path(CONFIG_HOW_TO_FILETYPES)
+        how_to_filter = Path(env.CONFIG_HOW_TO_FILTER)
+        how_to_filetypes = Path(env.PP_CONFIG_HOW_TO_FILETYPES(self.pname))
 
         try:
             has_updates = [
@@ -69,15 +65,17 @@ class FileSetsContext:
             "loss": loss
         }
         self.loss_per_hash_db[(row["hash"], row["model"])] = row
-        with open(LOSS_PER_HASH_DB_FILEPATH, "a") as f:
+        with open(env.PP_LOSS_PER_HASH_DB_FILEPATH(self.pname), "a") as f:
             f.write(f"{json.dumps(row)}\n")
 
     def _check_prerequisites(self):
-        if not Path(TRAIN_UNFILTERED_FILEPATH).exists():
-            raise RuntimeError("No train files have been provided")
+        train_fn_jsonl = env.PP_TRAIN_UNFILTERED_FILEPATH(self.pname)
+        test_fn_jsonl = env.PP_TEST_UNFILTERED_FILEPATH(self.pname)
+        if not Path(train_fn_jsonl).exists():
+            raise RuntimeError("File %s does not exist" % train_fn_jsonl)
 
-        train_files = list(jsonlines.open(TRAIN_UNFILTERED_FILEPATH))
-        test_files = list(jsonlines.open(TEST_UNFILTERED_FILEPATH))
+        train_files = list(jsonlines.open(train_fn_jsonl))
+        test_files = list(jsonlines.open(test_fn_jsonl))
         train_min_number = (
             self.TRAIN_FILES_MIN_NUMBER_WITH_TEST_SET if len(test_files) > 0 else
             self.TRAIN_FILES_MIN_NUMBER_WITHOUT_TEST_SET
@@ -92,8 +90,8 @@ class FileSetsContext:
 
 
     def dump_filtered(
-            self,
-            files: List[Dict[str, Any]]
+        self,
+        files: List[Dict[str, Any]]
     ):
         def _dump(files, filename):
             with jsonlines.open(filename, "w") as f:
@@ -115,8 +113,8 @@ class FileSetsContext:
             train_files = files
             test_files = self.test_files
 
-        _dump(train_files, TRAIN_FILTERED_FILEPATH)
-        _dump(test_files, TEST_FILTERED_FILEPATH)
+        _dump(train_files, env.PP_TRAIN_FILTERED_FILEPATH(self.pname))
+        _dump(test_files, env.PP_TEST_FILTERED_FILEPATH(self.pname))
         traces.log("-" * 40 + "TEST SET" + "-" * 40)
         for file in test_files:
             traces.log(file["path"])
