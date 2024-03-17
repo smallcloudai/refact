@@ -128,9 +128,9 @@ class TabUploadRouter(APIRouter):
 
         scan_stats = {"uploaded_files": {}}
         stats_uploaded_files = {}
-        no_stats_at_all = True
+        disable_gui = True
         if os.path.isfile(env.PP_CONFIG_PROCESSING_STATS(pname)):
-            no_stats_at_all = False
+            disable_gui = False
             scan_stats = json.load(open(env.PP_CONFIG_PROCESSING_STATS(pname), "r"))
             mtime = os.path.getmtime(env.PP_CONFIG_PROCESSING_STATS(pname))
             stats_uploaded_files = scan_stats.get("uploaded_files", {})
@@ -153,7 +153,10 @@ class TabUploadRouter(APIRouter):
             "which_set": "train",
             "to_db": True,
         }
-        for fn in sorted(os.listdir(uploaded_path)):
+        uploaded_files = os.listdir(uploaded_path)
+        if len(uploaded_files) == 0:
+            disable_gui = False
+        for fn in sorted(uploaded_files):
             result["uploaded_files"][fn] = {
                 "which_set": how_to_process["uploaded_files"].get(fn, default)["which_set"],
                 "to_db": how_to_process["uploaded_files"].get(fn, default)["to_db"],
@@ -174,7 +177,7 @@ class TabUploadRouter(APIRouter):
         prog, status = get_prog_and_status_for_ui(pname)
         working = status in ["starting", "working"]
         result["finetune_working_now"] = False   # TODO remove
-        result["disable_ui"] = no_stats_at_all
+        result["disable_ui"] = disable_gui
         return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_files_save_config(self, pname, config: TabFilesConfig):
