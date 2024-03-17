@@ -39,6 +39,10 @@ PP_TEST_FILTERED_FILEPATH    = lambda pname: os.path.join(PP_DIR_UNPACKED(pname)
 PP_LOSS_PER_HASH_DB_FILEPATH = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "loss_per_hash_db.json")
 PP_PROJECT_LOCK              = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "project.lock")
 
+PERRUN_DIR_UNPACKED             = lambda run_id: os.path.join(DIR_LORAS, run_id, "unpacked")
+PERRUN_TRAIN_FILTERED_FILEPATH  = lambda run_id: os.path.join(PERRUN_DIR_UNPACKED(run_id), "train_set_filtered.jsonl")
+PERRUN_TEST_FILTERED_FILEPATH   = lambda run_id: os.path.join(PERRUN_DIR_UNPACKED(run_id), "test_set_filtered.jsonl")
+
 
 # finetune
 CONFIG_FINETUNE = os.path.join(DIR_CONFIG, "finetune.cfg")    # non project-specific config to start again
