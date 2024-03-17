@@ -7,6 +7,7 @@ import multiprocessing
 import os
 import signal
 import time
+import traceback
 from pathlib import Path
 from typing import Dict, Any, Iterable, Tuple
 
@@ -38,7 +39,7 @@ def _log_everywhere(message):
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 
 @click.command()
-@click.option('--project', default='')
+@click.option('--pname', default='')
 @click.option('--run_id', default='')
 # @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
 @click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
@@ -54,7 +55,7 @@ from refact_utils.finetune.train_defaults import finetune_train_defaults
 @click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'])
 @click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
 @click.option('--model_name', default=default_finetune_model)
-def _build_finetune_config_by_heuristics(project, run_id, **kwargs) -> Dict[str, Any]:
+def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, Any]:
     from known_models_db.refact_known_models import models_mini_db
     models_db: Dict[str, Any] = copy.deepcopy(models_mini_db)
     with open(env.CONFIG_FINETUNE_FILTER_STAT, 'r') as f:
@@ -120,7 +121,7 @@ def _build_finetune_config_by_heuristics(project, run_id, **kwargs) -> Dict[str,
         traces.log(f'')
         with open(os.path.join(traces.context().path, "source_files.json"), "w") as f:
             json.dump({
-                "project": project,
+                "pname": pname,
                 "train": filetypes_train,
                 "test": filetypes_test,
             }, f, indent=4)
@@ -329,6 +330,7 @@ def main():
         # this has to be there, even if catch_sigusr1() already called exit with 99, otherwise exit code is zero
         exit(99)
     except Exception as e:
+        traces.log(traceback.format_exc())
         _log_everywhere(f"Finetune has failed\nException: {e}")
         status_tracker.update_status("failed", error_message=str(e) or str(type(e)))
         raise e

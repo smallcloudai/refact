@@ -12,7 +12,8 @@ __all__ = ['FinetuneFilterStatusTracker']
 
 class FinetuneFilterStatusTracker:
     class LoopStatusTracker:
-        def __init__(self, context, total_steps: int):
+        def __init__(self, pname, context, total_steps: int):
+            self.pname = pname
             self.context: FinetuneFilterStatusTracker = context
             self.eta_tracker = EtaTracker(total_steps)
             self.iter_n = 0
@@ -28,14 +29,15 @@ class FinetuneFilterStatusTracker:
             self.iter_n += 1
             self.last_iter_tp = time.time()
 
-    def __init__(self):
-        self._stats_dict = get_finetune_filter_stat(default=True)
+    def __init__(self, pname: str):
+        self.pname = pname
+        self._stats_dict = get_finetune_filter_stat(self.pname, default=True)
         self._tracker_extra_kwargs: Dict[str, Any] = dict()
 
     def dump(self):
-        with open(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", "w") as f:
+        with open(env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname) + ".tmp", "w") as f:
             json.dump(self._stats_dict, f, indent=4)
-        os.rename(env.CONFIG_FINETUNE_FILTER_STAT + ".tmp", env.CONFIG_FINETUNE_FILTER_STAT)
+        os.rename(env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname) + ".tmp", env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname))
 
     def update_status(
             self,
@@ -68,7 +70,7 @@ class FinetuneFilterStatusTracker:
 
     def __enter__(self) -> 'FinetuneFilterStatusTracker.LoopStatusTracker':
         self.add_stats(**self._tracker_extra_kwargs)
-        return FinetuneFilterStatusTracker.LoopStatusTracker(context=self, **self._tracker_extra_kwargs)
+        return FinetuneFilterStatusTracker.LoopStatusTracker(pname=self.pname, context=self, **self._tracker_extra_kwargs)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
