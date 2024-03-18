@@ -89,12 +89,17 @@ class TrackedJob:
             self.status_nickname = status_nickname if not status_nickname.startswith("prog_") else status_nickname[5:]
             save_status_fn = replace_variable_names_from_env(save_status_fn)
             log("overwrite %s with prog=%s status=%s" % (save_status_fn, status_nickname, newstatus))
-            with open(save_status_fn + ".tmp", "w") as f:
+            try:
+                f = open(save_status_fn + ".tmp", "w")
                 f.write(json.dumps({
                     "prog": status_nickname if newstatus != "idle" else "",
                     "status": newstatus
                 }))
-            os.rename(save_status_fn + ".tmp", save_status_fn)
+                f.close()
+                os.rename(save_status_fn + ".tmp", save_status_fn)
+            except FileNotFoundError:
+                log(f"failed to write {save_status_fn}, it might be OK if the dest directory not be there yet")
+                pass
 
     def _start(self):
         if self.p is not None or self.command_not_found:
