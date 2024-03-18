@@ -155,30 +155,27 @@ def barplot_users(
     return res
 
 
-def table_lang_comp_stats(rh_df: pd.DataFrame):
-    languages = [e for e in rh_df["file_extension"].unique() if e.startswith(".")]
-
-    def format_row(row: List[Any]):
-        # TODO(valerii): move to js
-        new_row = []
-        for e in row:
-            if isinstance(e, float) or isinstance(e, int):
-                if e // 1_000_000:
-                    new_row.append(f"{round(e / 1_000_000, 2)}M")
-                elif e // 1_000:
-                    new_row.append(f"{round(e / 1_000, 2)}k")
-                else:
-                    new_row.append(e)
+def format_row(row: List[Any]):
+    new_row = []
+    for e in row:
+        if isinstance(e, float) or isinstance(e, int):
+            if e // 1_000_000:
+                new_row.append(f"{round(e / 1_000_000, 2)}M")
+            elif e // 1_000:
+                new_row.append(f"{round(e / 1_000, 2)}k")
             else:
                 new_row.append(e)
-        return new_row
+        else:
+            new_row.append(e)
+    return new_row
+
+
+def table_lang_comp_stats(rh_df: pd.DataFrame):
+    rows_limit = 20
 
     def extract_stats(df: pd.DataFrame, date_kind: str) -> Dict:
-        rows_limit = 20
         res_loc = {}
         for lang, group in df.groupby("file_extension"):
-            if lang not in languages:
-                continue
             res_loc[lang] = {
                 "Refact": (robot := int(group["robot_characters"].sum())),
                 "Human": (human := int(group["human_characters"].sum())),
@@ -187,35 +184,37 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
                 "Completions": int(group["completions_cnt"].sum()),
                 "Users": int(group["tenant_name"].nunique()),
             }
+
+        if not res_loc:
+            return {}
+
         # into row-like fmt
         sorted_vals: List[List] = sorted([[k, *v.values()] for k, v in res_loc.items()], key=lambda x: x[3], reverse=True)
         fmt_vals = [format_row(row) for row in sorted_vals]
-        res_loc = {
+        return {
             'data': fmt_vals[:rows_limit],
             'columns': ['Language', *res_loc[list(res_loc.keys())[0]].keys()],
             'title': f"Refact's impact by language: {date_kind}; TOP-{rows_limit}"
         }
-        return res_loc
 
-    res = {
-        "7 days": extract_stats(
-            rh_df.loc[rh_df["dt_end"] >= (datetime.now() - timedelta(days=7))],
-            "last week"
-        ),
-        "30 days": extract_stats(
-            rh_df.loc[rh_df["dt_end"] >= (datetime.now() - timedelta(days=30))],
-            "last month"
-        ),
-        "all time": extract_stats(
-            rh_df,
-            "all time"
-        ),
-        "btns_data": {
-            "btns_text": ["7 days", "30 days", "all time"],
-            "default": "all time",
-        }
+    res, btns_text = {}, []
+
+    if stats_week := extract_stats(rh_df.loc[rh_df["dt_end"] >= (datetime.now() - timedelta(days=7))], "last 7 days"):
+        res["7 days"] = stats_week
+        btns_text.append("7 days")
+
+    if stats_month := extract_stats(rh_df.loc[rh_df["dt_end"] >= (datetime.now() - timedelta(days=30))], "last 30 days"):
+        res["30 days"] = stats_month
+        btns_text.append("30 days")
+
+    if stats_all := extract_stats(rh_df, "all time"):
+        res["all time"] = stats_all
+        btns_text.append("all time")
+
+    res["btns_data"] = {
+        "btns_text": btns_text,
+        "default": "all time" if "all time" in btns_text else "",
     }
-
     return res
 
 
