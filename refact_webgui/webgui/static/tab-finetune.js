@@ -175,7 +175,33 @@ function tab_finetune_config_and_runs() {
             finetune_configs_and_runs = data;
             running_models_and_loras = running_data;
             render_runs();
-            render_model_select();
+
+            const model_selector = document.querySelector('#finetune-model');
+            if (model_selector.options.length == 0) {
+                model_selector.innerHTML = '';
+                global_model_list.forEach(model => {
+                    if(model.has_finetune && model.backend != "vllm") {
+                        const new_option = new Option(model.name, model.name);
+                        if(finetune_configs_and_runs.config.model_name === model.name) {
+                            new_option.selected = true;
+                        }
+                        model_selector.appendChild(new_option);
+                    }
+                })
+            }
+
+            const project_selector = document.querySelector('#finetune-project');
+            if (project_selector.options.length == 0) {
+                project_selector.innerHTML = '';
+                global_projects.forEach(project => {
+                    const new_option = new Option(project.name, project.name);
+                    // if (finetune_configs_and_runs.config.project_name === ) {
+                    //     new_option.selected = true;
+                    // }
+                    project_selector.appendChild(new_option);
+                })
+            }
+
             finetune_controls_state();
         });
     });
@@ -207,32 +233,40 @@ function rename_post(run_id, new_name) {
     });
 }
 
-function render_model_select(force = false) {
-    const model_selector = document.querySelector('#finetune-model');
-    if (model_selector && model_selector.options.length > 0 && !force) {
-        return;
-    }
+let global_projects = [];
+
+function fetch_projects() {
+    const project_selector = document.querySelector('#finetune-project');
+    fetch("/tab-project-list")
+    .catch(function(error) {
+        console.log('tab-project-list',error);
+        general_error(error);
+        project_selector.innerHTML = '';
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        global_projects = data.projects;
+    });
+}
+
+
+let global_model_list = [];
+
+function fetch_models(force = false) {
     fetch("/tab-host-models-get")
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(data) {
-            console.log('tab-host-models-get',data);
-            model_selector.innerHTML = '';
-            data.models.forEach(model => {
-                if(model.has_finetune && model.backend != "vllm") {
-                    const new_option = new Option(model.name, model.name);
-                    if(finetune_configs_and_runs.config.model_name === model.name) {
-                        new_option.selected = true;
-                    }
-                    model_selector.appendChild(new_option);
-                }
-            })
-        })
-       .catch(function(error) {
-            console.log('tab-host-models-get',error);
-            general_error(error);
-        });
+    .then(function(response) {
+        return response.json();
+    })
+    .catch(function(error) {
+        console.log('tab-host-models-get',error);
+        general_error(error);
+    })
+    .then(function(data) {
+        console.log('tab-host-models-get',data);
+        global_model_list = data.models;
+    });
 }
 
 function run_checked(run_id) {
@@ -798,6 +832,7 @@ function save_finetune_settings() {
         body: JSON.stringify({
             run_id: document.querySelector('#finetune-tab-settings-modal #finetune_name').value,
             model_name: document.querySelector('#finetune-model').value,
+            pname: document.querySelector('#finetune-project').value,
             // limit_time_seconds: document.querySelector('#finetune-tab-settings-modal #limit_time_seconds').value,
             trainable_embeddings: trainable_embeddings,
             low_gpu_mem_mode: low_gpu,
@@ -861,90 +896,90 @@ function revert_to_default(input_id) {
     input.value = finetune_settings_defaults[input_id];
 }
 
-function filtering_button_clicked() {
-    if(!finetune_state) { return; }
-    // filter not working - start
-    if(!finetune_state.filter_working_now && !finetune_state.finetune_working_now) {
-        reset_ftf_progress();
-        if(!document.querySelector('.sources-run-button .spinner-border')) {
-            finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
-            finetune_filter_status.innerHTML = 'starting';
-        }
-        start_filtering();
-    }
-    // filter working - stop
-    if(finetune_state.filter_working_now && !finetune_state.finetune_working_now) {
-        // finetune_button.innerHTML = `Stopping...`;
-        stop_filtering();
-    }
-}
+// function filtering_button_clicked() {
+//     if(!finetune_state) { return; }
+//     // filter not working - start
+//     if(!finetune_state.filter_working_now && !finetune_state.finetune_working_now) {
+//         reset_ftf_progress();
+//         if(!document.querySelector('.sources-run-button .spinner-border')) {
+//             finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
+//             finetune_filter_status.innerHTML = 'starting';
+//         }
+//         start_filtering();
+//     }
+//     // filter working - stop
+//     if(finetune_state.filter_working_now && !finetune_state.finetune_working_now) {
+//         // finetune_button.innerHTML = `Stopping...`;
+//         stop_filtering();
+//     }
+// }
 
-function start_filtering() {
-    fetch("/tab-finetune-run-now?filter_only=1")
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(data) {
-        console.log('start_filtering');
-    })
-    .catch(error => {
-        console.log('tab-finetune-run-now?filter_only=1',error);
-        general_error(error);
-    });
-}
+// function start_filtering() {
+//     fetch("/tab-finetune-run-now?filter_only=1")
+//     .then(function(response) {
+//         return response.json();
+//     })
+//     .then(function(data) {
+//         console.log('start_filtering');
+//     })
+//     .catch(error => {
+//         console.log('tab-finetune-run-now?filter_only=1',error);
+//         general_error(error);
+//     });
+// }
 
-function stop_filtering() {
-    fetch("/tab-finetune-stop-now")
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(data) {
-        console.log('stop_filtering');
-    })
-   .catch(error => {
-        console.log('tab-finetune-stop-now',error);
-        general_error(error);
-    });
-}
+// function stop_filtering() {
+//     fetch("/tab-finetune-stop-now")
+//     .then(function(response) {
+//         return response.json();
+//     })
+//     .then(function(data) {
+//         console.log('stop_filtering');
+//     })
+//    .catch(error => {
+//         console.log('tab-finetune-stop-now',error);
+//         general_error(error);
+//     });
+// }
 
-function render_ftf_stats(data) {
-    const ftf_wrapper = document.querySelector('.ftf-stats');
-    if(Object.keys(data).length > 0 && data.accepted !== undefined && data.rejected !== undefined && data.worked_steps > 0) {
-        current_accepted = data.accepted;
-        current_rejected = data.rejected;
-        ftf_wrapper.innerHTML = '';
-        // TODO: pname
-        const content = `<h6>GPU Filtering stats</h6><div style="display:flex;"><div class="margin-right: 20px;">Accepted: ${data.accepted} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=rejected">Full list</a></div></div>`;
-        ftf_wrapper.innerHTML = content;
-        const total_steps = data.total_steps;
-        const working_steps = data.worked_steps;
-        const percentage = (Number(working_steps + 1) / Number(total_steps)) * 100;
-        render_ftf_progress(percentage);
-    } else {
-        reset_ftf_progress();
-    }
-}
+// function render_ftf_stats(data) {
+//     const ftf_wrapper = document.querySelector('.ftf-stats');
+//     if(Object.keys(data).length > 0 && data.accepted !== undefined && data.rejected !== undefined && data.worked_steps > 0) {
+//         current_accepted = data.accepted;
+//         current_rejected = data.rejected;
+//         ftf_wrapper.innerHTML = '';
+//         // TODO: pname
+//         const content = `<h6>GPU Filtering stats</h6><div style="display:flex;"><div class="margin-right: 20px;">Accepted: ${data.accepted} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=accepted">Full list</a></div><div>Rejected: ${data.rejected} <a target="_blank" href="/tab-finetune-filter-log?accepted_or_rejected=rejected">Full list</a></div></div>`;
+//         ftf_wrapper.innerHTML = content;
+//         const total_steps = data.total_steps;
+//         const working_steps = data.worked_steps;
+//         const percentage = (Number(working_steps + 1) / Number(total_steps)) * 100;
+//         render_ftf_progress(percentage);
+//     } else {
+//         reset_ftf_progress();
+//     }
+// }
 
-function render_ftf_progress(filtering_progress) {
-    const ftf_bar = document.querySelector('.ftf-bar');
-    ftf_bar.style.width = filtering_progress + "%";
-}
+// function render_ftf_progress(filtering_progress) {
+//     const ftf_bar = document.querySelector('.ftf-bar');
+//     ftf_bar.style.width = filtering_progress + "%";
+// }
 
-function reset_ftf_progress() {
-    const fine_filter_status = document.querySelector('.ftf-status span');
-    fine_filter_status.innerHTML = '';
-    const fine_filter_stats = document.querySelector('.ftf-stats');
-    fine_filter_stats.innerHTML = '';
-    const eta_state = document.querySelector('.ftf-eta');
-    eta_state.innerHTML = '';
-    const progress_container = document.querySelector('.ftf-progress');
-    progress_container.classList.add('d-none');
-    const ftf_bar = document.querySelector('.ftf-bar');
-    ftf_bar.style.width = "0%";
-    const error = document.querySelector('.ftf-error');
-    error.classList.add('d-none');
-    error.innerHTML = 'Error:<span class="text-danger"></span>';
-}
+// function reset_ftf_progress() {
+//     const fine_filter_status = document.querySelector('.ftf-status span');
+//     fine_filter_status.innerHTML = '';
+//     const fine_filter_stats = document.querySelector('.ftf-stats');
+//     fine_filter_stats.innerHTML = '';
+//     const eta_state = document.querySelector('.ftf-eta');
+//     eta_state.innerHTML = '';
+//     const progress_container = document.querySelector('.ftf-progress');
+//     progress_container.classList.add('d-none');
+//     const ftf_bar = document.querySelector('.ftf-bar');
+//     ftf_bar.style.width = "0%";
+//     const error = document.querySelector('.ftf-error');
+//     error.classList.add('d-none');
+//     error.innerHTML = 'Error:<span class="text-danger"></span>';
+// }
 
 function render_ftune_stats(run) {
     const worked_minutes = Number(run.worked_minutes);
@@ -979,47 +1014,47 @@ function reset_ftune_progress() {
     ftune_stats.classList.add('d-none');
 }
 
-function get_filters_settings(defaults = false) {
-    fetch("/tab-finetune-smart-filter-get")
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(data) {
-        console.log('tab-finetune-smart-filter-get',data);
-        let settings_data = null;
-        if(Object.keys(data.user_config).length > 0 && !defaults) {
-            settings_data = data.user_config;
-        } else {
-            settings_data = data.defaults;
-        }
-        document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value = settings_data.filter_loss_threshold;
-    })
-   .catch(error => {
-        console.log('tab-finetune-smart-filter-get',error);
-        general_error(error);
-    });
-}
+// function get_filters_settings(defaults = false) {
+//     fetch("/tab-finetune-smart-filter-get")
+//     .then(function(response) {
+//         return response.json();
+//     })
+//     .then(function(data) {
+//         console.log('tab-finetune-smart-filter-get',data);
+//         let settings_data = null;
+//         if(Object.keys(data.user_config).length > 0 && !defaults) {
+//             settings_data = data.user_config;
+//         } else {
+//             settings_data = data.defaults;
+//         }
+//         document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value = settings_data.filter_loss_threshold;
+//     })
+//    .catch(error => {
+//         console.log('tab-finetune-smart-filter-get',error);
+//         general_error(error);
+//     });
+// }
 
-function save_filters_settings() {
-    fetch("/tab-finetune-smart-filter-setup", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            filter_loss_threshold: Number(document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value),
-        })
-    })
-    .then(function(response) {
-        if(response.ok) {
-            get_filters_settings();
-        }
-    })
-   .catch(error => {
-        console.log('tab-finetune-smart-filter-setup',error);
-        general_error(error);
-    });
-}
+// function save_filters_settings() {
+//     fetch("/tab-finetune-smart-filter-setup", {
+//         method: "POST",
+//         headers: {
+//             'Content-Type': 'application/json'
+//         },
+//         body: JSON.stringify({
+//             filter_loss_threshold: Number(document.querySelector('#upload-tab-source-settings-modal #filter_loss_threshold').value),
+//         })
+//     })
+//     .then(function(response) {
+//         if(response.ok) {
+//             get_filters_settings();
+//         }
+//     })
+//    .catch(error => {
+//         console.log('tab-finetune-smart-filter-setup',error);
+//         general_error(error);
+//     });
+// }
 
 function handle_auto_scroll() {
     if (log_container.scrollHeight - log_container.scrollTop === log_container.clientHeight) {
@@ -1046,36 +1081,36 @@ function finetune_controls_state()
     const show_stop = prog_status === "starting" || prog_status === "working";
     const can_start = prog_status === "finished" || prog_status === "failed" || prog_status === "interrupted" || prog_status === "idle";
 
-    finetune_filter_settings.disabled = working_or_starting;
+    // finetune_filter_settings.disabled = working_or_starting;
     const linguist_working_or_starting = prog_name === "prog_linguist" && show_stop;
 
     if (linguist_working_or_starting) {
         finetune_panel.classList.add('pane-disabled');
-        finetune_filter_panel.classList.add('pane-disabled');
+        // finetune_filter_panel.classList.add('pane-disabled');
         select_model_panel.classList.add('pane-disabled');
     } else {
         finetune_panel.classList.remove('pane-disabled');
-        finetune_filter_panel.classList.remove('pane-disabled');
+        // finetune_filter_panel.classList.remove('pane-disabled');
         select_model_panel.classList.remove('pane-disabled');
     }
 
-    if (prog_name === "prog_filter" && prog_status === "working") {
-        progress_container.classList.remove('d-none')
-        eta_state.innerHTML = 'ETA: ' + finetune_state.finetune_filter_stats.eta_minutes + ' minute(s)';
-    } else {
-        progress_container.classList.remove('d-none');
-        eta_state.innerHTML = '';
-    }
+    // if (prog_name === "prog_filter" && prog_status === "working") {
+    //     progress_container.classList.remove('d-none')
+    //     eta_state.innerHTML = 'ETA: ' + finetune_state.finetune_filter_stats.eta_minutes + ' minute(s)';
+    // } else {
+    //     progress_container.classList.remove('d-none');
+    //     eta_state.innerHTML = '';
+    // }
 
-    let can_stop_filter = prog_name === "prog_filter" && show_stop;
-    if (can_stop_filter) {
-        finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop Filtering`;
-        finetune_filter_button.setAttribute("need_to_stop", true);
-    } else {
-        finetune_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run Filter`;
-        finetune_filter_button.setAttribute("need_to_stop", false);
-    }
-    finetune_filter_button.disabled = !(can_start || can_stop_filter);
+    // let can_stop_filter = prog_name === "prog_filter" && show_stop;
+    // if (can_stop_filter) {
+    //     finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop Filtering`;
+    //     finetune_filter_button.setAttribute("need_to_stop", true);
+    // } else {
+    //     finetune_filter_button.innerHTML = `<i class="bi bi-funnel-fill"></i> Run Filter`;
+    //     finetune_filter_button.setAttribute("need_to_stop", false);
+    // }
+    // finetune_filter_button.disabled = !(can_start || can_stop_filter);
 
     // let can_stop_ftune = prog_name === "prog_ftune" && show_stop;
     // if (can_stop_ftune) {
@@ -1087,29 +1122,29 @@ function finetune_controls_state()
     // }
     // finetune_button.disabled = !(can_start || can_stop_ftune);
 
-    render_ftf_stats(finetune_state.finetune_filter_stats);
+    // render_ftf_stats(finetune_state.finetune_filter_stats);
 
-    if(finetune_state.finetune_filter_stats.filtering_status) {
-        document.querySelector('.ftf-status').classList.remove('d-none');
-        document.querySelector('.ftf-status span').innerHTML = finetune_state.finetune_filter_stats.filtering_status;
-    } else {
-        document.querySelector('.ftf-status').classList.add('d-none');
-    }
+    // if(finetune_state.finetune_filter_stats.filtering_status) {
+    //     document.querySelector('.ftf-status').classList.remove('d-none');
+    //     document.querySelector('.ftf-status span').innerHTML = finetune_state.finetune_filter_stats.filtering_status;
+    // } else {
+    //     document.querySelector('.ftf-status').classList.add('d-none');
+    // }
 
-    let error_span = document.querySelector('.ftf-error span');
-    let ftf_error = document.querySelector('.ftf-error');
-    if (finetune_state.finetune_filter_stats.filtering_status == "failed") {
-        ftf_error.classList.remove('d-none');
-        if(finetune_state.finetune_filter_stats.error && finetune_state.finetune_filter_stats.error !== '') {
-            error_span.innerHTML = finetune_state.finetune_filter_stats.error;
-        }
-    } else {
-        ftf_error.classList.add('d-none');
-        error_span.innerHTML = '';
-    }
-    if(finetune_state.prog_name === 'prog_filter' && finetune_state.prog_status === 'failed') {
-        document.querySelector('.ftf-status span').innerHTML = finetune_state.prog_status;
-    }
+    // let error_span = document.querySelector('.ftf-error span');
+    // let ftf_error = document.querySelector('.ftf-error');
+    // if (finetune_state.finetune_filter_stats.filtering_status == "failed") {
+    //     ftf_error.classList.remove('d-none');
+    //     if(finetune_state.finetune_filter_stats.error && finetune_state.finetune_filter_stats.error !== '') {
+    //         error_span.innerHTML = finetune_state.finetune_filter_stats.error;
+    //     }
+    // } else {
+    //     ftf_error.classList.add('d-none');
+    //     error_span.innerHTML = '';
+    // }
+    // if(finetune_state.prog_name === 'prog_filter' && finetune_state.prog_status === 'failed') {
+    //     document.querySelector('.ftf-status span').innerHTML = finetune_state.prog_status;
+    // }
 
     // example:
     // "finetune_filter_stats": {
@@ -1192,14 +1227,14 @@ export async function init() {
     let req = await fetch('/tab-finetune.html');
     document.querySelector('#finetune').innerHTML = await req.text();
 
-    finetune_filter_panel = document.querySelector('.start-funetune-step1');
-    finetune_filter_panel.classList.add('pane-disabled');
-    finetune_filter_progress = document.querySelector('.start-filter-stats .progress-bar');
-    finetune_filter_settings = document.querySelector('.sources-settings');
-    finetune_filter_status = document.querySelector('.ftf-status span');
-    finetune_filter_error = document.querySelector('.ftf-error');
-    finetune_filter_button = document.querySelector('.sources-run-button');
-    finetune_filter_button.addEventListener('click', filtering_button_clicked);
+    // finetune_filter_panel = document.querySelector('.start-funetune-step1');
+    // finetune_filter_panel.classList.add('pane-disabled');
+    // finetune_filter_progress = document.querySelector('.start-filter-stats .progress-bar');
+    // finetune_filter_settings = document.querySelector('.sources-settings');
+    // finetune_filter_status = document.querySelector('.ftf-status span');
+    // finetune_filter_error = document.querySelector('.ftf-error');
+    // finetune_filter_button = document.querySelector('.sources-run-button');
+    // finetune_filter_button.addEventListener('click', filtering_button_clicked);
 
     finetune_panel = document.querySelector('.start-funetune-step2');
     finetune_panel.classList.add('pane-disabled');
@@ -1273,22 +1308,22 @@ export async function init() {
         });
     });
 
-    const settings_modal = document.getElementById('upload-tab-source-settings-modal');
-    settings_modal.addEventListener('show.bs.modal', function () {
-        get_filters_settings();
-    });
+    // const settings_modal = document.getElementById('upload-tab-source-settings-modal');
+    // settings_modal.addEventListener('show.bs.modal', function () {
+    //     get_filters_settings();
+    // });
 
-    const settings_modal_submit = document.querySelector('.tab-upload-source-settings-submit');
-    settings_modal_submit.addEventListener('click', function() {
-        save_filters_settings();
-        const settings_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-source-settings-modal'));
-        settings_modal.hide();
-    });
+    // const settings_modal_submit = document.querySelector('.tab-upload-source-settings-submit');
+    // settings_modal_submit.addEventListener('click', function() {
+    //     save_filters_settings();
+    //     const settings_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-source-settings-modal'));
+    //     settings_modal.hide();
+    // });
 
-    const settings_modal_defaults = document.querySelector('.tab-upload-source-settings-default');
-    settings_modal_defaults.addEventListener('click', function() {
-        get_filters_settings(true);
-    });
+    // const settings_modal_defaults = document.querySelector('.tab-upload-source-settings-default');
+    // settings_modal_defaults.addEventListener('click', function() {
+    //     get_filters_settings(true);
+    // });
 
     const model_select_dropdown = document.querySelector('#finetune-model');
     model_select_dropdown.addEventListener('change', function() {
@@ -1309,6 +1344,8 @@ export function tab_switched_here() {
         '/lora-upload-url', '/lora-upload',
         "Loading lora. This may take a few more minutes..."
     );
+    fetch_models();
+    fetch_projects();
 }
 
 export function tab_switched_away() {

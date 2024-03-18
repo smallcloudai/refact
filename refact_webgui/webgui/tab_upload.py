@@ -91,7 +91,7 @@ class TabFilesDeleteEntry(BaseModel):
 
 
 class ProjectNameOnly(BaseModel):
-    pname: str = Query(default=Required, regex=r'^[A-Za-z0-9_\-\.]+$')
+    pname: str = Query(default=Required, regex=r'^[A-Za-z0-9_\-\.]{1,30}$')
 
 
 class TabUploadRouter(APIRouter):
