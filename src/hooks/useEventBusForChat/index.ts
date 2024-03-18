@@ -1,10 +1,10 @@
 import { useEffect, useReducer, useCallback, useMemo } from "react";
 import {
-  ChatContextFile,
-  ChatMessages,
-  ChatResponse,
+  type ChatContextFile,
+  type ChatMessages,
+  type ChatResponse,
   isChatContextFileMessage,
-} from "../services/refact";
+} from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
   EVENT_NAMES_TO_CHAT,
@@ -42,18 +42,19 @@ import {
   setPreviousMessagesLength,
   type Snippet,
   isReceiveTokenCount,
-  FileInfo,
+  type FileInfo,
   type ChatSetSelectedSnippet,
-  CreateNewChatThread,
-  SaveChatFromChat,
+  type CreateNewChatThread,
+  type SaveChatFromChat,
   isReceivePrompts,
   isRequestPrompts,
   isReceivePromptsError,
-  RequestPrompts,
+  type RequestPrompts,
   isSetSelectedSystemPrompt,
-  SetSelectedSystemPrompt,
-} from "../events";
-import { usePostMessage } from "./usePostMessage";
+  type SetSelectedSystemPrompt,
+  type SystemPrompts,
+} from "../../events";
+import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
 
 function formatChatResponse(
@@ -72,6 +73,10 @@ function formatChatResponse(
       return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
 
+    if (acc.length === 0) {
+      return acc.concat([[cur.delta.role, cur.delta.content]]);
+    }
+
     const lastMessage = acc[acc.length - 1];
     if (lastMessage[0] === "assistant") {
       const last = acc.slice(0, -1);
@@ -85,11 +90,11 @@ function formatChatResponse(
   }, messages);
 }
 
-function reducer(state: ChatState, action: ActionToChat): ChatState {
+export function reducer(state: ChatState, action: ActionToChat): ChatState {
   const isThisChat =
     action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
-  //  console.log(action.type, action.payload, { isThisChat });
+  console.log(action.type, action.payload, { isThisChat });
 
   if (isThisChat && isSetDisableChat(action)) {
     return {
@@ -400,13 +405,6 @@ export type ChatCapsState = {
   error: null | string;
 };
 
-type SystemPrompt = {
-  text: string;
-  description: string;
-};
-
-type SystemPrompts = Record<string, SystemPrompt>;
-
 export type ChatState = {
   chat: ChatThread;
   waiting_for_response: boolean;
@@ -432,7 +430,7 @@ export type ChatState = {
   selected_system_prompt: null | string;
 };
 
-function createInitialState(): ChatState {
+export function createInitialState(): ChatState {
   return {
     streaming: false,
     waiting_for_response: false,
@@ -807,6 +805,8 @@ export const useEventBusForChat = () => {
     },
     [dispatch, state.chat.id],
   );
+
+  console.log(state);
 
   return {
     state,
