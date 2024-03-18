@@ -359,7 +359,13 @@ class StatisticsService:
         rh_records = await self.select_rh_from_ts(timestamp_start_of_year, workspace)
 
         robot_human_df = pd.DataFrame(rh_records)
+        if robot_human_df.empty:  # otherwise getting key error on robot_human_df["file_extension"]
+            return
+
+        languages_filtered = [e for e in robot_human_df["file_extension"].unique() if e.startswith(".")]
+
         robot_human_df = robot_human_df[~robot_human_df['enduser_client_version'].str.startswith(tuple(IGNORE_PLUGIN_VERSION))]
+        robot_human_df = robot_human_df[robot_human_df['file_extension'].isin(languages_filtered)]
 
         if robot_human_df.empty:
             return
