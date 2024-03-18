@@ -147,13 +147,15 @@ def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, A
 @click.option('--model_name', default=default_finetune_model)
 def gpu_filter_and_build_config(pname, run_id, **kwargs) -> Dict[str, Any]:
     assert run_id, "Please specify --run-id"
+    assert pname, "Please specify --pname"
     traces.log("locking \"%s\" for filtering" % pname)
-    with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
-        traces.log("locked \"%s\" successfully" % pname)
-        finetune_filter.finetune_gpu_filter(pname)
-        traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
-        _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
-        _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
+    if dist.get_rank() == 0:
+        with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+            traces.log("locked \"%s\" successfully" % pname)
+            finetune_filter.finetune_gpu_filter(pname)
+            traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
+            _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
+            _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
     return _build_finetune_config_by_heuristics(pname, run_id, **kwargs)
 
 
@@ -360,12 +362,16 @@ def main():
 
 
 if __name__ == "__main__":
-    YMD_hms = os.environ.get("LORA_LOGDIR", "") or time.strftime("lora-%Y%m%d-%H%M%S")
-    traces.configure(task_dir="loras", task_name=YMD_hms, work_dir=env.PERMDIR)
+    index_of_run_id = sys.argv.index("--run_id")
+    run_id = sys.argv[index_of_run_id + 1]
+    traces.configure(task_dir="loras", task_name=run_id, work_dir=env.PERMDIR)
     if "RANK" not in os.environ:
         os.environ["WORLD_SIZE"] = "1"
         os.environ["LOCAL_RANK"] = os.environ["RANK"] = "0"
-        dist.init_process_group(backend='nccl', init_method="tcp://localhost:23456", world_size=1, rank=0)
+        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES", "")
+        cuda_visible_devices_hash = hash(cuda_visible_devices)
+        port = 20000 + cuda_visible_devices_hash % 1000     # this just makes it unlikely for ports to collide, all we need
+        dist.init_process_group(backend='nccl', init_method="tcp://localhost:%d" % port, world_size=1, rank=0)
     else:
         dist.init_process_group(backend='nccl', init_method="env://")
         th.cuda.set_device(dist.get_rank())
