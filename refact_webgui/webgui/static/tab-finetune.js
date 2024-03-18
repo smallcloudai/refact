@@ -673,83 +673,13 @@ function get_finetune_settings(defaults = false) {
             document.querySelector('#finetune-tab-settings-modal #trainable_embeddings0').checked = true;
         }
 
-        if(defaults) {
-            options_block.innerHTML = '';
-            tooltipList = [];
-        }
-        // .finetune-settings-options {
-        //     border: 1px solid #5bc0de;
-        //     display: grid;
-        //     grid-template-columns: 3fr 1fr;
-        //     column-gap: 20px;
-        //     align-items: flex-start;
-        //     padding: 15px;
-        //     border-radius: var(--bs-border-radius);
-        // }
-        // .finetune-settings-options div {
-        //     display: grid;
-        //     grid-template-columns: 1fr 1fr;
-        //     column-gap: 20px;
-        //     row-gap: 10px;
-        //     align-items: center;
-        // }
-
-        if(options_block.innerHTML.trim() == "") {
-            for (let i = 0; i < finetune_settings_inputs.length; i++) {
-                let entry = finetune_settings_inputs[i];
-                let item_group = document.createElement('div');
-                let item_label = document.createElement('label');
-                let item = document.createElement('input');
-
-                item_label.innerHTML = entry["label"];
-
-                item.type = 'text';
-                item.id = entry["name"];
-                item.name = entry["name"];
-                item.classList.add('form-control');
-                item.dataset.min = entry["min"];
-                item.dataset.max = entry["max"];
-                item.setAttribute('data-bs-toggle', 'tooltip');
-                item.setAttribute('data-bs-placement', 'right');
-                item.setAttribute('title', entry["info"]);
-                item.value = settings_data[entry["name"]];
-
-                item_group.appendChild(item_label);
-                item_group.appendChild(item);
-                options_block.appendChild(item_group);
-            }
-        }
-
-        if(gpus_block.innerHTML.trim() == "") {
-            for (let i = 0; i < 8; i++) {
-                let gpu_input = document.createElement('input');
-                gpu_input.type = 'checkbox';
-                gpu_input.id = `launch_gpu${i}`;
-                gpu_input.value = i;
-                gpu_input.name = `launch_gpu${i}`;
-                gpu_input.classList.add('btn-check');
-                gpu_input.autocomplete = 'off';
-
-                let gpu_label = document.createElement('label');
-                gpu_label.htmlFor = gpu_input.id;
-                gpu_label.textContent = `${i}`;
-                gpu_label.classList.add('btn','btn-outline-primary');
-                gpus_block.appendChild(gpu_input);
-                gpus_block.appendChild(gpu_label);
-            }
-        }
-
-        let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        })
-
         const low_gpu_mem_mode = settings_data.low_gpu_mem_mode;
         if (low_gpu_mem_mode) {
             document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked = true;
         } else {
             document.querySelector('#finetune-tab-settings-modal #low_gpu_mem_mode_finetune').checked = false;
         }
+        render_finetune_options(settings_data);
 
         // const trainable_embeddings = settings_data.trainable_embeddings;
         // if(trainable_embeddings) {
@@ -764,6 +694,63 @@ function get_finetune_settings(defaults = false) {
         //     document.querySelector('#finetune-tab-settings-modal #use_heuristics').checked = false;
         // }
         // check_heuristics();
+    })
+}
+
+function render_finetune_options(settings_data,defaults = false) {
+    if(defaults) {
+        options_block.innerHTML = '';
+        tooltipList = [];
+        settings_data = finetune_settings_defaults;
+    }
+    if(options_block.innerHTML.trim() == "") {
+        for (let i = 0; i < finetune_settings_inputs.length; i++) {
+            let entry = finetune_settings_inputs[i];
+            let item_group = document.createElement('div');
+            let item_label = document.createElement('label');
+            let item = document.createElement('input');
+
+            item_label.innerHTML = entry["label"];
+
+            item.type = 'text';
+            item.id = entry["name"];
+            item.name = entry["name"];
+            item.classList.add('form-control');
+            item.dataset.min = entry["min"];
+            item.dataset.max = entry["max"];
+            item.setAttribute('data-bs-toggle', 'tooltip');
+            item.setAttribute('data-bs-placement', 'right');
+            item.setAttribute('title', entry["info"]);
+            item.value = settings_data[entry["name"]];
+
+            item_group.appendChild(item_label);
+            item_group.appendChild(item);
+            options_block.appendChild(item_group);
+        }
+    }
+
+    if(gpus_block.innerHTML.trim() == "") {
+        for (let i = 0; i < 8; i++) {
+            let gpu_input = document.createElement('input');
+            gpu_input.type = 'checkbox';
+            gpu_input.id = `launch_gpu${i}`;
+            gpu_input.value = i;
+            gpu_input.name = `launch_gpu${i}`;
+            gpu_input.classList.add('btn-check');
+            gpu_input.autocomplete = 'off';
+
+            let gpu_label = document.createElement('label');
+            gpu_label.htmlFor = gpu_input.id;
+            gpu_label.textContent = `${i}`;
+            gpu_label.classList.add('btn','btn-outline-primary');
+            gpus_block.appendChild(gpu_input);
+            gpus_block.appendChild(gpu_label);
+        }
+    }
+
+    let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
     })
 }
 
@@ -1284,7 +1271,7 @@ export async function init() {
 
     const finetune_modal_defaults = document.querySelector('.finetune-tab-settings-default');
     finetune_modal_defaults.addEventListener('click', function() {
-        get_finetune_settings(true);
+        render_finetune_options([],true);
     });
     let delete_lora_modal_button = document.querySelector('.delete-lora-modal-submit');
     delete_lora_modal_button.addEventListener('click', () => {
