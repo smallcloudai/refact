@@ -7,10 +7,17 @@ export type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   title?: string;
 };
 
-export const Root = RadixSelect.Root;
-export const Trigger = RadixSelect.Trigger;
-export const Content = RadixSelect.Content;
-export const Item = RadixSelect.Item;
+export type SelectRootProps = React.ComponentProps<typeof RadixSelect.Root>;
+export const Root: React.FC<SelectRootProps> = RadixSelect.Root;
+
+export type TriggerProps = React.ComponentProps<typeof RadixSelect.Trigger>;
+export const Trigger: React.FC<TriggerProps> = RadixSelect.Trigger;
+
+export type ContentProps = React.ComponentProps<typeof RadixSelect.Content>;
+export const Content: React.FC<ContentProps> = RadixSelect.Content;
+
+export type ItemProps = React.ComponentProps<typeof RadixSelect.Item>;
+export const Item: React.FC<ItemProps> = RadixSelect.Item;
 
 export const Select: React.FC<SelectProps> = ({
   title,

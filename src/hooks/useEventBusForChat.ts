@@ -357,7 +357,9 @@ function reducer(state: ChatState, action: ActionToChat): ChatState {
 
   if (isThisChat && isReceivePrompts(action)) {
     const maybeDefault: string | null =
-      "default" in action.payload ? action.payload.prompts.default.text : null;
+      "default" in action.payload.prompts
+        ? action.payload.prompts.default.text
+        : null;
     return {
       ...state,
       selected_system_prompt: state.selected_system_prompt ?? maybeDefault,

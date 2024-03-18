@@ -470,7 +470,9 @@ export type CustomPromptsResponse = {
   toolbox_commands: Record<string, unknown>;
 };
 
-function isCustomPromptsResponse(json: unknown): json is CustomPromptsResponse {
+export function isCustomPromptsResponse(
+  json: unknown,
+): json is CustomPromptsResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
   if (!("system_prompts" in json)) return false;
