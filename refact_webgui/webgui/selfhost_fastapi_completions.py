@@ -8,7 +8,6 @@ import os
 import re
 import litellm
 import traceback
-import packaging.version
 
 from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
@@ -234,13 +233,14 @@ class BaseCompletionsRouter(APIRouter):
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # API for direct FIM and Chat usage
+        # deprecated APIs
         self.add_api_route("/v1/login", self._login, methods=["GET"])
         self.add_api_route("/v1/secret-key-activate", self._secret_key_activate, methods=["GET"])
         self.add_api_route("/v1/chat", self._chat, methods=["POST"])
+        self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
 
         # API for LSP server
-        self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
+        self.add_api_route("/refact-caps", self._caps, methods=["GET"])
         self.add_api_route("/v1/completions", self._completions, methods=["POST"])
         self.add_api_route("/v1/embeddings", self._embeddings_style_openai, methods=["POST"])
 
@@ -270,7 +270,7 @@ class BaseCompletionsRouter(APIRouter):
         _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
         _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
 
-    def _coding_assistant_caps_base_data(self) -> Dict[str, Any]:
+    def _caps_base_data(self) -> Dict[str, Any]:
         running = running_models_and_loras(self._model_assigner)
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
@@ -312,22 +312,26 @@ class BaseCompletionsRouter(APIRouter):
 
         return data
 
-    async def _coding_assistant_caps(self, request: Request, authorization: str = Header(None)):
-        client_version = packaging.version.parse(request.headers.get("client_version", "0"))
+    async def _coding_assistant_caps(self):
+        log(f"Your refact-lsp version is deprecated, finetune is unavailable. Please update your plugin.")
+        return Response(content=json.dumps(self._caps_base_data(), indent=4), media_type="application/json")
 
-        data = self._coding_assistant_caps_base_data()
-        if client_version >= packaging.version.parse("0.7.1"):
-            running = running_models_and_loras(self._model_assigner)
+    async def _caps(self, authorization: str = Header(None)):
+        data = self._caps_base_data()
+        running = running_models_and_loras(self._model_assigner)
 
-            if cc_default := data.get("code_completion_default_model"):
-                if cc_variants := [r for r in running['completion'] if r.split(":")[0] == cc_default and r != cc_default]:
-                    data["code_completion_default_model"] = cc_variants[0]
+        def _select_default_lora_if_exists(model_name: str, running_models: List[str]):
+            model_variants = [r for r in running_models if r.split(":")[0] == model_name and r != model_name]
+            return model_variants[0] if model_variants else model_name
 
-            if cc_chat_default := data.get("code_chat_default_model"):
-                if cc_variants := [r for r in running['chat'] if r.split(':')[0] == cc_chat_default and r != cc_chat_default]:
-                    data["code_chat_default_model"] = cc_variants[0]
-        else:
-            log(f"refact-lsp version {client_version} is deprecated, finetune is unavailable. Update your plugin")
+        data["code_completion_default_model"] = _select_default_lora_if_exists(
+            data["code_completion_default_model"],
+            running['completion'],
+        )
+        data["code_chat_default_model"] = _select_default_lora_if_exists(
+            data["code_chat_default_model"],
+            running['chat'],
+        )
 
         return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
