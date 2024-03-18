@@ -239,6 +239,11 @@ reset_submit_button.addEventListener('click', () => {
         });
 });
 
+const new_project_modal = document.getElementById('upload-tab-new-project-modal');
+new_project_modal.addEventListener('shown.bs.modal', function () {
+    document.querySelector('#tab-upload-new-project').focus();
+});
+
 window.addEventListener("offline", function () {
     general_error("Connection problem. Seems your browser is offline.");
 })

@@ -100,6 +100,7 @@ class TabUploadRouter(APIRouter):
         super().__init__(*args, **kwargs)
         self.add_api_route("/tab-project-list", self._tab_project_list, methods=["GET"])
         self.add_api_route("/tab-project-new", self._tab_project_new, methods=["POST"])
+        self.add_api_route("/tab-project-delete", self._tab_project_delete, methods=["POST"])
         self.add_api_route("/tab-files-get/{pname}", self._tab_files_get, methods=["GET"])
         self.add_api_route("/tab-files-save-config/{pname}", self._tab_files_save_config, methods=["POST"])
         self.add_api_route("/tab-files-upload/{pname}", self._tab_files_upload, methods=["POST"])
@@ -129,6 +130,18 @@ class TabUploadRouter(APIRouter):
         return Response(json.dumps({
             "projects": projects_list,
         }, indent=4) + "\n")
+
+    async def _tab_project_delete(project: dict):
+        project_name = project.get('project')
+        if project_name is None:
+            return JSONResponse({"message": "Project name not provided"}, status_code=400)
+        projects_dir = os.path.join(env.PERMDIR, "projects")
+        project_path = os.path.join(projects_dir, project_name)
+        if os.path.exists(project_path) and os.path.isdir(project_path):
+            shutil.rmtree(project_path)
+            return JSONResponse({"message": "OK"})
+        else:
+            return JSONResponse({"message": "Cannot delete project, see logs for details"}, status_code=500)
 
     async def _tab_files_get(self, pname):
         result = {

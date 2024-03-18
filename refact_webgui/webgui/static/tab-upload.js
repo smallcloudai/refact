@@ -32,6 +32,7 @@ function get_projects_list() {
         return response.json();
     })
     .then(function(data) {
+        console.log('tab-project-list',data);
         project_list_ready(data.projects);
     });
 }
@@ -63,17 +64,33 @@ function project_list_ready(projects_list)
         start_new_project(project_name);
         const project_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-new-project-modal'));
         project_modal.hide();
+
+
     });
     const project_buttons = document.querySelectorAll('.projects-dropdown .main-tab-button');
     project_buttons.forEach(function(project_button) {
         project_button.addEventListener('click', function() {
             show_project(project_button.value);
+            const project_menu_item = document.querySelector('.dropdown-toggle');
+            project_menu_item.classList.add('main-active');
         });
     });
 }
 
+function force_show_sources() {
+    const current_menu = document.querySelector('.nav-link.main-active');
+    current_menu.classList.remove('main-active');
+    const project_menu_item = document.querySelector('.dropdown-toggle');
+    project_menu_item.classList.add('main-active');
+    const current_pane = document.querySelector('.main-tab-pane.main-active');
+    current_pane.classList.remove('main-active');
+    const sources_pane = document.querySelector('#upload');
+    sources_pane.classList.add('main-active');
+}
+
 function show_project(new_pname) {
     pname = new_pname;
+    document.querySelector('.delete-project').dataset.project = pname;
     get_tab_files();
     document.querySelector('.sources-pane h3').innerHTML = `Project "${pname}"`;
 }
@@ -99,6 +116,29 @@ function start_new_project(project_name)
     .then(function(data) {
         get_projects_list();
         show_project(project_name);
+        if(!document.querySelector('#upload').classList.contains('main-active')) {
+            force_show_sources();
+        }
+    });
+}
+
+function delete_project(project_name) {
+    fetch(`/tab-project-delete`,{
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ project: project_name })
+    })
+    .catch(function(error) {
+        console.log('delete project',error);
+    })
+    .then(function(data) {
+        if (data.message === "OK") {
+            get_projects_list();
+        } else {
+            console.log('Cannot delete project:', data.message);
+        }
     });
 }
 
@@ -603,6 +643,14 @@ export async function init(general_error) {
     get_projects_list();
     sources_pane = document.querySelector('.sources-pane');
     filetypes_pane = document.querySelector('.filetypes-pane');
+
+    const delete_project_button = document.querySelector(".delete-project");
+    delete_project_button.addEventListener('click', function() {
+        const project_name = this.dataset.project;
+        if(project_name && project_name!== '') {
+            delete_project(project_name);
+        }
+    });
 
     const tab_upload_git_submit = document.querySelector('.tab-upload-git-submit');
     tab_upload_git_submit.removeEventListener('click', upload_repo());
