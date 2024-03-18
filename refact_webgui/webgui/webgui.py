@@ -172,8 +172,7 @@ class WebGUI(FastAPI):
             await self._database.connect()
             await self._stats_service.init_models()
 
-        loop = asyncio.get_event_loop()
-        await loop.create_task(init_database(), name="database_initialization")
+        asyncio.create_task(init_database(), name="database_initialization")
 
 
 def setup_logger():
