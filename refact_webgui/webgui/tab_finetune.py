@@ -66,6 +66,7 @@ class FilteringSetup(BaseModel):
 
 class TabFinetuneTrainingSetup(BaseModel):
     run_id: Optional[str] = Query(default=Required, regex="^[0-9a-zA-Z-\.\-]{1,30}$")
+    pname: str = Query(default=Required, regex=r'^[A-Za-z0-9_\-\.]{1,30}$')   # sync regexp with tab_upload.ProjectNameOnly
     model_name: Optional[str] = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
     # limit_time_seconds: Optional[int] = Query(default=600, ge=600, le=3600*48)
     trainable_embeddings: Optional[bool] = Query(default=False)
@@ -151,7 +152,8 @@ class TabFinetuneRouter(APIRouter):
 
         return JSONResponse("OK")
 
-    async def _tab_finetune_get(self, pname: str):
+    async def _tab_finetune_get(self):
+        pname = "Project1"
         # prog, status = get_prog_and_status_for_ui()
         # working = status in ["starting", "working"]
         result = {
