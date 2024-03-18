@@ -50,7 +50,8 @@ export function isUserMessage(message: ChatMessage): message is UserMessage {
 export type ChatMessage =
   | UserMessage
   | AssistantMessage
-  | ChatContextFileMessage;
+  | ChatContextFileMessage
+  | SystemMessage;
 
 export type ChatMessages = ChatMessage[];
 

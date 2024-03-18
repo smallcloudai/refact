@@ -16,6 +16,8 @@ export const PromptSelect: React.FC<PromptSelectProps> = ({
   onChange,
   disabled,
 }) => {
+  const promptKeysAndValues = Object.entries(prompts);
+  if (promptKeysAndValues.length === 0) return null;
   return (
     <Flex gap="2" align="center" wrap="wrap">
       <Text size="2">System Prompt:</Text>
@@ -24,7 +26,7 @@ export const PromptSelect: React.FC<PromptSelectProps> = ({
         <Content>
           {Object.entries(prompts).map(([key, value]) => {
             return (
-              <Item key={key} value={value.text}>
+              <Item key={key} value={value.text} title={value.text}>
                 {key}
               </Item>
             );

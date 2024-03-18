@@ -3,6 +3,10 @@ import { ChatThread } from "../events";
 export const MARS_ROVER_CHAT: ChatThread = {
   id: "9afd6fef-3e49-40df-8aca-688af3621514",
   messages: [
+    [
+      "system",
+      "Use backquotes for code blocks. Pay close attention to indent when editing code blocks: indent must be exactly the same as in the original code block.",
+    ],
     ["user", "mars rover kata"],
     [
       "assistant",

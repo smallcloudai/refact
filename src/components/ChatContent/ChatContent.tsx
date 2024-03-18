@@ -4,41 +4,15 @@ import { Markdown, MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
-import { Box, Flex, Text } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
+import { AssistantInput } from "./AssistantInput";
+import { SystemInput } from "./SystemInput";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
 );
-
-type ChatInputProps = Pick<
-  MarkdownProps,
-  "onNewFileClick" | "onPasteClick" | "canPaste"
-> & {
-  children: string;
-};
-
-const ChatInput: React.FC<ChatInputProps> = (props) => {
-  // TODO: new file button?
-  return (
-    <Box p="2" position="relative" width="100%" style={{ maxWidth: "100%" }}>
-      <Markdown
-        onCopyClick={(text: string) => {
-          window.navigator.clipboard.writeText(text).catch(() => {
-            // eslint-disable-next-line no-console
-            console.log("failed to copy to clipboard");
-          });
-        }}
-        onNewFileClick={props.onNewFileClick}
-        onPasteClick={props.onPasteClick}
-        canPaste={props.canPaste}
-      >
-        {props.children}
-      </Markdown>
-    </Box>
-  );
-};
 
 export type ChatContentProps = {
   messages: ChatMessages;
@@ -91,18 +65,20 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                   {text}
                 </UserInput>
               );
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             } else if (role === "assistant") {
               return (
-                <ChatInput
+                <AssistantInput
                   onNewFileClick={onNewFileClick}
                   onPasteClick={onPasteClick}
                   canPaste={canPaste}
                   key={index}
                 >
                   {text}
-                </ChatInput>
+                </AssistantInput>
               );
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            } else if (role === "system") {
+              return <SystemInput key={index}>{text}</SystemInput>;
             } else {
               return <Markdown key={index}>{text}</Markdown>;
             }

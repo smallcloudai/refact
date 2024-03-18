@@ -568,10 +568,16 @@ export const useEventBusForChat = () => {
 
   const askQuestion = useCallback(
     (question: string) => {
-      const messages = state.chat.messages.concat([["user", question]]);
+      const maybeMessagesWithSystemPrompt: ChatMessages =
+        state.selected_system_prompt && state.chat.messages.length === 0
+          ? [["system", state.selected_system_prompt]]
+          : state.chat.messages;
+      const messages = maybeMessagesWithSystemPrompt.concat([
+        ["user", question],
+      ]);
       sendMessages(messages);
     },
-    [sendMessages, state.chat.messages],
+    [sendMessages, state.chat.messages, state.selected_system_prompt],
   );
 
   const requestCaps = useCallback(() => {
@@ -805,7 +811,6 @@ export const useEventBusForChat = () => {
   return {
     state,
     askQuestion,
-    sendMessages,
     clearError,
     setChatModel,
     stopStreaming,
