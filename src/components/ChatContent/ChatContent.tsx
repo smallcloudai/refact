@@ -8,7 +8,7 @@ import { Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
-import { SystemInput } from "./SystemInput";
+// import { SystemInput } from "./SystemInput";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
@@ -78,7 +78,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
               );
               // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             } else if (role === "system") {
-              return <SystemInput key={index}>{text}</SystemInput>;
+              return null;
+              // return <SystemInput key={index}>{text}</SystemInput>;
             } else {
               return <Markdown key={index}>{text}</Markdown>;
             }
