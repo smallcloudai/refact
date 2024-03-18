@@ -11,7 +11,7 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::global_context::GlobalContext;
-use crate::caps::CodeAssistantCaps;
+use crate::caps::{CodeAssistantCaps, strip_model_from_finetune};
 
 
 async fn try_open_tokenizer(
@@ -124,6 +124,7 @@ pub async fn cached_tokenizer(
     global_context: Arc<ARwLock<GlobalContext>>,
     model_name: String,
 ) -> Result<Arc<StdRwLock<Tokenizer>>, String> {
+    let model_name = strip_model_from_finetune(&model_name);
     let tokenizer_download_lock: Arc<AMutex<bool>> = global_context.read().await.tokenizer_download_lock.clone();
     let _tokenizer_download_locked = tokenizer_download_lock.lock().await;
 

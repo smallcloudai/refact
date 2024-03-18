@@ -9,9 +9,11 @@ use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock;
 use url::Url;
 use crate::global_context::GlobalContext;
+use crate::http::routers::info::build;
 use crate::known_models::KNOWN_MODELS;
 
-const CAPS_FILENAME: &str = "coding_assistant_caps.json";
+const CAPS_FILENAME: &str = "refact-caps";
+const CAPS_FILENAME_FALLBACK: &str = "coding_assistant_caps.json";
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -74,38 +76,51 @@ pub async fn load_caps(
     let mut buffer = String::new();
     let mut is_local_file = false;
     let mut is_remote_address = false;
-    let caps_url: String;
+    let mut caps_urls: Vec<String> = Vec::new();
     if cmdline.address_url == "Refact" {
         is_remote_address = true;
-        caps_url = "https://inference.smallcloud.ai/coding_assistant_caps.json".to_string();
+        caps_urls.push("https://inference.smallcloud.ai/coding_assistant_caps.json".to_string());
     } else if cmdline.address_url == "HF" {
         buffer = HF_DEFAULT_CAPS.to_string();
-        caps_url = "<compiled-in-caps-hf>".to_string();
+        caps_urls.push("<compiled-in-caps-hf>".to_string());
     } else {
         if cmdline.address_url.starts_with("http") {
             is_remote_address = true;
             let base_url = Url::parse(&cmdline.address_url.clone()).map_err(|_| "failed to parse address url (1)".to_string())?;
             let joined_url = base_url.join(&CAPS_FILENAME).map_err(|_| "failed to parse address url (2)".to_string())?;
-            caps_url = joined_url.to_string();
+            let joined_url_fallback = base_url.join(&CAPS_FILENAME_FALLBACK).map_err(|_| "failed to parse address url (2)".to_string())?;
+            caps_urls.push(joined_url.to_string());
+            caps_urls.push(joined_url_fallback.to_string());
         } else {
             is_local_file = true;
-            caps_url = cmdline.address_url.clone();
+            caps_urls.push(cmdline.address_url.clone());
         }
     }
+    let mut caps_url: String = match caps_urls.get(0) {
+        Some(u) => u.clone(),
+        None => return Err("caps_url is none".to_string())
+    };
     if is_local_file {
         let mut file = File::open(caps_url.clone()).map_err(|_| format!("failed to open file '{}'", caps_url))?;
         file.read_to_string(&mut buffer).map_err(|_| format!("failed to read file '{}'", caps_url))?;
     }
     if is_remote_address {
-        let api_key = cmdline.api_key.clone();
-        let http_client = global_context.read().await.http_client.clone();
-        let mut headers = reqwest::header::HeaderMap::new();
-        if !api_key.is_empty() {
-            headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
+        let mut status: u16 = 0;
+        for url in caps_urls.iter() {
+            let api_key = cmdline.api_key.clone();
+            let http_client = global_context.read().await.http_client.clone();
+            let mut headers = reqwest::header::HeaderMap::new();
+            if !api_key.is_empty() {
+                headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
+            }
+            caps_url = url.clone();
+            let response = http_client.get(caps_url.clone()).headers(headers).send().await.map_err(|e| format!("{}", e))?;
+            status = response.status().as_u16();
+            buffer = response.text().await.map_err(|e| format!("failed to read response: {}", e))?;
+            if status == 200 {
+                break;
+            }
         }
-        let response = http_client.get(caps_url.clone()).headers(headers).send().await.map_err(|e| format!("{}", e))?;
-        let status = response.status().as_u16();
-        buffer = response.text().await.map_err(|e| format!("failed to read response: {}", e))?;
         if status != 200 {
             return Err(format!("server responded with: {}", buffer));
         }
@@ -133,9 +148,15 @@ pub async fn load_caps(
     info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
     info!("caps {} chat models", r1.code_chat_models.len());
     info!("caps default chat model: \"{}\"", r1.code_chat_default_model);
+    // info!("running models: {:?}", r1.running_models);
+    // info!("code_chat_models models: {:?}", r1.code_chat_models);
+    // info!("code completion models: {:?}", r1.code_completion_models);
     Ok(Arc::new(StdRwLock::new(r1)))
 }
 
+pub fn strip_model_from_finetune(model: &String) -> String {
+    model.split(":").next().unwrap().to_string()
+}
 
 fn relative_to_full_url(
     caps_url: &String,
@@ -156,34 +177,21 @@ fn _inherit_r1_from_r0(
     r1: &mut CodeAssistantCaps,
     r0: &ModelsOnly,
 ) {
-    // inherit models from r0, only if not already present in r1
-    for k in r0.code_completion_models.keys() {
-        if !r1.code_completion_models.contains_key(k) {
-            r1.code_completion_models.insert(k.to_string(), r0.code_completion_models[k].clone());
+    for k in r1.running_models.iter() {
+        let k_stripped = strip_model_from_finetune(k);
+
+        for (rec_name, rec) in r0.code_completion_models.iter() {
+            if rec_name == &k_stripped || rec.similar_models.contains(&k_stripped) {
+                r1.code_completion_models.insert(k.to_string(), rec.clone());
+            }
+        }
+
+        for (rec_name, rec) in r0.code_chat_models.iter() {
+            if rec_name == &k_stripped || rec.similar_models.contains(&k_stripped) {
+                r1.code_chat_models.insert(k.to_string(), rec.clone());
+            }
         }
     }
-    for k in r0.code_chat_models.keys() {
-        if !r1.code_chat_models.contains_key(k) {
-            r1.code_chat_models.insert(k.to_string(), r0.code_chat_models[k].clone());
-        }
-    }
-    // clone to "similar_models"
-    let ccmodel_keys_copy = r1.code_completion_models.keys().cloned().collect::<Vec<String>>();
-    for k in ccmodel_keys_copy {
-        let model_rec = r1.code_completion_models[&k].clone();
-        for similar_model in model_rec.similar_models.iter() {
-            r1.code_completion_models.insert(similar_model.to_string(), model_rec.clone());
-        }
-    }
-    let chatmodel_keys_copy = r1.code_chat_models.keys().cloned().collect::<Vec<String>>();
-    for k in chatmodel_keys_copy {
-        let model_rec = r1.code_chat_models[&k].clone();
-        for similar_model in model_rec.similar_models.iter() {
-            r1.code_chat_models.insert(similar_model.to_string(), model_rec.clone());
-        }
-    }
-    r1.code_completion_models = r1.code_completion_models.clone().into_iter().filter(|(k, _)| r1.running_models.contains(&k)).collect();
-    r1.code_chat_models = r1.code_chat_models.clone().into_iter().filter(|(k, _)| r1.running_models.contains(&k)).collect();
 
     for k in r1.running_models.iter() {
         if !r1.code_completion_models.contains_key(k) && !r1.code_chat_models.contains_key(k) {
@@ -207,7 +215,7 @@ pub fn which_model_to_use<'a>(
     if user_wants_model != "" {
         take_this_one = user_wants_model;
     }
-    if let Some(model_rec) = models.get(take_this_one) {
+    if let Some(model_rec) = models.get(&strip_model_from_finetune(&take_this_one.to_string())) {
         return Ok((take_this_one.to_string(), model_rec));
     } else {
         return Err(format!(

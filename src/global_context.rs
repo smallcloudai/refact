@@ -28,7 +28,7 @@ use crate::vecdb::vecdb::VecDb;
 pub struct CommandLine {
     #[structopt(long, help="Send logs to stderr, as opposed to ~/.cache/refact/logs, so it's easier to debug.")]
     pub logs_stderr: bool,
-    #[structopt(long, short="u", help="URL to start working. The first step is to fetch coding_assistant_caps.json.")]
+    #[structopt(long, short="u", help="URL to start working. The first step is to fetch refact-caps / coding_assistant_caps.json.")]
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
