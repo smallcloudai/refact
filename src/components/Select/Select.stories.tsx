@@ -10,10 +10,7 @@ export default meta;
 
 export const Default: StoryObj<typeof Select> = {
   args: {
-    options: ["apple", "banana", "orange"].map((value) => ({
-      value,
-      label: value,
-    })),
+    options: ["apple", "banana", "orange"],
     onChange: () => ({}),
     defaultValue: "apple",
   },

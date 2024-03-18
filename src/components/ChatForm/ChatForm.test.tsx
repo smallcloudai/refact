@@ -48,6 +48,7 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     requestCaps: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
+    selectedSystemPrompt: null,
     ...props,
   };
 
