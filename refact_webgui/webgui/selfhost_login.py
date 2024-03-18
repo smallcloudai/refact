@@ -70,6 +70,7 @@ class AdminSession(RefactSession):
         return [
             "/login",
             "/coding_assistant_caps.json",
+            "/refact-caps",
             "/v1",
             "/infengine-v1",
             "/stats/telemetry",
