@@ -500,7 +500,7 @@ h3 {
     display: block;
 }
 
-.main-tab-button.main-active {
+#nav-container .main-active {
     font-weight: bold;
     color: #0d6efd !important;
 }
@@ -1029,6 +1029,26 @@ h3 {
 }
 .finetune-settings-inline-gpus > label {
     margin-right: 10px;
+}
+.delete-project {
+    width: 140px;
+    margin-top: auto !important;
+    margin-left: auto;
+}
+.source-files-table {
+    min-height: 350px;
+}
+.users-table-license {
+    display: flex;
+    align-items: center;
+}
+.users-table-license button {
+    margin-top: 0;
+    margin-right: 10px;
+}
+.stop-finetune {
+    margin-top: 10px;
+    margin-left: auto;
 }
 
 .toolbox-editor {
