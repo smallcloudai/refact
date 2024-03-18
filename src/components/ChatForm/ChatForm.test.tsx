@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import { ChatForm, ChatFormProps } from "./ChatForm";
 import { ConfigProvider } from "../../contexts/config-context";
 import React from "react";
+import { SYSTEM_PROMPTS } from "../../__fixtures__";
 
 const noop = () => ({});
 
@@ -45,6 +46,9 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     filesInPreview: [],
     onTextAreaHeightChange: noop,
     requestCaps: noop,
+    prompts: SYSTEM_PROMPTS,
+    onSetSystemPrompt: noop,
+    selectedSystemPrompt: null,
     ...props,
   };
 

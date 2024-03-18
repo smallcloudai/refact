@@ -44,7 +44,7 @@ export const UserInput: React.FC<{
           Retry
         </RightButton>
 
-        <Box pt="1" pb="1">
+        <Box py="4">
           <Text>
             <Markdown>{props.children}</Markdown>
           </Text>

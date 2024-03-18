@@ -61,9 +61,6 @@ export const Chart: React.FC<{
       {
         type: "category",
         data: dates,
-        axisLabel: {
-          fontSize: 8,
-        },
       },
     ],
     yAxis: [
