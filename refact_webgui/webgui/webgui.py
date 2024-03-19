@@ -22,7 +22,6 @@ from refact_webgui.webgui.selfhost_fastapi_completions import CompletionsRouter
 from refact_webgui.webgui.selfhost_fastapi_gpu import GPURouter
 from refact_webgui.webgui.tab_server_logs import TabServerLogRouter
 from refact_webgui.webgui.tab_settings import TabSettingsRouter
-from refact_webgui.webgui.tab_toolbox import TabToolboxRouter
 from refact_webgui.webgui.tab_upload import TabUploadRouter
 from refact_webgui.webgui.tab_finetune import TabFinetuneRouter
 from refact_webgui.webgui.tab_models_host import TabHostRouter
@@ -151,7 +150,6 @@ class WebGUI(FastAPI):
                 inference_queue=inference_queue),
             TabServerLogRouter(),
             TabUploadRouter(),
-            TabToolboxRouter(),
             TabFinetuneRouter(
                 model_assigner=model_assigner),
             TabHostRouter(model_assigner),
