@@ -162,3 +162,4 @@ dmypy.json
 *.code-workspace
 
 workdir
+.DS_Store
