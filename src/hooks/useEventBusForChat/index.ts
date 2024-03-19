@@ -786,7 +786,10 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
       payload: state.chat,
     };
-    postMessage(saveMessage);
+
+    if (state.chat.messages.length > 0) {
+      postMessage(saveMessage);
+    }
 
     const message: CreateNewChatThread = {
       type: EVENT_NAMES_TO_CHAT.NEW_CHAT,
