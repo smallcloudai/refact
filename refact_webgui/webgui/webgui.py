@@ -29,7 +29,7 @@ from refact_webgui.webgui.selfhost_queue import InferenceQueue, Ticket
 from refact_webgui.webgui.selfhost_static import StaticRouter
 from refact_webgui.webgui.tab_loras import TabLorasRouter
 from refact_webgui.webgui.selfhost_statistics import TabStatisticsRouter
-from refact_webgui.webgui.selfhost_login import LoginRouter
+from refact_webgui.webgui.selfhost_login import AdminRouter
 from refact_webgui.webgui.tab_about import TabAboutRouter
 
 from refact_webgui.webgui.selfhost_database import RefactDatabase
@@ -85,7 +85,7 @@ class WebGUI(FastAPI):
                 if any(map(request.url.path.startswith, self._session.exclude_routes)) \
                         or self._session.authenticate(request.cookies.get("session_key")):
                     return await call_next(request)
-                return RedirectResponse(url="/login")
+                return RedirectResponse(url="/admin")
 
         class StatsMiddleware(BaseHTTPMiddleware):
 
@@ -133,8 +133,8 @@ class WebGUI(FastAPI):
                 model_assigner=model_assigner,
             ),
             PluginsRouter(),
-            LoginRouter(
-                prefix="/login",
+            AdminRouter(
+                prefix="/admin",
                 session=session),
             TabStatisticsRouter(
                 prefix="/stats",

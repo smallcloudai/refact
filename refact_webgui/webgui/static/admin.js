@@ -3,7 +3,7 @@ document.getElementById("login-form").addEventListener('submit', (event) => {
 
     const token = document.getElementById("token").value;
 
-    fetch('/login', {
+    fetch('/admin', {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
