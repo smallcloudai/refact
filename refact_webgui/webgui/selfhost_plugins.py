@@ -10,7 +10,6 @@ class PluginsRouter(APIRouter):
             {"label": "Stats", "tab": "stats"},
             {"label": "Projects", "tab": "upload"},
             {"label": "Finetune", "tab": "finetune"},
-            {"label": "Customization", "tab": "toolbox"},
             # {"label": "Chat", "tab": "chat"},
             {"label": "Credentials", "tab": "settings", "hamburger": True},
             {"label": "Server Logs", "tab": "server-logs", "hamburger": True},
