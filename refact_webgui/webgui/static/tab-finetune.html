@@ -64,13 +64,7 @@
           <!-- <button id="run_now" type="button" class="btn btn-primary tab-finetune-run-now"><i class="bi bi-gpu-card"></i> Run Now</button> -->
           <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn btn-primary tab-finetune-fine-settings">Start Finetune...</button>
         </div>
-        <div class="start-finetune-stats callout">
-          <div class="ftune-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-            <div class="ftune-bar bg-success" style="width: 0%"></div>
-          </div>
-          <div class="ftune-eta"></div>
-          <button class="btn btn-danger stop-finetune"> Stop Current Run</button>
-        </div>
+       
         <!-- <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn finetune-autorun btn-sm btn-outline-primary mt-1"><i class="bi bi-stopwatch-fill"></i>Autorun Settings</button> -->
       </div>
     </div>
@@ -80,9 +74,17 @@
     <div class="pane">
       <img src="/tab-finetune-progress-svg/none" class="fine-gfx" alt="">
     </div>
-    <div class="pane">
-
+    
+    <div class="pane finetune-pane-stats">
+      <div class="start-finetune-stats callout">
+        <div class="ftune-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+          <div class="ftune-bar bg-success" style="width: 0%"></div>
+        </div>
+        <div class="ftune-eta"></div>
+        <button class="btn btn-danger stop-finetune"> Stop Current Run</button>
+      </div>
     </div>
+    
     <div class="pane">
       <ul class="nav nav-tabs" id="myTabs" role="tablist">
         <li class="nav-item" role="presentation">
