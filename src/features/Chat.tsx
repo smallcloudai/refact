@@ -5,14 +5,9 @@ import { ChatContent } from "../components/ChatContent";
 import { Flex, Responsive, Button, Text } from "@radix-ui/themes";
 import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { useEffectOnce } from "../hooks";
 import { Coin } from "../images";
 
 export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
-  useEffectOnce(() => {
-    sendReadyMessage();
-  });
-
   const { host, tabbed } = useConfig();
 
   const chatContentRef = useRef<HTMLDivElement>(null);
@@ -26,7 +21,6 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     backFromChat,
     openChatInNewTab,
     sendToSideBar,
-    sendReadyMessage,
     handleNewFileClick,
     handlePasteDiffClick,
     hasContextFile,

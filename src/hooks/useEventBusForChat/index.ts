@@ -806,6 +806,10 @@ export const useEventBusForChat = () => {
     [dispatch, state.chat.id],
   );
 
+  useEffect(() => {
+    sendReadyMessage();
+  }, [sendReadyMessage]);
+
   // console.log(state);
 
   return {
@@ -818,7 +822,6 @@ export const useEventBusForChat = () => {
     backFromChat,
     openChatInNewTab,
     sendToSideBar,
-    sendReadyMessage,
     handleNewFileClick,
     handlePasteDiffClick,
     requestCommandsCompletion,
