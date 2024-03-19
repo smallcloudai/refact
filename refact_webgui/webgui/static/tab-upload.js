@@ -133,8 +133,12 @@ function delete_project(project_name) {
     .catch(function(error) {
         console.log('delete project', error);
     })
+    .then(function(response) { return response.json() })
     .then(function(data) {
         if (data.message === "OK") {
+            pname = '';
+            document.querySelector('.sources-pane h3').innerHTML = ``;
+            get_tab_files();
             get_projects_list();
         } else {
             console.log('Cannot delete project:', data.message);
