@@ -88,7 +88,7 @@ class BaseTabStatisticsRouter(APIRouter):
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
-                content={"error": "users sent no statistics so far"},
+                content={"reason": "users sent no statistics so far"},
                 media_type='application/json',
                 status_code=404,
             )
@@ -107,7 +107,7 @@ class BaseTabStatisticsRouter(APIRouter):
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
-                content={"error": "users sent no statistics so far"},
+                content={"reason": "users sent no statistics so far"},
                 media_type='application/json',
                 status_code=404,
             )
@@ -126,7 +126,7 @@ class BaseTabStatisticsRouter(APIRouter):
 
         if not data_tables or data_tables.robot_human_df.empty or not data_tables.extra:
             return JSONResponse(
-                content={"error": "users sent no statistics so far"},
+                content={"reason": "users sent no statistics so far"},
                 media_type='application/json',
                 status_code=404,
             )
