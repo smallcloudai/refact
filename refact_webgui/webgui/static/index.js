@@ -154,7 +154,6 @@ function plugins_to_top_nav_bar(plugins) {
     const nav_container = document.querySelector('#nav-container');
 
     nav_container.addEventListener('click', (event) => {
-        console.log('here',event);
         const tab_button = event.target.closest('.main-tab-button');
 
         if (!tab_button || tab_button.hasAttribute('disabled')) {
