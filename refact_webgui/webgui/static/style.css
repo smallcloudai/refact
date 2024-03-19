@@ -1220,3 +1220,7 @@ background-color: #ffeef0;
 .hljs-ln td {
     padding: 0 0 0 10px !important;
 }
+
+.finetune-pane-stats {
+    display: none;
+}
