@@ -252,6 +252,10 @@ class BaseCompletionsRouter(APIRouter):
         self._model_assigner = model_assigner
         self._timeout = timeout
 
+    @property
+    def _caps_version(self) -> int:
+        return self._model_assigner.config_inference_mtime()
+
     async def _account_from_bearer(self, authorization: str) -> str:
         raise NotImplementedError()
 
@@ -283,7 +287,6 @@ class BaseCompletionsRouter(APIRouter):
             if "embeddings" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []):
                 if not embeddings_default_model:
                     embeddings_default_model = model_name
-        config_mtime = self._model_assigner.config_inference_mtime()
         data = {
             "cloud_name": "Refact Self-Hosted",
             "endpoint_template": "/v1/completions",
@@ -307,7 +310,7 @@ class BaseCompletionsRouter(APIRouter):
                 for model in models_available
                 if model in self._model_assigner.models_db
             },
-            "caps_version": config_mtime,
+            "caps_version": self._caps_version,
         }
 
         return data
@@ -409,7 +412,7 @@ class BaseCompletionsRouter(APIRouter):
 
         ticket = Ticket("comp-")
         req = post.clamp()
-        caps_version = self._model_assigner.config_inference_mtime()       # use mtime as a version, if that changes the client will know to refresh caps
+        caps_version = self._caps_version      # use mtime as a version, if that changes the client will know to refresh caps
 
         model_name, lora_config = await self._resolve_model_lora(post.model)
         model_name, err_msg = static_resolve_model(model_name, self._inference_queue)
