@@ -190,9 +190,13 @@ def table_lang_comp_stats(rh_df: pd.DataFrame):
         # into row-like fmt
         sorted_vals: List[List] = sorted([[k, *v.values()] for k, v in res_loc.items()], key=lambda x: x[3], reverse=True)
         fmt_vals = [format_row(row) for row in sorted_vals]
+        if res_loc.keys():
+            res_loc_col = ['Language', *res_loc[list(res_loc.keys())[0]].keys()]
+        else:
+            res_loc_col = []
         res_loc = {
             'data': fmt_vals[:rows_limit],
-            'columns': ['Language', *res_loc[list(res_loc.keys())[0]].keys()],
+            'columns': res_loc_col,
             'title': f"Refact's impact by language: {date_kind}; TOP-{rows_limit}"
         }
         return res_loc
