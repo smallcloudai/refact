@@ -128,10 +128,10 @@ function delete_project(project_name) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ project: project_name })
+        body: JSON.stringify({ pname: project_name })
     })
     .catch(function(error) {
-        console.log('delete project',error);
+        console.log('delete project', error);
     })
     .then(function(data) {
         if (data.message === "OK") {
@@ -782,7 +782,7 @@ export async function init(general_error) {
             const regex_pattern = /^[A-Za-z0-9_\-.]+$/;
             const input_value = new_project_input.value;
             const new_project_button = document.querySelector('.new-project-modal-submit');
-    
+
             if (!regex_pattern.test(input_value)) {
                 new_project_button.disabled = true;
                 new_project_input.setCustomValidity('Input does not match the required pattern');
