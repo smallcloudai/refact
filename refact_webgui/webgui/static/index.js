@@ -154,6 +154,7 @@ function plugins_to_top_nav_bar(plugins) {
     const nav_container = document.querySelector('#nav-container');
 
     nav_container.addEventListener('click', (event) => {
+        console.log('here',event);
         const tab_button = event.target.closest('.main-tab-button');
 
         if (!tab_button || tab_button.hasAttribute('disabled')) {
@@ -162,8 +163,8 @@ function plugins_to_top_nav_bar(plugins) {
 
         const target_tab = tab_button.dataset.tab;
         const tab_buttons = nav_container.querySelectorAll('.main-tab-button');
-        // const tab_panes = document.querySelectorAll('.tab-pane');
 
+        document.querySelector('.dropdown-toggle').classList.remove('main-active');
         tab_buttons.forEach(btn => {
             btn.classList.remove('main-active');
         });
@@ -175,8 +176,11 @@ function plugins_to_top_nav_bar(plugins) {
                 pane.classList.remove('main-active');
             }
         });
-
-        tab_button.classList.add('main-active');
+        if(tab_button.classList.contains('dropdown-item')) {
+            document.querySelector('.dropdown-toggle').classList.add('main-active');
+        } else {
+            tab_button.classList.add('main-active');
+        }
         start_tab_timer();
     });
 }
