@@ -1180,19 +1180,6 @@ background-color: #ffeef0;
 /* purposely ignored */
 }
 
-.toolbox-editor {
-    width: 100%;
-    min-height: 500px;
-    margin-bottom: 20px;
-    max-height: 700px;
-    overflow: auto;
-}
-.toolbox-editor pre code {
-    font-family: Menlo, Monaco, Consolas, monospace;
-}
-.toolbox-editor pre {
-    margin: 0;
-}
 /* for block of numbers */
 .hljs-ln-numbers {
     -webkit-touch-callout: none;
@@ -1223,4 +1210,21 @@ background-color: #ffeef0;
 
 .dropdown-menu li {
     padding: 0 10px;
+}
+
+
+/* toolbox  */
+
+.toolbox-editor {
+    width: 100%;
+    min-height: 500px;
+    margin-bottom: 20px;
+    max-height: 700px;
+    overflow: auto;
+}
+.toolbox-editor pre code {
+    font-family: Menlo, Monaco, Consolas, monospace;
+}
+.toolbox-editor pre {
+    margin: 0;
 }
