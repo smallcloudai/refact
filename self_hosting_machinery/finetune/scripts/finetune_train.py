@@ -156,6 +156,7 @@ def gpu_filter_and_build_config(pname, run_id, **kwargs) -> Dict[str, Any]:
             traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
             _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
             _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
+    dist.barrier()
     return _build_finetune_config_by_heuristics(pname, run_id, **kwargs)
 
 
@@ -166,6 +167,7 @@ def _copy_source_files(jsonl_src, jsonl_dst, pname, run_id):
         dst_path = os.path.join(env.PERRUN_DIR_UNPACKED(run_id), d["path"])
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         shutil.copyfile(src_path, dst_path)
+    os.makedirs(os.path.dirname(jsonl_dst), exist_ok=True)   # needed when zero files (edge case)
     shutil.copyfile(jsonl_src, jsonl_dst)
 
 

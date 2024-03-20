@@ -157,14 +157,14 @@ def create_test_dataloader(
 
 
 def create_finetune_filter_dataloader(
-        pname: str,
+        basedir: str,
         file: Dict[str, Any],
         dataset_options: str,
         encoding: str,
 ) -> DataLoader:
     dataset = finetune_datasource.RefactDataset.from_a_single_file(
         cls=finetune_datasource.RefactPlainCodeDataset,
-        pname=pname,
+        basedir=basedir,
         file=file,
         dataset_options=dataset_options,
         encoding=encoding
