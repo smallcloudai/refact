@@ -148,7 +148,7 @@ def log(*args) -> None:
     if _cx.console_logger:
         _cx.console_logger.write(s + "\n")
         _cx.console_logger.flush()
-    with open(_cx.log_fn, "a") as f:
+    with open(_cx.log_fn, "a", encoding='utf-8') as f:
         f.write(s + "\n")
 
 
