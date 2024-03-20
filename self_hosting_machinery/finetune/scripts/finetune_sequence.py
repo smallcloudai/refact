@@ -12,7 +12,6 @@ def catch_sigusr1(signum, frame):
         os.kill(child.pid, signal.SIGUSR1)
 
 @click.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
-@click.option('--filter-only', is_flag=True, help='Filter only flag')
 @click.option('--pname', default='', help='Project name')
 @click.argument('the_rest_of_args', nargs=-1)
 def main(pname, the_rest_of_args):
