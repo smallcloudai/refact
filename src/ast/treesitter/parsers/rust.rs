@@ -11,7 +11,8 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionDeclaration, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
-use crate::ast::treesitter::parsers::{internal_error, LanguageParser, ParserError};
+use crate::ast::treesitter::language_id::LanguageId;
+use crate::ast::treesitter::parsers::{internal_error, LanguageParser, NewLanguageParser, ParserError};
 use crate::ast::treesitter::parsers::utils::get_function_name;
 use crate::ast::treesitter::structs::{SymbolInfo, VariableInfo};
 
@@ -183,6 +184,7 @@ impl RustParser {
     pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
         let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = Default::default();
         let mut decl = FunctionDeclaration::default();
+        decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_url = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
@@ -250,7 +252,8 @@ impl RustParser {
     pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
         let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = Default::default();
         let mut decl = StructDeclaration::default();
-        
+
+        decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_url = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
@@ -292,6 +295,7 @@ impl RustParser {
                         decl_.ast_fields.parent_guid = Some(decl.ast_fields.guid.clone());
                         decl_.ast_fields.guid = RustParser::get_guid();
                         decl_.ast_fields.name = code.slice(name_node.byte_range()).to_string();
+                        decl_.ast_fields.language = LanguageId::Rust;
                         if let Some(type_) = RustParser::parse_type(&type_node, code) {
                             decl_.type_ = type_;
                         }
@@ -308,7 +312,6 @@ impl RustParser {
         symbols.push(Arc::new(decl));
         symbols
     }
-
 
     fn parse_argument(parent: &Node, code: &str, path: &Url) -> HashSet<FunctionArg> {
         let mut res: HashSet<FunctionArg> = Default::default();
@@ -366,9 +369,11 @@ impl RustParser {
         }
         res
     }
+
     pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
         let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = Default::default();
         let mut decl = FunctionDeclaration::default();
+        decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_url = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
@@ -441,6 +446,7 @@ impl RustParser {
 
         let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = vec![];
         let mut decl = VariableDefinition::default();
+        decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_url = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
@@ -544,6 +550,7 @@ impl RustParser {
                 let name = code.slice(field_node.byte_range()).to_string();
                 let mut usage = VariableUsage::default();
                 usage.ast_fields.name = name;
+                usage.ast_fields.language = LanguageId::Rust;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_url = path.clone();
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
@@ -557,6 +564,7 @@ impl RustParser {
             "identifier" => {
                 let mut usage = VariableUsage::default();
                 usage.ast_fields.name = code.slice(parent.byte_range()).to_string();
+                usage.ast_fields.language = LanguageId::Rust;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_url = path.clone();
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
@@ -571,6 +579,7 @@ impl RustParser {
                 let name_node = parent.child_by_field_name("name").unwrap();
 
                 usage.ast_fields.name = code.slice(name_node.byte_range()).to_string();
+                usage.ast_fields.language = LanguageId::Rust;
                 usage.ast_fields.namespace = code.slice(path_node.byte_range()).to_string();
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_url = path.clone();
@@ -685,6 +694,7 @@ impl RustParser {
                         let alias_node = argument_node.child_by_field_name("alias").unwrap();
                         let mut type_alias = TypeAlias::default();
                         type_alias.ast_fields.name = code.slice(alias_node.byte_range()).to_string();
+                        type_alias.ast_fields.language = LanguageId::Rust;
                         type_alias.ast_fields.full_range = parent.range();
                         type_alias.ast_fields.file_url = path.clone();
                         type_alias.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
@@ -703,6 +713,7 @@ impl RustParser {
                     let name_node = child.child_by_field_name("name").unwrap();
                     let mut type_alias = TypeAlias::default();
                     type_alias.ast_fields.name = code.slice(name_node.byte_range()).to_string();
+                    type_alias.ast_fields.language = LanguageId::Rust;
                     type_alias.ast_fields.full_range = parent.range();
                     type_alias.ast_fields.file_url = path.clone();
                     type_alias.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
@@ -745,6 +756,7 @@ impl RustParser {
                 }
                 "line_comment" | "block_comment"  => {
                     let mut def = CommentDefinition::default();
+                    def.ast_fields.language = LanguageId::Rust;
                     def.ast_fields.full_range = parent.range();
                     def.ast_fields.file_url = path.clone();
                     def.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
@@ -762,7 +774,10 @@ impl RustParser {
         symbols
     }
 
-    pub fn parse(&mut self, code: &str, path: &Url) -> Vec<Arc<dyn AstSymbolInstance>> {
+}
+
+impl NewLanguageParser for RustParser {
+    fn parse(&mut self, code: &str, path: &Url) -> Vec<Arc<dyn AstSymbolInstance>> {
         let tree = self.parser.parse(code, None).unwrap();
         let parent_guid = RustParser::get_guid();
         self.parse_block(&tree.root_node(), code, path, &parent_guid)
@@ -793,7 +808,6 @@ impl LanguageParser for RustParser {
     fn get_parser_query_find_all(&self) -> &String {
         &RUST_PARSER_QUERY_FIND_ALL
     }
-
 
     fn get_namespace(&self, mut parent: Option<Node>, text: &str) -> Vec<String> {
         let mut namespaces: Vec<String> = vec![];

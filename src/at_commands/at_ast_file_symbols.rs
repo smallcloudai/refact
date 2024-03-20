@@ -4,6 +4,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde_json::json;
 use tokio::sync::Mutex as AMutex;
+use crate::ast::ast_index::RequestSymbolType;
 
 use crate::ast::structs::FileReferencesResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
@@ -15,10 +16,10 @@ fn results2message(result: &FileReferencesResult) -> ChatMessage {
     let simplified_symbols: Vec<ContextFile> = result.symbols.iter().map(|x| {
         let path = format!("{:?}::", result.file_path).to_string();
         ContextFile {
-            file_name: x.meta_path.replace(path.as_str(), ""),
+            file_name: x.get_path_str(),
             file_content: format!("{:?}", x.symbol_type),
-            line1: x.definition_info.range.start_point.row + 1,
-            line2: x.definition_info.range.end_point.row + 1,
+            line1: x.full_range.start_point.row + 1,
+            line2: x.full_range.end_point.row + 1,
             usefulness: 100.0
         }
     }).collect();
@@ -78,7 +79,7 @@ impl AtCommand for AtAstFileSymbols {
                     Some(doc) => doc,
                     None => return Err("file not found".to_string())
                 };
-                match ast.get_file_symbols(&doc).await {
+                match ast.get_file_symbols(RequestSymbolType::All, &doc).await {
                     Ok(res) => Ok(results2message(&res)),
                     Err(err) => Err(err)
                 }

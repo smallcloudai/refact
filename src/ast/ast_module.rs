@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 use itertools::Itertools;
 
@@ -10,13 +9,15 @@ use tracing::info;
 use tree_sitter::Point;
 
 use crate::global_context::GlobalContext;
-use crate::ast::ast_index::AstIndex;
+use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::AstIndexService;
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, CursorUsagesResult, FileReferencesResult, SymbolsSearchResultStruct, UsageSearchResultStruct};
 use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::files_in_workspace::DocumentInfo;
-use rayon::prelude::*;
+use url::Url;
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, SymbolInformation};
+use crate::ast::treesitter::structs::SymbolInfo;
 use crate::files_in_jsonl::files_in_jsonl;
 
 pub struct AstModule {
@@ -65,7 +66,59 @@ impl AstModule {
     }
 
     pub async fn clear_index(&self) {
-        self.ast_index.lock().await.clear_index().await;
+        self.ast_index.lock().await.clear_index();
+    }
+
+    pub async fn search_by_name(
+        &self,
+        query: String,
+        request_symbol_type: RequestSymbolType
+    ) -> Result<AstQuerySearchResult, String> {
+        let t0 = std::time::Instant::now();
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked = ast_index.lock().await;
+        match ast_index_locked.search_by_name(query.as_str(), request_symbol_type, None, None) {
+            Ok(results) => {
+                for r in results.iter() {
+                    let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
+                    info!("def-distance {:.3}, found {last_30_chars}", r.sim_to_query);
+                }
+                info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                Ok(
+                    AstQuerySearchResult {
+                        query_text: query,
+                        search_results: results,
+                    }
+                )
+            }
+            Err(e) => Err(e.to_string())
+        }
+    }
+
+    pub async fn search_by_content(
+        &self,
+        query: String,
+        request_symbol_type: RequestSymbolType
+    ) -> Result<AstQuerySearchResult, String> {
+        let t0 = std::time::Instant::now();
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked = ast_index.lock().await;
+        match ast_index_locked.search_by_content(query.as_str(), request_symbol_type, None, None) {
+            Ok(results) => {
+                for r in results.iter() {
+                    let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
+                    info!("def-distance {:.3}, found {last_30_chars}", r.sim_to_query);
+                }
+                info!("ast search_by_content time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                Ok(
+                    AstQuerySearchResult {
+                        query_text: query,
+                        search_results: results,
+                    }
+                )
+            }
+            Err(e) => Err(e.to_string())
+        }
     }
 
     pub async fn search_declarations_by_cursor(
@@ -76,81 +129,7 @@ impl AstModule {
         top_n: usize,
         filter_by_language: bool
     ) -> Result<AstCursorSearchResult, String> {
-        let t0 = std::time::Instant::now();
-
-        let path = doc.get_path();
-        let usage_result = match self.parse_near_cursor(doc, code, cursor, top_n).await {
-            Ok(usages) => usages,
-            Err(e) => {
-                return Err(format!("Error parsing {}: {}", path.display(), e));
-            }
-        };
-        let declarations: Vec<SymbolsSearchResultStruct> = {
-            let language = match filter_by_language {
-                true => get_language_id_by_filename(&path),
-                false => None
-            };
-            let ast_index = self.ast_index.clone();
-            let ast_index_locked = ast_index.lock().await;
-            usage_result.search_results.par_iter().map(|sym| {
-                match ast_index_locked.search_declarations(
-                    sym.symbol_path.as_str(),
-                    1,
-                    Some(doc.clone()),
-                    language
-                ) {
-                    Ok(nodes) => nodes,
-                    Err(e) => {
-                        info!("Error searching for {}: {}", sym.symbol_path.as_str(), e);
-                        vec![]
-                    }
-                }
-            }).flatten().collect()
-        };
-
-        for rec in declarations
-            .iter()
-            .unique_by(|x| &x.symbol_declaration.meta_path)
-        {
-            let last_30_chars = crate::nicer_logs::last_n_chars(&rec.symbol_declaration.meta_path, 30);
-            info!("distance {:.3}, found {last_30_chars}", rec.sim_to_query);
-        }
-        info!("search_by_cursor time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), declarations.len());
-        Ok(
-            AstCursorSearchResult {
-                query_text: code.to_string(),
-                file_path: doc.get_path(),
-                cursor: cursor,
-                cursor_symbols: usage_result.search_results,
-                search_results: declarations,
-            }
-        )
-    }
-
-    pub async fn search_declarations_by_symbol_path(
-        &self,
-        symbol_path: String,
-        top_n: usize,
-    ) -> Result<AstQuerySearchResult, String> {
-        let t0 = std::time::Instant::now();
-        let ast_index = self.ast_index.clone();
-        let ast_index_locked = ast_index.lock().await;
-        match ast_index_locked.search_declarations(symbol_path.as_str(), top_n, None, None) {
-            Ok(results) => {
-                for r in results.iter() {
-                    let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.meta_path, 30);
-                    info!("def-distance {:.3}, found {last_30_chars}", r.sim_to_query);
-                }
-                info!("search_by_symbol_path time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
-                Ok(
-                    AstQuerySearchResult {
-                        query_text: symbol_path,
-                        search_results: results,
-                    }
-                )
-            }
-            Err(e) => Err(e.to_string())
-        }
+        unimplemented!()
     }
 
     pub async fn search_references_by_cursor(
@@ -161,89 +140,13 @@ impl AstModule {
         top_n: usize,
         filter_by_language: bool
     ) -> Result<AstCursorSearchResult, String> {
-        let t0 = std::time::Instant::now();
-
-        let path = doc.get_path();
-        let usage_result = match self.parse_near_cursor(doc, code, cursor, top_n).await {
-            Ok(usages) => usages,
-            Err(e) => {
-                return Err(format!("Error parsing {}: {}", path.display(), e));
-            }
-        };
-        info!("usage_result {:?}", usage_result);
-        let mut declarations: Vec<SymbolsSearchResultStruct> = vec![];
-        {
-            let ast_index = self.ast_index.clone();
-            let ast_index_locked = ast_index.lock().await;
-            for sym in usage_result.search_results.iter() {
-                let language = match filter_by_language {
-                    true => get_language_id_by_filename(&path),
-                    false => None
-                };
-                declarations.extend(
-                    match ast_index_locked.search_usages(
-                        sym.symbol_path.as_str(), 3, Some(doc.clone()),
-                        language
-                    ).await {
-                        Ok(nodes) => nodes,
-                        Err(e) => {
-                            info!("Error searching for {}: {}", sym.symbol_path.as_str(), e);
-                            vec![]
-                        }
-                    }
-                )
-            }
-        }
-
-        for rec in declarations
-            .iter()
-            .unique_by(|x| &x.symbol_declaration.meta_path)
-        {
-            let last_30_chars = crate::nicer_logs::last_n_chars(&rec.symbol_declaration.meta_path, 30);
-            info!("distance {:.3}, found {last_30_chars}", rec.sim_to_query);
-        }
-        info!("search_by_cursor time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), declarations.len());
-        Ok(
-            AstCursorSearchResult {
-                query_text: code.to_string(),
-                file_path: doc.get_path(),
-                cursor: cursor,
-                cursor_symbols: usage_result.search_results,
-                search_results: declarations,
-            }
-        )
+        unimplemented!()
     }
 
-    pub async fn search_references_by_symbol_path(
-        &self,
-        symbol_path: String,
-        top_n: usize,
-    ) -> Result<AstQuerySearchResult, String> {
-        let t0 = std::time::Instant::now();
+    pub async fn get_file_symbols(&self, request_symbol_type: RequestSymbolType, doc: &DocumentInfo) -> Result<FileReferencesResult, String> {
         let ast_index = self.ast_index.clone();
         let ast_index_locked = ast_index.lock().await;
-        match ast_index_locked.search_usages(symbol_path.as_str(), top_n, None, None).await {
-            Ok(results) => {
-                for r in results.iter() {
-                    let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.meta_path, 30);
-                    info!("ref-distance {:.3}, found {last_30_chars}", r.sim_to_query);
-                }
-                info!("search_by_symbol_path time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
-                Ok(
-                    AstQuerySearchResult {
-                        query_text: symbol_path,
-                        search_results: results,
-                    }
-                )
-            }
-            Err(e) => Err(e.to_string())
-        }
-    }
-
-    pub async fn get_file_symbols(&self, doc: &DocumentInfo) -> Result<FileReferencesResult, String> {
-        let ast_index = self.ast_index.clone();
-        let ast_index_locked = ast_index.lock().await;
-        let symbols = match ast_index_locked.get_symbols_by_file_path(&doc) {
+        let symbols = match ast_index_locked.get_by_file_path(request_symbol_type, &doc) {
             Ok(s) => s,
             Err(err) => { return Err(format!("Error: {}", err)); }
         };
@@ -253,66 +156,15 @@ impl AstModule {
         })
     }
 
-    pub async fn get_indexed_symbol_paths(&self) -> Vec<String> {
+    pub async fn get_all_symbols(&self, request_symbol_type: RequestSymbolType) -> Vec<SymbolInformation> {
         let ast_index = self.ast_index.clone();
         let ast_index_locked = ast_index.lock().await;
-        ast_index_locked.get_indexed_symbol_paths()
+        ast_index_locked.get_all_symbols(request_symbol_type)
     }
 
-    pub async fn get_indexed_references(&self) -> Vec<String> {
+    pub async fn get_file_paths(&self) -> Vec<Url> {
         let ast_index = self.ast_index.clone();
         let ast_index_locked = ast_index.lock().await;
-        ast_index_locked.get_indexed_references()
-    }
-
-    pub async fn get_indexed_file_paths(&self) -> Vec<PathBuf> {
-        let ast_index = self.ast_index.clone();
-        let ast_index_locked = ast_index.lock().await;
-        ast_index_locked.get_indexed_file_paths()
-    }
-
-    async fn parse_near_cursor(
-        &mut self,
-        doc: &DocumentInfo,
-        code: &str,
-        cursor: Point,
-        top_n: usize,
-    ) -> Result<CursorUsagesResult, String> {
-        let path = doc.get_path();
-        let mut parser = match get_parser_by_filename(&path) {
-            Ok(parser) => parser,
-            Err(err) => {
-                return Err(err.message);
-            }
-        };
-        let usages = match parser.parse_usages(code, false) {
-            Ok(usages) => usages,
-            Err(e) => {
-                return Err(format!("Error parsing {}: {}", path.display(), e));
-            }
-        };
-        let filtered_usages = usages.iter()
-            .unique_by(|x| x.meta_path())
-            .sorted_by(|a, b| {
-                a.distance_to_cursor(&cursor).cmp(&b.distance_to_cursor(&cursor))
-            })
-            .take(top_n)
-            .collect::<Vec<_>>();
-
-        Ok(CursorUsagesResult {
-            file_path: path,
-            query_text: code.to_string(),
-            cursor: cursor.clone(),
-            search_results: filtered_usages
-                .iter()
-                .map(|x| {
-                    UsageSearchResultStruct {
-                        symbol_path: x.meta_path(),
-                        dist_to_cursor: x.distance_to_cursor(&cursor),
-                        type_str: x.type_str(),
-                    }
-                })
-                .collect::<Vec<UsageSearchResultStruct>>(),
-        })
+        ast_index_locked.get_file_paths()
     }
 }

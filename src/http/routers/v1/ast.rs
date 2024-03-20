@@ -5,6 +5,7 @@ use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use tree_sitter::Point;
+use crate::ast::ast_index::RequestSymbolType;
 
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::DocumentInfo;
@@ -97,9 +98,9 @@ pub async fn handle_v1_ast_declarations_query_search(
     let cx_locked = global_context.read().await;
     let search_res = match *cx_locked.ast_module.lock().await {
         Some(ref ast) => {
-            ast.search_declarations_by_symbol_path(
+            ast.search_by_name(
                 post.query,
-                post.top_n,
+                RequestSymbolType::Declaration
             ).await
         }
         None => {
@@ -183,9 +184,9 @@ pub async fn handle_v1_ast_references_query_search(
     let cx_locked = global_context.read().await;
     let search_res = match *cx_locked.ast_module.lock().await {
         Some(ref ast) => {
-            ast.search_references_by_symbol_path(
+            ast.search_by_name(
                 post.query,
-                post.top_n,
+                RequestSymbolType::Usage
             ).await
         }
         None => {
@@ -226,7 +227,7 @@ pub async fn handle_v1_ast_file_symbols(
     let cx_locked = global_context.read().await;
     let search_res = match *cx_locked.ast_module.lock().await {
         Some(ref ast) => {
-            ast.get_file_symbols(&doc).await
+            ast.get_file_symbols(RequestSymbolType::All, &doc).await
         }
         None => {
             return Err(ScratchError::new(

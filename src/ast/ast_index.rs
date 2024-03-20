@@ -1,33 +1,41 @@
-use std::cmp::max;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::sync::Arc;
 
 use fst::{Set, set, Streamer};
-use rayon::current_num_threads;
 use rayon::prelude::*;
+use ropey::Rope;
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
-use tracing::{debug, info};
-use tree_sitter::Range;
+use tracing::{info};
+use url::Url;
+use crate::ast::comments_wrapper::get_language_id_by_filename;
 
 use crate::ast::fst_extra_automation::Substring;
-use crate::ast::structs::SymbolsSearchResultStruct;
+use crate::ast::structs::{FileASTMarkup, SymbolsSearchResultStruct};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, SymbolInformation};
 use crate::ast::treesitter::language_id::LanguageId;
-use crate::ast::treesitter::parsers::get_parser_by_filename;
-use crate::ast::treesitter::structs::{SymbolDeclarationStruct, UsageSymbolInfo};
+use crate::ast::treesitter::parsers::{get_new_parser_by_filename};
 use crate::files_in_workspace::DocumentInfo;
 
 #[derive(Debug)]
 pub struct AstIndex {
-    declarations: HashMap<String, SymbolDeclarationStruct>,
-    declarations_search_index: HashMap<PathBuf, Set<Vec<u8>>>,
-    usages: HashMap<String, Vec<Box<dyn UsageSymbolInfo>>>,
-    usages_search_index: HashMap<PathBuf, Set<Vec<u8>>>,
+    symbols_by_name: HashMap<String, Vec<Arc<dyn AstSymbolInstance>>>,
+    symbols_by_guid: HashMap<String, Arc<dyn AstSymbolInstance>>,
+    path_by_symbols: HashMap<Url, Vec<Arc<dyn AstSymbolInstance>>>,
+    symbols_search_index: HashMap<Url, Set<Vec<u8>>>,
+}
+
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum RequestSymbolType {
+    Declaration,
+    Usage,
+    All
 }
 
 
 fn make_a_query(
-    nodes_indexes: &HashMap<PathBuf, Set<Vec<u8>>>,
+    nodes_indexes: &HashMap<Url, Set<Vec<u8>>>,
     query_str: &str,
     exception_doc: Option<DocumentInfo>,
 ) -> Vec<String> {
@@ -36,7 +44,7 @@ fn make_a_query(
 
     for (doc, set) in nodes_indexes {
         if let Some(ref exception) = exception_doc {
-            if *doc == exception.get_path() {
+            if *doc == exception.uri {
                 continue;
             }
         }
@@ -56,17 +64,15 @@ fn make_a_query(
 impl AstIndex {
     pub fn init() -> AstIndex {
         AstIndex {
-            declarations: HashMap::new(),
-            declarations_search_index: HashMap::new(),
-            usages: HashMap::new(),
-            usages_search_index: HashMap::new(),
+            symbols_by_name: HashMap::new(),
+            symbols_by_guid: HashMap::new(),
+            path_by_symbols: HashMap::new(),
+            symbols_search_index: HashMap::new(),
         }
     }
 
-    pub fn get_declarations_and_usages(doc: &DocumentInfo)
-                                       -> Result<(HashMap<String, SymbolDeclarationStruct>, Vec<Box<dyn UsageSymbolInfo>>), String> {
-        let path = doc.get_path();
-        let mut parser = match get_parser_by_filename(&doc.get_path()) {
+    pub fn parse(doc: &DocumentInfo) -> Result<Vec<Arc<dyn AstSymbolInstance>>, String> {
+        let mut parser = match get_new_parser_by_filename(&doc.get_path()) {
             Ok(parser) => parser,
             Err(err) => {
                 return Err(err.message);
@@ -77,296 +83,286 @@ impl AstIndex {
             Err(e) => return Err(e.to_string())
         };
 
-        // Parse the text and get the declarations and usages
-        let t_declarations = std::time::Instant::now();
-        let declarations = match parser.parse_declarations(text.as_str(), &path) {
-            Ok(declarations) => declarations,
-            Err(e) => {
-                return Err(format!("Error parsing {}: {}", path.display(), e));
-            }
-        };
-        let t_declarations_elapsed = t_declarations.elapsed();
+        let t_ = std::time::Instant::now();
+        let symbol_instances = parser.parse(text.as_str(), &doc.uri);
+        let t_elapsed = t_.elapsed();
 
-        let t_usages = std::time::Instant::now();
-        let mut usages = match parser.parse_usages(text.as_str(), false) {
-            Ok(usages) => usages,
-            Err(e) => {
-                return Err(format!("Error parsing {}: {}", path.display(), e));
-            }
-        };
-        link_declarations_to_usages(&declarations, &mut usages);
-        let t_usages_elapsed = t_usages.elapsed();
         info!(
-            "parsed {},  {} definitions, {} usages, \
-            took {:.3}s to parse decls, took {:.3}s to parse refs",
-            crate::nicer_logs::last_n_chars(&path.display().to_string(), 30),
-            declarations.len(), usages.len(),
-            t_declarations_elapsed.as_secs_f32(), t_usages_elapsed.as_secs_f32()
+            "parsed {}, {} symbols, took {:.3}s to parse",
+            crate::nicer_logs::last_n_chars(&doc.uri.to_string(), 30),
+            symbol_instances.len(), t_elapsed.as_secs_f32()
         );
-        Ok((declarations, usages))
+        Ok(symbol_instances)
     }
 
-    pub fn add_or_update_declarations_and_usages(&mut self, doc: &DocumentInfo,
-                                                 declarations: HashMap<String, SymbolDeclarationStruct>,
-                                                 usages: Vec<Box<dyn UsageSymbolInfo>>) -> Result<(), String> {
-        let path = doc.get_path();
-        // Remove old data from all search indexes
+    pub fn add_or_update_symbols_index(
+        &mut self,
+        doc: &DocumentInfo,
+        symbols: &Vec<Arc<dyn AstSymbolInstance>>,
+    ) -> Result<(), String> {
         match self.remove(&doc) {
             Ok(()) => (),
-            Err(e) => return Err(format!("Error removing {}: {}", path.display(), e)),
+            Err(e) => return Err(format!("Error removing {}: {}", doc.uri, e)),
         }
 
-        // Insert new data to the declarations search index
-        let mut meta_names: SortedVec<String> = SortedVec::new();
-        for (meta_path, declaration) in declarations.iter() {
-            self.declarations.insert(meta_path.clone(), declaration.clone());
-            meta_names.push(meta_path.clone());
+        let mut symbol_names: SortedVec<String> = SortedVec::new();
+        for symbol in symbols.iter() {
+            self.symbols_by_name.entry(symbol.name().to_string()).or_insert_with(Vec::new).push(symbol.clone());
+            self.symbols_by_guid.insert(symbol.guid().to_string(), symbol.clone());
+            self.path_by_symbols.entry(doc.uri.clone()).or_insert_with(Vec::new).push(symbol.clone());
+            symbol_names.push(symbol.name().to_string());
         }
-        let meta_names_set = match Set::from_iter(meta_names.iter()) {
+        let meta_names_set = match Set::from_iter(symbol_names.iter()) {
             Ok(set) => set,
             Err(e) => return Err(format!("Error creating set: {}", e)),
         };
-        self.declarations_search_index.insert(path.clone(), meta_names_set);
+        self.symbols_search_index.insert(doc.uri.clone(), meta_names_set);
 
-        // Insert new data to the usages search index
-        let mut usages_meta_names: SortedVec<String> = SortedVec::new();
-        for usage in usages {
-            usages_meta_names.push(usage.meta_path());
-            self.usages.entry(usage.meta_path()).or_default().push(usage);
-        }
-        let meta_names_set = match Set::from_iter(usages_meta_names.iter()) {
-            Ok(set) => set,
-            Err(e) => return Err(format!("Error creating set: {}", e)),
-        };
-        self.usages_search_index.insert(path.clone(), meta_names_set);
         Ok(())
     }
 
     pub fn add_or_update(&mut self, doc: &DocumentInfo) -> Result<(), String> {
-        let (declarations, usages) = AstIndex::get_declarations_and_usages(doc)?;
-        self.add_or_update_declarations_and_usages(doc, declarations, usages)
+        let symbols = AstIndex::parse(doc)?;
+        self.add_or_update_symbols_index(doc, &symbols)
     }
 
     pub fn remove(&mut self, doc: &DocumentInfo) -> Result<(), String> {
-        let path = doc.get_path();
-        if let Some(meta_names) = self.declarations_search_index.remove(&path) {
-            let mut stream = meta_names.stream();
-            while let Some(name_vec) = stream.next() {
-                let name = match String::from_utf8(name_vec.to_vec()) {
-                    Ok(name) => name,
-                    Err(_) => {
-                        continue;
-                    }
-                };
-                self.declarations.remove(&name);
-            }
-        }
-        if let Some(meta_names) = self.usages_search_index.remove(&path) {
-            let mut stream = meta_names.stream();
-            while let Some(name_vec) = stream.next() {
-                let name = match String::from_utf8(name_vec.to_vec()) {
-                    Ok(name) => name,
-                    Err(_) => {
-                        continue;
-                    }
-                };
-                self.usages.remove(&name);
-            }
+        self.symbols_search_index.remove(&doc.uri);
+        for symbol in self.path_by_symbols
+            .remove(&doc.uri)
+            .unwrap_or_default()
+            .iter() {
+            self.symbols_by_name.remove(symbol.name());
+            self.symbols_by_guid.remove(symbol.guid());
         }
         Ok(())
     }
 
-    pub async fn clear_index(&mut self) {
-        self.declarations.clear();
-        self.declarations_search_index.clear();
-        self.usages.clear();
-        self.usages_search_index.clear();
+    pub fn clear_index(&mut self) {
+        self.symbols_by_name.clear();
+        self.symbols_by_guid.clear();
+        self.path_by_symbols.clear();
+        self.symbols_search_index.clear();
     }
 
-    pub fn search_declarations(
+    pub fn search_by_name(
         &self,
         query: &str,
-        top_n: usize,
+        request_symbol_type: RequestSymbolType,
         exception_doc: Option<DocumentInfo>,
         language: Option<LanguageId>
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
-        let query_str = query.to_string();
-        let found_keys = make_a_query(
-            &self.declarations_search_index, query_str.as_str(),
-            exception_doc,
-        );
+        fn exact_search(
+            symbols_by_name: &HashMap<String, Vec<Arc<dyn AstSymbolInstance>>>,
+            query: &str,
+            request_symbol_type: &RequestSymbolType
+        ) -> Vec<Arc<dyn AstSymbolInstance>> {
+            symbols_by_name
+                .get(query)
+                .map(|x| x.clone())
+                .unwrap_or_default()
+                .iter()
+                .cloned()
+                .filter(|s| match request_symbol_type {
+                    RequestSymbolType::Declaration => s.is_declaration(),
+                    RequestSymbolType::Usage => !s.is_declaration(),
+                    RequestSymbolType::All => true,
+                })
+                .collect()
+        }
 
-        let mut filtered_search_results = found_keys
-            .par_chunks(current_num_threads())
-            .map(|keys| {
-                keys.iter().filter_map(|k| {
-                    if let Some(decl) = self.declarations.get(k) {
-                        if decl.meta_path.is_empty() { return None; }
-                        if !language.map(|x| decl.language == x).unwrap_or(true) { return None; }
+        fn fuzzy_search(
+            search_index: &HashMap<Url, Set<Vec<u8>>>,
+            symbols_by_name: &HashMap<String, Vec<Arc<dyn AstSymbolInstance>>>,
+            query: &str,
+            exception_doc: Option<DocumentInfo>,
+            request_symbol_type: &RequestSymbolType
+        ) -> Vec<Arc<dyn AstSymbolInstance>> {
+            make_a_query(search_index, query, exception_doc)
+                .iter()
+                .map(|name| symbols_by_name
+                    .get(name)
+                    .map(|x| x.clone())
+                    .unwrap_or_default())
+                .flatten()
+                .filter(|s| match request_symbol_type {
+                    RequestSymbolType::Declaration => s.is_declaration(),
+                    RequestSymbolType::Usage => !s.is_declaration(),
+                    RequestSymbolType::All => true,
+                })
+                .collect()
+        }
 
-                        return Some((decl.clone(),
-                                     (jaro_winkler(query, decl.meta_path.as_str()) as f32).max(f32::MIN_POSITIVE) *
-                                         (jaro_winkler(query, decl.name.as_str()) as f32).max(f32::MIN_POSITIVE)));
-                    } else {
-                        None
-                    }
-                }).collect::<Vec<_>>()
-            }).flatten().collect::<Vec<_>>();
-        filtered_search_results.sort_by(|(_, dist_1), (_, dist_2)|
-            dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
-        );
+        let mut symbols = exact_search(&self.symbols_by_name, query, &request_symbol_type);
+        if symbols.is_empty() {
+            symbols = fuzzy_search(
+                &self.symbols_search_index, &self.symbols_by_name,
+                query, exception_doc, &request_symbol_type
+            );
+        }
+
+        let mut filtered_search_results = symbols
+            .iter()
+            .filter(|s| s.language() == language.unwrap_or(s.language()))
+            .map(|s| {
+                (s.symbol_info_struct(), (jaro_winkler(query, s.name()) as f32).max(f32::MIN_POSITIVE))
+            })
+            .collect::<Vec<_>>();
+
+        filtered_search_results
+            .sort_by(|(_, dist_1), (_, dist_2)|
+                dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
+            );
 
         let mut search_results: Vec<SymbolsSearchResultStruct> = vec![];
         for (key, dist) in filtered_search_results
-            .into_iter()
-            .rev()
-            .take(top_n) {
+            .iter()
+            .rev() {
             let content = match key.get_content_blocked() {
                 Ok(content) => content,
                 Err(err) => {
-                    info!("Error opening the file {:?}: {}", key.definition_info.path, err);
+                    info!("Error opening the file {:?}: {}", key.file_url, err);
                     continue;
                 }
             };
             search_results.push(SymbolsSearchResultStruct {
                 symbol_declaration: key.clone(),
                 content: content,
-                sim_to_query: dist,
+                sim_to_query: dist.clone()
             });
         }
         Ok(search_results)
     }
 
-    pub async fn search_usages(
+    pub fn search_by_content(
         &self,
         query: &str,
-        top_n: usize,
+        request_symbol_type: RequestSymbolType,
         exception_doc: Option<DocumentInfo>,
         language: Option<LanguageId>
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
-        let query_str = query.to_string();
-        let found_keys = make_a_query(&self.usages_search_index, query_str.as_str(), exception_doc);
-
-        let filtered_found_keys = found_keys
-            .par_iter()
-            .filter_map(|k| self.usages.get(k))
-            .flatten()
-            .filter(|k|
-                !k.meta_path().is_empty() && k.get_declaration_meta_path().is_some()
-            )
-            .collect::<Vec<_>>();
-
-        let mut filtered_search_results: Vec<(SymbolDeclarationStruct, f32)> = filtered_found_keys
-            .par_chunks(current_num_threads())
-            .map(|keys| {
-                keys.iter().filter_map(|&key| {
-                    if let Some(decl) = self.declarations.get(&key.get_declaration_meta_path().unwrap_or_default()) {
-                        let dist = jaro_winkler(query, &key.meta_path()) as f32;
-                        if language.map(|x| decl.language == x).unwrap_or(true) {
-                            return Some((decl.clone(), dist));
-                        }
-                    }
-                    None
-                }).collect::<Vec<_>>()
+        let search_results = self.path_by_symbols
+            .iter()
+            .filter(|(path, symbols)| {
+                let file_path = match path.to_file_path() {
+                    Ok(fp) => fp,
+                    Err(_) => return false,
+                };
+                let language_id = match get_language_id_by_filename(&file_path) {
+                    Some(lid) => lid,
+                    None => return false,
+                };
+                let correct_language = language.map_or(true, |l| l == language_id);
+                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.uri == **path);
+                correct_doc && correct_language
             })
-            .flatten().collect();
-        filtered_search_results.sort_by(|(_, dist_1), (_, dist_2)|
-            dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
-        );
-
-        let mut search_results: Vec<SymbolsSearchResultStruct> = vec![];
-        for (key, dist) in filtered_search_results
-            .into_iter()
-            .rev()
-            .take(top_n) {
-            let content = match key.get_content().await {
-                Ok(content) => content,
-                Err(err) => {
-                    info!("Error opening the file {:?}: {}", key.definition_info.path, err);
-                    continue;
+            .collect::<Vec<_>>()
+            .par_iter()
+            .filter_map(|(path, symbols)| {
+                let mut found_symbols = vec![];
+                let file_path = match path.to_file_path() {
+                    Ok(path) => path,
+                    Err(_) => return None
+                };
+                let file_content = match std::fs::read_to_string(&file_path) {
+                    Ok(content) => content,
+                    Err(err) => {
+                        info!("Error opening the file {:?}: {}", &file_path, err);
+                        return None;
+                    }
+                };
+                let text_rope = Rope::from_str(file_content.as_str());
+                for symbol in symbols.iter() {
+                    let symbol_content = text_rope
+                        .slice(text_rope.line_to_char(symbol.full_range().start_point.row)..
+                            text_rope.line_to_char(symbol.full_range().end_point.row))
+                        .to_string();
+                    match symbol_content.find(query) {
+                        Some(_) => found_symbols.push(symbol.clone()),
+                        None => { continue }
+                    }
                 }
-            };
-            search_results.push(SymbolsSearchResultStruct {
-                symbol_declaration: key.clone(),
-                content: content,
-                sim_to_query: dist,
-            });
-        }
+                Some(found_symbols)
+            })
+            .flatten()
+            .filter(|s| match request_symbol_type {
+                RequestSymbolType::Declaration => s.is_declaration(),
+                RequestSymbolType::Usage =>!s.is_declaration(),
+                RequestSymbolType::All => true,
+            })
+            .filter_map(|s| {
+                let info_struct = s.symbol_info_struct();
+                let content = info_struct.get_content_blocked().ok()?;
+                Some(SymbolsSearchResultStruct {
+                    symbol_declaration: info_struct,
+                    content: content,
+                    sim_to_query: -1.0
+                })
+            })
+           .collect::<Vec<_>>();
+
         Ok(search_results)
     }
 
-    pub fn get_symbols_by_file_path(&self, doc: &DocumentInfo) -> Result<Vec<SymbolDeclarationStruct>, String> {
-        let path = doc.get_path();
-        let mut result: Vec<SymbolDeclarationStruct> = vec![];
-        if let Some(meta_names) = self.declarations_search_index.get(&path) {
-            let mut stream = meta_names.stream();
-            while let Some(name_vec) = stream.next() {
-                let name = match String::from_utf8(name_vec.to_vec()) {
-                    Ok(name) => name,
-                    Err(_) => {
-                        continue;
-                    }
-                };
-                match self.declarations.get(&name) {
-                    None => {
-                        continue;
-                    }
-                    Some(s) => result.push(s.clone())
-                }
-            }
-            return Ok(result);
-        }
-        return Err(format!("File {} is not found in the AST index", path.display()));
+    pub fn search_related_declarations(&self, guid: &str) -> Result<Vec<SymbolsSearchResultStruct>, String> {
+        unimplemented!()
     }
 
-    pub fn get_indexed_symbol_paths(&self) -> Vec<String> {
-        self.declarations.iter().map(|(path, _)| path.clone()).collect()
+    pub fn search_usages_by_declarations(
+        &self,
+        declaration_guid: &str,
+        exception_doc: Option<DocumentInfo>
+    ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
+        unimplemented!()
     }
 
-    pub fn get_indexed_references(&self) -> Vec<String> {
-        self.usages.iter().map(|(path, _)| path.clone()).collect()
+    pub fn file_markup(
+        &self,
+        doc: &DocumentInfo
+    ) -> Result<Vec<FileASTMarkup>, String> {
+        unimplemented!()
     }
 
-    pub fn get_indexed_file_paths(&self) -> Vec<PathBuf> {
-        self.usages_search_index.iter().map(|(path, _)| path.clone()).collect()
+    pub fn get_by_file_path(
+        &self,
+        request_symbol_type: RequestSymbolType,
+        doc: &DocumentInfo
+    ) -> Result<Vec<SymbolInformation>, String> {
+        let symbols = self.path_by_symbols
+            .get(&doc.uri)
+            .map(|symbols| {
+                symbols
+                    .iter()
+                    .filter(|s| match request_symbol_type {
+                        RequestSymbolType::Declaration => s.is_declaration(),
+                        RequestSymbolType::Usage => !s.is_declaration(),
+                        RequestSymbolType::All => true,
+                    })
+                    .map(|s| s.symbol_info_struct())
+                    .collect()
+            })
+            .unwrap_or_default();
+        Ok(symbols)
+    }
+
+    pub fn get_file_paths(&self) -> Vec<Url> {
+        self.symbols_search_index.iter().map(|(path, _)| path.clone()).collect()
+    }
+
+    pub fn get_all_symbols(
+        &self,
+        request_symbol_type: RequestSymbolType,
+    ) -> Vec<SymbolInformation> {
+        self.symbols_by_guid
+            .iter()
+            .filter(|(guid, s)| match request_symbol_type {
+                RequestSymbolType::Declaration => s.is_declaration(),
+                RequestSymbolType::Usage => !s.is_declaration(),
+                RequestSymbolType::All => true,
+            })
+            .map(|(guid, s)| s.symbol_info_struct())
+            .collect()
     }
 }
 
-fn link_declarations_to_usages(
-    declarations: &HashMap<String, SymbolDeclarationStruct>,
-    usages: &mut Vec<Box<dyn UsageSymbolInfo>>,
-) {
-    fn within_range(
-        decl_range: &Range,
-        usage_range: &Range,
-    ) -> bool {
-        decl_range.start_point.row <= usage_range.start_point.row && decl_range.end_point.row >= usage_range.end_point.row
-    }
-
-    for usage in usages.iter_mut() {
-        let mut closest_declaration: Option<String> = None;
-        let mut closest_declaration_rows_count: Option<usize> = None;
-        let range = usage.get_range();
-        for (meta_path, declaration) in declarations.iter() {
-            if within_range(&declaration.definition_info.range, &range) {
-                let distance = max(
-                    declaration.definition_info.range.end_point.row - declaration.definition_info.range.start_point.row,
-                    0,
-                );
-                if closest_declaration.is_none() || closest_declaration_rows_count.unwrap_or(distance + 1) < distance {
-                    closest_declaration = Some(meta_path.clone());
-                    closest_declaration_rows_count = Some(distance);
-                }
-            }
-        }
-        match closest_declaration {
-            Some(closest_declaration) => {
-                usage.set_definition_meta_path(closest_declaration);
-            }
-            None => {
-                debug!("usage {:?} not found in the AST", usage.meta_path());
-            }
-        }
-    }
-}
 

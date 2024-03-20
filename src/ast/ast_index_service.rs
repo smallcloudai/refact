@@ -10,6 +10,7 @@ use tokio::task::JoinHandle;
 use tracing::info;
 use rayon::prelude::*;
 use crate::ast::ast_index::AstIndex;
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstance;
 use crate::ast::treesitter::structs::{SymbolDeclarationStruct, UsageSymbolInfo};
 use crate::files_in_workspace::DocumentInfo;
 
@@ -96,18 +97,17 @@ async fn ast_indexer_thread(
             continue;
         }
 
-
         let ast_index = ast_index.clone();
-        let declarations_and_usages: Vec<Result<(HashMap<String, SymbolDeclarationStruct>, Vec<Box<dyn UsageSymbolInfo>>), String>>
-            = list_of_path.par_iter().map(move |document| {
-            AstIndex::get_declarations_and_usages(&document)
-        }).collect();
+        let all_symbols: Vec<Result<Vec<Arc<dyn AstSymbolInstance>>, String>> = list_of_path
+            .par_iter()
+            .map(move |document| AstIndex::parse(&document))
+            .collect();
 
         let mut ast_index = ast_index.lock().await;
-        zip(list_of_path, declarations_and_usages).for_each(|(doc, res)| {
+        zip(list_of_path, all_symbols).for_each(|(doc, res)| {
             match res {
-                Ok((declaration, usages)) => {
-                    match ast_index.add_or_update_declarations_and_usages(&doc, declaration, usages) {
+                Ok((symbols)) => {
+                    match ast_index.add_or_update_symbols_index(&doc, &symbols) {
                         Ok(_) => {}
                         Err(e) => { info!("Error adding/updating records in AST index: {}", e);}
                     }
@@ -118,7 +118,7 @@ async fn ast_indexer_thread(
     }
 }
 
-const COOLDOWN_SECS: u64 = 5;
+const COOLDOWN_SECS: u64 = 2;
 
 impl AstIndexService {
     pub fn init(

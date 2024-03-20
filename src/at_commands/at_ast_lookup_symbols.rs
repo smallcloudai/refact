@@ -29,19 +29,13 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
     // info!("results2message {:?}", result);
     let mut symbols = vec![];
     for res in &result.search_results {
-        let file_path: String = res.symbol_declaration.meta_path
-            .split("::")
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .first()
-            .cloned()
-            .unwrap_or("".to_string());
+        let file_path: String = res.symbol_declaration.get_path_str();
         let content = res.symbol_declaration.get_content().await.unwrap_or("".to_string());
         symbols.push(ContextFile {
             file_name: file_path,
             file_content: content,
-            line1: res.symbol_declaration.definition_info.range.start_point.row + 1,
-            line2: res.symbol_declaration.definition_info.range.end_point.row + 1,
+            line1: res.symbol_declaration.full_range.start_point.row + 1,
+            line2: res.symbol_declaration.full_range.end_point.row + 1,
             usefulness: res.sim_to_query,
         });
     }

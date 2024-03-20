@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use tracing::error;
 use tree_sitter::{Node, Query, QueryCapture, Tree};
+use url::Url;
 use crate::ast::comments_wrapper::get_language_id_by_filename;
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstance;
 
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::utils::{get_call, get_static, get_variable};
@@ -27,6 +30,7 @@ pub struct ParserError {
     pub message: String,
 }
 
+// legacy
 pub trait LanguageParser: Send {
     fn get_parser(&mut self) -> &mut tree_sitter::Parser;
     fn get_parser_query(&self) -> &String;
@@ -80,7 +84,7 @@ pub trait LanguageParser: Send {
                                            name: class_name.clone(),
                                            definition_info: SymbolInfo { path: path.clone(), range },
                                            children: vec![],
-                                           symbol_type: SymbolType::Class,
+                                           symbol_type: SymbolType::StructDeclaration,
                                            meta_path: key,
                                            language: LanguageId::from(capture.node.language()),
                                            extra_declarations: self.get_extra_declarations_for_struct(class_name, &tree, code, &path),
@@ -102,7 +106,7 @@ pub trait LanguageParser: Send {
                                                name: value.clone(),
                                                definition_info: SymbolInfo { path: path.clone(), range },
                                                children: vec![],
-                                               symbol_type: SymbolType::Enum,
+                                               symbol_type: SymbolType::StructDeclaration,
                                                meta_path: key,
                                                language: LanguageId::from(capture.node.language()),
                                                extra_declarations: vec![],
@@ -124,7 +128,7 @@ pub trait LanguageParser: Send {
                                            name,
                                            definition_info: SymbolInfo { path: path.clone(), range },
                                            children: vec![],
-                                           symbol_type: SymbolType::Function,
+                                           symbol_type: SymbolType::FunctionDeclaration,
                                            meta_path: key,
                                            language: LanguageId::from(capture.node.language()),
                                            extra_declarations: vec![],
@@ -144,7 +148,7 @@ pub trait LanguageParser: Send {
                                            name,
                                            definition_info: SymbolInfo { path: path.clone(), range },
                                            children: vec![],
-                                           symbol_type: SymbolType::GlobalVar,
+                                           symbol_type: SymbolType::VariableDefinition,
                                            meta_path: key,
                                            language: LanguageId::from(capture.node.language()),
                                            extra_declarations: vec![],
@@ -192,6 +196,11 @@ pub trait LanguageParser: Send {
     }
 }
 
+// rename it later
+pub trait NewLanguageParser: Send {
+    fn parse(&mut self, code: &str, path: &Url) -> Vec<Arc<dyn AstSymbolInstance>>;
+}
+
 fn internal_error<E: Display>(err: E) -> ParserError {
     let err_msg = err.to_string();
     error!(err_msg);
@@ -236,11 +245,33 @@ fn get_parser(language_id: LanguageId) -> Result<Box<dyn LanguageParser + 'stati
     }
 }
 
+fn get_new_parser(language_id: LanguageId) -> Result<Box<dyn NewLanguageParser + 'static>, ParserError> {
+    match language_id {
+        LanguageId::Rust => {
+            let parser = rust::RustParser::new()?;
+            Ok(Box::new(parser))
+        }
+        other => Err(ParserError {
+            message: "Unsupported language id: ".to_string() + &other.to_string()
+        }),
+    }
+}
+
 pub fn get_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn LanguageParser + 'static>, ParserError> {
     let suffix = filename.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
     let maybe_language_id = get_language_id_by_filename(filename);
     match maybe_language_id {
         Some(language_id) => get_parser(language_id),
+        None => Err(ParserError { message: format!("Unsupported filename suffix: {suffix}") }),
+    }
+}
+
+
+pub fn get_new_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn NewLanguageParser + 'static>, ParserError> {
+    let suffix = filename.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let maybe_language_id = get_language_id_by_filename(filename);
+    match maybe_language_id {
+        Some(language_id) => get_new_parser(language_id),
         None => Err(ParserError { message: format!("Unsupported filename suffix: {suffix}") }),
     }
 }

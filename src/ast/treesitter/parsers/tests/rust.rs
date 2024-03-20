@@ -3,6 +3,7 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
     use url::Url;
+    use crate::ast::treesitter::parsers::NewLanguageParser;
 
     use crate::ast::treesitter::parsers::rust::RustParser;
     use crate::ast::treesitter::parsers::tests::test_query_function;

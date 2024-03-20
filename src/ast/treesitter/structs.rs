@@ -166,11 +166,15 @@ impl UsageSymbolInfo for StaticInfo {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub enum SymbolType {
-    GlobalVar,
-    Function,
-    Class,
-    Enum,
-    Method,
+    StructDeclaration,
+    TypeAlias,
+    ClassFieldDeclaration,
+    ImportDeclaration,
+    VariableDefinition,
+    FunctionDeclaration,
+    CommentDefinition,
+    FunctionCall,
+    VariableUsage,
     Unknown,
 }
 
@@ -179,10 +183,15 @@ impl FromStr for SymbolType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         return Ok(match s {
-            "method" => SymbolType::Method,
-            "class" => SymbolType::Class,
-            "global_var" => SymbolType::GlobalVar,
-            "function" => SymbolType::Function,
+            "struct_declaration" => SymbolType::StructDeclaration,
+            "type_alias" => SymbolType::TypeAlias,
+            "class_field_declaration" => SymbolType::ClassFieldDeclaration,
+            "import_declaration" => SymbolType::ImportDeclaration,
+            "variable_definition" => SymbolType::VariableDefinition,
+            "function_declaration" => SymbolType::FunctionDeclaration,
+            "comment_definition" => SymbolType::CommentDefinition,
+            "function_call" => SymbolType::FunctionCall,
+            "variable_usage" => SymbolType::VariableUsage,
             _ => SymbolType::Unknown
         });
     }

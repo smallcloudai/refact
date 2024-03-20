@@ -10,6 +10,7 @@ use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_params::AtParamSymbolReferencePathQuery;
 use crate::call_validation::{ChatMessage, ContextFile};
 use tracing::info;
+use crate::ast::ast_index::RequestSymbolType;
 
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -24,19 +25,13 @@ async fn results2message(result: &AstQuerySearchResult) -> ChatMessage {
     // info!("results2message {:?}", result);
     let mut symbols = vec![];
     for res in &result.search_results {
-        let file_path: String = res.symbol_declaration.meta_path
-            .split("::")
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .first()
-            .cloned()
-            .unwrap_or("".to_string());
+        let file_path: String = res.symbol_declaration.get_path_str();
         let content = res.symbol_declaration.get_content().await.unwrap_or("".to_string());
         symbols.push(ContextFile {
             file_name: file_path,
             file_content: content,
-            line1: res.symbol_declaration.definition_info.range.start_point.row + 1,
-            line2: res.symbol_declaration.definition_info.range.end_point.row + 1,
+            line1: res.symbol_declaration.full_range.start_point.row + 1,
+            line2: res.symbol_declaration.full_range.end_point.row + 1,
             usefulness: 50.0 * res.sim_to_query
         });
     }
@@ -83,7 +78,7 @@ impl AtCommand for AtAstReference {
         let binding = context.global_context.read().await;
         let x = match *binding.ast_module.lock().await {
             Some(ref ast) => {
-                match ast.search_references_by_symbol_path(symbol_path.clone(), 5).await {
+                match ast.search_by_name(symbol_path.clone(), RequestSymbolType::Usage).await {
                     Ok(res) => Ok(results2message(&res).await),
                     Err(err) => Err(err)
                 }

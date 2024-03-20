@@ -1,9 +1,12 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use tree_sitter::Point;
+use url::Url;
 
-use crate::ast::treesitter::structs::{PointDef, SymbolDeclarationStruct};
+use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
+use crate::ast::treesitter::structs::PointDef;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UsageSearchResultStruct {
@@ -14,7 +17,7 @@ pub struct UsageSearchResultStruct {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SymbolsSearchResultStruct {
-    pub symbol_declaration: SymbolDeclarationStruct,
+    pub symbol_declaration: SymbolInformation,
     pub content: String,
     pub sim_to_query: f32,
 }
@@ -48,5 +51,21 @@ pub struct AstQuerySearchResult {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileReferencesResult {
     pub file_path: PathBuf,
-    pub symbols: Vec<SymbolDeclarationStruct>
+    pub symbols: Vec<SymbolInformation>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RowMarkup {
+    pub symbols_guid: Vec<String>,  // is sorted parent to child
+    pub is_signature: usize
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FileASTMarkup {
+    pub file_url: Url,
+    pub file_content: String,
+    pub symbols: Vec<SymbolInformation>,
+    pub rows_markup: HashMap<usize, RowMarkup>,
+}
+
+
