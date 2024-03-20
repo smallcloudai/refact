@@ -24,6 +24,8 @@ describe("reducer", () => {
       },
     };
 
-    expect(() => reducer(initialState, action)).not.toThrow();
+    expect(() =>
+      reducer(window.postMessage)(initialState, action),
+    ).not.toThrow();
   });
 });
