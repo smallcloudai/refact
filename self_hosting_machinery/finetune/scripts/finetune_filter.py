@@ -71,7 +71,7 @@ def loss_based_filter(
     def _get_file_loss(model_context, file) -> Tuple[ModelContext, float]:
         file_losses = []
         ds = create_finetune_filter_dataloader(
-            pname=pname,
+            basedir=env.PP_DIR_UNPACKED(pname),
             file=file,
             dataset_options=f"n_ctx={finetune_cfg['model_info']['ctx_size'] + 1},"
                             "quit_on_epoch=1,pack_single=1,pack_complete=0",
