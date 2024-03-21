@@ -52,7 +52,7 @@ def get_ds_len_per_epoch(
         model_name=model_name,
         encoding=encoding,
         num_workers=multiprocessing.cpu_count(),
-        batch_size=int(cfg_builder.cfg['micro_batch_size'] * dist.get_world_size()),
+        batch_size=1,
         ctx_size=cfg_builder.cfg['model_info']['ctx_size'],
         extra_options="quit_on_epoch=1"
     )
