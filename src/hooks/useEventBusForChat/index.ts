@@ -198,10 +198,6 @@ export function reducer(postMessage: typeof window.postMessage) {
       return {
         ...state,
         error,
-        chat: {
-          ...state.chat,
-          model: state.chat.model || default_cap,
-        },
         caps: {
           fetching: false,
           default_cap: default_cap || available_caps[0] || "",
@@ -635,12 +631,12 @@ export const useEventBusForChat = () => {
         type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL,
         payload: {
           id: state.chat.id,
-          model,
+          model: model === state.caps.default_cap ? "" : model,
         },
       };
       dispatch(action);
     },
-    [state.chat.id],
+    [state.chat.id, state.caps.default_cap],
   );
 
   const stopStreaming = useCallback(() => {

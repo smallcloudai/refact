@@ -63,7 +63,7 @@ describe("Chat", () => {
         payload: {
           id: "foo",
           messages: [["user", "hello\n"]],
-          model: "gpt-3.5-turbo",
+          model: "", // not added because it's default
           title: "",
           attach_file: false,
         },
