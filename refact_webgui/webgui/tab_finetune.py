@@ -113,9 +113,11 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
         self.add_api_route("/tab-finetune-filter-log/{pname}", self._tab_finetune_filter_log, methods=["GET"])
         self.add_api_route("/tab-finetune-progress-svg/{run_id}", self._tab_funetune_progress_svg, methods=["GET"])
+        self.add_api_route("/tab-finetune-parameters/{run_id}", self._tab_funetune_parameters, methods=["GET"])
+        self.add_api_route("/tab-finetune-files/{run_id}", self._tab_funetune_files, methods=["GET"])
         # self.add_api_route("/tab-finetune-schedule-save", self._tab_finetune_schedule_save, methods=["POST"])
         # self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
-        # self.add_api_route("/tab-finetune-stop-now", self._tab_finetune_stop_now, methods=["GET"])
+        self.add_api_route("/tab-finetune-stop-now/{run_id}", self._tab_finetune_stop_now, methods=["GET"])
         self.add_api_route("/tab-finetune-remove/{run_id}", self._tab_finetune_remove, methods=["GET"])
         self.add_api_route("/tab-finetune-smart-filter-setup", self._tab_finetune_smart_filter_setup, methods=["POST"])
         self.add_api_route("/tab-finetune-smart-filter-get", self._tab_finetune_smart_filter_get, methods=["GET"])
@@ -281,11 +283,38 @@ class TabFinetuneRouter(APIRouter):
     #         f.write("")
     #     return JSONResponse("OK")
 
-    # async def _tab_finetune_stop_now(self):
-    #     # TODO: add run_id to POST, delete cfg
-    #     with open(env.FLAG_STOP_FINETUNE, "w") as f:
-    #         f.write("")
-    #     return JSONResponse("OK")
+    async def _tab_finetune_stop_now(self, run_id: str):
+        # TODO: add run_id to POST, delete cfg
+        sanitize_run_id(run_id)
+        folder_path = os.path.join(env.DIR_LORAS, run_id)
+        os.makedirs(folder_path, exist_ok=True)
+        log_path = os.path.join(folder_path, 'stop.flag')
+        with open(log_path, "w") as f:
+            pass
+        return JSONResponse("OK")
+
+    async def _tab_funetune_parameters(self, run_id: str):
+        sanitize_run_id(run_id)
+        json_path = os.path.join(env.DIR_LORAS, run_id, "parameters_nondefault.json")
+        if os.path.isfile(json_path):
+            return Response(
+                open(json_path, "r").read(),
+                media_type="text/plain"
+            )
+        else:
+            return Response("Parameters list is empty\n", media_type="text/plain")
+
+
+    async def _tab_funetune_files(self, run_id: str):
+        sanitize_run_id(run_id)
+        json_path = os.path.join(env.DIR_LORAS, run_id, "source_files.json")
+        if os.path.isfile(json_path):
+            return Response(
+                open(json_path, "r").read(),
+                media_type="text/plain"
+            )
+        else:
+            return Response("Source files list is empty\n", media_type="text/plain")
 
     async def _tab_finetune_training_get(self):
         result = {
