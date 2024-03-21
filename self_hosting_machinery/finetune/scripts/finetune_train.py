@@ -128,6 +128,19 @@ def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, A
 
     return run_id, cfg_builder.cfg
 
+
+def convert_to_int(v):
+    print(v, type(v))
+    if isinstance(v, str):
+        if v.endswith('.0'):
+            v = v[:-2]
+        try:
+            return int(v)
+        except ValueError:
+            raise click.BadParameter('Value must be an integer')
+    else:
+        return v
+
 @click.command()
 @click.option('--pname', default='')
 @click.option('--run_id', default='')
@@ -135,26 +148,36 @@ def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, A
 @click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
 @click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
 @click.option('--lr', default=finetune_train_defaults['lr'])
-@click.option('--batch_size', default=finetune_train_defaults['batch_size'])
-@click.option('--warmup_num_steps', default=finetune_train_defaults['warmup_num_steps'])
+@click.option('--batch_size', default=finetune_train_defaults['batch_size'], type=convert_to_int)
+@click.option('--warmup_num_steps', default=finetune_train_defaults['warmup_num_steps'], type=convert_to_int)
 @click.option('--weight_decay', default=finetune_train_defaults['weight_decay'])
 # @click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
-@click.option('--train_steps', default=finetune_train_defaults['train_steps'])
-@click.option('--lr_decay_steps', default=finetune_train_defaults['lr_decay_steps'])
-@click.option('--lora_r', default=finetune_train_defaults['lora_r'])
-@click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'])
+@click.option('--train_steps', default=finetune_train_defaults['train_steps'], type=convert_to_int)
+@click.option('--lr_decay_steps', default=finetune_train_defaults['lr_decay_steps'], type=convert_to_int)
+@click.option('--lora_r', default=finetune_train_defaults['lora_r'], type=convert_to_int)
+@click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'], type=convert_to_int)
 @click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
 @click.option('--model_name', default=default_finetune_model)
 def gpu_filter_and_build_config(pname, run_id, **kwargs) -> Dict[str, Any]:
     assert run_id, "Please specify --run-id"
     assert pname, "Please specify --pname"
     traces.log("locking \"%s\" for filtering" % pname)
-    with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+    if dist.get_rank() == 0:
+        lock = filelock.FileLock(env.PP_PROJECT_LOCK(pname))
+    else:
+        lock = None
+    if lock:
+        lock.acquire()
+    dist.barrier()
+    try:
         traces.log("locked \"%s\" successfully" % pname)
         finetune_filter.finetune_gpu_filter(pname)
         traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
         _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
         _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
+    finally:
+        if lock:
+            lock.release()
     dist.barrier()
     return _build_finetune_config_by_heuristics(pname, run_id, **kwargs)
 
@@ -366,14 +389,5 @@ if __name__ == "__main__":
     index_of_run_id = sys.argv.index("--run_id")
     run_id = sys.argv[index_of_run_id + 1]
     traces.configure(task_dir="loras", task_name=run_id, work_dir=env.PERMDIR)
-    if "RANK" not in os.environ:
-        os.environ["WORLD_SIZE"] = "1"
-        os.environ["LOCAL_RANK"] = os.environ["RANK"] = "0"
-        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES", "")
-        cuda_visible_devices_hash = hash(cuda_visible_devices)
-        port = 20000 + cuda_visible_devices_hash % 1000     # this just makes it unlikely for ports to collide, all we need
-        dist.init_process_group(backend='nccl', init_method="tcp://localhost:%d" % port, world_size=1, rank=0)
-    else:
-        dist.init_process_group(backend='nccl', init_method="env://")
-        th.cuda.set_device(dist.get_rank())
+    dist.init_process_group(backend='nccl', init_method='env://')
     main()
