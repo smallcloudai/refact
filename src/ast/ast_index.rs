@@ -14,9 +14,10 @@ use crate::ast::comments_wrapper::get_language_id_by_filename;
 
 use crate::ast::fst_extra_automation::Substring;
 use crate::ast::structs::{FileASTMarkup, RowMarkup, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, SymbolInformation};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, FunctionCall, SymbolInformation};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{get_new_parser_by_filename};
+use crate::ast::treesitter::structs::SymbolType;
 use crate::files_in_workspace::DocumentInfo;
 
 #[derive(Debug)]
@@ -423,6 +424,36 @@ impl AstIndex {
             .map(|(guid, s)| s.symbol_info_struct())
             .collect()
     }
+
+
+    // fn merge_usages_to_declarations(&mut self) {
+    //     for usage_symbol in self.symbols_by_guid
+    //         .iter()
+    //         .filter(|(guid, s)| !s.is_declaration())
+    //         .map(|(guid, s)| s.clone())
+    //         .collect::<Vec<_>>() {
+    //
+    //         match usage_symbol.symbol_type() {
+    //             SymbolType::FunctionCall => {
+    //                 let function_call_symbol = match usage_symbol
+    //                     .as_any()
+    //                     .downcast_ref::<FunctionCall>() {
+    //                     Some(obj) => { obj }
+    //                     None => continue,
+    //                 };
+    //                 function_call_symbol.
+    //             }
+    //             SymbolType::VariableUsage => {
+    //
+    //             }
+    //             _ => {}
+    //         }
+    //     }
+    // }
+
+    // fn resolve_types(&mut self) {
+    //
+    // }
 }
 
 

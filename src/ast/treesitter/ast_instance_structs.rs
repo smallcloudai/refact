@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::cmp::min;
 use std::fmt::Debug;
 use std::io;
@@ -197,7 +198,7 @@ impl Default for AstSymbolFields {
 #[async_trait]
 #[typetag::serde]
 #[dyn_partial_eq]
-pub trait AstSymbolInstance: Debug + Send + Sync {
+pub trait AstSymbolInstance: Debug + Send + Sync + Any {
     fn fields(&self) -> &AstSymbolFields;
 
     fn symbol_info_struct(&self) -> SymbolInformation {
