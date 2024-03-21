@@ -115,8 +115,13 @@ impl RustParser {
                 });
             }
             "scoped_type_identifier" => {
-                let namespace = parent.child_by_field_name("path").unwrap();
-                let namespace = code.slice(namespace.byte_range()).to_string();
+                let namespace = {
+                    if let Some(namespace) = parent.child_by_field_name("path") {
+                        code.slice(namespace.byte_range()).to_string()
+                    } else {
+                        "".to_string()
+                    }
+                };
                 let name = parent.child_by_field_name("name").unwrap();
                 let name = code.slice(name.byte_range()).to_string();
                 return Some(TypeDef {
@@ -197,21 +202,23 @@ impl RustParser {
 
         let params_len = parameters_node.child_count();
         let mut function_args = vec![];
-        for idx in (1..params_len - 1).step_by(2) {
+        for idx in 0..params_len - 1 {
             let child = parameters_node.child(idx).unwrap();
-            if child.kind() == "self_parameter" {
-                continue;
+            match child.kind() { 
+                "parameter" => {
+                    let name = child.child_by_field_name("pattern").unwrap();
+                    let mut arg = FunctionArg {
+                        name: code.slice(name.byte_range()).to_string(),
+                        type_: None,
+                    };
+                    if let Some(type_node) = child.child_by_field_name("type") {
+                        let a = RustParser::parse_type(&type_node, code);
+                        arg.type_ = a;
+                    }
+                    function_args.push(arg);
+                },
+                _ => {}
             }
-            let name = child.child_by_field_name("pattern").unwrap();
-            let mut arg = FunctionArg {
-                name: code.slice(name.byte_range()).to_string(),
-                type_: None,
-            };
-            if let Some(type_node) = child.child_by_field_name("type") {
-                let a = RustParser::parse_type(&type_node, code);
-                arg.type_ = a;
-            }
-            function_args.push(arg);
         }
 
         decl.ast_fields.name = code.slice(name_node.byte_range()).to_string();
@@ -284,22 +291,28 @@ impl RustParser {
         if let Some(body_node) = parent.child_by_field_name("body") {
             match body_node.kind() {
                 "field_declaration_list" => {
-                    for idx in (1..body_node.child_count() - 1).step_by(2) {
+                    for idx in 0..body_node.child_count() {
                         let field_declaration_node = body_node.child(idx).unwrap();
-                        let name_node = field_declaration_node.child_by_field_name("name").unwrap();
-                        let type_node = field_declaration_node.child_by_field_name("type").unwrap();
-                        let mut decl_ = ClassFieldDeclaration::default();
-                        decl_.ast_fields.full_range = field_declaration_node.range();
-                        decl_.ast_fields.file_url = path.clone();
-                        decl_.ast_fields.content_hash = str_hash(&code.slice(field_declaration_node.byte_range()).to_string());
-                        decl_.ast_fields.parent_guid = Some(decl.ast_fields.guid.clone());
-                        decl_.ast_fields.guid = RustParser::get_guid();
-                        decl_.ast_fields.name = code.slice(name_node.byte_range()).to_string();
-                        decl_.ast_fields.language = LanguageId::Rust;
-                        if let Some(type_) = RustParser::parse_type(&type_node, code) {
-                            decl_.type_ = type_;
+                        match field_declaration_node.kind() {
+                            "field_declaration" => {
+                                let text = code.slice(field_declaration_node.byte_range()).to_string();
+                                let name_node = field_declaration_node.child_by_field_name("name").unwrap();
+                                let type_node = field_declaration_node.child_by_field_name("type").unwrap();
+                                let mut decl_ = ClassFieldDeclaration::default();
+                                decl_.ast_fields.full_range = field_declaration_node.range();
+                                decl_.ast_fields.file_url = path.clone();
+                                decl_.ast_fields.content_hash = str_hash(&code.slice(field_declaration_node.byte_range()).to_string());
+                                decl_.ast_fields.parent_guid = Some(decl.ast_fields.guid.clone());
+                                decl_.ast_fields.guid = RustParser::get_guid();
+                                decl_.ast_fields.name = code.slice(name_node.byte_range()).to_string();
+                                decl_.ast_fields.language = LanguageId::Rust;
+                                if let Some(type_) = RustParser::parse_type(&type_node, code) {
+                                    decl_.type_ = type_;
+                                }
+                                symbols.push(Arc::new(decl_));
+                            }
+                            &_ => {}
                         }
-                        symbols.push(Arc::new(decl_));
                     }
                 }
                 "declaration_list" => {
@@ -392,8 +405,14 @@ impl RustParser {
                         symbols.extend(self.parse_usages(&value_node, code, path, &decl.ast_fields.guid));
                     }
                     "scoped_identifier" => {
-                        let path = function_node.child_by_field_name("path").unwrap();
-                        decl.ast_fields.namespace = code.slice(path.byte_range()).to_string();
+                        let namespace = {
+                            if let Some(namespace) = parent.child_by_field_name("path") {
+                                code.slice(namespace.byte_range()).to_string()
+                            } else {
+                                "".to_string()
+                            }
+                        };
+                        decl.ast_fields.namespace = namespace;
                         let name = function_node.child_by_field_name("name").unwrap();
                         decl.ast_fields.name = code.slice(name.byte_range()).to_string();
                     }
@@ -443,7 +462,7 @@ impl RustParser {
             }
             dtype
         }
-
+        let text = code.slice(parent.byte_range()).to_string();
         let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = vec![];
         let mut decl = VariableDefinition::default();
         decl.ast_fields.language = LanguageId::Rust;
@@ -464,11 +483,14 @@ impl RustParser {
 
             symbols.extend(self.parse_usages(&value_node, code, path, &decl.ast_fields.guid.clone()));
         }
-        
-        let pattern_node = if parent.kind() == "let_declaration" {
-            parent.child_by_field_name("pattern").unwrap()
-        } else {
-            parent.child_by_field_name("name").unwrap()
+
+        let pattern_node = match parent.kind() {
+            "const_item" | "static_item" => {
+                parent.child_by_field_name("name").unwrap()
+            }
+            _ => {
+                parent.child_by_field_name("pattern").unwrap()
+            }
         };
         let kind = pattern_node.kind();
 
@@ -480,23 +502,24 @@ impl RustParser {
                 let first_child = pattern_node.child(1).unwrap();
                 decl.ast_fields.name = code.slice(first_child.byte_range()).to_string();
 
-                let value_node = parent.child_by_field_name("value").unwrap();
-                let mut is_value_tuple = (value_node.kind() == "tuple_expression"
-                    && value_node.child_count() == pattern_node.child_count());
-                if is_value_tuple {
-                    decl.type_ = parse_type_in_value(&value_node.child(1).unwrap(), code, path);
-                }
-
-                for i in (3..pattern_node.child_count() - 1).step_by(2) {
-                    let child = pattern_node.child(i).unwrap();
-                    let mut decl_ = decl.clone();
-                    decl_.ast_fields.name = code.slice(child.byte_range()).to_string();
-                    decl_.ast_fields.guid = RustParser::get_guid();
+                if let Some(value_node) = parent.child_by_field_name("value") {
+                    let mut is_value_tuple = (value_node.kind() == "tuple_expression"
+                        && value_node.child_count() == pattern_node.child_count());
                     if is_value_tuple {
-                        let val = value_node.child(i).unwrap();
-                        decl_.type_ = parse_type_in_value(&val, code, path, );
+                        decl.type_ = parse_type_in_value(&value_node.child(1).unwrap(), code, path);
                     }
-                    symbols.push(Arc::new(decl_));
+
+                    for i in (3..pattern_node.child_count() - 1).step_by(2) {
+                        let child = pattern_node.child(i).unwrap();
+                        let mut decl_ = decl.clone();
+                        decl_.ast_fields.name = code.slice(child.byte_range()).to_string();
+                        decl_.ast_fields.guid = RustParser::get_guid();
+                        if is_value_tuple {
+                            let val = value_node.child(i).unwrap();
+                            decl_.type_ = parse_type_in_value(&val, code, path);
+                        }
+                        symbols.push(Arc::new(decl_));
+                    }
                 }
             }
             "tuple_struct_pattern" => {
@@ -515,8 +538,9 @@ impl RustParser {
         let text = code.slice(parent.byte_range()).to_string();
         match kind {
             "unary_expression" | "parenthesized_expression" | "return_expression" => {
-                let arg = parent.child(1).unwrap();
-                symbols.extend(self.parse_usages(&arg, code, path, parent_guid));
+                if let Some(arg) = parent.child(1) {
+                    symbols.extend(self.parse_usages(&arg, code, path, parent_guid));
+                }
             }
             "try_expression" | "match_pattern" | "await_expression" => {
                 let arg = parent.child(0).unwrap();
@@ -575,12 +599,18 @@ impl RustParser {
             }
             "scoped_identifier" => {
                 let mut usage = VariableUsage::default();
-                let path_node = parent.child_by_field_name("path").unwrap();
+                let namespace = {
+                    if let Some(namespace) = parent.child_by_field_name("path") {
+                        code.slice(namespace.byte_range()).to_string()
+                    } else {
+                        "".to_string()
+                    }
+                };
                 let name_node = parent.child_by_field_name("name").unwrap();
 
                 usage.ast_fields.name = code.slice(name_node.byte_range()).to_string();
                 usage.ast_fields.language = LanguageId::Rust;
-                usage.ast_fields.namespace = code.slice(path_node.byte_range()).to_string();
+                usage.ast_fields.namespace = namespace;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_url = path.clone();
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
@@ -620,7 +650,7 @@ impl RustParser {
             }
             "match_arm" => {
                 let pattern_node = parent.child_by_field_name("pattern").unwrap();
-                let mut symbols = self.parse_usages(&pattern_node, code, path,parent_guid );
+                let mut symbols = self.parse_usages(&pattern_node, code, path, parent_guid);
                 let value_node = parent.child_by_field_name("value").unwrap();
                 symbols.extend(self.parse_usages(&value_node, code, path, parent_guid));
             }
@@ -754,7 +784,7 @@ impl RustParser {
                 "function_item" | "function_signature_item" => {
                     symbols.extend(self.parse_function_declaration(&child, code, path, parent_guid));
                 }
-                "line_comment" | "block_comment"  => {
+                "line_comment" | "block_comment" => {
                     let mut def = CommentDefinition::default();
                     def.ast_fields.language = LanguageId::Rust;
                     def.ast_fields.full_range = parent.range();
@@ -764,7 +794,7 @@ impl RustParser {
                     def.ast_fields.parent_guid = Some(parent_guid.clone());
                     symbols.push(Arc::new(def));
                 }
-                
+
                 &_ => {
                     let usages = self.parse_usages(&child, code, path, parent_guid);
                     symbols.extend(usages);
@@ -773,7 +803,6 @@ impl RustParser {
         }
         symbols
     }
-
 }
 
 impl NewLanguageParser for RustParser {
