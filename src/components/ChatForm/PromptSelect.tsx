@@ -21,7 +21,13 @@ export const PromptSelect: React.FC<PromptSelectProps> = ({
   return (
     <Flex gap="2" align="center" wrap="wrap">
       <Text size="2">System Prompt:</Text>
-      <Root disabled={disabled} onValueChange={onChange} value={value} size="1">
+      <Root
+        name="system prompt"
+        disabled={disabled}
+        onValueChange={onChange}
+        value={value}
+        size="1"
+      >
         <Trigger title={value} />
         <Content>
           {Object.entries(prompts).map(([key, value]) => {

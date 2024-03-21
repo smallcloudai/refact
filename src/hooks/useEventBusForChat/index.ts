@@ -505,7 +505,7 @@ export const useEventBusForChat = () => {
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [state, dispatch]);
+  }, [dispatch]);
 
   const clearError = useCallback(() => {
     dispatch({
@@ -558,18 +558,33 @@ export const useEventBusForChat = () => {
     ],
   );
 
+  const maybeDefaultPrompt: string | null = useMemo(() => {
+    return "default" in state.system_prompts.prompts
+      ? state.system_prompts.prompts.default.text
+      : null;
+  }, [state.system_prompts.prompts]);
+
   const askQuestion = useCallback(
     (question: string) => {
       const maybeMessagesWithSystemPrompt: ChatMessages =
-        state.selected_system_prompt && state.chat.messages.length === 0
+        state.selected_system_prompt &&
+        state.selected_system_prompt !== maybeDefaultPrompt &&
+        state.chat.messages.length === 0
           ? [["system", state.selected_system_prompt]]
           : state.chat.messages;
+
       const messages = maybeMessagesWithSystemPrompt.concat([
         ["user", question],
       ]);
+
       sendMessages(messages);
     },
-    [sendMessages, state.chat.messages, state.selected_system_prompt],
+    [
+      sendMessages,
+      state.chat.messages,
+      state.selected_system_prompt,
+      maybeDefaultPrompt,
+    ],
   );
 
   const requestCaps = useCallback(() => {

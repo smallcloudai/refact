@@ -1,11 +1,13 @@
-import { expect, vi, describe, it, afterEach, beforeEach } from "vitest";
+import { expect, vi, describe, it, afterEach, beforeEach, test } from "vitest";
 import {
   render,
   waitFor,
   postMessage,
   setUpCapsForChat,
   stubResizeObserver,
+  setUpSystemPromptsForChat,
   cleanup,
+  // screen,
 } from "../utils/test-utils";
 import { Chat } from "./Chat";
 import {
@@ -16,7 +18,11 @@ import {
   ChatErrorStreaming,
   ChatReceiveCapsError,
 } from "../events";
-import { MARS_ROVER_CHAT, STUB_CAPS_RESPONSE } from "../__fixtures__";
+import {
+  MARS_ROVER_CHAT,
+  STUB_CAPS_RESPONSE,
+  SYSTEM_PROMPTS,
+} from "../__fixtures__";
 
 describe("Chat", () => {
   beforeEach(() => {
@@ -44,6 +50,7 @@ describe("Chat", () => {
     );
 
     setUpCapsForChat("foo");
+    setUpSystemPromptsForChat("foo");
 
     const select = await app.findByTitle("chat model");
 
@@ -187,8 +194,9 @@ describe("Chat", () => {
 
     setUpCapsForChat("foo");
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    await waitFor(() => expect(app.queryByTitle("chat model")).not.toBeNull());
+    await waitFor(() => expect(app.queryByTitle("chat model")).not.toBeNull(), {
+      timeout: 1000,
+    });
     await waitFor(() =>
       expect(
         app.queryByText(STUB_CAPS_RESPONSE.code_chat_default_model),
@@ -319,5 +327,63 @@ describe("Chat", () => {
     postMessage(chatError);
 
     await waitFor(() => expect(app.queryByText(/whoops/)).not.toBeNull());
+  });
+
+  test("chat with different system prompt", async () => {
+    vi.mock("uuid", () => ({ v4: () => "foo" }));
+
+    // Missing props in jsdom
+    // window.PointerEvent = class PointerEvent extends Event {};
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.hasPointerCapture = vi.fn();
+    window.HTMLElement.prototype.releasePointerCapture = vi.fn();
+
+    const postMessageSpy = vi.spyOn(window, "postMessage");
+    const windowSpy = vi.fn();
+    window.addEventListener("message", windowSpy);
+
+    const { user, ...app } = render(<Chat />);
+
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      { type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS, payload: { id: "foo" } },
+      "*",
+    );
+
+    setUpCapsForChat("foo");
+    setUpSystemPromptsForChat("foo");
+
+    const btn = await waitFor(
+      () => app.getByTitle(SYSTEM_PROMPTS.default.text),
+      { timeout: 1000 },
+    );
+
+    await user.click(btn);
+
+    await user.click(app.getByText(/insert_jokes/i));
+
+    const textarea = app.getByTestId("chat-form-textarea");
+
+    expect(textarea).not.toBeNull();
+
+    await user.type(textarea, "hello");
+
+    await user.keyboard("{Enter}");
+
+    expect(postMessageSpy).toHaveBeenLastCalledWith(
+      {
+        type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
+        payload: {
+          id: "foo",
+          title: "",
+          model: "",
+          attach_file: false,
+          messages: [
+            ["system", SYSTEM_PROMPTS.insert_jokes.text],
+            ["user", "hello\n"],
+          ],
+        },
+      },
+      "*",
+    );
   });
 });

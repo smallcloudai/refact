@@ -13,7 +13,7 @@ export const SYSTEM_PROMPTS: SystemPrompts = {
     description: "User-defined: write funny comments",
     text: "You are a programming assistant. Use backquotes for code blocks, but insert into comments inside code blocks funny remarks, a joke inspired by the code or play on words. For example ```\n// Hocus, pocus\ngetTheFocus();\n```.",
   },
-};
+} as const;
 
 export const CUSTOM_PROMPTS_RESPONSE: CustomPromptsResponse = {
   system_prompts: SYSTEM_PROMPTS,

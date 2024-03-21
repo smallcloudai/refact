@@ -4,8 +4,8 @@ import "@testing-library/jest-dom/vitest";
 import { render, RenderOptions } from "@testing-library/react";
 import userEvent, { UserEvent } from "@testing-library/user-event";
 import { Theme } from "@radix-ui/themes";
-import { EVENT_NAMES_TO_CHAT } from "../events";
-import { STUB_CAPS_RESPONSE } from "../__fixtures__";
+import { EVENT_NAMES_TO_CHAT, ReceivePrompts } from "../events";
+import { STUB_CAPS_RESPONSE, SYSTEM_PROMPTS } from "../__fixtures__";
 
 const customRender = (
   ui: ReactElement,
@@ -41,6 +41,17 @@ export function setUpCapsForChat(chatId = "") {
       caps: STUB_CAPS_RESPONSE,
     },
   });
+}
+
+export function setUpSystemPromptsForChat(chatId = "") {
+  const systemPromptsMessage: ReceivePrompts = {
+    type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS,
+    payload: {
+      id: chatId,
+      prompts: SYSTEM_PROMPTS,
+    },
+  };
+  postMessage(systemPromptsMessage);
 }
 
 export function stubResizeObserver() {
