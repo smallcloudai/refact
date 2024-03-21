@@ -75,7 +75,7 @@
       <img src="/tab-finetune-progress-svg/none" class="fine-gfx" alt="">
     </div>
     
-    <div class="pane finetune-pane-stats">
+    <div class="pane finetune-pane-stats d-none">
       <div class="start-finetune-stats callout">
         <div class="ftune-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
           <div class="ftune-bar bg-success" style="width: 0%"></div>
@@ -95,6 +95,14 @@
           <button class="nav-link" id="checkpoints-tab" data-bs-toggle="tab" data-bs-target="#checkpoints"
             type="button" role="tab" aria-controls="checkpoints" aria-selected="false">Checkpoints</button>
         </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="parameters-tab" data-bs-toggle="tab" data-bs-target="#parameters"
+            type="button" role="tab" aria-controls="parameters" aria-selected="false">Parameters</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="files-tab" data-bs-toggle="tab" data-bs-target="#files"
+            type="button" role="tab" aria-controls="files" aria-selected="false">Files</button>
+        </li>
       </ul>
 
       <div class="tab-content mt-2" id="myTabContent">
@@ -102,11 +110,19 @@
           <pre class="log-container tab-upload-finetune-logs">Select run to view logs.
           </pre>
           <a target="_blank" class="btn mt-2 btn-secondary log-link d-none" href="">View Log</a>
-        </div>
+        </div>       
         <div class="tab-pane fade" id="checkpoints" role="tabpanel" aria-labelledby="checkpoints-tab">
           <table class="table table-sm table-hover">
             <tbody class="table-checkpoints"></tbody>
           </table>
+        </div>
+        <div class="tab-pane fade show" id="parameters" role="tabpanel" aria-labelledby="parameters-tab">
+          <pre class="params-container tab-upload-finetune-parameters">Select run to view parameters.
+          </pre>
+        </div>   
+        <div class="tab-pane fade show" id="files" role="tabpanel" aria-labelledby="files-tab">
+          <pre class="files-container tab-upload-finetune-files">Select run to view files.
+          </pre>
         </div>
       </div>
     </div>

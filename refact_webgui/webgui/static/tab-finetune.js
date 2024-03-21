@@ -5,6 +5,8 @@ import {get_spinner} from "./utils/utils.js";
 
 let logs_streamer_run_id = "";
 let gfx_showing_run_id = "";
+let files_showing_run_id = "";
+let parameters_showing_run_id = "";
 
 let finetune_state,
     reference_finetune_state,
@@ -113,6 +115,24 @@ const finetune_settings_inputs = [
         "min": "4",
         "max": "1024",
         "info": "Min 4, Max 1024",
+        "hint": "",
+    },
+    { // column 0
+        "name": "filter_loss_threshold",
+        "label": "Filter Loss Threshold",
+        "type": "text",
+        "min": "1",
+        "max": "10",
+        "info": "Min 1, Max 10",
+        "hint": "",
+    },
+    { // column 0
+        "name": "n_ctx",
+        "label": "N Ctx",
+        "type": "text",
+        "min": "1",
+        "max": "10",
+        "info": "Min 1, Max 10",
         "hint": "",
     },
 ]
@@ -269,12 +289,34 @@ function fetch_models(force = false) {
     });
 }
 
-function run_checked(run_id) {
+async function run_checked(run_id) {
     if (gfx_showing_run_id != run_id) {
         gfx_showing_run_id = run_id;
         const timestamp = new Date().getTime();
         const gfx = document.querySelector('.fine-gfx');
         gfx.src = `/tab-finetune-progress-svg/${run_id}?t=${timestamp}`;
+    }
+    if (files_showing_run_id != run_id) {
+        files_showing_run_id = run_id;
+        try {
+            let files_text = await load_text_file(`/tab-finetune-files/${run_id}`);
+            const files_container = document.querySelector('.tab-upload-finetune-files');
+            files_container.innerHTML = files_text;
+        } catch (error) {
+            console.error('Error loading files:', error);
+            general_error(error);
+        }
+    }
+    if (parameters_showing_run_id != run_id) {
+        parameters_showing_run_id = run_id;
+        try {
+            let parameters_text = await load_text_file(`/tab-finetune-parameters/${run_id}`);
+            const parameters_container = document.querySelector('.tab-upload-finetune-parameters');
+            parameters_container.innerHTML = parameters_text;
+        } catch (error) {
+            console.error('Error loading parameters:', error);
+            general_error(error);
+        }
     }
     start_log_stream(run_id);
     render_checkpoints(find_checkpoints_by_run(run_id));
@@ -285,6 +327,20 @@ function run_checked(run_id) {
     }
     if (log_link) {
         log_link.href = `/tab-finetune-log/${run_id}`;
+    }
+}
+
+async function load_text_file(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Failed to load file');
+        }
+        return await response.text();
+    } catch (error) {
+        console.error('Error loading text file:', error);
+        general_error(error);
+        return '';
     }
 }
 
@@ -450,6 +506,12 @@ function render_runs() {
             event.stopPropagation();
             const run_id = this.dataset.run;
             selected_lora = run_id;
+            render_ftune_stats(run_id);
+            const stop_run_button = document.querySelector('.stop-finetune');
+            stop_run_button.addEventListener('click', (event) => {
+                event.stopPropagation();
+                stop_finetune(run_id);
+            });
             document.querySelectorAll('.run-table-rename').forEach((rename_div) => {
                 const div_run_id = rename_div.dataset.run;
                 if (!rename_div.hidden && div_run_id !== run_id) {
@@ -722,7 +784,11 @@ function render_finetune_options(settings_data,defaults = false) {
             item.setAttribute('data-bs-toggle', 'tooltip');
             item.setAttribute('data-bs-placement', 'right');
             item.setAttribute('title', entry["info"]);
-            item.value = settings_data[entry["name"]];
+            if(settings_data[entry["name"]] !== undefined) {
+                item.value = settings_data[entry["name"]];
+            } else {
+                item.value = 0;
+            }
 
             item_group.appendChild(item_label);
             item_group.appendChild(item);
@@ -795,6 +861,7 @@ function change_finetune_model()
 }
 
 function save_finetune_settings() {
+    finetune_settings_error_clear();
     // console.log('save_finetune_settings');
     let low_gpu = false;
     let trainable_embeddings = false;
@@ -811,6 +878,12 @@ function save_finetune_settings() {
 
     const checkboxes = document.querySelectorAll('.gpu-group input[type="checkbox"]:checked');
     const gpus = Array.from(checkboxes).map(checkbox => parseInt(checkbox.value));
+    if(gpus.length === 0) {
+        let finetune_settings_error = document.querySelector('.finetune-settings-error');
+        finetune_settings_error.textContent = 'Please select GPU(s)';
+        finetune_settings_error.classList.remove('d-none');
+        return;
+    }
 
     fetch("/tab-finetune-training-launch", {
         method: "POST",
@@ -834,15 +907,15 @@ function save_finetune_settings() {
             lora_alpha: document.querySelector('#finetune-tab-settings-modal #lora_alpha').value,
             lora_dropout: document.querySelector('#finetune-tab-settings-modal #lora_dropout').value,
             gpus: gpus,
+            // filter_loss_threshold: document.querySelector('#finetune-tab-settings-modal #filter_loss_threshold').value,
+            // n_ctx: document.querySelector('#finetune-tab-settings-modal #n_ctx').value,
         })
     })
     .then(function(response) {
         if(!response.ok) {
             return response.json();
         }
-        const finetune_settings_error = document.querySelector('.finetune-settings-error');
-        finetune_settings_error.textContent = '';
-        finetune_settings_error.classList.add('d-none');
+        finetune_settings_error_clear();
         get_finetune_settings();
         let url_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('finetune-tab-settings-modal'));
         url_modal.hide();
@@ -862,6 +935,12 @@ function save_finetune_settings() {
         finetune_settings_error.innerHTML = error_text;
         finetune_settings_error.classList.remove('d-none');
     });
+}
+
+function finetune_settings_error_clear() {
+    const finetune_settings_error = document.querySelector('.finetune-settings-error');
+    finetune_settings_error.textContent = '';
+    finetune_settings_error.classList.add('d-none');
 }
 
 // function check_heuristics() {
@@ -916,19 +995,19 @@ function revert_to_default(input_id) {
 //     });
 // }
 
-// function stop_filtering() {
-//     fetch("/tab-finetune-stop-now")
-//     .then(function(response) {
-//         return response.json();
-//     })
-//     .then(function(data) {
-//         console.log('stop_filtering');
-//     })
-//    .catch(error => {
-//         console.log('tab-finetune-stop-now',error);
-//         general_error(error);
-//     });
-// }
+function stop_finetune(run_id) {
+    fetch("/tab-finetune-stop-now/" + run_id)
+    .catch(error => {
+         console.log('tab-finetune-stop-now',error);
+         general_error(error);
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('stop finetune ' + run_id);
+    });
+}
 
 // function render_ftf_stats(data) {
 //     const ftf_wrapper = document.querySelector('.ftf-stats');
@@ -969,7 +1048,12 @@ function revert_to_default(input_id) {
 //     error.innerHTML = 'Error:<span class="text-danger"></span>';
 // }
 
-function render_ftune_stats(run) {
+function render_ftune_stats(run_id) {
+    const run = finetune_configs_and_runs.finetune_runs.find((run) => run.run_id === run_id);
+    if(run.status !== 'working') { 
+        reset_ftune_progress();
+        return;
+    }
     const worked_minutes = Number(run.worked_minutes);
     const total_steps = run.total_steps;
     const working_steps = run.worked_steps;
@@ -987,8 +1071,11 @@ function render_ftune_progress(ftune_progress, ftune_eta) {
         const eta_state = document.querySelector('.ftune-eta');
         eta_state.innerHTML = 'ETA: ' + ftune_eta + ' minute(s)';
     }
+    const ftune_stats_pane = document.querySelector('.finetune-pane-stats');
+    ftune_stats_pane.classList.remove('d-none');
     const ftune_stats = document.querySelector('.start-finetune-stats');
     ftune_stats.classList.remove('d-none');
+
 }
 
 function reset_ftune_progress() {
@@ -1000,6 +1087,8 @@ function reset_ftune_progress() {
     eta_state.innerHTML = '';
     const ftune_stats = document.querySelector('.start-finetune-stats');
     ftune_stats.classList.add('d-none');
+    const ftune_stats_pane = document.querySelector('.finetune-pane-stats');
+    ftune_stats_pane.classList.add('d-none');
 }
 
 // function get_filters_settings(defaults = false) {
@@ -1090,7 +1179,7 @@ function finetune_controls_state()
     //     eta_state.innerHTML = '';
     // }
 
-    // let can_stop_filter = prog_name === "prog_filter" && show_stop;
+    // let can_stop_filter = prog_name ===  "prog_filter" && show_stop;
     // if (can_stop_filter) {
     //     finetune_filter_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i> Stop Filtering`;
     //     finetune_filter_button.setAttribute("need_to_stop", true);
@@ -1149,7 +1238,7 @@ function finetune_controls_state()
 
     const runs = finetune_configs_and_runs.finetune_runs.filter(run => run.status === "working");
     if (runs.length > 0) {
-        render_ftune_stats(runs[runs.length - 1]);
+        render_ftune_stats(selected_lora);
     } else {
         reset_ftune_progress();
     }
