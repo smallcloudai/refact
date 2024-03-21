@@ -4,6 +4,8 @@ from refact_data_pipeline import DatasetOpts
 
 from typing import Dict, Union
 
+from refact_data_pipeline.datadef import PipelineNode
+
 
 class SymbolsMiddleSplit:
 
@@ -37,19 +39,18 @@ class SymbolsMiddleSplit:
         return prefix, middle, suffix
 
 
-class FIM:
+class FIM(PipelineNode):
     def __init__(
         self,
         inner_filter,
         dataopts: DatasetOpts,
     ):
+        self.enc = dataopts.encoding
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.n_ctx = dataopts.get("n_ctx", 2048)
         self.fim_probability = dataopts.get("fim_probability", 0.5)
         self.tkr_stochastic_tokens = dataopts.get("tkr_stochastic_tokens", 3)
-        self.enc = dataopts.encoding
-        if hasattr(self.enc, "set_random_seed"):
-            self.enc.set_random_seed(dataopts.get("seed", 42))
         self.special_tokens = [
             self.enc.PREFIX,
             self.enc.SUFFIX,
@@ -57,8 +58,12 @@ class FIM:
             self.enc.EOT,
         ]
         assert len(set(self.special_tokens)) == len(self.special_tokens)
-        self.random = random.Random(dataopts.get("seed", 42))
-        self.splitter = SymbolsMiddleSplit(self.random)
+
+    def set_random_state(self, seed):
+        if hasattr(self.enc, "set_random_seed"):
+            self.enc.set_random_seed(seed)
+        self.random_state = random.Random(seed)
+        self.splitter = SymbolsMiddleSplit(self.random_state)
 
     def __iter__(self):
         stats: Dict[str, Union[int, float]] = {
@@ -73,7 +78,7 @@ class FIM:
                 tokens = self.enc.encode(sample["text"])
             cursor = 0
             while cursor < len(tokens):
-                if self.random.random() > self.fim_probability:
+                if self.random_state.random() > self.fim_probability:
                     # plain text branch
                     plain = tokens[cursor : cursor + self.n_ctx]
                     cursor += len(plain)
@@ -95,8 +100,8 @@ class FIM:
                     }
                 else:
                     # FIM
-                    wiggle_low = (self.n_ctx * 9 // 20) if self.random.randint(0, 2) == 0 else (self.n_ctx * 18 // 20)
-                    wiggle = self.random.randint(wiggle_low, self.n_ctx * 21 // 20)
+                    wiggle_low = (self.n_ctx * 9 // 20) if self.random_state.randint(0, 2) == 0 else (self.n_ctx * 18 // 20)
+                    wiggle = self.random_state.randint(wiggle_low, self.n_ctx * 21 // 20)
                     # n_ctx   *9//20  *18//20  *21//20
                     # 4096 -> 2048    3686     4300
                     # 2048 -> 1024    1843     2150
@@ -125,7 +130,7 @@ class FIM:
                         prefix_toks = self.enc.encode(prefix)
                         suffix_toks = self.enc.encode(suffix)
 
-                    if self.random.random() < 0.5:
+                    if self.random_state.random() < 0.5:
                         tokens_context = [self.enc.PREFIX] + prefix_toks + [self.enc.SUFFIX] + suffix_toks
                         mask_context = [0] + [1] * len(prefix_toks) + [0] + [1] * len(suffix_toks)
                     else:

@@ -5,15 +5,17 @@ from typing import Optional, List
 from kshingle import shingleseqs_list
 
 from refact_data_pipeline import DatasetOpts
+from refact_data_pipeline.datadef import PipelineNode
 from refact_data_pipeline.utils.text_extraction import get_nl_ratio
 
 
-class TheStackFilter:
+class TheStackFilter(PipelineNode):
     def __init__(
             self,
             inner_filter,
             dataopts: DatasetOpts,
     ):
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.dataopts = dataopts
         self.use_comments_filter = bool(dataopts.get("use_comments_filter", 0))

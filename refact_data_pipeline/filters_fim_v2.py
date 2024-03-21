@@ -1,11 +1,11 @@
-import random
 import re
 from typing import Dict, Union, List, Optional
 from typing import Tuple
 
 import numpy as np
-import termcolor
+
 from refact_data_pipeline import DatasetOpts
+from refact_data_pipeline.datadef import PipelineNode
 
 
 def _line_sep_by_line(line: str):
@@ -203,12 +203,14 @@ class EmptyMiddle:
         return prefix, middle, suffix
 
 
-class FIMv2:
+class FIMv2(PipelineNode):
     def __init__(
             self,
             inner_filter,
             dataopts: DatasetOpts,
     ):
+        self.enc = dataopts.encoding
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.n_ctx = dataopts.get("n_ctx", 2048)
         self.fim_probability = dataopts.get("fim_probability", 0.5)
@@ -217,9 +219,6 @@ class FIMv2:
         self.random_trim_context_prob = dataopts.get("random_trim_context_prob", 0.0)
         self.spm_prob = dataopts.get("spm_prob", 0.5)
         self.debug = bool(dataopts.get("debug", 0))
-        self.enc = dataopts.encoding
-        if hasattr(self.enc, "set_random_seed"):
-            self.enc.set_random_seed(dataopts.get("seed", 42))
         self.special_tokens = [
             self.enc.PREFIX,
             self.enc.SUFFIX,
@@ -227,13 +226,17 @@ class FIMv2:
             self.enc.EOT,
         ]
         assert len(set(self.special_tokens)) == len(self.special_tokens)
-        self.random = np.random.RandomState(dataopts.get("seed", 42))
-        self.splitters_probs = [
-            (InsideSingleRow(random=self.random), 0.05),
-            (MiddleToEndSingleRow(random=self.random), 0.5),
-            (MiddleToEndMultipleRows(random=self.random), 0.45),
-        ]
         self.extra_payload_size = int(self.n_ctx * 0.03)
+
+    def set_random_state(self, seed):
+        if hasattr(self.enc, "set_random_seed"):
+            self.enc.set_random_seed(seed)
+        self.random_state = np.random.RandomState(seed)
+        self.splitters_probs = [
+            (InsideSingleRow(random=self.random_state), 0.05),
+            (MiddleToEndSingleRow(random=self.random_state), 0.5),
+            (MiddleToEndMultipleRows(random=self.random_state), 0.45),
+        ]
 
     def __iter__(self):
         stats: Dict[str, Union[int, float]] = {
@@ -244,15 +247,15 @@ class FIMv2:
         }
         for sample in self.inner_filter:
             text = sample["text"]
-            if self.random.random() < self.random_trim_context_prob:
-                text = _random_trim_context(text, self.random)
+            if self.random_state.random() < self.random_trim_context_prob:
+                text = _random_trim_context(text, self.random_state)
             if hasattr(self.enc, 'encode_stochastic'):
                 tokens, _ = self.enc.encode_stochastic(text, [], 0.01 * self.tkr_stochastic_tokens)
             else:
                 tokens = self.enc.encode(text)
             cursor = 0
             while cursor < len(tokens):
-                if self.random.random() > self.fim_probability:
+                if self.random_state.random() > self.fim_probability:
                     output_data, cursor = self._generate_plain_text(tokens, cursor, sample, stats)
                 else:
                     output_data, cursor = self._generate_fim(tokens, cursor, sample, stats)
@@ -303,8 +306,8 @@ class FIMv2:
             stats["fim_lowlines_skip"] += 1
             return None, cursor
 
-        splitter_idx = self.random.choice(list(range(len(self.splitters_probs))),
-                                          p=[p for _, p in self.splitters_probs])
+        splitter_idx = self.random_state.choice(list(range(len(self.splitters_probs))),
+                                                p=[p for _, p in self.splitters_probs])
         splitter = self.splitters_probs[splitter_idx][0]
         try:
             prefix, middle, suffix = splitter(lines=lines, is_cut_file=is_cut_file)
@@ -338,7 +341,7 @@ class FIMv2:
             middle_toks: List[int],
             suffix_toks: List[int],
     ):
-        if self.random.random() < self.spm_prob:
+        if self.random_state.random() < self.spm_prob:
             tokens_context = [self.enc.PREFIX] + prefix_toks + [self.enc.SUFFIX] + suffix_toks
             mask_context = [0] + [1] * len(prefix_toks) + [0] + [1] * len(suffix_toks)
         else:
@@ -381,7 +384,6 @@ class FIMv2CodeLlama(FIMv2):
             "stats": {**sample["stats"], **stats},
         }, cursor
 
-
     def _fim_format(
             self,
             prefix_toks: List[int],
@@ -390,7 +392,7 @@ class FIMv2CodeLlama(FIMv2):
     ):
         assert self.enc.BOS is not None
         # https://github.com/facebookresearch/codellama/blob/cb51c14ec761370ba2e2bc351374a79265d0465e/llama/generation.py#L380
-        if self.random.random() < self.spm_prob:
+        if self.random_state.random() < self.spm_prob:
             tokens = (
                     [self.enc.BOS, self.enc.PREFIX] + prefix_toks
                     + [self.enc.SUFFIX] + suffix_toks
