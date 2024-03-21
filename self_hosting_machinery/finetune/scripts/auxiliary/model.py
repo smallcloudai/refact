@@ -275,10 +275,12 @@ class ModelContext:
             low_gpu_mode: bool
     ):
         force_low_gpu_mem_mode = hasattr(self.model, "force_low_gpu_mem_mode") and self.model.force_low_gpu_mem_mode
+        traces.log(f"force_low_gpu_mem_mode={force_low_gpu_mem_mode}  low_gpu_mode={low_gpu_mode}")
         self.low_gpu_mem_mode = low_gpu_mode or force_low_gpu_mem_mode
         traces.log(f"Setting low_gpu_mem_mode={self.low_gpu_mem_mode} for the model")
 
         if self.low_gpu_mem_mode:
+            # FIXME: no such function anymore
             self.model.gradient_checkpointing_enable()
 
             def make_inputs_require_grad(module, input, output):
