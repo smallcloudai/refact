@@ -61,7 +61,7 @@ pub async fn handle_v1_ast_declarations_cursor_search(
                 Ok(s) => s,
                 Err(e) => { return Err(ScratchError::new(StatusCode::BAD_REQUEST, e.to_string())); }
             };
-            ast.search_declarations_by_cursor(
+            ast.search_usages_of_declarations_by_cursor(
                 &doc, code.as_str(), Point::new(post.row, post.column), post.top_n, false
             ).await
         }

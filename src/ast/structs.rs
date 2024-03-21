@@ -57,13 +57,13 @@ pub struct FileReferencesResult {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RowMarkup {
     pub symbols_guid: Vec<String>,  // is sorted parent to child
-    pub is_signature: usize
+    pub line_content: String,
+    pub is_signature: bool
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileASTMarkup {
     pub file_url: Url,
-    pub file_content: String,
     pub symbols: Vec<SymbolInformation>,
     pub rows_markup: HashMap<usize, RowMarkup>,
 }

@@ -2,16 +2,18 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use fst::{Set, set, Streamer};
+use itertools::Itertools;
 use rayon::prelude::*;
 use ropey::Rope;
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
 use tracing::{info};
+use tree_sitter::Range;
 use url::Url;
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 
 use crate::ast::fst_extra_automation::Substring;
-use crate::ast::structs::{FileASTMarkup, SymbolsSearchResultStruct};
+use crate::ast::structs::{FileASTMarkup, RowMarkup, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, SymbolInformation};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{get_new_parser_by_filename};
@@ -316,11 +318,69 @@ impl AstIndex {
         unimplemented!()
     }
 
-    pub fn file_markup(
+    pub async fn file_markup(
         &self,
         doc: &DocumentInfo
-    ) -> Result<Vec<FileASTMarkup>, String> {
-        unimplemented!()
+    ) -> Result<FileASTMarkup, String> {
+        fn within_range(
+            decl_range: &Range,
+            line_idx: usize,
+        ) -> bool {
+            decl_range.start_point.row <= line_idx
+                && decl_range.end_point.row >= line_idx
+        }
+
+        fn sorted_candidates_within_line(
+            symbols: &Vec<Arc<dyn AstSymbolInstance>>,
+            line_idx: usize,
+        ) -> (Vec<Arc<dyn AstSymbolInstance>>, bool) {
+            let filtered_symbols = symbols
+                .iter()
+                .filter(|s| within_range(&s.full_range(), line_idx))
+                .sorted_by_key(
+                    |s|
+                        s.full_range().end_point.row - s.full_range().start_point.row
+                )
+                .rev()
+                .cloned()
+                .collect::<Vec<_>>();
+            let is_signature = symbols
+                .iter()
+                .map(|s| within_range(&s.declaration_range(), line_idx))
+                .any(|x| x);
+            (filtered_symbols, is_signature)
+        }
+
+        let symbols: Vec<Arc<dyn AstSymbolInstance>> = self.path_by_symbols
+            .get(&doc.uri)
+            .map(|symbols| {
+                symbols
+                    .iter()
+                    .filter(|s| s.is_declaration())
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        let file_content = match doc.read_file().await {
+            Ok(content) => content,
+            Err(e) => return Err(e.to_string())
+        };
+
+        let mut file_ast_markup = FileASTMarkup {
+            file_url: doc.uri.clone(),
+            symbols: symbols.iter().map(|s| s.symbol_info_struct()).collect(),
+            rows_markup: HashMap::new()
+        };
+        for (idx, line) in file_content.lines().enumerate() {
+            let (candidate_symbols, is_signature) = sorted_candidates_within_line(&symbols, idx);
+            file_ast_markup.rows_markup.insert(idx, RowMarkup {
+                symbols_guid: candidate_symbols.iter().map(|s| s.guid().to_string()).collect(),
+                line_content: line.to_string(),
+                is_signature: is_signature
+            });
+        }
+
+        Ok(file_ast_markup)
     }
 
     pub fn get_by_file_path(

@@ -12,7 +12,7 @@ use crate::global_context::GlobalContext;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::AstIndexService;
 use crate::ast::comments_wrapper::get_language_id_by_filename;
-use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, CursorUsagesResult, FileReferencesResult, SymbolsSearchResultStruct, UsageSearchResultStruct};
+use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, CursorUsagesResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct, UsageSearchResultStruct};
 use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::files_in_workspace::DocumentInfo;
 use url::Url;
@@ -121,7 +121,7 @@ impl AstModule {
         }
     }
 
-    pub async fn search_declarations_by_cursor(
+    pub async fn search_usages_of_declarations_by_cursor(
         &mut self,
         doc: &DocumentInfo,
         code: &str,
@@ -138,9 +138,25 @@ impl AstModule {
         code: &str,
         cursor: Point,
         top_n: usize,
-        filter_by_language: bool
+        filter_by_language: bool,
     ) -> Result<AstCursorSearchResult, String> {
         unimplemented!()
+    }
+
+    pub async fn file_markup(
+        &mut self,
+        doc: &DocumentInfo,
+    ) -> Result<FileASTMarkup, String> {
+        let t0 = std::time::Instant::now();
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked = ast_index.lock().await;
+        match ast_index_locked.file_markup(doc).await {
+            Ok(markup) => {
+                info!("ast file_markup time {:.3}s, marked {} lines", t0.elapsed().as_secs_f32(), markup.symbols.len());
+                Ok(markup)
+            }
+            Err(e) => Err(e.to_string())
+        }
     }
 
     pub async fn get_file_symbols(&self, request_symbol_type: RequestSymbolType, doc: &DocumentInfo) -> Result<FileReferencesResult, String> {
