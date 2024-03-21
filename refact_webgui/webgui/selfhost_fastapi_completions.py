@@ -254,7 +254,8 @@ class BaseCompletionsRouter(APIRouter):
 
     @property
     def _caps_version(self) -> int:
-        return self._model_assigner.config_inference_mtime()
+        cfg_active_lora_mtime = int(os.path.getmtime(env.CONFIG_ACTIVE_LORA)) if os.path.isfile(env.CONFIG_ACTIVE_LORA) else 0
+        return max(self._model_assigner.config_inference_mtime(), cfg_active_lora_mtime)
 
     async def _account_from_bearer(self, authorization: str) -> str:
         raise NotImplementedError()
