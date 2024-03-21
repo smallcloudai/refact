@@ -1221,6 +1221,6 @@ background-color: #ffeef0;
     padding: 0 0 0 10px !important;
 }
 
-.finetune-pane-stats {
-    display: none;
+.dropdown-menu li {
+    padding: 0 10px;
 }
