@@ -8,22 +8,29 @@ from code_contrast.format_2023q2 import format, packing
 from code_contrast.format_2023q2.el_msg import MsgElement
 from code_contrast.format_2023q2.element import Format2023q2
 from refact_data_pipeline import DatasetOpts
+from refact_data_pipeline.datadef import PipelineNode
 
 
-class Chat2023Q2:
+class Chat2023Q2(PipelineNode):
     def __init__(
             self,
             inner_filter,
             dataopts: DatasetOpts
     ):
+        self.enc = dataopts.encoding
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.n_ctx = dataopts.get("n_ctx", 2048)
         self.no_format_prob = dataopts.get("chat_no_format_prob", 0.0)
         self.debug = bool(dataopts.get("debug", 0))
         self.tkr_stochastic_tokens = bool(dataopts.get("tkr_stochastic_tokens", 0.0))
-        self.enc = dataopts.encoding
         self.fmt: Format2023q2 = format.format_2023q2_escape(self.enc)
-        self.random = np.random.RandomState(dataopts.get("seed", 42))
+
+    def set_random_state(self, seed):
+        super().set_random_state(seed)
+        if hasattr(self.enc, "set_random_seed"):
+            self.enc.set_random_seed(seed)
+        self.random_state = np.random.RandomState(seed)
 
     def _pack_format(self, plan: List[MsgElement], odm: Dict, stats: Dict):
         try:
@@ -76,11 +83,11 @@ class Chat2023Q2:
         text = ""
         for p in plan:
             if p.msg_role == "SYSTEM":
-                text += f"{self.random.choice(system_dict).format(message=p.msg_text)}\n"
+                text += f"{self.random_state.choice(system_dict).format(message=p.msg_text)}\n"
             elif p.msg_role == "USER":
-                text += f"{self.random.choice(user_dict).format(message=p.msg_text)}\n"
+                text += f"{self.random_state.choice(user_dict).format(message=p.msg_text)}\n"
             elif p.msg_role == "ASSISTANT":
-                text += f"{self.random.choice(assistant_dict).format(message=p.msg_text)}"
+                text += f"{self.random_state.choice(assistant_dict).format(message=p.msg_text)}"
 
         if self.debug:
             print(f'Chat2023Q2:\n{text}\n\n')
@@ -112,7 +119,7 @@ class Chat2023Q2:
                     plan.append(MsgElement("USER", item['input']))
                 plan.append(MsgElement("ASSISTANT", item['output']))
 
-            if self.random.random() > self.no_format_prob:
+            if self.random_state.random() > self.no_format_prob:
                 emit = self._pack_format(plan, odm, stats)
             else:
                 emit = self._pack_plain(plan, odm, stats)

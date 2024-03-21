@@ -1,4 +1,5 @@
 import json
+import random
 from pathlib import Path
 from typing import List, Set, Tuple
 
@@ -85,3 +86,13 @@ class DatasetOpts:
 
     def __repr__(self):
         return json.dumps(self.opts)
+
+
+class PipelineNode:
+    def __init__(self, dataopts: DatasetOpts):
+        self.random_seed, self.random_state = None, None
+        self.set_random_state(dataopts.get("seed", 42))
+
+    def set_random_state(self, seed):
+        self.random_seed = seed
+        self.random_state = random.Random(seed)

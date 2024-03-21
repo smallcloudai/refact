@@ -5,6 +5,7 @@ import torch as th
 import torch.distributed as dist
 
 from refact_data_pipeline import DatasetOpts
+from refact_data_pipeline.pipeline_pieces import PipelineNode
 
 
 def str2dtype(s: str) -> th.dtype:
@@ -120,12 +121,13 @@ def read_and_collate(
     )
 
 
-class BatchIterator:
+class BatchIterator(PipelineNode):
     def __init__(
             self,
             inner_filter: Iterable[Any],
             dataopts: DatasetOpts
     ):
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.dataopts = dataopts
         self.batch_size = dataopts.get("batch_size", 1)
