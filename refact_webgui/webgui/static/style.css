@@ -1050,7 +1050,45 @@ h3 {
     margin-top: 10px;
     margin-left: auto;
 }
+
+
 /* Toolbox Tab */
+
+.dropdown-menu li {
+    padding: 0 10px;
+}
+
+.toolbox-editor {
+    width: 100%;
+    min-height: 500px;
+    margin-bottom: 20px;
+    max-height: 700px;
+    overflow: auto;
+}
+.toolbox-editor pre code {
+    font-family: Menlo, Monaco, Consolas, monospace;
+}
+.toolbox-editor pre {
+    margin: 0;
+}
+
+.toolbox-editor {
+    width: 100%;
+    min-height: 500px;
+    margin-bottom: 20px;
+    max-height: 700px;
+    overflow: auto;
+}
+.toolbox-editor pre code {
+    font-family: Menlo, Monaco, Consolas, monospace;
+}
+.toolbox-editor pre {
+    margin: 0;
+}
+
+
+/* Editor */
+
 .hljs {
     color: #24292e;
     background: #ffffff;
@@ -1193,28 +1231,6 @@ background-color: #ffeef0;
     padding: 0 0 0 10px !important;
 }
 
-.dropdown-menu li {
-    padding: 0 10px;
-}
-
-
-/* toolbox  */
-
-.toolbox-editor {
-    width: 100%;
-    min-height: 500px;
-    margin-bottom: 20px;
-    max-height: 700px;
-    overflow: auto;
-}
-.toolbox-editor pre code {
-    font-family: Menlo, Monaco, Consolas, monospace;
-}
-.toolbox-editor pre {
-    margin: 0;
-}
-
-/* Toolbox Tab */
 .hljs {
     color: #24292e;
     background: #ffffff;
@@ -1329,19 +1345,6 @@ background-color: #ffeef0;
 /* purposely ignored */
 }
 
-.toolbox-editor {
-    width: 100%;
-    min-height: 500px;
-    margin-bottom: 20px;
-    max-height: 700px;
-    overflow: auto;
-}
-.toolbox-editor pre code {
-    font-family: Menlo, Monaco, Consolas, monospace;
-}
-.toolbox-editor pre {
-    margin: 0;
-}
 /* for block of numbers */
 .hljs-ln-numbers {
     -webkit-touch-callout: none;
