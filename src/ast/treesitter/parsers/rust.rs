@@ -757,7 +757,7 @@ impl RustParser {
                     symbols.push(Arc::new(type_alias));
                 }
                 "block" => {
-                    let v = self.parse_block(parent, code, path, parent_guid);
+                    let v = self.parse_block(&child, code, path, parent_guid);
                     symbols.extend(v);
                 }
                 "let_declaration" | "const_item" | "static_item" => {
