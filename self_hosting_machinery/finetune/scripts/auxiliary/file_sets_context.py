@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 import jsonlines
+import numpy as np
+import torch.distributed as dist
 
 from self_hosting_machinery.finetune.utils import traces
 from refact_utils.scripts import env
@@ -21,7 +23,10 @@ class FileSetsContext:
         self.random = random.Random(42)
         self._check_prerequisites()
         self.autoselect_test_files_num = autoselect_test_files_num
-        self.train_files: List[Dict[str, Any]] = list(jsonlines.open(env.PP_TRAIN_UNFILTERED_FILEPATH(pname)))
+        world_size, rank = dist.get_world_size(), dist.get_rank()
+        self.train_files: List[Dict[str, Any]] = list(np.array_split(
+            list(jsonlines.open(env.PP_TRAIN_UNFILTERED_FILEPATH(pname))), world_size
+        )[rank])
         self.test_files: List[Dict[str, Any]] = list(jsonlines.open(env.PP_TEST_UNFILTERED_FILEPATH(pname)))
         try:
             hash_db = list(jsonlines.open(env.PP_LOSS_PER_HASH_DB_FILEPATH(pname)))
@@ -97,7 +102,11 @@ class FileSetsContext:
             with jsonlines.open(filename, "w") as f:
                 for file in files:
                     f.write(file)
-
+        all_files = [None] * dist.get_world_size() if dist.get_rank() == 0 else None
+        dist.gather_object(files, all_files, dst=0)
+        if dist.get_rank() != 0:
+            return
+        files = [data for l in all_files for data in l]
         if len(self.test_files) == 0:
             test_files_count = min(self.autoselect_test_files_num, len(self.train_files) // 2)
             if test_files_count == 0:
