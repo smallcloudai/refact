@@ -54,7 +54,8 @@ def get_ds_len_per_epoch(
         num_workers=multiprocessing.cpu_count(),
         batch_size=1,
         ctx_size=cfg_builder.cfg['model_info']['ctx_size'],
-        extra_options="quit_on_epoch=1"
+        extra_options="quit_on_epoch=1",
+        parallel_collation=False
     )
     # records like this:
     # {'stats': {'file_num': 1, 'epoch': 0, 'fim_unicode_split': 0, 'fim_unable_to_split': 0, 'fim_out': 1, 'fim_lowlines_skip': 0, 'packed_in': 8, 'packed_out': 3, 'packed_small_dropped': 0, 'last_paddings_perc': 0.021235050036612156},
@@ -86,6 +87,7 @@ def create_train_dataloader(
         batch_size: int,
         num_workers: int,
         extra_options: str = "",
+        parallel_collation: bool = True
 ) -> DataLoader:
     model_config = supported_models.config[model_name]
     ds_name = model_config["train_ds_pipeline"]["ds_name"]
@@ -108,6 +110,9 @@ def create_train_dataloader(
     mem = psutil.virtual_memory()
     if mem.total // 2 ** 30 <= 16:  # saving up a bunch of memory for low specs machines (<= 16Gb ram)
         num_workers = 1
+    num_workers = min(dataset.files_len - 1, num_workers)
+    collation_fn = partial(data_parallel_split_and_collate_fn, global_batch_size=batch_size) \
+        if parallel_collation else collate_fn
 
     return DataLoader(
         dataset,
@@ -116,7 +121,7 @@ def create_train_dataloader(
         shuffle=False,
         drop_last=True,
         pin_memory=False,
-        collate_fn=partial(data_parallel_split_and_collate_fn, global_batch_size=batch_size)
+        collate_fn=collation_fn
     )
 
 
