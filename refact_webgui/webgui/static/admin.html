@@ -17,8 +17,6 @@
 </head>
 <body>
 <div class="container">
-  <div id="login-failed" class="alert alert-danger text-center mx-auto d-none"
-       role="alert" aria-live="assertive" aria-atomic="true">Invalid credentials</div>
   <div class="row justify-content-center">
     <div class="col-md-6">
       <form id="login-form">
@@ -48,10 +46,15 @@
               fill="black"></path>
           </svg>
         </div>
-        <div class="mb-3">
-          <input type="password" class="form-control" id="token" placeholder="Token">
+        <div class="login-form">
+          <div class="mb-3">
+            <input type="password" class="form-control" id="token" placeholder="Token">
+            <div class="token-error d-none">Invalid credentials.</div>
+          </div>
+          <div class="d-grid col-5 mx-auto">
+            <button type="submit" class="btn login-button btn-primary">Login</button>
+          </div>
         </div>
-        <button type="submit" class="btn btn-primary">Login</button>
       </form>
     </div>
   </div>
