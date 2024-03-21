@@ -521,7 +521,7 @@ function finetune_info_factory(index, models_info, finetune_info, finetune_runs,
 
         const selected_runs = models_info[index].finetune_info.map(run => run.run_id);
         const not_selected_runs = finetune_runs.filter(run => !selected_runs.includes(run.run_id));
-        if (not_selected_runs.length > 0 && (selected_runs.length === 0 || multiple_loras || true)) {
+        if (not_selected_runs.length > 0 && (selected_runs.length === 0 || multiple_loras)) {
             let add_finetune_btn = document.createElement("button");
             add_finetune_btn.classList = "btn btn-sm btn-outline-primary mt-1 add-finetune-btn";
             add_finetune_btn.dataset.model = index;
