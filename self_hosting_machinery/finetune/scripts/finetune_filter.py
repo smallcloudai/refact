@@ -11,6 +11,7 @@ import time
 from typing import Dict, Any, Tuple
 
 import torch
+import torch.distributed as dist
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import (get_finetune_config, get_finetune_filter_config)
@@ -31,6 +32,8 @@ class InvalidLossValueException(Exception):
 
 
 def _log_everywhere(message):
+    if dist.get_rank() != 0:
+        return
     logging.info(message)
     traces.log(message)
 
