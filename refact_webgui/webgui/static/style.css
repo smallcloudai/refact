@@ -1060,7 +1060,7 @@ h3 {
 
 .toolbox-editor {
     width: 100%;
-    min-height: 500px;
+    min-height: 600px;
     margin-bottom: 20px;
     max-height: 700px;
     overflow: auto;
@@ -1070,14 +1070,6 @@ h3 {
 }
 .toolbox-editor pre {
     margin: 0;
-}
-
-.toolbox-editor {
-    width: 100%;
-    min-height: 500px;
-    margin-bottom: 20px;
-    max-height: 700px;
-    overflow: auto;
 }
 .toolbox-editor pre code {
     font-family: Menlo, Monaco, Consolas, monospace;
