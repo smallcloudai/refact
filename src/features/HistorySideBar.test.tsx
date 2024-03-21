@@ -25,6 +25,7 @@ describe("HistorySideBar", () => {
   });
 
   it("restore chat", async () => {
+    vi.mock("uuid", () => ({ v4: () => "bar" }));
     const postMessageSpy = vi.spyOn(window, "postMessage");
 
     const historyItem: ChatHistoryItem = {
@@ -50,7 +51,10 @@ describe("HistorySideBar", () => {
     expect(postMessageSpy).toHaveBeenLastCalledWith(
       {
         type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
-        payload: historyItem,
+        payload: {
+          id: "foo",
+          chat: historyItem,
+        },
       },
       "*",
     );
