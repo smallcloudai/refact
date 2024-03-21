@@ -498,6 +498,13 @@ function render_runs() {
             run_checked(run.run_id);
         }
     });
+    const stop_run_button = document.querySelector('.stop-finetune');
+    stop_run_button.disabled = false;
+    stop_run_button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        stop_run_button.disabled = true;
+        stop_finetune(selected_lora);
+    });
     const runs_table_rows = runs_table.querySelectorAll('tr');
     runs_table_rows.forEach(function (row) {
         row.addEventListener('click', function (event) {
@@ -507,11 +514,6 @@ function render_runs() {
             const run_id = this.dataset.run;
             selected_lora = run_id;
             render_ftune_stats(run_id);
-            const stop_run_button = document.querySelector('.stop-finetune');
-            stop_run_button.addEventListener('click', (event) => {
-                event.stopPropagation();
-                stop_finetune(run_id);
-            });
             document.querySelectorAll('.run-table-rename').forEach((rename_div) => {
                 const div_run_id = rename_div.dataset.run;
                 if (!rename_div.hidden && div_run_id !== run_id) {
