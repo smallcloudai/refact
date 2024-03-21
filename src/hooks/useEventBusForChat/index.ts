@@ -136,20 +136,22 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (!isThisChat && isRestoreChat(action)) {
-      const messages: ChatMessages = action.payload.messages.map((message) => {
-        if (message[0] === "context_file" && typeof message[1] === "string") {
-          let file: ChatContextFile[] = [];
-          try {
-            file = JSON.parse(message[1]) as ChatContextFile[];
-          } catch {
-            file = [];
+    if (isThisChat && isRestoreChat(action)) {
+      const messages: ChatMessages = action.payload.chat.messages.map(
+        (message) => {
+          if (message[0] === "context_file" && typeof message[1] === "string") {
+            let file: ChatContextFile[] = [];
+            try {
+              file = JSON.parse(message[1]) as ChatContextFile[];
+            } catch {
+              file = [];
+            }
+            return [message[0], file];
           }
-          return [message[0], file];
-        }
 
-        return message;
-      });
+          return message;
+        },
+      );
 
       return {
         ...state,
@@ -158,7 +160,7 @@ export function reducer(postMessage: typeof window.postMessage) {
         error: null,
         previous_message_length: messages.length,
         chat: {
-          ...action.payload,
+          ...action.payload.chat,
           messages,
         },
         selected_snippet: action.payload.snippet ?? state.selected_snippet,

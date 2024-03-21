@@ -366,8 +366,12 @@ export function isBackupMessages(action: unknown): action is BackUpMessages {
 
 export interface RestoreChat extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT;
-  payload: (ChatThread & { snippet?: Snippet }) & {
-    messages: ChatThread["messages"] | [string, string][];
+  payload: {
+    id: string;
+    chat: ChatThread & {
+      messages: ChatThread["messages"] | [string, string][];
+    };
+    snippet?: Snippet;
   };
 }
 

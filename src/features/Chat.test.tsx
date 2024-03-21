@@ -121,10 +121,14 @@ describe("Chat", () => {
 
   it("can restore a chat", async () => {
     const app = render(<Chat />);
+    vi.mock("uuid", () => ({ v4: () => "foo" }));
 
     const restoreChatAction: RestoreChat = {
       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
-      payload: MARS_ROVER_CHAT,
+      payload: {
+        id: "foo",
+        chat: MARS_ROVER_CHAT,
+      },
     };
 
     postMessage(restoreChatAction);
@@ -154,13 +158,16 @@ describe("Chat", () => {
     const restoreChatAction: RestoreChat = {
       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
       payload: {
-        id: "bar",
-        messages: [
-          ["user", "hello"],
-          ["assistant", "hello there"],
-        ],
-        title: "hello",
-        model: "gpt-3.5-turbo",
+        id: "foo",
+        chat: {
+          id: "bar",
+          messages: [
+            ["user", "hello"],
+            ["assistant", "hello there"],
+          ],
+          title: "hello",
+          model: "gpt-3.5-turbo",
+        },
       },
     };
 
@@ -219,6 +226,7 @@ describe("Chat", () => {
   });
 
   it("retry chat", async () => {
+    vi.mock("uuid", () => ({ v4: () => "foo" }));
     const postMessageSpy = vi.spyOn(window, "postMessage");
 
     const { user, ...app } = render(<Chat />);
@@ -226,15 +234,18 @@ describe("Chat", () => {
     const restoreChatAction: RestoreChat = {
       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
       payload: {
-        id: "bar",
-        messages: [
-          ["user", "hello"],
-          ["assistant", "hello there"],
-          ["user", "how are you?"],
-          ["assistant", "fine"],
-        ],
-        title: "hello",
-        model: "gpt-3.5-turbo",
+        id: "foo",
+        chat: {
+          id: "bar",
+          messages: [
+            ["user", "hello"],
+            ["assistant", "hello there"],
+            ["user", "how are you?"],
+            ["assistant", "fine"],
+          ],
+          title: "hello",
+          model: "gpt-3.5-turbo",
+        },
       },
     };
 
