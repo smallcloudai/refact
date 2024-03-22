@@ -1,7 +1,6 @@
 use tracing::{info, error};
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Value;
 use std::fs::File;
 use std::collections::HashMap;
 use std::io::Read;
@@ -10,7 +9,6 @@ use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock;
 use url::Url;
 use crate::global_context::GlobalContext;
-use crate::http::routers::info::build;
 use crate::known_models::KNOWN_MODELS;
 
 const CAPS_FILENAME: &str = "refact-caps";
@@ -105,41 +103,52 @@ pub async fn load_caps(
         let mut file = File::open(caps_url.clone()).map_err(|_| format!("failed to open file '{}'", caps_url))?;
         file.read_to_string(&mut buffer).map_err(|_| format!("failed to read file '{}'", caps_url))?;
     }
+
+    let http_client = global_context.read().await.http_client.clone();
+    let api_key = cmdline.api_key.clone();
+    let mut headers = reqwest::header::HeaderMap::new();
+    if !api_key.is_empty() {
+        headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
+    }
+
+    let mut r1_mb: Option<CodeAssistantCaps> = None;
+    let mut r1_mb_error_text = "".to_string();
+
     if is_remote_address {
         let mut status: u16 = 0;
         for url in caps_urls.iter() {
-            let api_key = cmdline.api_key.clone();
-            let http_client = global_context.read().await.http_client.clone();
-            let mut headers = reqwest::header::HeaderMap::new();
-            if !api_key.is_empty() {
-                headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
-            }
-            caps_url = url.clone();
-            let response = http_client.get(caps_url.clone()).headers(headers).send().await.map_err(|e| format!("{}", e))?;
+            let response = http_client.get(url).headers(headers.clone()).send().await.map_err(|e| format!("{}", e))?;
             status = response.status().as_u16();
-            buffer = response.text().await.map_err(|e| format!("failed to read response: {}", e))?;
-            if let Ok(value) = serde_json::from_str::<Value>(&buffer) {
-                if status == 200 {
-                    break;
+            buffer = match response.text().await {
+                Ok(v) => v,
+                Err(_) => continue
+            };
+
+            if status != 200 {
+                continue;
+            }
+            r1_mb = match serde_json::from_str(&buffer) {
+                Ok(v) => v,
+                Err(e) => {
+                    r1_mb_error_text = format!("{}: {}", url, e);
+                    continue;
                 }
-            } else {
-                status = 307;
+            };
+            if r1_mb.is_some() {
+                info!("reading caps from {}", url);
+                break
             }
         }
         if status != 200 {
-            return Err(format!("server responded with: {}", buffer));
+            r1_mb_error_text = format!("status={}; server responded with: {}", status, buffer);
         }
     }
-    info!("reading caps from {}", caps_url);
+    let mut r1 = r1_mb.ok_or(format!("failed to parse caps: {}", r1_mb_error_text))?;
+
     let r0: ModelsOnly = serde_json::from_str(&KNOWN_MODELS).map_err(|e| {
         let up_to_line = KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
         error!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e);
         format!("failed to parse KNOWN_MODELS: {}", e)
-    })?;
-    let mut r1: CodeAssistantCaps = serde_json::from_str(&buffer).map_err(|e| {
-        let up_to_line = buffer.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
-        error!("{}\nfailed to parse {}: {}", up_to_line, caps_url, e);
-        format!("failed to parse {}: {}", caps_url, e)
     })?;
     _inherit_r1_from_r0(&mut r1, &r0);
     r1.endpoint_template = relative_to_full_url(&caps_url, &r1.endpoint_template)?;
