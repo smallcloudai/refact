@@ -8,6 +8,7 @@ import asyncio
 
 from fastapi import APIRouter, Request, Header, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse, JSONResponse
+from pydantic import BaseModel, validator, Field, Required
 
 from refact_utils.scripts import env
 from refact_utils.scripts import best_lora
@@ -19,7 +20,7 @@ from refact_utils.finetune.utils import get_finetune_runs
 from refact_utils.finetune.filtering_defaults import finetune_filtering_defaults
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
-from pydantic import BaseModel, validator, Field, Required
+from refact_webgui.webgui.selfhost_webutils import log
 
 from typing import Optional, List
 
@@ -27,8 +28,10 @@ from typing import Optional, List
 __all__ = ["TabFinetuneRouter"]
 
 
+RUN_ID_REGEX = r"^[0-9a-zA-Z_\.\-]{1,30}$"
+
 def sanitize_run_id(run_id: str):
-    if not re.fullmatch(r"[0-9a-zA-Z-\.]{2,40}", run_id):
+    if not re.fullmatch(RUN_ID_REGEX, run_id):
         raise HTTPException(status_code=400, detail="Invalid run id \"%s\"" % run_id)
 
 
@@ -65,7 +68,7 @@ class FilteringSetup(BaseModel):
 
 
 class TabFinetuneTrainingSetup(BaseModel):
-    run_id: Optional[str] = Query(default=Required, regex="^[0-9a-zA-Z-\.\-]{1,30}$")
+    run_id: str = Query(default=Required, regex=RUN_ID_REGEX)
     pname: str = Query(default=Required, regex=r'^[A-Za-z0-9_\-\.]{1,30}$')   # sync regexp with tab_upload.ProjectNameOnly
     model_name: Optional[str] = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
     # limit_time_seconds: Optional[int] = Query(default=600, ge=600, le=3600*48)
@@ -86,20 +89,8 @@ class TabFinetuneTrainingSetup(BaseModel):
 
 
 class RenamePost(BaseModel):
-    run_id_old: str
-    run_id_new: str
-
-    @validator('run_id_new')
-    def validate_run_ids(cls, v, values) -> str:
-        if not v.strip():
-            raise HTTPException(status_code=400, detail="must be non-empty")
-        if len(v) >= 30:
-            raise HTTPException(status_code=400, detail="must be less than 30 characters")
-        if not re.match("^[a-zA-Z0-9_-]*$", v):
-            raise HTTPException(status_code=400, detail="must contain only Latin alphabet, numbers, spaces, and underscores")
-        if 'run_id_old' in values and v == values['run_id_old']:
-            raise HTTPException(status_code=400, detail="run_id_new is similar to run_id_old")
-        return v
+    run_id_old: str = Query(default=Required, regex=RUN_ID_REGEX)
+    run_id_new: str = Query(default=Required, regex=RUN_ID_REGEX)
 
 
 class TabFinetuneRouter(APIRouter):
@@ -134,6 +125,9 @@ class TabFinetuneRouter(APIRouter):
         active_loras = {i for i in active_loras if i}
         if post.run_id_old in active_loras:
             raise HTTPException(status_code=400, detail=f"cannot rename {post.run_id_old}: currently in use")
+        if post.run_id_new == post.run_id_old:
+            log("rename: same name, nothing to do")
+            return JSONResponse("OK")
 
         path_old = os.path.join(env.DIR_LORAS, post.run_id_old)
         path_new = os.path.join(env.DIR_LORAS, post.run_id_new)
