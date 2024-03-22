@@ -1,4 +1,3 @@
-import datetime
 import sys
 import click
 import copy
