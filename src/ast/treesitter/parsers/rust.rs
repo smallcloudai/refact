@@ -86,6 +86,18 @@ fn str_hash(s: &String) -> String {
     format!("{:x}", digest)
 }
 
+fn get_children_guids(parent_guid: &String, children: &Vec<Arc<dyn AstSymbolInstance>>) -> Vec<String> {
+    let mut result = Vec::new();
+    for child in children {
+        if let Some(child_guid) = child.parent_guid() { 
+            if &child_guid == parent_guid {
+                result.push(child.guid().to_string());
+            }
+        }
+    }
+    result
+}
+
 impl RustParser {
     pub fn new() -> Result<RustParser, ParserError> {
         let mut parser = Parser::new();
@@ -252,6 +264,7 @@ impl RustParser {
         if let Some(body_node) = parent.child_by_field_name("body") {
             symbols.extend(self.parse_block(&body_node, code, path, &decl.ast_fields.guid));
         }
+        decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
         symbols.push(Arc::new(decl));
         symbols
     }
@@ -321,7 +334,7 @@ impl RustParser {
                 &_ => {}
             }
         }
-
+        decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
         symbols.push(Arc::new(decl));
         symbols
     }
@@ -440,6 +453,7 @@ impl RustParser {
             }
         }
         decl.args = args.into_iter().collect::<Vec<_>>();
+        decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
         symbols.push(Arc::new(decl));
         symbols
     }
@@ -580,10 +594,11 @@ impl RustParser {
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = RustParser::get_guid();
-                symbols.push(Arc::new(usage));
 
                 let value_node = parent.child_by_field_name("value").unwrap();
-                symbols.extend(self.parse_usages(&value_node, code, path, parent_guid));
+                let usages = self.parse_usages(&value_node, code, path, parent_guid);
+                symbols.extend(usages);
+                symbols.push(Arc::new(usage));
             }
             "identifier" => {
                 let mut usage = VariableUsage::default();
@@ -808,7 +823,8 @@ impl NewLanguageParser for RustParser {
     fn parse(&mut self, code: &str, path: &Url) -> Vec<Arc<dyn AstSymbolInstance>> {
         let tree = self.parser.parse(code, None).unwrap();
         let parent_guid = RustParser::get_guid();
-        self.parse_block(&tree.root_node(), code, path, &parent_guid)
+        let symbols = self.parse_block(&tree.root_node(), code, path, &parent_guid);
+        symbols
     }
 }
 
