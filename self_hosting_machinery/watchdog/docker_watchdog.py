@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import uuid
+import psutil
 
 from pathlib import Path
 
@@ -201,7 +202,10 @@ class TrackedJob:
             self.please_shutdown = False
             policy = self.cfg.get("policy", [])
             if "single_shot" in policy:
-                self.cfg_filename.unlink()
+                try:
+                    self.cfg_filename.unlink()
+                except FileNotFoundError:
+                    pass
         return not self.p
 
     def maybe_needs_stop(self):
@@ -222,6 +226,7 @@ class TrackedJob:
         if interrupt_when_file_appears:
             p = replace_variable_names_from_env(interrupt_when_file_appears)
             if os.path.exists(p):
+                log("%s %s, shutting down because this file appeared %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, p))
                 self.please_shutdown = True
                 os.unlink(p)
 
@@ -230,11 +235,18 @@ class TrackedJob:
             self.please_shutdown = False  # this overrides True from "preempt" that sometimes happens (because of the task order)
             return
         if self.please_shutdown and self.sent_sigusr1_ts == 0:
+            log("%s sending SIGUSR1 to %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid))
             self.p.send_signal(signal.SIGUSR1)
             self.sent_sigusr1_ts = time.time()
+            itself = psutil.Process(self.p.pid)
+            for child in itself.children(recursive=True):
+                child.send_signal(signal.SIGUSR1)
         if self.please_shutdown and self.sent_sigusr1_ts + sigkill_timeout < time.time():
             log("%s SIGUSR1 timed out, sending kill %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid))
             self.p.kill()
+            itself = psutil.Process(self.p.pid)
+            for child in itself.children(recursive=True):
+                child.kill()
 
     def maybe_can_start(self):
         if self.p is not None:
