@@ -1,6 +1,7 @@
 use tracing::{info, error};
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json::Value;
 use std::fs::File;
 use std::collections::HashMap;
 use std::io::Read;
@@ -117,8 +118,12 @@ pub async fn load_caps(
             let response = http_client.get(caps_url.clone()).headers(headers).send().await.map_err(|e| format!("{}", e))?;
             status = response.status().as_u16();
             buffer = response.text().await.map_err(|e| format!("failed to read response: {}", e))?;
-            if status == 200 {
-                break;
+            if let Ok(value) = serde_json::from_str::<Value>(&buffer) {
+                if status == 200 {
+                    break;
+                }
+            } else {
+                status = 307;
             }
         }
         if status != 200 {
