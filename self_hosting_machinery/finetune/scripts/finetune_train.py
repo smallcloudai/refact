@@ -383,4 +383,5 @@ if __name__ == "__main__":
     run_id = sys.argv[index_of_run_id + 1]
     traces.configure(task_dir="loras", task_name=run_id, work_dir=env.PERMDIR)
     dist.init_process_group(backend='nccl', init_method='env://')
+    th.cuda.set_device(dist.get_rank())
     main()
