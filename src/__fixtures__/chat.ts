@@ -9,6 +9,18 @@ export const MARS_ROVER_CHAT: ChatThread = {
     // ],
     ["user", "mars rover kata"],
     [
+      "context_file",
+      [
+        {
+          file_name: "file/name.txt",
+          file_content: "hello",
+          line1: 1,
+          line2: 2,
+          usefulness: 100,
+        },
+      ],
+    ],
+    [
       "assistant",
       "The Mars Rover Kata is a coding exercise that simulates the movement of a rover on the surface of Mars. The goal is to write a program that takes in a series of commands and outputs the final position of the rover.\n\nHere is a link to the official Mars Rover Kata documentation: https://kata-log.rocks/mars-rover-kata\n\nYou can find various implementations and solutions to the Mars Rover Kata on platforms like GitHub or coding challenge websites.",
     ],

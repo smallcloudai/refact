@@ -17,6 +17,7 @@ import {
   CreateNewChatThread,
   ChatErrorStreaming,
   ChatReceiveCapsError,
+  ResponseToChat,
 } from "../events";
 import {
   MARS_ROVER_CHAT,
@@ -385,5 +386,66 @@ describe("Chat", () => {
       },
       "*",
     );
+  });
+
+  test("restore and receive response with use question", async () => {
+    vi.mock("uuid", () => ({ v4: () => "foo" }));
+    const { user: _user, ...app } = render(<Chat />);
+
+    const restoreChatAction: RestoreChat = {
+      type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
+      payload: {
+        id: "foo",
+        chat: {
+          id: "bar",
+          messages: [
+            ["user", "/shorter"],
+            ["assistant", "hello there"],
+            ["user", "even shorter still"],
+          ],
+          title: "hello",
+          model: "gpt-3.5-turbo",
+        },
+      },
+    };
+
+    postMessage(restoreChatAction);
+
+    await waitFor(() => expect(app.queryByText("hello there")).not.toBeNull());
+
+    const file: ResponseToChat = {
+      type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
+      payload: {
+        id: "bar",
+        content:
+          '[{"file_name":"/refact-chat-js/src/services/refact.ts","file_content":"hello","line1":121,"line2":451,"usefulness":100.0}]',
+        role: "context_file",
+      },
+    };
+
+    postMessage(file);
+
+    const assistant: ResponseToChat = {
+      type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
+      payload: {
+        id: "bar",
+        role: "user",
+        content: "even shorter still",
+      },
+    };
+
+    postMessage(assistant);
+
+    postMessage({
+      type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
+      payload: { id: "bar" },
+    });
+
+    await new Promise((r) => setTimeout(r, 500));
+
+    const messages = app.getAllByText("even shorter still");
+    expect(messages.length).toBe(1);
+
+    expect(() => app.queryByText("hello there")).not.toBeNull();
   });
 });

@@ -153,12 +153,17 @@ export function reducer(postMessage: typeof window.postMessage) {
         },
       );
 
+      const lastAssistantMessage = messages.reduce((count, message, index) => {
+        if (message[0] === "assistant") return index + 1;
+        return count;
+      }, 0);
+
       return {
         ...state,
         waiting_for_response: false,
         streaming: false,
         error: null,
-        previous_message_length: messages.length,
+        previous_message_length: lastAssistantMessage,
         chat: {
           ...action.payload.chat,
           messages,
