@@ -163,21 +163,14 @@ def gpu_filter_and_build_config(pname, run_id, **kwargs) -> Dict[str, Any]:
     assert pname, "Please specify --pname"
     traces.log("locking \"%s\" for filtering" % pname)
     if dist.get_rank() == 0:
-        lock = filelock.FileLock(env.PP_PROJECT_LOCK(pname))
+        with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+            traces.log("locked \"%s\" successfully" % pname)
+            finetune_filter.finetune_gpu_filter(pname)
+            traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
+            _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
+            _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
     else:
-        lock = None
-    if lock:
-        lock.acquire()
-    dist.barrier()
-    try:
-        traces.log("locked \"%s\" successfully" % pname)
         finetune_filter.finetune_gpu_filter(pname)
-        traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
-        _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
-        _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
-    finally:
-        if lock:
-            lock.release()
     dist.barrier()
     return _build_finetune_config_by_heuristics(pname, run_id, **kwargs)
 
