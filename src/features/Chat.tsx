@@ -138,7 +138,9 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
 
       <Flex justify="between" pl="1" pr="1" pt="1">
         {state.chat.messages.length > 0 && (
-          <Text size="1">model: {state.chat.model} </Text>
+          <Text size="1">
+            model: {state.chat.model || state.caps.default_cap}{" "}
+          </Text>
         )}
         {state.tokens !== null && (
           <Text title="balance" size="1" ml="auto">
