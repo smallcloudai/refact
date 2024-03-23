@@ -484,6 +484,9 @@ h3 {
     margin-top: -25px;
     margin-left: 100px;
 }
+.run-rename {
+    padding-left: 4px !important;
+}
 
 #upload-tab-table-body-files td:nth-child(3) {
     text-align: right;
