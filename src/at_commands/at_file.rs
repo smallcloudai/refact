@@ -244,7 +244,6 @@ async fn parameter_repair_candidates(
 {
     let mut correction_candidate = value.clone();
     let colon_mb = colon_lines_range_from_arg(&mut correction_candidate);
-    info!("correction_candidate: {}", correction_candidate);
 
     let (cache_correction_arc, cache_fuzzy_arc) = files_cache_rebuild_as_needed(context.global_context.clone()).await;
     // it's dangerous to use cache_correction_arc without a mutex, but should be fine as long as it's read-only
@@ -253,11 +252,11 @@ async fn parameter_repair_candidates(
     if let Some(fixed) = (*cache_correction_arc).get(&correction_candidate) {
         let mut x = fixed.clone();
         put_colon_back_to_arg(&mut x, &colon_mb);
-        info!("@file found {:?} in cache_correction, returning [{:?}]", value, x);
+        info!("@file found {:?} in cache_correction, returning [{:?}]", correction_candidate, x);
         return vec![x];
     }
 
-    info!("fuzzy search, cache_fuzzy_arc.len={}", cache_fuzzy_arc.len());
+    info!("fuzzy search {:?}, cache_fuzzy_arc.len={}", correction_candidate, cache_fuzzy_arc.len());
     // fuzzy has only filenames without path
     let mut top_n_records: Vec<(String, f64)> = Vec::with_capacity(top_n);
     for p in cache_fuzzy_arc.iter() {
@@ -280,7 +279,7 @@ async fn parameter_repair_candidates(
             x
         })
         .collect::<Vec<String>>();
-    info!("sorted_paths: {:?}", sorted_paths);
+    // info!("sorted_paths: {:?}", sorted_paths);
     sorted_paths
 }
 
