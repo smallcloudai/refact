@@ -90,6 +90,7 @@ function force_show_sources() {
 
 function show_project(new_pname) {
     pname = new_pname;
+    localStorage.setItem('refact_project_name', new_pname);
     document.querySelector('.delete-project').dataset.project = pname;
     get_tab_files();
     document.querySelector('.sources-pane h3').innerHTML = `Project "${pname}"`;
@@ -795,6 +796,13 @@ export async function init(general_error) {
                 new_project_input.setCustomValidity('');
             }
         });
+    }
+    if(localStorage.getItem('active_tab_storage') === 'upload') {
+        const project_is_set = localStorage.getItem('refact_project_name');
+        if(project_is_set) {
+            show_project(project_is_set);
+            document.querySelector('.dropdown-toggle').classList.add('main-active');
+        }
     }
 }
 

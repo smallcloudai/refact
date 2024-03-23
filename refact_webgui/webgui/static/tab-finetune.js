@@ -573,11 +573,24 @@ function render_runs() {
             const confirm_btn = document.getElementById(`confirm_btn${run_rename.dataset.run}`);
             const cancel_btn = document.getElementById(`cancel_btn${run_rename.dataset.run}`);
 
+            rename_input.focus();
+
             let new_confirm_btn = document.createElement("button");
             new_confirm_btn.id = confirm_btn.id;
             new_confirm_btn.classList = confirm_btn.classList;
             new_confirm_btn.innerHTML = confirm_btn.innerHTML;
             confirm_btn.replaceWith(new_confirm_btn)
+
+            rename_input.addEventListener('keyup', (event) => {
+                if (event.key === 'Enter') {
+                    new_confirm_btn.click();
+                }
+                if (event.key === 'Escape') {
+                    rename_input.value = run_rename.dataset.run;
+                    rename_div.hidden = true;
+                    text_div.hidden = false;
+                }
+            });
 
             new_confirm_btn.addEventListener('click', (event) => {
                 new_confirm_btn.replaceWith(spinner);
