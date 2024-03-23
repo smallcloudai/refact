@@ -74,6 +74,9 @@ pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub workspace_files: Arc<StdMutex<Vec<Url>>>,
     pub document_map: Arc<ARwLock<HashMap<Url, Document>>>,   // if a file is open in IDE and it's outside workspace dirs, it will be in this map and not in workspace_files
+    pub cache_dirty: Arc<AMutex<bool>>,
+    pub cache_correction: Arc<HashMap<String, String>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
+    pub cache_fuzzy: Arc<Vec<String>>,                   // slow linear search
 }
 
 pub struct GlobalContext {
@@ -246,6 +249,9 @@ pub async fn create_global_context(
             workspace_folders: if cmdline.workspace_folder.is_empty() { Arc::new(StdMutex::new(vec![])) } else { Arc::new(StdMutex::new(vec![PathBuf::from(cmdline.workspace_folder.clone())])) },
             workspace_files: Arc::new(StdMutex::new(vec![])),
             document_map: Arc::new(ARwLock::new(HashMap::new())),
+            cache_dirty: Arc::new(AMutex::<bool>::new(false)),
+            cache_correction: Arc::new(HashMap::<String, String>::new()),
+            cache_fuzzy: Arc::new(Vec::<String>::new()),
         },
     };
     let gcx = Arc::new(ARwLock::new(cx));

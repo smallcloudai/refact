@@ -4,8 +4,9 @@ import requests, json, termcolor
 initial_messages = [
 {"role": "user", "content":
     # "@workspace definition of DeltaDeltaChatStreamer\n" +
-    # "@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\n" +
-    "@definition DeltaDeltaChatStreamer\n" +
+    #"@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\n" +
+    "@file chat_utils_deltadelta.rs\n" +
+    # "@definition DeltaDeltaChatStreamer\n" +
     "summarize the code in one paragraph"
 },
 ]
@@ -17,7 +18,7 @@ def ask_chat(messages):
             "messages": messages,
             "temperature": 0.1,
             "max_tokens": 300,
-            "model": "gpt-3.5-turbo-0125",
+            "model": "gpt-3.5-turbo",
         },
         headers={
             "Content-Type": "application/json",

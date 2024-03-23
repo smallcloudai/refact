@@ -185,10 +185,13 @@ pub async fn enqueue_all_files_from_workspace_folders(
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
     let docs = _retrieve_files_by_proj_folders(folders).await;
     info!("enqueue_all_files_from_workspace_folders found {} files", docs.len());
+    let tmp = docs.iter().map(|x| x.uri.clone()).collect::<Vec<_>>();
 
     let (ast_module, vecdb_module) = {
         let cx_locked = gcx.write().await;
-        let tmp = docs.iter().map(|x| x.uri.clone()).collect::<Vec<_>>();
+        {
+            *cx_locked.documents_state.cache_dirty.lock().await = true;
+        }
         let workspace_files: &mut Vec<Url> = &mut cx_locked.documents_state.workspace_files.lock().unwrap();
         workspace_files.clear();
         workspace_files.extend(tmp);

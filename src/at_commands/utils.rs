@@ -52,6 +52,9 @@ pub async fn correct_arguments_if_needed(
     can_execute: bool,
     context: &AtCommandsContext,
 ) -> Result<Vec<String>, String> {
+    // TODO: this function is a bad idea
+    // if a parameter is correctable, it's already valid!
+    // we only need to look up symbol once, not two or three times (is_valid, complete, is_valid again)
     if can_execute {
         return Ok(args.clone());
     }
