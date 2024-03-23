@@ -10,10 +10,11 @@ use tokio::task::JoinHandle;
 use tower_lsp::{ClientSocket, LanguageServer, LspService};
 use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
 use crate::files_in_workspace;
+use crate::files_in_workspace::on_did_delete;
 use crate::global_context;
 use crate::global_context::CommandLine;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
@@ -215,6 +216,17 @@ impl LanguageServer for Backend {
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: Some(false) },
             completion_item: None,
         };
+        let file_filter = FileOperationRegistrationOptions {
+            filters: vec![FileOperationFilter {
+                scheme: None,
+                pattern: FileOperationPattern {
+                    glob: "**".to_string(),
+                    matches: None,
+                    options: None,
+                }
+            }],
+        };
+        
         Ok(InitializeResult {
             server_info: Some(ServerInfo {
                 name: "refact".to_owned(),
@@ -225,12 +237,26 @@ impl LanguageServer for Backend {
                     TextDocumentSyncKind::FULL,
                 )),
                 completion_provider: Some(completion_options),
+                workspace: Some(WorkspaceServerCapabilities {
+                    workspace_folders: Some(WorkspaceFoldersServerCapabilities {
+                        supported: Some(true),
+                        change_notifications: Some(OneOf::Left(true)),
+                    }),
+                    file_operations: Some(WorkspaceFileOperationsServerCapabilities {
+                        did_create: Some(file_filter.clone()),
+                        will_create: Some(file_filter.clone()),
+                        did_rename: Some(file_filter.clone()),
+                        will_rename: Some(file_filter.clone()),
+                        did_delete: Some(file_filter.clone()),
+                        will_delete: Some(file_filter.clone()),
+                    }),
+                }),
                 ..Default::default()
             },
         })
     }
 
-    async fn initialized(&self, _: InitializedParams) {
+    async fn initialized(&self, _params: InitializedParams) {
         self.client
             .log_message(MessageType::INFO, "rust LSP received initialized()")
             .await;
@@ -280,16 +306,21 @@ impl LanguageServer for Backend {
         Ok(Some(CompletionResponse::Array(vec![])))
     }
 
-    async fn did_delete_files(&self, _: DeleteFilesParams) {
-        self.client
-            .log_message(MessageType::INFO, "{refact-lsp} delete files")
-            .await;
+    async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
+        for add_folder in params.event.added {
+            // TODO
+        }
+        for delete_folder in params.event.removed {
+            // TODO
+        }
     }
-
-    async fn did_create_files(&self, _: CreateFilesParams) {
-        self.client
-            .log_message(MessageType::INFO, "{refact-lsp} create files")
-            .await;
+    async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
+        for event in params.changes {
+            let uri = event.uri;
+            if event.typ == FileChangeType::DELETED {
+                on_did_delete(self.gcx.clone(), &uri).await;
+            }
+        }
     }
 }
 

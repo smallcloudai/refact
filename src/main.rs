@@ -100,5 +100,6 @@ async fn main() {
     background_tasks.abort().await;
     info!("saving telemetry without sending, so should be quick");
     basic_transmit::basic_telemetry_compress(gcx.clone()).await;
+    gcx.clone().write().await.documents_state.finish();
     info!("bb\n");
 }

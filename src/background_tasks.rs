@@ -4,6 +4,7 @@ use std::vec;
 
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
+use crate::files_in_workspace::file_watcher_thread;
 
 use crate::vecdb;
 use crate::global_context::GlobalContext;
@@ -51,6 +52,7 @@ pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>) -> Backgro
         Some(ref ast) => bg.extend(ast.ast_start_background_tasks().await),
         None => ()
     };
+    
     let files_jsonl_path = gcx.clone().read().await.cmdline.files_jsonl_path.clone();
     if !files_jsonl_path.is_empty() {
         bg.extend(vec![

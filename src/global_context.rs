@@ -20,7 +20,7 @@ use crate::ast::ast_module::AstModule;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
-use crate::files_in_workspace::Document;
+use crate::files_in_workspace::{Document, DocumentsState};
 use crate::telemetry::telemetry_structs;
 use crate::vecdb::vecdb::VecDb;
 
@@ -68,15 +68,6 @@ impl CommandLine {
     pub fn get_prefix(&self) -> String {
         Self::create_hash(format!("{}:{}", self.address_url.clone(), self.api_key.clone()))[..6].to_string()
     }
-}
-
-pub struct DocumentsState {
-    pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
-    pub workspace_files: Arc<StdMutex<Vec<Url>>>,
-    pub document_map: Arc<ARwLock<HashMap<Url, Document>>>,   // if a file is open in IDE and it's outside workspace dirs, it will be in this map and not in workspace_files
-    pub cache_dirty: Arc<AMutex<bool>>,
-    pub cache_correction: Arc<HashMap<String, String>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
-    pub cache_fuzzy: Arc<Vec<String>>,                   // slow linear search
 }
 
 pub struct GlobalContext {
@@ -245,6 +236,7 @@ pub async fn create_global_context(
         vec_db: Arc::new(AMutex::new(None)),
         ast_module: Arc::new(AMutex::new(None)),
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
+<<<<<<< HEAD
         documents_state: DocumentsState {
             workspace_folders: if cmdline.workspace_folder.is_empty() { Arc::new(StdMutex::new(vec![])) } else { Arc::new(StdMutex::new(vec![PathBuf::from(cmdline.workspace_folder.clone())])) },
             workspace_files: Arc::new(StdMutex::new(vec![])),
@@ -253,6 +245,9 @@ pub async fn create_global_context(
             cache_correction: Arc::new(HashMap::<String, String>::new()),
             cache_fuzzy: Arc::new(Vec::<String>::new()),
         },
+=======
+        documents_state: DocumentsState::empty(if cmdline.workspace_folder.is_empty() { vec![] } else { vec![PathBuf::from(cmdline.workspace_folder.clone())] })
+>>>>>>> 3a00446 (add watcher for files; track adding and removing folders in workspace)
     };
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {
@@ -261,5 +256,9 @@ pub async fn create_global_context(
         )));
         gcx.write().await.ast_module = ast_module;
     }
+    {
+        gcx.write().await.documents_state.init_watcher(gcx.clone());
+    }
+
     (gcx, ask_shutdown_receiver, cmdline)
 }
