@@ -257,7 +257,8 @@ async fn parameter_repair_candidates(
         return vec![x];
     }
 
-    info!("11, cache_fuzzy_arc.len={}", cache_fuzzy_arc.len());
+    info!("fuzzy search, cache_fuzzy_arc.len={}", cache_fuzzy_arc.len());
+    // fuzzy has only filenames without path
     let mut top_n_records: Vec<(String, f64)> = Vec::with_capacity(top_n);
     for p in cache_fuzzy_arc.iter() {
         let dist = normalized_damerau_levenshtein(&correction_candidate, p);
@@ -265,13 +266,16 @@ async fn parameter_repair_candidates(
         if top_n_records.len() >= top_n {
             top_n_records.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
             top_n_records.pop();
-            info!("top_n_records {:?}", top_n_records);
         }
     }
 
     let sorted_paths = top_n_records.iter()
         .map(|(path, _)| {
             let mut x = path.clone();
+            // upgrade to full path
+            if let Some(fixed) = (*cache_correction_arc).get(&x) {
+                x = fixed.clone();
+            }
             put_colon_back_to_arg(&mut x, &colon_mb);
             x
         })
