@@ -208,7 +208,15 @@ async fn _ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>>
         // SVN repository
         _run_command("svn", &["list", "-R"], path).await
     } else {
-        Some(glob_folder(path).await)
+        // ls everything
+        let mut docs = Vec::new();
+        let mut files = glob::glob(path.join("**/*").to_str().unwrap()).unwrap();
+        while let Some(file_res) = files.next() {
+            if let Ok(file) = file_res {
+                docs.push(file);
+            }
+        }
+        Some(docs)
     }
 }
 
@@ -217,7 +225,15 @@ pub async fn _retrieve_files_by_proj_folders(proj_folders: Vec<PathBuf>) -> Vec<
     for proj_folder in proj_folders {
         let maybe_files = _ls_files_under_version_control(&proj_folder).await;
         if let Some(files) = maybe_files {
-            all_files.extend(files.iter().filter_map(|x| DocumentInfo::from_pathbuf(x).ok()).collect::<Vec<_>>());
+            info!("_retrieve_files_by_proj_folders input {}", files.len());
+            // all_files.extend(files.iter().filter_map(|x| DocumentInfo::from_pathbuf(x).ok()).collect::<Vec<_>>());
+            all_files.extend(files.iter().filter_map(|x| {
+                if !x.is_dir() && is_valid_file(x) {
+                    DocumentInfo::from_pathbuf(x).ok()
+                } else {
+                    None
+                }
+            }).collect::<Vec<_>>());
         } else {
             let files: Vec<DocumentInfo> = WalkDir::new(proj_folder)
                 .into_iter()
@@ -230,17 +246,6 @@ pub async fn _retrieve_files_by_proj_folders(proj_folders: Vec<PathBuf>) -> Vec<
         }
     }
     all_files
-}
-
-pub(crate) async fn glob_folder(path: &PathBuf) -> Vec<PathBuf> {
-    let mut docs = Vec::new();
-    let mut files = glob::glob(path.join("**").to_str().unwrap()).unwrap();
-    while let Some(file_res) = files.next() {
-        if let Ok(file) = file_res {
-            docs.push(file);
-        }
-    }
-    docs
 }
 
 async fn enqueue_files(

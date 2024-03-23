@@ -195,10 +195,12 @@ async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext
 
         let mut cache_correction = HashMap::<String, String>::new();
         let mut cache_fuzzy_set = HashSet::<String>::new();
+        let mut cnt = 0;
         for url in file_paths_from_memory.into_iter().chain(urls_from_workspace.into_iter().chain(paths_in_jsonl.into_iter())) {
             let path = url.to_file_path().ok().map(|p| p.to_str().unwrap_or_default().to_string()).unwrap_or_default();
             let file_name_only = url.to_file_path().ok().map(|p| p.file_name().unwrap().to_str().unwrap().to_string()).unwrap_or_default();
             cache_fuzzy_set.insert(file_name_only);
+            cnt += 1;
 
             cache_correction.insert(path.clone(), path.clone());
             // chop off directory names one by one
@@ -213,7 +215,7 @@ async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext
             }
         }
         let cache_fuzzy: Vec<String> = cache_fuzzy_set.into_iter().collect();
-        info!("rebuild over, cache_correction.len is now {}", cache_correction.len());
+        info!("rebuild over, {} urls => cache_correction.len is now {}", cnt, cache_correction.len());
         // info!("cache_fuzzy {:?}", cache_fuzzy);
         // info!("cache_correction {:?}", cache_correction);
 
