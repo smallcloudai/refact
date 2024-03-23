@@ -124,6 +124,10 @@ function on_first_page_load() {
                 btn.classList.add('main-active');
                 done = true;
             }
+            if(active_tab_storage === 'upload') {
+                document.querySelector('.dropdown-toggle').classList.add('main-active');
+                done = true;
+            }
         });
         if (!done) {
             document.querySelector(`button[data-tab=${default_tab}]`).classList.add('main-active');
