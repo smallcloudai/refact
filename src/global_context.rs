@@ -14,13 +14,12 @@ use tokio::signal;
 use tokio::sync::{Mutex as AMutex, Semaphore};
 use tokio::sync::RwLock as ARwLock;
 use tracing::{error, info};
-use url::Url;
 
 use crate::ast::ast_module::AstModule;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
-use crate::files_in_workspace::{Document, DocumentsState};
+use crate::files_in_workspace::DocumentsState;
 use crate::telemetry::telemetry_structs;
 use crate::vecdb::vecdb::VecDb;
 
@@ -236,18 +235,7 @@ pub async fn create_global_context(
         vec_db: Arc::new(AMutex::new(None)),
         ast_module: Arc::new(AMutex::new(None)),
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
-<<<<<<< HEAD
-        documents_state: DocumentsState {
-            workspace_folders: if cmdline.workspace_folder.is_empty() { Arc::new(StdMutex::new(vec![])) } else { Arc::new(StdMutex::new(vec![PathBuf::from(cmdline.workspace_folder.clone())])) },
-            workspace_files: Arc::new(StdMutex::new(vec![])),
-            document_map: Arc::new(ARwLock::new(HashMap::new())),
-            cache_dirty: Arc::new(AMutex::<bool>::new(false)),
-            cache_correction: Arc::new(HashMap::<String, String>::new()),
-            cache_fuzzy: Arc::new(Vec::<String>::new()),
-        },
-=======
         documents_state: DocumentsState::empty(if cmdline.workspace_folder.is_empty() { vec![] } else { vec![PathBuf::from(cmdline.workspace_folder.clone())] })
->>>>>>> 3a00446 (add watcher for files; track adding and removing folders in workspace)
     };
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {

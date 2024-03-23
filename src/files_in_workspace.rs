@@ -4,25 +4,20 @@ use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
-use std::sync::RwLock as StdRwLock;
 use std::time::Instant;
 use crate::global_context::GlobalContext;
-use futures::{
-    SinkExt, StreamExt,
-};
-use futures::channel::mpsc::{channel, Receiver};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use notify::event::{CreateKind, DataChange, ModifyKind, RemoveKind};
 use ropey::Rope;
 use tokio::fs::read_to_string;
 use tokio::runtime::Runtime;
-use tokio::sync::RwLock as ARwLock;
-use tracing::{error, info};
+use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
+
+use tracing::info;
 use url::Url;
 use walkdir::WalkDir;
 use which::which;
 
-use crate::files_in_jsonl::enqueue_all_files_from_jsonl;
 use crate::global_context;
 use crate::telemetry;
 use crate::vecdb::file_filter::is_valid_file;
@@ -126,6 +121,9 @@ impl DocumentsState {
             workspace_folders: Arc::new(StdMutex::new(workspace_dirs)),
             workspace_files: Arc::new(StdMutex::new(vec![])),
             document_map: Arc::new(ARwLock::new(HashMap::new())),
+            cache_dirty: Arc::new(AMutex::<bool>::new(false)),
+            cache_correction: Arc::new(HashMap::<String, String>::new()),
+            cache_fuzzy: Arc::new(Vec::<String>::new()),
             fs_watcher: None,
         }
     }
@@ -182,6 +180,7 @@ pub fn pathbuf_to_url(path: &PathBuf) -> Result<Url, Box<dyn std::error::Error>>
 }
 
 async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<PathBuf>> {
+    info!("EXEC {} {}", cmd, args.join(" "));
     let output = async_process::Command::new(cmd)
         .args(args)
         .current_dir(path)
@@ -440,7 +439,7 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf) {
         }
         // let _ = documents_state.fs_watcher.unwatch(&path.clone());
     }
-    let (ast_module, vecdb_module) = {
+    let (ast_module, _vecdb_module) = {
         let cx_locked = gcx.read().await;
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
