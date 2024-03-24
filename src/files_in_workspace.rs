@@ -118,7 +118,7 @@ pub struct DocumentsState {
 
 impl DocumentsState {
     pub fn empty(workspace_dirs: Vec<PathBuf>) -> Self {
-        let watcher = RecommendedWatcher::new(|e|{}, Default::default()).unwrap();
+        let watcher = RecommendedWatcher::new(|_|{}, Default::default()).unwrap();
         Self {
             workspace_folders: Arc::new(StdMutex::new(workspace_dirs)),
             workspace_files: Arc::new(StdMutex::new(vec![])),
@@ -182,7 +182,7 @@ pub fn pathbuf_to_url(path: &PathBuf) -> Result<Url, Box<dyn std::error::Error>>
 }
 
 async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<PathBuf>> {
-    info!("EXEC {} {}", cmd, args.join(" "));
+    info!("{} EXEC {} {}", path.display(), cmd, args.join(" "));
     let output = async_process::Command::new(cmd)
         .args(args)
         .current_dir(path)
@@ -214,16 +214,69 @@ async fn _ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>>
     }
 }
 
+const BLACKLISTED_DIRS: &[&str] = &[
+    "target",
+    "node_modules",
+    "vendor",
+    "build",
+    "dist",
+    "bin",
+    "pkg",
+    "lib",
+    "lib64",
+    "obj",
+    "out",
+    "venv",
+    "env",
+    "tmp",
+    "temp",
+    "logs",
+    "coverage",
+    "backup"
+];
+
+pub fn is_this_inside_blacklisted_dir(path: &PathBuf) -> bool {
+    let mut path = path.clone();
+    while path.parent().is_some() {
+        path = path.parent().unwrap().to_path_buf();
+        if let Some(file_name) = path.file_name() {
+            if BLACKLISTED_DIRS.contains(&file_name.to_str().unwrap_or_default()) {
+                return true;
+            }
+            if let Some(file_name_str) = file_name.to_str() {
+                if file_name_str.starts_with(".") {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 async fn _ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = vec![];
     let mut candidates: Vec<PathBuf> = vec![path];
+    let mut rejected_reasons: HashMap<String, usize> = HashMap::new();
+    let mut blacklisted_dirs_cnt: usize = 0;
     while !candidates.is_empty() {
         let local_path = candidates.pop().unwrap();
-        if local_path.is_file() && is_valid_file(&local_path) {
-            paths.push(local_path);
-            continue;
+        if local_path.is_file() {
+            let maybe_valid = is_valid_file(&local_path);
+            match maybe_valid {
+                Ok(_) => {
+                    paths.push(local_path.clone());
+                }
+                Err(e) => {
+                    rejected_reasons.entry(e.to_string()).and_modify(|x| *x += 1).or_insert(1);
+                    continue;
+                }
+            }
         }
         if local_path.is_dir() {
+            if BLACKLISTED_DIRS.contains(&local_path.file_name().unwrap().to_str().unwrap()) {
+                blacklisted_dirs_cnt += 1;
+                continue;
+            }
             let maybe_files = _ls_files_under_version_control(&local_path).await;
             if let Some(files) = maybe_files {
                 paths.extend(files);
@@ -238,6 +291,14 @@ async fn _ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf
             }
         }
     }
+    info!("rejected files reasons:");
+    for (reason, count) in &rejected_reasons {
+        info!("    {:>6} {}", count, reason);
+    }
+    if rejected_reasons.is_empty() {
+        info!("    no bad files at all");
+    }
+    info!("also the loop bumped into {} blacklisted dirs", blacklisted_dirs_cnt);
     paths
 }
 
@@ -278,8 +339,8 @@ pub async fn enqueue_all_files_from_workspace_folders(
     };
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
     let docs = _retrieve_files_by_proj_folders(folders).await;
-    info!("enqueue_all_files_from_workspace_folders found {} files", docs.len());
     let tmp = docs.iter().map(|x| x.uri.clone()).collect::<Vec<_>>();
+    info!("enqueue_all_files_from_workspace_folders found {} files => workspace_files", tmp.len());
 
     let (ast_module, vecdb_module) = {
         let cx_locked = gcx.write().await;
@@ -307,7 +368,6 @@ pub async fn enqueue_all_files_from_workspace_folders(
 pub async fn on_workspaces_init(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
 ) -> i32 {
-    // TODO: this will not work when files change. Need a real file watcher.
     enqueue_all_files_from_workspace_folders(gcx.clone()).await
 }
 
@@ -360,7 +420,7 @@ pub async fn on_did_change(
     if mark_dirty {
         *(cache_dirty_arc.lock().await) = true;
     }
-    if is_valid_file(&doc_info.get_path()) {
+    if is_valid_file(&doc_info.get_path()).is_ok() {
         let (ast_module, vecdb_module) = {
             let cx_locked = gcx.read().await;
             (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
@@ -374,38 +434,31 @@ pub async fn on_did_change(
             None => {}
         };
     }
-    // info!("file_url {:?}", file_url);
-    // info!("doc_info.uri {:?}", doc_info.uri);
-    // info!("doc_info.uri.to_string {:?}", doc_info.uri.to_string());
-    // info!("doc_info.uri.to_file_path {:?}", doc_info.uri.to_file_path());
     telemetry::snippets_collection::sources_changed(
         gcx.clone(),
         &doc_info.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string(),
         text,
     ).await;
-    info!("on_did_change {}, total time {:.3}s", crate::nicer_logs::last_n_chars(&doc_info.get_path().display().to_string(), 30), t0.elapsed().as_secs_f32());
+    info!("on_did_change {}, total time {:.3}s", crate::nicer_logs::last_n_chars(&file_url.path().to_string(), 30), t0.elapsed().as_secs_f32());
 }
 
 pub async fn on_did_delete(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
     file_url: &Url,
 ) {
-    let gcx_locked = gcx.read().await;
-    let document_map = &gcx_locked.documents_state.document_map;
-    let mut document_map_locked = document_map.write().await;
-    document_map_locked.remove(file_url);
-    {
-        let file_path = PathBuf::from(file_url.path());
-        let path_str = format!("{:?}", file_path);
-        let last_30_chars: String = crate::nicer_logs::last_n_chars(&path_str, 30);
-        info!("deleted {}", last_30_chars);
-    }
-
+    info!("on_did_delete {}", crate::nicer_logs::last_n_chars(&file_url.path().to_string(), 30));
+    let cache_dirty_arc = {
+        let gcx_locked = gcx.read().await;
+        let document_map = &gcx_locked.documents_state.document_map;
+        let mut document_map_locked = document_map.write().await;
+        document_map_locked.remove(file_url);
+        gcx_locked.documents_state.cache_dirty.clone()
+    };
+    *(cache_dirty_arc.lock().await) = true;
     let (ast_module, vecdb_module) = {
         let cx_locked = gcx.read().await;
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
-
     {
         match *vecdb_module.lock().await {
             Some(ref mut db) => {
@@ -471,24 +524,48 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf) {
 
 pub async fn file_watcher_thread(event: Event, gcx: Weak<RwLock<GlobalContext>>) {
     match event.kind {
-        EventKind::Any => {}
-        EventKind::Access(_) => {}
+        EventKind::Any => {},
+        EventKind::Access(_) => {},
         EventKind::Create(CreateKind::File) | EventKind::Modify(ModifyKind::Data(DataChange::Content)) => {
-            let docs: Vec<DocumentInfo> = event.paths.iter().map(|path| DocumentInfo::new(pathbuf_to_url(path).unwrap())).collect();
-            if let Some(gcx) = gcx.upgrade() {
-                if event.kind == EventKind::Create(CreateKind::File) {
-                    let tmp = docs.iter().map(|x| x.uri.clone()).collect::<Vec<_>>();
-                    gcx.clone().write().await.documents_state.workspace_files.lock().unwrap().extend(tmp);
+            let mut docs: Vec<DocumentInfo> = Vec::new();
+            for path in &event.paths {
+                if is_this_inside_blacklisted_dir(&path) {
+                    continue;
                 }
-                
-                enqueue_files(gcx, docs).await;
+                match is_valid_file(path) {
+                    Ok(_) => {
+                        docs.push(DocumentInfo::new(pathbuf_to_url(path).unwrap()));
+                    },
+                    Err(_e) => {
+                        // info!("ignoring {} because {}", path.display(), e);
+                    }
+                }
             }
-        }
+            if !docs.is_empty() {
+                info!("EventKind::Create/Modify {:?}", event.paths);
+                if let Some(gcx) = gcx.upgrade() {
+                    info!("=> enqueue {} of them", docs.len());
+                    if event.kind == EventKind::Create(CreateKind::File) {
+                        let tmp = docs.iter().map(|x| x.uri.clone()).collect::<Vec<_>>();
+                        gcx.clone().write().await.documents_state.workspace_files.lock().unwrap().extend(tmp);
+                    }
+                    enqueue_files(gcx, docs).await;
+                }
+            }
+        },
         EventKind::Remove(RemoveKind::File) => {
-            if let Some(gcx) = gcx.upgrade() {
-                enqueue_all_files_from_workspace_folders(gcx).await;
+            let mut never_mind = true;
+            for p in &event.paths {
+                never_mind &= is_this_inside_blacklisted_dir(&p);
             }
-        }
+            if !never_mind {
+                info!("EventKind::Remove {:?}", event.paths);
+                info!("Likely a useful file was removed, rebuild index");
+                if let Some(gcx) = gcx.upgrade() {
+                    enqueue_all_files_from_workspace_folders(gcx).await;
+                }
+            }
+        },
         EventKind::Other => {}
         _ => {}
     }
