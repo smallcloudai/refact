@@ -13,7 +13,7 @@ use url::Url;
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 
 use crate::ast::fst_extra_automation::Substring;
-use crate::ast::structs::{FileASTMarkup, RowMarkup, SymbolsSearchResultStruct};
+use crate::ast::structs::{FileASTMarkup, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, FunctionCall, SymbolInformation};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{get_new_parser_by_filename};
@@ -367,24 +367,11 @@ impl AstIndex {
             Err(e) => return Err(e.to_string())
         };
 
-        let mut file_ast_markup = FileASTMarkup {
+        let file_ast_markup = FileASTMarkup {
             file_url: doc.uri.clone(),
-            file_content: file_content.clone(),
-            symbols: symbols
-                .iter()
-                .map(|s| (s.guid().to_string(), s.symbol_info_struct()))
-                .collect::<HashMap<String, SymbolInformation>>(),
-            rows_markup: HashMap::new()
+            file_content: file_content,
+            guid2symbol: symbols.iter().map(|s| (s.guid().to_string(), s.symbol_info_struct())).collect(),
         };
-        for (idx, line) in file_content.lines().enumerate() {
-            let (candidate_symbols, is_signature) = sorted_candidates_within_line(&symbols, idx);
-            file_ast_markup.rows_markup.insert(idx, RowMarkup {
-                symbols_guid: candidate_symbols.iter().map(|s| s.guid().to_string()).collect(),
-                line_content: line.to_string(),
-                is_signature: is_signature
-            });
-        }
-
         Ok(file_ast_markup)
     }
 

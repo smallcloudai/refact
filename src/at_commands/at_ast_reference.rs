@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 
@@ -11,15 +10,6 @@ use crate::at_commands::at_params::AtParamSymbolReferencePathQuery;
 use crate::call_validation::{ChatMessage, ContextFile};
 use tracing::info;
 use crate::ast::ast_index::RequestSymbolType;
-
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct SimplifiedSymbolDeclarationStruct {
-    pub symbol_path: String,
-    pub symbol_type: String,
-    pub line1: usize,
-    pub line2: usize,
-}
 
 async fn results2message(result: &AstQuerySearchResult) -> ChatMessage {
     // info!("results2message {:?}", result);

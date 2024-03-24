@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
@@ -15,15 +14,6 @@ use crate::at_commands::at_params::AtParamFilePath;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ChatMessage, ContextFile};
 use crate::files_in_workspace::DocumentInfo;
-
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct SimplifiedSymbolDeclarationStruct {
-    pub symbol_path: String,
-    pub symbol_type: String,
-    pub line1: usize,
-    pub line2: usize,
-}
 
 pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
     // info!("results2message {:?}", result);

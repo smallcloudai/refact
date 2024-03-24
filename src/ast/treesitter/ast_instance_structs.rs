@@ -81,7 +81,7 @@ impl TypeDef {
     }
 
     fn is_pod(&self) -> bool { self.is_pod }
-    
+
     pub fn to_string(&self) -> String {
         let mut res = String::from("");
         if let Some(name) = &self.name {
@@ -117,6 +117,7 @@ pub struct AstSymbolFields {
 pub struct SymbolInformation {
     pub guid: String,
     pub name: String,
+    pub parent_guid: String,
     pub symbol_type: SymbolType,
     pub language: LanguageId,
     pub file_url: Url,
@@ -205,6 +206,7 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         SymbolInformation {
             guid: self.guid().to_string(),
             name: self.name().to_string(),
+            parent_guid: self.parent_guid().clone().unwrap_or_default(),
             symbol_type: self.symbol_type(),
             language: self.language(),
             file_url: self.file_url(),
@@ -519,7 +521,7 @@ impl AstSymbolInstance for FunctionDeclaration {
 
     fn type_names(&self) -> Vec<TypeDef> {
         let mut types = vec![];
-        if let Some(t) = self.return_type.clone() { 
+        if let Some(t) = self.return_type.clone() {
             types.push(t);
         }
         types.extend(

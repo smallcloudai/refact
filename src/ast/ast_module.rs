@@ -144,7 +144,7 @@ impl AstModule {
     }
 
     pub async fn file_markup(
-        &mut self,
+        &self,
         doc: &DocumentInfo,
     ) -> Result<FileASTMarkup, String> {
         let t0 = std::time::Instant::now();
@@ -152,7 +152,7 @@ impl AstModule {
         let ast_index_locked = ast_index.lock().await;
         match ast_index_locked.file_markup(doc).await {
             Ok(markup) => {
-                info!("ast file_markup time {:.3}s, marked {} lines", t0.elapsed().as_secs_f32(), markup.symbols.len());
+                info!("ast file_markup time {:.3}s", t0.elapsed().as_secs_f32());
                 Ok(markup)
             }
             Err(e) => Err(e.to_string())

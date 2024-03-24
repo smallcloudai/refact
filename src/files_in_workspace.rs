@@ -3,6 +3,7 @@ use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
+use std::cmp::Ordering;
 
 use ropey::Rope;
 use tokio::fs::read_to_string;
@@ -34,6 +35,18 @@ impl Document {
 pub struct DocumentInfo {
     pub uri: Url,
     pub document: Option<Document>
+}
+
+impl Ord for DocumentInfo {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.uri.cmp(&other.uri)
+    }
+}
+
+impl PartialOrd for DocumentInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl PartialEq<Self> for DocumentInfo {
