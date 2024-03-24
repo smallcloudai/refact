@@ -474,8 +474,13 @@ pub async fn file_watcher_thread(event: Event, gcx: Weak<RwLock<GlobalContext>>)
         EventKind::Any => {}
         EventKind::Access(_) => {}
         EventKind::Create(CreateKind::File) | EventKind::Modify(ModifyKind::Data(DataChange::Content)) => {
-            let docs = event.paths.iter().map(|path| DocumentInfo::new(pathbuf_to_url(path).unwrap())).collect();
+            let docs: Vec<DocumentInfo> = event.paths.iter().map(|path| DocumentInfo::new(pathbuf_to_url(path).unwrap())).collect();
             if let Some(gcx) = gcx.upgrade() {
+                if event.kind == EventKind::Create(CreateKind::File) {
+                    let tmp = docs.iter().map(|x| x.uri.clone()).collect::<Vec<_>>();
+                    gcx.clone().write().await.documents_state.workspace_files.lock().unwrap().extend(tmp);
+                }
+                
                 enqueue_files(gcx, docs).await;
             }
         }
