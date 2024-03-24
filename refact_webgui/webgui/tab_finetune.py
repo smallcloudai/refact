@@ -140,7 +140,6 @@ class TabFinetuneRouter(APIRouter):
                 run_config.update(json.load(f))
         if run_config["status"] not in ["finished", "interrupted", "failed"]:
             raise HTTPException(status_code=400, detail=f"cannot rename {post.run_id_old}: finetune is not finished")
-
         try:
             os.rename(path_old, path_new)
         except Exception as e:
