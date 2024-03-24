@@ -582,7 +582,6 @@ FunctionCall
 pub struct FunctionCall {
     pub ast_fields: AstSymbolFields,
     pub caller_guid: Option<String>,
-    pub args_guids: Vec<String>,
     pub func_decl_guid: Option<String>,
 }
 
@@ -591,7 +590,6 @@ impl Default for FunctionCall {
         Self {
             ast_fields: AstSymbolFields::default(),
             caller_guid: None,
-            args_guids: vec![],
             func_decl_guid: None,
         }
     }

@@ -10,7 +10,7 @@ use tree_sitter_rust::language;
 use url::Url;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionDeclaration, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, NewLanguageParser, ParserError};
 use crate::ast::treesitter::parsers::utils::get_function_name;
@@ -398,7 +398,7 @@ impl RustParser {
 
     pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
         let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = Default::default();
-        let mut decl = FunctionDeclaration::default();
+        let mut decl = FunctionCall::default();
         decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_url = path.clone();
@@ -415,7 +415,14 @@ impl RustParser {
                         let field = function_node.child_by_field_name("field").unwrap();
                         decl.ast_fields.name = code.slice(field.byte_range()).to_string();
                         let value_node = function_node.child_by_field_name("value").unwrap();
-                        symbols.extend(self.parse_usages(&value_node, code, path, &decl.ast_fields.guid));
+                        let usages = self.parse_usages(&value_node, code, path, parent_guid);
+                        if !usages.is_empty() {
+                            if let Some(last) = usages.last() {
+                                // dirty hack: last element is first element in the tree
+                                decl.caller_guid = Some(last.fields().guid.clone());
+                            }
+                        }
+                        symbols.extend(usages);
                     }
                     "scoped_identifier" => {
                         let namespace = {
@@ -443,16 +450,14 @@ impl RustParser {
             }
             &_ => {}
         }
-
-        let mut args: HashSet<FunctionArg> = Default::default();
+        
         if let Some(arguments_node) = arguments_node {
             for idx in 0..arguments_node.child_count() - 1 {
                 let arg_node = arguments_node.child(idx).unwrap();
-                let arg_type = RustParser::parse_argument(&arg_node, code, path);
-                args.extend(arg_type);
+                let arg_type = self.parse_usages(&arg_node, code, path, &decl.ast_fields.guid);
+                symbols.extend(arg_type);
             }
         }
-        decl.args = args.into_iter().collect::<Vec<_>>();
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
         symbols.push(Arc::new(decl));
         symbols
