@@ -64,7 +64,8 @@ pub struct RowMarkup {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileASTMarkup {
     pub file_url: Url,
-    pub symbols: Vec<SymbolInformation>,
+    pub file_content: String,
+    pub symbols: HashMap<String, SymbolInformation>,
     pub rows_markup: HashMap<usize, RowMarkup>,
 }
 

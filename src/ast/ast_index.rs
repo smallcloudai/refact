@@ -369,7 +369,11 @@ impl AstIndex {
 
         let mut file_ast_markup = FileASTMarkup {
             file_url: doc.uri.clone(),
-            symbols: symbols.iter().map(|s| s.symbol_info_struct()).collect(),
+            file_content: file_content.clone(),
+            symbols: symbols
+                .iter()
+                .map(|s| (s.guid().to_string(), s.symbol_info_struct()))
+                .collect::<HashMap<String, SymbolInformation>>(),
             rows_markup: HashMap::new()
         };
         for (idx, line) in file_content.lines().enumerate() {
