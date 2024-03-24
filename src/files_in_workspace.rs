@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::io;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::sync::Mutex as StdMutex;
 use std::time::Instant;
 use crate::global_context::GlobalContext;
@@ -11,7 +11,7 @@ use notify::event::{CreateKind, DataChange, ModifyKind, RemoveKind};
 use ropey::Rope;
 use tokio::fs::read_to_string;
 use tokio::runtime::Runtime;
-use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
+use tokio::sync::{RwLock as ARwLock, Mutex as AMutex, RwLock};
 
 use tracing::info;
 use url::Url;
@@ -112,12 +112,13 @@ pub struct DocumentsState {
     pub cache_dirty: Arc<AMutex<bool>>,
     pub cache_correction: Arc<HashMap<String, String>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
     pub cache_fuzzy: Arc<Vec<String>>,                   // slow linear search
-    pub fs_watcher: Option<RecommendedWatcher>,
+    pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
 }
 
 
 impl DocumentsState {
     pub fn empty(workspace_dirs: Vec<PathBuf>) -> Self {
+        let watcher = RecommendedWatcher::new(|e|{}, Default::default()).unwrap();
         Self {
             workspace_folders: Arc::new(StdMutex::new(workspace_dirs)),
             workspace_files: Arc::new(StdMutex::new(vec![])),
@@ -125,27 +126,27 @@ impl DocumentsState {
             cache_dirty: Arc::new(AMutex::<bool>::new(false)),
             cache_correction: Arc::new(HashMap::<String, String>::new()),
             cache_fuzzy: Arc::new(Vec::<String>::new()),
-            fs_watcher: None,
+            fs_watcher: Arc::new(ARwLock::new(watcher)),
         }
     }
 
     pub fn init_watcher(&mut self, gcx: Arc<ARwLock<GlobalContext>>) {
-        let watcher = RecommendedWatcher::new(
+        let gcx_cloned = Arc::downgrade(&gcx.clone());
+        let mut watcher = RecommendedWatcher::new(
             move |res| {
-                let rt  = Runtime::new().unwrap();
+                let rt = Runtime::new().unwrap();
                 rt.block_on(async {
                     if let Ok(event) = res {
-                        file_watcher_thread(event, gcx.clone()).await;
+                        file_watcher_thread(event, gcx_cloned.clone()).await;
                     }
                 })
             },
             Config::default(),
         ).unwrap();
-        self.fs_watcher = Some(watcher);
-    }
-
-    pub fn finish(&mut self) {
-        self.fs_watcher = None;
+        for folder in self.workspace_folders.lock().unwrap().iter() {
+            watcher.watch(folder, RecursiveMode::Recursive).unwrap();
+        }
+        self.fs_watcher = Arc::new(ARwLock::new(watcher));
     }
 }
 
@@ -209,42 +210,42 @@ async fn _ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>>
         // SVN repository
         _run_command("svn", &["list", "-R"], path).await
     } else {
-        // ls everything
-        let mut docs = Vec::new();
-        let mut files = glob::glob(path.join("**/*").to_str().unwrap()).unwrap();
-        while let Some(file_res) = files.next() {
-            if let Ok(file) = file_res {
-                docs.push(file);
+        None
+    }
+}
+
+async fn _ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf> {
+    let mut paths: Vec<PathBuf> = vec![];
+    let mut candidates: Vec<PathBuf> = vec![path];
+    while !candidates.is_empty() {
+        let local_path = candidates.pop().unwrap();
+        if local_path.is_file() && is_valid_file(&local_path) {
+            paths.push(local_path);
+            continue;
+        }
+        if local_path.is_dir() {
+            let maybe_files = _ls_files_under_version_control(&local_path).await;
+            if let Some(files) = maybe_files {
+                paths.extend(files);
+            } else {
+                let local_paths: Vec<PathBuf> = WalkDir::new(local_path.clone()).max_depth(1)
+                    .into_iter()
+                    .filter_map(|e| e.ok())
+                    .map(|e| e.path().to_path_buf())
+                    .filter(|e| e != &local_path)
+                    .collect();
+                candidates.extend(local_paths);
             }
         }
-        Some(docs)
     }
+    paths
 }
 
 pub async fn _retrieve_files_by_proj_folders(proj_folders: Vec<PathBuf>) -> Vec<DocumentInfo> {
     let mut all_files: Vec<DocumentInfo> = Vec::new();
     for proj_folder in proj_folders {
-        let maybe_files = _ls_files_under_version_control(&proj_folder).await;
-        if let Some(files) = maybe_files {
-            info!("_retrieve_files_by_proj_folders input {}", files.len());
-            // all_files.extend(files.iter().filter_map(|x| DocumentInfo::from_pathbuf(x).ok()).collect::<Vec<_>>());
-            all_files.extend(files.iter().filter_map(|x| {
-                if !x.is_dir() && is_valid_file(x) {
-                    DocumentInfo::from_pathbuf(x).ok()
-                } else {
-                    None
-                }
-            }).collect::<Vec<_>>());
-        } else {
-            let files: Vec<DocumentInfo> = WalkDir::new(proj_folder)
-                .into_iter()
-                .filter_map(|e| e.ok())
-                .filter(|e| !e.path().is_dir())
-                .filter(|e| is_valid_file(&e.path().to_path_buf()))
-                .filter_map(|e| DocumentInfo::from_pathbuf(&e.path().to_path_buf()).ok())
-                .collect::<Vec<DocumentInfo>>();
-            all_files.extend(files);
-        }
+        let files = _ls_files_under_version_control_recursive(proj_folder.clone()).await;
+        all_files.extend(files.iter().filter_map(|x| DocumentInfo::from_pathbuf(x).ok()).collect::<Vec<_>>());
     }
     all_files
 }
@@ -329,7 +330,6 @@ pub async fn on_did_open(
     }
     *(cache_dirty_arc.lock().await) = true;
 }
-
 
 pub async fn on_did_change(
     gcx: Arc<ARwLock<global_context::GlobalContext>>,
@@ -433,9 +433,7 @@ pub async fn add_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf) {
     {
         let documents_state = &mut gcx.write().await.documents_state;
         documents_state.workspace_folders.lock().unwrap().push(path.clone());
-        if let Some(watcher) = documents_state.fs_watcher.as_mut() {
-            let _ = watcher.watch(&path.clone(), RecursiveMode::Recursive);
-        }
+        let _ = documents_state.fs_watcher.write().await.watch(&path.clone(), RecursiveMode::Recursive);
     }
     let docs = _retrieve_files_by_proj_folders(vec![path.clone()]).await;
 
@@ -457,10 +455,7 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf) {
     {
         let documents_state = &mut gcx.write().await.documents_state;
         documents_state.workspace_folders.lock().unwrap().retain(|p| p != path);
-        if let Some(watcher) = documents_state.fs_watcher.as_mut() {
-            let _ = watcher.unwatch(&path.clone());
-        }
-        // let _ = documents_state.fs_watcher.unwatch(&path.clone());
+        let _ = documents_state.fs_watcher.write().await.unwatch(&path.clone());
     }
     let (ast_module, _vecdb_module) = {
         let cx_locked = gcx.read().await;
@@ -474,16 +469,20 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf) {
     enqueue_all_files_from_workspace_folders(gcx.clone()).await;
 }
 
-pub async fn file_watcher_thread(event: Event, gcx: Arc<ARwLock<GlobalContext>>) {
+pub async fn file_watcher_thread(event: Event, gcx: Weak<RwLock<GlobalContext>>) {
     match event.kind {
         EventKind::Any => {}
         EventKind::Access(_) => {}
         EventKind::Create(CreateKind::File) | EventKind::Modify(ModifyKind::Data(DataChange::Content)) => {
             let docs = event.paths.iter().map(|path| DocumentInfo::new(pathbuf_to_url(path).unwrap())).collect();
-            enqueue_files(gcx.clone(), docs).await;
+            if let Some(gcx) = gcx.upgrade() {
+                enqueue_files(gcx, docs).await;
+            }
         }
         EventKind::Remove(RemoveKind::File) => {
-            enqueue_all_files_from_workspace_folders(gcx.clone()).await;
+            if let Some(gcx) = gcx.upgrade() {
+                enqueue_all_files_from_workspace_folders(gcx).await;
+            }
         }
         EventKind::Other => {}
         _ => {}
