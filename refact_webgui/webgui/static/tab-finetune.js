@@ -238,19 +238,14 @@ function rename_post(run_id, new_name) {
             run_id_new: new_name
         })
     })
-    .then(function (response) {
-        if (!response.ok) {
-            return response.json().then(function(json) {
-                throw new Error(json.detail);
-            });
-        }
-        return true;
-    })
     .catch(function (error) {
         console.log('tab-finetune-rename-run', error);
         general_error(error);
         return false;
-    });
+    })
+    .then(function (response) {
+        return true;
+    })
 }
 
 let global_projects = [];
@@ -594,14 +589,14 @@ function render_runs() {
             new_confirm_btn.addEventListener('click', (event) => {
                 new_confirm_btn.replaceWith(spinner);
                 cancel_btn.hidden = true;
-                rename_post(run_rename.dataset.run, rename_input.value).then((is_ok) => {
-                    if (!is_ok) {
-                        rename_input.value = run_rename.dataset.run;
-                        spinner.replaceWith(new_confirm_btn);
-                        cancel_btn.hidden = false;
-                    }
-                })
-                tab_finetune_config_and_runs();
+                const rename_query = rename_post(run_rename.dataset.run, rename_input.value);
+                if(rename_query) {
+                    tab_finetune_config_and_runs();
+                } else {
+                    rename_input.value = run_rename.dataset.run;
+                    spinner.replaceWith(new_confirm_btn);
+                    cancel_btn.hidden = false;
+                }
             });
 
             cancel_btn.addEventListener('click', (event) => {
