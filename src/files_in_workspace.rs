@@ -380,7 +380,7 @@ pub async fn on_did_change(
     // info!("doc_info.uri.to_file_path {:?}", doc_info.uri.to_file_path());
     telemetry::snippets_collection::sources_changed(
         gcx.clone(),
-        &doc_info.uri.to_string(),  // FIXME: incorrect, use to_file_path() for path, pass URL for url
+        &doc_info.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string(),
         text,
     ).await;
     info!("on_did_change {}, total time {:.3}s", crate::nicer_logs::last_n_chars(&doc_info.get_path().display().to_string(), 30), t0.elapsed().as_secs_f32());

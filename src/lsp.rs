@@ -130,8 +130,8 @@ impl Backend {
                 }
             }
         };
-        // let path_string = params.text_document_position.text_document.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string();
-        let path_string = params.text_document_position.text_document.uri.to_string();
+        // url -> String method should be the same as in telemetry::snippets_collection::sources_changed
+        let path_string = params.text_document_position.text_document.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string();
         Ok(CodeCompletionPost {
             inputs: CodeCompletionInputs {
                 sources: HashMap::from([(path_string.clone(), (&txt).to_string())]),
