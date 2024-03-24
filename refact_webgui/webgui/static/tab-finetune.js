@@ -247,7 +247,17 @@ function rename_post(run_id, new_name) {
     .catch(function (error) {
         console.log('tab-finetune-rename-run', error);
         if (error.detail) {
-            general_error(error.detail);
+            if (Array.isArray(error.detail)) {
+                let combined_msg = '';
+                error.detail.forEach(err => {
+                    if (err.msg) {
+                        combined_msg += err.msg + ' ';
+                    }
+                });
+                general_error(combined_msg.trim());
+            } else {
+                general_error(error.detail);
+            }
         } else {
             general_error(error);
         }
