@@ -130,12 +130,13 @@ impl Backend {
                 }
             }
         };
+        // let path_string = params.text_document_position.text_document.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string();
+        let path_string = params.text_document_position.text_document.uri.to_string();
         Ok(CodeCompletionPost {
             inputs: CodeCompletionInputs {
-                sources: HashMap::from([(String::from(&params.text_document_position.text_document.uri.to_string()),
-                                         (&txt).to_string())]),
+                sources: HashMap::from([(path_string.clone(), (&txt).to_string())]),
                 cursor: CursorPosition {
-                    file: String::from(&params.text_document_position.text_document.uri.to_string()),
+                    file: path_string.clone(),
                     line: params.text_document_position.position.line as i32,
                     character: params.text_document_position.position.character as i32,
                 },
@@ -226,7 +227,7 @@ impl LanguageServer for Backend {
                 }
             }],
         };
-        
+
         Ok(InitializeResult {
             server_info: Some(ServerInfo {
                 name: "refact".to_owned(),

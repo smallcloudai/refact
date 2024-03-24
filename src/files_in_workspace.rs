@@ -81,7 +81,8 @@ impl DocumentInfo {
     }
 
     pub fn get_path(&self) -> PathBuf {
-        PathBuf::from(self.uri.path())
+        // PathBuf::from(self.uri.path())  -- incorrect code, you can't make a PathBuf from the path path of Url
+        self.uri.to_file_path().unwrap_or_default()
     }
 
     pub async fn read_file(&self) -> io::Result<String> {
@@ -315,15 +316,18 @@ pub async fn on_did_open(
     text: &String,
     language_id: &String,
 ) {
-    let gcx_locked = gcx.read().await;
-    let document_map = &gcx_locked.documents_state.document_map;
-    let mut document_map_locked = document_map.write().await;
     let doc = Document::new(language_id.clone(), Rope::from_str(&text));
+    let (document_map_arc, cache_dirty_arc) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.documents_state.document_map.clone(), gcx_locked.documents_state.cache_dirty.clone())
+    };
     let doc_info = DocumentInfo { uri: file_url.clone(), document: Some(doc.clone()) };
-    document_map_locked.insert(file_url.clone(), doc);
-    let path_str = format!("{:?}", doc_info.get_path());
-    let last_30_chars: String = crate::nicer_logs::last_n_chars(&path_str, 30);
-    info!("opened {}", last_30_chars);
+    info!("on_did_open {}", crate::nicer_logs::last_n_chars(&doc_info.get_path().display().to_string(), 30));
+    {
+        let mut document_map_locked = document_map_arc.write().await;
+        document_map_locked.insert(file_url.clone(), doc);
+    }
+    *(cache_dirty_arc.lock().await) = true;
 }
 
 
@@ -333,39 +337,53 @@ pub async fn on_did_change(
     text: &String,
 ) {
     let t0 = Instant::now();
-    let doc_info = {
+    let (document_map_arc, cache_dirty_arc) = {
         let gcx_locked = gcx.read().await;
-        let document_map = &gcx_locked.documents_state.document_map;
-        let mut document_map_locked = document_map.write().await;
-        let doc = document_map_locked.entry(file_url.clone())
-            .or_insert(Document::new("unknown".to_owned(), Rope::new()));
-        doc.text = Rope::from_str(&text);
+        (gcx_locked.documents_state.document_map.clone(), gcx_locked.documents_state.cache_dirty.clone())
+    };
+    let mut mark_dirty: bool = false;
+    let doc_info = {
+        let mut document_map_locked = document_map_arc.write().await;
+        let doc = if document_map_locked.contains_key(file_url) {
+            let tmp = document_map_locked.get_mut(file_url).unwrap();
+            tmp.text = Rope::from_str(&text);
+            tmp.clone()
+        } else {
+            info!("WARNING: file {} reported changed, but this binary has no record of this file.", crate::nicer_logs::last_n_chars(&file_url.path().to_string(), 30));
+            let tmp = &Document::new("unknown".to_owned(), Rope::from_str(&text));
+            document_map_locked.insert(file_url.clone(), tmp.clone());
+            mark_dirty = true;
+            tmp.clone()
+        };
         DocumentInfo { uri: file_url.clone(), document: Some(doc.clone()) }
     };
-    if is_valid_file(&doc_info.get_path()) {
-        {
-            let vecdb_bind = gcx.read().await.vec_db.clone();
-            match *vecdb_bind.lock().await {
-                Some(ref mut db) => db.vectorizer_enqueue_files(&vec![doc_info.clone()], false).await,
-                None => {}
-            };
-        }
-        {
-            let ast_bind = gcx.read().await.ast_module.clone();
-            match *ast_bind.lock().await {
-                Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![doc_info.clone()], false).await,
-                None => {}
-            };
-        }
+    if mark_dirty {
+        *(cache_dirty_arc.lock().await) = true;
     }
-
+    if is_valid_file(&doc_info.get_path()) {
+        let (ast_module, vecdb_module) = {
+            let cx_locked = gcx.read().await;
+            (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
+        };
+        match *vecdb_module.lock().await {
+            Some(ref mut db) => db.vectorizer_enqueue_files(&vec![doc_info.clone()], false).await,
+            None => {}
+        };
+        match *ast_module.lock().await {
+            Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![doc_info.clone()], false).await,
+            None => {}
+        };
+    }
+    // info!("file_url {:?}", file_url);
+    // info!("doc_info.uri {:?}", doc_info.uri);
+    // info!("doc_info.uri.to_string {:?}", doc_info.uri.to_string());
+    // info!("doc_info.uri.to_file_path {:?}", doc_info.uri.to_file_path());
     telemetry::snippets_collection::sources_changed(
         gcx.clone(),
-        &doc_info.uri.to_string(),
+        &doc_info.uri.to_string(),  // FIXME: incorrect, use to_file_path() for path, pass URL for url
         text,
     ).await;
-    let last_30_chars: String = crate::nicer_logs::last_n_chars(&doc_info.get_path().display().to_string(), 30);
-    info!("changed {}, total time {:.3}s", last_30_chars, t0.elapsed().as_secs_f32());
+    info!("on_did_change {}, total time {:.3}s", crate::nicer_logs::last_n_chars(&doc_info.get_path().display().to_string(), 30), t0.elapsed().as_secs_f32());
 }
 
 pub async fn on_did_delete(
