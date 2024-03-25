@@ -36,8 +36,10 @@
       <div class="start-funetune-select-model">
         <h3 style="margin-bottom: 15px;">Start New Finetune<span></span></h3>
         <h6>Select Project<span></span></h6>
-        <select id="finetune-project" class="form-select" style="margin-bottom: 20px;">
+        <select id="finetune-project" class="form-select" style="margin-bottom: 20px;" disabled>
+          <option value="" selected disabled>Please create first project</option>
         </select>
+        <div data-bs-toggle="modal" data-bs-target="#upload-tab-new-project-modal" class="finetune-new-project">Create new project...</div>
         <h6>Select Model<span></span></h6>
         <select id="finetune-model" class="form-select" style="margin-bottom: 20px;">
         </select>
@@ -62,7 +64,7 @@
         <h6>Step 2: Training<span></span></h6>
         <div class="start-funetune__inline">
           <!-- <button id="run_now" type="button" class="btn btn-primary tab-finetune-run-now"><i class="bi bi-gpu-card"></i> Run Now</button> -->
-          <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn btn-primary tab-finetune-fine-settings">Start Finetune...</button>
+          <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" disabled class="btn btn-primary tab-finetune-fine-settings">Start Finetune...</button>
         </div>
        
         <!-- <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn finetune-autorun btn-sm btn-outline-primary mt-1"><i class="bi bi-stopwatch-fill"></i>Autorun Settings</button> -->
