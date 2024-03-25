@@ -1,5 +1,5 @@
 import math
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict
 
 import torch as th
 from torch.nn.init import kaiming_uniform_
@@ -139,3 +139,15 @@ class LoraMixin:
                 injecting_module=module.layer,
                 inject_path=name
             )
+
+    @staticmethod
+    def lora_patch_state_dict(model: th.nn.Module) -> Dict[str, th.Tensor]:
+        state_dict: Dict[str, th.Tensor] = {}
+        for name, module in model.named_modules():
+            if not isinstance(module, LoraLinear):
+                continue
+            weight, bias = module.weight, module.bias
+            state_dict[f"{name}.weight"] = weight
+            if bias is not None:
+                state_dict[f"{name}.bias"] = bias
+        return state_dict
