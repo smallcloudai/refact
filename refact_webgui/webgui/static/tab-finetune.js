@@ -123,7 +123,7 @@ const finetune_settings_inputs = [
         "type": "text",
         "min": "1",
         "max": "10",
-        "info": "Min 1, Max 10",
+        "info": "Min 1.0, Max 10.0",
         "hint": "",
     },
     { // column 0
@@ -131,8 +131,8 @@ const finetune_settings_inputs = [
         "label": "N Ctx",
         "type": "text",
         "min": "1",
-        "max": "10",
-        "info": "Min 1, Max 10",
+        "max": "1024",
+        "info": "Min 1, Max 1024",
         "hint": "",
     },
 ]
@@ -211,8 +211,11 @@ function tab_finetune_config_and_runs() {
             }
 
             const project_selector = document.querySelector('#finetune-project');
-            if (project_selector.options.length == 0) {
-                project_selector.innerHTML = '';
+            project_selector.innerHTML = '';
+            if(global_projects.length > 0) {
+                document.querySelector('.finetune-new-project').style.display = 'none';
+                project_selector.disabled = false;
+                finetune_settings.disabled = false;
                 global_projects.forEach(project => {
                     const new_option = new Option(project.name, project.name);
                     // if (finetune_configs_and_runs.config.project_name === ) {
@@ -220,6 +223,12 @@ function tab_finetune_config_and_runs() {
                     // }
                     project_selector.appendChild(new_option);
                 })
+            }
+            if (global_projects.length == 0) {
+                finetune_settings.disabled = true;
+                project_selector.innerHTML = `<option value="" selected disabled>Please create first project</option>`;
+                project_selector.disabled = true;
+                document.querySelector('.finetune-new-project').style.display = 'block';
             }
 
             finetune_controls_state();
@@ -274,6 +283,7 @@ function fetch_projects() {
         console.log('tab-project-list',error);
         general_error(error);
         project_selector.innerHTML = '';
+        project_selector.disabled = true;
     })
     .then(function(response) {
         return response.json();
@@ -1181,10 +1191,10 @@ function handle_auto_scroll() {
 
 function finetune_controls_state()
 {
-    if(!finetune_state) { return }
-    if(!reference_finetune_state) { reference_finetune_state = finetune_state; }
-    if(!reference_finetune_configs_and_runs) { reference_finetune_configs_and_runs = finetune_configs_and_runs; }
-    if(finetune_state === reference_finetune_state && finetune_configs_and_runs === reference_finetune_configs_and_runs) { return }
+    // if(!finetune_state) { return }
+    // if(!reference_finetune_state) { reference_finetune_state = finetune_state; }
+    // if(!reference_finetune_configs_and_runs) { reference_finetune_configs_and_runs = finetune_configs_and_runs; }
+    // if(finetune_state === reference_finetune_state && finetune_configs_and_runs === reference_finetune_configs_and_runs) { return }
     const progress_container = document.querySelector('.ftf-progress');
     const eta_state = document.querySelector('.ftf-eta');
 

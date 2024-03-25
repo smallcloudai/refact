@@ -12,6 +12,8 @@ let pname = "";
 
 let sources_pane = null;
 let filetypes_pane = null;
+let projects_is_empty = false;
+
 
 // function do_starting_state() {
 //     filetypes_pane.classList.add('pane-disabled');
@@ -33,6 +35,9 @@ function get_projects_list() {
     })
     .then(function(data) {
         console.log('tab-project-list',data);
+        if(data.projects.length === 0) {
+            projects_is_empty = true;
+        }
         project_list_ready(data.projects);
     });
 }
@@ -63,9 +68,8 @@ function project_list_ready(projects_list)
         document.querySelector('#tab-upload-new-project').value = '';
         start_new_project(project_name);
         const project_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-new-project-modal'));
+        get_projects_list();
         project_modal.hide();
-
-
     });
     const project_buttons = document.querySelectorAll('.projects-dropdown .main-tab-button');
     project_buttons.forEach(function(project_button) {
@@ -96,8 +100,7 @@ function show_project(new_pname) {
     document.querySelector('.sources-pane h3').innerHTML = `Project "${pname}"`;
 }
 
-function start_new_project(project_name)
-{
+function start_new_project(project_name) {
     fetch("/tab-project-new", {
         method: 'POST',
         headers: {
@@ -140,6 +143,12 @@ function delete_project(project_name) {
             pname = '';
             localStorage.removeItem('refact_project_name');
             document.querySelector('.sources-pane h3').innerHTML = ``;
+            document.getElementById("upload-tab-table-body-files").innerHTML = `<tr><td>No sources added.</td><td></td><td></td><td></td><td></td></tr>`;
+            document.querySelector(".upload-tab-table-type-body").innerHTML = `<tr><td>No scanned files.</td><td></td><td></td><td></td><td></td></tr>`;   
+            document.querySelector('.sources-stats-fine-accepted span').innerHTML = ``;
+            document.querySelector('.sources-stats-fine-rejected span').innerHTML = ``;
+            document.querySelector('.sources-stats-finetune').style.display = 'none';
+            document.querySelector('.delete-project').dataset.project = '';
             get_tab_files();
             get_projects_list();
         } else {
@@ -148,7 +157,7 @@ function delete_project(project_name) {
     });
 }
 
-function projects_dropdown() {
+function projects_dropdown(is_empty = false) {
     if(document.querySelector('.project-dropdown')) {
         return;
     }
@@ -170,8 +179,7 @@ function projects_dropdown() {
     dropdown.classList.add('dropdown-menu');
     dropdown.classList.add('projects-dropdown');
     dropdown.setAttribute('aria-labelledby', 'navbarDropdown');
-    dropdown.innerHTML = `<li><hr class="dropdown-divider"></li>
-                        <li><button data-bs-toggle="modal" data-bs-target="#upload-tab-new-project-modal" class="dropdown-item start-project">New Project &hellip;</button></li>`;
+    dropdown.innerHTML += `<li><button data-bs-toggle="modal" data-bs-target="#upload-tab-new-project-modal" class="dropdown-item start-project">New Project &hellip;</button></li>`;
     project_dropdown.appendChild(dropdown);
 }
 
@@ -652,10 +660,11 @@ export async function init(general_error) {
 
     const delete_project_button = document.querySelector(".delete-project");
     delete_project_button.addEventListener('click', function() {
-        const project_name = this.dataset.project;
-        if(project_name && project_name!== '') {
-            delete_project(project_name);
+        let project_name = this.dataset.project;
+        if(!project_name || project_name === '') {
+            return;
         }
+        delete_project(project_name);
     });
 
     const tab_upload_git_submit = document.querySelector('.tab-upload-git-submit');
