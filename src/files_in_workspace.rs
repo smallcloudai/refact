@@ -108,6 +108,8 @@ impl DocumentInfo {
 pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub workspace_files: Arc<StdMutex<Vec<Url>>>,
+    // document_map on windows: c%3A/Users/user\Documents/file.ext
+    // query on windows: C:/Users/user/Documents/file.ext
     pub document_map: Arc<ARwLock<HashMap<Url, Document>>>,   // if a file is open in IDE and it's outside workspace dirs, it will be in this map and not in workspace_files
     pub cache_dirty: Arc<AMutex<bool>>,
     pub cache_correction: Arc<HashMap<String, String>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
