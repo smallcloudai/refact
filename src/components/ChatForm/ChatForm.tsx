@@ -408,6 +408,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               disabled={isStreaming}
               {...props}
               onTextAreaHeightChange={onTextAreaHeightChange}
+              autoFocus={true}
             />
           )}
           selectedCommand={commands.selected_command}
