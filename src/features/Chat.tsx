@@ -83,7 +83,21 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
           <Button size="1" variant="surface" onClick={openChatInNewTab}>
             Open In Tab
           </Button>
-          <Button size="1" variant="surface" onClick={startNewChat}>
+          <Button
+            size="1"
+            variant="surface"
+            onClick={(event) => {
+              event.currentTarget.blur();
+              startNewChat();
+              // TODO: improve this
+              const textarea = document.querySelector<HTMLTextAreaElement>(
+                '[data-testid="chat-form-textarea"]',
+              );
+              if (textarea !== null) {
+                textarea.focus();
+              }
+            }}
+          >
             New Chat
           </Button>
         </Flex>
