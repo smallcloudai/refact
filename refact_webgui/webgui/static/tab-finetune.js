@@ -2,7 +2,7 @@ import { general_error } from './error.js';
 import { init as init_upload_files_modal, switch_away as upload_files_modal_switch_away } from './components/modals/modal-upload-files.js'
 import {get_spinner} from "./utils/utils.js";
 
-
+let gpus_count;
 let logs_streamer_run_id = "";
 let gfx_showing_run_id = "";
 let files_showing_run_id = "";
@@ -822,9 +822,8 @@ function render_finetune_options(settings_data,defaults = false) {
             options_block.appendChild(item_group);
         }
     }
-
     if(gpus_block.innerHTML.trim() == "") {
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < gpus_count; i++) {
             let gpu_input = document.createElement('input');
             gpu_input.type = 'checkbox';
             gpu_input.id = `launch_gpu${i}`;
@@ -846,6 +845,20 @@ function render_finetune_options(settings_data,defaults = false) {
     tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     })
+}
+
+function get_gpus_count() {
+    fetch("/tab-host-have-gpus")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        gpus_count = data.gpus.length;
+    })
+   .catch(function(error) {
+        console.log('tab-host-have-gpus',error);
+        general_error(error);
+    });
 }
 
 function change_finetune_model()
@@ -1434,6 +1447,7 @@ export async function init() {
         change_finetune_model();
     });
 
+    get_gpus_count();
 }
 
 export function tab_switched_here() {
