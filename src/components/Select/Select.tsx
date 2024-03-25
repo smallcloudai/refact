@@ -31,7 +31,11 @@ export const Select: React.FC<SelectProps> = ({
       <RadixSelect.Content>
         {options.map((option) => {
           return (
-            <RadixSelect.Item key={option} value={option}>
+            <RadixSelect.Item
+              key={option}
+              value={option}
+              style={{ overflow: "auto", overflowWrap: "anywhere" }}
+            >
               {option}
             </RadixSelect.Item>
           );
