@@ -18,7 +18,7 @@ import torch as th
 import torch.distributed as dist
 
 from refact_utils.scripts import env
-from refact_utils.finetune.utils import get_finetune_config
+from refact_utils.finetune.utils import finetune_train_defaults
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config, ConfigBuilder
 from self_hosting_machinery.finetune.scripts.auxiliary.dataset import (
     create_train_dataloader, create_test_dataloader, get_ds_len_per_epoch, to_cuda, count_file_types
@@ -30,8 +30,6 @@ from self_hosting_machinery.finetune.scripts import finetune_filter
 from self_hosting_machinery.finetune.utils import traces
 from refact_utils.finetune.utils import default_finetune_model
 
-from refact_utils.scripts import env
-
 
 def _log_everywhere(message):
     if dist.get_rank() != 0:
@@ -39,8 +37,6 @@ def _log_everywhere(message):
     logging.info(message)
     traces.log(message)
 
-
-from refact_utils.finetune.train_defaults import finetune_train_defaults
 
 def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, Any]:
     from known_models_db.refact_known_models import models_mini_db
@@ -378,6 +374,19 @@ def main():
         raise e
 
 
+def localhost_port_not_in_use(start: int, stop: int):
+    def _is_port_in_use(port: int) -> bool:
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('localhost', port)) == 0
+
+    for port in range(start, stop):
+        if not _is_port_in_use(port):
+            return port
+
+    raise RuntimeError(f"cannot find port in range [{start}, {stop})")
+
+
 if __name__ == "__main__":
     index_of_run_id = sys.argv.index("--run_id")
     run_id = sys.argv[index_of_run_id + 1]
@@ -386,7 +395,8 @@ if __name__ == "__main__":
         os.environ["WORLD_SIZE"] = "1"
         os.environ["RANK"] = "0"
         os.environ["LOCAL_RANK"] = "0"
-        dist.init_process_group(backend='nccl', init_method="tcp://localhost:21000", world_size=1, rank=0)
+        port = localhost_port_not_in_use(21000, 22000)  # multi gpu training uses [20000, 21000) range
+        dist.init_process_group(backend='nccl', init_method=f"tcp://localhost:{port}", world_size=1, rank=0)
     else:
         dist.init_process_group(backend='nccl', init_method='env://')
     th.cuda.set_device(dist.get_rank())
