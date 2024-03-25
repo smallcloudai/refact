@@ -138,6 +138,7 @@ function delete_project(project_name) {
     .then(function(data) {
         if (data.message === "OK") {
             pname = '';
+            localStorage.removeItem('refact_project_name');
             document.querySelector('.sources-pane h3').innerHTML = ``;
             get_tab_files();
             get_projects_list();
