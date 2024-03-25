@@ -1,4 +1,5 @@
 use std::fs;
+#[cfg(not(windows))]
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
@@ -44,9 +45,12 @@ pub fn is_valid_file(path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         if file_size > LARGE_FILE_SIZE_THRESHOLD {
             return Err("File size is too large".into());
         }
-        let permissions = metadata.permissions();
-        if permissions.mode() & 0o400 == 0 {
-            return Err("File has no read permissions".into());
+        #[cfg(not(windows))]
+        {
+            let permissions = metadata.permissions();
+            if permissions.mode() & 0o400 == 0 {
+                return Err("File has no read permissions".into());
+            }
         }
     } else {
         return Err("Unable to access file metadata".into());
