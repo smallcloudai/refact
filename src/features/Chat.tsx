@@ -88,6 +88,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
             variant="surface"
             onClick={(event) => {
               event.currentTarget.blur();
+              stopStreaming();
               startNewChat();
               // TODO: improve this
               const textarea = document.querySelector<HTMLTextAreaElement>(
