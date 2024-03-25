@@ -416,7 +416,6 @@ def factory_reset():
         env.DIR_CONFIG,
         env.DIR_LORAS,
         env.DIR_SSH_KEYS,
-        env.DIR_UPLOADS,
         env.DIR_WEIGHTS,
         env.DIR_PROJECTS,
     ]:
