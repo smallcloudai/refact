@@ -382,6 +382,12 @@ if __name__ == "__main__":
     index_of_run_id = sys.argv.index("--run_id")
     run_id = sys.argv[index_of_run_id + 1]
     traces.configure(task_dir="loras", task_name=run_id, work_dir=env.PERMDIR)
-    dist.init_process_group(backend='nccl', init_method='env://')
+    if "RANK" not in os.environ:
+        os.environ["WORLD_SIZE"] = "1"
+        os.environ["RANK"] = "0"
+        os.environ["LOCAL_RANK"] = "0"
+        dist.init_process_group(backend='nccl', init_method="tcp://localhost:21000", world_size=1, rank=0)
+    else:
+        dist.init_process_group(backend='nccl', init_method='env://')
     th.cuda.set_device(dist.get_rank())
     main()
