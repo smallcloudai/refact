@@ -61,6 +61,7 @@ def create_dirs():
     os.makedirs(DIR_LORAS, exist_ok=True)
     os.makedirs(DIR_LOGS, exist_ok=True)
     os.makedirs(DIR_SSH_KEYS, exist_ok=True)
+    os.makedirs(DIR_PROJECTS, exist_ok=True)
 
 create_dirs()
 
