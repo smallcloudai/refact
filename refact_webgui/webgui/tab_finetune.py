@@ -110,8 +110,8 @@ class TabFinetuneRouter(APIRouter):
         # self.add_api_route("/tab-finetune-run-now", self._tab_finetune_run_now, methods=["GET"])
         self.add_api_route("/tab-finetune-stop-now/{run_id}", self._tab_finetune_stop_now, methods=["GET"])
         self.add_api_route("/tab-finetune-remove/{run_id}", self._tab_finetune_remove, methods=["GET"])
-        self.add_api_route("/tab-finetune-smart-filter-setup", self._tab_finetune_smart_filter_setup, methods=["POST"])
-        self.add_api_route("/tab-finetune-smart-filter-get", self._tab_finetune_smart_filter_get, methods=["GET"])
+        # self.add_api_route("/tab-finetune-smart-filter-setup", self._tab_finetune_smart_filter_setup, methods=["POST"])
+        # self.add_api_route("/tab-finetune-smart-filter-get", self._tab_finetune_smart_filter_get, methods=["GET"])
         self.add_api_route("/tab-finetune-training-launch", self._tab_finetune_training_launch, methods=["POST"])
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
         self._model_assigner = model_assigner
@@ -198,24 +198,24 @@ class TabFinetuneRouter(APIRouter):
         }
         return Response(json.dumps(result, indent=4) + "\n")
 
-    async def _tab_finetune_smart_filter_setup(self, post: FilteringSetup):
-        validated = post.dict()
-        for dkey, dval in finetune_filtering_defaults.items():
-            if dkey in validated and (validated[dkey] == dval or validated[dkey] is None):
-                del validated[dkey]
-        with open(env.CONFIG_HOW_TO_FILTER + ".tmp", "w") as f:
-            json.dump(post.dict(), f, indent=4)
-        os.rename(env.CONFIG_HOW_TO_FILTER + ".tmp", env.CONFIG_HOW_TO_FILTER)
-        return JSONResponse("OK")
+    # async def _tab_finetune_smart_filter_setup(self, post: FilteringSetup):
+    #     validated = post.dict()
+    #     for dkey, dval in finetune_filtering_defaults.items():
+    #         if dkey in validated and (validated[dkey] == dval or validated[dkey] is None):
+    #             del validated[dkey]
+    #     with open(env.CONFIG_HOW_TO_FILTER + ".tmp", "w") as f:
+    #         json.dump(post.dict(), f, indent=4)
+    #     os.rename(env.CONFIG_HOW_TO_FILTER + ".tmp", env.CONFIG_HOW_TO_FILTER)
+    #     return JSONResponse("OK")
 
-    async def _tab_finetune_smart_filter_get(self):
-        result = {
-            "defaults": finetune_filtering_defaults,
-            "user_config": {}
-        }
-        if os.path.exists(env.CONFIG_HOW_TO_FILTER):
-            result["user_config"] = json.load(open(env.CONFIG_HOW_TO_FILTER))
-        return Response(json.dumps(result, indent=4) + "\n")
+    # async def _tab_finetune_smart_filter_get(self):
+    #     result = {
+    #         "defaults": finetune_filtering_defaults,
+    #         "user_config": {}
+    #     }
+    #     if os.path.exists(env.CONFIG_HOW_TO_FILTER):
+    #         result["user_config"] = json.load(open(env.CONFIG_HOW_TO_FILTER))
+    #     return Response(json.dumps(result, indent=4) + "\n")
 
     async def _tab_finetune_training_launch(self, post: TabFinetuneTrainingSetup):
         # {
