@@ -260,6 +260,16 @@ class TabFinetuneRouter(APIRouter):
         ftune_cfg_j["save_status"] = os.path.join(env.DIR_LORAS, run_id, "watchdog_status.out")
         ftune_cfg_j["save_status_nickname"] = run_id
         del ftune_cfg_j["unfinished"]
+
+        if post.model_name not in self._model_assigner.models_db:
+            raise HTTPException(detail=f"Unknown model {post.model_name}, try to update repo", status_code=400)
+        model_info = self._model_assigner.models_db[post.model_name]
+        if "finetune" not in model_info.get("filter_caps", []):
+            raise HTTPException(detail=f"Model {post.model_name} does not support finetune", status_code=400)
+        validated["model_path"] = model_info['model_path']
+        validated["model_backend"] = model_info['backend']
+        validated["model_ctx_size"] = str(model_info['T'])
+
         for k in validated:
             if k == "gpus":
                 continue
