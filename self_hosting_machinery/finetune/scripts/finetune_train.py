@@ -28,7 +28,6 @@ from self_hosting_machinery.finetune.scripts.auxiliary.finetune_status_tracker i
 from self_hosting_machinery.finetune.scripts.auxiliary.model import ModelContext
 from self_hosting_machinery.finetune.scripts import finetune_filter
 from self_hosting_machinery.finetune.utils import traces
-from refact_utils.finetune.utils import default_finetune_model
 
 
 def _log_everywhere(message):
@@ -38,9 +37,7 @@ def _log_everywhere(message):
     traces.log(message)
 
 
-def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, Any]:
-    from known_models_db.refact_known_models import models_mini_db
-    models_db: Dict[str, Any] = copy.deepcopy(models_mini_db)
+def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, **kwargs) -> Dict[str, Any]:
     user_cfg = copy.deepcopy(finetune_train_defaults)
     user_cfg_nondefault = {}
     for k, v in kwargs.items():
@@ -49,7 +46,7 @@ def _build_finetune_config_by_heuristics(pname, run_id, **kwargs) -> Dict[str, A
         if finetune_train_defaults.get(k, 0) != v:
             user_cfg_nondefault[k] = v
 
-    cfg_builder = ConfigBuilder(base_config(kwargs['model_name'], models_db))
+    cfg_builder = ConfigBuilder(finetune_cfg)
     # if user_cfg['use_heuristics']:
     if user_cfg['train_steps'] == 0:
         _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
@@ -138,8 +135,12 @@ def convert_to_int(v):
         return v
 
 @click.command()
-@click.option('--pname', default='')
-@click.option('--run_id', default='')
+@click.option('--pname', required=True)
+@click.option('--run_id', required=True)
+@click.option('--model_name', required=True)
+@click.option('--model_path', required=True)
+@click.option('--model_backend', required=True)
+@click.option('--model_ctx_size', required=True, type=convert_to_int)
 # @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
 @click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
 @click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
@@ -153,22 +154,22 @@ def convert_to_int(v):
 @click.option('--lora_r', default=finetune_train_defaults['lora_r'], type=convert_to_int)
 @click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'], type=convert_to_int)
 @click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
-@click.option('--model_name', default=default_finetune_model)
 def gpu_filter_and_build_config(pname, run_id, **kwargs) -> Dict[str, Any]:
-    assert run_id, "Please specify --run-id"
-    assert pname, "Please specify --pname"
+    finetune_cfg = base_config(**kwargs)
+
     traces.log("locking \"%s\" for filtering" % pname)
     if dist.get_rank() == 0:
         with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
             traces.log("locked \"%s\" successfully" % pname)
-            finetune_filter.finetune_gpu_filter(pname)
+            finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg))
             traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
             _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
             _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
     else:
-        finetune_filter.finetune_gpu_filter(pname)
+        finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg))
     dist.barrier()
-    return _build_finetune_config_by_heuristics(pname, run_id, **kwargs)
+
+    return _build_finetune_config_by_heuristics(run_id, copy.deepcopy(finetune_cfg), **kwargs)
 
 
 def _copy_source_files(jsonl_src, jsonl_dst, pname, run_id):

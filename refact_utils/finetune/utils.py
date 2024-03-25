@@ -175,11 +175,9 @@ def get_finetune_filter_config(logger: Optional[Callable] = None):
     return cfg
 
 
-def get_finetune_config(models_db: Dict[str, Any], logger: Optional[Callable] = None) -> Dict[str, Any]:
+def get_finetune_config(models_db: Dict) -> Dict[str, Any]:
     cfg = copy.deepcopy(finetune_train_defaults)
     if os.path.exists(env.CONFIG_FINETUNE):
-        if logger is not None:
-            logger("Reading %s" % env.CONFIG_FINETUNE)
         cfg.update(**json.load(open(env.CONFIG_FINETUNE)))
     if cfg.get("model_name", None) not in models_db:
         cfg["model_name"] = default_finetune_model

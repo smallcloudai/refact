@@ -183,13 +183,9 @@ def finetune_filter(
     )
 
 
-def finetune_gpu_filter(pname):
+def finetune_gpu_filter(pname: str, finetune_cfg: Dict):
     _log_everywhere("Loading finetune configs...")
-    from known_models_db.refact_known_models import models_mini_db
-    models_db: Dict[str, Any] = models_mini_db
     finetune_filter_cfg = get_finetune_filter_config(logger=traces.log)
-    model_name = get_finetune_config(models_db, logger=traces.log)["model_name"]
-    finetune_cfg = copy.deepcopy(base_config(model_name, models_db))
 
     file_sets_context = FileSetsContext(
         pname=pname,

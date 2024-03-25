@@ -8,19 +8,14 @@ from self_hosting_machinery.finetune.utils import traces
 from typing import Any, Dict, List
 
 
-def base_config(model_name: str, models_db: Dict[str, Any]):
-    if model_name not in models_db:
-        raise RuntimeError(f"Unknown model {model_name}, try to update repo")
-    model_info = models_db[model_name]
-    if "finetune" not in model_info.get("filter_caps", []):
-        raise RuntimeError(f"Model {model_name} does not support finetune")
+def base_config(model_name: str, model_path: str, model_backend: str, model_ctx_size: int, **kwargs) -> Dict[str, Any]:
     return dict(
         model_name=model_name,
         model_info=dict(
             weight_path=env.DIR_WEIGHTS,
-            repo_id=model_info['model_path'],
-            backend=model_info['backend'],
-            ctx_size=model_info['T'],
+            repo_id=model_path,
+            backend=model_backend,
+            ctx_size=model_ctx_size,
             lora={
                 "lora_target_modules": [
                     "qkv",
