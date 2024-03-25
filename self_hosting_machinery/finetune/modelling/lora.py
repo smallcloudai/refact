@@ -141,16 +141,12 @@ class LoraMixin:
             )
 
     @staticmethod
-    def lora_merged_state_dict(model: th.nn.Module) -> Dict[str, th.Tensor]:
-        state_dict = model.state_dict()
+    def lora_patch_state_dict(model: th.nn.Module) -> Dict[str, th.Tensor]:
+        state_dict: Dict[str, th.Tensor] = {}
         for name, module in model.named_modules():
             if not isinstance(module, LoraLinear):
                 continue
             weight, bias = module.weight, module.bias
-            for lora_name in (f"{name}.layer.weight",
-                              f"{name}.lora_A.weight",
-                              f"{name}.lora_B.weight"):
-                state_dict.pop(lora_name)
             state_dict[f"{name}.weight"] = weight
             if bias is not None:
                 state_dict[f"{name}.bias"] = bias
