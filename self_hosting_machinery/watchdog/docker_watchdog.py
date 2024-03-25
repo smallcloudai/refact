@@ -19,7 +19,7 @@ FIRST_RUN_CMDLINE = [sys.executable, "-m", "self_hosting_machinery.scripts.first
 
 
 def replace_variable_names_from_env(s):
-    s = s.replace("%PYTHON%", sys.executable)
+    s = str(s).replace("%PYTHON%", sys.executable)
     for k, v in env.__dict__.items():
         if k.startswith("FLAG_") or k.startswith("DIR_") or k.startswith("CONFIG_"):
             s = s.replace("%" + k + "%", v)

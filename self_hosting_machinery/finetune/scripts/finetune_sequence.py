@@ -14,7 +14,7 @@ def catch_sigusr1(signum, frame):
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
-@click.option('--pname', default='', help='Project name')
+@click.option('--pname', required=True, help='Project name')
 @click.argument('args', nargs=-1)
 def main(pname, args):
     cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES", "")
