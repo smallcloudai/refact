@@ -626,6 +626,7 @@ VariableUsage
 #[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct VariableUsage {
     pub ast_fields: AstSymbolFields,
+    pub caller_guid: Option<String>,
     pub var_decl_guid: Option<String>,
 }
 
@@ -633,6 +634,7 @@ impl Default for VariableUsage {
     fn default() -> Self {
         Self {
             ast_fields: AstSymbolFields::default(),
+            caller_guid: None,
             var_decl_guid: None,
         }
     }
