@@ -5,7 +5,6 @@ import { ChatContent } from "../components/ChatContent";
 import { Flex, Responsive, Button, Text } from "@radix-ui/themes";
 import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { Coin } from "../images";
 
 export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
   const { host, tabbed } = useConfig();
@@ -140,11 +139,6 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         {state.chat.messages.length > 0 && (
           <Text size="1">
             model: {state.chat.model || state.caps.default_cap}{" "}
-          </Text>
-        )}
-        {state.tokens !== null && (
-          <Text title="balance" size="1" ml="auto">
-            {state.tokens} <Coin width="10" height="10" />
           </Text>
         )}
       </Flex>
