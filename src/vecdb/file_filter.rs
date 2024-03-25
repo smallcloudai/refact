@@ -11,9 +11,9 @@ const SOURCE_FILE_EXTENSIONS: &[&str] = &[
     "php", "js", "jsx", "ts", "tsx", "lua", "pl", "r", "sh", "bat", "cmd", "ps1",
     "m", "kt", "kts", "groovy", "dart", "fs", "fsx", "fsi", "html", "htm", "css",
     "scss", "sass", "less", "json", "xml", "yml", "yaml", "md", "sql", "db", "sqlite",
-    "mdf", "cfg", "conf", "ini", "toml", "dockerfile", "ipynb", "rmd", "swift", "java",
-    "xml", "kt", "xaml", "unity", "gd", "uproject", "uasset", "asm", "s", "tex",
-    "makefile", "mk", "cmake", "gradle",
+    "mdf", "cfg", "conf", "ini", "toml", "dockerfile", "ipynb", "rmd", "xml", "kt",
+    "xaml", "unity", "gd", "uproject", "uasset", "asm", "s", "tex", "makefile", "mk",
+    "cmake", "gradle",
 ];
 
 pub fn is_valid_file(path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
