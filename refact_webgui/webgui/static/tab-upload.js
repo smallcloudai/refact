@@ -44,7 +44,7 @@ function project_list_ready(projects_list)
     const old_list_items = document.querySelectorAll('.projects-dropdown .dropdown-item');
     if(old_list_items && old_list_items.length > 0) {
         for(let i = 0; i < (old_list_items.length - 1); i++) {
-            old_list_items[i].remove();
+            old_list_items[i].parentNode.remove();
         }
     }
     projects_list.reverse().forEach(function(project) {
@@ -152,7 +152,7 @@ function delete_project(project_name) {
     });
 }
 
-function projects_dropdown(is_empty = false) {
+function projects_dropdown() {
     if(document.querySelector('.project-dropdown')) {
         return;
     }
@@ -174,7 +174,7 @@ function projects_dropdown(is_empty = false) {
     dropdown.classList.add('dropdown-menu');
     dropdown.classList.add('projects-dropdown');
     dropdown.setAttribute('aria-labelledby', 'navbarDropdown');
-    dropdown.innerHTML += `<li><button data-bs-toggle="modal" data-bs-target="#upload-tab-new-project-modal" class="dropdown-item start-project">New Project &hellip;</button></li>`;
+    dropdown.innerHTML = `<li><button data-bs-toggle="modal" data-bs-target="#upload-tab-new-project-modal" class="dropdown-item start-project">New Project &hellip;</button></li>`;
     project_dropdown.appendChild(dropdown);
 }
 

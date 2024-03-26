@@ -125,7 +125,7 @@ const finetune_settings_inputs = [
         "hint": "",
     },
     { // column 0
-        "name": "n_ctx",
+        "name": "model_ctx_size",
         "label": "N Ctx",
         "type": "text",
         "min": "1",
@@ -954,8 +954,8 @@ function save_finetune_settings() {
             lora_alpha: document.querySelector('#finetune-tab-settings-modal #lora_alpha').value,
             lora_dropout: document.querySelector('#finetune-tab-settings-modal #lora_dropout').value,
             gpus: gpus,
-            filter_loss_threshold: document.querySelector('#finetune-tab-settings-modal #filter_loss_threshold').value,
-            n_ctx: document.querySelector('#finetune-tab-settings-modal #n_ctx').value,
+            // filter_loss_threshold: document.querySelector('#finetune-tab-settings-modal #filter_loss_threshold').value,
+            model_ctx_size: document.querySelector('#finetune-tab-settings-modal #model_ctx_size').value,
         })
     })
     .then(function(response) {
@@ -1118,8 +1118,6 @@ function render_ftune_progress(ftune_progress, ftune_eta) {
         const eta_state = document.querySelector('.ftune-eta');
         eta_state.innerHTML = 'ETA: ' + ftune_eta + ' minute(s)';
     }
-    const ftune_stats_pane = document.querySelector('.finetune-pane-stats');
-    ftune_stats_pane.classList.remove('d-none');
     const ftune_stats = document.querySelector('.start-finetune-stats');
     ftune_stats.classList.remove('d-none');
 
@@ -1134,8 +1132,6 @@ function reset_ftune_progress() {
     eta_state.innerHTML = '';
     const ftune_stats = document.querySelector('.start-finetune-stats');
     ftune_stats.classList.add('d-none');
-    const ftune_stats_pane = document.querySelector('.finetune-pane-stats');
-    ftune_stats_pane.classList.add('d-none');
 }
 
 // function get_filters_settings(defaults = false) {
