@@ -12,7 +12,6 @@ let pname = "";
 
 let sources_pane = null;
 let filetypes_pane = null;
-let projects_is_empty = false;
 
 
 // function do_starting_state() {
@@ -35,9 +34,6 @@ function get_projects_list() {
     })
     .then(function(data) {
         console.log('tab-project-list',data);
-        if(data.projects.length === 0) {
-            projects_is_empty = true;
-        }
         project_list_ready(data.projects);
     });
 }
@@ -149,7 +145,6 @@ function delete_project(project_name) {
             document.querySelector('.sources-stats-fine-rejected span').innerHTML = ``;
             document.querySelector('.sources-stats-finetune').style.display = 'none';
             document.querySelector('.delete-project').dataset.project = '';
-            get_tab_files();
             get_projects_list();
         } else {
             console.log('Cannot delete project:', data.message);
