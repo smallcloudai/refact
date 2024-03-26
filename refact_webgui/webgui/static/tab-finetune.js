@@ -135,21 +135,20 @@ const finetune_settings_inputs = [
     },
 ]
 
-//function tab_finetune_get() {
-//    fetch("tab-finetune-get")
-//    .then(function (response) {
-//        return response.json();
-//    })
-//    .then(function (data) {
-//        // console.log('tab-finetune-get',data);
-//        finetune_state = data;
-//    })
-//   .catch(function (error) {
-//        console.log('tab-finetune-get',error);
-//        general_error(error);
-//    });
-//}
-
+// function tab_finetune_get() {
+//     fetch("tab-finetune-get")
+//     .then(function (response) {
+//         return response.json();
+//     })
+//     .then(function (data) {
+//         // console.log('tab-finetune-get',data);
+//         finetune_state = data;
+//     })
+//    .catch(function (error) {
+//         console.log('tab-finetune-get',error);
+//         general_error(error);
+//     });
+// }
 
 export function get_finetune_config_and_runs() {
     return fetch("/tab-finetune-config-and-runs")
@@ -954,8 +953,8 @@ function save_finetune_settings() {
             lora_alpha: document.querySelector('#finetune-tab-settings-modal #lora_alpha').value,
             lora_dropout: document.querySelector('#finetune-tab-settings-modal #lora_dropout').value,
             gpus: gpus,
-            // filter_loss_threshold: document.querySelector('#finetune-tab-settings-modal #filter_loss_threshold').value,
-            // n_ctx: document.querySelector('#finetune-tab-settings-modal #n_ctx').value,
+            filter_loss_threshold: document.querySelector('#finetune-tab-settings-modal #filter_loss_threshold').value,
+            n_ctx: document.querySelector('#finetune-tab-settings-modal #n_ctx').value,
         })
     })
     .then(function(response) {
@@ -1458,7 +1457,6 @@ export async function init() {
 }
 
 export function tab_switched_here() {
-//    tab_finetune_get();
     tab_finetune_config_and_runs();
     // render_schedule_dialog();
     init_upload_files_modal(
@@ -1482,6 +1480,5 @@ export function tab_switched_away() {
 }
 
 export function tab_update_each_couple_of_seconds() {
-//    tab_finetune_get();
     tab_finetune_config_and_runs();
 }
