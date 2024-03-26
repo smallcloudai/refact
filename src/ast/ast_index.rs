@@ -14,18 +14,20 @@ use crate::ast::comments_wrapper::get_language_id_by_filename;
 
 use crate::ast::fst_extra_automation::Substring;
 use crate::ast::structs::{FileASTMarkup, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, FunctionCall, SymbolInformation};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, FunctionCall, SymbolInformation, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{get_new_parser_by_filename};
 use crate::ast::treesitter::structs::SymbolType;
+use crate::ast::usages_declarations_merger::{find_decl_by_caller_guid, find_decl_by_name};
 use crate::files_in_workspace::DocumentInfo;
 
 #[derive(Debug)]
 pub struct AstIndex {
-    symbols_by_name: HashMap<String, Vec<Arc<dyn AstSymbolInstance>>>,
-    symbols_by_guid: HashMap<String, Arc<dyn AstSymbolInstance>>,
-    path_by_symbols: HashMap<Url, Vec<Arc<dyn AstSymbolInstance>>>,
+    symbols_by_name: HashMap<String, Vec<AstSymbolInstanceArc>>,
+    symbols_by_guid: HashMap<String, AstSymbolInstanceArc>,
+    path_by_symbols: HashMap<Url, Vec<AstSymbolInstanceArc>>,
     symbols_search_index: HashMap<Url, Set<Vec<u8>>>,
+    has_changes: bool
 }
 
 
@@ -71,10 +73,11 @@ impl AstIndex {
             symbols_by_guid: HashMap::new(),
             path_by_symbols: HashMap::new(),
             symbols_search_index: HashMap::new(),
+            has_changes: false
         }
     }
 
-    pub fn parse(doc: &DocumentInfo) -> Result<Vec<Arc<dyn AstSymbolInstance>>, String> {
+    pub fn parse(doc: &DocumentInfo) -> Result<Vec<AstSymbolInstanceArc>, String> {
         let mut parser = match get_new_parser_by_filename(&doc.get_path()) {
             Ok(parser) => parser,
             Err(err) => {
@@ -101,7 +104,7 @@ impl AstIndex {
     pub fn add_or_update_symbols_index(
         &mut self,
         doc: &DocumentInfo,
-        symbols: &Vec<Arc<dyn AstSymbolInstance>>,
+        symbols: &Vec<AstSymbolInstanceArc>,
     ) -> Result<(), String> {
         match self.remove(&doc) {
             Ok(()) => (),
@@ -110,16 +113,18 @@ impl AstIndex {
 
         let mut symbol_names: SortedVec<String> = SortedVec::new();
         for symbol in symbols.iter() {
-            self.symbols_by_name.entry(symbol.name().to_string()).or_insert_with(Vec::new).push(symbol.clone());
-            self.symbols_by_guid.insert(symbol.guid().to_string(), symbol.clone());
+            let symbol_ref = symbol.blocking_read();
+            self.symbols_by_name.entry(symbol_ref.name().to_string()).or_insert_with(Vec::new).push(symbol.clone());
+            self.symbols_by_guid.insert(symbol_ref.guid().to_string(), symbol.clone());
             self.path_by_symbols.entry(doc.uri.clone()).or_insert_with(Vec::new).push(symbol.clone());
-            symbol_names.push(symbol.name().to_string());
+            symbol_names.push(symbol_ref.name().to_string());
         }
         let meta_names_set = match Set::from_iter(symbol_names.iter()) {
             Ok(set) => set,
             Err(e) => return Err(format!("Error creating set: {}", e)),
         };
         self.symbols_search_index.insert(doc.uri.clone(), meta_names_set);
+        self.has_changes = true;
 
         Ok(())
     }
@@ -135,9 +140,11 @@ impl AstIndex {
             .remove(&doc.uri)
             .unwrap_or_default()
             .iter() {
-            self.symbols_by_name.remove(symbol.name());
-            self.symbols_by_guid.remove(symbol.guid());
+            let symbol_ref = symbol.blocking_read();
+            self.symbols_by_name.remove(symbol_ref.name());
+            self.symbols_by_guid.remove(symbol_ref.guid());
         }
+        self.has_changes = true;
         Ok(())
     }
 
@@ -146,6 +153,7 @@ impl AstIndex {
         self.symbols_by_guid.clear();
         self.path_by_symbols.clear();
         self.symbols_search_index.clear();
+        self.has_changes = true;
     }
 
     pub fn search_by_name(
@@ -156,31 +164,34 @@ impl AstIndex {
         language: Option<LanguageId>
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         fn exact_search(
-            symbols_by_name: &HashMap<String, Vec<Arc<dyn AstSymbolInstance>>>,
+            symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceArc>>,
             query: &str,
             request_symbol_type: &RequestSymbolType
-        ) -> Vec<Arc<dyn AstSymbolInstance>> {
+        ) -> Vec<AstSymbolInstanceArc> {
             symbols_by_name
                 .get(query)
                 .map(|x| x.clone())
                 .unwrap_or_default()
                 .iter()
                 .cloned()
-                .filter(|s| match request_symbol_type {
-                    RequestSymbolType::Declaration => s.is_declaration(),
-                    RequestSymbolType::Usage => !s.is_declaration(),
-                    RequestSymbolType::All => true,
+                .filter(|s| {
+                    let s_ref = s.blocking_read();
+                    match request_symbol_type {
+                        RequestSymbolType::Declaration => s_ref.is_declaration(),
+                        RequestSymbolType::Usage => !s_ref.is_declaration(),
+                        RequestSymbolType::All => true,
+                    }
                 })
                 .collect()
         }
 
         fn fuzzy_search(
             search_index: &HashMap<Url, Set<Vec<u8>>>,
-            symbols_by_name: &HashMap<String, Vec<Arc<dyn AstSymbolInstance>>>,
+            symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceArc>>,
             query: &str,
             exception_doc: Option<DocumentInfo>,
             request_symbol_type: &RequestSymbolType
-        ) -> Vec<Arc<dyn AstSymbolInstance>> {
+        ) -> Vec<AstSymbolInstanceArc> {
             make_a_query(search_index, query, exception_doc)
                 .iter()
                 .map(|name| symbols_by_name
@@ -188,10 +199,13 @@ impl AstIndex {
                     .map(|x| x.clone())
                     .unwrap_or_default())
                 .flatten()
-                .filter(|s| match request_symbol_type {
-                    RequestSymbolType::Declaration => s.is_declaration(),
-                    RequestSymbolType::Usage => !s.is_declaration(),
-                    RequestSymbolType::All => true,
+                .filter(|s| {
+                    let s_ref = s.blocking_read();
+                    match request_symbol_type {
+                        RequestSymbolType::Declaration => s_ref.is_declaration(),
+                        RequestSymbolType::Usage => !s_ref.is_declaration(),
+                        RequestSymbolType::All => true,
+                    }
                 })
                 .collect()
         }
@@ -206,9 +220,13 @@ impl AstIndex {
 
         let mut filtered_search_results = symbols
             .iter()
-            .filter(|s| s.language() == language.unwrap_or(s.language()))
+            .filter(|s| {
+                let s_ref = s.blocking_read();
+                *s_ref.language() == language.unwrap_or(*s_ref.language())
+            })
             .map(|s| {
-                (s.symbol_info_struct(), (jaro_winkler(query, s.name()) as f32).max(f32::MIN_POSITIVE))
+                let s_ref = s.blocking_read();
+                (s_ref.symbol_info_struct(), (jaro_winkler(query, s_ref.name()) as f32).max(f32::MIN_POSITIVE))
             })
             .collect::<Vec<_>>();
 
@@ -276,9 +294,10 @@ impl AstIndex {
                 };
                 let text_rope = Rope::from_str(file_content.as_str());
                 for symbol in symbols.iter() {
+                    let s_ref = symbol.blocking_read();
                     let symbol_content = text_rope
-                        .slice(text_rope.line_to_char(symbol.full_range().start_point.row)..
-                            text_rope.line_to_char(symbol.full_range().end_point.row))
+                        .slice(text_rope.line_to_char(s_ref.full_range().start_point.row)..
+                            text_rope.line_to_char(s_ref.full_range().end_point.row))
                         .to_string();
                     match symbol_content.find(query) {
                         Some(_) => found_symbols.push(symbol.clone()),
@@ -288,13 +307,16 @@ impl AstIndex {
                 Some(found_symbols)
             })
             .flatten()
-            .filter(|s| match request_symbol_type {
-                RequestSymbolType::Declaration => s.is_declaration(),
-                RequestSymbolType::Usage =>!s.is_declaration(),
-                RequestSymbolType::All => true,
+            .filter(|s| {
+                let s_ref = s.blocking_read();
+                match request_symbol_type {
+                    RequestSymbolType::Declaration => s_ref.is_declaration(),
+                    RequestSymbolType::Usage =>!s_ref.is_declaration(),
+                    RequestSymbolType::All => true,
+                }
             })
             .filter_map(|s| {
-                let info_struct = s.symbol_info_struct();
+                let info_struct = s.blocking_read().symbol_info_struct();
                 let content = info_struct.get_content_blocked().ok()?;
                 Some(SymbolsSearchResultStruct {
                     symbol_declaration: info_struct,
@@ -332,32 +354,34 @@ impl AstIndex {
         }
 
         fn sorted_candidates_within_line(
-            symbols: &Vec<Arc<dyn AstSymbolInstance>>,
+            symbols: &Vec<AstSymbolInstanceArc>,
             line_idx: usize,
-        ) -> (Vec<Arc<dyn AstSymbolInstance>>, bool) {
+        ) -> (Vec<AstSymbolInstanceArc>, bool) {
             let filtered_symbols = symbols
                 .iter()
-                .filter(|s| within_range(&s.full_range(), line_idx))
+                .filter(|s| within_range(&s.blocking_read().full_range(), line_idx))
                 .sorted_by_key(
-                    |s|
-                        s.full_range().end_point.row - s.full_range().start_point.row
+                    |s| {
+                        let s_ref = s.blocking_read();
+                        s_ref.full_range().end_point.row - s_ref.full_range().start_point.row
+                    }
                 )
                 .rev()
                 .cloned()
                 .collect::<Vec<_>>();
             let is_signature = symbols
                 .iter()
-                .map(|s| within_range(&s.declaration_range(), line_idx))
+                .map(|s| within_range(&s.blocking_read().declaration_range(), line_idx))
                 .any(|x| x);
             (filtered_symbols, is_signature)
         }
 
-        let symbols: Vec<Arc<dyn AstSymbolInstance>> = self.path_by_symbols
+        let symbols: Vec<AstSymbolInstanceArc> = self.path_by_symbols
             .get(&doc.uri)
             .map(|symbols| {
                 symbols
                     .iter()
-                    .filter(|s| s.is_declaration())
+                    .filter(|s| s.blocking_read().is_declaration())
                     .cloned()
                     .collect()
             })
@@ -370,7 +394,10 @@ impl AstIndex {
         let file_ast_markup = FileASTMarkup {
             file_url: doc.uri.clone(),
             file_content: file_content,
-            guid2symbol: symbols.iter().map(|s| (s.guid().to_string(), s.symbol_info_struct())).collect(),
+            guid2symbol: symbols.iter().map(|s|  {
+                let s_ref = s.blocking_read();
+                (s_ref.guid().to_string(), s_ref.symbol_info_struct())
+            }).collect(),
         };
         Ok(file_ast_markup)
     }
@@ -385,12 +412,15 @@ impl AstIndex {
             .map(|symbols| {
                 symbols
                     .iter()
-                    .filter(|s| match request_symbol_type {
-                        RequestSymbolType::Declaration => s.is_declaration(),
-                        RequestSymbolType::Usage => !s.is_declaration(),
-                        RequestSymbolType::All => true,
+                    .filter(|s| {
+                        let s_ref = s.blocking_read();
+                        match request_symbol_type {
+                            RequestSymbolType::Declaration => s_ref.is_declaration(),
+                            RequestSymbolType::Usage => !s_ref.is_declaration(),
+                            RequestSymbolType::All => true,
+                        }
                     })
-                    .map(|s| s.symbol_info_struct())
+                    .map(|s| s.blocking_read().symbol_info_struct())
                     .collect()
             })
             .unwrap_or_default();
@@ -407,44 +437,133 @@ impl AstIndex {
     ) -> Vec<SymbolInformation> {
         self.symbols_by_guid
             .iter()
-            .filter(|(guid, s)| match request_symbol_type {
-                RequestSymbolType::Declaration => s.is_declaration(),
-                RequestSymbolType::Usage => !s.is_declaration(),
-                RequestSymbolType::All => true,
+            .filter(|(guid, s)| {
+                let s_ref = s.blocking_read();
+                match request_symbol_type {
+                    RequestSymbolType::Declaration => s_ref.is_declaration(),
+                    RequestSymbolType::Usage => !s_ref.is_declaration(),
+                    RequestSymbolType::All => true,
+                }
             })
-            .map(|(guid, s)| s.symbol_info_struct())
+            .map(|(guid, s)| s.blocking_read().symbol_info_struct())
             .collect()
     }
 
 
-    // fn merge_usages_to_declarations(&mut self) {
-    //     for usage_symbol in self.symbols_by_guid
-    //         .iter()
-    //         .filter(|(guid, s)| !s.is_declaration())
-    //         .map(|(guid, s)| s.clone())
-    //         .collect::<Vec<_>>() {
-    //
-    //         match usage_symbol.symbol_type() {
-    //             SymbolType::FunctionCall => {
-    //                 let function_call_symbol = match usage_symbol
-    //                     .as_any()
-    //                     .downcast_ref::<FunctionCall>() {
-    //                     Some(obj) => { obj }
-    //                     None => continue,
-    //                 };
-    //                 function_call_symbol.
-    //             }
-    //             SymbolType::VariableUsage => {
-    //
-    //             }
-    //             _ => {}
-    //         }
-    //     }
-    // }
+    pub async fn rebuild_index(&mut self) {
+        if !self.has_changes {
+            return;
+        }
+        info!("Building ast declarations");
+        let t0 = std::time::Instant::now();
+        self.resolve_types().await;
+        info!("Building ast declarations finished, took {:.3}s", t0.elapsed().as_secs_f64());
 
-    // fn resolve_types(&mut self) {
-    //
-    // }
+        info!("Merging usages and declarations");
+        let t1 = std::time::Instant::now();
+        self.merge_usages_to_declarations().await;
+        info!("Merging usages and declarations finished, took {:.3}s", t1.elapsed().as_secs_f64());
+        self.has_changes = true;
+    }
+
+
+    async fn merge_usages_to_declarations(&mut self) {
+        // fn caller_depth(
+        //     symbol: AstSymbolInstanceArc,
+        //     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
+        // ) -> usize {
+        //     symbol
+        // }
+        //
+        // loop {
+        //
+        //
+        //
+        // }
+
+
+
+        // for mut usage_symbol in self.symbols_by_guid
+        //     .iter_mut()
+        //     .map(|(guid, s)| s.blocking_write())
+        //     .filter(|s| {
+        //         s.symbol_type() == SymbolType::FunctionCall || s.symbol_type() == SymbolType::VariableUsage
+        //     }) {
+        //
+        //     if usage_symbol.symbol_type() == SymbolType::FunctionCall {
+        //         let mut symbol = match usage_symbol
+        //             .as_any_mut()
+        //             .downcast_mut::<FunctionCall>() {
+        //             Some(obj) => { obj }
+        //             None => continue,
+        //         };
+        //         symbol.func_decl_guid = match &symbol.caller_guid {
+        //             Some(guid) => {
+        //                 match find_decl_by_caller_guid(
+        //                     &guid, &symbol.name(), &symbol.symbol_type(), &self.symbols_by_guid
+        //                 ) {
+        //                     Some(decl_guid) => { Some(decl_guid) }
+        //                     None => find_decl_by_name(
+        //                         &symbol.name(),
+        //                         &symbol.file_url(),
+        //                         symbol.parent_guid().unwrap_or_default().as_str(),
+        //                         true,
+        //                         &self.path_by_symbols,
+        //                         &self.symbols_by_guid
+        //                     )
+        //                 }
+        //             },
+        //             None => find_decl_by_name(
+        //                 &symbol.name(),
+        //                 &symbol.file_url(),
+        //                 symbol.parent_guid().unwrap_or_default().as_str(),
+        //                 true,
+        //                 &self.path_by_symbols,
+        //                 &self.symbols_by_guid
+        //             )
+        //         };
+        //     } else {
+        //         let mut symbol = match usage_symbol
+        //             .as_any_mut()
+        //             .downcast_mut::<VariableUsage>() {
+        //             Some(obj) => { obj }
+        //             None => continue,
+        //         };
+        //         symbol.var_decl_guid = match &symbol.caller_guid {
+        //             Some(guid) => {
+        //                 match find_decl_by_caller_guid(
+        //                     &guid,
+        //                     &symbol.name(),
+        //                     &symbol.symbol_type(),
+        //                     &self.symbols_by_guid
+        //                 ) {
+        //                     Some(decl_guid) => { Some(decl_guid) }
+        //                     None => find_decl_by_name(
+        //                         &symbol.name(),
+        //                         &symbol.file_url(),
+        //                         symbol.parent_guid().unwrap_or_default().as_str(),
+        //                         true,
+        //                         &self.path_by_symbols,
+        //                         &self.symbols_by_guid
+        //                     )
+        //                 }
+        //             },
+        //             None => find_decl_by_name(
+        //                 &symbol.name(),
+        //                 &symbol.file_url(),
+        //                 symbol.parent_guid().unwrap_or_default().as_str(),
+        //                 true,
+        //                 &self.path_by_symbols,
+        //                 &self.symbols_by_guid
+        //             )
+        //         };
+        //     }
+        // }
+    }
+
+    async fn resolve_types(&mut self) {
+
+    }
 }
 
 

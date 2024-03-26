@@ -56,6 +56,7 @@ impl AstModule {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(documents, force).await;
     }
 
+
     pub async fn ast_add_file_no_queue(&self, document: &DocumentInfo) -> Result<(), String> {
         self.ast_index.lock().await.add_or_update(&document)
     }

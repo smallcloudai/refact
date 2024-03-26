@@ -2,12 +2,14 @@ use std::any::Any;
 use std::cmp::min;
 use std::fmt::Debug;
 use std::io;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
+use tokio::sync::RwLock;
 use tree_sitter::Range;
 use url::Url;
 use crate::ast::treesitter::language_id::LanguageId;
@@ -111,6 +113,9 @@ pub struct AstSymbolFields {
     pub declaration_range: Range,
     #[serde(with = "RangeDef")]
     pub definition_range: Range,
+    // extra fields for usage structs to prevent multiple downcast operations
+    pub linked_decl_guid: Option<String>,
+    pub caller_guid: Option<String>,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -191,6 +196,8 @@ impl Default for AstSymbolFields {
                 start_point: Default::default(),
                 end_point: Default::default(),
             },
+            linked_decl_guid: None,
+            caller_guid: None,
         }
     }
 }
@@ -202,14 +209,18 @@ impl Default for AstSymbolFields {
 pub trait AstSymbolInstance: Debug + Send + Sync + Any {
     fn fields(&self) -> &AstSymbolFields;
 
+    fn fields_mut(&mut self) -> &mut AstSymbolFields;
+
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+
     fn symbol_info_struct(&self) -> SymbolInformation {
         SymbolInformation {
             guid: self.guid().to_string(),
             name: self.name().to_string(),
             parent_guid: self.parent_guid().clone().unwrap_or_default(),
             symbol_type: self.symbol_type(),
-            language: self.language(),
-            file_url: self.file_url(),
+            language: self.language().clone(),
+            file_url: self.file_url().clone(),
             namespace: self.namespace().to_string(),
             full_range: self.full_range().clone(),
             declaration_range: self.declaration_range().clone(),
@@ -225,12 +236,12 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         &self.fields().name
     }
 
-    fn language(&self) -> LanguageId {
-        self.fields().language.clone()
+    fn language(&self) -> &LanguageId {
+        &self.fields().language
     }
 
-    fn file_url(&self) -> Url {
-        self.fields().file_url.clone()
+    fn file_url(&self) -> &Url {
+        &self.fields().file_url
     }
 
     fn content_hash(&self) -> &str {
@@ -247,12 +258,12 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         &self.fields().namespace
     }
 
-    fn parent_guid(&self) -> Option<String> {
-        self.fields().parent_guid.clone()
+    fn parent_guid(&self) -> &Option<String> {
+        &self.fields().parent_guid
     }
 
-    fn childs_guid(&self) -> Vec<String> {
-        self.fields().childs_guid.clone()
+    fn childs_guid(&self) -> &Vec<String> {
+        &self.fields().childs_guid
     }
 
     fn symbol_type(&self) -> SymbolType;
@@ -270,7 +281,25 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
     fn definition_range(&self) -> &Range {
         &self.fields().definition_range
     }
+
+    fn get_caller_guid(&self) -> &Option<String> {
+        &self.fields().caller_guid
+    }
+
+    fn set_caller_guid(&mut self, caller_guid: String) {
+        self.fields_mut().caller_guid = Some(caller_guid);
+    }
+
+    fn get_linked_decl_guid(&self) -> &Option<String> {
+        &self.fields().linked_decl_guid
+    }
+
+    fn set_linked_decl_guid(&mut self, linked_decl_guid: String) {
+        self.fields_mut().linked_decl_guid = Some(linked_decl_guid);
+    }
 }
+
+pub type AstSymbolInstanceArc = Arc<RwLock<dyn AstSymbolInstance>>;
 
 
 /*
@@ -300,6 +329,12 @@ impl AstSymbolInstance for StructDeclaration {
     fn fields(&self) -> &AstSymbolFields {
         &self.ast_fields
     }
+
+    fn fields_mut(&mut self) -> &mut AstSymbolFields {
+        &mut self.ast_fields
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
     fn type_names(&self) -> Vec<TypeDef> {
         let mut types = self.inherited_types.clone();
@@ -344,6 +379,12 @@ impl AstSymbolInstance for TypeAlias {
         &self.ast_fields
     }
 
+    fn fields_mut(&mut self) -> &mut AstSymbolFields {
+        &mut self.ast_fields
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
+
     fn type_names(&self) -> Vec<TypeDef> {
         self.types.clone()
     }
@@ -385,6 +426,12 @@ impl AstSymbolInstance for ClassFieldDeclaration {
         &self.ast_fields
     }
 
+    fn fields_mut(&mut self) -> &mut AstSymbolFields {
+        &mut self.ast_fields
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
+
     fn type_names(&self) -> Vec<TypeDef> {
         vec![self.type_.clone()]
     }
@@ -415,6 +462,12 @@ impl AstSymbolInstance for ImportDeclaration {
     fn fields(&self) -> &AstSymbolFields {
         &self.ast_fields
     }
+
+    fn fields_mut(&mut self) -> &mut AstSymbolFields {
+        &mut self.ast_fields
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
     fn type_names(&self) -> Vec<TypeDef> {
         vec![]
@@ -456,6 +509,12 @@ impl AstSymbolInstance for VariableDefinition {
     fn fields(&self) -> &AstSymbolFields {
         &self.ast_fields
     }
+
+    fn fields_mut(&mut self) -> &mut AstSymbolFields {
+        &mut self.ast_fields
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
     fn type_names(&self) -> Vec<TypeDef> {
         vec![self.type_.clone()]
@@ -515,6 +574,12 @@ impl AstSymbolInstance for FunctionDeclaration {
         &self.ast_fields
     }
 
+    fn fields_mut(&mut self) -> &mut AstSymbolFields {
+        &mut self.ast_fields
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
+
     fn is_type(&self) -> bool {
         false
     }
@@ -561,6 +626,12 @@ impl AstSymbolInstance for CommentDefinition {
         &self.ast_fields
     }
 
+    fn fields_mut(&mut self) -> &mut AstSymbolFields {
+        &mut self.ast_fields
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
+
     fn is_type(&self) -> bool {
         false
     }
@@ -583,16 +654,12 @@ FunctionCall
 #[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct FunctionCall {
     pub ast_fields: AstSymbolFields,
-    pub caller_guid: Option<String>,
-    pub func_decl_guid: Option<String>,
 }
 
 impl Default for FunctionCall {
     fn default() -> Self {
         Self {
             ast_fields: AstSymbolFields::default(),
-            caller_guid: None,
-            func_decl_guid: None,
         }
     }
 }
@@ -603,6 +670,12 @@ impl AstSymbolInstance for FunctionCall {
     fn fields(&self) -> &AstSymbolFields {
         &self.ast_fields
     }
+
+    fn fields_mut(&mut self) -> &mut AstSymbolFields {
+        &mut self.ast_fields
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
     fn is_type(&self) -> bool {
         false
@@ -626,16 +699,12 @@ VariableUsage
 #[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct VariableUsage {
     pub ast_fields: AstSymbolFields,
-    pub caller_guid: Option<String>,
-    pub var_decl_guid: Option<String>,
 }
 
 impl Default for VariableUsage {
     fn default() -> Self {
         Self {
             ast_fields: AstSymbolFields::default(),
-            caller_guid: None,
-            var_decl_guid: None,
         }
     }
 }
@@ -646,6 +715,12 @@ impl AstSymbolInstance for VariableUsage {
     fn fields(&self) -> &AstSymbolFields {
         &self.ast_fields
     }
+
+    fn fields_mut(&mut self) -> &mut AstSymbolFields {
+        &mut self.ast_fields
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
     fn is_type(&self) -> bool {
         false

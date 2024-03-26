@@ -5,12 +5,13 @@ use std::sync::Arc;
 
 use similar::DiffableStr;
 use structopt::lazy_static::lazy_static;
+use tokio::sync::RwLock;
 use tree_sitter::{Node, Parser, Point, Query, QueryCapture, Range, Tree};
 use tree_sitter_rust::language;
 use url::Url;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{internal_error, LanguageParser, NewLanguageParser, ParserError};
 use crate::ast::treesitter::parsers::utils::get_function_name;
@@ -86,12 +87,13 @@ fn str_hash(s: &String) -> String {
     format!("{:x}", digest)
 }
 
-fn get_children_guids(parent_guid: &String, children: &Vec<Arc<dyn AstSymbolInstance>>) -> Vec<String> {
+fn get_children_guids(parent_guid: &String, children: &Vec<AstSymbolInstanceArc>) -> Vec<String> {
     let mut result = Vec::new();
     for child in children {
-        if let Some(child_guid) = child.parent_guid() { 
-            if &child_guid == parent_guid {
-                result.push(child.guid().to_string());
+        let child_ref = child.blocking_read();
+        if let Some(child_guid) = child_ref.parent_guid() {
+            if child_guid == parent_guid {
+                result.push(child_ref.guid().to_string());
             }
         }
     }
@@ -198,8 +200,8 @@ impl RustParser {
         None
     }
 
-    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
-        let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = Default::default();
+    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+        let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionDeclaration::default();
         decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
@@ -265,12 +267,12 @@ impl RustParser {
             symbols.extend(self.parse_block(&body_node, code, path, &decl.ast_fields.guid));
         }
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Arc::new(decl));
+        symbols.push(Arc::new(RwLock::new(decl)));
         symbols
     }
 
-    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
-        let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = Default::default();
+    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+        let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
 
         decl.ast_fields.language = LanguageId::Rust;
@@ -322,7 +324,7 @@ impl RustParser {
                                 if let Some(type_) = RustParser::parse_type(&type_node, code) {
                                     decl_.type_ = type_;
                                 }
-                                symbols.push(Arc::new(decl_));
+                                symbols.push(Arc::new(RwLock::new(decl_)));
                             }
                             &_ => {}
                         }
@@ -335,7 +337,7 @@ impl RustParser {
             }
         }
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Arc::new(decl));
+        symbols.push(Arc::new(RwLock::new(decl)));
         symbols
     }
 
@@ -396,8 +398,8 @@ impl RustParser {
         res
     }
 
-    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
-        let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = Default::default();
+    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+        let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();
         decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
@@ -419,7 +421,7 @@ impl RustParser {
                         if !usages.is_empty() {
                             if let Some(last) = usages.last() {
                                 // dirty hack: last element is first element in the tree
-                                decl.caller_guid = Some(last.fields().guid.clone());
+                                decl.set_caller_guid(last.blocking_read().fields().guid.clone());
                             }
                         }
                         symbols.extend(usages);
@@ -450,7 +452,7 @@ impl RustParser {
             }
             &_ => {}
         }
-        
+
         if let Some(arguments_node) = arguments_node {
             for idx in 0..arguments_node.child_count() - 1 {
                 let arg_node = arguments_node.child(idx).unwrap();
@@ -459,11 +461,11 @@ impl RustParser {
             }
         }
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Arc::new(decl));
+        symbols.push(Arc::new(RwLock::new(decl)));
         symbols
     }
 
-    pub fn parse_variable_definition(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
+    pub fn parse_variable_definition(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
         fn parse_type_in_value(parent: &Node, code: &str, path: &Url) -> TypeDef {
             let mut dtype = TypeDef::default();
             let kind = parent.kind();
@@ -482,7 +484,7 @@ impl RustParser {
             dtype
         }
         let text = code.slice(parent.byte_range()).to_string();
-        let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = vec![];
+        let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let mut decl = VariableDefinition::default();
         decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
@@ -537,7 +539,7 @@ impl RustParser {
                             let val = value_node.child(i).unwrap();
                             decl_.type_ = parse_type_in_value(&val, code, path);
                         }
-                        symbols.push(Arc::new(decl_));
+                        symbols.push(Arc::new(RwLock::new(decl_)));
                     }
                 }
             }
@@ -547,12 +549,12 @@ impl RustParser {
             }
             &_ => {}
         }
-        symbols.push(Arc::new(decl));
+        symbols.push(Arc::new(RwLock::new(decl)));
         symbols
     }
 
-    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
-        let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = vec![];
+    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+        let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
         let text = code.slice(parent.byte_range()).to_string();
         match kind {
@@ -603,7 +605,7 @@ impl RustParser {
                 let value_node = parent.child_by_field_name("value").unwrap();
                 let usages = self.parse_usages(&value_node, code, path, parent_guid);
                 symbols.extend(usages);
-                symbols.push(Arc::new(usage));
+                symbols.push(Arc::new(RwLock::new(usage)));
             }
             "identifier" => {
                 let mut usage = VariableUsage::default();
@@ -615,7 +617,7 @@ impl RustParser {
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = RustParser::get_guid();
                 // usage.var_decl_guid = Some(RustParser::get_guid(Some(usage.ast_fields.name.clone()), parent, code, path));
-                symbols.push(Arc::new(usage));
+                symbols.push(Arc::new(RwLock::new(usage)));
             }
             "scoped_identifier" => {
                 let mut usage = VariableUsage::default();
@@ -637,7 +639,7 @@ impl RustParser {
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = RustParser::get_guid();
                 // usage.var_decl_guid = Some(RustParser::get_guid(None, parent, code, path));
-                symbols.push(Arc::new(usage));
+                symbols.push(Arc::new(RwLock::new(usage)));
             }
             "tuple_expression" => {
                 for idx in 0..parent.child_count() - 1 {
@@ -701,7 +703,7 @@ impl RustParser {
         symbols
     }
 
-    pub fn parse_expression_statement(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
+    pub fn parse_expression_statement(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
         let mut symbols = vec![];
         let kind = parent.kind();
         let text = code.slice(parent.byte_range()).to_string();
@@ -731,8 +733,8 @@ impl RustParser {
         symbols
     }
 
-    pub fn parse_block(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<Arc<dyn AstSymbolInstance>> {
-        let mut symbols: Vec<Arc<dyn AstSymbolInstance>> = vec![];
+    pub fn parse_block(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+        let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         for i in 0..parent.child_count() {
             let child = parent.child(i).unwrap();
             let kind = child.kind();
@@ -755,7 +757,7 @@ impl RustParser {
                         if let Some(dtype) = RustParser::parse_type(&path_node, code) {
                             type_alias.types.push(dtype);
                         }
-                        symbols.push(Arc::new(type_alias));
+                        symbols.push(Arc::new(RwLock::new(type_alias)));
                     }
                 }
                 "type_item" => {
@@ -773,7 +775,7 @@ impl RustParser {
                     if let Some(dtype) = RustParser::parse_type(&type_node, code) {
                         type_alias.types.push(dtype);
                     }
-                    symbols.push(Arc::new(type_alias));
+                    symbols.push(Arc::new(RwLock::new(type_alias)));
                 }
                 "block" => {
                     let v = self.parse_block(&child, code, path, parent_guid);
@@ -811,7 +813,7 @@ impl RustParser {
                     def.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                     def.ast_fields.guid = RustParser::get_guid();
                     def.ast_fields.parent_guid = Some(parent_guid.clone());
-                    symbols.push(Arc::new(def));
+                    symbols.push(Arc::new(RwLock::new(def)));
                 }
 
                 &_ => {
@@ -825,7 +827,7 @@ impl RustParser {
 }
 
 impl NewLanguageParser for RustParser {
-    fn parse(&mut self, code: &str, path: &Url) -> Vec<Arc<dyn AstSymbolInstance>> {
+    fn parse(&mut self, code: &str, path: &Url) -> Vec<AstSymbolInstanceArc> {
         let tree = self.parser.parse(code, None).unwrap();
         let parent_guid = RustParser::get_guid();
         let symbols = self.parse_block(&tree.root_node(), code, path, &parent_guid);

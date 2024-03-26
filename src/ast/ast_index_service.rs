@@ -10,7 +10,7 @@ use tokio::task::JoinHandle;
 use tracing::info;
 use rayon::prelude::*;
 use crate::ast::ast_index::AstIndex;
-use crate::ast::treesitter::ast_instance_structs::AstSymbolInstance;
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc};
 use crate::ast::treesitter::structs::{SymbolDeclarationStruct, UsageSymbolInfo};
 use crate::files_in_workspace::DocumentInfo;
 
@@ -98,7 +98,7 @@ async fn ast_indexer_thread(
         }
 
         let ast_index = ast_index.clone();
-        let all_symbols: Vec<Result<Vec<Arc<dyn AstSymbolInstance>>, String>> = list_of_path
+        let all_symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = list_of_path
             .par_iter()
             .map(move |document| AstIndex::parse(&document))
             .collect();
@@ -115,6 +115,26 @@ async fn ast_indexer_thread(
                 Err(e) => { info!("Error adding/updating records in AST index: {}", e);}
             }
         })
+    }
+}
+
+async fn ast_indexer(
+    update_request_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    out_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    ast_index: Arc<AMutex<AstIndex>>,
+) {
+    loop {
+        let mut q_len = update_request_queue.lock().await.len();
+        q_len += out_queue.lock().await.len();
+
+        if q_len > 0 {
+            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            continue;
+        }
+
+        let mut ast_index = ast_index.lock().await;
+        ast_index.rebuild_index().await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     }
 }
 
@@ -147,7 +167,14 @@ impl AstIndexService {
                 self.ast_index.clone(),
             )
         );
-        return vec![cooldown_queue_join_handle, indexer_handle];
+        let rebuild_index_handle = tokio::spawn(
+            ast_indexer(
+                self.update_request_queue.clone(),
+                self.output_queue.clone(),
+                self.ast_index.clone(),
+            )
+        );
+        return vec![cooldown_queue_join_handle, indexer_handle, rebuild_index_handle];
     }
 
     pub async fn ast_indexer_enqueue_files(&self, documents: &Vec<DocumentInfo>, force: bool) {

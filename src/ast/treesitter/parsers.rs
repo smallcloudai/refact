@@ -7,7 +7,7 @@ use tracing::error;
 use tree_sitter::{Node, Query, QueryCapture, Tree};
 use url::Url;
 use crate::ast::comments_wrapper::get_language_id_by_filename;
-use crate::ast::treesitter::ast_instance_structs::AstSymbolInstance;
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc};
 
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::utils::{get_call, get_static, get_variable};
@@ -198,7 +198,7 @@ pub trait LanguageParser: Send {
 
 // rename it later
 pub trait NewLanguageParser: Send {
-    fn parse(&mut self, code: &str, path: &Url) -> Vec<Arc<dyn AstSymbolInstance>>;
+    fn parse(&mut self, code: &str, path: &Url) -> Vec<AstSymbolInstanceArc>;
 }
 
 fn internal_error<E: Display>(err: E) -> ParserError {
