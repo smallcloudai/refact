@@ -8,11 +8,9 @@ let gfx_showing_run_id = "";
 let files_showing_run_id = "";
 let parameters_showing_run_id = "";
 
-let finetune_state,
-    reference_finetune_state,
-    finetune_configs_and_runs,
-    reference_finetune_configs_and_runs,
-    running_models_and_loras;
+let finetune_configs_and_runs;
+let reference_finetune_configs_and_runs;
+let running_models_and_loras;
 
 let selected_lora;
 let finetune_settings_defaults = [];
@@ -137,20 +135,20 @@ const finetune_settings_inputs = [
     },
 ]
 
-function tab_finetune_get() {
-    fetch("tab-finetune-get")
-    .then(function (response) {
-        return response.json();
-    })
-    .then(function (data) {
-        // console.log('tab-finetune-get',data);
-        finetune_state = data;
-    })
-   .catch(function (error) {
-        console.log('tab-finetune-get',error);
-        general_error(error);
-    });
-}
+//function tab_finetune_get() {
+//    fetch("tab-finetune-get")
+//    .then(function (response) {
+//        return response.json();
+//    })
+//    .then(function (data) {
+//        // console.log('tab-finetune-get',data);
+//        finetune_state = data;
+//    })
+//   .catch(function (error) {
+//        console.log('tab-finetune-get',error);
+//        general_error(error);
+//    });
+//}
 
 
 export function get_finetune_config_and_runs() {
@@ -1461,7 +1459,7 @@ export async function init() {
 }
 
 export function tab_switched_here() {
-    tab_finetune_get();
+//    tab_finetune_get();
     tab_finetune_config_and_runs();
     // render_schedule_dialog();
     init_upload_files_modal(
@@ -1485,6 +1483,6 @@ export function tab_switched_away() {
 }
 
 export function tab_update_each_couple_of_seconds() {
-    tab_finetune_get();
+//    tab_finetune_get();
     tab_finetune_config_and_runs();
 }

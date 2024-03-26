@@ -30,6 +30,7 @@ __all__ = ["TabFinetuneRouter"]
 
 RUN_ID_REGEX = r"^[0-9a-zA-Z_\.\-]{1,30}$"
 
+
 def sanitize_run_id(run_id: str):
     if not re.fullmatch(RUN_ID_REGEX, run_id):
         raise HTTPException(status_code=400, detail="Invalid run id \"%s\"" % run_id)
@@ -101,7 +102,7 @@ class TabFinetuneRouter(APIRouter):
         super().__init__(*args, **kwargs)
         self.add_api_route("/running-models-and-loras", self._running_models_and_loras, methods=["GET"])
         self.add_api_route("/tab-finetune-rename", self._tab_finetune_rename, methods=["POST"])
-        self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
+        # self.add_api_route("/tab-finetune-get", self._tab_finetune_get, methods=["GET"])
         self.add_api_route("/tab-finetune-config-and-runs", self._tab_finetune_config_and_runs, methods=["GET"])
         self.add_api_route("/tab-finetune-log/{run_id}", self._tab_funetune_log, methods=["GET"])
         self.add_api_route("/tab-finetune-filter-log/{pname}", self._tab_finetune_filter_log, methods=["GET"])
@@ -149,36 +150,36 @@ class TabFinetuneRouter(APIRouter):
 
         return JSONResponse("OK")
 
-    async def _tab_finetune_get(self):
-        pname = "Project1"
-        # prog, status = get_prog_and_status_for_ui()
-        # working = status in ["starting", "working"]
-        result = {
-            "prog_name": "",
-            "prog_status": "idle",
-            # "filter_working_now": (prog == "prog_filter" and working),
-            # "finetune_working_now": (prog == "prog_ftune" and working),
-            "filter_working_now": False,
-            "finetune_working_now": False,
-            "finetune_filter_stats": {
-                **get_finetune_filter_stat(pname),
-            },
-            "sources_ready": await self._tab_finetune_get_sources_status(),
-        }
-        return Response(json.dumps(result, indent=4) + "\n")
+    # async def _tab_finetune_get(self):
+    #     pname = "Project1"
+    #     # prog, status = get_prog_and_status_for_ui()
+    #     # working = status in ["starting", "working"]
+    #     result = {
+    #         "prog_name": "",
+    #         "prog_status": "idle",
+    #         # "filter_working_now": (prog == "prog_filter" and working),
+    #         # "finetune_working_now": (prog == "prog_ftune" and working),
+    #         "filter_working_now": False,
+    #         "finetune_working_now": False,
+    #         "finetune_filter_stats": {
+    #             **get_finetune_filter_stat(pname),
+    #         },
+    #         "sources_ready": await self._tab_finetune_get_sources_status(),
+    #     }
+    #     return Response(json.dumps(result, indent=4) + "\n")
 
-    async def _tab_finetune_get_sources_status(self):
-        try:
-            with open(env.CONFIG_PROCESSING_STATS, "r") as file:
-                scan_stats = json.load(file)
-                scan_stats_status = scan_stats.get("scan_finished")
-                return scan_stats_status
-        except FileNotFoundError:
-            return False
-        except json.JSONDecodeError:
-            return False
-        except Exception as e:
-            return f"Error: {str(e)}"
+    # async def _tab_finetune_get_sources_status(self):
+    #     try:
+    #         with open(env.CONFIG_PROCESSING_STATS, "r") as file:
+    #             scan_stats = json.load(file)
+    #             scan_stats_status = scan_stats.get("scan_finished")
+    #             return scan_stats_status
+    #     except FileNotFoundError:
+    #         return False
+    #     except json.JSONDecodeError:
+    #         return False
+    #     except Exception as e:
+    #         return f"Error: {str(e)}"
 
     async def _tab_finetune_config_and_runs(self):
         runs = get_finetune_runs()
