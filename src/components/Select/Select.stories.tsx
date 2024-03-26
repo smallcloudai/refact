@@ -8,9 +8,11 @@ const meta = {
 
 export default meta;
 
+const long = "long".repeat(30);
+
 export const Default: StoryObj<typeof Select> = {
   args: {
-    options: ["apple", "banana", "orange"],
+    options: ["apple", "banana", "orange", long],
     onChange: () => ({}),
     defaultValue: "apple",
   },

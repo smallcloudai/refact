@@ -1,0 +1,10 @@
+.item {
+  height: unset;
+  min-height: var(--select-item-height);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.content {
+  max-width: 80dvw;
+}

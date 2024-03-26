@@ -42,6 +42,9 @@ const testCommands = [
 ];
 
 const noop = () => ({});
+
+const long = "long".repeat(30);
+
 const meta = {
   title: "Chat Form",
   component: ChatForm,
@@ -60,7 +63,7 @@ const meta = {
     caps: {
       fetching: false,
       default_cap: "foo",
-      available_caps: ["bar", "baz"],
+      available_caps: ["bar", long, "baz"],
       error: "",
     },
     error: null,
