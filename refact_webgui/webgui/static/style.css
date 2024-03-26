@@ -1046,8 +1046,7 @@ h3 {
     margin-right: 10px;
 }
 .stop-finetune {
-    margin-top: 10px;
-    margin-left: auto;
+    margin-left: 15px;
 }
 
 
@@ -1109,9 +1108,19 @@ h3 {
 }
 
 
-.projects-dropdown li:last-child {
+.projects-dropdown li:last-child button {
     border-top: 1px solid #ccc;
 }
-.projects-dropdown li:only-child {
+.projects-dropdown li:only-child button {
     border-top: none;
+}
+.start-finetune-stats {
+    display: flex;
+    align-items: flex-start;
+}
+.start-finetune-wrap {
+    width: calc(100% - 100px);
+}
+.stop-finetune {
+    height: 28px;
 }
