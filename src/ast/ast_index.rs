@@ -468,97 +468,79 @@ impl AstIndex {
 
 
     async fn merge_usages_to_declarations(&mut self) {
-        // fn caller_depth(
-        //     symbol: AstSymbolInstanceArc,
-        //     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
-        // ) -> usize {
-        //     symbol
-        // }
-        //
-        // loop {
-        //
-        //
-        //
-        // }
+        fn get_caller_depth(
+            symbol: &AstSymbolInstanceArc,
+            guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
+            current_depth: usize
+        ) -> usize {
+            let caller_guid = match symbol
+                .blocking_read()
+                .get_caller_guid()
+                .clone() {
+                Some(g) => g,
+                None => return current_depth,
+            };
+            match guid_by_symbols.get(&caller_guid) {
+                Some(s) => get_caller_depth(
+                    s, guid_by_symbols, current_depth + 1
+                ),
+                None => current_depth,
+            }
+        }
 
+        let mut depth: usize = 0;
+        loop {
+            let symbols_to_process = self.symbols_by_guid
+                .iter()
+                .filter(|(guid, symbol)| {
+                    let s_ref = symbol.blocking_read();
+                    let valid_depth = get_caller_depth(symbol, &self.symbols_by_guid, 0) == depth;
+                    valid_depth && (s_ref.symbol_type() == SymbolType::FunctionCall
+                        || s_ref.symbol_type() == SymbolType::VariableUsage)
+                })
+               .map(|(_, symbol)| symbol.clone())
+               .collect::<Vec<_>>();
 
+            if symbols_to_process.is_empty() {
+                break;
+            }
 
-        // for mut usage_symbol in self.symbols_by_guid
-        //     .iter_mut()
-        //     .map(|(guid, s)| s.blocking_write())
-        //     .filter(|s| {
-        //         s.symbol_type() == SymbolType::FunctionCall || s.symbol_type() == SymbolType::VariableUsage
-        //     }) {
-        //
-        //     if usage_symbol.symbol_type() == SymbolType::FunctionCall {
-        //         let mut symbol = match usage_symbol
-        //             .as_any_mut()
-        //             .downcast_mut::<FunctionCall>() {
-        //             Some(obj) => { obj }
-        //             None => continue,
-        //         };
-        //         symbol.func_decl_guid = match &symbol.caller_guid {
-        //             Some(guid) => {
-        //                 match find_decl_by_caller_guid(
-        //                     &guid, &symbol.name(), &symbol.symbol_type(), &self.symbols_by_guid
-        //                 ) {
-        //                     Some(decl_guid) => { Some(decl_guid) }
-        //                     None => find_decl_by_name(
-        //                         &symbol.name(),
-        //                         &symbol.file_url(),
-        //                         symbol.parent_guid().unwrap_or_default().as_str(),
-        //                         true,
-        //                         &self.path_by_symbols,
-        //                         &self.symbols_by_guid
-        //                     )
-        //                 }
-        //             },
-        //             None => find_decl_by_name(
-        //                 &symbol.name(),
-        //                 &symbol.file_url(),
-        //                 symbol.parent_guid().unwrap_or_default().as_str(),
-        //                 true,
-        //                 &self.path_by_symbols,
-        //                 &self.symbols_by_guid
-        //             )
-        //         };
-        //     } else {
-        //         let mut symbol = match usage_symbol
-        //             .as_any_mut()
-        //             .downcast_mut::<VariableUsage>() {
-        //             Some(obj) => { obj }
-        //             None => continue,
-        //         };
-        //         symbol.var_decl_guid = match &symbol.caller_guid {
-        //             Some(guid) => {
-        //                 match find_decl_by_caller_guid(
-        //                     &guid,
-        //                     &symbol.name(),
-        //                     &symbol.symbol_type(),
-        //                     &self.symbols_by_guid
-        //                 ) {
-        //                     Some(decl_guid) => { Some(decl_guid) }
-        //                     None => find_decl_by_name(
-        //                         &symbol.name(),
-        //                         &symbol.file_url(),
-        //                         symbol.parent_guid().unwrap_or_default().as_str(),
-        //                         true,
-        //                         &self.path_by_symbols,
-        //                         &self.symbols_by_guid
-        //                     )
-        //                 }
-        //             },
-        //             None => find_decl_by_name(
-        //                 &symbol.name(),
-        //                 &symbol.file_url(),
-        //                 symbol.parent_guid().unwrap_or_default().as_str(),
-        //                 true,
-        //                 &self.path_by_symbols,
-        //                 &self.symbols_by_guid
-        //             )
-        //         };
-        //     }
-        // }
+            for mut usage_symbol in symbols_to_process
+                .iter()
+                .map(|s| s.blocking_write()) {
+                let decl_guid = match &usage_symbol.get_caller_guid() {
+                    Some(guid) => {
+                        match find_decl_by_caller_guid(
+                            &guid, &usage_symbol.name(), &usage_symbol.symbol_type(), &self.symbols_by_guid
+                        ) {
+                            Some(decl_guid) => { Some(decl_guid) }
+                            None => find_decl_by_name(
+                                usage_symbol.name(),
+                                usage_symbol.file_url(),
+                                usage_symbol.parent_guid().clone().unwrap_or_default().as_str(),
+                                true,
+                                &self.path_by_symbols,
+                                &self.symbols_by_guid
+                            )
+                        }
+                    },
+                    None => find_decl_by_name(
+                        usage_symbol.name(),
+                        usage_symbol.file_url(),
+                        usage_symbol.parent_guid().clone().unwrap_or_default().as_str(),
+                        true,
+                        &self.path_by_symbols,
+                        &self.symbols_by_guid
+                    )
+                };
+
+                match decl_guid {
+                    Some(guid) => usage_symbol.set_linked_decl_guid(guid),
+                    None => {}
+                }
+            }
+            depth += 1;
+        }
     }
 
     async fn resolve_types(&mut self) {
