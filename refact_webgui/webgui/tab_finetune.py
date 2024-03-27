@@ -22,7 +22,7 @@ from refact_utils.finetune.train_defaults import finetune_train_defaults
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_webutils import log
 
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 
 __all__ = ["TabFinetuneRouter"]
@@ -220,6 +220,9 @@ class TabFinetuneRouter(APIRouter):
     #         result["user_config"] = json.load(open(env.CONFIG_HOW_TO_FILTER))
     #     return Response(json.dumps(result, indent=4) + "\n")
 
+    def _finetune_cfg_template(self) -> Dict:
+        return json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "filetune.cfg")))
+
     async def _tab_finetune_training_launch(self, post: TabFinetuneTrainingSetup):
         # {
         #     "run_id": "xxxx-20240315-090039",
@@ -255,7 +258,7 @@ class TabFinetuneRouter(APIRouter):
         #     "command_line": ["python", "-m", "self_hosting_machinery.finetune.scripts.finetune_sequence"],
         #     "gpus": []
         # }
-        ftune_cfg_j = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "filetune.cfg")))
+        ftune_cfg_j = self._finetune_cfg_template()
         fn = os.path.join(env.DIR_WATCHDOG_D, "ftune-%s.cfg" % run_id)
         os.makedirs(os.path.join(env.DIR_LORAS, run_id), exist_ok=False)
         ftune_cfg_j["gpus"] = post.gpus
