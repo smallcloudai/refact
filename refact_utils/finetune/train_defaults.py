@@ -1,4 +1,7 @@
 finetune_train_defaults = {
+    "autoselect_test_files_num": 3,
+    "model_ctx_size": 1024,
+    "filter_loss_threshold": 3.0,
     "trainable_embeddings": False,
     "low_gpu_mem_mode": True,
     "lr": 30e-5,
