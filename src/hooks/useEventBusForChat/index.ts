@@ -213,9 +213,13 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isChatReceiveCapsError(action)) {
+      const error =
+        state.error === null && state.caps.error === null
+          ? action.payload.message
+          : state.error;
       return {
         ...state,
-        error: state.caps.error ? null : action.payload.message,
+        error: error,
         caps: {
           ...state.caps,
           fetching: false,
