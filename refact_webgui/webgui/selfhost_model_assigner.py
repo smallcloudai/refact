@@ -82,11 +82,12 @@ class ModelAssigner:
         }
         return inference_config
 
+    def _model_cfg_template(self) -> Dict:
+        return json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model.cfg")))
+
     def _model_inference_setup(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
         gpus = self.gpus["gpus"]
         model_groups = self._model_assign_to_groups(inference_config["model_assign"])
-        # This must work or installation is bad
-        model_cfg_template = json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model.cfg")))
         cursor = 0
         allowed_to_exist = []
         required_memory_exceed_available = False
@@ -104,7 +105,7 @@ class ModelAssigner:
                     allowed_to_exist.append(cfg_out)
                     fn = os.path.join(env.DIR_WATCHDOG_D, cfg_out)
                     with open(fn + ".tmp", "w") as f:
-                        model_cfg_j = copy.deepcopy(model_cfg_template)
+                        model_cfg_j = self._model_cfg_template()
                         model_cfg_j["command_line"].append("--model")
                         model_cfg_j["command_line"].append(model_name)
                         model_cfg_j["gpus"] = list(range(model_cursor, model_cursor + assignment["gpus_shard"]))
