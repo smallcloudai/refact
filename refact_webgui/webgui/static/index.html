@@ -15,6 +15,10 @@
   <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+  <script src="assets/codemirror.min.js"></script>
+  <script src="assets/js-yaml.min.js"></script>
+  <script src="assets/yaml.min.js"></script>
+  <link rel="stylesheet" href="assets/codemirror.min.css">
   <title>Refact Self Hosting</title>
 </head>
 
@@ -115,6 +119,8 @@
       </div>
       <div class="main-tab-pane" id="settings">
       </div>
+      <div class="main-tab-pane" id="customization">
+      </div>
       <div class="main-tab-pane" id="license">
       </div>
       <div class="main-tab-pane" id="about">
@@ -195,6 +201,30 @@
               data-bs-dismiss="modal">Close</button>
             <button class="settings-tab-factoryreset-submit btn btn-danger">Delete all data</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="upload-tab-new-project-modal" tabindex="-1" aria-labelledby="upload-tab-new-project-modal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="urlModalLabel">New Project</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Project name</label>
+            <input type="name" id="tab-upload-new-project" class="form-control" tabindex="1">
+            <div class="form-text">
+              Use only alphanumeric characters, underscores and hyphens.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" disabled class="new-project-modal-submit submit btn btn-primary">Create</button>
         </div>
       </div>
     </div>

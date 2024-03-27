@@ -1,3 +1,4 @@
+import click
 import subprocess
 import multiprocessing
 import os
@@ -6,6 +7,7 @@ import sys
 import time
 import jsonlines
 import logging
+import filelock
 
 from itertools import chain
 from collections import Counter
@@ -55,12 +57,12 @@ def log(*args):
         logging.info(s)
 
 
-def stats_save():
+def stats_save(pname):
     traces.touch()
     env.report_status("linguist", stats_json["scan_status"])
-    with open(env.CONFIG_PROCESSING_STATS + ".tmp", "w") as f:
+    with open(env.PP_CONFIG_PROCESSING_STATS(pname) + ".tmp", "w") as f:
         f.write(json.dumps(stats_json, indent=4))
-    os.rename(env.CONFIG_PROCESSING_STATS + ".tmp", env.CONFIG_PROCESSING_STATS)
+    os.rename(env.PP_CONFIG_PROCESSING_STATS(pname) + ".tmp", env.PP_CONFIG_PROCESSING_STATS(pname))
 
 
 class LinguistProcess:
@@ -110,7 +112,7 @@ class LinguistProcessPool:
             process.close()
 
 
-def ls_with_linguist(start_dir):
+def ls_with_linguist(pname, start_dir):
     """
     Walk recursively through a directory, apply linguist, return dicts
     """
@@ -121,7 +123,7 @@ def ls_with_linguist(start_dir):
             for file in files:
                 p = os.path.join(root, file)
                 p = os.path.abspath(p)
-                assert p.startswith(env.DIR_UNPACKED), "\"%s\" does not start with \"%s\"" % (p, env.DIR_UNPACKED)
+                assert p.startswith(env.PP_DIR_UNPACKED(pname)), "\"%s\" does not start with \"%s\"" % (p, env.PP_DIR_UNPACKED(pname))
                 yield p
 
     num_processes = max(1, multiprocessing.cpu_count() // 2)
@@ -131,7 +133,7 @@ def ls_with_linguist(start_dir):
 
 
 def get_source_type(filename: str) -> str:
-    git_config = os.path.join(filename, env.GIT_CONFIG_FILENAME)
+    git_config = os.path.join(filename, "git_config.json")
     if os.path.isfile(filename):
         if any(filename.endswith(suffix) for suffix in [".tar.gz", ".bz2", ".zip", ".tar"]):
             return "archive"
@@ -173,7 +175,7 @@ def _make_git_env():
     }
 
 
-def _prepare_git_repo(filepath: str) -> bool:
+def _prepare_git_repo(filepath: str, want_pull: bool) -> bool:
     sources_dir = os.path.join(filepath, "sources")
 
     def get_current_hash():
@@ -195,12 +197,15 @@ def _prepare_git_repo(filepath: str) -> bool:
             return f.read()
 
     if os.path.exists(sources_dir):
+        if not want_pull:
+            return False
+
         completed_process = subprocess.run(
             ["expect", "-f", GIT_EXE, "git", "-C", sources_dir, "pull"],
             env=_make_git_env(),
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL)
-        log(f"update {filepath} repo => {'error' if completed_process.returncode else 'success'}")
+        log(f"git pull {filepath} => {'error' if completed_process.returncode else 'success'}")
         if completed_process.returncode != 0:
             raise Exception(completed_process.stdout.decode())
         last_commit_hash = load_last_hash()
@@ -209,7 +214,7 @@ def _prepare_git_repo(filepath: str) -> bool:
         save_last_hash(current_commit_hash)
         return need_to_rescan
 
-    with open(os.path.join(filepath, env.GIT_CONFIG_FILENAME), 'r') as f:
+    with open(os.path.join(filepath, "git_config.json"), 'r') as f:
         config = json.load(f)
 
     branch_args = ["-b", config["branch"]] if config["branch"] else []
@@ -230,10 +235,10 @@ def _prepare_git_repo(filepath: str) -> bool:
     return True
 
 
-def prepare_and_copy(stats_json, upload_dir: str, unpack_dir: str):
+def prepare_and_copy(pname, stats_json, upload_dir: str, unpack_dir: str, want_pull: bool):
     huge_list = []
-    if os.path.exists(env.CONFIG_HOW_TO_UNZIP):
-        config = json.load(open(env.CONFIG_HOW_TO_UNZIP))
+    if os.path.exists(env.PP_CONFIG_HOW_TO_UNZIP(pname)):
+        config = json.load(open(env.PP_CONFIG_HOW_TO_UNZIP(pname)))
     else:
         config = {"uploaded_files": {}}
     # {
@@ -243,6 +248,7 @@ def prepare_and_copy(stats_json, upload_dir: str, unpack_dir: str):
     #   }
     # }
 
+    os.makedirs(env.PP_DIR_UNPACKED(pname), exist_ok=True)
     all_filenames = set(chain(os.listdir(upload_dir), os.listdir(unpack_dir)))
     for file_n, filename in enumerate(sorted(all_filenames)):
         if filename.startswith("."):
@@ -254,8 +260,9 @@ def prepare_and_copy(stats_json, upload_dir: str, unpack_dir: str):
             continue
 
         stats_json["filtering_progress"] = int(100 * file_n / len(all_filenames))
-        stats_json["uploaded_files"][filename] = {"status": "working"}
-        stats_save()
+        if want_pull:
+            stats_json["uploaded_files"][filename] = {"status": "working"}
+            stats_save(pname)
 
         if not os.path.exists(upload_filename):
             if os.path.isdir(unpack_filename):
@@ -272,7 +279,7 @@ def prepare_and_copy(stats_json, upload_dir: str, unpack_dir: str):
         need_force_rescan = False
         if source_type == "git":
             try:
-                need_force_rescan = _prepare_git_repo(upload_filename)
+                need_force_rescan = _prepare_git_repo(upload_filename, want_pull)
             except Exception as e:
                 log("ERROR: %s" % (e or str(type(e))))
                 msg = str(e)
@@ -292,8 +299,10 @@ def prepare_and_copy(stats_json, upload_dir: str, unpack_dir: str):
             if not ff_mtime or src_mtime > ff_mtime or need_force_rescan:
                 log("mtime of %s = %s" % (upload_filename, time.ctime(src_mtime)))
                 log("mtime of %s = %s" % (files_found_jsonl, time.ctime(ff_mtime)))
+                log("need_force_rescan = %s" % need_force_rescan)
                 log(f"{filename} needs update => copy, unpack, find files")
             else:
+                log("reusing existing file list %s" % files_found_jsonl)
                 extracted_files = list(jsonlines.open(files_found_jsonl))
                 stats_json["uploaded_files"][filename] = {
                     "status": "completed",
@@ -304,15 +313,17 @@ def prepare_and_copy(stats_json, upload_dir: str, unpack_dir: str):
                 continue
 
             try:
-                rm_and_unpack(upload_filename, unpack_filename, source_type, filename)
+                stats_json["uploaded_files"][filename] = {"status": "working"}
+                stats_save(pname)
+                rm_and_unpack(pname, upload_filename, unpack_filename, source_type, filename)
                 assert os.path.isdir(unpack_filename)
-                success, extracted_files = process_files_in_single_subdir(stats_json, config, filename)
+                success, extracted_files = process_files_in_single_subdir(pname, stats_json, config, filename)
                 if success:
                     stats_json["uploaded_files"][filename] = {
                         "status": "completed",
                         **list_of_files_to_stats(extracted_files),
                     }
-                    stats_save()
+                    stats_save(pname)
                     with open(files_found_jsonl, "w") as f:
                         for x in extracted_files:
                             f.write(json.dumps(x) + "\n")
@@ -324,13 +335,13 @@ def prepare_and_copy(stats_json, upload_dir: str, unpack_dir: str):
         stats_json["uploaded_files"][filename]["status"] = "completed" if success else "failed"
         if msg is not None:
             stats_json["uploaded_files"][filename]["message"] = msg
-        stats_save()
+        stats_save(pname)
 
     log("total files %i" % len(huge_list))
     return huge_list
 
 
-def rm_and_unpack(upload_filename, unpack_filename, source_type, filename):
+def rm_and_unpack(pname, upload_filename, unpack_filename, source_type, filename):
     cmd = ["rm", "-rf", unpack_filename]
     log(" ".join(cmd))
     subprocess.check_call(cmd)
@@ -358,17 +369,17 @@ def rm_and_unpack(upload_filename, unpack_filename, source_type, filename):
     subprocess.check_call(cmd)
 
 
-def process_files_in_single_subdir(stats_json, config, subdir):
-    subdir_full = os.path.join(env.DIR_UNPACKED, subdir)
+def process_files_in_single_subdir(pname, stats_json, config, subdir):
+    subdir_full = os.path.join(env.PP_DIR_UNPACKED(pname), subdir)
     try:
-        files = ls_with_linguist(subdir_full)
+        files = ls_with_linguist(pname, subdir_full)
         result = []
         for i, x in enumerate(files):
             x["subdir"] = subdir
             result.append(x)
             if i % 100 == 0:
                 stats_json["uploaded_files"][subdir]["files"] = i
-                stats_save()
+                stats_save(pname)
     except BrokenPipeError:
         raise ValueError("Linguist doesn't work, make sure you've installed it from https://github.com/smallcloudai/linguist")
     return True, result
@@ -408,7 +419,7 @@ def list_of_files_to_stats(files):
     }
 
 
-def dedup(huge_list):
+def dedup(pname, huge_list):
     """
     Deduplicate huge list of files.
     """
@@ -444,8 +455,8 @@ def dedup(huge_list):
         stats_json["files_after_dedup"] = len(huge_filtered)
         unique_by_namesize[namesize] = x
         if n % 100 == 0:
-            stats_save()
-    stats_save()
+            stats_save(pname)
+    stats_save(pname)
     log("after dedup %i files" % len(huge_filtered))
     return huge_filtered, dups
 
@@ -468,12 +479,12 @@ def make_matcher(raw_masks: str):
     return matcher, len(masks) > 0
 
 
-def save_into_sets(records: List[Dict[str, Any]], dups):
+def save_into_sets(pname, records: List[Dict[str, Any]], dups):
     # Convert relative paths to absolute paths and validate it
     for record in records:
         filename = os.path.join(CWD, record["path"])
-        assert filename.startswith(env.DIR_UNPACKED), f'"{filename}" does not start with "{env.DIR_UNPACKED}"'
-        filename = filename[len(env.DIR_UNPACKED):].lstrip("/")
+        assert filename.startswith(env.PP_DIR_UNPACKED(pname)), f'"{filename}" does not start with "{env.PP_DIR_UNPACKED(pname)}"'
+        filename = filename[len(env.PP_DIR_UNPACKED(pname)):].lstrip("/")
         record["path"] = filename
 
     def _file_type(record: Dict[str, Any]) -> str:
@@ -507,7 +518,7 @@ def save_into_sets(records: List[Dict[str, Any]], dups):
             suitable_to_train.add(_file_type(record))
 
     # filter config
-    if not os.path.exists(env.CONFIG_HOW_TO_FILETYPES):
+    if not os.path.exists(env.PP_CONFIG_HOW_TO_FILETYPES(pname)):
         def _desc_sorting_key(item: Tuple[str, int]) -> Tuple[int, str]:
             return -item[1], item[0]
 
@@ -528,11 +539,11 @@ def save_into_sets(records: List[Dict[str, Any]], dups):
             "force_exclude": "",
         }
 
-        with open(env.CONFIG_HOW_TO_FILETYPES, "w") as f:
+        with open(env.PP_CONFIG_HOW_TO_FILETYPES(pname), "w") as f:
             json.dump(fcfg, f, indent=4)
 
-    log("Reading %s" % env.CONFIG_HOW_TO_FILETYPES)
-    with open(env.CONFIG_HOW_TO_FILETYPES, "r") as f:
+    log("Reading %s" % env.PP_CONFIG_HOW_TO_FILETYPES(pname))
+    with open(env.PP_CONFIG_HOW_TO_FILETYPES(pname), "r") as f:
         fcfg = json.load(f)
 
     # filter records
@@ -571,27 +582,27 @@ def save_into_sets(records: List[Dict[str, Any]], dups):
                 new_dups.append(record)
 
     # write finetune records
-    with open(env.LOG_FILES_ACCEPTED_SCAN, "w") as f:
+    with open(env.PP_LOG_FILES_ACCEPTED_SCAN(pname), "w") as f:
         for x in to_train:
             f.write("FINETUNE %s\n" % x["path"])
-        save_jsonl_if_changed(os.path.join(env.DIR_UNPACKED, "train_set.jsonl"), to_train)
+        save_jsonl_if_changed(os.path.join(env.PP_DIR_UNPACKED(pname), "train_set.jsonl"), to_train)
         for x in to_test:
             f.write("MARKED AS TEST SET %s\n" % x["path"])
-        save_jsonl_if_changed(os.path.join(env.DIR_UNPACKED, "test_set.jsonl"), to_test)
+        save_jsonl_if_changed(os.path.join(env.PP_DIR_UNPACKED(pname), "test_set.jsonl"), to_test)
 
     # write filtered records
-    with open(env.LOG_FILES_REJECTED_SCAN, "w") as f:
+    with open(env.PP_LOG_FILES_REJECTED_SCAN(pname), "w") as f:
         for r in new_dups:
             p = r['path']
             p = os.path.join(CWD, p)
-            assert p.startswith(env.DIR_UNPACKED)
-            p = p[len(env.DIR_UNPACKED):].lstrip("/")
+            assert p.startswith(env.PP_DIR_UNPACKED(pname))
+            p = p[len(env.PP_DIR_UNPACKED(pname)):].lstrip("/")
             f.write("DUPLICATE %s\n" % p)
         for x in rejected:
             f.write(x["reason"] + " " + x["path"] + "\n")
 
     # write db records
-    save_jsonl_if_changed(os.path.join(env.DIR_UNPACKED, "database_set.jsonl"), to_db)
+    save_jsonl_if_changed(os.path.join(env.PP_DIR_UNPACKED(pname), "database_set.jsonl"), to_db)
 
     # update stats
     stats_json["filestats_scan_finetune"]["accepted"] = len(to_train) + len(to_test)
@@ -633,36 +644,41 @@ def save_jsonl_if_changed(fn, a_list):
 #     "generated": false,
 #     "vendored": false
 # }
-# bad |= jp["mime_type"] != "application/x-python"
 
-def main():
+@click.command()
+@click.option("--pname", default="project1", help="Project name")
+@click.option("--want-pull", is_flag=True, default=False, help="Run git pull before filtering")
+def main(pname: str, want_pull: bool):
     stats_json["filtering_progress"] = 0
     stats_json["scan_status"] = "working"
-    stats_save()  # saves CONFIG_PROCESSING_STATS
-    try:
-        huge_list = prepare_and_copy(stats_json, env.DIR_UPLOADS, env.DIR_UNPACKED)
-        stats_json["filtering_progress"] = 100
-        stats_save()
-        huge_list, dups = dedup(huge_list)
-        save_into_sets(huge_list, dups)
-        stats_json["scan_status"] = "finished"
-        stats_json["scan_finished"] = True
-        stats_json["scan_finished_ts"] = time.time()
-        stats_save()
-    except BaseException as e:
-        stats_json["scan_status"] = "failed"
-        stats_json["scan_error"] = str(e) or str(type(e))
-        stats_save()
-        raise
+    log("locking project '%s'" % pname)
+    with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+        log("locked project '%s' successfully" % pname)
+        stats_save(pname)  # saves CONFIG_PROCESSING_STATS
+        try:
+            huge_list = prepare_and_copy(pname, stats_json, env.PP_DIR_UPLOADS(pname), env.PP_DIR_UNPACKED(pname), want_pull)
+            stats_json["filtering_progress"] = 100
+            stats_save(pname)
+            huge_list, dups = dedup(pname, huge_list)
+            save_into_sets(pname, huge_list, dups)
+            stats_json["scan_status"] = "finished"
+            stats_json["scan_finished"] = True
+            stats_json["scan_finished_ts"] = time.time()
+            stats_save(pname)
+        except Exception as e:
+            stats_json["scan_status"] = "failed"
+            stats_json["scan_error"] = str(e) or str(type(e))
+            stats_save(pname)
+            raise
 
 
 if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s PREPROC %(message)s',
-        datefmt='%Y%m%d %H:%M:%S',
-        handlers=[logging.StreamHandler(stream=sys.stderr)])
-    YMD_hms = os.environ.get("LORA_LOGDIR", "")
-    if YMD_hms:
-        traces.configure(task_dir="loras", task_name=YMD_hms, work_dir=env.PERMDIR)
+    # logging.basicConfig(
+    #     level=logging.INFO,
+    #     format='%(asctime)s PREPROC %(message)s',
+    #     datefmt='%Y%m%d %H:%M:%S',
+    #     handlers=[logging.StreamHandler(stream=sys.stderr)])
+    # YMD_hms = os.environ.get("LORA_LOGDIR", "")
+    # if YMD_hms:
+    #     traces.configure(task_dir="loras", task_name=YMD_hms, work_dir=env.PERMDIR)
     main()

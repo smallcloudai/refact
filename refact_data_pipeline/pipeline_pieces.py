@@ -13,7 +13,7 @@ import ujson
 import zstandard
 from mpi4py import MPI
 
-from refact_data_pipeline.datadef import DatasetDef, DatasetDumpedDef
+from refact_data_pipeline.datadef import DatasetDef, DatasetDumpedDef, PipelineNode
 from refact_data_pipeline.datadef import DatasetMix
 from refact_data_pipeline.datadef import DatasetOpts
 from refact_data_pipeline.filters_hdfs import Hdf5Dataset
@@ -22,15 +22,17 @@ from refact_data_pipeline.filters_packing import Packer, SinglePacker, DensePack
 log = print
 
 
-class JsonlFilesReaderCached:
-    def __init__(self,
-                 dataopts: DatasetOpts,
-                 cloud_path: str,
-                 cloud_files: str,
-                 datarank: int,
-                 cold_restart_key: int,
-                 cold_restart_skip: int,
-                 ):
+class JsonlFilesReaderCached(PipelineNode):
+    def __init__(
+            self,
+            dataopts: DatasetOpts,
+            cloud_path: str,
+            cloud_files: str,
+            datarank: int,
+            cold_restart_key: int,
+            cold_restart_skip: int,
+    ):
+        super().__init__(dataopts)
         self.cloud_path = cloud_path
         self.cloud_files = cloud_files
         self.datarank = datarank
@@ -121,7 +123,7 @@ class JsonlFilesReaderCached:
                 break
 
 
-class SplitRanks:
+class SplitRanks(PipelineNode):
     def __init__(
             self,
             inner_filter,
@@ -129,6 +131,7 @@ class SplitRanks:
             commrank: int,
             commsize: int,
     ):
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.commrank = commrank
         self.commsize = commsize
@@ -139,11 +142,15 @@ class SplitRanks:
                 yield rec
 
 
-class Tokenizer:
-    def __init__(self,
-                 inner_filter,
-                 dataopts: DatasetOpts,
-                 ):
+class Tokenizer(PipelineNode):
+    def __init__(
+            self,
+            inner_filter,
+            dataopts: DatasetOpts,
+    ):
+        self.enc = dataopts.encoding
+        super().__init__(dataopts)
+
         self.inner_filter = inner_filter
         self.skip_prompt_len: int = dataopts.get("tkr_skip_long_prompt", 0)
         self.skip_completion_len: int = dataopts.get("tkr_skip_completion_len", 0)
@@ -154,16 +161,17 @@ class Tokenizer:
         self.append_eot: bool = dataopts.get("tkr_append_eot", 1) == 1
         self.tkr_stochastic_tokens = dataopts.get("tkr_stochastic_tokens", 0)
         self.tkr_rm_bos_in_completion: int = dataopts.get("tkr_rm_bos_in_completion", 0)
-        self.random_seed: int = dataopts.get("seed", 42)
-        self.enc = dataopts.encoding
-        if hasattr(self.enc, "set_random_seed"):
-            self.enc.set_random_seed(self.random_seed)
         self.stats = {
             "tkr_skip_prompt_len": 0,
             "tkr_skip_completion_len": 0,
             "tkr_skip_total_len": 0,
             "tkr_success": 0,
         }
+
+    def set_random_state(self, seed):
+        super().set_random_state(seed)
+        if hasattr(self.enc, "set_random_seed"):
+            self.enc.set_random_seed(self.random_state)
 
     def __iter__(self):
         for ex in self.inner_filter:
@@ -200,11 +208,13 @@ class Tokenizer:
             yield ex
 
 
-class PromptCompletionToTokensMask:
-    def __init__(self,
-                 inner_filter,
-                 dataopts: DatasetOpts,
-                 ):
+class PromptCompletionToTokensMask(PipelineNode):
+    def __init__(
+            self,
+            inner_filter,
+            dataopts: DatasetOpts,
+    ):
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
 
     def __iter__(self):
@@ -220,15 +230,15 @@ class PromptCompletionToTokensMask:
             }
 
 
-class Shuffle:
+class Shuffle(PipelineNode):
     def __init__(
             self,
             inner_filter,
             dataopts: DatasetOpts,
     ):
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.shuffle_depth: int = dataopts.get("shuffle_depth", 1000)
-        self.random_state = random.Random(dataopts.get("seed", 42))
 
     def __iter__(self):
         buf = []
@@ -242,7 +252,7 @@ class Shuffle:
             yield t
 
 
-class Mix:
+class Mix(PipelineNode):
     def __init__(
             self,
             src: List[Iterable],
@@ -250,11 +260,11 @@ class Mix:
             seed: int,
             shuffle_depth: int = 1000,
     ):
+        super().__init__(DatasetOpts(f"seed={seed}"))
         self.src = src
         self.proportions = proportions if len(proportions) == len(src) else [1 / len(src)] * len(src)
         self.seed = seed
         self.shuffle_depth: int = shuffle_depth
-        self.random_state = random.Random(self.seed)
         assert abs(sum(self.proportions) - 1) < 0.0000001
 
     def __iter__(self):

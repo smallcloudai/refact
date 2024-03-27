@@ -8,22 +8,185 @@ let sort_type = 'filetype';
 let sort_order = 'asc';
 let sort_started = false;
 let dont_disable_file_types = false;
+let pname = "";
 
 let sources_pane = null;
 let filetypes_pane = null;
 
-function do_starting_state() {
-    filetypes_pane.classList.add('pane-disabled');
-    if(!document.querySelector('.sources-run-button .spinner-border')) {
-        sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
-        sources_status.innerHTML = 'starting';
+
+// function do_starting_state() {
+//     filetypes_pane.classList.add('pane-disabled');
+//     if(!document.querySelector('.sources-run-button .spinner-border')) {
+//         sources_run_button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></i>Starting`;
+//         sources_status.innerHTML = 'starting';
+//     }
+// }
+
+function get_projects_list() {
+    fetch("/tab-project-list")
+    .catch(function(error) {
+        console.log('tab-project-list',error);
+        general_error(error);
+        project_list_ready([]);
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('tab-project-list',data);
+        project_list_ready(data.projects);
+    });
+}
+
+function project_list_ready(projects_list)
+{
+    projects_dropdown();
+    const old_list_items = document.querySelectorAll('.projects-dropdown .dropdown-item');
+    if(old_list_items && old_list_items.length > 0) {
+        for(let i = 0; i < (old_list_items.length - 1); i++) {
+            old_list_items[i].parentNode.remove();
+        }
     }
+    projects_list.reverse().forEach(function(project) {
+        const list_item = document.createElement('li');
+        const link = document.createElement('button');
+        link.classList.add('dropdown-item');
+        link.classList.add('main-tab-button');
+        link.value = project.name;
+        link.dataset.tab = 'upload';
+        link.innerHTML = project.name;
+        list_item.appendChild(link);
+        document.querySelector('.projects-dropdown').prepend(list_item);
+    });
+    const start_project_button = document.querySelector('.new-project-modal-submit');
+    start_project_button.addEventListener('click', () => {
+        const project_name = document.querySelector('#tab-upload-new-project').value;
+        document.querySelector('#tab-upload-new-project').value = '';
+        start_new_project(project_name);
+        const project_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-new-project-modal'));
+        get_projects_list();
+        project_modal.hide();
+    });
+    const project_buttons = document.querySelectorAll('.projects-dropdown .main-tab-button');
+    project_buttons.forEach(function(project_button) {
+        project_button.addEventListener('click', function() {
+            show_project(project_button.value);
+            const project_menu_item = document.querySelector('.dropdown-toggle');
+            project_menu_item.classList.add('main-active');
+        });
+    });
+}
+
+function force_show_sources() {
+    const current_menu = document.querySelector('.nav-link.main-active');
+    current_menu.classList.remove('main-active');
+    const project_menu_item = document.querySelector('.dropdown-toggle');
+    project_menu_item.classList.add('main-active');
+    const current_pane = document.querySelector('.main-tab-pane.main-active');
+    current_pane.classList.remove('main-active');
+    const sources_pane = document.querySelector('#upload');
+    sources_pane.classList.add('main-active');
+}
+
+function show_project(new_pname) {
+    pname = new_pname;
+    localStorage.setItem('refact_project_name', new_pname);
+    document.querySelector('.delete-project').dataset.project = pname;
+    get_tab_files();
+    document.querySelector('.sources-pane h3').innerHTML = `Project "${pname}"`;
+}
+
+function start_new_project(project_name) {
+    fetch("/tab-project-new", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            pname: project_name,
+        })
+    })
+    .catch(function(error) {
+        console.log('start_new_project', error);
+        general_error(error);
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        get_projects_list();
+        show_project(project_name);
+        if(!document.querySelector('#upload').classList.contains('main-active')) {
+            force_show_sources();
+        }
+    });
+}
+
+function delete_project(project_name) {
+    fetch(`/tab-project-delete`,{
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ pname: project_name })
+    })
+    .catch(function(error) {
+        console.log('delete project', error);
+    })
+    .then(function(response) { return response.json() })
+    .then(function(data) {
+        if (data.message === "OK") {
+            pname = '';
+            localStorage.removeItem('refact_project_name');
+            document.querySelector('.sources-pane h3').innerHTML = ``;
+            document.getElementById("upload-tab-table-body-files").innerHTML = `<tr><td>No sources added.</td><td></td><td></td><td></td><td></td></tr>`;
+            document.querySelector(".upload-tab-table-type-body").innerHTML = `<tr><td>No scanned files.</td><td></td><td></td><td></td><td></td></tr>`;   
+            document.querySelector('.sources-stats-fine-accepted span').innerHTML = ``;
+            document.querySelector('.sources-stats-fine-rejected span').innerHTML = ``;
+            document.querySelector('.sources-stats-finetune').style.display = 'none';
+            document.querySelector('.delete-project').dataset.project = '';
+            get_projects_list();
+        } else {
+            console.log('Cannot delete project:', data.message);
+        }
+    });
+}
+
+function projects_dropdown() {
+    if(document.querySelector('.project-dropdown')) {
+        return;
+    }
+    const project_dropdown = document.querySelector('.main-tab-button[data-tab="upload"]').parentNode;
+    project_dropdown.classList.add('dropdown');
+    project_dropdown.classList.add('project-dropdown');
+    project_dropdown.innerHTML = '';
+    const link = document.createElement('a');
+    link.href = "#";
+    link.classList.add('dropdown-toggle');
+    link.classList.add('nav-link');
+    link.setAttribute('data-bs-toggle', 'dropdown');
+    link.setAttribute('role', 'button');
+    link.setAttribute('aria-expanded', 'false');
+    link.innerHTML = "Projects";
+    project_dropdown.appendChild(link);
+
+    const dropdown = document.createElement('ul');
+    dropdown.classList.add('dropdown-menu');
+    dropdown.classList.add('projects-dropdown');
+    dropdown.setAttribute('aria-labelledby', 'navbarDropdown');
+    dropdown.innerHTML = `<li><button data-bs-toggle="modal" data-bs-target="#upload-tab-new-project-modal" class="dropdown-item start-project">New Project &hellip;</button></li>`;
+    project_dropdown.appendChild(dropdown);
 }
 
 function get_tab_files() {
-    fetch("/tab-files-get")
+    if (!pname) return;
+    fetch(`/tab-files-get/${pname}`)
         .then(function(response) {
             return response.json();
+        })
+        .catch(function(error) {
+            console.log('tab-files-get',error);
+            general_error(error);
         })
         .then(function(data) {
             // console.log('tab-files-get',data);
@@ -49,14 +212,21 @@ function get_tab_files() {
             render_tab_files(data);
             render_filetypes(data.mime_types, data.filetypes);
             render_force_filetypes(data.filetypes);
-            if (data.finetune_working_now) {
-                sources_pane.classList.add('pane-disabled');
+            // "source-files-table-itself"
+            let table_itself = document.querySelector(".source-files-table-itself");
+            if (data.disable_ui) {
+                // sources_pane.classList.add('pane-disabled');
                 filetypes_pane.classList.add('pane-disabled');
+                // table_itself.classList.add('pane-disabled');
+                table_itself.style.opacity = 0.5;
+                table_itself.style.pointerEvents = 'none';
+            } else {
+                // sources_pane.classList.remove('pane-disabled');
+                filetypes_pane.classList.remove('pane-disabled');
+                // table_itself.classList.remove('pane-disabled');
+                table_itself.style.opacity = 1;
+                table_itself.style.pointerEvents = 'auto';
             }
-        })
-        .catch(function(error) {
-            console.log('tab-files-get',error);
-            general_error(error);
         });
 }
 
@@ -176,14 +346,14 @@ function render_tab_files(data) {
 
     const process_button = document.querySelector('.tab-files-process-now');
     if (any_working) {
-        let process_button_text = "Scanning...";
-        process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
+        // let process_button_text = "Scanning...";
+        // process_button.innerHTML = '<div class="upload-spinner spinner-border spinner-border-sm" role="status"></div>' + process_button_text;
     } else {
         if (process_button.dataset.loading) {
             process_button.dataset.loading = false;
             process_button.disabled = false;
         }
-        process_button.innerHTML = "Scan sources";
+        // process_button.innerHTML = "Scan sources";
     }
 }
 
@@ -311,7 +481,7 @@ function save_filter_setup() {
     });
     const force_include = document.querySelector('#force_include').value;
     const force_exclude = document.querySelector('#force_exclude').value;
-    fetch("/tab-files-filetypes-setup", {
+    fetch(`/tab-files-filetypes-setup/${pname}`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
@@ -341,9 +511,9 @@ function render_stats() {
             stats_finetune.style.display = 'flex';
             stats_finetune.style.whiteSpace = 'nowrap';
             const fine_accepted = document.querySelector('.sources-stats-fine-accepted span');
-            fine_accepted.innerHTML = `${tab_files_data.filestats_scan_finetune.accepted} <a target="_blank" class="sources-stats-fine-accepted" href="/tab-files-log?accepted_or_rejected=accepted">Full List</a>`;
+            fine_accepted.innerHTML = `${tab_files_data.filestats_scan_finetune.accepted} <a target="_blank" class="sources-stats-fine-accepted" href="/tab-files-log/${pname}?accepted_or_rejected=accepted">Full List</a>`;
             const fine_rejected = document.querySelector('.sources-stats-fine-rejected span');
-            fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log?accepted_or_rejected=rejected">Full List</a>`;
+            fine_rejected.innerHTML = `${tab_files_data.filestats_scan_finetune.rejected} <a target="_blank" class="sources-stats-fine-rejected" href="/tab-files-log/${pname}?accepted_or_rejected=rejected">Full List</a>`;
         }
     }
 }
@@ -362,7 +532,7 @@ function upload_repo() {
         formData['branch'] = gitBranch.value;
     }
 
-    fetch('/tab-files-repo-upload', {
+    fetch(`/tab-files-repo-upload/${pname}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -391,20 +561,20 @@ function upload_repo() {
 }
 
 function delete_file(file) {
-    fetch("/tab-files-delete", {
+    fetch(`/tab-files-delete/${pname}`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({'delete_this':file})
     })
+    .catch(function(error) {
+        console.log('tab-files-delete',error);
+        general_error(error);
+    })
     .then(function(response) {
         process_now_update_until_finished();
         console.log(response);
-    })
-   .catch(function(error) {
-        console.log('tab-files-delete',error);
-        general_error(error);
     });
 }
 
@@ -432,21 +602,22 @@ function save_tab_files() {
     });
     data.uploaded_files = uploaded_files;
     console.log('data', data);
-    fetch("/tab-files-save-config", {
+
+    fetch(`/tab-files-save-config/${pname}`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(data)
     })
+    .catch(function(error) {
+        console.log('tab-files-save-config',error);
+        general_error(error);
+    })
     .then(function(response) {
         if(response.ok) {
             get_tab_files();
         }
-    })
-   .catch(function(error) {
-        console.log('tab-files-save-config',error);
-        general_error(error);
     });
 }
 
@@ -478,8 +649,18 @@ function file_status_color(status) {
 export async function init(general_error) {
     let req = await fetch('/tab-upload.html');
     document.querySelector('#upload').innerHTML = await req.text();
+    get_projects_list();
     sources_pane = document.querySelector('.sources-pane');
     filetypes_pane = document.querySelector('.filetypes-pane');
+
+    const delete_project_button = document.querySelector(".delete-project");
+    delete_project_button.addEventListener('click', function() {
+        let project_name = this.dataset.project;
+        if(!project_name || project_name === '') {
+            return;
+        }
+        delete_project(project_name);
+    });
 
     const tab_upload_git_submit = document.querySelector('.tab-upload-git-submit');
     tab_upload_git_submit.removeEventListener('click', upload_repo());
@@ -489,10 +670,10 @@ export async function init(general_error) {
 
     const process_button = document.querySelector('.tab-files-process-now');
     process_button.addEventListener('click', function() {
-        fetch("/tab-files-process-now")
-            .then(function(response) {
-                process_now_update_until_finished();
-            });
+        fetch(`/tab-files-process-now/${pname}?git_pull=1`)
+        .then(function(response) {
+            process_now_update_until_finished();
+        });
     });
 
     const git_modal = document.getElementById('upload-tab-git-modal');
@@ -604,6 +785,30 @@ export async function init(general_error) {
         let nav_link = document.querySelector('[data-tab="finetune"]');
         nav_link.classList.add('main-active');
     });
+
+    const new_project_input = document.querySelector('#tab-upload-new-project');
+    if(new_project_input) {
+        new_project_input.addEventListener('keyup', function() {
+            const regex_pattern = /^[A-Za-z0-9_\-.]+$/;
+            const input_value = new_project_input.value;
+            const new_project_button = document.querySelector('.new-project-modal-submit');
+
+            if (!regex_pattern.test(input_value)) {
+                new_project_button.disabled = true;
+                new_project_input.setCustomValidity('Input does not match the required pattern');
+            } else {
+                new_project_button.disabled = false;
+                new_project_input.setCustomValidity('');
+            }
+        });
+    }
+    if(localStorage.getItem('active_tab_storage') === 'upload') {
+        const project_is_set = localStorage.getItem('refact_project_name');
+        if(project_is_set) {
+            show_project(project_is_set);
+            document.querySelector('.dropdown-toggle').classList.add('main-active');
+        }
+    }
 }
 
 export function tab_switched_here() {
@@ -614,7 +819,7 @@ export function tab_switched_here() {
         document.querySelector('#open-upload-files-modal'),
         'Upload Files',
         'input',
-        '/tab-files-upload-url', '/tab-files-upload',
+        '/tab-files-upload-url', `/tab-files-upload/${pname}`,
         "Wrapping up. Please wait...",
         "https://yourserver.com/file.zip",
         "You can upload .zip, .tar.gz, .tar.bz2 archives, or an individual file such as \"my_program.py\""

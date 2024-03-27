@@ -2,6 +2,7 @@ import functools
 from typing import List
 
 from refact_data_pipeline import DatasetOpts
+from refact_data_pipeline.datadef import PipelineNode
 
 
 def postprocess(text: str, language: str):
@@ -30,13 +31,14 @@ def postprocess(text: str, language: str):
     return "\n".join(cutted)
 
 
-class HumanEvalXContinuation:
+class HumanEvalXContinuation(PipelineNode):
     def __init__(
             self,
             inner_filter,
             dataopts: DatasetOpts,
             language: str,
     ):
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.dataopts = dataopts
         self.enc = dataopts.encoding

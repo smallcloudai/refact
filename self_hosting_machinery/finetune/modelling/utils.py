@@ -1,8 +1,6 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 
 import torch
-
-from self_hosting_machinery.finetune.configuration import supported_models
 
 
 def get_base_model(model: torch.nn.Module) -> torch.nn.Module:
@@ -14,12 +12,10 @@ def get_base_model(model: torch.nn.Module) -> torch.nn.Module:
 
 
 def map_model_specific_params(
-        model_name: str,
+        model_config: Dict[str, Any],
         freeze_exceptions: List[str],
         lora_target_modules: List[str]
 ) -> Tuple[List[str], List[str]]:
-    assert model_name in supported_models.config
-    model_config = supported_models.config[model_name]
     freeze_exceptions = [mapped for e in freeze_exceptions
                          for mapped in model_config["freeze_exceptions_mapping"][e]]
     lora_target_modules_mapping = [m for modules in lora_target_modules

@@ -7,10 +7,9 @@ from pathlib import Path
 from typing import List
 
 from refact_utils.scripts import env
-from refact_utils.finetune.filtering_defaults import finetune_filtering_defaults
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 
-from typing import Any, Dict, Optional, Callable, Union
+from typing import Any, Dict, Union
 
 legacy_finetune_model = "CONTRASTcode/3b/multi"
 default_finetune_model = "Refact/1.6B"
@@ -62,6 +61,8 @@ def get_finetune_runs() -> List[Dict]:
             "checkpoints": checkpoints,
             "deprecated": deprecated,
         }
+        # TODO: integrate
+        # ftune_cfg_j["save_status"] = os.path.join(env.DIR_LORAS, run_id, "watchdog_status.out")
 
         if os.path.exists(status_fn := os.path.join(dir_path, "status.json")):
             with open(status_fn, "r") as f:
@@ -165,26 +166,16 @@ def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     }
 
 
-def get_finetune_filter_config(logger: Optional[Callable] = None):
-    cfg = {**finetune_filtering_defaults}
-    if os.path.exists(env.CONFIG_HOW_TO_FILTER):
-        logger("Reading %s" % env.CONFIG_HOW_TO_FILTER)
-        cfg.update(**json.load(open(env.CONFIG_HOW_TO_FILTER)))
-    return cfg
-
-
-def get_finetune_config(models_db: Dict[str, Any], logger: Optional[Callable] = None) -> Dict[str, Any]:
+def get_finetune_config(models_db: Dict) -> Dict[str, Any]:
     cfg = copy.deepcopy(finetune_train_defaults)
     if os.path.exists(env.CONFIG_FINETUNE):
-        if logger is not None:
-            logger("Reading %s" % env.CONFIG_FINETUNE)
         cfg.update(**json.load(open(env.CONFIG_FINETUNE)))
     if cfg.get("model_name", None) not in models_db:
         cfg["model_name"] = default_finetune_model
     return cfg
 
 
-def get_finetune_filter_stat(default: bool = False) -> Dict[str, Any]:
+def get_finetune_filter_stat(pname: str, default: bool = False) -> Dict[str, Any]:
     filter_stats = {
         "filterting_status": "",
         "total_steps": 0,
@@ -195,25 +186,24 @@ def get_finetune_filter_stat(default: bool = False) -> Dict[str, Any]:
         "rejected": 0,
         "avg_loss": 0.0,
     }
-    if not default and os.path.isfile(env.CONFIG_FINETUNE_FILTER_STAT):
-        filter_stats.update(**json.load(open(env.CONFIG_FINETUNE_FILTER_STAT)))
+    if not default and os.path.isfile(env.PP_CONFIG_FINETUNE_FILTER_STAT(pname)):
+        filter_stats.update(**json.load(open(env.PP_CONFIG_FINETUNE_FILTER_STAT(pname))))
     return filter_stats
 
 
-def _get_status_by_watchdog() -> (str, str):
+def _get_status_by_watchdog(pname: str) -> (str, str):
     # this returns:
     # "linguist", "starting"
     # "filter", "interrupted"
-    # "ftune", "working"
-    if os.path.isfile(env.CONFIG_FINETUNE_STATUS):
-        mtime = os.path.getmtime(env.CONFIG_FINETUNE_STATUS)
+    if os.path.isfile(env.PP_SCAN_STATUS(pname)):
+        mtime = os.path.getmtime(env.PP_SCAN_STATUS(pname))
         if mtime + 600 > time.time():
-            d = json.load(open(env.CONFIG_FINETUNE_STATUS))
+            d = json.load(open(env.PP_SCAN_STATUS(pname), "r"))
             return d["prog"], d["status"]
     return "", "idle"
 
 
-def get_prog_and_status_for_ui() -> (str, str):
+def get_prog_and_status_for_ui(pname: str) -> (str, str):
     # def get_sources_stats():
     #     scan_stats = {
     #         "scan_status": "idle",
@@ -222,16 +212,16 @@ def get_prog_and_status_for_ui() -> (str, str):
     #         scan_stats.update(**json.load(open(env.CONFIG_PROCESSING_STATS, "r")))
     #     return scan_stats
 
-    prog, status = _get_status_by_watchdog()
+    prog, status = _get_status_by_watchdog(pname)
 
-    if os.path.exists(env.FLAG_LAUNCH_PROCESS_UPLOADS):
-        return "prog_linguist", "starting"
+    # if os.path.exists(env.FLAG_LAUNCH_PROCESS_UPLOADS):
+    #     return "prog_linguist", "starting"
 
-    if os.path.exists(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY):
-        return "prog_filter", "starting"
+    # if os.path.exists(env.FLAG_LAUNCH_FINETUNE_FILTER_ONLY):
+    #     return "prog_filter", "starting"
 
-    if os.path.exists(env.FLAG_LAUNCH_FINETUNE):
-        return "prog_ftune", "starting"
+    # if os.path.exists(env.FLAG_LAUNCH_FINETUNE):
+    #     return "prog_ftune", "starting"
 
     return prog, status
 

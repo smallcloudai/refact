@@ -124,6 +124,10 @@ function on_first_page_load() {
                 btn.classList.add('main-active');
                 done = true;
             }
+            if(active_tab_storage === 'upload') {
+                document.querySelector('.dropdown-toggle').classList.add('main-active');
+                done = true;
+            }
         });
         if (!done) {
             document.querySelector(`button[data-tab=${default_tab}]`).classList.add('main-active');
@@ -150,50 +154,40 @@ function plugins_to_top_nav_bar(plugins) {
     const template_ltr = Handlebars.compile(document.getElementById('nav-template-ltr').innerHTML);
     const html = template_ltr({ "items": plugins });
     document.getElementById('nav-container').innerHTML = html;
-
-    const tab_buttons = document.querySelectorAll('.main-tab-button');
     const tab_panes = document.querySelectorAll('.main-tab-pane');
+    const nav_container = document.querySelector('#nav-container');
 
-    tab_buttons.forEach(tab_button => {
-        tab_button.addEventListener('click', () => {
-            if (tab_button.hasAttribute('disabled')) { return };
-            const target_tab = tab_button.dataset.tab;
+    nav_container.addEventListener('click', (event) => {
+        const tab_button = event.target.closest('.main-tab-button');
 
-            tab_buttons.forEach(btn => {
-                btn.classList.remove('main-active');
-            });
+        if (!tab_button || tab_button.hasAttribute('disabled')) {
+            return;
+        }
 
-            tab_panes.forEach(pane => {
-                if (pane.id === target_tab) {
-                    pane.classList.add('main-active');
-                } else {
-                    pane.classList.remove('main-active');
-                }
-            });
+        const target_tab = tab_button.dataset.tab;
+        const tab_buttons = nav_container.querySelectorAll('.main-tab-button');
 
-            tab_button.classList.add('main-active');
-            start_tab_timer();
+        document.querySelector('.dropdown-toggle').classList.remove('main-active');
+        tab_buttons.forEach(btn => {
+            btn.classList.remove('main-active');
         });
+
+        tab_panes.forEach(pane => {
+            if (pane.id === target_tab) {
+                pane.classList.add('main-active');
+            } else {
+                pane.classList.remove('main-active');
+            }
+        });
+        if(tab_button.classList.contains('dropdown-item')) {
+            document.querySelector('.dropdown-toggle').classList.add('main-active');
+        } else {
+            tab_button.classList.add('main-active');
+        }
+        start_tab_timer();
     });
 }
 
-// remove when schedule will be implemented
-const schedule_modal = document.getElementById('finetune-tab-autorun-settings-modal');
-if (schedule_modal) {
-    schedule_modal.addEventListener('show.bs.modal', function () {
-        const elm = document.querySelector('#finetune-tab-autorun-settings-modal .modal-body');
-        const info = elm.parentNode.insertBefore(document.createElement("div"), elm);
-        elm.style.opacity = 0.2;
-        elm.style.pointerEvents = "none";
-        elm.style.position = "relative";
-        elm.style.zIndex = "0";
-        info.classList.add("temp-info-modal");
-        info.innerHTML = "Coming soon";
-        info.style.marginLeft = '170px';
-        info.style.marginTop = '180px';
-        document.querySelector('#finetune-tab-autorun-settings-modal .modal-footer').style.display = 'none';
-    });
-}
 
 const inputs_for_validate = document.querySelectorAll('.validate');
 let typing_timer;
@@ -229,7 +223,7 @@ const reset_button = document.createElement('button');
 reset_button.classList.add('nav-link', 'main-tab-button');
 reset_button.setAttribute('data-bs-toggle', 'modal');
 reset_button.setAttribute('data-bs-target', '#settings-tab-reset-modal');
-reset_button.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Factory Reset';
+reset_button.innerHTML = 'Factory Reset';
 reset_button_wrapper.appendChild(reset_button);
 dropdown_menu.appendChild(reset_button_wrapper);
 
@@ -250,6 +244,11 @@ reset_submit_button.addEventListener('click', () => {
             console.log(error);
             general_error(error);
         });
+});
+
+const new_project_modal = document.getElementById('upload-tab-new-project-modal');
+new_project_modal.addEventListener('shown.bs.modal', function () {
+    document.querySelector('#tab-upload-new-project').focus();
 });
 
 window.addEventListener("offline", function () {

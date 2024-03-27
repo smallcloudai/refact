@@ -1,30 +1,34 @@
+import copy
 import logging
 import random
 import traceback
-import copy
+from typing import Dict
 
 import numpy as np
 
-from code_contrast.format_2023q2.element import Format2023q2
 from code_contrast.format_2023q2 import format, packing
+from code_contrast.format_2023q2.element import Format2023q2
 from code_contrast.format_2023q2.from_orig_dest_message import from_odm_dict
 from refact_data_pipeline import DatasetOpts
+from refact_data_pipeline.datadef import PipelineNode
 
-from typing import Dict
 
-
-class Contrast2023Q2FromODM:
+class Contrast2023Q2FromODM(PipelineNode):
     def __init__(self,
                  inner_filter,
                  dataopts: DatasetOpts):
+        self.enc = dataopts.encoding
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.n_ctx = dataopts.get("n_ctx", 2048)
         self.selftest = dataopts.get("selftest", 0)
-        self.seed = dataopts.get("seed", 42)
-        self.py_random = random.Random(self.seed if self.seed else None)
-        self.np_random = np.random.RandomState(self.seed if self.seed else None)
-        self.enc = dataopts.encoding
         self.fmt: Format2023q2 = format.format_2023q2_escape(self.enc)
+
+    def set_random_state(self, seed):
+        if hasattr(self.enc, "set_random_seed"):
+            self.enc.set_random_seed(seed)
+        self.py_random = random.Random(seed)
+        self.np_random = np.random.RandomState(seed)
 
     def __iter__(self):
         stats: Dict[str, int] = {
@@ -77,8 +81,8 @@ class Contrast2023Q2FromODM:
                 # edits_made = len(pack.plan) - 1 - msg_plan_n
                 # print("edits: %i" % edits_made)
                 # if edits_made == 1:
-                    # Interesting, cursor might appear
-                    # print(hlprint(self.enc, pack.r, pack.m))
+                # Interesting, cursor might appear
+                # print(hlprint(self.enc, pack.r, pack.m))
 
             except Exception as e:
                 msg = "{\n"
@@ -102,8 +106,8 @@ class Contrast2023Q2FromODM:
                 stats["diffskip_5tokens"] += 1
                 continue
             if pack.cx.minimal_context_too_big_warning:
-                stats["diffskip_minsize_warn"] += 1    # don't skip, continue
-            first = [1] + [0]*(len(pack.r) - 1)
+                stats["diffskip_minsize_warn"] += 1  # don't skip, continue
+            first = [1] + [0] * (len(pack.r) - 1)
             assert len(pack.r) == len(first)
             assert len(pack.r) == len(pack.m)
             emit = {
@@ -113,4 +117,3 @@ class Contrast2023Q2FromODM:
                 "stats": {**odm["stats"], **stats}
             }
             yield emit
-

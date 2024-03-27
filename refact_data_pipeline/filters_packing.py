@@ -1,4 +1,3 @@
-import random
 from typing import Any, Dict, List
 
 import binpacking
@@ -7,11 +6,12 @@ import psutil
 from scipy.special import softmax
 
 from refact_data_pipeline import DatasetOpts
+from refact_data_pipeline.datadef import PipelineNode
 
 ItemT = Dict[str, Any]
 
 
-class Packer:
+class Packer(PipelineNode):
     """
     Pack several tokenized records along time axis.
     Stat dict comes from last inner record.
@@ -25,6 +25,7 @@ class Packer:
                  force_pack1: bool = False,
                  keys: List[str] = ["tokens", "mask", "first"]
                  ):
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.enc = dataopts.encoding
         self.pack_at_most: int = dataopts.get("pack_at_most", 6)
@@ -101,7 +102,7 @@ class Packer:
             yield dict_to_emit()
 
 
-class SinglePacker:
+class SinglePacker(PipelineNode):
     """
     Pack several tokenized records along time axis.
     Stat dict comes from last inner record.
@@ -113,6 +114,7 @@ class SinglePacker:
             dataopts: DatasetOpts,
             keys: List[str] = ["tokens", "first"]
     ):
+        super().__init__(dataopts)
         self.inner_filter = inner_filter
         self.enc = dataopts.encoding
         self.n_ctx: int = dataopts.get("n_ctx", 2048)
@@ -129,7 +131,7 @@ class SinglePacker:
             yield output
 
 
-class DensePacker:
+class DensePacker(PipelineNode):
     """
     Pack several tokenized records along the time axis.
     Stat dict comes from last inner record.
@@ -140,11 +142,10 @@ class DensePacker:
             inner_filter,
             dataopts: DatasetOpts,
     ):
+        super().__init__(dataopts)
         self.inner_filter_iter = iter(inner_filter)
         self.enc = dataopts.encoding
         self.n_ctx: int = dataopts['n_ctx']
-        self.random = random.Random(dataopts.get('seed', 42))
-        self.np_random = np.random.RandomState(dataopts.get('seed', 42))
         self.pack_single: bool = dataopts.get('pack_single', 0) == 1
         self.pack_complete: bool = dataopts.get('pack_complete', 1) == 1
         self.drop_less_than_t: int = dataopts.get('pack_drop_less_than_t', 6)
@@ -160,6 +161,10 @@ class DensePacker:
             packed_small_dropped=0,
             last_paddings_perc=0.0
         )
+
+    def set_random_state(self, seed):
+        super().set_random_state(seed)
+        self.np_random_state = np.random.RandomState(seed)
 
     def __make_padded_item(self, length: int) -> ItemT:
         padded_item = dict()
@@ -226,7 +231,7 @@ class DensePacker:
             return []
 
         if force_random_get or not self.pack_complete:
-            item = self.buffer.pop(self.random.randint(0, len(self.buffer) - 1))
+            item = self.buffer.pop(self.random_state.randint(0, len(self.buffer) - 1))
             return [item]
         else:
             lengths = [self.__item_len(i) for i in self.buffer]
@@ -240,7 +245,7 @@ class DensePacker:
 
             # prioritize items with larger lengths
             p = softmax(np.exp(np.array([sum(b) for b in bins]) / budget * 2))
-            bin = bins[self.np_random.choice(list(range(len(bins))), p=p)]
+            bin = bins[self.np_random_state.choice(list(range(len(bins))), p=p)]
             items = [_pop_item_by_length(l) for l in bin]
             return items
 
@@ -252,7 +257,7 @@ class DensePacker:
         assert len(items_acc) > 0
 
         if random_order:
-            self.random.shuffle(items_acc)
+            self.random_state.shuffle(items_acc)
         last_item = items_acc[-1]
         if self.__items_len(items_acc) < self.n_ctx:
             items_acc.append(self.__make_padded_item(self.n_ctx - self.__items_len(items_acc)))

@@ -23,8 +23,12 @@ def p(tensor) -> str:
 class MyLogHandler(logging.Handler):
     def emit(self, record):
         timestamp = datetime.datetime.now().strftime("%Y%m%d %H:%M:%S")
-        sys.stderr.write(timestamp + " " + self.format(record) + "\n")
-        sys.stderr.flush()
+        try:
+            sys.stderr.write(timestamp + " " + self.format(record) + "\n")
+            sys.stderr.flush()
+        except BrokenPipeError:
+            # happens sometimes when one of multi-GPU processes is killed
+            pass
 
 
 handler = MyLogHandler()
@@ -148,7 +152,7 @@ def log(*args) -> None:
     if _cx.console_logger:
         _cx.console_logger.write(s + "\n")
         _cx.console_logger.flush()
-    with open(_cx.log_fn, "a") as f:
+    with open(_cx.log_fn, "a", encoding='utf-8') as f:
         f.write(s + "\n")
 
 

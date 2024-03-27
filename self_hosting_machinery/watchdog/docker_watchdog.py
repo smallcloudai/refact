@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import uuid
+import psutil
 
 from pathlib import Path
 
@@ -18,7 +19,7 @@ FIRST_RUN_CMDLINE = [sys.executable, "-m", "self_hosting_machinery.scripts.first
 
 
 def replace_variable_names_from_env(s):
-    s = s.replace("%PYTHON%", sys.executable)
+    s = str(s).replace("%PYTHON%", sys.executable)
     for k, v in env.__dict__.items():
         if k.startswith("FLAG_") or k.startswith("DIR_") or k.startswith("CONFIG_"):
             s = s.replace("%" + k + "%", v)
@@ -67,12 +68,13 @@ def cfg_to_compile_key(cfg):
 
 
 class TrackedJob:
-    def __init__(self, cfg):
+    def __init__(self, cfg, cfg_filename: Path):
         self.p: Optional[subprocess.Popen] = None
         self.cmdline_str = cfg_to_cmdline(cfg)
         self.compile_str = cfg_to_compile_key(cfg)
         self.start_ts = 0
         self.cfg = cfg
+        self.cfg_filename: Path = cfg_filename
         self.please_shutdown = False
         self.remove_this = False
         self.sent_sigusr1_ts = 0
@@ -88,12 +90,17 @@ class TrackedJob:
             self.status_nickname = status_nickname if not status_nickname.startswith("prog_") else status_nickname[5:]
             save_status_fn = replace_variable_names_from_env(save_status_fn)
             log("overwrite %s with prog=%s status=%s" % (save_status_fn, status_nickname, newstatus))
-            with open(save_status_fn + ".tmp", "w") as f:
+            try:
+                f = open(save_status_fn + ".tmp", "w")
                 f.write(json.dumps({
                     "prog": status_nickname if newstatus != "idle" else "",
                     "status": newstatus
                 }))
-            os.rename(save_status_fn + ".tmp", save_status_fn)
+                f.close()
+                os.rename(save_status_fn + ".tmp", save_status_fn)
+            except FileNotFoundError:
+                log(f"failed to write {save_status_fn}, it might be OK if the dest directory not be there yet")
+                pass
 
     def _start(self):
         if self.p is not None or self.command_not_found:
@@ -193,6 +200,12 @@ class TrackedJob:
             self.p = None
             self.sent_sigusr1_ts = 0
             self.please_shutdown = False
+            policy = self.cfg.get("policy", [])
+            if "single_shot" in policy:
+                try:
+                    self.cfg_filename.unlink()
+                except FileNotFoundError:
+                    pass
         return not self.p
 
     def maybe_needs_stop(self):
@@ -213,6 +226,7 @@ class TrackedJob:
         if interrupt_when_file_appears:
             p = replace_variable_names_from_env(interrupt_when_file_appears)
             if os.path.exists(p):
+                log("%s %s, shutting down because this file appeared %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid, p))
                 self.please_shutdown = True
                 os.unlink(p)
 
@@ -221,11 +235,18 @@ class TrackedJob:
             self.please_shutdown = False  # this overrides True from "preempt" that sometimes happens (because of the task order)
             return
         if self.please_shutdown and self.sent_sigusr1_ts == 0:
+            log("%s sending SIGUSR1 to %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid))
             self.p.send_signal(signal.SIGUSR1)
             self.sent_sigusr1_ts = time.time()
+            itself = psutil.Process(self.p.pid)
+            for child in itself.children(recursive=True):
+                child.send_signal(signal.SIGUSR1)
         if self.please_shutdown and self.sent_sigusr1_ts + sigkill_timeout < time.time():
             log("%s SIGUSR1 timed out, sending kill %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid))
             self.p.kill()
+            itself = psutil.Process(self.p.pid)
+            for child in itself.children(recursive=True):
+                child.kill()
 
     def maybe_can_start(self):
         if self.p is not None:
@@ -234,7 +255,7 @@ class TrackedJob:
             return
 
         policy = self.cfg.get("policy", [])
-        assert set(policy) <= {"always_on", "when_file_appears", "at_night", "always_on_low_priority",
+        assert set(policy) <= {"always_on", "when_file_appears", "single_shot", "always_on_low_priority",
                                "periodic"}, policy
         if "when_file_appears" in policy:
             the_file = replace_variable_names_from_env(self.cfg["when_file_appears"])
@@ -251,8 +272,10 @@ class TrackedJob:
             can_start = low_priority_can_start(self)
             if can_start:
                 self._start()
-        elif "at_night" in policy:
-            pass
+        elif "single_shot" in policy:
+            can_start = preempt_low_priority(self.cfg.get("gpus", []))
+            if can_start:
+                self._start()
         elif "periodic" in policy:
             if self.start_ts + self.cfg["restart_every"] < time.time():
                 self._start()
@@ -291,7 +314,7 @@ def create_tracked_jobs_from_configs():
                 tracked[fn].please_shutdown = True
                 tracked[fn].remove_this = True
         else:
-            tracked[fn] = TrackedJob(cfg)
+            tracked[fn] = TrackedJob(cfg, cfg_filename=filename)
             log("%s adding job %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
             tracked[fn].set_status("idle")
         now_missing.discard(fn)
@@ -393,9 +416,8 @@ def factory_reset():
         env.DIR_CONFIG,
         env.DIR_LORAS,
         env.DIR_SSH_KEYS,
-        env.DIR_UPLOADS,
         env.DIR_WEIGHTS,
-        env.DIR_UNPACKED
+        env.DIR_PROJECTS,
     ]:
         try:
             shutil.rmtree(todel)

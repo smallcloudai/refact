@@ -7,10 +7,6 @@ from refact_utils.finetune.utils import get_file_digest
 from self_hosting_machinery.finetune.scripts.auxiliary.finetune_filter_status_tracker import FinetuneFilterStatusTracker
 from self_hosting_machinery.finetune.utils import traces
 
-__all__ = ['FilesStatusContext', 'FileStatus']
-
-DIR_UNPACKED = Path(env.DIR_UNPACKED)
-
 
 @dataclass
 class FileStatus:
@@ -28,20 +24,22 @@ class FileStatus:
 class FilesStatusContext:
     def __init__(
             self,
+            pname: str,
             train_files: List[Dict[str, Any]],
             test_files: List[Dict[str, Any]],
             status_tracker: FinetuneFilterStatusTracker
     ):
+        self.pname = pname
         self.file_statuses: Dict[str, FileStatus] = {
-            info["path"]: FileStatus(path=Path(DIR_UNPACKED / info["path"]), info=info, is_train=True)
+            info["path"]: FileStatus(path=Path(env.PP_DIR_UNPACKED(pname)) / info["path"], info=info, is_train=True)
             for info in train_files
         }
         self.file_statuses.update({
-            info["path"]: FileStatus(path=Path(DIR_UNPACKED / info["path"]), info=info, is_train=False)
+            info["path"]: FileStatus(path=Path(env.PP_DIR_UNPACKED(pname)) / info["path"], info=info, is_train=False)
             for info in test_files
         })
-        self.log_files_accepted_ftf = Path(env.LOG_FILES_ACCEPTED_FTF)
-        self.log_files_rejected_ftf = Path(env.LOG_FILES_REJECTED_FTF)
+        self.log_files_accepted_ftf = Path(env.PP_LOG_FILES_ACCEPTED_FTF(pname))
+        self.log_files_rejected_ftf = Path(env.PP_LOG_FILES_REJECTED_FTF(pname))
         with self.log_files_accepted_ftf.open('w') as f:
             f.write("")
         with self.log_files_rejected_ftf.open('w') as f:

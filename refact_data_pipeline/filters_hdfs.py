@@ -6,6 +6,7 @@ import numpy as np
 import tables as tb
 
 from refact_data_pipeline import DatasetOpts
+from refact_data_pipeline.datadef import PipelineNode
 
 
 def _try_open(path: Path) -> Optional[Any]:
@@ -16,7 +17,7 @@ def _try_open(path: Path) -> Optional[Any]:
         return None
 
 
-class Hdf5Dataset:
+class Hdf5Dataset(PipelineNode):
     """
     A class that maps HDF5 files to flat array of data
 
@@ -33,6 +34,7 @@ class Hdf5Dataset:
             comm: Optional[mpi.Comm] = None,
             cold_restart_skip: Optional[int] = None
     ):
+        super().__init__(dataopts)
         files = [_try_open(p) for p in files]
         files = [f for f in files if f is not None]
         assert len(files) > 0
@@ -47,6 +49,9 @@ class Hdf5Dataset:
         self.overall_length = self.tables_lengths_cumsum[-1]
         self.index = self.__reshuffle()
         self.tables_iter = None
+
+    def set_random_state(self, seed):
+        self.seed = seed
 
     def __del__(self):
         for file in self.files:

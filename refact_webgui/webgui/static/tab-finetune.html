@@ -35,11 +35,16 @@
     <div class="pane">
       <div class="start-funetune-select-model">
         <h3 style="margin-bottom: 15px;">Start New Finetune<span></span></h3>
+        <h6>Select Project<span></span></h6>
+        <select id="finetune-project" class="form-select" style="margin-bottom: 20px;" disabled>
+          <option value="" selected disabled>Please create first project</option>
+        </select>
+        <div data-bs-toggle="modal" data-bs-target="#upload-tab-new-project-modal" class="finetune-new-project">Create new project...</div>
         <h6>Select Model<span></span></h6>
         <select id="finetune-model" class="form-select" style="margin-bottom: 20px;">
         </select>
       </div>
-      <div class="start-funetune-step1">
+      <!-- <div class="start-funetune-step1">
         <h6>Step 1: Filtering<span></span></h6>
         <div class="start-funetune__inline">
           <button type="button" class="sources-run-button btn btn-primary"><i class="bi bi-funnel-fill"></i> Run filter</button>
@@ -54,20 +59,15 @@
           <div class="ftf-error d-none">Error:<span class="text-danger"></span></div>
           <div class="ftf-stats"></div>
         </div>
-      </div>
+      </div> -->
       <div class="start-funetune-step2">
         <h6>Step 2: Training<span></span></h6>
         <div class="start-funetune__inline">
-          <button id="run_now" type="button" class="btn btn-primary tab-finetune-run-now"><i class="bi bi-gpu-card"></i> Run Now</button>
-          <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" class="btn btn-outline-primary tab-finetune-fine-settings">Finetune Settings</button>
+          <!-- <button id="run_now" type="button" class="btn btn-primary tab-finetune-run-now"><i class="bi bi-gpu-card"></i> Run Now</button> -->
+          <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" disabled class="btn btn-primary tab-finetune-fine-settings">Start Finetune...</button>
         </div>
-        <div class="start-finetune-stats callout">
-          <div class="ftune-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-            <div class="ftune-bar bg-success" style="width: 0%"></div>
-          </div>
-          <div class="ftune-eta"></div>
-        </div>
-        <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn finetune-autorun btn-sm btn-outline-primary mt-1"><i class="bi bi-stopwatch-fill"></i>Autorun Settings</button>
+       
+        <!-- <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn finetune-autorun btn-sm btn-outline-primary mt-1"><i class="bi bi-stopwatch-fill"></i>Autorun Settings</button> -->
       </div>
     </div>
   </div>
@@ -76,7 +76,17 @@
     <div class="pane">
       <img src="/tab-finetune-progress-svg/none" class="fine-gfx" alt="">
     </div>
+    
     <div class="pane">
+      <div class="start-finetune-stats d-none">
+        <div class="start-finetune-wrap">
+          <div class="ftune-progress progress d-none" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+            <div class="ftune-bar bg-success" style="width: 0%"></div>
+          </div>
+          <div class="ftune-eta"></div>
+        </div>
+        <button class="btn btn-danger btn-sm stop-finetune">Stop Run</button>
+      </div>
       <ul class="nav nav-tabs" id="myTabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link active" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs"
@@ -86,6 +96,14 @@
           <button class="nav-link" id="checkpoints-tab" data-bs-toggle="tab" data-bs-target="#checkpoints"
             type="button" role="tab" aria-controls="checkpoints" aria-selected="false">Checkpoints</button>
         </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="parameters-tab" data-bs-toggle="tab" data-bs-target="#parameters"
+            type="button" role="tab" aria-controls="parameters" aria-selected="false">Parameters</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="files-tab" data-bs-toggle="tab" data-bs-target="#files"
+            type="button" role="tab" aria-controls="files" aria-selected="false">Files</button>
+        </li>
       </ul>
 
       <div class="tab-content mt-2" id="myTabContent">
@@ -93,11 +111,19 @@
           <pre class="log-container tab-upload-finetune-logs">Select run to view logs.
           </pre>
           <a target="_blank" class="btn mt-2 btn-secondary log-link d-none" href="">View Log</a>
-        </div>
+        </div>       
         <div class="tab-pane fade" id="checkpoints" role="tabpanel" aria-labelledby="checkpoints-tab">
           <table class="table table-sm table-hover">
             <tbody class="table-checkpoints"></tbody>
           </table>
+        </div>
+        <div class="tab-pane fade show" id="parameters" role="tabpanel" aria-labelledby="parameters-tab">
+          <pre class="params-container tab-upload-finetune-parameters">Select run to view parameters.
+          </pre>
+        </div>   
+        <div class="tab-pane fade show" id="files" role="tabpanel" aria-labelledby="files-tab">
+          <pre class="files-container tab-upload-finetune-files">Select run to view files.
+          </pre>
         </div>
       </div>
     </div>
@@ -151,172 +177,60 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="urlModalLabel">Finetune Settings</h5>
+          <h5 class="modal-title" id="urlModalLabel">Launch Finetune</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
+          <div class="finetune-settings">
+            <div class="finetune-settings-inline">
+              <label for="finetune_name" class="form-label">Finetune Name:</label>
+              <input type="text" class="validate form-control" id="finetune_name" maxlength="30">
+            </div>
 
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <label for="limit_time_seconds" class="form-label">Limit time seconds</label>
-                <input type="text" data-min="600" data-max="172800" class="validate form-control" id="limit_time_seconds">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 600, Max 3600 * 48
+            <div class="finetune-settings-inline">
+              <label class="form-label">Do you have a large codebase?</label>
+              <div class="btn-group" role="group" aria-label="basic radio toggle button group">
+                <input type="radio" class="btn-check" name="trainable_embeddings" id="trainable_embeddings1" value="1" autocomplete="off">
+                <label class="btn btn-outline-primary" for="trainable_embeddings1">Yes, train embeddings</label>
+                <input type="radio" class="btn-check" name="trainable_embeddings" id="trainable_embeddings0" value="0" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="trainable_embeddings0">Keep it smaller, don't</label>
+              </div>
+            </div>
+
+            <div class="finetune-settings-options">
+              <div></div>
+              <button type="button" class="finetune-tab-settings-default btn btn-secondary">Reset to defaults</button>
+            </div>
+
+            <div class="finetune-settings-inline finetune-settings-inline-gpus">
+              <label class="form-check-label">
+                GPUs
+              </label>
+              <div class="finetune-settings-gpus">
+                <div class="btn-group gpu-group" role="group">
                 </div>
               </div>
             </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="lr" class="form-label">Lr</label>
-                <input type="text" data-min="1e-5" data-max="300e-5" class="validate form-control" id="lr">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 1e-5, Max 300e-5
-                </div>
-              </div>
+
+            <div class="finetune-settings-inline finetune-settings-inline-low">
+              <input tabindex="-1" class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
+              <label class="form-check-label" for="low_gpu_mem_mode_finetune">
+                Low GPU memory mode (< 24Gb)
+              </label>
             </div>
+
           </div>
 
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <label for="batch_size" class="form-label">Batch size</label>
-                <input type="text" data-min="4" data-max="1024" class="validate form-control" id="batch_size">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 4, Max 1024
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="warmup_num_steps" class="form-label">Warmup num steps</label>
-                <input type="text" data-min="1" data-max="100" class="validate form-control" id="warmup_num_steps">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 1, Max 100
-                </div>
-              </div>
-            </div>
-
-            <div class="col">
-              <div class="mb-3">
-                <label for="weight_decay" class="form-label">Weight Decay</label>
-                <input type="text" data-min="0.0" data-max="1.0" class="validate form-control" id="weight_decay">
-                <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                <div class="form-text">
-                  Min 0.0, Max 1.0
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col">
-              <div class="mb-3">
-                <input class="form-check-input" type="checkbox" name="use_heuristics" id="use_heuristics">
-                <label class="form-check-label" for="use_heuristics">
-                  Auto
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div class="finetune-settings-optional finetune-settings-optional-disabled">
-            <div class="row">
-              <div class="col">
-                <div class="mb-3">
-                  <label for="train_steps" class="form-label">Train steps</label>
-                  <input tabindex="-1" type="text" data-min="10" data-max="5000" class="validate form-control" id="train_steps">
-                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                  <div class="form-text">
-                    Min 10, Max 5000
-                  </div>
-                </div>
-              </div>
-              <div class="col">
-                <div class="mb-3">
-                  <label for="lr_decay_steps" class="form-label">Lr decay steps</label>
-                  <input tabindex="-1" type="text" data-min="10" data-max="5000" class="validate form-control" id="lr_decay_steps">
-                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                  <div class="form-text">
-                    Min 10, Max 5000
-                  </div>
-                </div>
-              </div>
-              <div class="col">
-                <div class="mb-3">
-                  <label for="lora_r" class="form-label">Lora R</label>
-                  <input tabindex="-1" type="text" data-min="4" data-max="64" class="validate form-control" id="lora_r">
-                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                  <div class="form-text">
-                    Min 4, Max 64
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col">
-                <div class="mb-3">
-                  <label for="lora_alpha" class="form-label">Lora Alpha</label>
-                  <input tabindex="-1" type="text" data-min="4" data-max="128" class="validate form-control" id="lora_alpha">
-                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                  <div class="form-text">
-                    Min 4, Max 128
-                  </div>
-                </div>
-              </div>
-              <div class="col">
-                <div class="mb-3">
-                  <label for="lora_dropout" class="form-label">Lora Dropout</label>
-                  <input tabindex="-1" type="text" data-min="0.0" data-max="0.2" class="validate form-control" id="lora_dropout">
-                  <button class="form-clear-default"><i class="bi bi-arrow-clockwise"></i></button>
-                  <div class="form-text">
-                    Min 0.0, Max 0.2
-                  </div>
-                </div>
-              </div>
-
-            </div>
-            <div class="row">
-              <div class="col">
-                <div class="mb-3">
-                  <div class="form-check">
-                    <input tabindex="-1" class="form-check-input" type="checkbox" name="low_gpu_mem_mode_finetune" value="" id="low_gpu_mem_mode_finetune">
-                    <label class="form-check-label" for="low_gpu_mem_mode_finetune">
-                      Low GPU memory mode
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col">
-                <div class="mb-3">
-                  <div class="form-check">
-                    <input tabindex="-1" class="form-check-input" type="checkbox" name="trainable_embeddings" value="" id="trainable_embeddings">
-                    <label class="form-check-label" for="trainable_embeddings">
-                      Trainable embeddings
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
           <div class="finetune-settings-error d-none"></div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="finetune-tab-settings-default btn btn-secondary">Reset to defaults</button>
-          <button class="finetune-tab-settings-submit btn btn-primary">Save</button>
+          <button class="finetune-tab-settings-submit btn btn-primary">Launch</button>
         </div>
       </div>
     </div>
   </div>
 
-
-  <div class="modal fade" id="finetune-tab-autorun-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-autorun-settings-modal" aria-hidden="true">
+  <!-- <div class="modal fade" id="finetune-tab-autorun-settings-modal" tabindex="-1" aria-labelledby="finetune-tab-autorun-settings-modal" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -382,7 +296,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </div> -->
 
   <div class="modal fade" id="finetune-tab-model-warning-modal" tabindex="-1" aria-labelledby="finetune-tab-invalid-model-modal" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
