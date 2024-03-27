@@ -53,7 +53,7 @@ async fn get_file_paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>
 async fn get_ast_file_paths(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<String> {
      match *global_context.read().await.ast_module.lock().await {
         Some(ref ast) => {
-            let index_file_paths = ast.get_file_paths().await;
+            let index_file_paths = ast.get_file_paths().await.unwrap_or_default();
             index_file_paths.iter().map(|f| f
                 .to_file_path()
                 .unwrap_or_default()
@@ -160,20 +160,20 @@ impl AtParam for AtParamSymbolPathQuery {
 
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
         let ast_module_ptr = context.global_context.read().await.ast_module.clone();
-        let index_paths = match *ast_module_ptr.lock().await {
-            Some(ref ast) => ast.get_all_symbols(RequestSymbolType::Declaration).await,
+        let names = match *ast_module_ptr.lock().await {
+            Some(ref ast) => ast.get_symbols_names(RequestSymbolType::Declaration).await.unwrap_or_default(),
             None => vec![]
         };
 
         let value_lower = value.to_lowercase();
-        let mapped_paths = index_paths
+        let mapped_paths = names
             .iter()
-            .filter(|x| x.name.to_lowercase().contains(&value_lower))
-            .map(|f| (f, jaro_winkler(&f.name, &value.to_string())));
+            .filter(|x| x.to_lowercase().contains(&value_lower))
+            .map(|f| (f, jaro_winkler(&f, &value.to_string())));
         let sorted_paths = mapped_paths
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
             .rev()
-            .map(|(s, _)| s.name.clone())
+            .map(|(s, _)| s.clone())
             .take(top_n)
             .collect::<Vec<String>>();
         return sorted_paths;
@@ -209,18 +209,18 @@ impl AtParam for AtParamSymbolReferencePathQuery {
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
         let ast_module_ptr = context.global_context.read().await.ast_module.clone();
         let index_paths = match *ast_module_ptr.lock().await {
-            Some(ref ast) => ast.get_all_symbols(RequestSymbolType::Usage).await,
+            Some(ref ast) => ast.get_symbols_names(RequestSymbolType::Usage).await.unwrap_or_default(),
             None => vec![]
         };
         let value_lower = value.to_lowercase();
         let mapped_paths = index_paths
             .iter()
-            .filter(|x| x.name.to_lowercase().contains(&value_lower))
-            .map(|f| (f, jaro_winkler(&f.name, &value.to_string())));
+            .filter(|x| x.to_lowercase().contains(&value_lower))
+            .map(|f| (f, jaro_winkler(&f, &value.to_string())));
         let sorted_paths = mapped_paths
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
             .rev()
-            .map(|(s, _)| s.name.clone())
+            .map(|(s, _)| s.clone())
             .take(top_n)
             .collect::<Vec<String>>();
         return sorted_paths;

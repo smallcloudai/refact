@@ -11,10 +11,7 @@ use hyper::Response;
 use crate::{telemetry_get, telemetry_post};
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::http::routers::v1::ast::{handle_v1_ast_declarations_cursor_search, handle_v1_ast_declarations_query_search,
-                                    handle_v1_ast_references_cursor_search, handle_v1_ast_references_query_search,
-                                    handle_v1_ast_file_symbols, handle_v1_ast_index_file,
-                                    handle_v1_ast_clear_index};
+use crate::http::routers::v1::ast::{handle_v1_ast_declarations_cursor_search, handle_v1_ast_declarations_query_search, handle_v1_ast_references_cursor_search, handle_v1_ast_references_query_search, handle_v1_ast_file_symbols, handle_v1_ast_index_file, handle_v1_ast_clear_index, handle_v1_ast_search_by_name, handle_v1_ast_search_by_content, handle_v1_ast_search_related_declarations, handle_v1_ast_search_usages_by_declarations};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::chat::handle_v1_chat;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion_web;
@@ -64,10 +61,12 @@ pub fn make_v1_router() -> Router {
 
         .route("/get-dashboard-plots", telemetry_get!(get_dashboard_plots))
 
-        .route("/ast-declarations-cursor-search", telemetry_post!(handle_v1_ast_declarations_cursor_search))
-        .route("/ast-declarations-query-search", telemetry_post!(handle_v1_ast_declarations_query_search))
-        .route("/ast-references-cursor-search", telemetry_post!(handle_v1_ast_references_cursor_search))
-        .route("/ast-references-query-search", telemetry_post!(handle_v1_ast_references_query_search))
+        .route("/ast-search-by-name", telemetry_post!(handle_v1_ast_search_by_name))
+        .route("/ast-search-by-content", telemetry_post!(handle_v1_ast_search_by_content))
+        .route("/ast-search-related-declarations", telemetry_post!(handle_v1_ast_search_related_declarations))
+        .route("/ast-search-usages-by-declarations", telemetry_post!(handle_v1_ast_search_usages_by_declarations))
+
+        .route("/ast-file-markup", telemetry_post!(handle_v1_ast_references_cursor_search))
         .route("/ast-file-symbols", telemetry_post!(handle_v1_ast_file_symbols))
         .route("/ast-index-file", telemetry_post!(handle_v1_ast_index_file))
         .route("/ast-clear-index", telemetry_post!(handle_v1_ast_clear_index))

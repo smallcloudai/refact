@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::cmp::min;
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::io;
 use std::sync::{Arc, RwLock};
@@ -93,6 +94,33 @@ impl TypeDef {
         }
         res
     }
+
+    pub fn get_nested_types(&self) -> Vec<TypeDef> {
+        let mut types = vec![];
+        let mut nested_types = vec![];
+        for nested in self.nested_types.iter() {
+            types.push(nested.clone());
+        }
+        for nested in types.iter() {
+            nested_types.append(&mut nested.get_nested_types())
+        }
+        types.append(&mut nested_types);
+        types
+    }
+
+
+    pub fn get_nested_types_mut(&mut self) -> Vec<&mut TypeDef> {
+        let mut types: Vec<&mut TypeDef> = vec![];
+        let mut nested_types: Vec<&mut TypeDef> = vec![];
+        for nested in self.nested_types.iter_mut() {
+            types.push(nested);
+        }
+        // for nested in types.iter_mut() {
+        //     nested_types.append(&mut nested.get_nested_types_mut())
+        // }
+        types
+    }
+
 }
 
 
@@ -159,10 +187,12 @@ impl SymbolInformation {
         let file_path = self.file_url.to_file_path().unwrap_or_default();
         let content = std::fs::read_to_string(file_path)?;
         let text = Rope::from_str(content.as_str());
-        Ok(text
-            .slice(text.line_to_char(self.full_range.start_point.row)..
-                text.line_to_char(self.full_range.end_point.row))
-            .to_string())
+
+        let mut start_row = min(self.full_range.start_point.row, text.len_lines());
+        let end_row = min(self.full_range.end_point.row + 1, text.len_lines());
+        start_row = min(start_row, end_row);
+
+        Ok(text.slice(text.line_to_char(start_row)..text.line_to_char(end_row)).to_string())
     }
 }
 
@@ -295,8 +325,28 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         &self.fields().linked_decl_guid
     }
 
-    fn set_linked_decl_guid(&mut self, linked_decl_guid: String) {
-        self.fields_mut().linked_decl_guid = Some(linked_decl_guid);
+    fn set_linked_decl_guid(&mut self, linked_decl_guid: Option<String>) {
+        self.fields_mut().linked_decl_guid = linked_decl_guid;
+    }
+
+    fn remove_linked_guids(&mut self, guids: &HashSet<String>) {
+        for t in self
+            .type_names_mut()
+            .iter_mut()
+            .filter(|t| t.guid.is_some()) {
+            let guid = t.guid.to_owned().unwrap_or_default();
+            if guids.contains(&guid) {
+                t.guid = None;
+            }
+        }
+        match self.get_linked_decl_guid() {
+            Some(guid) => {
+                if guids.contains(guid) {
+                    self.set_linked_decl_guid(None);
+                }
+            }
+            None => {}
+        }
     }
 }
 
@@ -338,8 +388,14 @@ impl AstSymbolInstance for StructDeclaration {
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
     fn type_names(&self) -> Vec<TypeDef> {
-        let mut types = self.inherited_types.clone();
-        types.extend(self.template_types.clone());
+        let mut types: Vec<TypeDef> = vec![];
+        for t in self.inherited_types.iter() {
+            types.push(t.clone());
+            types.append(&mut t.get_nested_types())
+        }
+        for t in self.template_types.iter() {
+            types.push(t.clone())
+        }
         types
     }
 

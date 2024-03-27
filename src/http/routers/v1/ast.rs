@@ -39,6 +39,176 @@ struct AstIndexFilePost {
     filename: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct AstQuerySearchBy {
+    query: String,
+    is_declaration: bool,
+    top_n: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct AstQuerySearchByGuid {
+    guid: String,
+    top_n: usize,
+}
+
+
+
+pub async fn handle_v1_ast_search_by_name(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<AstQuerySearchBy>(&body_bytes).map_err(|e| {
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+
+    let cx_locked = global_context.read().await;
+    let search_res = match *cx_locked.ast_module.lock().await {
+        Some(ref mut ast) => {
+            let symbol_type = if post.is_declaration {
+                RequestSymbolType::Declaration
+            } else {
+                RequestSymbolType::Usage
+            };
+            ast.search_by_name(post.query, symbol_type).await
+        }
+        None => {
+            return Err(ScratchError::new(
+                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+            ));
+        }
+    };
+    match search_res {
+        Ok(search_res) => {
+            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
+                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
+            })?;
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(json_string))
+                .unwrap())
+        }
+        Err(e) => {
+            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
+        }
+    }
+}
+
+
+pub async fn handle_v1_ast_search_by_content(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<AstQuerySearchBy>(&body_bytes).map_err(|e| {
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+
+    let cx_locked = global_context.read().await;
+    let search_res = match *cx_locked.ast_module.lock().await {
+        Some(ref mut ast) => {
+            let symbol_type = if post.is_declaration {
+                RequestSymbolType::Declaration
+            } else {
+                RequestSymbolType::Usage
+            };
+            ast.search_by_content(post.query, symbol_type).await
+        }
+        None => {
+            return Err(ScratchError::new(
+                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+            ));
+        }
+    };
+    match search_res {
+        Ok(search_res) => {
+            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
+                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
+            })?;
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(json_string))
+                .unwrap())
+        }
+        Err(e) => {
+            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
+        }
+    }
+}
+
+
+pub async fn handle_v1_ast_search_related_declarations(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<AstQuerySearchByGuid>(&body_bytes).map_err(|e| {
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+
+    let cx_locked = global_context.read().await;
+    let search_res = match *cx_locked.ast_module.lock().await {
+        Some(ref mut ast) => {
+            ast.search_related_declarations(&post.guid).await
+        }
+        None => {
+            return Err(ScratchError::new(
+                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+            ));
+        }
+    };
+    match search_res {
+        Ok(search_res) => {
+            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
+                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
+            })?;
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(json_string))
+                .unwrap())
+        }
+        Err(e) => {
+            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
+        }
+    }
+}
+
+
+pub async fn handle_v1_ast_search_usages_by_declarations(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<AstQuerySearchByGuid>(&body_bytes).map_err(|e| {
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+
+    let cx_locked = global_context.read().await;
+    let search_res = match *cx_locked.ast_module.lock().await {
+        Some(ref mut ast) => {
+            ast.search_usages_by_declarations(&post.guid).await
+        }
+        None => {
+            return Err(ScratchError::new(
+                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+            ));
+        }
+    };
+    match search_res {
+        Ok(search_res) => {
+            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
+                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
+            })?;
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(json_string))
+                .unwrap())
+        }
+        Err(e) => {
+            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
+        }
+    }
+}
+
+
+
 
 pub async fn handle_v1_ast_declarations_cursor_search(
     Extension(global_context): Extension<SharedGlobalContext>,

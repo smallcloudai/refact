@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use fst::{Set, set, Streamer};
@@ -136,6 +136,7 @@ impl AstIndex {
 
     pub fn remove(&mut self, doc: &DocumentInfo) -> Result<(), String> {
         self.symbols_search_index.remove(&doc.uri);
+        let mut removed_guids = HashSet::new();
         for symbol in self.path_by_symbols
             .remove(&doc.uri)
             .unwrap_or_default()
@@ -143,6 +144,10 @@ impl AstIndex {
             let symbol_ref = symbol.read().expect("the data might be broken");
             self.symbols_by_name.remove(symbol_ref.name());
             self.symbols_by_guid.remove(symbol_ref.guid());
+            removed_guids.insert(symbol_ref.guid().to_string());
+        }
+        for symbol in self.symbols_by_guid.values_mut() {
+            symbol.write().expect("the data might be broken").remove_linked_guids(&removed_guids);
         }
         self.has_changes = true;
         Ok(())
@@ -330,15 +335,77 @@ impl AstIndex {
     }
 
     pub fn search_related_declarations(&self, guid: &str) -> Result<Vec<SymbolsSearchResultStruct>, String> {
-        unimplemented!()
+        match self.symbols_by_guid.get(guid) {
+            Some(symbol) => {
+                Ok(symbol
+                    .read().expect("the data might be broken")
+                    .type_names()
+                    .iter()
+                    .filter_map(|t| t.guid.clone())
+                    .filter_map(|g| self.symbols_by_guid.get(&g))
+                    .filter_map(|s| {
+                        let info_struct = s.read().expect("the data might be broken").symbol_info_struct();
+                        let content = info_struct.get_content_blocked().ok()?;
+                        Some(SymbolsSearchResultStruct {
+                            symbol_declaration: info_struct,
+                            content: content,
+                            sim_to_query: -1.0
+                        })
+                    })
+                    .collect::<Vec<_>>())
+            }
+            _ => Ok(vec![])
+        }
     }
 
     pub fn search_usages_by_declarations(
         &self,
         declaration_guid: &str,
-        exception_doc: Option<DocumentInfo>
+        exception_doc: Option<DocumentInfo>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
-        unimplemented!()
+        match self.symbols_by_guid.get(declaration_guid) {
+            Some(decl_symbol) => {
+                let decl_guid = decl_symbol.read().expect("the data might be broken").guid().to_string();
+                let mut found_symbols = vec![];
+                for (_, symbols) in self.path_by_symbols
+                    .iter()
+                    .filter(|(path, symbols)| {
+                        exception_doc.clone().map_or(true, |doc| doc.uri == **path)
+                    }) {
+                    for (symbol, _) in symbols
+                        .iter()
+                        .filter(|s| !s.read().expect("the data might be broken").is_declaration())
+                        .map(|s| (s.clone(), s.read().expect("the data might be broken").get_linked_decl_guid().clone()))
+                        .filter(|(s, symb_decl_guid)| symb_decl_guid.is_some())
+                        .filter(|(s, symb_decl_guid)| {
+                            let guid = symb_decl_guid.clone().unwrap_or_default();
+                            match self.symbols_by_guid.get(&guid) {
+                                Some(symbol) => {
+                                    symbol.read().expect("the data might be broken").guid() == decl_guid
+                                }
+                                None => false
+                            }
+                        }) {
+                        found_symbols.push(symbol.clone());
+                    }
+                }
+                Ok(found_symbols
+                    .iter()
+                    .filter_map(|s| {
+                        let info_struct = s.read().expect("the data might be broken").symbol_info_struct();
+                        let content = info_struct.get_content_blocked().ok()?;
+                        Some(SymbolsSearchResultStruct {
+                            symbol_declaration: info_struct,
+                            content: content,
+                            sim_to_query: -1.0,
+                        })
+                    })
+                    .collect::<Vec<_>>())
+            }
+            None => {
+                return Ok(vec![])
+            }
+        }
     }
 
     pub async fn file_markup(
@@ -431,10 +498,10 @@ impl AstIndex {
         self.symbols_search_index.iter().map(|(path, _)| path.clone()).collect()
     }
 
-    pub fn get_all_symbols(
+    pub fn get_symbols_names(
         &self,
         request_symbol_type: RequestSymbolType,
-    ) -> Vec<SymbolInformation> {
+    ) -> Vec<String> {
         self.symbols_by_guid
             .iter()
             .filter(|(guid, s)| {
@@ -445,10 +512,9 @@ impl AstIndex {
                     RequestSymbolType::All => true,
                 }
             })
-            .map(|(guid, s)| s.read().expect("the data might be broken").symbol_info_struct())
+            .map(|(guid, s)| s.read().expect("the data might be broken").name().to_string())
             .collect()
     }
-
 
     pub async fn rebuild_index(&mut self) {
         if !self.has_changes {
@@ -468,7 +534,6 @@ impl AstIndex {
     }
 
     fn resolve_types(&mut self) {
-        // TODO: move to the nested types
         for symbol in self.symbols_by_guid.values_mut() {
             let (type_names, symb_type, symb_path) = {
                 let s_ref = symbol.read().expect("the data might be broken");
@@ -527,7 +592,6 @@ impl AstIndex {
             }
         }
     }
-
 
     fn merge_usages_to_declarations(&mut self) {
         fn get_caller_depth(
@@ -604,7 +668,7 @@ impl AstIndex {
                             usage_symbol
                                 .write()
                                 .expect("the data might be broken")
-                                .set_linked_decl_guid(guid.clone())
+                                .set_linked_decl_guid(Some(guid))
                         }
                         info!("Found declaration {} at index {}", usage_symbol.read().expect("").name(), idx);
                     },

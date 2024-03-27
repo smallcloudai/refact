@@ -1,10 +1,13 @@
 use std::sync::Arc;
+use std::time::Duration;
 use itertools::Itertools;
 
 use serde::Serialize;
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{Mutex as AMutex, MutexGuard};
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
+use tokio::time::error::Elapsed;
+use tokio::time::timeout;
 use tracing::info;
 use tree_sitter::Point;
 
@@ -56,7 +59,6 @@ impl AstModule {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(documents, force).await;
     }
 
-
     pub async fn ast_add_file_no_queue(&self, document: &DocumentInfo) -> Result<(), String> {
         self.ast_index.lock().await.add_or_update(&document)
     }
@@ -77,7 +79,12 @@ impl AstModule {
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = ast_index.lock().await;
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+            Ok(lock) => lock,
+            Err(_) => {
+                return Err("Ast index is busy, timeout error".to_string());
+            }
+        };
         match ast_index_locked.search_by_name(query.as_str(), request_symbol_type, None, None) {
             Ok(results) => {
                 for r in results.iter() {
@@ -103,7 +110,12 @@ impl AstModule {
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = ast_index.lock().await;
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+            Ok(lock) => lock,
+            Err(_) => {
+                return Err("Ast index is busy, timeout error".to_string());
+            }
+        };
         match ast_index_locked.search_by_content(query.as_str(), request_symbol_type, None, None) {
             Ok(results) => {
                 for r in results.iter() {
@@ -114,6 +126,60 @@ impl AstModule {
                 Ok(
                     AstQuerySearchResult {
                         query_text: query,
+                        search_results: results,
+                    }
+                )
+            }
+            Err(e) => Err(e.to_string())
+        }
+    }
+
+    pub async fn search_related_declarations(&self, guid: &str)-> Result<AstQuerySearchResult, String> {
+        let t0 = std::time::Instant::now();
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+            Ok(lock) => lock,
+            Err(_) => {
+                return Err("Ast index is busy, timeout error".to_string());
+            }
+        };
+        match ast_index_locked.search_related_declarations(guid) {
+            Ok(results) => {
+                for r in results.iter() {
+                    let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
+                    info!("found {last_30_chars}");
+                }
+                info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                Ok(
+                    AstQuerySearchResult {
+                        query_text: guid.to_string(),
+                        search_results: results,
+                    }
+                )
+            }
+            Err(e) => Err(e.to_string())
+        }
+    }
+
+    pub async fn search_usages_by_declarations(&self, declaration_guid: &str)-> Result<AstQuerySearchResult, String> {
+        let t0 = std::time::Instant::now();
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+            Ok(lock) => lock,
+            Err(_) => {
+                return Err("Ast index is busy, timeout error".to_string());
+            }
+        };
+        match ast_index_locked.search_usages_by_declarations(declaration_guid, None) {
+            Ok(results) => {
+                for r in results.iter() {
+                    let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
+                    info!("found {last_30_chars}");
+                }
+                info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                Ok(
+                    AstQuerySearchResult {
+                        query_text: declaration_guid.to_string(),
                         search_results: results,
                     }
                 )
@@ -150,7 +216,12 @@ impl AstModule {
     ) -> Result<FileASTMarkup, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = ast_index.lock().await;
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+            Ok(lock) => lock,
+            Err(_) => {
+                return Err("Ast index is busy, timeout error".to_string());
+            }
+        };
         match ast_index_locked.file_markup(doc).await {
             Ok(markup) => {
                 info!("ast file_markup time {:.3}s", t0.elapsed().as_secs_f32());
@@ -162,7 +233,12 @@ impl AstModule {
 
     pub async fn get_file_symbols(&self, request_symbol_type: RequestSymbolType, doc: &DocumentInfo) -> Result<FileReferencesResult, String> {
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = ast_index.lock().await;
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+            Ok(lock) => lock,
+            Err(_) => {
+                return Err("Ast index is busy, timeout error".to_string());
+            }
+        };
         let symbols = match ast_index_locked.get_by_file_path(request_symbol_type, &doc) {
             Ok(s) => s,
             Err(err) => { return Err(format!("Error: {}", err)); }
@@ -173,15 +249,25 @@ impl AstModule {
         })
     }
 
-    pub async fn get_all_symbols(&self, request_symbol_type: RequestSymbolType) -> Vec<SymbolInformation> {
+    pub async fn get_symbols_names(&self, request_symbol_type: RequestSymbolType) -> Result<Vec<String>, String> {
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = ast_index.lock().await;
-        ast_index_locked.get_all_symbols(request_symbol_type)
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+            Ok(lock) => lock,
+            Err(_) => {
+                return Err("Ast index is busy, timeout error".to_string());
+            }
+        };
+        Ok(ast_index_locked.get_symbols_names(request_symbol_type))
     }
 
-    pub async fn get_file_paths(&self) -> Vec<Url> {
+    pub async fn get_file_paths(&self) -> Result<Vec<Url>, String> {
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = ast_index.lock().await;
-        ast_index_locked.get_file_paths()
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+            Ok(lock) => lock,
+            Err(_) => {
+                return Err("Ast index is busy, timeout error".to_string());
+            }
+        };
+        Ok(ast_index_locked.get_file_paths())
     }
 }

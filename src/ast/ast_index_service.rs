@@ -132,8 +132,10 @@ async fn ast_indexer(
             continue;
         }
 
-        let mut ast_index = ast_index.lock().await;
-        ast_index.rebuild_index().await;
+        {
+            let mut ast_index = ast_index.lock().await;
+            ast_index.rebuild_index().await;
+        }
         tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     }
 }
