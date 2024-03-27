@@ -7,10 +7,9 @@ from pathlib import Path
 from typing import List
 
 from refact_utils.scripts import env
-from refact_utils.finetune.filtering_defaults import finetune_filtering_defaults
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 
-from typing import Any, Dict, Optional, Callable, Union
+from typing import Any, Dict, Union
 
 legacy_finetune_model = "CONTRASTcode/3b/multi"
 default_finetune_model = "Refact/1.6B"
@@ -165,14 +164,6 @@ def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         for model_name, model_info in models_db.items()
         if "finetune_model" in model_info or "finetune" in model_info["filter_caps"]
     }
-
-
-def get_finetune_filter_config(logger: Optional[Callable] = None):
-    cfg = {**finetune_filtering_defaults}
-    if os.path.exists(env.CONFIG_HOW_TO_FILTER):
-        logger("Reading %s" % env.CONFIG_HOW_TO_FILTER)
-        cfg.update(**json.load(open(env.CONFIG_HOW_TO_FILTER)))
-    return cfg
 
 
 def get_finetune_config(models_db: Dict) -> Dict[str, Any]:

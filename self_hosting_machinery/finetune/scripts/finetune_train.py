@@ -135,28 +135,35 @@ def convert_to_int(v):
         return v
 
 
-def gpu_filter_and_build_config(
-        pname: str,
+def build_config(
         run_id: str,
         model_name: str,
         model_config: Dict[str, Any],
         model_info: Dict[str, Any],
         **kwargs) -> Dict[str, Any]:
     finetune_cfg = base_config(model_name=model_name, model_info=model_info)
+    return _build_finetune_config_by_heuristics(run_id, finetune_cfg, model_config, **kwargs)
+
+
+def gpu_filter(
+        pname: str,
+        run_id: str,
+        finetune_cfg: Dict[str, Any],
+        model_config: Dict[str, Any],
+        **unused):
     traces.log("locking \"%s\" for filtering" % pname)
     if dist.get_rank() == 0:
         with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
             traces.log("locked \"%s\" successfully" % pname)
-            finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg), copy.deepcopy(model_config))
+            finetune_filter.finetune_gpu_filter(pname, finetune_cfg, model_config)
             traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
-            _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
-            _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
+            _copy_source_files(
+                env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
+            _copy_source_files(
+                env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
     else:
-        finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg), copy.deepcopy(model_config))
+        finetune_filter.finetune_gpu_filter(pname, finetune_cfg, model_config)
     dist.barrier()
-
-    return _build_finetune_config_by_heuristics(
-        run_id, copy.deepcopy(finetune_cfg), copy.deepcopy(model_config), **kwargs)
 
 
 def _copy_source_files(jsonl_src, jsonl_dst, pname, run_id):
@@ -346,8 +353,11 @@ def main(supported_models: Dict[str, Any], models_db: Dict[str, Any]):
 
         status_tracker.update_status("working")
         _log_everywhere("Dest dir is %s" % traces.context().path)
-        finetune_cfg = gpu_filter_and_build_config(model_config=model_config, model_info=model_info, **vars(args))
+
+        finetune_cfg = build_config(model_config=model_config, model_info=model_info, **vars(args))
         finetune_cfg = copy.deepcopy(finetune_cfg)
+
+        gpu_filter(finetune_cfg=finetune_cfg, model_config=model_config, **vars(args))
 
         _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
         model_context = ModelContext(
