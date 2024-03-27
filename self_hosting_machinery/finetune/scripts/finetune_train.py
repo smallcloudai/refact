@@ -37,7 +37,7 @@ def _log_everywhere(message):
     traces.log(message)
 
 
-def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, model_config: Dict,**kwargs) -> Dict[str, Any]:
+def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, model_config: Dict, **kwargs) -> Dict[str, Any]:
     user_cfg = copy.deepcopy(finetune_train_defaults)
     user_cfg_nondefault = {}
     for k, v in kwargs.items():
@@ -147,15 +147,16 @@ def gpu_filter_and_build_config(
     if dist.get_rank() == 0:
         with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
             traces.log("locked \"%s\" successfully" % pname)
-            finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg), model_config)
+            finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg), copy.deepcopy(model_config))
             traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
             _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
             _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
     else:
-        finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg), model_config)
+        finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg), copy.deepcopy(model_config))
     dist.barrier()
 
-    return _build_finetune_config_by_heuristics(run_id, copy.deepcopy(finetune_cfg), **kwargs)
+    return _build_finetune_config_by_heuristics(
+        run_id, copy.deepcopy(finetune_cfg), copy.deepcopy(model_config), **kwargs)
 
 
 def _copy_source_files(jsonl_src, jsonl_dst, pname, run_id):
@@ -311,35 +312,18 @@ def loop(
             else:
                 _save_checkpoint(force=False, iter_n=iter_n, loss=test_loss)
 
-@click.command()
-@click.option('--pname', required=True)
-@click.option('--run_id', required=True)
-@click.option('--model_name', required=True)
-# @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
-@click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
-@click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
-@click.option('--lr', default=finetune_train_defaults['lr'])
-@click.option('--batch_size', default=finetune_train_defaults['batch_size'], type=convert_to_int)
-@click.option('--warmup_num_steps', default=finetune_train_defaults['warmup_num_steps'], type=convert_to_int)
-@click.option('--weight_decay', default=finetune_train_defaults['weight_decay'])
-# @click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
-@click.option('--train_steps', default=finetune_train_defaults['train_steps'], type=convert_to_int)
-@click.option('--lr_decay_steps', default=finetune_train_defaults['lr_decay_steps'], type=convert_to_int)
-@click.option('--lora_r', default=finetune_train_defaults['lora_r'], type=convert_to_int)
-@click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'], type=convert_to_int)
-@click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
-@click.option('--n_ctx', default=1024, type=convert_to_int)  # TODO: we don't really use it now
-@click.option('--filter_loss_threshold', default=0, type=convert_to_int)  # TODO: we don't really use it now
-@click.option("--local-rank", default=0, type=convert_to_int)  # is used by torch.distributed, ignore it
-def main(run_id: str, model_name: str, supported_models: Dict[str, Any], models_db: Dict[str, Any], **kwargs):
-    # TODO: exception handling
-    assert model_name in models_db, f"unknown model '{model_name}'"
-    assert model_name in supported_models, f"model '{model_name}' not in finetune supported_models"
-    model_config = supported_models[model_name]
-    model_info = models_db[model_name]
-    assert "finetune" in model_info.get("filter_caps", []), f"model {model_name} does not support finetune"
 
-    traces.configure(task_dir="loras", task_name=run_id, work_dir=env.PERMDIR)
+def main(supported_models: Dict[str, Any], models_db: Dict[str, Any]):
+    args = parse_args()
+
+    # TODO: exception handling
+    assert args.model_name in models_db, f"unknown model '{args.model_name}'"
+    assert args.model_name in supported_models, f"model '{args.model_name}' not in finetune supported_models"
+    model_config = supported_models[args.model_name]
+    model_info = models_db[args.model_name]
+    assert "finetune" in model_info.get("filter_caps", []), f"model {args.model_name} does not support finetune"
+
+    traces.configure(task_dir="loras", task_name=args.run_id, work_dir=env.PERMDIR)
     if "RANK" not in os.environ:
         os.environ["WORLD_SIZE"] = "1"
         os.environ["RANK"] = "0"
@@ -363,8 +347,7 @@ def main(run_id: str, model_name: str, supported_models: Dict[str, Any], models_
     try:
         status_tracker.update_status("working")
         _log_everywhere("Dest dir is %s" % traces.context().path)
-        finetune_cfg = gpu_filter_and_build_config(
-            run_id=run_id, model_name=model_name, model_config=model_config, model_info=model_info, **kwargs)
+        finetune_cfg = gpu_filter_and_build_config(model_config=model_config, model_info=model_info, **vars(args))
         finetune_cfg = copy.deepcopy(finetune_cfg)
 
         _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
@@ -376,8 +359,8 @@ def main(run_id: str, model_name: str, supported_models: Dict[str, Any], models_
 
         _log_everywhere(f"Starting finetune at {traces.context().path}\n\n")
         loop(
-            train_jsonl_path=env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id),
-            test_jsonl_path=env.PERRUN_TEST_FILTERED_FILEPATH(run_id),
+            train_jsonl_path=env.PERRUN_TRAIN_FILTERED_FILEPATH(args.run_id),
+            test_jsonl_path=env.PERRUN_TEST_FILTERED_FILEPATH(args.run_id),
             finetune_cfg=finetune_cfg,
             model_context=model_context,
             status_tracker=status_tracker,
@@ -411,11 +394,35 @@ def localhost_port_not_in_use(start: int, stop: int):
     raise RuntimeError(f"cannot find port in range [{start}, {stop})")
 
 
+def parse_args():
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('--pname', type=str, required=True)
+    parser.add_argument('--run_id', type=str, required=True)
+    parser.add_argument('--model_name', type=str, required=True)
+    # @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
+    parser.add_argument('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])  # option
+    parser.add_argument('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])  # option
+    parser.add_argument('--lr', type=float, default=finetune_train_defaults['lr'])
+    parser.add_argument('--batch_size', type=int, default=finetune_train_defaults['batch_size'])
+    parser.add_argument('--warmup_num_steps', type=int, default=finetune_train_defaults['warmup_num_steps'])
+    parser.add_argument('--weight_decay', type=float, default=finetune_train_defaults['weight_decay'])
+    # @click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
+    parser.add_argument('--train_steps', type=int, default=finetune_train_defaults['train_steps'])
+    parser.add_argument('--lr_decay_steps', type=int, default=finetune_train_defaults['lr_decay_steps'])
+    parser.add_argument('--lora_r', type=int, default=finetune_train_defaults['lora_r'])
+    parser.add_argument('--lora_alpha', type=int, default=finetune_train_defaults['lora_alpha'])
+    parser.add_argument('--lora_dropout', type=float, default=finetune_train_defaults['lora_dropout'])
+    parser.add_argument('--model_ctx_size', type=int, default=1024)  # TODO: we don't really use it now
+    parser.add_argument('--filter_loss_threshold', type=float, default=0)  # TODO: we don't really use it now
+    parser.add_argument("--local-rank", type=int, default=0)  # is used by torch.distributed, ignore it
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
     from known_models_db.refact_known_models import models_mini_db
     from self_hosting_machinery.finetune.configuration import supported_models
-    main.main(
-        *sys.argv[1:],
-        supported_models=supported_models.config,
-        models_db=models_mini_db,
-        standalone_mode=False)
+
+    main(supported_models=supported_models.config, models_db=models_mini_db)
