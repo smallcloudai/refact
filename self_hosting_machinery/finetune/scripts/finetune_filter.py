@@ -1,22 +1,16 @@
-import click
-import copy
 import json
 import logging
 import math
 import os
-import signal
 import textwrap
 import traceback
-import time
 from typing import Dict, Any, Tuple
 
 import torch
 import torch.distributed as dist
 
 from refact_utils.scripts import env
-from refact_utils.finetune.utils import (get_finetune_config, get_finetune_filter_config)
 import self_hosting_machinery.finetune.utils.traces as traces
-from self_hosting_machinery.finetune.configuration.finetune_config import base_config
 from self_hosting_machinery.finetune.scripts.auxiliary.dataset import (
     create_finetune_filter_dataloader, to_cuda, setup_encoding
 )
@@ -149,7 +143,6 @@ def finetune_filter(
         status_tracker: FinetuneFilterStatusTracker,
         dataset_context: FileSetsContext,
         finetune_cfg: Dict[str, Any],
-        finetune_filter_cfg: Dict[str, Any],
         model_config: Dict[str, Any],
 ):
     _log_everywhere("Loading files statuses...")
@@ -176,7 +169,7 @@ def finetune_filter(
         dataset_context=dataset_context,
         files_status_context=file_status_context,
         status_tracker=status_tracker,
-        filter_loss_threshold=finetune_filter_cfg['filter_loss_threshold'],
+        filter_loss_threshold=finetune_cfg['filter_loss_threshold'],
         model_config=model_config,
     )
 
@@ -187,12 +180,9 @@ def finetune_filter(
 
 
 def finetune_gpu_filter(pname: str, finetune_cfg: Dict, model_config: Dict[str, Any]):
-    _log_everywhere("Loading finetune configs...")
-    finetune_filter_cfg = get_finetune_filter_config(logger=traces.log)
-
     file_sets_context = FileSetsContext(
         pname=pname,
-        autoselect_test_files_num=finetune_filter_cfg.get("autoselect_test_files_num", 3)
+        autoselect_test_files_num=finetune_cfg.get("autoselect_test_files_num", 3)
     )
     if file_sets_context.is_up_to_date():
         logging.info("Train set filtering: nothing changed since last time, quit")
@@ -200,7 +190,7 @@ def finetune_gpu_filter(pname: str, finetune_cfg: Dict, model_config: Dict[str, 
 
     traces.log(textwrap.fill(
         f"This filter calculates perplexity for each file and filters out "
-        f"files with perplexity larger than {finetune_filter_cfg['filter_loss_threshold']:.3f}.\n"
+        f"files with perplexity larger than {finetune_cfg['filter_loss_threshold']:.3f}.\n"
         f"Those files likely don't have meaningful content to train on", width=100
     ))
 
@@ -212,7 +202,6 @@ def finetune_gpu_filter(pname: str, finetune_cfg: Dict, model_config: Dict[str, 
             status_tracker=status_tracker,
             dataset_context=file_sets_context,
             finetune_cfg=finetune_cfg,
-            finetune_filter_cfg=finetune_filter_cfg,
             model_config=model_config,
         )
         status_tracker.update_status("finished")
@@ -221,67 +210,3 @@ def finetune_gpu_filter(pname: str, finetune_cfg: Dict, model_config: Dict[str, 
         _log_everywhere(f"Finetune gpu filter is failed\nException: {e}")
         status_tracker.update_status("failed", error_message=str(e) or str(type(e)))
         raise e
-
-
-# @click.command()
-# @click.option('--pname', default='')
-# def main(pname):
-#     _log_everywhere("Loading status tracker...")
-#     status_tracker = FinetuneFilterStatusTracker(pname)
-#     from known_models_db.refact_known_models import models_mini_db
-#     models_db: Dict[str, Any] = models_mini_db
-
-#     def catch_sigusr1(signum, frame):
-#         _log_everywhere("catched SIGUSR1, interrupted")
-#         status_tracker.update_status("interrupted", error_message="catched SIGUSR1, interrupted")
-#         exit(99)
-
-#     signal.signal(signal.SIGUSR1, catch_sigusr1)
-
-#     _log_everywhere("Loading finetune configs...")
-#     finetune_filter_cfg = get_finetune_filter_config(logger=traces.log)
-#     model_name = get_finetune_config(models_db, logger=traces.log)["model_name"]
-#     finetune_cfg = copy.deepcopy(base_config(model_name, models_db))
-
-#     try:
-#         _log_everywhere("Loading file sets context...")
-#         file_sets_context = FileSetsContext(
-#             pname=pname,
-#             autoselect_test_files_num=finetune_filter_cfg.get("autoselect_test_files_num", 3)
-#         )
-#         if file_sets_context.is_up_to_date():
-#             logging.info("Train set filtering: nothing changed since last time, quit")
-#             return
-
-#         traces.log(textwrap.fill(
-#             f"This filter calculates perplexity for each file and filters out "
-#             f"files with perplexity larger than {finetune_filter_cfg['filter_loss_threshold']:.3f}.\n"
-#             f"Those files likely don't have meaningful content to train on", width=100
-#         ))
-
-#         status_tracker.update_status("starting")
-#         finetune_filter(
-#             pname=pname,
-#             status_tracker=status_tracker,
-#             dataset_context=file_sets_context,
-#             finetune_cfg=finetune_cfg,
-#             finetune_filter_cfg=finetune_filter_cfg,
-#         )
-#         status_tracker.update_status("finished")
-
-#     # finetune_sequence relies on exit code to continue or stop
-#     except (SystemExit, KeyboardInterrupt):
-#         # caught sigusr1, interrupt by watchdog or by user
-#         # this has to be there, even if catch_sigusr1() already called exit with 99, otherwise exit code is zero
-#         exit(99)
-#     except Exception as e:
-#         traces.log(traceback.format_exc())
-#         _log_everywhere(f"Finetune gpu filter is failed\nException: {e}")
-#         status_tracker.update_status("failed", error_message=str(e) or str(type(e)))
-#         raise e
-
-
-# if __name__ == "__main__":
-#     task_name = os.environ.get("LORA_LOGDIR", "") or time.strftime("lora-%Y%m%d-%H%M%S")
-#     traces.configure(task_dir="loras", task_name=task_name, work_dir=env.PERMDIR)
-#     main()

@@ -47,7 +47,6 @@ class FileSetsContext:
         unfiltered_test, filtered_test = (
             Path(env.PP_TEST_UNFILTERED_FILEPATH(self.pname)), Path(env.PP_TEST_FILTERED_FILEPATH(self.pname))
         )
-        how_to_filter = Path(env.CONFIG_HOW_TO_FILTER)
         how_to_filetypes = Path(env.PP_CONFIG_HOW_TO_FILETYPES(self.pname))
 
         try:
@@ -55,8 +54,6 @@ class FileSetsContext:
                 unfiltered_train.lstat().st_mtime > filtered_train.lstat().st_mtime,
                 unfiltered_test.lstat().st_mtime > filtered_test.lstat().st_mtime,
             ]
-            if how_to_filter.exists():
-                has_updates.append(how_to_filter.lstat().st_mtime > filtered_train.lstat().st_mtime)
             if how_to_filetypes.exists():
                 has_updates.append(how_to_filetypes.lstat().st_mtime > filtered_train.lstat().st_mtime)
         except OSError:
