@@ -135,22 +135,17 @@ def convert_to_int(v):
         return v
 
 
-def build_config(
-        run_id: str,
-        model_name: str,
-        model_config: Dict[str, Any],
-        model_info: Dict[str, Any],
-        **kwargs) -> Dict[str, Any]:
-    finetune_cfg = base_config(model_name=model_name, model_info=model_info)
-    return _build_finetune_config_by_heuristics(run_id, finetune_cfg, model_config, **kwargs)
-
-
-def gpu_filter(
+def gpu_filter_and_build_config(
         pname: str,
         run_id: str,
-        finetune_cfg: Dict[str, Any],
+        model_name: str,
+        model_info: Dict[str, Any],
         model_config: Dict[str, Any],
-        **unused):
+        **kwargs) -> Dict[str, Any]:
+    finetune_cfg = {
+        **base_config(model_name=model_name, model_info=model_info),
+        **kwargs,
+    }
     traces.log("locking \"%s\" for filtering" % pname)
     if dist.get_rank() == 0:
         with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
@@ -164,6 +159,8 @@ def gpu_filter(
     else:
         finetune_filter.finetune_gpu_filter(pname, finetune_cfg, model_config)
     dist.barrier()
+
+    return _build_finetune_config_by_heuristics(run_id, finetune_cfg, model_config, **kwargs)
 
 
 def _copy_source_files(jsonl_src, jsonl_dst, pname, run_id):
@@ -354,10 +351,7 @@ def main(supported_models: Dict[str, Any], models_db: Dict[str, Any]):
         status_tracker.update_status("working")
         _log_everywhere("Dest dir is %s" % traces.context().path)
 
-        finetune_cfg = build_config(model_config=model_config, model_info=model_info, **vars(args))
-        finetune_cfg = copy.deepcopy(finetune_cfg)
-
-        gpu_filter(finetune_cfg=finetune_cfg, model_config=model_config, **vars(args))
+        finetune_cfg = gpu_filter_and_build_config(model_config=model_config, model_info=model_info, **vars(args))
 
         _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
         model_context = ModelContext(
