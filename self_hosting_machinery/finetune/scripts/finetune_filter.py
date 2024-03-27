@@ -68,6 +68,7 @@ def loss_based_filter(
         dataset_context: FileSetsContext,
         files_status_context: FilesStatusContext,
         status_tracker: FinetuneFilterStatusTracker,
+        model_config: Dict[str, Any],
         *,
         filter_loss_threshold
 ):
@@ -90,7 +91,7 @@ def loss_based_filter(
                 loss = maybe_loss
             else:
                 if model_context is None:
-                    model_context = ModelContext(finetune_cfg=finetune_cfg)
+                    model_context = ModelContext(finetune_cfg=finetune_cfg, model_config=model_config)
                     model_context.eval()
 
                 logits = model_context.forward(input=data['input'])
@@ -113,7 +114,7 @@ def loss_based_filter(
         return model_context, sum(file_losses) / len(file_losses)
 
     encoding = setup_encoding(
-        model_name=finetune_cfg["model_name"],
+        model_config=model_config,
         weights_path=finetune_cfg['model_info']['weight_path'],
         repo_id=finetune_cfg['model_info']['repo_id']
     )
@@ -149,6 +150,7 @@ def finetune_filter(
         dataset_context: FileSetsContext,
         finetune_cfg: Dict[str, Any],
         finetune_filter_cfg: Dict[str, Any],
+        model_config: Dict[str, Any],
 ):
     _log_everywhere("Loading files statuses...")
     file_status_context = FilesStatusContext(
@@ -174,7 +176,8 @@ def finetune_filter(
         dataset_context=dataset_context,
         files_status_context=file_status_context,
         status_tracker=status_tracker,
-        filter_loss_threshold=finetune_filter_cfg['filter_loss_threshold']
+        filter_loss_threshold=finetune_filter_cfg['filter_loss_threshold'],
+        model_config=model_config,
     )
 
     _log_everywhere("Dumping filtered results...")
@@ -183,7 +186,7 @@ def finetune_filter(
     )
 
 
-def finetune_gpu_filter(pname: str, finetune_cfg: Dict):
+def finetune_gpu_filter(pname: str, finetune_cfg: Dict, model_config: Dict[str, Any]):
     _log_everywhere("Loading finetune configs...")
     finetune_filter_cfg = get_finetune_filter_config(logger=traces.log)
 
@@ -210,6 +213,7 @@ def finetune_gpu_filter(pname: str, finetune_cfg: Dict):
             dataset_context=file_sets_context,
             finetune_cfg=finetune_cfg,
             finetune_filter_cfg=finetune_filter_cfg,
+            model_config=model_config,
         )
         status_tracker.update_status("finished")
     except Exception as e:
