@@ -13,7 +13,6 @@ from safetensors.torch import save_file
 from torchinfo import summary
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-from self_hosting_machinery.finetune.configuration import supported_models
 from self_hosting_machinery.finetune.modelling.loss import masked_loss
 from self_hosting_machinery.finetune.modelling.utils import map_model_specific_params, get_base_model
 from self_hosting_machinery.finetune.utils import traces
@@ -37,12 +36,12 @@ class ModelContext:
     def __init__(
             self,
             finetune_cfg: Dict[str, Any],
+            model_config: Dict[str, Any],
             use_deepspeed: bool = False,
-            debug: bool = False
     ):
         self.model_name = finetune_cfg["model_name"]
         self.finetune_cfg = finetune_cfg
-        self.model_mappings_config = supported_models.config[self.model_name]
+        self.model_mappings_config = model_config
         self.low_gpu_mem_hook = None
         with Timer(message="/model load {time_ms:.1f}ms"):
             self.model = self._make_model(
@@ -252,7 +251,7 @@ class ModelContext:
             lora_target_modules: List[str]
     ) -> Tuple[List[str], List[str]]:
         return map_model_specific_params(
-            model_name=self.model_name,
+            model_config=self.model_mappings_config,
             freeze_exceptions=freeze_exceptions,
             lora_target_modules=lora_target_modules
         )

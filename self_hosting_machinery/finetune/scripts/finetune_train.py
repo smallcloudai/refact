@@ -37,7 +37,7 @@ def _log_everywhere(message):
     traces.log(message)
 
 
-def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, **kwargs) -> Dict[str, Any]:
+def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, model_config: Dict,**kwargs) -> Dict[str, Any]:
     user_cfg = copy.deepcopy(finetune_train_defaults)
     user_cfg_nondefault = {}
     for k, v in kwargs.items():
@@ -50,7 +50,7 @@ def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, **kwar
     # if user_cfg['use_heuristics']:
     if user_cfg['train_steps'] == 0:
         _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
-        ds_len = get_ds_len_per_epoch(env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), kwargs['model_name'], cfg_builder)
+        ds_len = get_ds_len_per_epoch(env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), model_config, cfg_builder)
         traces.log(f"Dataset length per epoch = {ds_len}")
         # set_lora_quality_by_heuristics sets inside:
         # lora_target_modules=[
@@ -119,7 +119,7 @@ def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, **kwar
     assert cfg_builder.cfg['train_iters'] % cfg_builder.cfg['test_every'] == 0
     assert cfg_builder.cfg['save_every'] % cfg_builder.cfg['test_every'] == 0
 
-    return run_id, cfg_builder.cfg
+    return cfg_builder.cfg
 
 
 def convert_to_int(v):
@@ -134,39 +134,25 @@ def convert_to_int(v):
     else:
         return v
 
-@click.command()
-@click.option('--pname', required=True)
-@click.option('--run_id', required=True)
-@click.option('--model_name', required=True)
-@click.option('--model_path', required=True)
-@click.option('--model_backend', required=True)
-@click.option('--model_ctx_size', required=True, type=convert_to_int)
-# @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
-@click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
-@click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
-@click.option('--lr', default=finetune_train_defaults['lr'])
-@click.option('--batch_size', default=finetune_train_defaults['batch_size'], type=convert_to_int)
-@click.option('--warmup_num_steps', default=finetune_train_defaults['warmup_num_steps'], type=convert_to_int)
-@click.option('--weight_decay', default=finetune_train_defaults['weight_decay'])
-# @click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
-@click.option('--train_steps', default=finetune_train_defaults['train_steps'], type=convert_to_int)
-@click.option('--lr_decay_steps', default=finetune_train_defaults['lr_decay_steps'], type=convert_to_int)
-@click.option('--lora_r', default=finetune_train_defaults['lora_r'], type=convert_to_int)
-@click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'], type=convert_to_int)
-@click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
-def gpu_filter_and_build_config(pname, run_id, **kwargs) -> Dict[str, Any]:
-    finetune_cfg = base_config(**kwargs)
 
+def gpu_filter_and_build_config(
+        pname: str,
+        run_id: str,
+        model_name: str,
+        model_config: Dict[str, Any],
+        model_info: Dict[str, Any],
+        **kwargs) -> Dict[str, Any]:
+    finetune_cfg = base_config(model_name=model_name, model_info=model_info)
     traces.log("locking \"%s\" for filtering" % pname)
     if dist.get_rank() == 0:
         with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
             traces.log("locked \"%s\" successfully" % pname)
-            finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg))
+            finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg), model_config)
             traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
             _copy_source_files(env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
             _copy_source_files(env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
     else:
-        finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg))
+        finetune_filter.finetune_gpu_filter(pname, copy.deepcopy(finetune_cfg), model_config)
     dist.barrier()
 
     return _build_finetune_config_by_heuristics(run_id, copy.deepcopy(finetune_cfg), **kwargs)
@@ -247,7 +233,7 @@ def loop(
     test_jsonl_path: str,
     finetune_cfg: Dict[str, Any],
     model_context: ModelContext,
-    status_tracker: FinetuneStatusTracker
+    status_tracker: FinetuneStatusTracker,
 ):
     def _save_checkpoint(iter_n: int, loss: float, force: bool = False):
         if not zero_rank:
@@ -266,7 +252,7 @@ def loop(
 
     train_ds = create_train_dataloader(
         jsonl_path=train_jsonl_path,
-        model_name=model_context.model_name,
+        model_config=model_context.model_mappings_config,
         encoding=model_context.encoding,
         num_workers=max(multiprocessing.cpu_count() // 2, 1),
         batch_size=finetune_cfg['train_batch_size'],
@@ -275,7 +261,7 @@ def loop(
     train_ds_iter = iter(train_ds)
     test_ds = create_test_dataloader(
         jsonl_path=test_jsonl_path,
-        model_name=model_context.model_name,
+        model_config=model_context.model_mappings_config,
         encoding=model_context.encoding,
         ctx_size=finetune_cfg['model_info']['ctx_size']
     )
@@ -325,8 +311,45 @@ def loop(
             else:
                 _save_checkpoint(force=False, iter_n=iter_n, loss=test_loss)
 
+@click.command()
+@click.option('--pname', required=True)
+@click.option('--run_id', required=True)
+@click.option('--model_name', required=True)
+# @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
+@click.option('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
+@click.option('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
+@click.option('--lr', default=finetune_train_defaults['lr'])
+@click.option('--batch_size', default=finetune_train_defaults['batch_size'], type=convert_to_int)
+@click.option('--warmup_num_steps', default=finetune_train_defaults['warmup_num_steps'], type=convert_to_int)
+@click.option('--weight_decay', default=finetune_train_defaults['weight_decay'])
+# @click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
+@click.option('--train_steps', default=finetune_train_defaults['train_steps'], type=convert_to_int)
+@click.option('--lr_decay_steps', default=finetune_train_defaults['lr_decay_steps'], type=convert_to_int)
+@click.option('--lora_r', default=finetune_train_defaults['lora_r'], type=convert_to_int)
+@click.option('--lora_alpha', default=finetune_train_defaults['lora_alpha'], type=convert_to_int)
+@click.option('--lora_dropout', default=finetune_train_defaults['lora_dropout'])
+@click.option('--n_ctx', default=1024, type=convert_to_int)  # TODO: we don't really use it now
+@click.option('--filter_loss_threshold', default=0, type=convert_to_int)  # TODO: we don't really use it now
+@click.option("--local-rank", default=0, type=convert_to_int)  # is used by torch.distributed, ignore it
+def main(run_id: str, model_name: str, supported_models: Dict[str, Any], models_db: Dict[str, Any], **kwargs):
+    # TODO: exception handling
+    assert model_name in models_db, f"unknown model '{model_name}'"
+    assert model_name in supported_models, f"model '{model_name}' not in finetune supported_models"
+    model_config = supported_models[model_name]
+    model_info = models_db[model_name]
+    assert "finetune" in model_info.get("filter_caps", []), f"model {model_name} does not support finetune"
 
-def main():
+    traces.configure(task_dir="loras", task_name=run_id, work_dir=env.PERMDIR)
+    if "RANK" not in os.environ:
+        os.environ["WORLD_SIZE"] = "1"
+        os.environ["RANK"] = "0"
+        os.environ["LOCAL_RANK"] = "0"
+        port = localhost_port_not_in_use(21000, 22000)  # multi gpu training uses [20000, 21000) range
+        dist.init_process_group(backend='nccl', init_method=f"tcp://localhost:{port}", world_size=1, rank=0)
+    else:
+        dist.init_process_group(backend='nccl', init_method='env://')
+    th.cuda.set_device(dist.get_rank())
+
     _log_everywhere("Loading status tracker...")
     status_tracker = FinetuneStatusTracker()
 
@@ -340,14 +363,14 @@ def main():
     try:
         status_tracker.update_status("working")
         _log_everywhere("Dest dir is %s" % traces.context().path)
-        argv_copy = copy.deepcopy(sys.argv[1:])
-        argv_copy = [x for x in argv_copy if not x.startswith("--local-rank")]  # --local-rank=5 is used by torch.distributed, ignore it
-        run_id, finetune_cfg = gpu_filter_and_build_config.main(argv_copy, standalone_mode=False)
+        finetune_cfg = gpu_filter_and_build_config(
+            run_id=run_id, model_name=model_name, model_config=model_config, model_info=model_info, **kwargs)
         finetune_cfg = copy.deepcopy(finetune_cfg)
 
         _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
         model_context = ModelContext(
             finetune_cfg=finetune_cfg,
+            model_config=model_config,
             use_deepspeed=True
         )
 
@@ -357,7 +380,7 @@ def main():
             test_jsonl_path=env.PERRUN_TEST_FILTERED_FILEPATH(run_id),
             finetune_cfg=finetune_cfg,
             model_context=model_context,
-            status_tracker=status_tracker
+            status_tracker=status_tracker,
         )
 
         _log_everywhere("finished finetune at %s" % traces.context().path)
@@ -389,16 +412,10 @@ def localhost_port_not_in_use(start: int, stop: int):
 
 
 if __name__ == "__main__":
-    index_of_run_id = sys.argv.index("--run_id")
-    run_id = sys.argv[index_of_run_id + 1]
-    traces.configure(task_dir="loras", task_name=run_id, work_dir=env.PERMDIR)
-    if "RANK" not in os.environ:
-        os.environ["WORLD_SIZE"] = "1"
-        os.environ["RANK"] = "0"
-        os.environ["LOCAL_RANK"] = "0"
-        port = localhost_port_not_in_use(21000, 22000)  # multi gpu training uses [20000, 21000) range
-        dist.init_process_group(backend='nccl', init_method=f"tcp://localhost:{port}", world_size=1, rank=0)
-    else:
-        dist.init_process_group(backend='nccl', init_method='env://')
-    th.cuda.set_device(dist.get_rank())
-    main()
+    from known_models_db.refact_known_models import models_mini_db
+    from self_hosting_machinery.finetune.configuration import supported_models
+    main.main(
+        *sys.argv[1:],
+        supported_models=supported_models.config,
+        models_db=models_mini_db,
+        standalone_mode=False)
