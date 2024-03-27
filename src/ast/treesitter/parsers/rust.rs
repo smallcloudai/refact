@@ -1,11 +1,10 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::string::ToString;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use similar::DiffableStr;
 use structopt::lazy_static::lazy_static;
-use tokio::sync::RwLock;
 use tree_sitter::{Node, Parser, Point, Query, QueryCapture, Range, Tree};
 use tree_sitter_rust::language;
 use url::Url;
@@ -90,7 +89,7 @@ fn str_hash(s: &String) -> String {
 fn get_children_guids(parent_guid: &String, children: &Vec<AstSymbolInstanceArc>) -> Vec<String> {
     let mut result = Vec::new();
     for child in children {
-        let child_ref = child.blocking_read();
+        let child_ref = child.read().expect("the data might be broken");
         if let Some(child_guid) = child_ref.parent_guid() {
             if child_guid == parent_guid {
                 result.push(child_ref.guid().to_string());
@@ -421,7 +420,7 @@ impl RustParser {
                         if !usages.is_empty() {
                             if let Some(last) = usages.last() {
                                 // dirty hack: last element is first element in the tree
-                                decl.set_caller_guid(last.blocking_read().fields().guid.clone());
+                                decl.set_caller_guid(last.read().expect("the data might be broken").fields().guid.clone());
                             }
                         }
                         symbols.extend(usages);

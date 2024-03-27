@@ -113,7 +113,7 @@ impl AstIndex {
 
         let mut symbol_names: SortedVec<String> = SortedVec::new();
         for symbol in symbols.iter() {
-            let symbol_ref = symbol.blocking_read();
+            let symbol_ref = symbol.read().expect("the data might be broken");
             self.symbols_by_name.entry(symbol_ref.name().to_string()).or_insert_with(Vec::new).push(symbol.clone());
             self.symbols_by_guid.insert(symbol_ref.guid().to_string(), symbol.clone());
             self.path_by_symbols.entry(doc.uri.clone()).or_insert_with(Vec::new).push(symbol.clone());
@@ -140,7 +140,7 @@ impl AstIndex {
             .remove(&doc.uri)
             .unwrap_or_default()
             .iter() {
-            let symbol_ref = symbol.blocking_read();
+            let symbol_ref = symbol.read().expect("the data might be broken");
             self.symbols_by_name.remove(symbol_ref.name());
             self.symbols_by_guid.remove(symbol_ref.guid());
         }
@@ -175,7 +175,7 @@ impl AstIndex {
                 .iter()
                 .cloned()
                 .filter(|s| {
-                    let s_ref = s.blocking_read();
+                    let s_ref = s.read().expect("the data might be broken");
                     match request_symbol_type {
                         RequestSymbolType::Declaration => s_ref.is_declaration(),
                         RequestSymbolType::Usage => !s_ref.is_declaration(),
@@ -200,7 +200,7 @@ impl AstIndex {
                     .unwrap_or_default())
                 .flatten()
                 .filter(|s| {
-                    let s_ref = s.blocking_read();
+                    let s_ref = s.read().expect("the data might be broken");
                     match request_symbol_type {
                         RequestSymbolType::Declaration => s_ref.is_declaration(),
                         RequestSymbolType::Usage => !s_ref.is_declaration(),
@@ -221,11 +221,11 @@ impl AstIndex {
         let mut filtered_search_results = symbols
             .iter()
             .filter(|s| {
-                let s_ref = s.blocking_read();
+                let s_ref = s.read().expect("the data might be broken");
                 *s_ref.language() == language.unwrap_or(*s_ref.language())
             })
             .map(|s| {
-                let s_ref = s.blocking_read();
+                let s_ref = s.read().expect("the data might be broken");
                 (s_ref.symbol_info_struct(), (jaro_winkler(query, s_ref.name()) as f32).max(f32::MIN_POSITIVE))
             })
             .collect::<Vec<_>>();
@@ -294,7 +294,7 @@ impl AstIndex {
                 };
                 let text_rope = Rope::from_str(file_content.as_str());
                 for symbol in symbols.iter() {
-                    let s_ref = symbol.blocking_read();
+                    let s_ref = symbol.read().expect("the data might be broken");
                     let symbol_content = text_rope
                         .slice(text_rope.line_to_char(s_ref.full_range().start_point.row)..
                             text_rope.line_to_char(s_ref.full_range().end_point.row))
@@ -308,7 +308,7 @@ impl AstIndex {
             })
             .flatten()
             .filter(|s| {
-                let s_ref = s.blocking_read();
+                let s_ref = s.read().expect("the data might be broken");
                 match request_symbol_type {
                     RequestSymbolType::Declaration => s_ref.is_declaration(),
                     RequestSymbolType::Usage =>!s_ref.is_declaration(),
@@ -316,7 +316,7 @@ impl AstIndex {
                 }
             })
             .filter_map(|s| {
-                let info_struct = s.blocking_read().symbol_info_struct();
+                let info_struct = s.read().expect("the data might be broken").symbol_info_struct();
                 let content = info_struct.get_content_blocked().ok()?;
                 Some(SymbolsSearchResultStruct {
                     symbol_declaration: info_struct,
@@ -359,10 +359,10 @@ impl AstIndex {
         ) -> (Vec<AstSymbolInstanceArc>, bool) {
             let filtered_symbols = symbols
                 .iter()
-                .filter(|s| within_range(&s.blocking_read().full_range(), line_idx))
+                .filter(|s| within_range(&s.read().expect("the data might be broken").full_range(), line_idx))
                 .sorted_by_key(
                     |s| {
-                        let s_ref = s.blocking_read();
+                        let s_ref = s.read().expect("the data might be broken");
                         s_ref.full_range().end_point.row - s_ref.full_range().start_point.row
                     }
                 )
@@ -371,7 +371,7 @@ impl AstIndex {
                 .collect::<Vec<_>>();
             let is_signature = symbols
                 .iter()
-                .map(|s| within_range(&s.blocking_read().declaration_range(), line_idx))
+                .map(|s| within_range(&s.read().expect("the data might be broken").declaration_range(), line_idx))
                 .any(|x| x);
             (filtered_symbols, is_signature)
         }
@@ -381,7 +381,7 @@ impl AstIndex {
             .map(|symbols| {
                 symbols
                     .iter()
-                    .filter(|s| s.blocking_read().is_declaration())
+                    .filter(|s| s.read().expect("the data might be broken").is_declaration())
                     .cloned()
                     .collect()
             })
@@ -395,7 +395,7 @@ impl AstIndex {
             file_url: doc.uri.clone(),
             file_content: file_content,
             guid2symbol: symbols.iter().map(|s|  {
-                let s_ref = s.blocking_read();
+                let s_ref = s.read().expect("the data might be broken");
                 (s_ref.guid().to_string(), s_ref.symbol_info_struct())
             }).collect(),
         };
@@ -413,14 +413,14 @@ impl AstIndex {
                 symbols
                     .iter()
                     .filter(|s| {
-                        let s_ref = s.blocking_read();
+                        let s_ref = s.read().expect("the data might be broken");
                         match request_symbol_type {
                             RequestSymbolType::Declaration => s_ref.is_declaration(),
                             RequestSymbolType::Usage => !s_ref.is_declaration(),
                             RequestSymbolType::All => true,
                         }
                     })
-                    .map(|s| s.blocking_read().symbol_info_struct())
+                    .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
                     .collect()
             })
             .unwrap_or_default();
@@ -438,14 +438,14 @@ impl AstIndex {
         self.symbols_by_guid
             .iter()
             .filter(|(guid, s)| {
-                let s_ref = s.blocking_read();
+                let s_ref = s.read().expect("the data might be broken");
                 match request_symbol_type {
                     RequestSymbolType::Declaration => s_ref.is_declaration(),
                     RequestSymbolType::Usage => !s_ref.is_declaration(),
                     RequestSymbolType::All => true,
                 }
             })
-            .map(|(guid, s)| s.blocking_read().symbol_info_struct())
+            .map(|(guid, s)| s.read().expect("the data might be broken").symbol_info_struct())
             .collect()
     }
 
@@ -474,7 +474,7 @@ impl AstIndex {
             current_depth: usize
         ) -> usize {
             let caller_guid = match symbol
-                .blocking_read()
+                .read().expect("the data might be broken")
                 .get_caller_guid()
                 .clone() {
                 Some(g) => g,
@@ -493,7 +493,7 @@ impl AstIndex {
             let symbols_to_process = self.symbols_by_guid
                 .iter()
                 .filter(|(guid, symbol)| {
-                    let s_ref = symbol.blocking_read();
+                    let s_ref = symbol.read().expect("the data might be broken");
                     let valid_depth = get_caller_depth(symbol, &self.symbols_by_guid, 0) == depth;
                     valid_depth && (s_ref.symbol_type() == SymbolType::FunctionCall
                         || s_ref.symbol_type() == SymbolType::VariableUsage)
@@ -505,19 +505,22 @@ impl AstIndex {
                 break;
             }
 
-            for mut usage_symbol in symbols_to_process
-                .iter()
-                .map(|s| s.blocking_write()) {
-                let decl_guid = match &usage_symbol.get_caller_guid() {
+            for (idx, mut usage_symbol) in symbols_to_process
+                .iter().enumerate() {
+                info!("Processing symbol ({}/{})", idx, symbols_to_process.len());
+                let caller_guid = usage_symbol
+                    .read().expect("the data might be broken")
+                    .get_caller_guid().clone();
+                let decl_guid = match caller_guid {
                     Some(guid) => {
                         match find_decl_by_caller_guid(
-                            &guid, &usage_symbol.name(), &usage_symbol.symbol_type(), &self.symbols_by_guid
+                            usage_symbol.clone(),
+                            &guid,
+                            &self.symbols_by_guid
                         ) {
                             Some(decl_guid) => { Some(decl_guid) }
                             None => find_decl_by_name(
-                                usage_symbol.name(),
-                                usage_symbol.file_url(),
-                                usage_symbol.parent_guid().clone().unwrap_or_default().as_str(),
+                                usage_symbol.clone(),
                                 true,
                                 &self.path_by_symbols,
                                 &self.symbols_by_guid
@@ -525,9 +528,7 @@ impl AstIndex {
                         }
                     },
                     None => find_decl_by_name(
-                        usage_symbol.name(),
-                        usage_symbol.file_url(),
-                        usage_symbol.parent_guid().clone().unwrap_or_default().as_str(),
+                        usage_symbol.clone(),
                         true,
                         &self.path_by_symbols,
                         &self.symbols_by_guid
@@ -535,12 +536,16 @@ impl AstIndex {
                 };
 
                 match decl_guid {
-                    Some(guid) => usage_symbol.set_linked_decl_guid(guid),
+                    Some(guid) => usage_symbol
+                        .write()
+                        .expect("the data might be broken")
+                        .set_linked_decl_guid(guid),
                     None => {}
                 }
             }
             depth += 1;
         }
+
     }
 
     async fn resolve_types(&mut self) {

@@ -1,13 +1,11 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use futures_util::StreamExt;
-use itertools::Itertools;
+use std::path::PathBuf;
 
+use futures_util::StreamExt;
 use url::Url;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, FunctionCall, FunctionDeclaration, TypeDef, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, FunctionDeclaration};
 use crate::ast::treesitter::structs::SymbolType;
 
 struct FilePathIterator {
@@ -61,11 +59,14 @@ impl Iterator for FilePathIterator {
 }
 
 pub fn find_decl_by_caller_guid(
+    symbol: AstSymbolInstanceArc,
     caller_guid: &str,
-    name: &str,
-    symbol_type: &SymbolType,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
 ) -> Option<String> {
+    let (symbol_type, name) = {
+        let s = symbol.read().expect("the data might be broken");
+        (s.symbol_type().to_owned(), s.name().to_owned())
+    };
     let search_symbol_type = match symbol_type {
         SymbolType::FunctionCall => { SymbolType::FunctionDeclaration }
         SymbolType::VariableUsage => { SymbolType::ClassFieldDeclaration }
@@ -75,16 +76,20 @@ pub fn find_decl_by_caller_guid(
         Some(s) => { s }
         None => { return None; }
     };
-    let decl_symbol = match caller_symbol.blocking_read().symbol_type() {
+
+    let decl_symbol = match caller_symbol
+        .read().expect("the data might be broken")
+        .symbol_type() {
         SymbolType::FunctionCall => {
-            caller_symbol
-                .blocking_read()
+            let linked_decl_guid = caller_symbol
+                .read().expect("the data might be broken")
                 .get_linked_decl_guid()
-                .as_ref()
+                .to_owned();
+            linked_decl_guid
                 .map(|guid| {
                     guid_by_symbols
-                        .get(guid)?
-                        .blocking_read()
+                        .get(&guid)?
+                        .read().expect("the data might be broken")
                         .as_any()
                         .downcast_ref::<FunctionDeclaration>()?
                         .return_type
@@ -96,7 +101,7 @@ pub fn find_decl_by_caller_guid(
         }
         SymbolType::VariableUsage => {
             caller_symbol
-                .blocking_read()
+                .read().expect("the data might be broken")
                 .get_linked_decl_guid()
                 .as_ref()
                 .map(|guid| guid_by_symbols.get(guid))?
@@ -105,21 +110,21 @@ pub fn find_decl_by_caller_guid(
     };
 
     let decl_symbol_parent = decl_symbol?
-        .blocking_read()
+        .read().expect("the data might be broken")
         .parent_guid()
         .as_ref()
         .map(|guid| { guid_by_symbols.get(guid) })??;
     return match guid_by_symbols
         .iter()
         .filter(|(_, symbol)| {
-            let s_ref = symbol.blocking_read();
+            let s_ref = symbol.read().expect("the data might be broken");
             s_ref.symbol_type() == search_symbol_type
-                && s_ref.parent_guid().clone().unwrap_or_default() == decl_symbol_parent.blocking_read().guid()
+                && s_ref.parent_guid().clone().unwrap_or_default() == decl_symbol_parent.read().expect("the data might be broken").guid()
                 && s_ref.name() == name
         })
         .map(|(_, symbol)| symbol)
         .next() {
-        Some(s) => { Some(s.blocking_read().guid().to_string()) }
+        Some(s) => { Some(s.read().expect("the data might be broken").guid().to_string()) }
         None => { return None; }
     };
 }
@@ -136,7 +141,7 @@ fn find_decl_by_name_for_single_path(
         let found_symbol = match symbols
             .iter()
             .filter(|s| {
-                let s_ref = s.blocking_read();
+                let s_ref = s.read().expect("the data might be broken");
                 s_ref.symbol_type() == *search_symbol_type
                     && s_ref.parent_guid().clone().unwrap_or("".to_string()) == current_parent_guid
                     && s_ref.name() == name
@@ -151,7 +156,7 @@ fn find_decl_by_name_for_single_path(
                 } else {
                     current_parent_guid = match guid_by_symbols.get(&current_parent_guid) {
                         Some(s) => {
-                            s.blocking_read().parent_guid().clone().unwrap_or("".to_string())
+                            s.read().expect("the data might be broken").parent_guid().clone().unwrap_or("".to_string())
                         }
                         None => { "".to_string() }
                     };
@@ -159,19 +164,25 @@ fn find_decl_by_name_for_single_path(
                 }
             }
         };
-        return Some(found_symbol.blocking_read().guid().to_string());
+        return Some(found_symbol.read().expect("the data might be broken").guid().to_string());
     }
     None
 }
 
 pub fn find_decl_by_name(
-    name: &str,
-    file_path: &Url,
-    parent_guid: &str,
+    symbol: AstSymbolInstanceArc,
     is_function: bool,
     path_by_symbols: &HashMap<Url, Vec<AstSymbolInstanceArc>>,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
 ) -> Option<String> {
+    let (file_path, parent_guid, name) = match symbol.read() {
+        Ok(s) => {
+            (s.file_url().to_owned(),
+             s.parent_guid().to_owned().unwrap_or_default(),
+             s.name().to_owned())
+        }
+        Err(_) => { return None; }
+    };
     let search_symbol_type = match is_function {
         true => SymbolType::FunctionDeclaration,
         false => SymbolType::VariableDefinition,
@@ -188,20 +199,20 @@ pub fn find_decl_by_name(
             Ok(url) => url,
             Err(_) => { continue; }
         };
-        let current_parent_guid = match *file_path == url {
-            true => parent_guid,
-            false => ""
+        let current_parent_guid = match file_path == url {
+            true => parent_guid.clone(),
+            false => "".to_string()
         };
         let symbols = match path_by_symbols.get(&url) {
             Some(symbols) => symbols,
             None => { continue; }
         };
         match find_decl_by_name_for_single_path(
-            name,
-            current_parent_guid,
+            &name,
+            &current_parent_guid,
             &search_symbol_type,
             symbols,
-            guid_by_symbols
+            guid_by_symbols,
         ) {
             Some(guid) => { return Some(guid); }
             None => { continue; }

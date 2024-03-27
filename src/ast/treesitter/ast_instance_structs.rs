@@ -2,14 +2,13 @@ use std::any::Any;
 use std::cmp::min;
 use std::fmt::Debug;
 use std::io;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
 use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
-use tokio::sync::RwLock;
 use tree_sitter::Range;
 use url::Url;
 use crate::ast::treesitter::language_id::LanguageId;
