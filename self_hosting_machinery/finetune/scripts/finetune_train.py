@@ -316,13 +316,6 @@ def loop(
 def main(supported_models: Dict[str, Any], models_db: Dict[str, Any]):
     args = parse_args()
 
-    # TODO: exception handling
-    assert args.model_name in models_db, f"unknown model '{args.model_name}'"
-    assert args.model_name in supported_models, f"model '{args.model_name}' not in finetune supported_models"
-    model_config = supported_models[args.model_name]
-    model_info = models_db[args.model_name]
-    assert "finetune" in model_info.get("filter_caps", []), f"model {args.model_name} does not support finetune"
-
     traces.configure(task_dir="loras", task_name=args.run_id, work_dir=env.PERMDIR)
     if "RANK" not in os.environ:
         os.environ["WORLD_SIZE"] = "1"
@@ -345,6 +338,12 @@ def main(supported_models: Dict[str, Any], models_db: Dict[str, Any]):
     signal.signal(signal.SIGUSR1, catch_sigusr1)
 
     try:
+        assert args.model_name in models_db, f"unknown model '{args.model_name}'"
+        assert args.model_name in supported_models, f"model '{args.model_name}' not in finetune supported_models"
+        model_config = supported_models[args.model_name]
+        model_info = models_db[args.model_name]
+        assert "finetune" in model_info.get("filter_caps", []), f"model {args.model_name} does not support finetune"
+
         status_tracker.update_status("working")
         _log_everywhere("Dest dir is %s" % traces.context().path)
         finetune_cfg = gpu_filter_and_build_config(model_config=model_config, model_info=model_info, **vars(args))
