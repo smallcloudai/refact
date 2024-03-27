@@ -110,7 +110,13 @@ interface ReadyMessage extends ActionFromChat {
  */
 interface RestoreChat extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT; // = "restore_chat_from_history"
-  payload: ChatThread;
+  payload: {
+    id: string;
+    chat: ChatThread & {
+      messages: ChatThread["messages"] | [string, string][];
+    };
+    snippet?: Snippet;
+  };
 }
 
 /**
