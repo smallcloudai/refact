@@ -12,15 +12,13 @@ from transformers import AutoTokenizer
 
 from refact_data_pipeline import finetune_datasource
 from refact_data_pipeline.datautils import collate_fn, data_parallel_split_and_collate_fn
-from self_hosting_machinery.finetune.configuration import supported_models
 
 
 def setup_encoding(
-        model_name: str,
+        model_config: Dict,
         weights_path: str,
         repo_id: str
 ) -> AutoTokenizer:
-    model_config = supported_models.config[model_name]
     assert "tokenizer" in model_config, "Provided tokenizer is no longer supported"
     encoding = AutoTokenizer.from_pretrained(
         repo_id, cache_dir=weights_path,
@@ -39,17 +37,17 @@ def setup_encoding(
 
 def get_ds_len_per_epoch(
     train_jsonl_path: str,
-    model_name,
+    model_config,
     cfg_builder
 ):
     encoding = setup_encoding(
-        model_name=model_name,
+        model_config=model_config,
         weights_path=cfg_builder.cfg['model_info']['weight_path'],
         repo_id=cfg_builder.cfg['model_info']['repo_id']
     )
     ds = create_train_dataloader(
         jsonl_path=train_jsonl_path,
-        model_name=model_name,
+        model_config=model_config,
         encoding=encoding,
         num_workers=multiprocessing.cpu_count(),
         batch_size=1,
@@ -81,7 +79,7 @@ def count_file_types(
 
 def create_train_dataloader(
         jsonl_path,
-        model_name: str,
+        model_config: Dict,
         encoding: 'Encoding',
         ctx_size: int,
         batch_size: int,
@@ -89,7 +87,6 @@ def create_train_dataloader(
         extra_options: str = "",
         parallel_collation: bool = True
 ) -> DataLoader:
-    model_config = supported_models.config[model_name]
     ds_name = model_config["train_ds_pipeline"]["ds_name"]
     ds_opts = model_config["train_ds_pipeline"]["ds_opts"].format(
         n_ctx=ctx_size + 1
@@ -127,12 +124,11 @@ def create_train_dataloader(
 
 def create_test_dataloader(
     jsonl_path,
-    model_name: str,
+    model_config: Dict,
     encoding: 'Encoding',
     ctx_size: int,
     extra_options: str = "",
 ) -> DataLoader:
-    model_config = supported_models.config[model_name]
     ds_name = model_config["test_ds_pipeline"]["ds_name"]
     ds_opts = model_config["test_ds_pipeline"]["ds_opts"].format(
         n_ctx=ctx_size + 1

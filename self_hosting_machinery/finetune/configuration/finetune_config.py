@@ -8,14 +8,14 @@ from self_hosting_machinery.finetune.utils import traces
 from typing import Any, Dict, List
 
 
-def base_config(model_name: str, model_path: str, model_backend: str, model_ctx_size: int, **kwargs) -> Dict[str, Any]:
+def base_config(model_name: str, model_info: Dict[str, Any]) -> Dict[str, Any]:
     return dict(
         model_name=model_name,
         model_info=dict(
             weight_path=env.DIR_WEIGHTS,
-            repo_id=model_path,
-            backend=model_backend,
-            ctx_size=model_ctx_size,
+            repo_id=model_info["model_path"],
+            backend=model_info["backend"],
+            ctx_size=model_info["T"],
             lora={
                 "lora_target_modules": [
                     "qkv",
