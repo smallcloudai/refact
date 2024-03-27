@@ -253,6 +253,8 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
 
     fn type_names(&self) -> Vec<TypeDef>;
 
+    fn type_names_mut(&mut self) -> Vec<&mut TypeDef>;
+
     fn namespace(&self) -> &str {
         &self.fields().namespace
     }
@@ -341,6 +343,17 @@ impl AstSymbolInstance for StructDeclaration {
         types
     }
 
+    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
+        let mut types: Vec<&mut TypeDef> = vec![];
+        for t in self.inherited_types.iter_mut() {
+            types.push(t)
+        }
+        for t in self.template_types.iter_mut() {
+            types.push(t)
+        }
+        types
+    }
+
     fn is_type(&self) -> bool {
         true
     }
@@ -386,6 +399,14 @@ impl AstSymbolInstance for TypeAlias {
 
     fn type_names(&self) -> Vec<TypeDef> {
         self.types.clone()
+    }
+
+    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
+        let mut types: Vec<&mut TypeDef> = vec![];
+        for t in self.types.iter_mut() {
+            types.push(t)
+        }
+        types
     }
 
     fn is_type(&self) -> bool {
@@ -435,6 +456,11 @@ impl AstSymbolInstance for ClassFieldDeclaration {
         vec![self.type_.clone()]
     }
 
+    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
+        let mut types: Vec<&mut TypeDef> = vec![&mut self.type_];
+        types
+    }
+
     fn is_type(&self) -> bool {
         false
     }
@@ -469,6 +495,10 @@ impl AstSymbolInstance for ImportDeclaration {
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
     fn type_names(&self) -> Vec<TypeDef> {
+        vec![]
+    }
+
+    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
         vec![]
     }
 
@@ -517,6 +547,11 @@ impl AstSymbolInstance for VariableDefinition {
 
     fn type_names(&self) -> Vec<TypeDef> {
         vec![self.type_.clone()]
+    }
+
+    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
+        let mut types: Vec<&mut TypeDef> = vec![&mut self.type_];
+        types
     }
 
     fn is_type(&self) -> bool {
@@ -594,6 +629,20 @@ impl AstSymbolInstance for FunctionDeclaration {
         types
     }
 
+    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
+        let mut types: Vec<&mut TypeDef> = vec![];
+        if let Some(t) = &mut self.return_type {
+            types.push(t);
+        }
+
+        for t in self.args.iter_mut() {
+            if let Some(t) = &mut t.type_ {
+                types.push(t);
+            }
+        }
+        types
+    }
+
     fn is_declaration(&self) -> bool { true }
 
     fn symbol_type(&self) -> SymbolType {
@@ -636,6 +685,10 @@ impl AstSymbolInstance for CommentDefinition {
     }
 
     fn type_names(&self) -> Vec<TypeDef> {
+        vec![]
+    }
+
+    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
         vec![]
     }
 
@@ -684,6 +737,10 @@ impl AstSymbolInstance for FunctionCall {
         vec![]
     }
 
+    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
+        vec![]
+    }
+
     fn is_declaration(&self) -> bool { false }
 
     fn symbol_type(&self) -> SymbolType {
@@ -726,6 +783,10 @@ impl AstSymbolInstance for VariableUsage {
     }
 
     fn type_names(&self) -> Vec<TypeDef> {
+        vec![]
+    }
+
+    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
         vec![]
     }
 

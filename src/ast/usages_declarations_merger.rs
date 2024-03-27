@@ -8,7 +8,7 @@ use url::Url;
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, FunctionDeclaration};
 use crate::ast::treesitter::structs::SymbolType;
 
-struct FilePathIterator {
+pub struct FilePathIterator {
     paths: Vec<PathBuf>,
     index: usize, // Current position in the list
 }
@@ -25,7 +25,7 @@ impl FilePathIterator {
         }
     }
 
-    fn compare_paths(start_path: &PathBuf, a: &PathBuf, b: &PathBuf) -> Ordering {
+    pub fn compare_paths(start_path: &PathBuf, a: &PathBuf, b: &PathBuf) -> Ordering {
         let start_components: Vec<_> = start_path.components().collect();
         let a_components: Vec<_> = a.components().collect();
         let b_components: Vec<_> = b.components().collect();
@@ -138,6 +138,7 @@ fn find_decl_by_name_for_single_path(
 ) -> Option<String> {
     let mut current_parent_guid = parent_guid.to_string();
     loop {
+        // use `name by symbols` index here to speed up the process
         let found_symbol = match symbols
             .iter()
             .filter(|s| {
@@ -171,15 +172,15 @@ fn find_decl_by_name_for_single_path(
 
 pub fn find_decl_by_name(
     symbol: AstSymbolInstanceArc,
-    is_function: bool,
     path_by_symbols: &HashMap<Url, Vec<AstSymbolInstanceArc>>,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
 ) -> Option<String> {
-    let (file_path, parent_guid, name) = match symbol.read() {
+    let (file_path, parent_guid, name, is_function) = match symbol.read() {
         Ok(s) => {
             (s.file_url().to_owned(),
              s.parent_guid().to_owned().unwrap_or_default(),
-             s.name().to_owned())
+             s.name().to_owned(),
+             s.symbol_type() == SymbolType::FunctionCall)
         }
         Err(_) => { return None; }
     };

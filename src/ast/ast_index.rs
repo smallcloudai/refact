@@ -18,7 +18,7 @@ use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolI
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{get_new_parser_by_filename};
 use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::usages_declarations_merger::{find_decl_by_caller_guid, find_decl_by_name};
+use crate::ast::usages_declarations_merger::{FilePathIterator, find_decl_by_caller_guid, find_decl_by_name};
 use crate::files_in_workspace::DocumentInfo;
 
 #[derive(Debug)]
@@ -456,18 +456,80 @@ impl AstIndex {
         }
         info!("Building ast declarations");
         let t0 = std::time::Instant::now();
-        self.resolve_types().await;
+        self.resolve_types();
         info!("Building ast declarations finished, took {:.3}s", t0.elapsed().as_secs_f64());
 
         info!("Merging usages and declarations");
         let t1 = std::time::Instant::now();
-        self.merge_usages_to_declarations().await;
+        self.merge_usages_to_declarations();
         info!("Merging usages and declarations finished, took {:.3}s", t1.elapsed().as_secs_f64());
-        self.has_changes = true;
+
+        self.has_changes = false;
+    }
+
+    fn resolve_types(&mut self) {
+        // TODO: move to the nested types
+        for symbol in self.symbols_by_guid.values_mut() {
+            let (type_names, symb_type, symb_path) = {
+                let s_ref = symbol.read().expect("the data might be broken");
+                (s_ref.type_names(), s_ref.symbol_type(), s_ref.file_url().to_file_path().unwrap_or_default())
+            };
+            if symb_type == SymbolType::ImportDeclaration
+                || symb_type == SymbolType::CommentDefinition
+                || symb_type == SymbolType::FunctionCall
+                || symb_type == SymbolType::VariableUsage {
+                continue;
+            }
+            for (idx, t) in type_names
+                .iter()
+                .enumerate()
+                .filter(|(idx, t)| !t.is_pod && t.guid.is_none() && t.name.is_some()) {
+                let name = t.name.clone().expect("filter has invalid condition");
+                let maybe_guid = match self.symbols_by_name.get(&name) {
+                    Some(symbols) => {
+                        symbols
+                            .iter()
+                            .filter(|s| {
+                                let symbol_type = s.read().expect("the data might be broken").symbol_type();
+                                symbol_type == SymbolType::StructDeclaration || symbol_type == SymbolType::TypeAlias
+                            })
+                            .sorted_by(|a, b| {
+                                let path_a = a.read().expect("the data might be broken")
+                                    .file_url().to_file_path().unwrap_or_default();
+                                let path_b = b.read().expect("the data might be broken")
+                                    .file_url().to_file_path().unwrap_or_default();
+                                FilePathIterator::compare_paths(&symb_path, &path_a, &path_b)
+                            })
+                            .next()
+                            .map(|s| s.read().expect("the data might be broken").guid().to_string())
+                    }
+                    None => { continue; }
+                };
+
+                match maybe_guid {
+                    Some(guid) => {
+                        {
+                            let mut s_write_ref = symbol
+                                .write().expect("the data might be broken");
+                            match s_write_ref.type_names_mut().get_mut(idx) {
+                                Some(t_write) => {
+                                    t_write.guid = Some(guid)
+                                },
+                                None => { }
+                            }
+                        }
+                        info!("Found type name {} at index {}", name, idx);
+                    }
+                    None => {
+                        info!("Could not find type name {} at index {}", name, idx);
+                    }
+                }
+            }
+        }
     }
 
 
-    async fn merge_usages_to_declarations(&mut self) {
+    fn merge_usages_to_declarations(&mut self) {
         fn get_caller_depth(
             symbol: &AstSymbolInstanceArc,
             guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
@@ -493,6 +555,9 @@ impl AstIndex {
             let symbols_to_process = self.symbols_by_guid
                 .iter()
                 .filter(|(guid, symbol)| {
+                    symbol.read().expect("the data might be broken").get_linked_decl_guid().is_none()
+                })
+                .filter(|(guid, symbol)| {
                     let s_ref = symbol.read().expect("the data might be broken");
                     let valid_depth = get_caller_depth(symbol, &self.symbols_by_guid, 0) == depth;
                     valid_depth && (s_ref.symbol_type() == SymbolType::FunctionCall
@@ -512,7 +577,7 @@ impl AstIndex {
                     .read().expect("the data might be broken")
                     .get_caller_guid().clone();
                 let decl_guid = match caller_guid {
-                    Some(guid) => {
+                    Some(ref guid) => {
                         match find_decl_by_caller_guid(
                             usage_symbol.clone(),
                             &guid,
@@ -521,7 +586,6 @@ impl AstIndex {
                             Some(decl_guid) => { Some(decl_guid) }
                             None => find_decl_by_name(
                                 usage_symbol.clone(),
-                                true,
                                 &self.path_by_symbols,
                                 &self.symbols_by_guid
                             )
@@ -529,27 +593,28 @@ impl AstIndex {
                     },
                     None => find_decl_by_name(
                         usage_symbol.clone(),
-                        true,
                         &self.path_by_symbols,
                         &self.symbols_by_guid
                     )
                 };
 
                 match decl_guid {
-                    Some(guid) => usage_symbol
-                        .write()
-                        .expect("the data might be broken")
-                        .set_linked_decl_guid(guid),
-                    None => {}
+                    Some(guid) => {
+                        {
+                            usage_symbol
+                                .write()
+                                .expect("the data might be broken")
+                                .set_linked_decl_guid(guid.clone())
+                        }
+                        info!("Found declaration {} at index {}", usage_symbol.read().expect("").name(), idx);
+                    },
+                    None => {
+                        info!("Could not find declaration {} at index {}", usage_symbol.read().expect("").name(), idx);
+                    }
                 }
             }
             depth += 1;
         }
-
-    }
-
-    async fn resolve_types(&mut self) {
-
     }
 }
 
