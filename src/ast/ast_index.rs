@@ -381,7 +381,16 @@ impl AstIndex {
                             let guid = symb_decl_guid.clone().unwrap_or_default();
                             match self.symbols_by_guid.get(&guid) {
                                 Some(symbol) => {
-                                    symbol.read().expect("the data might be broken").guid() == decl_guid
+                                    let (guid, related_guids) = {
+                                        let s_ref = symbol.read().expect("the data might be broken");
+                                        (s_ref.guid().to_string(), s_ref.types())
+                                    };
+                                    let mut related_guids = related_guids
+                                        .iter()
+                                        .filter_map(|t| t.guid.clone())
+                                        .collect::<HashSet<_>>();
+                                    related_guids.insert(guid);
+                                    related_guids.contains(&decl_guid)
                                 }
                                 None => false
                             }
