@@ -124,7 +124,7 @@ impl RustParser {
             }
             "tuple_type" => {
                 let mut nested_types = vec![];
-                for i in 0..parent.child_count() - 1 {
+                for i in 0..parent.child_count() {
                     let child = parent.child(i).unwrap();
                     if let Some(t) = RustParser::parse_type(&child, code) {
                         nested_types.push(t);
@@ -152,7 +152,7 @@ impl RustParser {
                 let name = code.slice(name.byte_range()).to_string();
                 let type_arguments = parent.child_by_field_name("type_arguments").unwrap();
                 let mut nested_types = vec![];
-                for i in (0..type_arguments.child_count() - 1) {
+                for i in 0..type_arguments.child_count() {
                     let child = type_arguments.child(i).unwrap();
                     if let Some(t) = RustParser::parse_type(&child, code) {
                         nested_types.push(t);
@@ -191,7 +191,7 @@ impl RustParser {
 
         let params_len = parameters_node.child_count();
         let mut function_args = vec![];
-        for idx in 0..params_len - 1 {
+        for idx in 0..params_len {
             let child = parameters_node.child(idx).unwrap();
             match child.kind() {
                 "parameter" => {
@@ -219,7 +219,7 @@ impl RustParser {
         }
         if let Some(type_parameters) = parent.child_by_field_name("type_parameters") {
             let mut templates = vec![];
-            for idx in 0..type_parameters.child_count() - 1 {
+            for idx in 0..type_parameters.child_count() {
                 if let Some(t) = RustParser::parse_type(&type_parameters.child(idx).unwrap(), code) {
                     templates.push(t);
                 }
@@ -429,7 +429,7 @@ impl RustParser {
         }
 
         if let Some(arguments_node) = arguments_node {
-            for idx in 0..arguments_node.child_count() - 1 {
+            for idx in 0..arguments_node.child_count() {
                 let arg_node = arguments_node.child(idx).unwrap();
                 let arg_type = self.parse_usages(&arg_node, code, path, &decl.ast_fields.guid);
                 symbols.extend(arg_type);
@@ -617,7 +617,7 @@ impl RustParser {
                 symbols.push(Arc::new(RwLock::new(usage)));
             }
             "tuple_expression" => {
-                for idx in 0..parent.child_count() - 1 {
+                for idx in 0..parent.child_count() {
                     let tuple_child_node = parent.child(idx).unwrap();
                     symbols.extend(self.parse_usages(&tuple_child_node, code, path, parent_guid));
                 }
@@ -640,7 +640,7 @@ impl RustParser {
                 let value_node = parent.child_by_field_name("value").unwrap();
                 symbols.extend(self.parse_usages(&value_node, code, path, parent_guid));
                 let body_node = parent.child_by_field_name("body").unwrap();
-                for i in (0..body_node.child_count() - 1) {
+                for i in 0..body_node.child_count() {
                     let child = body_node.child(i).unwrap();
                     symbols.extend(self.parse_usages(&child, code, path, parent_guid));
                 }
@@ -652,7 +652,7 @@ impl RustParser {
                 symbols.extend(self.parse_usages(&value_node, code, path, parent_guid));
             }
             "or_pattern" | "range_expression" | "index_expression" => {
-                for idx in (0..parent.child_count()).step_by(2) {
+                for idx in 0..parent.child_count() {
                     let child = parent.child(idx).unwrap();
                     symbols.extend(self.parse_usages(&child, code, path, parent_guid));
                 }

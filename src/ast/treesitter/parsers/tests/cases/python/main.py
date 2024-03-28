@@ -1,3 +1,10 @@
+@dataclass
+class LSPConnectOptions:
+    addr: str = '127.0.0.1'
+    port: int = 8002
+    root_uri = 'file:///workspace'
+
+
 import numpy as np
 
 global_var = "pip"
