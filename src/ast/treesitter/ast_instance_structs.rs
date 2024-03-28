@@ -108,19 +108,23 @@ impl TypeDef {
         types
     }
 
-
-    pub fn get_nested_types_mut(&mut self) -> Vec<&mut TypeDef> {
-        let mut types: Vec<&mut TypeDef> = vec![];
-        let mut nested_types: Vec<&mut TypeDef> = vec![];
-        for nested in self.nested_types.iter_mut() {
-            types.push(nested);
+    pub fn mutate_nested_types<F>(&mut self, mut f: F)
+        where
+            F: FnMut(&mut TypeDef) {
+        for nested in &mut self.nested_types {
+            f(nested);
+            nested.mutate_nested_types_ref(&mut f);
         }
-        // for nested in types.iter_mut() {
-        //     nested_types.append(&mut nested.get_nested_types_mut())
-        // }
-        types
     }
 
+    fn mutate_nested_types_ref<F>(&mut self, f: &mut F)
+        where
+            F: FnMut(&mut TypeDef) {
+        for nested in &mut self.nested_types {
+            f(nested);
+            nested.mutate_nested_types_ref(f);
+        }
+    }
 }
 
 
@@ -281,9 +285,9 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
 
     fn is_declaration(&self) -> bool;
 
-    fn type_names(&self) -> Vec<TypeDef>;
+    fn types(&self) -> Vec<TypeDef>;
 
-    fn type_names_mut(&mut self) -> Vec<&mut TypeDef>;
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>);
 
     fn namespace(&self) -> &str {
         &self.fields().namespace
@@ -330,15 +334,18 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
     }
 
     fn remove_linked_guids(&mut self, guids: &HashSet<String>) {
+        let mut new_guids = vec![];
         for t in self
-            .type_names_mut()
-            .iter_mut()
-            .filter(|t| t.guid.is_some()) {
-            let guid = t.guid.to_owned().unwrap_or_default();
-            if guids.contains(&guid) {
-                t.guid = None;
+            .types()
+            .iter_mut() {
+            if guids.contains(&t.guid.to_owned().unwrap_or_default()) {
+                new_guids.push(None);
+            } else {
+                new_guids.push(t.guid.clone());
             }
         }
+        self.set_guids_to_types(&new_guids);
+
         match self.get_linked_decl_guid() {
             Some(guid) => {
                 if guids.contains(guid) {
@@ -387,27 +394,37 @@ impl AstSymbolInstance for StructDeclaration {
 
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
-    fn type_names(&self) -> Vec<TypeDef> {
+    fn types(&self) -> Vec<TypeDef> {
         let mut types: Vec<TypeDef> = vec![];
         for t in self.inherited_types.iter() {
             types.push(t.clone());
-            types.append(&mut t.get_nested_types())
+            types.extend(t.get_nested_types());
         }
         for t in self.template_types.iter() {
-            types.push(t.clone())
+            types.push(t.clone());
+            types.extend(t.get_nested_types());
         }
         types
     }
 
-    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
-        let mut types: Vec<&mut TypeDef> = vec![];
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>) {
+        let mut idx = 0;
         for t in self.inherited_types.iter_mut() {
-            types.push(t)
+            t.guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.guid = guids[idx].clone();
+                idx += 1;
+            })
         }
         for t in self.template_types.iter_mut() {
-            types.push(t)
+            t.guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.guid = guids[idx].clone();
+                idx += 1;
+            })
         }
-        types
     }
 
     fn is_type(&self) -> bool {
@@ -453,16 +470,25 @@ impl AstSymbolInstance for TypeAlias {
 
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
-    fn type_names(&self) -> Vec<TypeDef> {
-        self.types.clone()
-    }
-
-    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
-        let mut types: Vec<&mut TypeDef> = vec![];
-        for t in self.types.iter_mut() {
-            types.push(t)
+    fn types(&self) -> Vec<TypeDef> {
+        let mut types: Vec<TypeDef> = vec![];
+        for t in self.types.iter() {
+            types.push(t.clone());
+            types.extend(t.get_nested_types());
         }
         types
+    }
+
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>) {
+        let mut idx = 0;
+        for t in self.types.iter_mut() {
+            t.guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
     }
 
     fn is_type(&self) -> bool {
@@ -508,13 +534,21 @@ impl AstSymbolInstance for ClassFieldDeclaration {
 
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
-    fn type_names(&self) -> Vec<TypeDef> {
-        vec![self.type_.clone()]
+    fn types(&self) -> Vec<TypeDef> {
+        let mut types: Vec<TypeDef> = vec![];
+        types.push(self.type_.clone());
+        types.extend(self.type_.get_nested_types());
+        types
     }
 
-    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
-        let mut types: Vec<&mut TypeDef> = vec![&mut self.type_];
-        types
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>) {
+        let mut idx = 0;
+        self.type_.guid = guids[idx].clone();
+        idx += 1;
+        self.type_.mutate_nested_types(|t| {
+            t.guid = guids[idx].clone();
+            idx += 1;
+        })
     }
 
     fn is_type(&self) -> bool {
@@ -550,13 +584,11 @@ impl AstSymbolInstance for ImportDeclaration {
 
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
-    fn type_names(&self) -> Vec<TypeDef> {
+    fn types(&self) -> Vec<TypeDef> {
         vec![]
     }
 
-    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
-        vec![]
-    }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<String>>) { }
 
     fn is_type(&self) -> bool {
         false
@@ -601,13 +633,21 @@ impl AstSymbolInstance for VariableDefinition {
 
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
 
-    fn type_names(&self) -> Vec<TypeDef> {
-        vec![self.type_.clone()]
+    fn types(&self) -> Vec<TypeDef> {
+        let mut types: Vec<TypeDef> = vec![];
+        types.push(self.type_.clone());
+        types.extend(self.type_.get_nested_types());
+        types
     }
 
-    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
-        let mut types: Vec<&mut TypeDef> = vec![&mut self.type_];
-        types
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>) {
+        let mut idx = 0;
+        self.type_.guid = guids[idx].clone();
+        idx += 1;
+        self.type_.mutate_nested_types(|t| {
+            t.guid = guids[idx].clone();
+            idx += 1;
+        })
     }
 
     fn is_type(&self) -> bool {
@@ -674,29 +714,41 @@ impl AstSymbolInstance for FunctionDeclaration {
         false
     }
 
-    fn type_names(&self) -> Vec<TypeDef> {
+    fn types(&self) -> Vec<TypeDef> {
         let mut types = vec![];
         if let Some(t) = self.return_type.clone() {
-            types.push(t);
+            types.push(t.clone());
+            types.extend(t.get_nested_types());
         }
-        types.extend(
-            self.args.iter().filter_map(|x| x.type_.clone()).collect::<Vec<TypeDef>>()
-        );
-        types
-    }
-
-    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
-        let mut types: Vec<&mut TypeDef> = vec![];
-        if let Some(t) = &mut self.return_type {
-            types.push(t);
-        }
-
-        for t in self.args.iter_mut() {
-            if let Some(t) = &mut t.type_ {
-                types.push(t);
+        for t in self.args.iter() {
+            if let Some(t) = t.type_.clone() {
+                types.push(t.clone());
+                types.extend(t.get_nested_types());
             }
         }
         types
+    }
+
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>) {
+        let mut idx = 0;
+        if let Some(t) = &mut self.return_type {
+            t.guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+        for t in self.args.iter_mut() {
+            if let Some(t) = &mut t.type_ {
+                t.guid = guids[idx].clone();
+                idx += 1;
+                t.mutate_nested_types(|t| {
+                    t.guid = guids[idx].clone();
+                    idx += 1;
+                })
+            }
+        }
     }
 
     fn is_declaration(&self) -> bool { true }
@@ -740,13 +792,11 @@ impl AstSymbolInstance for CommentDefinition {
         false
     }
 
-    fn type_names(&self) -> Vec<TypeDef> {
+    fn types(&self) -> Vec<TypeDef> {
         vec![]
     }
 
-    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
-        vec![]
-    }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<String>>) { }
 
     fn is_declaration(&self) -> bool { true }
 
@@ -789,13 +839,11 @@ impl AstSymbolInstance for FunctionCall {
         false
     }
 
-    fn type_names(&self) -> Vec<TypeDef> {
+    fn types(&self) -> Vec<TypeDef> {
         vec![]
     }
 
-    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
-        vec![]
-    }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<String>>) { }
 
     fn is_declaration(&self) -> bool { false }
 
@@ -838,13 +886,11 @@ impl AstSymbolInstance for VariableUsage {
         false
     }
 
-    fn type_names(&self) -> Vec<TypeDef> {
+    fn types(&self) -> Vec<TypeDef> {
         vec![]
     }
 
-    fn type_names_mut(&mut self) -> Vec<&mut TypeDef> {
-        vec![]
-    }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<String>>) { }
 
     fn is_declaration(&self) -> bool { false }
 

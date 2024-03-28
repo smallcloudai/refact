@@ -339,7 +339,7 @@ impl AstIndex {
             Some(symbol) => {
                 Ok(symbol
                     .read().expect("the data might be broken")
-                    .type_names()
+                    .types()
                     .iter()
                     .filter_map(|t| t.guid.clone())
                     .filter_map(|g| self.symbols_by_guid.get(&g))
@@ -537,7 +537,7 @@ impl AstIndex {
         for symbol in self.symbols_by_guid.values_mut() {
             let (type_names, symb_type, symb_path) = {
                 let s_ref = symbol.read().expect("the data might be broken");
-                (s_ref.type_names(), s_ref.symbol_type(), s_ref.file_url().to_file_path().unwrap_or_default())
+                (s_ref.types(), s_ref.symbol_type(), s_ref.file_url().to_file_path().unwrap_or_default())
             };
             if symb_type == SymbolType::ImportDeclaration
                 || symb_type == SymbolType::CommentDefinition
@@ -545,10 +545,14 @@ impl AstIndex {
                 || symb_type == SymbolType::VariableUsage {
                 continue;
             }
-            for (idx, t) in type_names
-                .iter()
-                .enumerate()
-                .filter(|(idx, t)| !t.is_pod && t.guid.is_none() && t.name.is_some()) {
+
+            let mut new_guids = vec![];
+            for (idx, t) in type_names.iter().enumerate() {
+                if t.is_pod || t.guid.is_some() || t.name.is_none() {
+                    new_guids.push(None);
+                    continue;
+                }
+
                 let name = t.name.clone().expect("filter has invalid condition");
                 let maybe_guid = match self.symbols_by_name.get(&name) {
                     Some(symbols) => {
@@ -568,28 +572,26 @@ impl AstIndex {
                             .next()
                             .map(|s| s.read().expect("the data might be broken").guid().to_string())
                     }
-                    None => { continue; }
+                    None => {
+                        new_guids.push(None);
+                        continue;
+                    }
                 };
 
                 match maybe_guid {
                     Some(guid) => {
-                        {
-                            let mut s_write_ref = symbol
-                                .write().expect("the data might be broken");
-                            match s_write_ref.type_names_mut().get_mut(idx) {
-                                Some(t_write) => {
-                                    t_write.guid = Some(guid)
-                                },
-                                None => { }
-                            }
-                        }
+                        new_guids.push(Some(guid));
                         info!("Found type name {} at index {}", name, idx);
                     }
                     None => {
+                        new_guids.push(None);
                         info!("Could not find type name {} at index {}", name, idx);
                     }
                 }
             }
+            symbol
+                .write().expect("the data might be broken")
+                .set_guids_to_types(&new_guids);
         }
     }
 
