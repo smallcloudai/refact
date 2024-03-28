@@ -7,16 +7,16 @@ use rayon::prelude::*;
 use ropey::Rope;
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
-use tracing::{info};
+use tracing::info;
 use tree_sitter::{Point, Range};
 use url::Url;
-use crate::ast::comments_wrapper::get_language_id_by_filename;
 
+use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::fst_extra_automation::Substring;
 use crate::ast::structs::{FileASTMarkup, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, FunctionCall, SymbolInformation, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
-use crate::ast::treesitter::parsers::{get_new_parser_by_filename};
+use crate::ast::treesitter::parsers::get_new_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::usages_declarations_merger::{FilePathIterator, find_decl_by_caller_guid, find_decl_by_name};
 use crate::files_in_workspace::DocumentInfo;
@@ -27,6 +27,7 @@ pub struct AstIndex {
     symbols_by_guid: HashMap<String, AstSymbolInstanceArc>,
     path_by_symbols: HashMap<Url, Vec<AstSymbolInstanceArc>>,
     symbols_search_index: HashMap<Url, Set<Vec<u8>>>,
+    type_guid_to_dependand_guids: HashMap<String, Vec<String>>,
     has_changes: bool,
 }
 
@@ -73,6 +74,7 @@ impl AstIndex {
             symbols_by_guid: HashMap::new(),
             path_by_symbols: HashMap::new(),
             symbols_search_index: HashMap::new(),
+            type_guid_to_dependand_guids: HashMap::new(),
             has_changes: false,
         }
     }
@@ -108,10 +110,9 @@ impl AstIndex {
     ) -> Result<(), String> {
         let has_removed = self.remove(&doc);
         if has_removed {
-            for symbol in symbols.iter().cloned() {
-                self.resolve_type_single(symbol.clone());
-                self.merge_usages_to_declarations_single(symbol);
-            }
+            self.resolve_types(symbols);
+            self.merge_usages_to_declarations(symbols);
+            self.create_extra_indexes(symbols);
             self.has_changes = false;
         } else {
             // TODO: we don't want to update the whole index for a single file
@@ -150,9 +151,13 @@ impl AstIndex {
             .unwrap_or_default()
             .iter() {
             let symbol_ref = symbol.read().expect("the data might be broken");
+            let guid = symbol_ref.guid();
             self.symbols_by_name.remove(symbol_ref.name());
-            self.symbols_by_guid.remove(symbol_ref.guid());
-            removed_guids.insert(symbol_ref.guid().to_string());
+            self.symbols_by_guid.remove(guid);
+            if self.type_guid_to_dependand_guids.contains_key(guid) {
+                self.type_guid_to_dependand_guids.remove(symbol_ref.guid());
+            }
+            removed_guids.insert(guid.to_string());
         }
         for symbol in self.symbols_by_guid.values_mut() {
             symbol.write().expect("the data might be broken").remove_linked_guids(&removed_guids);
@@ -287,7 +292,7 @@ impl AstIndex {
                     None => return false,
                 };
                 let correct_language = language.map_or(true, |l| l == language_id);
-                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.uri == **path);
+                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.uri != **path);
                 correct_doc && correct_language
             })
             .collect::<Vec<_>>()
@@ -371,59 +376,26 @@ impl AstIndex {
         declaration_guid: &str,
         exception_doc: Option<DocumentInfo>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
-        // TODO: extra index, decl guid to usage_guids
-        match self.symbols_by_guid.get(declaration_guid) {
-            Some(decl_symbol) => {
-                let decl_guid = decl_symbol.read().expect("the data might be broken").guid().to_string();
-                let mut found_symbols = vec![];
-                for (_, symbols) in self.path_by_symbols
-                    .iter()
-                    .filter(|(path, symbols)| {
-                        exception_doc.clone().map_or(true, |doc| doc.uri == **path)
-                    }) {
-                    for (symbol, _) in symbols
-                        .iter()
-                        .filter(|s| !s.read().expect("the data might be broken").is_declaration())
-                        .map(|s| (s.clone(), s.read().expect("the data might be broken").get_linked_decl_guid().clone()))
-                        .filter(|(s, symb_decl_guid)| symb_decl_guid.is_some())
-                        .filter(|(s, symb_decl_guid)| {
-                            let guid = symb_decl_guid.clone().unwrap_or_default();
-                            match self.symbols_by_guid.get(&guid) {
-                                Some(symbol) => {
-                                    let (guid, related_guids) = {
-                                        let s_ref = symbol.read().expect("the data might be broken");
-                                        (s_ref.guid().to_string(), s_ref.types())
-                                    };
-                                    let mut related_guids = related_guids
-                                        .iter()
-                                        .filter_map(|t| t.guid.clone())
-                                        .collect::<HashSet<_>>();
-                                    related_guids.insert(guid);
-                                    related_guids.contains(&decl_guid)
-                                }
-                                None => false
-                            }
-                        }) {
-                        found_symbols.push(symbol.clone());
-                    }
-                }
-                Ok(found_symbols
-                    .iter()
-                    .filter_map(|s| {
-                        let info_struct = s.read().expect("the data might be broken").symbol_info_struct();
-                        let content = info_struct.get_content_blocked().ok()?;
-                        Some(SymbolsSearchResultStruct {
-                            symbol_declaration: info_struct,
-                            content: content,
-                            sim_to_query: -1.0,
-                        })
-                    })
-                    .collect::<Vec<_>>())
-            }
-            None => {
-                return Ok(vec![]);
-            }
-        }
+        Ok(self.type_guid_to_dependand_guids
+            .get(declaration_guid)
+            .map(|x| x.clone())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|guid| self.symbols_by_guid.get(guid))
+            .filter(|s| {
+                let s_ref = s.read().expect("the data might be broken");
+                exception_doc.clone().map_or(true, |doc| doc.uri != *s_ref.file_url())
+            })
+            .filter_map(|s| {
+                let info_struct = s.read().expect("the data might be broken").symbol_info_struct();
+                let content = info_struct.get_content_blocked().ok()?;
+                Some(SymbolsSearchResultStruct {
+                    symbol_declaration: info_struct,
+                    content: content,
+                    sim_to_query: -1.0,
+                })
+            })
+            .collect::<Vec<_>>())
     }
 
     pub fn retrieve_cursor_symbols_by_declarations(
@@ -484,6 +456,16 @@ impl AstIndex {
                     .unwrap_or_default()
                     .iter()
                     .map(|x| x.symbol_declaration.clone())
+                    .sorted_by_key(|s| {
+                        match s.symbol_type {
+                            SymbolType::ClassFieldDeclaration => 1,
+                            SymbolType::VariableDefinition => 1,
+                            SymbolType::FunctionDeclaration => 1,
+                            SymbolType::FunctionCall => 2,
+                            SymbolType::VariableUsage => 2,
+                            _ => 0,
+                        }
+                    })
                     .take(top_n_usage_for_each_decl)
                     .collect::<Vec<_>>()
             })
@@ -612,88 +594,88 @@ impl AstIndex {
         if !self.has_changes {
             return;
         }
+        let symbols = self.symbols_by_guid.values().cloned().collect::<Vec<_>>();
         info!("Building ast declarations");
         let t0 = std::time::Instant::now();
-        self.resolve_types();
+        self.resolve_types(&symbols);
         info!("Building ast declarations finished, took {:.3}s", t0.elapsed().as_secs_f64());
 
         info!("Merging usages and declarations");
         let t1 = std::time::Instant::now();
-        self.merge_usages_to_declarations();
+        self.merge_usages_to_declarations(&symbols);
         info!("Merging usages and declarations finished, took {:.3}s", t1.elapsed().as_secs_f64());
+
+        info!("Creating extra indexes");
+        let t1 = std::time::Instant::now();
+        self.create_extra_indexes(&symbols);
+        info!("Creating extra indexes finished, took {:.3}s", t1.elapsed().as_secs_f64());
 
         self.has_changes = false;
     }
 
-    fn resolve_types(&mut self) {
-        for symbol in self.symbols_by_guid.values().cloned() {
-            self.resolve_type_single(symbol)
-        }
-    }
-
-    fn resolve_type_single(&self, symbol: AstSymbolInstanceArc) {
-        let (type_names, symb_type, symb_path) = {
-            let s_ref = symbol.read().expect("the data might be broken");
-            (s_ref.types(), s_ref.symbol_type(), s_ref.file_url().to_file_path().unwrap_or_default())
-        };
-        if symb_type == SymbolType::ImportDeclaration
-            || symb_type == SymbolType::CommentDefinition
-            || symb_type == SymbolType::FunctionCall
-            || symb_type == SymbolType::VariableUsage {
-            return;
-        }
-
-        let mut new_guids = vec![];
-        for (idx, t) in type_names.iter().enumerate() {
-            if t.is_pod || t.guid.is_some() || t.name.is_none() {
-                new_guids.push(None);
+    fn resolve_types(&self, symbols: &Vec<AstSymbolInstanceArc>) {
+        for symbol in symbols {
+            let (type_names, symb_type, symb_path) = {
+                let s_ref = symbol.read().expect("the data might be broken");
+                (s_ref.types(), s_ref.symbol_type(), s_ref.file_url().to_file_path().unwrap_or_default())
+            };
+            if symb_type == SymbolType::ImportDeclaration
+                || symb_type == SymbolType::CommentDefinition
+                || symb_type == SymbolType::FunctionCall
+                || symb_type == SymbolType::VariableUsage {
                 continue;
             }
 
-            let name = t.name.clone().expect("filter has invalid condition");
-            let maybe_guid = match self.symbols_by_name.get(&name) {
-                Some(symbols) => {
-                    symbols
-                        .iter()
-                        .filter(|s| {
-                            let symbol_type = s.read().expect("the data might be broken").symbol_type();
-                            symbol_type == SymbolType::StructDeclaration || symbol_type == SymbolType::TypeAlias
-                        })
-                        .sorted_by(|a, b| {
-                            let path_a = a.read().expect("the data might be broken")
-                                .file_url().to_file_path().unwrap_or_default();
-                            let path_b = b.read().expect("the data might be broken")
-                                .file_url().to_file_path().unwrap_or_default();
-                            FilePathIterator::compare_paths(&symb_path, &path_a, &path_b)
-                        })
-                        .next()
-                        .map(|s| s.read().expect("the data might be broken").guid().to_string())
-                }
-                None => {
+            let mut new_guids = vec![];
+            for (idx, t) in type_names.iter().enumerate() {
+                if t.is_pod || t.guid.is_some() || t.name.is_none() {
                     new_guids.push(None);
                     continue;
                 }
-            };
 
-            match maybe_guid {
-                Some(guid) => {
-                    new_guids.push(Some(guid));
-                    info!("Found type name {} at index {}", name, idx);
-                }
-                None => {
-                    new_guids.push(None);
-                    info!("Could not find type name {} at index {}", name, idx);
+                let name = t.name.clone().expect("filter has invalid condition");
+                let maybe_guid = match self.symbols_by_name.get(&name) {
+                    Some(symbols) => {
+                        symbols
+                            .iter()
+                            .filter(|s| {
+                                let symbol_type = s.read().expect("the data might be broken").symbol_type();
+                                symbol_type == SymbolType::StructDeclaration || symbol_type == SymbolType::TypeAlias
+                            })
+                            .sorted_by(|a, b| {
+                                let path_a = a.read().expect("the data might be broken")
+                                    .file_url().to_file_path().unwrap_or_default();
+                                let path_b = b.read().expect("the data might be broken")
+                                    .file_url().to_file_path().unwrap_or_default();
+                                FilePathIterator::compare_paths(&symb_path, &path_a, &path_b)
+                            })
+                            .next()
+                            .map(|s| s.read().expect("the data might be broken").guid().to_string())
+                    }
+                    None => {
+                        new_guids.push(None);
+                        continue;
+                    }
+                };
+
+                match maybe_guid {
+                    Some(guid) => {
+                        new_guids.push(Some(guid));
+                        info!("Found type name {} at index {}", name, idx);
+                    }
+                    None => {
+                        new_guids.push(None);
+                        info!("Could not find type name {} at index {}", name, idx);
+                    }
                 }
             }
+            symbol
+                .write().expect("the data might be broken")
+                .set_guids_to_types(&new_guids);
         }
-        symbol
-            .write().expect("the data might be broken")
-            .set_guids_to_types(&new_guids);
     }
 
-    fn merge_usages_to_declarations(&mut self) {
-        // TODO: move this logic to the separate Iterator class and reuse it everywhere
-        // where merge_usages_to_declarations_single is using
+    fn merge_usages_to_declarations(&self, symbols: &Vec<AstSymbolInstanceArc>) {
         fn get_caller_depth(
             symbol: &AstSymbolInstanceArc,
             guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
@@ -716,75 +698,87 @@ impl AstIndex {
 
         let mut depth: usize = 0;
         loop {
-            let mut symbols_to_process = self.symbols_by_guid
+            let symbols_to_process = symbols
                 .iter()
-                .filter(|(guid, symbol)| {
+                .filter(|symbol| {
                     symbol.read().expect("the data might be broken").get_linked_decl_guid().is_none()
                 })
-                .filter(|(guid, symbol)| {
+                .filter(|symbol| {
                     let s_ref = symbol.read().expect("the data might be broken");
                     let valid_depth = get_caller_depth(symbol, &self.symbols_by_guid, 0) == depth;
                     valid_depth && (s_ref.symbol_type() == SymbolType::FunctionCall
                         || s_ref.symbol_type() == SymbolType::VariableUsage)
                 })
-                .map(|(_, symbol)| symbol.clone())
                 .collect::<Vec<_>>();
 
             if symbols_to_process.is_empty() {
                 break;
             }
 
-            for (idx, usage_symbol) in symbols_to_process
+            for (idx, mut usage_symbol) in symbols_to_process
                 .iter().enumerate() {
-                info!("processing symbol ({}/{})", idx, symbols_to_process.len());
-                self.merge_usages_to_declarations_single(usage_symbol.clone());
+                info!("Processing symbol ({}/{})", idx, symbols_to_process.len());
+                let caller_guid = usage_symbol
+                    .read().expect("the data might be broken")
+                    .get_caller_guid().clone();
+                let decl_guid = match caller_guid {
+                    Some(ref guid) => {
+                        match find_decl_by_caller_guid(
+                            *usage_symbol,
+                            &guid,
+                            &self.symbols_by_guid,
+                        ) {
+                            Some(decl_guid) => { Some(decl_guid) }
+                            None => find_decl_by_name(
+                                *usage_symbol,
+                                &self.path_by_symbols,
+                                &self.symbols_by_guid,
+                                &self.symbols_by_name,
+                                1,
+                            )
+                        }
+                    }
+                    None => find_decl_by_name(
+                        *usage_symbol,
+                        &self.path_by_symbols,
+                        &self.symbols_by_guid,
+                        &self.symbols_by_name,
+                        1,
+                    )
+                };
+
+                match decl_guid {
+                    Some(guid) => {
+                        {
+                            usage_symbol
+                                .write()
+                                .expect("the data might be broken")
+                                .set_linked_decl_guid(Some(guid))
+                        }
+                        info!("found declaration {}", usage_symbol.read().expect("").name());
+                    }
+                    None => {
+                        info!("could not find declaration {}", usage_symbol.read().expect("").name());
+                    }
+                }
             }
             depth += 1;
         }
     }
 
-    fn merge_usages_to_declarations_single(&self, symbol: AstSymbolInstanceArc) {
-        let caller_guid = symbol
-            .read().expect("the data might be broken")
-            .get_caller_guid().clone();
-        let decl_guid = match caller_guid {
-            Some(ref guid) => {
-                match find_decl_by_caller_guid(
-                    symbol.clone(),
-                    &guid,
-                    &self.symbols_by_guid,
-                ) {
-                    Some(decl_guid) => { Some(decl_guid) }
-                    None => find_decl_by_name(
-                        symbol.clone(),
-                        &self.path_by_symbols,
-                        &self.symbols_by_guid,
-                        &self.symbols_by_name,
-                        1
-                    )
-                }
-            }
-            None => find_decl_by_name(
-                symbol.clone(),
-                &self.path_by_symbols,
-                &self.symbols_by_guid,
-                &self.symbols_by_name,
-                1
-            )
-        };
-
-        match decl_guid {
-            Some(guid) => {
-                {
-                    symbol
-                        .write()
-                        .expect("the data might be broken")
-                        .set_linked_decl_guid(Some(guid))
-                }
-                info!("found declaration {}", symbol.read().expect("").name());
-            }
-            None => {
-                info!("could not find declaration {}", symbol.read().expect("").name());
+    fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceArc>) {
+        for symbol in symbols
+            .iter()
+            .filter(|s| !s.read().expect("the data might be broken").is_type())
+            .cloned() {
+            let (s_guid, types) = {
+                let s_ref = symbol.read().expect("the data might be broken");
+                (s_ref.guid().to_string(), s_ref.types())
+            };
+            for guid in types
+                .iter()
+                .filter_map(|t| t.guid.clone()) {
+                self.type_guid_to_dependand_guids.entry(guid).or_default().push(s_guid.clone());
             }
         }
     }
@@ -804,11 +798,9 @@ impl AstIndex {
                 return vec![];
             }
         };
-        let mut symbols = AstIndex::parse(&doc).unwrap_or_default();
-        for symbol in symbols.iter().cloned() {
-            self.resolve_type_single(symbol.clone());
-            self.merge_usages_to_declarations_single(symbol);
-        }
+        let symbols = AstIndex::parse(&doc).unwrap_or_default();
+        self.resolve_types(&symbols);
+        self.merge_usages_to_declarations(&symbols);
         symbols
     }
 }

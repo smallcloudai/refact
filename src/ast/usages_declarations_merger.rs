@@ -59,7 +59,7 @@ impl Iterator for FilePathIterator {
 }
 
 pub fn find_decl_by_caller_guid(
-    symbol: AstSymbolInstanceArc,
+    symbol: &AstSymbolInstanceArc,
     caller_guid: &str,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
 ) -> Option<String> {
@@ -175,11 +175,11 @@ fn find_decl_by_name_for_single_path(
 }
 
 pub fn find_decl_by_name(
-    symbol: AstSymbolInstanceArc,
+    symbol: &AstSymbolInstanceArc,
     path_by_symbols: &HashMap<Url, Vec<AstSymbolInstanceArc>>,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
     name_by_symbols: &HashMap<String, Vec<AstSymbolInstanceArc>>,
-    top_n_files: usize
+    top_n_files: usize,
 ) -> Option<String> {
     let (file_path, parent_guid, name, is_function) = match symbol.read() {
         Ok(s) => {
@@ -220,7 +220,7 @@ pub fn find_decl_by_name(
             &search_symbol_type,
             &url,
             guid_by_symbols,
-            name_by_symbols
+            name_by_symbols,
         ) {
             Some(guid) => { return Some(guid); }
             None => { continue; }
