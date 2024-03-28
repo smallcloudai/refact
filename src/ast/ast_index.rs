@@ -106,9 +106,18 @@ impl AstIndex {
         doc: &DocumentInfo,
         symbols: &Vec<AstSymbolInstanceArc>,
     ) -> Result<(), String> {
-        match self.remove(&doc) {
-            Ok(()) => (),
-            Err(e) => return Err(format!("Error removing {}: {}", doc.uri, e)),
+        let has_removed = self.remove(&doc);
+        if has_removed {
+            for symbol in symbols.iter().cloned() {
+                self.resolve_type_single(symbol.clone());
+                self.merge_usages_to_declarations_single(symbol);
+            }
+            self.has_changes = false;
+        } else {
+            // TODO: we don't want to update the whole index for a single file
+            // even if we might miss some new cross-references
+            // later we should think about some kind of force update, ie once in a while self.has_changes=false
+            self.has_changes = true;
         }
 
         let mut symbol_names: SortedVec<String> = SortedVec::new();
@@ -124,7 +133,6 @@ impl AstIndex {
             Err(e) => return Err(format!("Error creating set: {}", e)),
         };
         self.symbols_search_index.insert(doc.uri.clone(), meta_names_set);
-        self.has_changes = true;
 
         Ok(())
     }
@@ -134,8 +142,8 @@ impl AstIndex {
         self.add_or_update_symbols_index(doc, &symbols)
     }
 
-    pub fn remove(&mut self, doc: &DocumentInfo) -> Result<(), String> {
-        self.symbols_search_index.remove(&doc.uri);
+    pub fn remove(&mut self, doc: &DocumentInfo) -> bool {
+        let has_removed = self.symbols_search_index.remove(&doc.uri).is_some();
         let mut removed_guids = HashSet::new();
         for symbol in self.path_by_symbols
             .remove(&doc.uri)
@@ -150,7 +158,7 @@ impl AstIndex {
             symbol.write().expect("the data might be broken").remove_linked_guids(&removed_guids);
         }
         self.has_changes = true;
-        Ok(())
+        has_removed
     }
 
     pub fn clear_index(&mut self) {
@@ -363,6 +371,7 @@ impl AstIndex {
         declaration_guid: &str,
         exception_doc: Option<DocumentInfo>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
+        // TODO: extra index, decl guid to usage_guids
         match self.symbols_by_guid.get(declaration_guid) {
             Some(decl_symbol) => {
                 let decl_guid = decl_symbol.read().expect("the data might be broken").guid().to_string();
@@ -683,6 +692,8 @@ impl AstIndex {
     }
 
     fn merge_usages_to_declarations(&mut self) {
+        // TODO: move this logic to the separate Iterator class and reuse it everywhere
+        // where merge_usages_to_declarations_single is using
         fn get_caller_depth(
             symbol: &AstSymbolInstanceArc,
             guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
