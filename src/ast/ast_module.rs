@@ -208,7 +208,7 @@ impl AstModule {
             code,
             cursor,
             top_n_near_cursor,
-            top_n_usage_for_each_decl,
+            top_n_usage_for_each_decl
         );
         let all_symbols = declarations.iter().cloned().chain(usages.iter().cloned()).collect::<Vec<_>>();
         for r in all_symbols.iter() {
@@ -216,7 +216,7 @@ impl AstModule {
             info!("found {last_30_chars}");
         }
 
-        info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), all_symbols.len());
+        info!("ast retrieve_cursor_symbols_by_declarations time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), all_symbols.len());
         Ok(
             AstCursorSearchResult {
                 query_text: "".to_string(),

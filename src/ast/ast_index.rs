@@ -408,30 +408,31 @@ impl AstIndex {
     ) -> (Vec<SymbolInformation>, Vec<SymbolInformation>, Vec<SymbolInformation>) {
         let file_symbols = self.parse_single_file(doc, code);
         let language = get_language_id_by_filename(&doc.uri.to_file_path().unwrap_or_default());
-        let cursor_usages = file_symbols
+        let cursor_symbols = file_symbols
             .iter()
             .unique_by(|s| s.read().expect("the data might be broken").guid().to_string())
             .filter(|s| {
                 let s_ref = s.read().expect("the data might be broken");
-                s_ref.is_declaration()
-                    && *s_ref.language() == language.unwrap_or(*s_ref.language())
-                    && s_ref.get_linked_decl_guid().is_some()
+                *s_ref.language() == language.unwrap_or(*s_ref.language())
             })
+            .filter_map(|s| {
+                let s_ref = s.read().expect("the data might be broken");
+                if s_ref.is_declaration() {
+                    Some(s)
+                } else {
+                    s_ref.get_linked_decl_guid()
+                        .clone()
+                        .map(|guid| self.symbols_by_guid.get(&guid))
+                        .flatten()
+                }
+
+            })
+            .cloned()
             .sorted_by_key(|a| a.read().expect("the data might be broken").distance_to_cursor(&cursor))
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
-        let declarations = cursor_usages
+        let declarations = cursor_symbols
             .iter()
-            .filter_map(|s| {
-                match s
-                    .read().expect("the data might be broken")
-                    .get_linked_decl_guid() {
-                    Some(guid) => {
-                        self.symbols_by_guid.get(guid)
-                    }
-                    None => None
-                }
-            })
             .map(|s| {
                 let mut symbols = vec![s.clone()];
                 symbols.extend(
@@ -447,8 +448,8 @@ impl AstIndex {
             .flatten()
             .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
             .unique_by(|s| s.guid.clone())
+            .filter(|s| doc.uri != s.file_url)
             .collect::<Vec<_>>();
-
         let usages = declarations
             .iter()
             .map(|s| {
@@ -473,7 +474,7 @@ impl AstIndex {
             .collect::<Vec<_>>();
 
         (
-            cursor_usages
+            cursor_symbols
                 .iter()
                 .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
                 .collect(),
@@ -771,9 +772,20 @@ impl AstIndex {
             .iter()
             .filter(|s| !s.read().expect("the data might be broken").is_type())
             .cloned() {
-            let (s_guid, types) = {
+            let (s_guid, mut types, is_declaration) = {
                 let s_ref = symbol.read().expect("the data might be broken");
-                (s_ref.guid().to_string(), s_ref.types())
+                (s_ref.guid().to_string(), s_ref.types(), s_ref.is_declaration())
+            };
+            types = if is_declaration {
+                types
+            } else {
+                symbol.read().expect("the data might be broken")
+                    .get_linked_decl_guid()
+                    .clone()
+                    .map(|guid| self.symbols_by_guid.get(&guid))
+                    .flatten()
+                    .map(|s| s.read().expect("the data might be broken").types())
+                    .unwrap_or_default()
             };
             for guid in types
                 .iter()

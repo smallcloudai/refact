@@ -122,7 +122,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         let mut after_iter = text.lines_at(pos.line as usize + 1);
         let mut extra_context = String::new();
         let mut tokens_used = 0;
-        let ast_messages: Vec<crate::call_validation::ChatMessage> = if self.post.use_ast {
+        let ast_messages: Vec<crate::call_validation::ChatMessage> = if true /*self.post.use_ast*/ {
             let chat_message_maybe = match *self.ast_module.lock().await {
                 Some(ref mut ast) => {
                     let doc_info = match DocumentInfo::from_pathbuf(&file_path) {
