@@ -748,6 +748,8 @@ impl AstIndex {
                         symbol.clone(),
                         &self.path_by_symbols,
                         &self.symbols_by_guid,
+                        &self.symbols_by_name,
+                        1
                     )
                 }
             }
@@ -755,6 +757,8 @@ impl AstIndex {
                 symbol.clone(),
                 &self.path_by_symbols,
                 &self.symbols_by_guid,
+                &self.symbols_by_name,
+                1
             )
         };
 

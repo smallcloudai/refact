@@ -133,19 +133,23 @@ fn find_decl_by_name_for_single_path(
     name: &str,
     parent_guid: &str,
     search_symbol_type: &SymbolType,
-    symbols: &Vec<AstSymbolInstanceArc>,
+    file_url: &Url,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
+    name_by_symbols: &HashMap<String, Vec<AstSymbolInstanceArc>>,
 ) -> Option<String> {
     let mut current_parent_guid = parent_guid.to_string();
     loop {
-        // use `name by symbols` index here to speed up the process
+        let symbols = name_by_symbols
+            .get(name)
+            .map(|s| s.clone())
+            .unwrap_or_default();
         let found_symbol = match symbols
             .iter()
             .filter(|s| {
                 let s_ref = s.read().expect("the data might be broken");
                 s_ref.symbol_type() == *search_symbol_type
                     && s_ref.parent_guid().clone().unwrap_or("".to_string()) == current_parent_guid
-                    && s_ref.name() == name
+                    && s_ref.file_url() == file_url
             })
             .next() {
             Some(s) => {
@@ -174,6 +178,8 @@ pub fn find_decl_by_name(
     symbol: AstSymbolInstanceArc,
     path_by_symbols: &HashMap<Url, Vec<AstSymbolInstanceArc>>,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
+    name_by_symbols: &HashMap<String, Vec<AstSymbolInstanceArc>>,
+    top_n_files: usize
 ) -> Option<String> {
     let (file_path, parent_guid, name, is_function) = match symbol.read() {
         Ok(s) => {
@@ -188,14 +194,18 @@ pub fn find_decl_by_name(
         true => SymbolType::FunctionDeclaration,
         false => SymbolType::VariableDefinition,
     };
-    let file_iterator = FilePathIterator::new(
-        file_path.to_file_path().unwrap_or_default(),
-        path_by_symbols
-            .iter()
-            .filter_map(|(url, _)| url.to_file_path().ok())
-            .collect::<Vec<_>>(),
-    );
-    for file in file_iterator {
+    let file_iterator = if top_n_files > 1 {
+        FilePathIterator::new(
+            file_path.to_file_path().unwrap_or_default(),
+            path_by_symbols
+                .iter()
+                .filter_map(|(url, _)| url.to_file_path().ok())
+                .collect::<Vec<_>>(),
+        ).collect::<Vec<_>>()
+    } else {
+        vec![file_path.to_file_path().unwrap_or_default()]
+    };
+    for file in file_iterator.iter().take(top_n_files) {
         let url = match Url::from_file_path(file) {
             Ok(url) => url,
             Err(_) => { continue; }
@@ -204,16 +214,13 @@ pub fn find_decl_by_name(
             true => parent_guid.clone(),
             false => "".to_string()
         };
-        let symbols = match path_by_symbols.get(&url) {
-            Some(symbols) => symbols,
-            None => { continue; }
-        };
         match find_decl_by_name_for_single_path(
             &name,
             &current_parent_guid,
             &search_symbol_type,
-            symbols,
+            &url,
             guid_by_symbols,
+            name_by_symbols
         ) {
             Some(guid) => { return Some(guid); }
             None => { continue; }

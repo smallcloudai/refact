@@ -7,7 +7,7 @@ pub fn get_language_id_by_filename(filename: &PathBuf) -> Option<LanguageId> {
     match suffix.as_str() {
         "cpp" | "cc" | "cxx" | "c++" | "c" | "h" | "hpp" | "hxx" | "hh" => Some(LanguageId::Cpp),
         "inl" | "inc" | "tpp" | "tpl" => Some(LanguageId::Cpp),
-        "py" | "pyo" | "py3" | "pyx" => Some(LanguageId::Python),
+        "py" | "py3" | "pyx" => Some(LanguageId::Python),
         "java" => Some(LanguageId::Java),
         "js" | "jsx" => Some(LanguageId::JavaScript),
         "rs" => Some(LanguageId::Rust),
