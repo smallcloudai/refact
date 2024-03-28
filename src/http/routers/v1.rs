@@ -11,21 +11,21 @@ use hyper::Response;
 use crate::{telemetry_get, telemetry_post};
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::http::routers::v1::ast::{handle_v1_ast_declarations_cursor_search, handle_v1_ast_declarations_query_search, handle_v1_ast_references_cursor_search, handle_v1_ast_references_query_search, handle_v1_ast_file_symbols, handle_v1_ast_index_file, handle_v1_ast_clear_index, handle_v1_ast_search_by_name, handle_v1_ast_search_by_content, handle_v1_ast_search_related_declarations, handle_v1_ast_search_usages_by_declarations};
+use crate::http::routers::v1::ast::{handle_v1_ast_clear_index, handle_v1_ast_file_markup, handle_v1_ast_file_symbols, handle_v1_ast_index_file, handle_v1_ast_search_by_content, handle_v1_ast_search_by_name, handle_v1_ast_search_related_declarations, handle_v1_ast_search_usages_by_declarations};
+use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::chat::handle_v1_chat;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion_web;
+use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
+use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_did_change;
+use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_initialize;
 use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
 use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
-use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_initialize;
-use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_did_change;
 use crate::http::routers::v1::toolbox::handle_v1_customization;
 use crate::http::routers::v1::toolbox::handle_v1_rewrite_assistant_says_to_at_commands;
+use crate::http::routers::v1::vecdb::{handle_v1_vecdb_caps, handle_v1_vecdb_search, handle_v1_vecdb_status};
 use crate::http::utils::telemetry_wrapper;
-use crate::http::routers::v1::dashboard::get_dashboard_plots;
-use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status, handle_v1_vecdb_caps};
-use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview};
 
 pub mod code_completion;
 pub mod chat;
@@ -65,8 +65,7 @@ pub fn make_v1_router() -> Router {
         .route("/ast-search-by-content", telemetry_post!(handle_v1_ast_search_by_content))
         .route("/ast-search-related-declarations", telemetry_post!(handle_v1_ast_search_related_declarations))
         .route("/ast-search-usages-by-declarations", telemetry_post!(handle_v1_ast_search_usages_by_declarations))
-
-        .route("/ast-file-markup", telemetry_post!(handle_v1_ast_references_cursor_search))
+        .route("/ast-file-markup", telemetry_post!(handle_v1_ast_file_markup))
         .route("/ast-file-symbols", telemetry_post!(handle_v1_ast_file_symbols))
         .route("/ast-index-file", telemetry_post!(handle_v1_ast_index_file))
         .route("/ast-clear-index", telemetry_post!(handle_v1_ast_clear_index))
