@@ -148,14 +148,16 @@ def get_active_loras(models_db: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         if model_name not in active_loras:
             return {}
         active_lora = migrate_active_lora(active_loras[model_name]).get("loras", [])
-        if model_info.get("finetune_model", model_name) != model_name:
-            active_lora = [
-                lora_info for lora_info in active_lora
-                if not is_checkpoint_deprecated(
-                    Path(env.DIR_LORAS) / lora_info["run_id"] / "checkpoints" / lora_info["checkpoint"])
-            ]
+        filtered_active_lora = []
+        for lora_info in active_lora:
+            checkpoint_dir = Path(env.DIR_LORAS) / lora_info["run_id"] / "checkpoints" / lora_info["checkpoint"]
+            if not checkpoint_dir.exists():
+                continue
+            if model_info.get("finetune_model", model_name) != model_name and is_checkpoint_deprecated(checkpoint_dir):
+                continue
+            filtered_active_lora.append(lora_info)
         return {
-            "loras": active_lora
+            "loras": filtered_active_lora
         }
 
     return {
