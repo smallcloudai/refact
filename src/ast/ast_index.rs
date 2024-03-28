@@ -371,7 +371,7 @@ impl AstIndex {
         }
     }
 
-    pub fn search_usages_by_declarations(
+    pub fn search_symbols_by_declarations_usage(
         &self,
         declaration_guid: &str,
         exception_doc: Option<DocumentInfo>,
@@ -452,7 +452,7 @@ impl AstIndex {
         let usages = declarations
             .iter()
             .map(|s| {
-                self.search_usages_by_declarations(&s.guid, Some(doc.clone()))
+                self.search_symbols_by_declarations_usage(&s.guid, Some(doc.clone()))
                     .unwrap_or_default()
                     .iter()
                     .map(|x| x.symbol_declaration.clone())

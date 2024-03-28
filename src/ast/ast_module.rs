@@ -169,7 +169,7 @@ impl AstModule {
                 return Err("Ast index is busy, timeout error".to_string());
             }
         };
-        match ast_index_locked.search_usages_by_declarations(declaration_guid, None) {
+        match ast_index_locked.search_symbols_by_declarations_usage(declaration_guid, None) {
             Ok(results) => {
                 for r in results.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
