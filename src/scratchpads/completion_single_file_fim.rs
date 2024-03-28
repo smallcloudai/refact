@@ -132,8 +132,9 @@ impl ScratchpadAbstract for SingleFileFIM {
                             return Err(err.to_string());
                         }
                     };
-                    match ast.search_references_by_cursor(
-                        &doc_info, &source, Point { row: pos.line as usize, column: pos.character as usize }, 5, true
+                    match ast.retrieve_cursor_symbols_by_declarations(
+                        &doc_info, &source, Point { row: pos.line as usize, column: pos.character as usize },
+                        5, 5
                     ).await {
                         Ok(res) => Ok(crate::at_commands::at_ast_lookup_symbols::results2message(&res).await),
                         Err(err) => Err(err)

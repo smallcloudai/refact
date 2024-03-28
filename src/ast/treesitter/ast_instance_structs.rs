@@ -10,7 +10,7 @@ use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
-use tree_sitter::Range;
+use tree_sitter::{Point, Range};
 use url::Url;
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::structs::{RangeDef, SymbolType};
@@ -354,6 +354,10 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
             }
             None => {}
         }
+    }
+
+    fn distance_to_cursor(&self, cursor: &Point) -> usize {
+        cursor.row.abs_diff(self.full_range().start_point.row)
     }
 }
 

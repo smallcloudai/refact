@@ -104,8 +104,8 @@ impl AtCommand for AtAstLookupSymbols {
         };
         let x = match *binding.ast_module.lock().await {
             Some(ref mut ast) => {
-                match ast.search_references_by_cursor(
-                    &doc_info, &file_text, Point { row: row_idx, column: 0 }, 5, true
+                match ast.retrieve_cursor_symbols_by_declarations(
+                    &doc_info, &file_text, Point { row: row_idx, column: 0 }, 5,  5
                 ).await {
                     Ok(res) => Ok(results2message(&res).await),
                     Err(err) => Err(err)

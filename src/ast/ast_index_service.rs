@@ -134,7 +134,7 @@ async fn ast_indexer(
 
         {
             let mut ast_index = ast_index.lock().await;
-            ast_index.rebuild_index().await;
+            ast_index.rebuild_index();
         }
         tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     }

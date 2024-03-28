@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
-use itertools::Itertools;
 
+use itertools::Itertools;
 use serde::Serialize;
 use tokio::sync::{Mutex as AMutex, MutexGuard};
 use tokio::sync::RwLock as ARwLock;
@@ -10,18 +10,17 @@ use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 use tracing::info;
 use tree_sitter::Point;
+use url::Url;
 
-use crate::global_context::GlobalContext;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::AstIndexService;
-use crate::ast::comments_wrapper::get_language_id_by_filename;
-use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, CursorUsagesResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct, UsageSearchResultStruct};
-use crate::ast::treesitter::parsers::get_parser_by_filename;
-use crate::files_in_workspace::DocumentInfo;
-use url::Url;
+use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, SymbolInformation};
+use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolInfo;
 use crate::files_in_jsonl::files_in_jsonl;
+use crate::files_in_workspace::DocumentInfo;
+use crate::global_context::GlobalContext;
 
 pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
@@ -75,7 +74,7 @@ impl AstModule {
     pub async fn search_by_name(
         &self,
         query: String,
-        request_symbol_type: RequestSymbolType
+        request_symbol_type: RequestSymbolType,
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
@@ -106,7 +105,7 @@ impl AstModule {
     pub async fn search_by_content(
         &self,
         query: String,
-        request_symbol_type: RequestSymbolType
+        request_symbol_type: RequestSymbolType,
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
@@ -134,7 +133,7 @@ impl AstModule {
         }
     }
 
-    pub async fn search_related_declarations(&self, guid: &str)-> Result<AstQuerySearchResult, String> {
+    pub async fn search_related_declarations(&self, guid: &str) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
         let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
@@ -161,7 +160,7 @@ impl AstModule {
         }
     }
 
-    pub async fn search_usages_by_declarations(&self, declaration_guid: &str)-> Result<AstQuerySearchResult, String> {
+    pub async fn search_usages_by_declarations(&self, declaration_guid: &str) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
         let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
@@ -188,26 +187,59 @@ impl AstModule {
         }
     }
 
-    pub async fn search_usages_of_declarations_by_cursor(
+    pub async fn retrieve_cursor_symbols_by_declarations(
         &mut self,
         doc: &DocumentInfo,
         code: &str,
         cursor: Point,
-        top_n: usize,
-        filter_by_language: bool
+        top_n_near_cursor: usize,
+        top_n_usage_for_each_decl: usize,
     ) -> Result<AstCursorSearchResult, String> {
-        unimplemented!()
-    }
+        let t0 = std::time::Instant::now();
+        let ast_index = self.ast_index.clone();
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+            Ok(lock) => lock,
+            Err(_) => {
+                return Err("Ast index is busy, timeout error".to_string());
+            }
+        };
+        let (cursor_usages, declarations, usages) = ast_index_locked.retrieve_cursor_symbols_by_declarations(
+            doc,
+            code,
+            cursor,
+            top_n_near_cursor,
+            top_n_usage_for_each_decl,
+        );
+        let all_symbols = declarations.iter().cloned().chain(usages.iter().cloned()).collect::<Vec<_>>();
+        for r in all_symbols.iter() {
+            let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
+            info!("found {last_30_chars}");
+        }
 
-    pub async fn search_references_by_cursor(
-        &mut self,
-        doc: &DocumentInfo,
-        code: &str,
-        cursor: Point,
-        top_n: usize,
-        filter_by_language: bool,
-    ) -> Result<AstCursorSearchResult, String> {
-        unimplemented!()
+        info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), all_symbols.len());
+        Ok(
+            AstCursorSearchResult {
+                query_text: "".to_string(),
+                file_path: doc.get_path(),
+                cursor,
+                cursor_symbols: cursor_usages
+                    .iter()
+                    .map(|x| SymbolsSearchResultStruct {
+                        symbol_declaration: x.clone(),
+                        content: x.get_content_blocked().unwrap_or_default(),
+                        sim_to_query: -1.0,
+                    })
+                    .collect::<Vec<SymbolsSearchResultStruct>>(),
+                search_results: all_symbols
+                    .iter()
+                    .map(|x| SymbolsSearchResultStruct {
+                        symbol_declaration: x.clone(),
+                        content: x.get_content_blocked().unwrap_or_default(),
+                        sim_to_query: -1.0,
+                    })
+                    .collect::<Vec<SymbolsSearchResultStruct>>(),
+            }
+        )
     }
 
     pub async fn file_markup(
