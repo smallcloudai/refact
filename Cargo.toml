@@ -1,4 +1,5 @@
-[profile.release]
+[profile.opt]
+inherits = "release"
 strip = true
 opt-level = "z"
 lto = true

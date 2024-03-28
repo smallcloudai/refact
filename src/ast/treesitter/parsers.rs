@@ -251,6 +251,10 @@ fn get_new_parser(language_id: LanguageId) -> Result<Box<dyn NewLanguageParser +
             let parser = rust::RustParser::new()?;
             Ok(Box::new(parser))
         }
+        LanguageId::Python => {
+            let parser = python::PythonParser::new()?;
+            Ok(Box::new(parser))
+        }
         other => Err(ParserError {
             message: "Unsupported language id: ".to_string() + &other.to_string()
         }),

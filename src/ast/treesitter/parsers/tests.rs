@@ -6,7 +6,7 @@ use crate::ast::treesitter::structs::{SymbolDeclarationStruct, UsageSymbolInfo};
 
 mod cpp;
 mod rust;
-
+mod python;
 pub(crate) fn test_query_function(mut parser: Box<dyn LanguageParser>,
                                   path: &PathBuf,
                                   code: &str,
