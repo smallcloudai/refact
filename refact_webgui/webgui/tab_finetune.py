@@ -69,7 +69,7 @@ class TabFinetuneTrainingSetup(BaseModel):
     lora_r: Optional[int] = Query(default=16, ge=4, le=64)
     lora_alpha: Optional[float] = Query(default=32, ge=4, le=128)
     lora_dropout: Optional[float] = Query(default=0.01, ge=0.0, le=0.5)
-    model_ctx_size: Optional[int] = Query(default=1024, ge=1, le=4096)
+    model_ctx_size: Optional[int] = Query(default=0, ge=0, le=4096)  # in case of 0 we use default model's ctx_size
     filter_loss_threshold: Optional[float] = Query(default=3.0, ge=1.0, le=10.0)
     # gpus: Optional[List[int]] = Query(default=[0], ge=0, le=8)
     gpus: List[int] = Field(..., example=[0], ge=0, le=8)
