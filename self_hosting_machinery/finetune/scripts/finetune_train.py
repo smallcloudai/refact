@@ -141,7 +141,10 @@ def gpu_filter_and_build_config(
         model_name: str,
         model_info: Dict[str, Any],
         model_config: Dict[str, Any],
+        model_ctx_size: int,
         **kwargs) -> Dict[str, Any]:
+    if model_ctx_size > 0:
+        model_info["T"] = model_ctx_size
     finetune_cfg = {
         **base_config(model_name=model_name, model_info=model_info),
         **kwargs,
@@ -417,8 +420,8 @@ def parse_args():
     parser.add_argument('--lora_r', type=int, default=finetune_train_defaults['lora_r'])
     parser.add_argument('--lora_alpha', type=int, default=finetune_train_defaults['lora_alpha'])
     parser.add_argument('--lora_dropout', type=float, default=finetune_train_defaults['lora_dropout'])
-    parser.add_argument('--model_ctx_size', type=int, default=1024)  # TODO: we don't really use it now
-    parser.add_argument('--filter_loss_threshold', type=float, default=0)  # TODO: we don't really use it now
+    parser.add_argument('--model_ctx_size', type=int, default=0)
+    parser.add_argument('--filter_loss_threshold', type=float, default=0)
     parser.add_argument("--local-rank", type=int, default=0)  # is used by torch.distributed, ignore it
 
     return parser.parse_args()
