@@ -836,6 +836,8 @@ impl AstIndex {
         self.merge_usages_to_declarations(&symbols);
         symbols
     }
+
+    // TODO: make a status of indexing
 }
 
 
