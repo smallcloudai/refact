@@ -150,14 +150,29 @@ impl AstIndex {
             .remove(&doc.uri)
             .unwrap_or_default()
             .iter() {
-            let symbol_ref = symbol.read().expect("the data might be broken");
-            let guid = symbol_ref.guid();
-            self.symbols_by_name.remove(symbol_ref.name());
-            self.symbols_by_guid.remove(guid);
-            if self.type_guid_to_dependand_guids.contains_key(guid) {
-                self.type_guid_to_dependand_guids.remove(symbol_ref.guid());
+            let (name, guid) = {
+                let symbol_ref = symbol.read().expect("the data might be broken");
+                (symbol_ref.name().to_string(), symbol_ref.guid().to_string())
+            };
+            self.symbols_by_name
+                .entry(name)
+                .and_modify(|v| {
+                    let indices_to_remove = v
+                        .iter()
+                        .enumerate()
+                        .filter(|(idx, s)| s.read().expect("the data might be broken").guid() == guid)
+                        .map(|(idx, s)| idx)
+                        .collect::<Vec<_>>();
+                    indices_to_remove.iter().for_each(|i| { v.remove(*i); });
+                });
+
+            self.symbols_by_guid.remove(&guid);
+            if self.type_guid_to_dependand_guids.contains_key(&guid) {
+                // TODO: we should do the removing more precisely,
+                // some leftovers still are in the values, but it doesn't break the overall thing for now
+                self.type_guid_to_dependand_guids.remove(&guid);
             }
-            removed_guids.insert(guid.to_string());
+            removed_guids.insert(guid);
         }
         for symbol in self.symbols_by_guid.values_mut() {
             symbol.write().expect("the data might be broken").remove_linked_guids(&removed_guids);
