@@ -697,6 +697,7 @@ impl AstIndex {
     }
 
     fn merge_usages_to_declarations(&self, symbols: &Vec<AstSymbolInstanceArc>) {
+        // TODO: do not make search for similar names within a similar parent (PERF OPTIMIZATION)
         fn get_caller_depth(
             symbol: &AstSymbolInstanceArc,
             guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
