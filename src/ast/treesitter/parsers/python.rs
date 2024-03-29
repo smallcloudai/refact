@@ -239,7 +239,7 @@ impl PythonParser {
     }
 
 
-    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
 
@@ -249,6 +249,7 @@ impl PythonParser {
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
+        decl.ast_fields.is_error = is_error;
 
         if let Some(parent_node) = parent.parent() {
             if parent_node.kind() == "decorated_definition" {
@@ -268,7 +269,7 @@ impl PythonParser {
             }
         }
         if let Some(body) = parent.child_by_field_name("body") {
-            symbols.extend(self.parse_block(&body, code, path, &decl.ast_fields.guid));
+            symbols.extend(self.parse_block(&body, code, path, &decl.ast_fields.guid, is_error));
         }
 
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
@@ -276,7 +277,7 @@ impl PythonParser {
         symbols
     }
 
-    fn parse_assignment(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    fn parse_assignment(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut is_class_field = false;
         {
             let mut parent_mb = parent.parent();
@@ -299,10 +300,10 @@ impl PythonParser {
 
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         if let Some(right) = parent.child_by_field_name("right") {
-            symbols.extend(self.parse_usages(&right, code, path, parent_guid));
+            symbols.extend(self.parse_usages(&right, code, path, parent_guid, is_error));
         }
         if let Some(body) = parent.child_by_field_name("body") {
-            symbols.extend(self.parse_block(&body, code, path, parent_guid));
+            symbols.extend(self.parse_block(&body, code, path, parent_guid, is_error));
         }
 
         let mut candidates: VecDeque<(Option<Node>, Option<Node>, Option<Node>)> = VecDeque::from(vec![
@@ -328,6 +329,7 @@ impl PythonParser {
                         fields.parent_guid = Some(parent_guid.clone());
                         fields.guid = get_guid();
                         fields.name = code.slice(left.byte_range()).to_string();
+                        fields.is_error = is_error;
 
                         if is_class_field {
                             let mut decl = ClassFieldDeclaration::default();
@@ -355,7 +357,7 @@ impl PythonParser {
                         }
                     }
                     "attribute" => {
-                        let usages = self.parse_usages(&left, code, path, parent_guid);
+                        let usages = self.parse_usages(&left, code, path, parent_guid, is_error);
                         symbols.extend(usages);
                     }
                     "list_pattern" | "tuple_pattern" | "pattern_list" => {
@@ -391,7 +393,7 @@ impl PythonParser {
         symbols
     }
 
-    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
         let text = code.slice(parent.byte_range()).to_string();
@@ -405,12 +407,12 @@ impl PythonParser {
             "try_statement" | "except_clause" | "if_statement" | "elif_clause" | "else_clause" => {
                 for i in 0..parent.child_count() {
                     let child = parent.child(i).unwrap();
-                    symbols.extend(self.parse_usages(&child, code, path, parent_guid));
+                    symbols.extend(self.parse_usages(&child, code, path, parent_guid, is_error));
                 }
             }
             "with_item" => {
                 let value = parent.child_by_field_name("value").unwrap();
-                symbols.extend(self.parse_usages(&value, code, path, parent_guid));
+                symbols.extend(self.parse_usages(&value, code, path, parent_guid, is_error));
             }
             "as_pattern" => {
                 let value = parent.child(0).unwrap();
@@ -433,6 +435,7 @@ impl PythonParser {
                                 decl.ast_fields.guid = get_guid();
                                 decl.ast_fields.name = text.to_string();
                                 decl.type_.inference_info = Some(code.slice(value.byte_range()).to_string());
+                                decl.ast_fields.is_error = is_error;
                                 symbols.push(Arc::new(RwLock::new(decl)));
                             }
                             "list" | "set" | "tuple" => {
@@ -441,7 +444,7 @@ impl PythonParser {
                                 }
                             }
                             &_ => {
-                                symbols.extend(self.parse_usages(&child, code, path, parent_guid));
+                                symbols.extend(self.parse_usages(&child, code, path, parent_guid, is_error));
                             }
                         }
                     }
@@ -449,19 +452,19 @@ impl PythonParser {
             }
             "not_operator" | "unary_operator" => {
                 let argument = parent.child_by_field_name("argument").unwrap();
-                symbols.extend(self.parse_usages(&argument, code, path, parent_guid));
+                symbols.extend(self.parse_usages(&argument, code, path, parent_guid, is_error));
             }
             "boolean_operator" | "binary_operator" | "for_in_clause" | "augmented_assignment" => {
                 let left = parent.child_by_field_name("left").unwrap();
-                symbols.extend(self.parse_usages(&left, code, path, parent_guid));
+                symbols.extend(self.parse_usages(&left, code, path, parent_guid, is_error));
                 let right = parent.child_by_field_name("right").unwrap();
-                symbols.extend(self.parse_usages(&right, code, path, parent_guid));
+                symbols.extend(self.parse_usages(&right, code, path, parent_guid, is_error));
             }
             "pair" => {
                 let key = parent.child_by_field_name("key").unwrap();
-                symbols.extend(self.parse_usages(&key, code, path, parent_guid));
+                symbols.extend(self.parse_usages(&key, code, path, parent_guid, is_error));
                 let value = parent.child_by_field_name("value").unwrap();
-                symbols.extend(self.parse_usages(&value, code, path, parent_guid));
+                symbols.extend(self.parse_usages(&value, code, path, parent_guid, is_error));
             }
             "identifier" => {
                 let mut usage = VariableUsage::default();
@@ -472,6 +475,7 @@ impl PythonParser {
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
+                usage.ast_fields.is_error = is_error;
                 symbols.push(Arc::new(RwLock::new(usage)));
             }
             "attribute" => {
@@ -485,9 +489,10 @@ impl PythonParser {
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
+                usage.ast_fields.is_error = is_error;
 
                 let object_node = parent.child_by_field_name("object").unwrap();
-                let usages = self.parse_usages(&object_node, code, path, parent_guid);
+                let usages = self.parse_usages(&object_node, code, path, parent_guid, is_error);
                 if let Some(last) = usages.last() {
                     usage.ast_fields.caller_guid = last.read().expect("the data might be broken").fields().parent_guid.clone();
                 }
@@ -495,46 +500,52 @@ impl PythonParser {
                 symbols.push(Arc::new(RwLock::new(usage)));
             }
             "assignment" | "for_statement" => {
-                symbols.extend(self.parse_assignment(&parent, code, path, parent_guid));
+                symbols.extend(self.parse_assignment(&parent, code, path, parent_guid, is_error));
             }
             "while_statement" => {
                 let condition = parent.child_by_field_name("condition").unwrap();
-                symbols.extend(self.parse_usages(&condition, code, path, parent_guid));
+                symbols.extend(self.parse_usages(&condition, code, path, parent_guid, is_error));
                 let body = parent.child_by_field_name("body").unwrap();
-                symbols.extend(self.parse_block(&body, code, path, parent_guid));
+                symbols.extend(self.parse_block(&body, code, path, parent_guid, is_error));
                 if let Some(alternative) = parent.child_by_field_name("alternative") {
                     if let Some(body) = alternative.child_by_field_name("body") {
-                        symbols.extend(self.parse_block(&body, code, path, parent_guid));
+                        symbols.extend(self.parse_block(&body, code, path, parent_guid, is_error));
                     }
                 }
             }
             "block" => {
-                symbols.extend(self.parse_block(&parent, code, path, parent_guid));
+                symbols.extend(self.parse_block(&parent, code, path, parent_guid, is_error));
             }
             "match_statement" => {
                 let subject = parent.child_by_field_name("subject").unwrap();
-                symbols.extend(self.parse_usages(&subject, code, path, parent_guid));
+                symbols.extend(self.parse_usages(&subject, code, path, parent_guid, is_error));
                 let body = parent.child_by_field_name("body").unwrap();
-                symbols.extend(self.parse_block(&body, code, path, parent_guid));
+                symbols.extend(self.parse_block(&body, code, path, parent_guid, is_error));
             }
             "call" => {
-                symbols.extend(self.parse_call_expression(&parent, code, path, parent_guid));
+                symbols.extend(self.parse_call_expression(&parent, code, path, parent_guid, is_error));
             }
             "lambda" => {
-                symbols.extend(self.parse_function_declaration(&parent, code, path, parent_guid));
+                symbols.extend(self.parse_function_declaration(&parent, code, path, parent_guid, is_error));
+            }
+            "ERROR" => {
+                for i in 0..parent.child_count() {
+                    let child = parent.child(i).unwrap();
+                    symbols.extend(self.parse_usages(&child, code, path, parent_guid, true));
+                }
             }
             _ => {}
         }
         symbols
     }
 
-    pub fn parse_expression_statement(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_expression_statement(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols = vec![];
         let kind = parent.kind();
         let text = code.slice(parent.byte_range()).to_string();
         match kind {
             &_ => {
-                let usages = self.parse_usages(&parent, code, path, parent_guid);
+                let usages = self.parse_usages(&parent, code, path, parent_guid, is_error);
                 symbols.extend(usages);
             }
         }
@@ -542,7 +553,7 @@ impl PythonParser {
         symbols
     }
 
-    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionDeclaration::default();
         decl.ast_fields.language = LanguageId::Python;
@@ -550,6 +561,7 @@ impl PythonParser {
         decl.ast_fields.file_url = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
+        decl.ast_fields.is_error = is_error;
         if let Some(parent_node) = parent.parent() {
             if parent_node.kind() == "decorated_definition" {
                 decl.ast_fields.full_range = parent_node.range();
@@ -594,7 +606,7 @@ impl PythonParser {
             decl.ast_fields.declaration_range = decl.ast_fields.full_range.clone();
         }
         if let Some(body_node) = parent.child_by_field_name("body") {
-            symbols.extend(self.parse_block(&body_node, code, path, &decl.ast_fields.guid));
+            symbols.extend(self.parse_block(&body_node, code, path, &decl.ast_fields.guid, is_error));
         }
 
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
@@ -602,7 +614,7 @@ impl PythonParser {
         symbols
     }
 
-    pub fn parse_block(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_block(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         for i in 0..parent.child_count() {
             let child = parent.child(i).unwrap();
@@ -616,31 +628,31 @@ impl PythonParser {
                     // TODO
                 }
                 "class_definition" => {
-                    symbols.extend(self.parse_struct_declaration(&child, code, path, parent_guid));
+                    symbols.extend(self.parse_struct_declaration(&child, code, path, parent_guid, is_error));
                 }
                 "expression_statement" => {
                     if let Some(child) = child.child(0) {
-                        symbols.extend(self.parse_expression_statement(&child, code, path, parent_guid));
+                        symbols.extend(self.parse_expression_statement(&child, code, path, parent_guid, is_error));
                     }
                 }
                 "function_definition" => {
-                    symbols.extend(self.parse_function_declaration(&child, code, path, parent_guid));
+                    symbols.extend(self.parse_function_declaration(&child, code, path, parent_guid, is_error));
                 }
                 "decorated_definition" => {
                     if let Some(definition) = child.child_by_field_name("definition") {
                         match definition.kind() {
                             "class_definition" => {
-                                symbols.extend(self.parse_struct_declaration(&definition, code, path, parent_guid));
+                                symbols.extend(self.parse_struct_declaration(&definition, code, path, parent_guid, is_error));
                             }
                             "function_definition" => {
-                                symbols.extend(self.parse_function_declaration(&definition, code, path, parent_guid));
+                                symbols.extend(self.parse_function_declaration(&definition, code, path, parent_guid, is_error));
                             }
                             &_ => {}
                         }
                     }
                 }
                 _ => {
-                    symbols.extend(self.parse_usages(&child, code, path, parent_guid));
+                    symbols.extend(self.parse_usages(&child, code, path, parent_guid, is_error));
                 }
             }
         }
@@ -648,7 +660,7 @@ impl PythonParser {
         symbols
     }
 
-    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();
         decl.ast_fields.language = LanguageId::Python;
@@ -657,12 +669,14 @@ impl PythonParser {
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
+        decl.ast_fields.is_error = is_error;
+        
         let arguments_node = parent.child_by_field_name("arguments").unwrap();
         for i in 0..arguments_node.child_count() {
             let child = arguments_node.child(i).unwrap();
             let text = code.slice(child.byte_range());
             if syms.contains(&text) { continue; }
-            symbols.extend(self.parse_usages(&child, code, path, &decl.ast_fields.guid));
+            symbols.extend(self.parse_usages(&child, code, path, &decl.ast_fields.guid, is_error));
         }
 
         let function_node = parent.child_by_field_name("function").unwrap();
@@ -674,7 +688,7 @@ impl PythonParser {
             }
             "attribute" => {
                 let object = function_node.child_by_field_name("object").unwrap();
-                let usages = self.parse_usages(&object, code, path, parent_guid);
+                let usages = self.parse_usages(&object, code, path, parent_guid, is_error);
                 if let Some(last) = usages.last() {
                     decl.ast_fields.caller_guid = last.read().expect("the data might be broken").fields().parent_guid.clone();
                 }
@@ -683,7 +697,7 @@ impl PythonParser {
                 decl.ast_fields.name = code.slice(attribute.byte_range()).to_string();
             }
             _ => {
-                let usages = self.parse_usages(&function_node, code, path, parent_guid);
+                let usages = self.parse_usages(&function_node, code, path, parent_guid, is_error);
                 if let Some(last) = usages.last() {
                     decl.ast_fields.caller_guid = last.read().expect("the data might be broken").fields().parent_guid.clone();
                 }
@@ -701,7 +715,7 @@ impl NewLanguageParser for PythonParser {
     fn parse(&mut self, code: &str, path: &Url) -> Vec<AstSymbolInstanceArc> {
         let tree = self.parser.parse(code, None).unwrap();
         let parent_guid = get_guid();
-        let symbols = self.parse_block(&tree.root_node(), code, path, &parent_guid);
+        let symbols = self.parse_block(&tree.root_node(), code, path, &parent_guid, false);
         symbols
     }
 }
