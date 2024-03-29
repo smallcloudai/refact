@@ -58,12 +58,11 @@ lazy_static! {
 pub(crate) struct PythonParser {
     pub parser: Parser,
 }
-
 pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
     let kind = parent.kind();
     let text = code.slice(parent.byte_range()).to_string();
     match kind {
-        "type" => {
+        "type" | "splat_type" => {
             let child = parent.child(0).unwrap();
             return parse_type(&child, code);
         }
@@ -87,73 +86,53 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
                 nested_types: vec![],
             });
         }
-        // "scoped_type_identifier" => {
-        //     let namespace = {
-        //         if let Some(namespace) = parent.child_by_field_name("path") {
-        //             code.slice(namespace.byte_range()).to_string()
-        //         } else {
-        //             "".to_string()
-        //         }
-        //     };
-        //     let name = parent.child_by_field_name("name").unwrap();
-        //     let name = code.slice(name.byte_range()).to_string();
-        //     return Some(TypeDef {
-        //         name: Some(name),
-        //         inference_info: None,
-        //         is_pod: false,
-        //         namespace,
-        //         guid: None,
-        //         nested_types: vec![],
-        //     });
-        // }
-        // "tuple_type" => {
-        //     let mut nested_types = vec![];
-        //     for i in 0..parent.child_count() - 1 {
-        //         let child = parent.child(i).unwrap();
-        //         if let Some(t) = RustParser::parse_type(&child, code) {
-        //             nested_types.push(t);
-        //         }
-        //     }
-        //     return Some(TypeDef {
-        //         name: Some("tuple".to_string()),
-        //         inference_info: None,
-        //         is_pod: false,
-        //         namespace: "".to_string(),
-        //         guid: None,
-        //         nested_types,
-        //     });
-        // }
-        // "dynamic_type" => {
-        //     let trait_node = parent.child_by_field_name("trait").unwrap();
-        //     return RustParser::parse_type(&trait_node, code);
-        // }
-        // "array_type" => {
-        //     let element = parent.child_by_field_name("element").unwrap();
-        //     return RustParser::parse_type(&element, code);
-        // }
-        // "generic_type" => {
-        //     let name = parent.child_by_field_name("type").unwrap();
-        //     let name = code.slice(name.byte_range()).to_string();
-        //     let type_arguments = parent.child_by_field_name("type_arguments").unwrap();
-        //     let mut nested_types = vec![];
-        //     for i in (0..type_arguments.child_count() - 1) {
-        //         let child = type_arguments.child(i).unwrap();
-        //         if let Some(t) = RustParser::parse_type(&child, code) {
-        //             nested_types.push(t);
-        //         }
-        //     }
-        //     return Some(TypeDef {
-        //         name: Some(name),
-        //         inference_info: None,
-        //         is_pod: false,
-        //         namespace: "".to_string(),
-        //         guid: None,
-        //         nested_types,
-        //     });
-        // }
-        // "reference_type" => {
-        //     return RustParser::parse_type(&parent.child_by_field_name("type").unwrap(), code);
-        // }
+        "generic_type" => {
+            let name = parent.child(0).unwrap();
+            let name = code.slice(name.byte_range()).to_string();
+            let type_arguments = parent.child(1).unwrap();
+            let mut nested_types = vec![];
+            for i in 0..type_arguments.child_count() {
+                let child = type_arguments.child(i).unwrap();
+                if let Some(t) = parse_type(&child, code) {
+                    nested_types.push(t);
+                }
+            }
+            return Some(TypeDef {
+                name: Some(name),
+                inference_info: None,
+                is_pod: false,
+                namespace: "".to_string(),
+                guid: None,
+                nested_types,
+            });
+        }
+        "attribute" => {
+            let attribute = parent.child_by_field_name("attribute").unwrap();
+            let name = code.slice(attribute.byte_range()).to_string();
+            let object = parent.child_by_field_name("object").unwrap();
+            let nested_types = {
+                if let Some(dtype) = parse_type(&object, code) {
+                    vec![dtype]
+                } else {
+                    vec![]
+                }
+            };
+            return Some(TypeDef {
+                name: Some(name),
+                inference_info: None,
+                is_pod: false,
+                namespace: "".to_string(),
+                guid: None,
+                nested_types,
+            });
+            
+        }
+        "call" => {
+            let function = parent.child_by_field_name("function").unwrap();
+            let mut dtype = parse_type(&function, code).unwrap_or(TypeDef::default());
+            dtype.inference_info = Some(code.slice(parent.byte_range()).to_string());
+            return Some(dtype);
+        }
         &_ => {}
     }
     None
@@ -226,7 +205,7 @@ fn parse_function_arg(parent: &Node, code: &str) -> Vec<FunctionArg> {
     args
 }
 
-const syms: &str = "{}(),.;_";
+const syms: &str = "{}(),.;_|&";
 const self_str: &str = "self";
 
 impl PythonParser {
