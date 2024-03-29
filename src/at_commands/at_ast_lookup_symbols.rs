@@ -18,12 +18,31 @@ use crate::files_in_workspace::DocumentInfo;
 pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
     // info!("results2message {:?}", result);
     let mut symbols = vec![];
-    for res in &result.search_results {
+    for res in &result.declaration_symbols {
         let file_path: String = res.symbol_declaration.get_path_str();
-        let content = res.symbol_declaration.get_content().await.unwrap_or("".to_string());
         symbols.push(ContextFile {
             file_name: file_path,
-            file_content: content,
+            file_content: res.content.clone(),
+            line1: res.symbol_declaration.full_range.start_point.row + 1,
+            line2: res.symbol_declaration.full_range.end_point.row + 1,
+            usefulness: res.sim_to_query,
+        });
+    }
+    for res in &result.declaration_usage_symbols {
+        let file_path: String = res.symbol_declaration.get_path_str();
+        symbols.push(ContextFile {
+            file_name: file_path,
+            file_content: res.content.clone(),
+            line1: res.symbol_declaration.full_range.start_point.row + 1,
+            line2: res.symbol_declaration.full_range.end_point.row + 1,
+            usefulness: res.sim_to_query,
+        });
+    }
+    for res in &result.matched_by_name_symbols {
+        let file_path: String = res.symbol_declaration.get_path_str();
+        symbols.push(ContextFile {
+            file_name: file_path,
+            file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
             usefulness: res.sim_to_query,

@@ -423,13 +423,14 @@ impl AstIndex {
     ) -> (Vec<SymbolInformation>, Vec<SymbolInformation>, Vec<SymbolInformation>) {
         let file_symbols = self.parse_single_file(doc, code);
         let language = get_language_id_by_filename(&doc.uri.to_file_path().unwrap_or_default());
-        let cursor_symbols = file_symbols
+        let unfiltered_cursor_symbols = file_symbols
             .iter()
             .unique_by(|s| s.read().expect("the data might be broken").guid().to_string())
-            .filter(|s| {
-                let s_ref = s.read().expect("the data might be broken");
-                *s_ref.language() == language.unwrap_or(*s_ref.language())
-            })
+            .sorted_by_key(|a| a.read().expect("the data might be broken").distance_to_cursor(&cursor))
+            .collect::<Vec<_>>();
+        let cursor_symbols = unfiltered_cursor_symbols
+            .iter()
+            .cloned()
             .filter_map(|s| {
                 let s_ref = s.read().expect("the data might be broken");
                 if s_ref.is_declaration() {
@@ -442,7 +443,6 @@ impl AstIndex {
                 }
             })
             .cloned()
-            .sorted_by_key(|a| a.read().expect("the data might be broken").distance_to_cursor(&cursor))
             .collect::<Vec<_>>();
         let declarations = cursor_symbols
             .iter()
@@ -458,6 +458,10 @@ impl AstIndex {
                     .collect::<Vec<_>>()
             })
             .flatten()
+            .filter(|s| {
+                let s_ref = s.read().expect("the data might be broken");
+                *s_ref.language() == language.unwrap_or(*s_ref.language())
+            })
             .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
             .unique_by(|s| s.guid.clone())
             .collect::<Vec<_>>();
@@ -483,9 +487,8 @@ impl AstIndex {
             })
             .flatten()
             .collect::<Vec<_>>();
-
         (
-            cursor_symbols
+            unfiltered_cursor_symbols
                 .iter()
                 .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
                 .collect(),

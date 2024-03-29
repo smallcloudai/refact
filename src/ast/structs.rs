@@ -24,7 +24,9 @@ pub struct AstCursorSearchResult {
     #[serde(with = "PointDef")]
     pub cursor: Point,
     pub cursor_symbols: Vec<SymbolsSearchResultStruct>,
-    pub search_results: Vec<SymbolsSearchResultStruct>,
+    pub declaration_symbols: Vec<SymbolsSearchResultStruct>,
+    pub declaration_usage_symbols: Vec<SymbolsSearchResultStruct>,
+    pub matched_by_name_symbols: Vec<SymbolsSearchResultStruct>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

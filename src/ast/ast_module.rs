@@ -14,10 +14,11 @@ use url::Url;
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::AstIndexService;
+use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, SymbolInformation};
 use crate::ast::treesitter::parsers::get_parser_by_filename;
-use crate::ast::treesitter::structs::SymbolInfo;
+use crate::ast::treesitter::structs::{SymbolInfo, SymbolType};
 use crate::files_in_jsonl::files_in_jsonl;
 use crate::files_in_workspace::DocumentInfo;
 use crate::global_context::GlobalContext;
@@ -210,13 +211,34 @@ impl AstModule {
             top_n_near_cursor,
             top_n_usage_for_each_decl
         );
-        let all_symbols = declarations.iter().cloned().chain(usages.iter().cloned()).collect::<Vec<_>>();
-        for r in all_symbols.iter() {
+        for r in declarations.iter() {
             let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
             info!("found {last_30_chars}");
         }
+        for r in usages.iter() {
+            let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
+            info!("found {last_30_chars}");
+        }
+        let language = get_language_id_by_filename(&doc.uri.to_file_path().unwrap_or_default());
+        let matched_by_name_symbols = cursor_usages
+            .iter()
+            .take(top_n_near_cursor)
+            .map(|s| {
+                ast_index_locked
+                    .search_by_name(&s.name, RequestSymbolType::Declaration, Some(doc.clone()), language.clone())
+                    .unwrap_or_else(|_| vec![])
+            })
+            .flatten()
+            .filter(|s| {
+                s.symbol_declaration.symbol_type == SymbolType::StructDeclaration
+                    || s.symbol_declaration.symbol_type == SymbolType::TypeAlias
+                    || s.symbol_declaration.symbol_type == SymbolType::FunctionDeclaration
+            })
+            .collect::<Vec<_>>();
 
-        info!("ast retrieve_cursor_symbols_by_declarations time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), all_symbols.len());
+        info!("ast retrieve_cursor_symbols_by_declarations time {:.3}s, \
+            found {} declarations, {} declaration usages, {} by name",
+            t0.elapsed().as_secs_f32(), declarations.len(), usages.len(), matched_by_name_symbols.len());
         Ok(
             AstCursorSearchResult {
                 query_text: "".to_string(),
@@ -230,7 +252,7 @@ impl AstModule {
                         sim_to_query: -1.0,
                     })
                     .collect::<Vec<SymbolsSearchResultStruct>>(),
-                search_results: all_symbols
+                declaration_symbols: declarations
                     .iter()
                     .map(|x| SymbolsSearchResultStruct {
                         symbol_declaration: x.clone(),
@@ -238,6 +260,15 @@ impl AstModule {
                         sim_to_query: -1.0,
                     })
                     .collect::<Vec<SymbolsSearchResultStruct>>(),
+                declaration_usage_symbols: usages
+                    .iter()
+                    .map(|x| SymbolsSearchResultStruct {
+                        symbol_declaration: x.clone(),
+                        content: x.get_content_blocked().unwrap_or_default(),
+                        sim_to_query: -1.0,
+                    })
+                    .collect::<Vec<SymbolsSearchResultStruct>>(),
+                matched_by_name_symbols: matched_by_name_symbols
             }
         )
     }
