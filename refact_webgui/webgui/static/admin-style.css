@@ -18,3 +18,7 @@ html {
   padding: 40px;
   border-radius: 0.25rem;
 }
+
+#gotoLogin {
+  visibility: hidden;
+}
