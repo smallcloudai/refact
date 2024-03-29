@@ -147,6 +147,7 @@ pub struct AstSymbolFields {
     // extra fields for usage structs to prevent multiple downcast operations
     pub linked_decl_guid: Option<String>,
     pub caller_guid: Option<String>,
+    pub is_error: bool
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -231,6 +232,7 @@ impl Default for AstSymbolFields {
             },
             linked_decl_guid: None,
             caller_guid: None,
+            is_error: false
         }
     }
 }
