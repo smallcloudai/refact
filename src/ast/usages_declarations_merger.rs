@@ -63,9 +63,9 @@ pub fn find_decl_by_caller_guid(
     caller_guid: &str,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
 ) -> Option<String> {
-    let (symbol_type, name) = {
+    let (symbol_type, name, is_error_node) = {
         let s = symbol.read().expect("the data might be broken");
-        (s.symbol_type().to_owned(), s.name().to_owned())
+        (s.symbol_type().to_owned(), s.name().to_owned(), s.is_error())
     };
     let search_symbol_type = match symbol_type {
         SymbolType::FunctionCall => { SymbolType::FunctionDeclaration }
@@ -118,7 +118,8 @@ pub fn find_decl_by_caller_guid(
         .iter()
         .filter(|(_, symbol)| {
             let s_ref = symbol.read().expect("the data might be broken");
-            s_ref.symbol_type() == search_symbol_type
+            let valid_type = is_error_node || (s_ref.symbol_type() == search_symbol_type);
+            valid_type
                 && s_ref.parent_guid().clone().unwrap_or_default() == decl_symbol_parent.read().expect("the data might be broken").guid()
                 && s_ref.name() == name
         })
@@ -133,6 +134,7 @@ fn find_decl_by_name_for_single_path(
     name: &str,
     parent_guid: &str,
     search_symbol_type: &SymbolType,
+    is_error_node: bool,
     file_url: &Url,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
     name_by_symbols: &HashMap<String, Vec<AstSymbolInstanceArc>>,
@@ -147,7 +149,8 @@ fn find_decl_by_name_for_single_path(
             .iter()
             .filter(|s| {
                 let s_ref = s.read().expect("the data might be broken");
-                s_ref.symbol_type() == *search_symbol_type
+                let valid_type = is_error_node || (s_ref.symbol_type() == *search_symbol_type);
+                valid_type
                     && s_ref.parent_guid().clone().unwrap_or("".to_string()) == current_parent_guid
                     && s_ref.file_url() == file_url
             })
@@ -181,12 +184,13 @@ pub fn find_decl_by_name(
     name_by_symbols: &HashMap<String, Vec<AstSymbolInstanceArc>>,
     top_n_files: usize,
 ) -> Option<String> {
-    let (file_path, parent_guid, name, is_function) = match symbol.read() {
+    let (file_path, parent_guid, name, is_function, is_error_node) = match symbol.read() {
         Ok(s) => {
             (s.file_url().to_owned(),
              s.parent_guid().to_owned().unwrap_or_default(),
              s.name().to_owned(),
-             s.symbol_type() == SymbolType::FunctionCall)
+             s.symbol_type() == SymbolType::FunctionCall,
+             s.is_error())
         }
         Err(_) => { return None; }
     };
@@ -218,6 +222,7 @@ pub fn find_decl_by_name(
             &name,
             &current_parent_guid,
             &search_symbol_type,
+            is_error_node,
             &url,
             guid_by_symbols,
             name_by_symbols,

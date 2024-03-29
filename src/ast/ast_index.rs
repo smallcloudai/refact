@@ -440,30 +440,26 @@ impl AstIndex {
                         .map(|guid| self.symbols_by_guid.get(&guid))
                         .flatten()
                 }
-
             })
             .cloned()
             .sorted_by_key(|a| a.read().expect("the data might be broken").distance_to_cursor(&cursor))
-            .take(top_n_near_cursor)
             .collect::<Vec<_>>();
         let declarations = cursor_symbols
             .iter()
+            .filter(|s| !s.read().expect("the data might be broken").types().is_empty())
+            .take(top_n_near_cursor)
             .map(|s| {
-                let mut symbols = vec![s.clone()];
-                symbols.extend(
-                    s.read().expect("the data might be broken")
-                        .types()
-                        .iter()
-                        .filter_map(|t| t.guid.clone())
-                        .filter_map(|g| self.symbols_by_guid.get(&g))
-                        .cloned()
-                );
-                symbols
+                s.read().expect("the data might be broken")
+                    .types()
+                    .iter()
+                    .filter_map(|t| t.guid.clone())
+                    .filter_map(|g| self.symbols_by_guid.get(&g))
+                    .cloned()
+                    .collect::<Vec<_>>()
             })
             .flatten()
             .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
             .unique_by(|s| s.guid.clone())
-            .filter(|s| doc.uri != s.file_url)
             .collect::<Vec<_>>();
         let usages = declarations
             .iter()
@@ -493,8 +489,16 @@ impl AstIndex {
                 .iter()
                 .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
                 .collect(),
-            declarations,
+            declarations
+                .iter()
+                .filter(|s| doc.uri != s.file_url)
+                .cloned()
+                .collect::<Vec<_>>(),
             usages
+                .iter()
+                .filter(|s| doc.uri != s.file_url)
+                .cloned()
+                .collect::<Vec<_>>(),
         )
     }
 
@@ -644,8 +648,9 @@ impl AstIndex {
 
             let mut new_guids = vec![];
             for (idx, t) in type_names.iter().enumerate() {
+                // TODO: make a type inference by `inference_info`
                 if t.is_pod || t.guid.is_some() || t.name.is_none() {
-                    new_guids.push(None);
+                    new_guids.push(t.guid.clone());
                     continue;
                 }
 
@@ -654,10 +659,7 @@ impl AstIndex {
                     Some(symbols) => {
                         symbols
                             .iter()
-                            .filter(|s| {
-                                let symbol_type = s.read().expect("the data might be broken").symbol_type();
-                                symbol_type == SymbolType::StructDeclaration || symbol_type == SymbolType::TypeAlias
-                            })
+                            .filter(|s| s.read().expect("the data might be broken").is_type())
                             .sorted_by(|a, b| {
                                 let path_a = a.read().expect("the data might be broken")
                                     .file_url().to_file_path().unwrap_or_default();
@@ -685,6 +687,7 @@ impl AstIndex {
                     }
                 }
             }
+            assert_eq!(new_guids.len(), type_names.len());
             symbol
                 .write().expect("the data might be broken")
                 .set_guids_to_types(&new_guids);

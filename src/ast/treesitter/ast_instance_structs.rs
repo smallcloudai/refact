@@ -335,6 +335,10 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         self.fields_mut().linked_decl_guid = linked_decl_guid;
     }
 
+    fn is_error(&self) -> bool {
+        self.fields().is_error
+    }
+
     fn remove_linked_guids(&mut self, guids: &HashSet<String>) {
         let mut new_guids = vec![];
         for t in self
