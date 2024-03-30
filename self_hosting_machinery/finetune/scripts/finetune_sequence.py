@@ -27,6 +27,9 @@ def main(finetune_train_script: str):
     except subprocess.CalledProcessError as e:
         print("finetune_sequence: %s" % e)
         sys.exit(1)
+    finally:
+        for child in psutil.Process().children(recursive=False):
+            os.kill(child.pid, signal.SIGKILL)
 
 
 if __name__ == '__main__':
