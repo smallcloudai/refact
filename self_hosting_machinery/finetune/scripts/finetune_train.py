@@ -407,21 +407,19 @@ def parse_args():
     parser.add_argument('--pname', type=str, required=True)
     parser.add_argument('--run_id', type=str, required=True)
     parser.add_argument('--model_name', type=str, required=True)
-    # @click.option('--limit_time_seconds', default=finetune_train_defaults['limit_time_seconds'])
-    parser.add_argument('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])  # option
-    parser.add_argument('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])  # option
+    parser.add_argument('--trainable_embeddings', default=finetune_train_defaults['trainable_embeddings'])
+    parser.add_argument('--low_gpu_mem_mode', default=finetune_train_defaults['low_gpu_mem_mode'])
     parser.add_argument('--lr', type=float, default=finetune_train_defaults['lr'])
     parser.add_argument('--batch_size', type=int, default=finetune_train_defaults['batch_size'])
     parser.add_argument('--warmup_num_steps', type=int, default=finetune_train_defaults['warmup_num_steps'])
     parser.add_argument('--weight_decay', type=float, default=finetune_train_defaults['weight_decay'])
-    # @click.option('--use_heuristics', default=finetune_train_defaults['use_heuristics'])
     parser.add_argument('--train_steps', type=int, default=finetune_train_defaults['train_steps'])
     parser.add_argument('--lr_decay_steps', type=int, default=finetune_train_defaults['lr_decay_steps'])
-    parser.add_argument('--lora_r', type=int, default=finetune_train_defaults['lora_r'])
-    parser.add_argument('--lora_alpha', type=int, default=finetune_train_defaults['lora_alpha'])
+    parser.add_argument('--lora_r', type=int, default=finetune_train_defaults['lora_r'], choices=[4, 8, 16, 32, 64])
+    parser.add_argument('--lora_alpha', type=int, default=finetune_train_defaults['lora_alpha'], choices=[4, 8, 16, 32, 64, 128])
     parser.add_argument('--lora_dropout', type=float, default=finetune_train_defaults['lora_dropout'])
-    parser.add_argument('--model_ctx_size', type=int, default=0)
-    parser.add_argument('--filter_loss_threshold', type=float, default=0)
+    parser.add_argument('--model_ctx_size', type=int, default=finetune_train_defaults['model_ctx_size'])
+    parser.add_argument('--filter_loss_threshold', type=float, default=finetune_train_defaults['filter_loss_threshold'])
     parser.add_argument("--local-rank", type=int, default=0)  # is used by torch.distributed, ignore it
 
     return parser.parse_args()

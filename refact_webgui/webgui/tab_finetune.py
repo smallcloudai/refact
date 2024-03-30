@@ -56,22 +56,19 @@ class TabFinetuneTrainingSetup(BaseModel):
     run_id: str = Query(default=Required, regex=RUN_ID_REGEX)
     pname: str = Query(default=Required, regex=r'^[A-Za-z0-9_\-\.]{1,30}$')   # sync regexp with tab_upload.ProjectNameOnly
     model_name: Optional[str] = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
-    # limit_time_seconds: Optional[int] = Query(default=600, ge=600, le=3600*48)
     trainable_embeddings: Optional[bool] = Query(default=False)
     low_gpu_mem_mode: Optional[bool] = Query(default=True)
     lr: Optional[float] = Query(default=30e-5, ge=1e-5, le=300e-5)
     batch_size: Optional[int] = Query(default=128, ge=4, le=1024)
     warmup_num_steps: Optional[int] = Query(default=10, ge=1, le=100)
     weight_decay: Optional[float] = Query(default=0.1, ge=0.0, le=1.0)
-    # use_heuristics: Optional[bool] = Query(default=True)
     train_steps: Optional[int] = Query(default=250, ge=0, le=5000)
     lr_decay_steps: Optional[int] = Query(default=250, ge=0, le=5000)
     lora_r: Optional[int] = Query(default=16, ge=4, le=64)
-    lora_alpha: Optional[float] = Query(default=32, ge=4, le=128)
+    lora_alpha: Optional[int] = Query(default=32, ge=4, le=128)
     lora_dropout: Optional[float] = Query(default=0.01, ge=0.0, le=0.5)
     model_ctx_size: Optional[int] = Query(default=0, ge=0, le=4096)  # in case of 0 we use default model's ctx_size
     filter_loss_threshold: Optional[float] = Query(default=3.0, ge=1.0, le=10.0)
-    # gpus: Optional[List[int]] = Query(default=[0], ge=0, le=8)
     gpus: List[int] = Field(..., example=[0], ge=0, le=8)
 
 
