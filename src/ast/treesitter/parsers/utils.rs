@@ -49,7 +49,9 @@ pub(crate) fn get_variable(captures: &[QueryCapture], query: &Query, code: &str)
     Some(var)
 }
 
-pub(crate) fn get_call(captures: &[QueryCapture], query: &Query, code: &str) -> Option<FunctionCallInfo> {
+// acutally used from parsers.rs but still indicated by rust as unused code
+#[allow(dead_code)]
+pub fn get_call(captures: &[QueryCapture], query: &Query, code: &str) -> Option<FunctionCallInfo> {
     let mut var = FunctionCallInfo {
         name: "".to_string(),
         range: Range {
@@ -80,7 +82,8 @@ pub(crate) fn get_call(captures: &[QueryCapture], query: &Query, code: &str) -> 
     Some(var)
 }
 
-pub(crate) fn get_static(captures: &[QueryCapture], query: &Query, code: &str) -> Option<StaticInfo> {
+#[allow(dead_code)]
+pub fn get_static(captures: &[QueryCapture], query: &Query, code: &str) -> Option<StaticInfo> {
     let text = code.slice(captures[0].node.byte_range());
     for capture in captures {
         let capture_name = &query.capture_names()[capture.index as usize];

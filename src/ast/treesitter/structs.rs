@@ -227,13 +227,13 @@ impl SymbolDeclarationStruct {
         Ok(text.slice(text.line_to_char(start_row)..text.line_to_char(end_row)).to_string())
     }
 
-    pub fn get_content_blocked(&self) -> io::Result<String> {
-        let content = std::fs::read_to_string(&self.definition_info.path)?;
-        let text = Rope::from_str(content.as_str());
-        Ok(text
-            .slice(text.line_to_char(self.definition_info.range.start_point.row)..
-                text.line_to_char(self.definition_info.range.end_point.row))
-            .to_string())
-    }
+    // pub fn get_content_blocked(&self) -> io::Result<String> {
+    //     let content = std::fs::read_to_string(&self.definition_info.path)?;
+    //     let text = Rope::from_str(content.as_str());
+    //     Ok(text
+    //         .slice(text.line_to_char(self.definition_info.range.start_point.row)..
+    //             text.line_to_char(self.definition_info.range.end_point.row))
+    //         .to_string())
+    // }
 }
 

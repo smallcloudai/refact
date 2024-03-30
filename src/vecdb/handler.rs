@@ -1,5 +1,4 @@
 use std::any::Any;
-use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
@@ -17,8 +16,6 @@ use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use futures_util::TryStreamExt;
 use itertools::Itertools;
 use lance::dataset::{WriteMode, WriteParams};
-use lance_index::vector::ivf::IvfBuildParams;
-use lance_linalg::distance::MetricType;
 use rusqlite::{OpenFlags, params, Result};
 use tempfile::{tempdir, TempDir};
 use tokio::fs;
@@ -27,7 +24,6 @@ use tokio_rusqlite::Connection;
 use tracing::error;
 use tracing::info;
 use vectordb::database::Database;
-use vectordb::index::vector::IvfPQIndexBuilder;
 use vectordb::table::Table;
 
 use crate::vecdb::structs::{Record, SplitResult};
@@ -279,20 +275,20 @@ impl VecDBHandler {
         }
     }
 
-    async fn remove_records_from_cache(&mut self, file_path: String) -> Result<(), String> {
-        match self.cache_database.lock().await.call(move |connection| {
-            match connection.execute(
-                "DELETE FROM data WHERE file_path = ?1",
-                params![file_path],
-            ) {
-                Ok(_) => Ok(()),
-                Err(err) => Err(err.into())
-            }
-        }).await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(format!("{:?}", err))
-        }
-    }
+    // async fn remove_records_from_cache(&mut self, file_path: String) -> Result<(), String> {
+    //     match self.cache_database.lock().await.call(move |connection| {
+    //         match connection.execute(
+    //             "DELETE FROM data WHERE file_path = ?1",
+    //             params![file_path],
+    //         ) {
+    //             Ok(_) => Ok(()),
+    //             Err(err) => Err(err.into())
+    //         }
+    //     }).await {
+    //         Ok(_) => Ok(()),
+    //         Err(err) => Err(format!("{:?}", err))
+    //     }
+    // }
 
     async fn update_cache_records(&mut self, records: Vec<Record>) -> Result<(), String> {
         let now = SystemTime::now().duration_since(std::time::UNIX_EPOCH)
@@ -391,9 +387,9 @@ impl VecDBHandler {
         self.indexed_file_paths = Arc::new(AMutex::new(res));
     }
 
-    pub async fn get_indexed_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {
-        return self.indexed_file_paths.clone();
-    }
+    // pub async fn get_indexed_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {
+    //     return self.indexed_file_paths.clone();
+    // }
 
     pub async fn try_add_from_cache(&mut self, data: Vec<SplitResult>) -> Vec<SplitResult> {
         if data.is_empty() {
@@ -523,49 +519,50 @@ impl VecDBHandler {
         }
     }
 
-    pub async fn remove(&mut self, file_path: &PathBuf) {
-        let file_path_str = match file_path.to_str() {
-            None => {
-                info!("File path is not a string");
-                return;
-            }
-            Some(res) => res
-        };
+    // pub async fn remove(&mut self, file_path: &PathBuf) {
+    //     let _file_path_str = match file_path.to_str() {
+    //         None => {
+    //             info!("File path is not a string");
+    //             return;
+    //         }
+    //         Some(res) => res
+    //     };
+    // }
 
-        match self.remove_records_from_cache(file_path_str.to_string()).await {
-            Ok(_) => {}
-            Err(err) => {
-                info!("Error while deleting from cache table: {:?}", err);
-            }
-        }
-        // valerii: In documentation I found no way to preprocess strings to prevent SQL injections
-        match self.data_table.delete(
-            format!("(file_path = \"{}\")", file_path_str).as_str()  // TODO: Prevent a possible sql injection here
-        ).await {
-            Ok(_) => {}
-            Err(err) => {
-                info!("Error while deleting from data table: {:?}", err);
-            }
-        }
-    }
+    //     match self.remove_records_from_cache(file_path_str.to_string()).await {
+    //         Ok(_) => {}
+    //         Err(err) => {
+    //             info!("Error while deleting from cache table: {:?}", err);
+    //         }
+    //     }
+    //     // valerii: In documentation I found no way to preprocess strings to prevent SQL injections
+    //     match self.data_table.delete(
+    //         format!("(file_path = \"{}\")", file_path_str).as_str()  // TODO: Prevent a possible sql injection here
+    //     ).await {
+    //         Ok(_) => {}
+    //         Err(err) => {
+    //             info!("Error while deleting from data table: {:?}", err);
+    //         }
+    //     }
+    // }
 
-    pub async fn create_index(&mut self) -> vectordb::error::Result<()> {
-        let size = self.size().await.unwrap_or(0);
-        if size == 0 {
-            return Ok(());
-        }
-        self.data_table.create_index(
-            IvfPQIndexBuilder::default()
-                .column("vector".to_owned())
-                .index_name("index".to_owned())
-                .metric_type(MetricType::Cosine)
-                .ivf_params(IvfBuildParams {
-                    num_partitions: min(size, 512),
-                    ..IvfBuildParams::default()
-                })
-                .replace(true)
-        ).await
-    }
+    // pub async fn create_index(&mut self) -> vectordb::error::Result<()> {
+    //     let size = self.size().await.unwrap_or(0);
+    //     if size == 0 {
+    //         return Ok(());
+    //     }
+    //     self.data_table.create_index(
+    //         IvfPQIndexBuilder::default()
+    //             .column("vector".to_owned())
+    //             .index_name("index".to_owned())
+    //             .metric_type(MetricType::Cosine)
+    //             .ivf_params(IvfBuildParams {
+    //                 num_partitions: min(size, 512),
+    //                 ..IvfBuildParams::default()
+    //             })
+    //             .replace(true)
+    //     ).await
+    // }
 
     pub fn contains(&self, hash: &str) -> bool {
         self.data_table_hashes.contains(hash)

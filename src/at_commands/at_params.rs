@@ -50,23 +50,6 @@ async fn get_file_paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>
         .collect()
 }
 
-async fn get_ast_file_paths(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<String> {
-     match *global_context.read().await.ast_module.lock().await {
-        Some(ref ast) => {
-            let index_file_paths = ast.get_file_paths().await.unwrap_or_default();
-            index_file_paths.iter().map(|f| f
-                .to_file_path()
-                .unwrap_or_default()
-                .to_path_buf()
-                .to_str()
-                .unwrap_or_default()
-                .to_string()
-            ).collect()
-        },
-        None => vec![]
-    }
-}
-
 fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
     if let Some(colon) = colon {
         value.push_str(":");

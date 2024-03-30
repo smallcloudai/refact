@@ -15,7 +15,7 @@ use crate::dashboard::structs::RHData;
 
 #[derive(Debug, Deserialize)]
 struct RHResponse {
-    retcode: String,
+    // retcode: String,
     data: Vec<RHData>,
 }
 
@@ -63,7 +63,7 @@ pub async fn get_dashboard_plots(
     Extension(global_context): Extension<SharedGlobalContext>,
     _: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
-    
+
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
     let (api_key, url) = {
         let gcx_locked = global_context.read().await;

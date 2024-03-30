@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tree_sitter::Language;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub(crate) enum LanguageId {
+pub enum LanguageId {
     Apex,
     Bash,
     C,

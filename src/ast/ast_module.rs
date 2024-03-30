@@ -1,24 +1,19 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use itertools::Itertools;
 use serde::Serialize;
-use tokio::sync::{Mutex as AMutex, MutexGuard};
+use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
-use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 use tracing::info;
 use tree_sitter::Point;
-use url::Url;
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::AstIndexService;
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, SymbolInformation};
-use crate::ast::treesitter::parsers::get_parser_by_filename;
-use crate::ast::treesitter::structs::{SymbolInfo, SymbolType};
+use crate::ast::treesitter::structs::SymbolType;
 use crate::files_in_jsonl::files_in_jsonl;
 use crate::files_in_workspace::DocumentInfo;
 use crate::global_context::GlobalContext;
@@ -63,10 +58,10 @@ impl AstModule {
         self.ast_index.lock().await.add_or_update(&document)
     }
 
-    pub async fn remove_file(&self, doc: &DocumentInfo) {
-        // TODO: will not work if the same file is in the indexer queue
-        let _ = self.ast_index.lock().await.remove(doc);
-    }
+    // pub async fn remove_file(&self, doc: &DocumentInfo) {
+    //     // TODO: will not work if the same file is in the indexer queue
+    //     let _ = self.ast_index.lock().await.remove(doc);
+    // }
 
     pub async fn clear_index(&self) {
         self.ast_index.lock().await.clear_index();
@@ -323,14 +318,14 @@ impl AstModule {
         Ok(ast_index_locked.get_symbols_names(request_symbol_type))
     }
 
-    pub async fn get_file_paths(&self) -> Result<Vec<Url>, String> {
-        let ast_index = self.ast_index.clone();
-        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
-            Ok(lock) => lock,
-            Err(_) => {
-                return Err("Ast index is busy, timeout error".to_string());
-            }
-        };
-        Ok(ast_index_locked.get_file_paths())
-    }
+    // pub async fn get_file_paths(&self) -> Result<Vec<Url>, String> {
+    //     let ast_index = self.ast_index.clone();
+    //     let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+    //         Ok(lock) => lock,
+    //         Err(_) => {
+    //             return Err("Ast index is busy, timeout error".to_string());
+    //         }
+    //     };
+    //     Ok(ast_index_locked.get_file_paths())
+    // }
 }

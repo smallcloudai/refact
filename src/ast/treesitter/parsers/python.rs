@@ -22,7 +22,7 @@ const PYTHON_PARSER_QUERY_IMPORT_STATEMENT: &str = "";
 const PYTHON_PARSER_QUERY_IMPORT_FROM_STATEMENT: &str = "";
 const PYTHON_PARSER_QUERY_CLASS_METHOD: &str = "";
 
-const PYTHON_PARSER_QUERY_FIND_VARIABLES: &str = r#"(expression_statement 
+const PYTHON_PARSER_QUERY_FIND_VARIABLES: &str = r#"(expression_statement
 (assignment left: (identifier) @variable_left type: (_)? @variable_type right: (_) @variable_right) @variable)"#;
 
 const PYTHON_PARSER_QUERY_FIND_CALLS: &str = r#"
@@ -50,8 +50,8 @@ lazy_static! {
         m.push(PYTHON_PARSER_QUERY_CLASS_METHOD);
         m.join("\n")
     };
-    
-    static ref PYTHON_PARSER_QUERY_FIND_ALL: String = format!("{}\n{}\n{}", 
+
+    static ref PYTHON_PARSER_QUERY_FIND_ALL: String = format!("{}\n{}\n{}",
         PYTHON_PARSER_QUERY_FIND_VARIABLES, PYTHON_PARSER_QUERY_FIND_CALLS, PYTHON_PARSER_QUERY_FIND_STATICS);
 }
 
@@ -125,7 +125,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
                 guid: None,
                 nested_types,
             });
-            
+
         }
         "call" => {
             let function = parent.child_by_field_name("function").unwrap();
@@ -140,7 +140,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
 
 fn parse_function_arg(parent: &Node, code: &str) -> Vec<FunctionArg> {
     let mut args: Vec<FunctionArg> = vec![];
-    let text = code.slice(parent.byte_range()).to_string();
+    // let text = code.slice(parent.byte_range()).to_string();
     let kind = parent.kind();
     match kind {
         "identifier" | "typed_parameter" => {
@@ -205,8 +205,7 @@ fn parse_function_arg(parent: &Node, code: &str) -> Vec<FunctionArg> {
     args
 }
 
-const syms: &str = "{}(),.;_|&";
-const self_str: &str = "self";
+const SPECIAL_SYMBOLS: &str = "{}(),.;_|&";
 
 impl PythonParser {
     pub fn new() -> Result<PythonParser, ParserError> {
@@ -294,7 +293,7 @@ impl PythonParser {
             let (left_mb, type_mb, right_mb) = candidates.pop_front().unwrap();
             if let Some(left) = left_mb {
                 let text = code.slice(left.byte_range());
-                if syms.contains(text) || text == self_str {
+                if SPECIAL_SYMBOLS.contains(text) || text == "self" {
                     continue;
                 }
                 let kind = left.kind();
@@ -342,13 +341,13 @@ impl PythonParser {
                     "list_pattern" | "tuple_pattern" | "pattern_list" => {
                         let lefts: Vec<_> = (0..left.child_count())
                             .map(|i| left.child(i))
-                            .filter(|node| !syms.contains(node.unwrap().kind()))
+                            .filter(|node| !SPECIAL_SYMBOLS.contains(node.unwrap().kind()))
                             .collect();
                         let mut rights = vec![right_mb];
                         if let Some(right) = right_mb {
                             rights = (0..right.child_count())
                                 .map(|i| right.child(i))
-                                .filter(|node| !syms.contains(node.unwrap().kind()))
+                                .filter(|node| !SPECIAL_SYMBOLS.contains(node.unwrap().kind()))
                                 .collect();
                         }
                         if lefts.len() != rights.len() {
@@ -375,7 +374,7 @@ impl PythonParser {
     pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
-        let text = code.slice(parent.byte_range()).to_string();
+        // let text = code.slice(parent.byte_range()).to_string();
         // TODO lambda https://github.com/tree-sitter/tree-sitter-python/blob/master/grammar.js#L830
         match kind {
             "await" | "list_splat" | "yield" | "list_splat_pattern" |
@@ -400,7 +399,7 @@ impl PythonParser {
                     while !candidates.is_empty() {
                         let child = candidates.pop_front().unwrap();
                         let text = code.slice(child.byte_range());
-                        if syms.contains(text) || text == self_str {
+                        if SPECIAL_SYMBOLS.contains(text) || text == "self" {
                             continue;
                         }
                         match child.kind() {
@@ -521,7 +520,7 @@ impl PythonParser {
     pub fn parse_expression_statement(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols = vec![];
         let kind = parent.kind();
-        let text = code.slice(parent.byte_range()).to_string();
+        // let text = code.slice(parent.byte_range()).to_string();
         match kind {
             &_ => {
                 let usages = self.parse_usages(&parent, code, path, parent_guid, is_error);
@@ -598,7 +597,7 @@ impl PythonParser {
         for i in 0..parent.child_count() {
             let child = parent.child(i).unwrap();
             let kind = child.kind();
-            let text = code.slice(child.byte_range()).to_string();
+            // let text = code.slice(child.byte_range()).to_string();
             match kind {
                 "import_statement" => {
                     // TODO
@@ -649,12 +648,12 @@ impl PythonParser {
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
-        
+
         let arguments_node = parent.child_by_field_name("arguments").unwrap();
         for i in 0..arguments_node.child_count() {
             let child = arguments_node.child(i).unwrap();
             let text = code.slice(child.byte_range());
-            if syms.contains(&text) { continue; }
+            if SPECIAL_SYMBOLS.contains(&text) { continue; }
             symbols.extend(self.parse_usages(&child, code, path, &decl.ast_fields.guid, is_error));
         }
 

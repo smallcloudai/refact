@@ -38,7 +38,7 @@ impl<'a> Automaton for Substring<'a> {
     }
 
     #[inline]
-    fn can_match(&self, &state: &usize) -> bool {
+    fn can_match(&self, &_state: &usize) -> bool {
         self.pattern.len() > 0
     }
 

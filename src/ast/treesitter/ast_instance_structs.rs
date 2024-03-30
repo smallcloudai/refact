@@ -39,50 +39,50 @@ impl Default for TypeDef {
 }
 
 impl TypeDef {
-    fn from_name(name: &str, is_pod: bool) -> TypeDef {
-        TypeDef {
-            name: Some(name.to_string()),
-            inference_info: None,
-            is_pod: is_pod,
-            namespace: "".to_string(),
-            guid: None,
-            nested_types: vec![],
-        }
-    }
+    // fn from_name(name: &str, is_pod: bool) -> TypeDef {
+    //     TypeDef {
+    //         name: Some(name.to_string()),
+    //         inference_info: None,
+    //         is_pod: is_pod,
+    //         namespace: "".to_string(),
+    //         guid: None,
+    //         nested_types: vec![],
+    //     }
+    // }
 
-    fn from_inference_info(info: &str) -> TypeDef {
-        TypeDef {
-            name: None,
-            inference_info: Some(info.to_string()),
-            is_pod: false,
-            namespace: "".to_string(),
-            guid: None,
-            nested_types: vec![],
-        }
-    }
+    // fn from_inference_info(info: &str) -> TypeDef {
+    //     TypeDef {
+    //         name: None,
+    //         inference_info: Some(info.to_string()),
+    //         is_pod: false,
+    //         namespace: "".to_string(),
+    //         guid: None,
+    //         nested_types: vec![],
+    //     }
+    // }
 
-    fn from_name_and_inference_info(
-        name: &str, is_pod: bool, info: &str,
-    ) -> TypeDef {
-        TypeDef {
-            name: Some(name.to_string()),
-            inference_info: Some(info.to_string()),
-            is_pod: is_pod,
-            namespace: "".to_string(),
-            guid: None,
-            nested_types: vec![],
-        }
-    }
+    // fn from_name_and_inference_info(
+    //     name: &str, is_pod: bool, info: &str,
+    // ) -> TypeDef {
+    //     TypeDef {
+    //         name: Some(name.to_string()),
+    //         inference_info: Some(info.to_string()),
+    //         is_pod: is_pod,
+    //         namespace: "".to_string(),
+    //         guid: None,
+    //         nested_types: vec![],
+    //     }
+    // }
 
-    fn set_guid(&mut self, guid: String) {
-        self.guid = Some(guid);
-    }
+    // fn set_guid(&mut self, guid: String) {
+    //     self.guid = Some(guid);
+    // }
 
-    fn add_nested_types(&mut self, types: Vec<TypeDef>) {
-        self.nested_types.extend(types)
-    }
+    // fn add_nested_types(&mut self, types: Vec<TypeDef>) {
+    //     self.nested_types.extend(types)
+    // }
 
-    fn is_pod(&self) -> bool { self.is_pod }
+    // fn is_pod(&self) -> bool { self.is_pod }
 
     pub fn to_string(&self) -> String {
         let mut res = String::from("");

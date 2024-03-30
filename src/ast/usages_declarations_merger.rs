@@ -2,10 +2,9 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use futures_util::StreamExt;
 use url::Url;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, FunctionDeclaration};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, FunctionDeclaration};
 use crate::ast::treesitter::structs::SymbolType;
 
 pub struct FilePathIterator {

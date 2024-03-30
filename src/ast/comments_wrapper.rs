@@ -18,6 +18,7 @@ pub fn get_language_id_by_filename(filename: &PathBuf) -> Option<LanguageId> {
 }
 
 
+#[allow(dead_code)]
 pub fn wrap_comments(code: &str, language: &LanguageId) -> String {
     match language {
         LanguageId::Html => code.lines()

@@ -13,7 +13,7 @@ use tracing::{info, error};
 use tree_sitter::Point;
 
 use crate::ast::ast_module::AstModule;
-use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
+// use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
 use crate::call_validation::{CodeCompletionPost, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::completion_cache;
@@ -120,7 +120,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         let file_path = PathBuf::from(self.post.inputs.cursor.file.clone());
         let mut before_iter = text.lines_at(pos.line as usize).reversed();
         let mut after_iter = text.lines_at(pos.line as usize + 1);
-        let mut extra_context = String::new();
+        let extra_context = String::new();
         let mut tokens_used = 0;
         let ast_messages: Vec<crate::call_validation::ChatMessage> = if true /*self.post.use_ast*/ {
             let chat_message_maybe = match *self.ast_module.lock().await {

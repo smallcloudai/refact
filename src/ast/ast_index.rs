@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 
 use fst::{Set, set, Streamer};
 use itertools::Itertools;
@@ -8,13 +7,13 @@ use ropey::Rope;
 use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
 use tracing::info;
-use tree_sitter::{Point, Range};
+use tree_sitter::Point;
 use url::Url;
 
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::fst_extra_automation::Substring;
 use crate::ast::structs::{FileASTMarkup, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, FunctionCall, SymbolInformation, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, SymbolInformation};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_new_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
@@ -160,8 +159,8 @@ impl AstIndex {
                     let indices_to_remove = v
                         .iter()
                         .enumerate()
-                        .filter(|(idx, s)| s.read().expect("the data might be broken").guid() == guid)
-                        .map(|(idx, s)| idx)
+                        .filter(|(_idx, s)| s.read().expect("the data might be broken").guid() == guid)
+                        .map(|(idx, _s)| idx)
                         .collect::<Vec<_>>();
                     indices_to_remove.iter().for_each(|i| { v.remove(*i); });
                 });
@@ -297,7 +296,7 @@ impl AstIndex {
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         let search_results = self.path_by_symbols
             .iter()
-            .filter(|(path, symbols)| {
+            .filter(|(path, _symbols)| {
                 let file_path = match path.to_file_path() {
                     Ok(fp) => fp,
                     Err(_) => return false,
@@ -509,36 +508,36 @@ impl AstIndex {
         &self,
         doc: &DocumentInfo,
     ) -> Result<FileASTMarkup, String> {
-        fn within_range(
-            decl_range: &Range,
-            line_idx: usize,
-        ) -> bool {
-            decl_range.start_point.row <= line_idx
-                && decl_range.end_point.row >= line_idx
-        }
+        // fn within_range(
+        //     decl_range: &Range,
+        //     line_idx: usize,
+        // ) -> bool {
+        //     decl_range.start_point.row <= line_idx
+        //         && decl_range.end_point.row >= line_idx
+        // }
 
-        fn sorted_candidates_within_line(
-            symbols: &Vec<AstSymbolInstanceArc>,
-            line_idx: usize,
-        ) -> (Vec<AstSymbolInstanceArc>, bool) {
-            let filtered_symbols = symbols
-                .iter()
-                .filter(|s| within_range(&s.read().expect("the data might be broken").full_range(), line_idx))
-                .sorted_by_key(
-                    |s| {
-                        let s_ref = s.read().expect("the data might be broken");
-                        s_ref.full_range().end_point.row - s_ref.full_range().start_point.row
-                    }
-                )
-                .rev()
-                .cloned()
-                .collect::<Vec<_>>();
-            let is_signature = symbols
-                .iter()
-                .map(|s| within_range(&s.read().expect("the data might be broken").declaration_range(), line_idx))
-                .any(|x| x);
-            (filtered_symbols, is_signature)
-        }
+        // fn sorted_candidates_within_line(
+        //     symbols: &Vec<AstSymbolInstanceArc>,
+        //     line_idx: usize,
+        // ) -> (Vec<AstSymbolInstanceArc>, bool) {
+        //     let filtered_symbols = symbols
+        //         .iter()
+        //         .filter(|s| within_range(&s.read().expect("the data might be broken").full_range(), line_idx))
+        //         .sorted_by_key(
+        //             |s| {
+        //                 let s_ref = s.read().expect("the data might be broken");
+        //                 s_ref.full_range().end_point.row - s_ref.full_range().start_point.row
+        //             }
+        //         )
+        //         .rev()
+        //         .cloned()
+        //         .collect::<Vec<_>>();
+        //     let is_signature = symbols
+        //         .iter()
+        //         .map(|s| within_range(&s.read().expect("the data might be broken").declaration_range(), line_idx))
+        //         .any(|x| x);
+        //     (filtered_symbols, is_signature)
+        // }
 
         let symbols: Vec<AstSymbolInstanceArc> = self.path_by_symbols
             .get(&doc.uri)
@@ -591,9 +590,9 @@ impl AstIndex {
         Ok(symbols)
     }
 
-    pub fn get_file_paths(&self) -> Vec<Url> {
-        self.symbols_search_index.iter().map(|(path, _)| path.clone()).collect()
-    }
+    // pub fn get_file_paths(&self) -> Vec<Url> {
+    //     self.symbols_search_index.iter().map(|(path, _)| path.clone()).collect()
+    // }
 
     pub fn get_symbols_names(
         &self,
@@ -601,7 +600,7 @@ impl AstIndex {
     ) -> Vec<String> {
         self.symbols_by_guid
             .iter()
-            .filter(|(guid, s)| {
+            .filter(|(_guid, s)| {
                 let s_ref = s.read().expect("the data might be broken");
                 match request_symbol_type {
                     RequestSymbolType::Declaration => s_ref.is_declaration(),
@@ -609,7 +608,7 @@ impl AstIndex {
                     RequestSymbolType::All => true,
                 }
             })
-            .map(|(guid, s)| s.read().expect("the data might be broken").name().to_string())
+            .map(|(_guid, s)| s.read().expect("the data might be broken").name().to_string())
             .collect()
     }
 
@@ -737,7 +736,7 @@ impl AstIndex {
                 break;
             }
 
-            for (idx, mut usage_symbol) in symbols_to_process
+            for (idx, usage_symbol) in symbols_to_process
                 .iter().enumerate() {
                 info!("Processing symbol ({}/{})", idx, symbols_to_process.len());
                 let caller_guid = usage_symbol

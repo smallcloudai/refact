@@ -10,8 +10,7 @@ use tokio::task::JoinHandle;
 use tracing::info;
 use rayon::prelude::*;
 use crate::ast::ast_index::AstIndex;
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc};
-use crate::ast::treesitter::structs::{SymbolDeclarationStruct, UsageSymbolInfo};
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::files_in_workspace::DocumentInfo;
 
 #[derive(Debug)]
@@ -106,7 +105,7 @@ async fn ast_indexer_thread(
         let mut ast_index = ast_index.lock().await;
         zip(list_of_path, all_symbols).for_each(|(doc, res)| {
             match res {
-                Ok((symbols)) => {
+                Ok(symbols) => {
                     match ast_index.add_or_update_symbols_index(&doc, &symbols) {
                         Ok(_) => {}
                         Err(e) => { info!("Error adding/updating records in AST index: {}", e);}

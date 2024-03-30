@@ -8,13 +8,13 @@ use crate::ast::ast_index::RequestSymbolType;
 
 use crate::ast::structs::FileReferencesResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::at_params::AtParamFilePath;
+// use crate::at_commands::at_params::AtParamFilePath;
 use crate::call_validation::{ChatMessage, ContextFile};
 use crate::files_in_workspace::DocumentInfo;
 
 fn results2message(result: &FileReferencesResult) -> ChatMessage {
     let simplified_symbols: Vec<ContextFile> = result.symbols.iter().map(|x| {
-        let path = format!("{:?}::", result.file_path).to_string();
+        // let path = format!("{:?}::", result.file_path).to_string();
         ContextFile {
             file_name: x.get_path_str(),
             file_content: format!("{:?}", x.symbol_type),
@@ -34,16 +34,16 @@ pub struct AtAstFileSymbols {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
 }
 
-impl AtAstFileSymbols {
-    pub fn new() -> Self {
-        AtAstFileSymbols {
-            name: "@symbols-at".to_string(),
-            params: vec![
-                Arc::new(AMutex::new(AtParamFilePath::new()))
-            ],
-        }
-    }
-}
+// impl AtAstFileSymbols {
+//     pub fn new() -> Self {
+//         AtAstFileSymbols {
+//             name: "@symbols-at".to_string(),
+//             params: vec![
+//                 Arc::new(AMutex::new(AtParamFilePath::new()))
+//             ],
+//         }
+//     }
+// }
 
 #[async_trait]
 impl AtCommand for AtAstFileSymbols {

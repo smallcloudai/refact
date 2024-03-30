@@ -9,7 +9,6 @@ use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock;
 use url::Url;
 use crate::global_context::GlobalContext;
-use crate::http::routers::info::build;
 use crate::known_models::KNOWN_MODELS;
 
 const CAPS_FILENAME: &str = "refact-caps";

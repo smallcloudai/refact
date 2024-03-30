@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use tracing::error;
 use tree_sitter::{Node, Query, QueryCapture, Tree};
 use url::Url;
 use crate::ast::comments_wrapper::get_language_id_by_filename;
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc};
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::utils::{get_call, get_static, get_variable};
@@ -40,7 +39,7 @@ pub trait LanguageParser: Send {
     fn get_enum_name_and_all_values(&self, _: Node, _: &str) -> (String, Vec<String>) {
         ("".to_string(), vec![])
     }
-    
+
     fn get_extra_declarations_for_struct(&mut self, _: String, _: &Tree, _: &str, _: &PathBuf) -> Vec<SymbolInfo> {
         vec![]
     }

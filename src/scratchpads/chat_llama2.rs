@@ -133,7 +133,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         &mut self,
         delta: String,
         stop_toks: bool,
-        stop_length: bool,
+        _stop_length: bool,
     ) -> Result<(serde_json::Value, bool), String> {
         self.dd.response_streaming(delta, stop_toks)
     }
