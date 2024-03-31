@@ -45,6 +45,7 @@ struct FileLine {
     pub line_content: String,
     pub useful: f32,
     pub color: String,
+    pub take: bool,
 }
 
 fn path_of_guid(file_markup: &crate::ast::structs::FileASTMarkup, guid: &String) -> String
@@ -137,6 +138,7 @@ pub async fn postprocess_at_results2(
                 line_content: line.to_string(),
                 useful: 10.0,
                 color: "".to_string(),
+                take: false,
             });
             lines_by_useful.push(a.clone());
             let lines_in_files_mut = lines_in_files.entry(fref.file_name.clone()).or_insert(vec![]);
@@ -243,31 +245,78 @@ pub async fn postprocess_at_results2(
         }
     }
 
-    // 6. Propogate usefullness up and down
-    for linevec in lines_in_files.values() {
-        for lineref in linevec.iter() {
-            info!("{}:{:04} {:>6.1} {}", crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 30), lineref.line_n, lineref.useful, crate::nicer_logs::first_n_chars(&lineref.line_content, 20));
-        }
-    }
-
+    // 6. Propogate usefullness up and down?
     // 7. Sort
     lines_by_useful.sort_by(|a, b| {
         b.useful.partial_cmp(&a.useful).unwrap_or(Ordering::Equal)
     });
-    info!("{} lines in {} files", lines_by_useful.len(), files.len());
 
     // 8. Convert line_content to tokens up to the limit
     let mut tokens_count: usize = 0;
+    let mut lines_take_cnt: usize = 0;
     for lineref in lines_by_useful.iter_mut() {
         let ntokens = count_tokens(&tokenizer.read().unwrap(), &lineref.line_content);
-        tokens_count += ntokens;
-        if tokens_count >= tokens_limit {
+        if tokens_count + ntokens > tokens_limit {
             break;
+        }
+        tokens_count += ntokens;
+        unsafe {
+            let lineref_mut: *mut FileLine = Arc::as_ptr(lineref) as *mut FileLine;
+            (*lineref_mut).take = true;
+            lines_take_cnt += 1;
+        }
+    }
+    info!("{} lines in {} files  =>  tokens {} < {} tokens limit  =>  {} lines", lines_by_useful.len(), files.len(), tokens_count, tokens_limit, lines_take_cnt);
+    for linevec in lines_in_files.values() {
+        for lineref in linevec.iter() {
+            info!("{} {}:{:04} {:>6.1} {}",
+                if lineref.take { "take" } else { "dont" },
+                crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 30),
+                lineref.line_n,
+                lineref.useful,
+                crate::nicer_logs::first_n_chars(&lineref.line_content, 20)
+            );
         }
     }
 
     // 9. Generate output
     let mut merged: Vec<ContextFile> = vec![];
+    for linevec in lines_in_files.values_mut() {
+        if linevec.len() == 0 {
+            continue;
+        }
+        let fref = linevec[0].fref.clone();
+        let fname = fref.file_name.clone();
+        let mut out = String::new();
+        let mut first_line: usize = 0;
+        let mut last_line: usize = 0;
+        let mut prev_line: usize = 0;
+        for (i, lineref) in linevec.iter_mut().enumerate() {
+            last_line = i;
+            if !lineref.take {
+                continue;
+            }
+            if first_line == 0 { first_line = i; }
+            if i > prev_line + 1 {
+                out.push_str(format!("...{} lines\n", i - prev_line - 1).as_str());
+            }
+            out.push_str(&lineref.line_content);
+            out.push_str("\n");
+            prev_line = i;
+        }
+        if last_line > prev_line + 1 {
+            out.push_str("...\n");
+        }
+        info!("file {:?}\n{}", fname, out);
+        merged.push(ContextFile {
+            file_name: fname,
+            file_content: out,
+            line1: first_line,
+            line2: last_line,
+            symbol: "".to_string(),
+            usefulness: 0.0,
+        });
+    }
     merged
 }
 
@@ -488,10 +537,18 @@ pub async fn run_at_commands(
             tokenizer.clone(),
             context_limit
         ).await;
-        let reloaded = reload_files(global_context.clone(), &processed, false).await;
-        for msg in reloaded {
-            rebuilt_messages.push(msg.clone());
-            stream_back_to_user.push_in_json(json!(msg));
+        // let reloaded = reload_files(global_context.clone(), &processed, false).await;
+        // for msg in reloaded {
+        //     rebuilt_messages.push(msg.clone());
+        //     stream_back_to_user.push_in_json(json!(msg));
+        // }
+        if processed.len() > 0 {
+            let message = ChatMessage {
+                role: "context_file".to_string(),
+                content: serde_json::to_string(&processed).unwrap(),
+            };
+            rebuilt_messages.push(message.clone());
+            stream_back_to_user.push_in_json(json!(message));
         }
         if user_posted.trim().len() > 0 {
             let msg = ChatMessage {
