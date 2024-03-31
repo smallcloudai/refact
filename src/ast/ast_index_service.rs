@@ -1,18 +1,14 @@
 use std::collections::{HashMap, VecDeque};
-use std::io::Write;
 use std::iter::zip;
-use std::ops::Div;
 use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use tokio::task::JoinHandle;
 use tracing::info;
 use rayon::prelude::*;
 use crate::ast::ast_index::AstIndex;
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
-use crate::files_in_workspace::{DocumentInfo, on_workspaces_init};
-use crate::global_context;
+use crate::files_in_workspace::DocumentInfo;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum EventType {
@@ -128,7 +124,7 @@ for event in events {
                     })
                 }
                 EventType::Reset => {
-                    ast_index.lock().await.clear_index().await;
+                    ast_index.lock().await.clear_index();
                     info!("Reset AST Index");
                 }
             }
@@ -137,8 +133,8 @@ for event in events {
 }
 
 async fn ast_indexer(
-    update_request_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
-    out_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    update_request_queue: Arc<AMutex<VecDeque<AstEvent>>>,
+    out_queue: Arc<AMutex<VecDeque<AstEvent>>>,
     ast_index: Arc<AMutex<AstIndex>>,
 ) {
     loop {

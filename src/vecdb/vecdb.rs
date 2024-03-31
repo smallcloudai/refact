@@ -233,9 +233,9 @@ impl VecDb {
         self.vectorizer_service.lock().await.vectorizer_enqueue_files(documents, force).await;
     }
 
-    // pub async fn remove_file(&self, file_path: &PathBuf) {
-    //     self.vecdb_handler.lock().await.remove(file_path).await;
-    // }
+    pub async fn remove_file(&self, file_path: &PathBuf) {
+        self.vecdb_handler.lock().await.remove(file_path).await;
+    }
 
     pub async fn get_status(&self) -> Result<VecDbStatus, String> {
         self.vectorizer_service.lock().await.status().await

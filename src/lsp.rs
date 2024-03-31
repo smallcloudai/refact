@@ -10,7 +10,7 @@ use tokio::task::JoinHandle;
 use tower_lsp::{ClientSocket, LanguageServer, LspService};
 use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
 use crate::files_in_workspace;
@@ -308,10 +308,10 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
-        for add_folder in params.event.added {
+        for _add_folder in params.event.added {
             // TODO
         }
-        for delete_folder in params.event.removed {
+        for _delete_folder in params.event.removed {
             // TODO
         }
     }

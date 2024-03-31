@@ -18,8 +18,6 @@ use crate::http::routers::v1::chat::handle_v1_chat;
 use crate::http::routers::v1::code_completion::handle_v1_code_completion_web;
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
-use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_did_change;
-use crate::http::routers::v1::lsp_like_handlers::handle_v1_lsp_initialize;
 use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
 use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
 use crate::http::routers::v1::lsp_like_handlers::{handle_v1_lsp_did_change, handle_v1_lsp_add_folder, handle_v1_lsp_initialize, handle_v1_lsp_remove_folder};

@@ -4,7 +4,6 @@ use std::vec;
 
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
-use crate::files_in_workspace::file_watcher_thread;
 
 use crate::vecdb;
 use crate::global_context::GlobalContext;

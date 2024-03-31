@@ -275,20 +275,21 @@ impl VecDBHandler {
         }
     }
 
-    // async fn remove_records_from_cache(&mut self, file_path: String) -> Result<(), String> {
-    //     match self.cache_database.lock().await.call(move |connection| {
-    //         match connection.execute(
-    //             "DELETE FROM data WHERE file_path = ?1",
-    //             params![file_path],
-    //         ) {
-    //             Ok(_) => Ok(()),
-    //             Err(err) => Err(err.into())
-    //         }
-    //     }).await {
-    //         Ok(_) => Ok(()),
-    //         Err(err) => Err(format!("{:?}", err))
-    //     }
-    // }
+    #[allow(unused)]
+    async fn remove_records_from_cache(&mut self, file_path: String) -> Result<(), String> {
+        match self.cache_database.lock().await.call(move |connection| {
+            match connection.execute(
+                "DELETE FROM data WHERE file_path = ?1",
+                params![file_path],
+            ) {
+                Ok(_) => Ok(()),
+                Err(err) => Err(err.into())
+            }
+        }).await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(format!("{:?}", err))
+        }
+    }
 
     async fn update_cache_records(&mut self, records: Vec<Record>) -> Result<(), String> {
         let now = SystemTime::now().duration_since(std::time::UNIX_EPOCH)
@@ -519,15 +520,15 @@ impl VecDBHandler {
         }
     }
 
-    // pub async fn remove(&mut self, file_path: &PathBuf) {
-    //     let _file_path_str = match file_path.to_str() {
-    //         None => {
-    //             info!("File path is not a string");
-    //             return;
-    //         }
-    //         Some(res) => res
-    //     };
-    // }
+    pub async fn remove(&mut self, file_path: &PathBuf) {
+        let _file_path_str = match file_path.to_str() {
+            None => {
+                info!("File path is not a string");
+                return;
+            }
+            Some(res) => res
+        };
+    }
 
     //     match self.remove_records_from_cache(file_path_str.to_string()).await {
     //         Ok(_) => {}

@@ -95,7 +95,7 @@ pub async fn load_caps(
             caps_urls.push(cmdline.address_url.clone());
         }
     }
-    let mut caps_url: String = match caps_urls.get(0) {
+    let caps_url: String = match caps_urls.get(0) {
         Some(u) => u.clone(),
         None => return Err("caps_url is none".to_string())
     };

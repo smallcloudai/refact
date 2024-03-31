@@ -62,10 +62,10 @@ impl AstModule {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::reset(), false).await;
     }
 
-    // pub async fn remove_file(&self, doc: &DocumentInfo) {
-    //     // TODO: will not work if the same file is in the indexer queue
-    //     let _ = self.ast_index.lock().await.remove(doc);
-    // }
+    pub async fn remove_file(&self, doc: &DocumentInfo) {
+        // TODO: will not work if the same file is in the indexer queue
+        let _ = self.ast_index.lock().await.remove(doc);
+    }
 
     pub async fn clear_index(&self) {
         self.ast_index.lock().await.clear_index();
