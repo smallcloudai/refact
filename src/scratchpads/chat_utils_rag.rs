@@ -88,7 +88,6 @@ pub async fn postprocess_at_results2(
     }
 
     // 2. Load files, with ast or not
-    info!("files_set: {:?}", files_set);
     let mut files: HashMap<String, Arc<File>> = HashMap::new();
     let ast_module: Arc<AMutex<Option<AstModule>>> = {
         let cx_locked = global_context.read().await;
@@ -136,7 +135,7 @@ pub async fn postprocess_at_results2(
                 fref: fref.clone(),
                 line_n: line_n,
                 line_content: line.to_string(),
-                useful: 10.0,
+                useful: 10.0 - (line_n as f32 * 0.001),
                 color: "".to_string(),
                 take: false,
             });
@@ -145,18 +144,18 @@ pub async fn postprocess_at_results2(
             lines_in_files_mut.push(a.clone());
         }
     }
-    info!("total lines {}", lines_by_useful.len());
 
     // 4. Fill in usefullness
-    let colorize_lines = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, color: &String, useful: f32|
+    let colorize_if_more_useful = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, color: &String, useful: f32|
     {
-        info!("colorize_lines: {}..{} <= color {:?} useful {}", line1_base0, line2_base0, color, useful);
+        info!("colorize_if_more_useful: {}..{} <= color {:?} useful {}", line1_base0, line2_base0, color, useful);
         for i in line1_base0 .. line2_base0 {
             assert!(i < linevec.len());
             let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+            let u = useful - ((i - line1_base0) as f32) * 0.001;
             unsafe {
-                if (*lineref_mut).useful < useful {
-                    (*lineref_mut).useful = useful;
+                if (*lineref_mut).useful < u {
+                    (*lineref_mut).useful = u;
                     (*lineref_mut).color = color.clone();
                 }
             }
@@ -190,11 +189,11 @@ pub async fn postprocess_at_results2(
                 info!("{:?} {} declaration_range {}-{}", symb.symbol_type, symb.guid, symb.declaration_range.start_point.row, symb.declaration_range.end_point.row);
                 info!("{:?} {} definition_range {}-{}", symb.symbol_type, symb.guid, symb.definition_range.start_point.row, symb.definition_range.end_point.row);
                 if symb.definition_range.end_byte > 0 {
-                    colorize_lines(linevec, symb.definition_range.start_point.row, symb.definition_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 3.0);
+                    colorize_if_more_useful(linevec, symb.definition_range.start_point.row, symb.definition_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 3.0);
                 }
-                colorize_lines(linevec, symb.declaration_range.start_point.row, symb.declaration_range.end_point.row+1, &format!("{}", spath), omsg.usefulness);
+                colorize_if_more_useful(linevec, symb.declaration_range.start_point.row, symb.declaration_range.end_point.row+1, &format!("{}", spath), omsg.usefulness);
             } else {
-                colorize_lines(linevec, symb.full_range.start_point.row, symb.full_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 6.0);
+                colorize_if_more_useful(linevec, symb.full_range.start_point.row, symb.full_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 6.0);
             }
 
         } else {
@@ -203,14 +202,14 @@ pub async fn postprocess_at_results2(
                 warn!("postprocess_at_results2: cannot use range {}:{}..{}", omsg.file_name, omsg.line1, omsg.line2);
                 continue;
             }
-            colorize_lines(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
+            colorize_if_more_useful(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
         }
     }
 
-    // 5. Downgrade sub-symbols
+    // 5. Downgrade sub-symbols and uninteresting regions
     let downgrade_lines_if_prefix = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, prefix: &String, downgrade_coef: f32|
     {
-        info!("downgrade_lines_if_prefix: {}..{} <= prefix {:?} downgrade_coef {}", line1_base0, line2_base0, prefix, downgrade_coef);
+        info!("    downgrade_lines_if_prefix: {}..{} <= prefix {:?} downgrade_coef {}", line1_base0, line2_base0, prefix, downgrade_coef);
         for i in line1_base0 .. line2_base0 {
             assert!(i < linevec.len());
             let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
@@ -227,11 +226,26 @@ pub async fn postprocess_at_results2(
             }
         }
     };
+    let downgrade_unconditional = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, add: f32, mult: f32|
+    {
+        info!("    downgrade_unconditional: {}..{} <= add {} mult {}", line1_base0, line2_base0, add, mult);
+        for i in line1_base0.. line2_base0 {
+            assert!(i < linevec.len());
+            let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+            unsafe {
+                (*lineref_mut).useful += add;
+                (*lineref_mut).useful *= mult;
+            }
+        }
+    };
     for linevec in lines_in_files.values_mut() {
         if linevec.len() == 0 {
             continue;
         }
         let fref = linevec[0].fref.clone();
+        info!("looking at symbols in {}", fref.file_name);
+        let mut anything_interesting_min = usize::MAX;
+        let mut anything_interesting_max = 0;
         for symb in fref.markup.guid2symbol.values() {
             let spath = path_of_guid(&fref.markup, &symb.guid);
             if symb.definition_range.end_byte != 0 {
@@ -243,19 +257,28 @@ pub async fn postprocess_at_results2(
                     symb.definition_range.end_point.row + 1
                 );
                 if def1 > def0 {
-                    downgrade_lines_if_prefix(linevec, def0, def1, &format!("{}", spath), 0.5);
+                    downgrade_lines_if_prefix(linevec, def0, def1, &format!("{}", spath), 0.8);
                 }
+            } else {
+                info!("    {:?} {} {}-{}", symb.symbol_type, symb.guid, symb.full_range.start_point.row, symb.full_range.end_point.row);
             }
+            anything_interesting_min = anything_interesting_min.min(symb.full_range.start_point.row);
+            anything_interesting_max = anything_interesting_max.max(symb.full_range.end_point.row);
+        }
+        if anything_interesting_min > 0 && anything_interesting_min != usize::MAX {
+            downgrade_unconditional(linevec, 0, anything_interesting_min, -5.0, 1.0);
+        }
+        if anything_interesting_max < linevec.len() && anything_interesting_max != 0 {
+            downgrade_unconditional(linevec, anything_interesting_max, linevec.len(), -5.0, 1.0);
         }
     }
 
-    // 6. Propogate usefullness up and down?
-    // 7. Sort
+    // 6. Sort
     lines_by_useful.sort_by(|a, b| {
         b.useful.partial_cmp(&a.useful).unwrap_or(Ordering::Equal)
     });
 
-    // 8. Convert line_content to tokens up to the limit
+    // 7. Convert line_content to tokens up to the limit
     let mut tokens_count: usize = 0;
     let mut lines_take_cnt: usize = 0;
     for lineref in lines_by_useful.iter_mut() {
@@ -273,7 +296,7 @@ pub async fn postprocess_at_results2(
     info!("{} lines in {} files  =>  tokens {} < {} tokens limit  =>  {} lines", lines_by_useful.len(), files.len(), tokens_count, tokens_limit, lines_take_cnt);
     for linevec in lines_in_files.values() {
         for lineref in linevec.iter() {
-            info!("{} {}:{:04} {:>6.1} {}",
+            info!("{} {}:{:04} {:>7.3} {}",
                 if lineref.take { "take" } else { "dont" },
                 crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 30),
                 lineref.line_n,
@@ -283,7 +306,7 @@ pub async fn postprocess_at_results2(
         }
     }
 
-    // 9. Generate output
+    // 8. Generate output
     let mut merged: Vec<ContextFile> = vec![];
     for linevec in lines_in_files.values_mut() {
         if linevec.len() == 0 {
@@ -343,7 +366,7 @@ pub async fn postprocess_at_results(
         b.usefulness.partial_cmp(&a.usefulness).unwrap_or(Ordering::Equal)
     });
     for cxfile in cxfile_list.iter() {
-        info!("sorted file {}:{}-{} usefulness {:.1}", crate::nicer_logs::last_n_chars(&cxfile.file_name, 30), cxfile.line1, cxfile.line2, cxfile.usefulness);
+        info!("sorted file {}:{}-{} usefulness {:.2}", crate::nicer_logs::last_n_chars(&cxfile.file_name, 30), cxfile.line1, cxfile.line2, cxfile.usefulness);
     }
     // 3. Truncate less useful to tokens_limit
     let mut total_tokens: usize = 0;
