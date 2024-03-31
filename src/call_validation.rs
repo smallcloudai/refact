@@ -191,6 +191,7 @@ pub struct ContextFile {
     pub file_content: String,
     pub line1: usize,   // starts from 1, zero means nonvalid
     pub line2: usize,   // starts from 1
+    pub symbol: String,
     #[serde(default)]
     pub usefulness: f32,  // the higher the better
 }

@@ -20,6 +20,7 @@ fn results2message(result: &FileReferencesResult) -> ChatMessage {
             file_content: format!("{:?}", x.symbol_type),
             line1: x.full_range.start_point.row + 1,
             line2: x.full_range.end_point.row + 1,
+            symbol: "".to_string(),
             usefulness: 100.0
         }
     }).collect();

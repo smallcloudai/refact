@@ -30,6 +30,7 @@ fn results2message(results: &Vec<Record>) -> ChatMessage {
             file_content: r.window_text.clone(),
             line1: r.start_line as usize + 1,
             line2: r.end_line as usize + 1,
+            symbol: "".to_string(),
             usefulness: 100.0 / ((i + 1) as f32),
         });
     }

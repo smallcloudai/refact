@@ -17,7 +17,7 @@ def ask_chat(messages):
             "messages": messages,
             "temperature": 0.1,
             "max_tokens": 300,
-            "model": "gpt-3.5-turbo-0125",
+            "model": "gpt-3.5-turbo",
         },
         headers={
             "Content-Type": "application/json",

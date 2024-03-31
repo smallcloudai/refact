@@ -1,15 +1,22 @@
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::cmp::Ordering;
-use tracing::info;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use tracing::{info, warn};
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
+
+use crate::ast::ast_module::AstModule;
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile};
 use crate::global_context::GlobalContext;
-
+use crate::ast::structs::FileASTMarkup;
+use crate::files_in_workspace::DocumentInfo;
 
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 const SMALL_GAP_LINES: usize = 10;  // lines
@@ -24,6 +31,206 @@ pub fn count_tokens(
         Err(_) => 0,
     }
 }
+
+#[derive(Debug)]
+struct File {
+    pub markup: FileASTMarkup,
+    pub file_name: String,   // delete when we remove Url
+}
+
+#[derive(Debug)]
+struct FileLine {
+    pub fref: Arc<File>,
+    pub line_n: usize,
+    pub line_content: String,
+    pub useful: f32,
+    pub color: String,
+}
+
+fn path_of_guid(file_markup: &crate::ast::structs::FileASTMarkup, guid: &String) -> String
+{
+    match file_markup.guid2symbol.get(guid) {
+        Some(x) => {
+            let pname = if !x.name.is_empty() { x.name.clone() } else { x.guid[..8].to_string() };
+            let pp = path_of_guid(&file_markup, &x.parent_guid);
+            return format!("{}::{}", pp, pname);
+        },
+        None => {
+            info!("parent_guid {} not found, maybe outside of this file", guid);
+            return format!("UNK");
+        }
+    };
+}
+
+pub async fn postprocess_at_results2(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    messages: Vec<ChatMessage>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokens_limit: usize,
+) -> Vec<ContextFile> {
+    // 1. Decode all
+    let mut origmsgs: Vec<ContextFile> = vec![];
+    let mut files_set: HashSet<String> = HashSet::new();
+    for msg in messages {
+        match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
+            Ok(decoded) => {
+                origmsgs.extend(decoded.clone());
+                for cf in decoded {
+                    files_set.insert(cf.file_name.clone());
+                }
+            },
+            Err(err) => {
+                warn!("postprocess_at_results2 decoding results problem: {}", err);
+                continue;
+            }
+        }
+    }
+
+    // 2. Load files, with ast or not
+    info!("files_set: {:?}", files_set);
+    let mut files: HashMap<String, Arc<File>> = HashMap::new();
+    let ast_module: Arc<AMutex<Option<AstModule>>> = {
+        let cx_locked = global_context.read().await;
+        cx_locked.ast_module.clone()
+    };
+    for file_name in files_set {
+        let file_info = DocumentInfo::from_pathbuf(&std::path::PathBuf::from(file_name.clone())).unwrap();
+        let mut f: Option<Arc<File>> = None;
+        let option_astmod = ast_module.lock().await;
+        if let Some(astmod) = &*option_astmod {
+            match astmod.file_markup(&file_info).await {
+                Ok(markup) => {
+                    f = Some(Arc::new(File { markup, file_name: file_name.clone() }));
+                },
+                Err(err) => {
+                    warn!("postprocess_at_results2 loading astmod problem: {}", err);
+                }
+            }
+        }
+        if f.is_none() {
+            f = Some(Arc::new(File {
+                markup: FileASTMarkup {
+                    file_url: file_info.uri.clone(),
+                    file_content: file_info.read_file().await.unwrap_or_default(),
+                    guid2symbol: HashMap::<String, SymbolInformation>::new(),    // no symbols
+                },
+                file_name: file_name.clone(),
+            }));
+        }
+        if f.is_some() {
+            files.insert(file_name.clone(), f.unwrap());
+        }
+    }
+    for fref in files.values() {
+        info!("fref {:?} has {} bytes", fref.file_name, fref.markup.file_content.len());
+        info!("fref {:?} has {} symbols", fref.file_name, fref.markup.guid2symbol.len());
+    }
+
+    // 3. Generate line refs
+    let mut lines_by_useful: Vec<Arc<FileLine>> = vec![];
+    let mut lines_in_files: HashMap<String, Vec<Arc<FileLine>>> = HashMap::new();
+    for fref in files.values() {
+        for (line_n, line) in fref.markup.file_content.lines().enumerate() {
+            let a = Arc::new(FileLine {
+                fref: fref.clone(),
+                line_n: line_n,
+                line_content: line.to_string(),
+                useful: 0.0,
+                color: "".to_string(),
+            });
+            lines_by_useful.push(a.clone());
+            let lines_in_files_mut = lines_in_files.entry(fref.file_name.clone()).or_insert(vec![]);
+            lines_in_files_mut.push(a.clone());
+        }
+    }
+    info!("total lines {}", lines_by_useful.len());
+
+    // 4. Fill in usefullness
+    let colorize_lines = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, color: &String, useful: f32|
+    {
+        info!("colorize_lines: {}..{} <= color {:?} useful {}", line1_base0, line2_base0, color, useful);
+        for i in line1_base0 .. line2_base0 {
+            assert!(i < linevec.len());
+            let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+            unsafe {
+                if (*lineref_mut).useful < useful {
+                    (*lineref_mut).useful = useful;
+                    (*lineref_mut).color = color.clone();
+                }
+            }
+        }
+    };
+    for omsg in origmsgs.iter() {
+        let linevec: &mut Vec<Arc<FileLine>> = match lines_in_files.get_mut(&omsg.file_name) {
+            Some(x) => x,
+            None => {
+                warn!("postprocess_at_results2: file not found {}", omsg.file_name);
+                continue;
+            }
+        };
+        if linevec.len() == 0 {
+            continue;
+        }
+        let fref = linevec[0].fref.clone();
+        let mut maybe_symbol: Option<&SymbolInformation> = None;
+        if !omsg.symbol.is_empty() {
+            maybe_symbol = fref.markup.guid2symbol.get(&omsg.symbol);
+            if maybe_symbol.is_none() {
+                warn!("postprocess_at_results2: cannot find symbol {} in file {}", omsg.symbol, omsg.file_name);
+            }
+        }
+        if let Some(symb) = maybe_symbol {
+            let spath = path_of_guid(&fref.markup, &symb.guid);
+            if symb.declaration_range.end_byte != 0 {
+                // full_range Range { start_byte: 696, end_byte: 1563, start_point: Point { row: 23, column: 4 }, end_point: Point { row: 47, column: 5 } }
+                // declaration_range Range { start_byte: 696, end_byte: 842, start_point: Point { row: 23, column: 4 }, end_point: Point { row: 27, column: 42 } }
+                // declaration_tail row: 47
+                // definition_range Range { start_byte: 843, end_byte: 1563, start_point: Point { row: 27, column: 43 }, end_point: Point { row: 47, column: 5 } }
+                colorize_lines(linevec, symb.definition_range.start_point.row, symb.definition_range.end_point.row+1, &format!("def  {}", spath), omsg.usefulness - 3.0);
+                colorize_lines(linevec, symb.declaration_range.start_point.row, symb.declaration_range.end_point.row+1, &format!("decl {}", spath), omsg.usefulness);
+            } else {
+                colorize_lines(linevec, symb.full_range.start_point.row, symb.full_range.end_point.row+1, &format!("full {}", spath), omsg.usefulness - 6.0);
+            }
+
+        } else {
+            // no symbol, go head with just line numbers
+            // omsg.line1, omsg.line2 numbers starts from 1, not from 0
+            if omsg.line1 == 0 || omsg.line2 == 0 || omsg.line1 > omsg.line2 || omsg.line1 > linevec.len() || omsg.line2 > linevec.len() {
+                warn!("postprocess_at_results2: cannot use range {}:{}..{}", omsg.file_name, omsg.line1, omsg.line2);
+                continue;
+            }
+            colorize_lines(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
+        }
+    }
+
+    // 5. Propogate usefullness up and down
+    for linevec in lines_in_files.values() {
+        for lineref in linevec.iter() {
+            info!("{}:{:04} {:>6.1} {}", crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 30), lineref.line_n, lineref.useful, crate::nicer_logs::first_n_chars(&lineref.line_content, 20));
+        }
+    }
+
+    // 6. Sort
+    lines_by_useful.sort_by(|a, b| {
+        b.useful.partial_cmp(&a.useful).unwrap_or(Ordering::Equal)
+    });
+    info!("{} lines in {} files", lines_by_useful.len(), files.len());
+
+    // 7. Convert line_content to tokens up to the limit
+    let mut tokens_count: usize = 0;
+    for lineref in lines_by_useful.iter_mut() {
+        let ntokens = count_tokens(&tokenizer.read().unwrap(), &lineref.line_content);
+        tokens_count += ntokens;
+        if tokens_count >= tokens_limit {
+            break;
+        }
+    }
+
+    // 8. Generate output
+    let mut merged: Vec<ContextFile> = vec![];
+    merged
+}
+
 
 pub async fn postprocess_at_results(
     global_context: Arc<ARwLock<GlobalContext>>,
@@ -149,6 +356,7 @@ pub async fn reload_files(
             file_content: content_line1_line2_str,
             line1: m.line1,
             line2: m.line2,
+            symbol: "".to_string(),
             usefulness: m.usefulness,
         });
     }
@@ -228,7 +436,13 @@ pub async fn run_at_commands(
                 }
             }
         }
-        let processed = postprocess_at_results(
+        // let processed = postprocess_at_results(
+        //     global_context.clone(),
+        //     messages_for_postprocessing,
+        //     tokenizer.clone(),
+        //     context_limit
+        // ).await;
+        let processed = postprocess_at_results2(
             global_context.clone(),
             messages_for_postprocessing,
             tokenizer.clone(),

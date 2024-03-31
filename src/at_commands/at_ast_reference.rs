@@ -22,6 +22,7 @@ async fn results2message(result: &AstQuerySearchResult) -> ChatMessage {
             file_content: content,
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
+            symbol: res.symbol_declaration.guid.clone(),
             usefulness: 50.0 * res.sim_to_query
         });
     }
