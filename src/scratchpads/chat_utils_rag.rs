@@ -558,12 +558,14 @@ pub async fn run_at_commands(
         //     tokenizer.clone(),
         //     context_limit
         // ).await;
+        let t0 = std::time::Instant::now();
         let processed = postprocess_at_results2(
             global_context.clone(),
             messages_for_postprocessing,
             tokenizer.clone(),
             context_limit
         ).await;
+        info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
         // let reloaded = reload_files(global_context.clone(), &processed, false).await;
         // for msg in reloaded {
         //     rebuilt_messages.push(msg.clone());

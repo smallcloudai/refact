@@ -73,7 +73,7 @@ pub trait LanguageParser: Send {
                     "class" | "struct" | "trait" => {
                         let range = capture.node.range();
                         let namespaces = self.get_namespace(Some(capture.node), code);
-                        let class_name = namespaces.last().unwrap().clone();
+                        let class_name = namespaces.last().unwrap().clone();   // FIXME: unwrap
                         let mut key = path.to_str().unwrap().to_string();
                         namespaces.iter().for_each(|ns| {
                             key += format!("::{}", ns).as_str();
