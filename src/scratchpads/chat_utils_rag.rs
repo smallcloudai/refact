@@ -57,7 +57,7 @@ fn path_of_guid(file_markup: &crate::ast::structs::FileASTMarkup, guid: &String)
             return format!("{}::{}", pp, pname);
         },
         None => {
-            info!("parent_guid {} not found, maybe outside of this file", guid);
+            // info!("parent_guid {} not found, maybe outside of this file", guid);
             return format!("UNK");
         }
     };
@@ -187,7 +187,11 @@ pub async fn postprocess_at_results2(
                 // full_range Range { start_byte: 696, end_byte: 1563, start_point: Point { row: 23, column: 4 }, end_point: Point { row: 47, column: 5 } }
                 // declaration_range Range { start_byte: 696, end_byte: 842, start_point: Point { row: 23, column: 4 }, end_point: Point { row: 27, column: 42 } }
                 // definition_range Range { start_byte: 843, end_byte: 1563, start_point: Point { row: 27, column: 43 }, end_point: Point { row: 47, column: 5 } }
-                colorize_lines(linevec, symb.definition_range.start_point.row, symb.definition_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 3.0);
+                info!("{:?} {} declaration_range {}-{}", symb.symbol_type, symb.guid, symb.declaration_range.start_point.row, symb.declaration_range.end_point.row);
+                info!("{:?} {} definition_range {}-{}", symb.symbol_type, symb.guid, symb.definition_range.start_point.row, symb.definition_range.end_point.row);
+                if symb.definition_range.end_byte > 0 {
+                    colorize_lines(linevec, symb.definition_range.start_point.row, symb.definition_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 3.0);
+                }
                 colorize_lines(linevec, symb.declaration_range.start_point.row, symb.declaration_range.end_point.row+1, &format!("{}", spath), omsg.usefulness);
             } else {
                 colorize_lines(linevec, symb.full_range.start_point.row, symb.full_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 6.0);
@@ -211,7 +215,7 @@ pub async fn postprocess_at_results2(
             assert!(i < linevec.len());
             let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
             unsafe {
-                if prefix.starts_with(&(*lineref_mut).color) {
+                if prefix.starts_with(&(*lineref_mut).color) && prefix != &(*lineref_mut).color {
                     if i == line2_base0-1 || i == line1_base0 {
                         if (*lineref_mut).line_content.trim().len() == 1 {
                             // HACK: closing brackets at the end, leave it alone without downgrade
