@@ -51,7 +51,8 @@ impl DeltaDeltaChatStreamer {
         &mut self,
         delta: String,
         stopped: bool,
-    ) -> Result<(serde_json::Value, bool), String> {
+    ) -> Result<(serde_json::Value, bool), String>
+    {
         // let prev_delta = self.delta2;
         self.delta2 = self.delta1.clone();
         self.delta1 = delta.clone();

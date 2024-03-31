@@ -135,7 +135,7 @@ pub async fn postprocess_at_results2(
                 fref: fref.clone(),
                 line_n: line_n,
                 line_content: line.to_string(),
-                useful: 0.0,
+                useful: 10.0,
                 color: "".to_string(),
             });
             lines_by_useful.push(a.clone());
@@ -184,17 +184,15 @@ pub async fn postprocess_at_results2(
             if symb.declaration_range.end_byte != 0 {
                 // full_range Range { start_byte: 696, end_byte: 1563, start_point: Point { row: 23, column: 4 }, end_point: Point { row: 47, column: 5 } }
                 // declaration_range Range { start_byte: 696, end_byte: 842, start_point: Point { row: 23, column: 4 }, end_point: Point { row: 27, column: 42 } }
-                // declaration_tail row: 47
                 // definition_range Range { start_byte: 843, end_byte: 1563, start_point: Point { row: 27, column: 43 }, end_point: Point { row: 47, column: 5 } }
-                colorize_lines(linevec, symb.definition_range.start_point.row, symb.definition_range.end_point.row+1, &format!("def  {}", spath), omsg.usefulness - 3.0);
-                colorize_lines(linevec, symb.declaration_range.start_point.row, symb.declaration_range.end_point.row+1, &format!("decl {}", spath), omsg.usefulness);
+                colorize_lines(linevec, symb.definition_range.start_point.row, symb.definition_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 3.0);
+                colorize_lines(linevec, symb.declaration_range.start_point.row, symb.declaration_range.end_point.row+1, &format!("{}", spath), omsg.usefulness);
             } else {
-                colorize_lines(linevec, symb.full_range.start_point.row, symb.full_range.end_point.row+1, &format!("full {}", spath), omsg.usefulness - 6.0);
+                colorize_lines(linevec, symb.full_range.start_point.row, symb.full_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 6.0);
             }
 
         } else {
-            // no symbol, go head with just line numbers
-            // omsg.line1, omsg.line2 numbers starts from 1, not from 0
+            // no symbol, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
             if omsg.line1 == 0 || omsg.line2 == 0 || omsg.line1 > omsg.line2 || omsg.line1 > linevec.len() || omsg.line2 > linevec.len() {
                 warn!("postprocess_at_results2: cannot use range {}:{}..{}", omsg.file_name, omsg.line1, omsg.line2);
                 continue;
@@ -203,20 +201,62 @@ pub async fn postprocess_at_results2(
         }
     }
 
-    // 5. Propogate usefullness up and down
+    // 5. Downgrade sub-symbols
+    let downgrade_lines_if_prefix = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, prefix: &String, downgrade_coef: f32|
+    {
+        info!("downgrade_lines_if_prefix: {}..{} <= prefix {:?} downgrade_coef {}", line1_base0, line2_base0, prefix, downgrade_coef);
+        for i in line1_base0 .. line2_base0 {
+            assert!(i < linevec.len());
+            let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+            unsafe {
+                if prefix.starts_with(&(*lineref_mut).color) {
+                    if i == line2_base0-1 || i == line1_base0 {
+                        if (*lineref_mut).line_content.trim().len() == 1 {
+                            // HACK: closing brackets at the end, leave it alone without downgrade
+                            continue;
+                        }
+                    }
+                    (*lineref_mut).useful *= downgrade_coef;
+                }
+            }
+        }
+    };
+    for linevec in lines_in_files.values_mut() {
+        if linevec.len() == 0 {
+            continue;
+        }
+        let fref = linevec[0].fref.clone();
+        for symb in fref.markup.guid2symbol.values() {
+            let spath = path_of_guid(&fref.markup, &symb.guid);
+            if symb.definition_range.end_byte != 0 {
+                // decl  void f() {
+                // def      int x = 5;
+                // def   }
+                let (def0, def1) = (
+                    symb.definition_range.start_point.row.max(symb.declaration_range.end_point.row + 1),   // definition must stay clear of declaration
+                    symb.definition_range.end_point.row + 1
+                );
+                if def1 > def0 {
+                    downgrade_lines_if_prefix(linevec, def0, def1, &format!("{}", spath), 0.5);
+                }
+            }
+        }
+    }
+
+    // 6. Propogate usefullness up and down
     for linevec in lines_in_files.values() {
         for lineref in linevec.iter() {
             info!("{}:{:04} {:>6.1} {}", crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 30), lineref.line_n, lineref.useful, crate::nicer_logs::first_n_chars(&lineref.line_content, 20));
         }
     }
 
-    // 6. Sort
+    // 7. Sort
     lines_by_useful.sort_by(|a, b| {
         b.useful.partial_cmp(&a.useful).unwrap_or(Ordering::Equal)
     });
     info!("{} lines in {} files", lines_by_useful.len(), files.len());
 
-    // 7. Convert line_content to tokens up to the limit
+    // 8. Convert line_content to tokens up to the limit
     let mut tokens_count: usize = 0;
     for lineref in lines_by_useful.iter_mut() {
         let ntokens = count_tokens(&tokenizer.read().unwrap(), &lineref.line_content);
@@ -226,7 +266,7 @@ pub async fn postprocess_at_results2(
         }
     }
 
-    // 8. Generate output
+    // 9. Generate output
     let mut merged: Vec<ContextFile> = vec![];
     merged
 }
