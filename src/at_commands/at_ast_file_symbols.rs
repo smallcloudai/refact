@@ -8,7 +8,7 @@ use crate::ast::ast_index::RequestSymbolType;
 
 use crate::ast::structs::FileReferencesResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-// use crate::at_commands::at_params::AtParamFilePath;
+// use crate::at_commands::at_file::AtParamFilePath;
 use crate::call_validation::{ChatMessage, ContextFile};
 use crate::files_in_workspace::DocumentInfo;
 

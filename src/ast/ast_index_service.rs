@@ -4,30 +4,53 @@ use std::iter::zip;
 use std::ops::Div;
 use std::sync::Arc;
 use std::time::SystemTime;
-
+use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use tokio::task::JoinHandle;
 use tracing::info;
 use rayon::prelude::*;
 use crate::ast::ast_index::AstIndex;
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
-use crate::files_in_workspace::DocumentInfo;
+use crate::files_in_workspace::{DocumentInfo, on_workspaces_init};
+use crate::global_context;
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum EventType {
+    Add,
+    Reset,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct AstEvent {
+    pub docs: Vec<DocumentInfo>,
+    pub typ: EventType,
+}
+
+impl AstEvent {
+    pub fn add_docs(docs: Vec<DocumentInfo>) -> Self {
+        AstEvent { docs, typ: EventType::Add }
+    }
+
+    pub fn reset() -> Self {
+        AstEvent { docs: Vec::new(), typ: EventType::Reset }
+    }
+}
 
 #[derive(Debug)]
 pub struct AstIndexService {
-    update_request_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
-    output_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    update_request_queue: Arc<AMutex<VecDeque<AstEvent>>>,
+    output_queue: Arc<AMutex<VecDeque<AstEvent>>>,
     ast_index: Arc<AMutex<AstIndex>>,
 }
 
 async fn cooldown_queue_thread(
-    update_request_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
-    out_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    update_request_queue: Arc<AMutex<VecDeque<AstEvent>>>,
+    out_queue: Arc<AMutex<VecDeque<AstEvent>>>,
     cooldown_secs: u64,
 ) {
-    let mut last_updated: HashMap<DocumentInfo, SystemTime> = HashMap::new();
+    let mut last_updated: HashMap<AstEvent, SystemTime> = HashMap::new();
     loop {
-        let (path_maybe, _unprocessed_files_count) = {
+        let (event_maybe, _unprocessed_files_count) = {
             let mut queue_locked = update_request_queue.lock().await;
             let queue_len = queue_locked.len();
             if !queue_locked.is_empty() {
@@ -37,83 +60,79 @@ async fn cooldown_queue_thread(
             }
         };
 
-        if let Some(path) = path_maybe {
-            last_updated.insert(path, SystemTime::now());
+        if let Some(event) = event_maybe {
+            last_updated.insert(event, SystemTime::now());
         }
 
-        let mut paths_to_process: Vec<DocumentInfo> = Vec::new();
+        let mut events_to_process: Vec<AstEvent> = Vec::new();
         let mut stat_too_new = 0;
         let mut stat_proceed = 0;
-        for (doc, time) in &last_updated {
+        for (event, time) in &last_updated {
             if time.elapsed().unwrap().as_secs() > cooldown_secs {
-                paths_to_process.push(doc.clone());
+                events_to_process.push(event.clone());
                 stat_proceed += 1;
             } else {
                 stat_too_new += 1;
             }
         }
         if stat_proceed > 0 || stat_too_new > 0 {
-            info!("{} files to process, {} files too new", stat_proceed, stat_too_new);
+            info!("{} events to process, {} events too new", stat_proceed, stat_too_new);
         }
-        for path in paths_to_process {
-            last_updated.remove(&path);
-            out_queue.lock().await.push_back(path);
+        for event in events_to_process {
+            last_updated.remove(&event);
+            out_queue.lock().await.push_back(event);
         }
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 }
 
 
-
 async fn ast_indexer_thread(
-    queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    queue: Arc<AMutex<VecDeque<AstEvent>>>,
     ast_index: Arc<AMutex<AstIndex>>,
 ) {
-    let mut reported_unprocessed: usize = 0;
-    let mut reported_astindex_complete: bool = false;
-
     loop {
-        let (list_of_path, unprocessed_files_count) = {
+        let events = {
             let mut queue_locked = queue.lock().await;
-            let docs: Vec<DocumentInfo> = Vec::from(queue_locked.to_owned());
-            let queue_len = docs.len();
+            let events: Vec<AstEvent> = Vec::from(queue_locked.to_owned());
             queue_locked.clear();
-            (docs, queue_len)
-
+            events
         };
-        if (unprocessed_files_count + 99).div(100) != (reported_unprocessed + 99).div(100) {
-            info!("have {} unprocessed files", unprocessed_files_count);
-            reported_unprocessed = unprocessed_files_count;
-        }
-        reported_astindex_complete &= unprocessed_files_count == 0;
-        if list_of_path.is_empty() {
-            if !reported_astindex_complete {
-                reported_astindex_complete = true;
-                write!(std::io::stderr(), "AST COMPLETED\n").unwrap();
-                info!("AST COMPLETED");
-            }
+
+        if events.len() == 0 {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             continue;
         }
 
-        let ast_index = ast_index.clone();
-        let all_symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = list_of_path
+for event in events {
+            let list_of_path = event.docs;
+            match event.typ {
+                EventType::Add => {
+                    let ast_index = ast_index.clone();
+                    let all_symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = list_of_path
             .par_iter()
             .map(move |document| AstIndex::parse(&document))
             .collect();
 
-        let mut ast_index = ast_index.lock().await;
-        zip(list_of_path, all_symbols).for_each(|(doc, res)| {
-            match res {
-                Ok(symbols) => {
-                    match ast_index.add_or_update_symbols_index(&doc, &symbols) {
-                        Ok(_) => {}
-                        Err(e) => { info!("Error adding/updating records in AST index: {}", e);}
-                    }
+                    let mut ast_index = ast_index.lock().await;
+                    zip(list_of_path, all_symbols).for_each(|(doc, res)| {
+                        match res {
+                            Ok(symbols) => {
+                                match ast_index.add_or_update_symbols_index(&doc, &symbols) {
+                                    Ok(_) => {}
+                                    Err(e) => { info!("Error adding/updating records in AST index: {}", e); }
+                                }
+                            }
+                            Err(e) => { info!("Error adding/updating records in AST index: {}", e); }
+                        }
+                    })
                 }
-                Err(e) => { info!("Error adding/updating records in AST index: {}", e);}
+                EventType::Reset => {
+                    ast_index.lock().await.clear_index().await;
+                    info!("Reset AST Index");
+                }
             }
-        })
+        }
     }
 }
 
@@ -178,12 +197,12 @@ impl AstIndexService {
         return vec![cooldown_queue_join_handle, indexer_handle, rebuild_index_handle];
     }
 
-    pub async fn ast_indexer_enqueue_files(&self, documents: &Vec<DocumentInfo>, force: bool) {
-        info!("adding to indexer queue {} files", documents.len());
+    pub async fn ast_indexer_enqueue_files(&self, event: AstEvent, force: bool) {
+        info!("adding to indexer queue {} events", event.docs.len());
         if !force {
-            self.update_request_queue.lock().await.extend(documents.clone());
+            self.update_request_queue.lock().await.push_back(event);
         } else {
-            self.output_queue.lock().await.extend(documents.clone());
+            self.output_queue.lock().await.push_back(event);
         }
     }
 }

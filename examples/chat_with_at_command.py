@@ -4,7 +4,8 @@ import requests, json, termcolor
 initial_messages = [
 {"role": "user", "content":
     # "@workspace definition of DeltaDeltaChatStreamer\n" +
-    # "@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\n" +
+    #"@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\n" +
+    # "@file chat_utils_deltadelta.rs\n" +
     # "@definition DeltaDeltaChatStreamer\n" +
     "@definition response_n_choices\n" +
     "summarize the code in one paragraph"

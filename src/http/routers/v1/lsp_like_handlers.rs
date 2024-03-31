@@ -22,6 +22,10 @@ struct LspLikeDidChange {
     pub text: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct LspLikeAddFolder {
+    pub uri: Url,
+}
 
 pub async fn handle_v1_lsp_initialize(
     Extension(global_context): Extension<SharedGlobalContext>,
@@ -51,6 +55,34 @@ pub async fn handle_v1_lsp_did_change(
         &post.uri,
         &post.text,
     ).await;
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from(json!({"success": 1}).to_string()))
+        .unwrap())
+}
+
+pub async fn handle_v1_lsp_add_folder(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<LspLikeAddFolder>(&body_bytes).map_err(|e| {
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    files_in_workspace::add_folder(global_context.clone(), &post.uri.to_file_path().unwrap()).await;
+    Ok(Response::builder()
+       .status(StatusCode::OK)
+       .body(Body::from(json!({"success": 1}).to_string()))
+       .unwrap())
+}
+
+pub async fn handle_v1_lsp_remove_folder(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<LspLikeAddFolder>(&body_bytes).map_err(|e| {
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    files_in_workspace::remove_folder(global_context.clone(), &post.uri.to_file_path().unwrap()).await;
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(json!({"success": 1}).to_string()))

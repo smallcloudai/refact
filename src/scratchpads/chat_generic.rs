@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
-use tracing::info;
+use tracing::{info, error};
 
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
@@ -110,7 +110,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
                 prompt.push_str(msg.content.as_str());
                 prompt.push_str("\n");
             } else if msg.role == "context_file" {
-                let vector_of_context_files: Vec<ContextFile> = serde_json::from_str(&msg.content).unwrap(); // FIXME unwrap
+                let vector_of_context_files: Vec<ContextFile> = serde_json::from_str(&msg.content).map_err(|e|error!("parsing context_files has failed: {}; content: {}", e, &msg.content)).unwrap_or(vec![]);
                 for context_file in vector_of_context_files {
                     prompt.push_str(format!("{}\n```\n{}```\n\n", context_file.file_name, context_file.file_content).as_str());
                 }

@@ -14,13 +14,12 @@ use tokio::signal;
 use tokio::sync::{Mutex as AMutex, Semaphore};
 use tokio::sync::RwLock as ARwLock;
 use tracing::{error, info};
-use url::Url;
 
 use crate::ast::ast_module::AstModule;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
-use crate::files_in_workspace::Document;
+use crate::files_in_workspace::DocumentsState;
 use crate::telemetry::telemetry_structs;
 use crate::vecdb::vecdb::VecDb;
 
@@ -68,12 +67,6 @@ impl CommandLine {
     pub fn get_prefix(&self) -> String {
         Self::create_hash(format!("{}:{}", self.address_url.clone(), self.api_key.clone()))[..6].to_string()
     }
-}
-
-pub struct DocumentsState {
-    pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
-    pub workspace_files: Arc<StdMutex<Vec<Url>>>,
-    pub document_map: Arc<ARwLock<HashMap<Url, Document>>>,   // if a file is open in IDE and it's outside workspace dirs, it will be in this map and not in workspace_files
 }
 
 pub struct GlobalContext {
@@ -242,11 +235,7 @@ pub async fn create_global_context(
         vec_db: Arc::new(AMutex::new(None)),
         ast_module: Arc::new(AMutex::new(None)),
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
-        documents_state: DocumentsState {
-            workspace_folders: if cmdline.workspace_folder.is_empty() { Arc::new(StdMutex::new(vec![])) } else { Arc::new(StdMutex::new(vec![PathBuf::from(cmdline.workspace_folder.clone())])) },
-            workspace_files: Arc::new(StdMutex::new(vec![])),
-            document_map: Arc::new(ARwLock::new(HashMap::new())),
-        },
+        documents_state: DocumentsState::empty(if cmdline.workspace_folder.is_empty() { vec![] } else { vec![PathBuf::from(cmdline.workspace_folder.clone())] })
     };
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {
@@ -255,5 +244,9 @@ pub async fn create_global_context(
         )));
         gcx.write().await.ast_module = ast_module;
     }
+    {
+        gcx.write().await.documents_state.init_watcher(gcx.clone());
+    }
+
     (gcx, ask_shutdown_receiver, cmdline)
 }

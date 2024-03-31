@@ -10,7 +10,7 @@ use tracing::info;
 use tree_sitter::Point;
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
-use crate::ast::ast_index_service::AstIndexService;
+use crate::ast::ast_index_service::{AstEvent, AstIndexService};
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
 use crate::ast::treesitter::structs::SymbolType;
@@ -51,11 +51,15 @@ impl AstModule {
     }
 
     pub async fn ast_indexer_enqueue_files(&self, documents: &Vec<DocumentInfo>, force: bool) {
-        self.ast_index_service.lock().await.ast_indexer_enqueue_files(documents, force).await;
+        self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::add_docs(documents.clone()), force).await;
     }
 
     pub async fn ast_add_file_no_queue(&self, document: &DocumentInfo) -> Result<(), String> {
         self.ast_index.lock().await.add_or_update(&document)
+    }
+
+    pub async fn ast_reset_index(&self) {
+        self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::reset(), false).await;
     }
 
     // pub async fn remove_file(&self, doc: &DocumentInfo) {
