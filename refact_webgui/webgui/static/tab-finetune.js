@@ -125,9 +125,8 @@ const finetune_settings_inputs = [
     { // column 0
         "name": "model_ctx_size",
         "label": "N Ctx",
-        "type": "text",
-        "min": "0",
-        "max": "4096",
+        "type": "select",
+        "values": ['auto', 128, 256, 512, 1024, 2048, 4096],
         "info": "Min 0, Max 4096",
         "hint": "",
     },
@@ -989,6 +988,10 @@ function save_finetune_settings() {
     if(run_name.trim() === '') {
         run_name = lora_default_name();
     }
+    let ctx_size = document.querySelector('#finetune-tab-settings-modal #model_ctx_size').value;
+    if(ctx_size === 'auto') {
+        ctx_size = 0;
+    }
     fetch("/tab-finetune-training-launch", {
         method: "POST",
         headers: {
@@ -1012,7 +1015,7 @@ function save_finetune_settings() {
             lora_dropout: document.querySelector('#finetune-tab-settings-modal #lora_dropout').value,
             gpus: gpus,
             filter_loss_threshold: document.querySelector('#finetune-tab-settings-modal #filter_loss_threshold').value,
-            model_ctx_size: document.querySelector('#finetune-tab-settings-modal #model_ctx_size').value,
+            model_ctx_size: ctx_size,
         })
     })
     .then(function(response) {
