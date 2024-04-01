@@ -79,6 +79,11 @@ export interface ReadyMessage extends ActionFromChat {
   payload: { id: string };
 }
 
+export function isReadyMessage(action: unknown): action is ReadyMessage {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.READY;
+}
+
 export function isActionFromChat(action: unknown): action is ActionFromChat {
   if (!action) return false;
   if (typeof action !== "object") return false;
