@@ -184,18 +184,20 @@ pub async fn handle_v1_ast_file_markup(
     let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-
-    let cx_locked = global_context.read().await;
-    let search_res = match *cx_locked.ast_module.lock().await {
-        Some(ref mut ast) => {
-            let doc = DocumentInfo { uri: post.file_url, document: None };
-            ast.file_markup(&doc).await
-        }
-        None => {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
-            ));
-        }
+    let search_res = {
+        let cx_locked = global_context.read().await;
+        let x = match *cx_locked.ast_module.lock().await {
+            Some(ref mut ast) => {
+                let doc = DocumentInfo { uri: post.file_url, document: None };
+                ast.file_markup(&doc).await
+            }
+            None => {
+                return Err(ScratchError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+                ));
+            }
+        };
+        x
     };
     match search_res {
         Ok(search_res) => {
@@ -212,6 +214,39 @@ pub async fn handle_v1_ast_file_markup(
         }
     }
 }
+
+
+// use crate::call_validation::ContextFile;
+// use std::collections::HashSet;
+
+// pub async fn handle_v1_ast_file_dump(
+//     Extension(global_context): Extension<SharedGlobalContext>,
+//     body_bytes: hyper::body::Bytes,
+// ) -> Result<Response<Body>, ScratchError> {
+//     let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
+//         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+//     })?;
+//     let mut origmsgs: Vec<ContextFile> = vec![];
+//     let mut files_set: HashSet<String> = HashSet::new();
+//     files_set.insert(post.file_url.to_file_path().unwrap().display().to_string());
+//     let (mut lines_in_files, mut lines_by_useful) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage1(global_context, origmsgs, files_set).await;
+//     let xxx = 5;
+//     {
+//         for linevec in lines_in_files.values() {
+//         }
+//     }
+//     let json_string = serde_json::to_string_pretty(
+//         &serde_json::json!({
+//             "a": 6
+//         })
+//     ).map_err(|e| {
+//         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
+//     })?;
+//     Ok(Response::builder()
+//         .status(StatusCode::OK)
+//         .body(Body::from(json_string))
+//         .unwrap())
+// }
 
 pub async fn handle_v1_ast_file_symbols(
     Extension(global_context): Extension<SharedGlobalContext>,
