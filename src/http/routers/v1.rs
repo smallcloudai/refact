@@ -23,7 +23,7 @@ use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
 use crate::http::routers::v1::lsp_like_handlers::{handle_v1_lsp_did_change, handle_v1_lsp_add_folder, handle_v1_lsp_initialize, handle_v1_lsp_remove_folder};
 use crate::http::routers::v1::toolbox::handle_v1_customization;
 use crate::http::routers::v1::toolbox::handle_v1_rewrite_assistant_says_to_at_commands;
-use crate::http::routers::v1::vecdb::{handle_v1_vecdb_caps, handle_v1_vecdb_search, handle_v1_vecdb_status};
+use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
 use crate::http::utils::telemetry_wrapper;
 
 pub mod code_completion;
@@ -51,7 +51,6 @@ pub fn make_v1_router() -> Router {
 
         .route("/vdb-search", telemetry_post!(handle_v1_vecdb_search))
         .route("/vdb-status", telemetry_get!(handle_v1_vecdb_status))
-        .route("/vdb-caps", telemetry_get!(handle_v1_vecdb_caps))
         .route("/at-command-completion", telemetry_post!(handle_v1_command_completion))
         .route("/at-command-preview", telemetry_post!(handle_v1_command_preview))
 

@@ -2,7 +2,6 @@ use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
@@ -13,6 +12,9 @@ struct VecDBPost {
     query: String,
     top_n: usize,
 }
+
+const NO_VECDB: &str = "Vector db is not running, check if you have --vecdb parameter and a vectorization model is running on server side.";
+
 
 pub async fn handle_v1_vecdb_search(
     Extension(global_context): Extension<SharedGlobalContext>,
@@ -27,7 +29,7 @@ pub async fn handle_v1_vecdb_search(
         Some(ref db) => db.search(post.query.to_string(), post.top_n).await,
         None => {
             return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Vector db is not available".to_string()
+                StatusCode::INTERNAL_SERVER_ERROR, NO_VECDB.to_string()
             ));
         }
     };
@@ -62,34 +64,12 @@ pub async fn handle_v1_vecdb_status(
         },
         None => {
             return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Vector db is not available".to_string()
+                StatusCode::INTERNAL_SERVER_ERROR, NO_VECDB.to_string()
             ));
         }
     };
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(serde_json::to_string_pretty(&status).unwrap()))
-        .unwrap())
-}
-
-pub async fn handle_v1_vecdb_caps(
-    Extension(global_context): Extension<SharedGlobalContext>,
-    _: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let caps = {
-        let cx_locked = global_context.read().await;
-        let db = cx_locked.vec_db.lock().await;
-        if let Some(ref db) = *db {
-            db.caps().await
-        } else {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Vector db is not available".to_string()
-            ));
-        }
-    };
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .body(Body::from(json!(caps).to_string()))
         .unwrap())
 }
