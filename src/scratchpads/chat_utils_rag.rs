@@ -56,7 +56,7 @@ pub async fn postprocess_rag_stage1(
                     f = Some(Arc::new(File { markup, file_name: file_name.clone() }));
                 },
                 Err(err) => {
-                    warn!("postprocess_at_results2 loading astmod problem: {}", err);
+                    warn!("postprocess_rag_stage1 query file markup problem: {}", err);
                 }
             }
         }
@@ -125,7 +125,7 @@ pub async fn postprocess_rag_stage1(
             let useful = 10.0;  // depends on symbol type?
             colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), useful);
         }
-        colorize_if_more_useful(linevec, 0, linevec.len(), &"".to_string(), 10.0);
+        colorize_if_more_useful(linevec, 0, linevec.len(), &"".to_string(), 5.0);
     }
 
     // 4. Fill in usefulness from search results
@@ -133,7 +133,7 @@ pub async fn postprocess_rag_stage1(
         let linevec: &mut Vec<Arc<FileLine>> = match lines_in_files.get_mut(&omsg.file_name) {
             Some(x) => x,
             None => {
-                warn!("postprocess_at_results2: file not found {}", omsg.file_name);
+                warn!("postprocess_rag_stage1: file not found {}", omsg.file_name);
                 continue;
             }
         };
@@ -150,7 +150,7 @@ pub async fn postprocess_rag_stage1(
                 }
             }
             if maybe_symbol.is_none() {
-                warn!("postprocess_at_results2: cannot find symbol {} in file {}", omsg.symbol, omsg.file_name);
+                warn!("postprocess_rag_stage1: cannot find symbol {} in file {}", omsg.symbol, omsg.file_name);
             }
         }
         if let Some(s) = maybe_symbol {
@@ -158,7 +158,7 @@ pub async fn postprocess_rag_stage1(
         } else {
             // no symbol set in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
             if omsg.line1 == 0 || omsg.line2 == 0 || omsg.line1 > omsg.line2 || omsg.line1 > linevec.len() || omsg.line2 > linevec.len() {
-                warn!("postprocess_at_results2: cannot use range {}:{}..{}", omsg.file_name, omsg.line1, omsg.line2);
+                warn!("postprocess_rag_stage1: cannot use range {}:{}..{}", omsg.file_name, omsg.line1, omsg.line2);
                 continue;
             }
             colorize_if_more_useful(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);

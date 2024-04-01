@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
@@ -24,6 +25,11 @@ struct AstQuerySearchByGuid {
 #[derive(Serialize, Deserialize, Clone)]
 struct AstFileUrlPost {
     file_url: Url,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct FileNameOnlyPost {
+    file_name: String,
 }
 
 
@@ -215,37 +221,33 @@ pub async fn handle_v1_ast_file_markup(
 }
 
 
-// use crate::call_validation::ContextFile;
-// use std::collections::HashSet;
-
-// pub async fn handle_v1_ast_file_dump(
-//     Extension(global_context): Extension<SharedGlobalContext>,
-//     body_bytes: hyper::body::Bytes,
-// ) -> Result<Response<Body>, ScratchError> {
-//     let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
-//         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-//     })?;
-//     let mut origmsgs: Vec<ContextFile> = vec![];
-//     let mut files_set: HashSet<String> = HashSet::new();
-//     files_set.insert(post.file_url.to_file_path().unwrap().display().to_string());
-//     let (mut lines_in_files, mut lines_by_useful) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage1(global_context, origmsgs, files_set).await;
-//     let xxx = 5;
-//     {
-//         for linevec in lines_in_files.values() {
-//         }
-//     }
-//     let json_string = serde_json::to_string_pretty(
-//         &serde_json::json!({
-//             "a": 6
-//         })
-//     ).map_err(|e| {
-//         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
-//     })?;
-//     Ok(Response::builder()
-//         .status(StatusCode::OK)
-//         .body(Body::from(json_string))
-//         .unwrap())
-// }
+pub async fn handle_v1_ast_file_dump(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<FileNameOnlyPost>(&body_bytes).map_err(|e| {
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    let mut files_set: HashSet<String> = HashSet::new();
+    files_set.insert(post.file_name);
+    let (lines_in_files, _) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage1(global_context, vec![], files_set).await;
+    let mut result = "".to_string();
+    for linevec in lines_in_files.values() {
+        for lineref in linevec {
+            result.push_str(format!("{}:{:04} {:<43} {:>7.3} {}\n",
+                crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 40),
+                lineref.line_n,
+                crate::nicer_logs::first_n_chars(&lineref.line_content, 40),
+                lineref.useful,
+                lineref.color,
+            ).as_str());
+        }
+    }
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from(result))
+        .unwrap())
+}
 
 pub async fn handle_v1_ast_file_symbols(
     Extension(global_context): Extension<SharedGlobalContext>,
