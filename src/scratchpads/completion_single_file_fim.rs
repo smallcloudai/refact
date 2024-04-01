@@ -150,7 +150,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             vec![]
         };
         let context_ctx_this_message = 1024;  // FIXME: calculate better, subtract from limit
-        let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results(
+        let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
             self.global_context.clone(),
             ast_messages,
             self.t.tokenizer.clone(),

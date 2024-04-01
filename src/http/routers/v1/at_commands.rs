@@ -15,6 +15,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::query::QueryLine;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
+use crate::call_validation::ChatMessage;
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -113,18 +114,24 @@ pub async fn handle_v1_command_preview(
             }
         }
     }
-    let processed = crate::scratchpads::chat_utils_rag::postprocess_at_results(
+    let processed = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
         global_context.clone(),
         messages_for_postprocessing,
         tokenizer_arc.clone(),
         recommended_model_record.n_ctx,
     ).await;
-    let reloaded = crate::scratchpads::chat_utils_rag::reload_files(global_context.clone(), &processed, false).await;
-
+    let mut preview: Vec<ChatMessage> = vec![];
+    if processed.len() > 0 {
+        let message = ChatMessage {
+            role: "context_file".to_string(),
+            content: serde_json::to_string(&processed).unwrap(),
+        };
+        preview.push(message.clone());
+    }
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(serde_json::to_string(
-            &json!({"messages": reloaded, "model": model_name})
+            &json!({"messages": preview, "model": model_name})
         ).unwrap()))
         .unwrap())
 }
