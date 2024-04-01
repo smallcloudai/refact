@@ -1,4 +1,5 @@
 use std::sync::Arc;
+// use std::cell::RefCell;
 use std::sync::RwLock;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -48,21 +49,6 @@ struct FileLine {
     pub take: bool,
 }
 
-fn path_of_guid(file_markup: &crate::ast::structs::FileASTMarkup, guid: &String) -> String
-{
-    match file_markup.guid2symbol.get(guid) {
-        Some(x) => {
-            let pname = if !x.name.is_empty() { x.name.clone() } else { x.guid[..8].to_string() };
-            let pp = path_of_guid(&file_markup, &x.parent_guid);
-            return format!("{}::{}", pp, pname);
-        },
-        None => {
-            // info!("parent_guid {} not found, maybe outside of this file", guid);
-            return format!("UNK");
-        }
-    };
-}
-
 pub async fn postprocess_at_results2(
     global_context: Arc<ARwLock<GlobalContext>>,
     messages: Vec<ChatMessage>,
@@ -93,10 +79,10 @@ pub async fn postprocess_at_results2(
         let cx_locked = global_context.read().await;
         cx_locked.ast_module.clone()
     };
+    let option_astmod = ast_module.lock().await;
     for file_name in files_set {
         let file_info = DocumentInfo::from_pathbuf(&std::path::PathBuf::from(file_name.clone())).unwrap();
         let mut f: Option<Arc<File>> = None;
-        let option_astmod = ast_module.lock().await;
         if let Some(astmod) = &*option_astmod {
             match astmod.file_markup(&file_info).await {
                 Ok(markup) => {
@@ -112,7 +98,7 @@ pub async fn postprocess_at_results2(
                 markup: FileASTMarkup {
                     file_url: file_info.uri.clone(),
                     file_content: file_info.read_file().await.unwrap_or_default(),
-                    guid2symbol: HashMap::<String, SymbolInformation>::new(),    // no symbols
+                    symbols_sorted_by_path_len: Vec::new(),
                 },
                 file_name: file_name.clone(),
             }));
@@ -123,7 +109,7 @@ pub async fn postprocess_at_results2(
     }
     for fref in files.values() {
         info!("fref {:?} has {} bytes", fref.file_name, fref.markup.file_content.len());
-        info!("fref {:?} has {} symbols", fref.file_name, fref.markup.guid2symbol.len());
+        info!("fref {:?} has {} symbols", fref.file_name, fref.markup.symbols_sorted_by_path_len.len());
     }
 
     // 3. Generate line refs
@@ -145,7 +131,7 @@ pub async fn postprocess_at_results2(
         }
     }
 
-    // 4. Fill in usefulness
+    // 4. Fill in usefulness from search results
     let colorize_if_more_useful = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, color: &String, useful: f32|
     {
         info!("colorize_if_more_useful: {}..{} <= color {:?} useful {}", line1_base0, line2_base0, color, useful);
@@ -175,29 +161,33 @@ pub async fn postprocess_at_results2(
         let fref = linevec[0].fref.clone();
         let mut maybe_symbol: Option<&SymbolInformation> = None;
         if !omsg.symbol.is_empty() {
-            maybe_symbol = fref.markup.guid2symbol.get(&omsg.symbol);
+            for x in fref.markup.symbols_sorted_by_path_len.iter() {
+                if x.guid == omsg.symbol {
+                    maybe_symbol = Some(x);
+                    break;
+                }
+            }
             if maybe_symbol.is_none() {
                 warn!("postprocess_at_results2: cannot find symbol {} in file {}", omsg.symbol, omsg.file_name);
             }
         }
-        if let Some(symb) = maybe_symbol {
-            let spath = path_of_guid(&fref.markup, &symb.guid);
-            if symb.declaration_range.end_byte != 0 {
+        if let Some(s) = maybe_symbol {
+            if s.declaration_range.end_byte != 0 {
                 // full_range Range { start_byte: 696, end_byte: 1563, start_point: Point { row: 23, column: 4 }, end_point: Point { row: 47, column: 5 } }
                 // declaration_range Range { start_byte: 696, end_byte: 842, start_point: Point { row: 23, column: 4 }, end_point: Point { row: 27, column: 42 } }
                 // definition_range Range { start_byte: 843, end_byte: 1563, start_point: Point { row: 27, column: 43 }, end_point: Point { row: 47, column: 5 } }
-                info!("{:?} {} declaration_range {}-{}", symb.symbol_type, symb.guid, symb.declaration_range.start_point.row, symb.declaration_range.end_point.row);
-                info!("{:?} {} definition_range {}-{}", symb.symbol_type, symb.guid, symb.definition_range.start_point.row, symb.definition_range.end_point.row);
-                if symb.definition_range.end_byte > 0 {
-                    colorize_if_more_useful(linevec, symb.definition_range.start_point.row, symb.definition_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 3.0);
+                info!("{:?} {} declaration_range {}-{}", s.symbol_type, s.guid, s.declaration_range.start_point.row, s.declaration_range.end_point.row);
+                info!("{:?} {} definition_range {}-{}", s.symbol_type, s.guid, s.definition_range.start_point.row, s.definition_range.end_point.row);
+                if s.definition_range.end_byte > 0 {
+                    colorize_if_more_useful(linevec, s.definition_range.start_point.row, s.definition_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness - 3.0);
                 }
-                colorize_if_more_useful(linevec, symb.declaration_range.start_point.row, symb.declaration_range.end_point.row+1, &format!("{}", spath), omsg.usefulness);
+                colorize_if_more_useful(linevec, s.declaration_range.start_point.row, s.declaration_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness);
             } else {
-                colorize_if_more_useful(linevec, symb.full_range.start_point.row, symb.full_range.end_point.row+1, &format!("{}", spath), omsg.usefulness - 6.0);
+                colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness - 6.0);
             }
 
         } else {
-            // no symbol, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
+            // no symbol in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
             if omsg.line1 == 0 || omsg.line2 == 0 || omsg.line1 > omsg.line2 || omsg.line1 > linevec.len() || omsg.line2 > linevec.len() {
                 warn!("postprocess_at_results2: cannot use range {}:{}..{}", omsg.file_name, omsg.line1, omsg.line2);
                 continue;
@@ -246,24 +236,23 @@ pub async fn postprocess_at_results2(
         info!("looking at symbols in {}", fref.file_name);
         let mut anything_interesting_min = usize::MAX;
         let mut anything_interesting_max = 0;
-        for symb in fref.markup.guid2symbol.values() {
-            let spath = path_of_guid(&fref.markup, &symb.guid);
-            if symb.definition_range.end_byte != 0 {
+        for s in fref.markup.symbols_sorted_by_path_len.iter() {
+            if s.definition_range.end_byte != 0 {
                 // decl  void f() {
                 // def      int x = 5;
                 // def   }
                 let (def0, def1) = (
-                    symb.definition_range.start_point.row.max(symb.declaration_range.end_point.row + 1),   // definition must stay clear of declaration
-                    symb.definition_range.end_point.row + 1
+                    s.definition_range.start_point.row.max(s.declaration_range.end_point.row + 1),   // definition must stay clear of declaration
+                    s.definition_range.end_point.row + 1
                 );
                 if def1 > def0 {
-                    downgrade_lines_if_prefix(linevec, def0, def1, &format!("{}", spath), 0.8);
+                    downgrade_lines_if_prefix(linevec, def0, def1, &format!("{}", s.symbol_path), 0.8);
                 }
             } else {
-                info!("    {:?} {} {}-{}", symb.symbol_type, symb.guid, symb.full_range.start_point.row, symb.full_range.end_point.row);
+                info!("    {:?} {} {}-{}", s.symbol_type, s.symbol_path, s.full_range.start_point.row, s.full_range.end_point.row);
             }
-            anything_interesting_min = anything_interesting_min.min(symb.full_range.start_point.row);
-            anything_interesting_max = anything_interesting_max.max(symb.full_range.end_point.row);
+            anything_interesting_min = anything_interesting_min.min(s.full_range.start_point.row);
+            anything_interesting_max = anything_interesting_max.max(s.full_range.end_point.row);
         }
         if anything_interesting_min > 0 && anything_interesting_min != usize::MAX {
             downgrade_unconditional(linevec, 0, anything_interesting_min, -5.0, 1.0);

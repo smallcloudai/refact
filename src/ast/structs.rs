@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -45,6 +44,5 @@ pub struct FileReferencesResult {
 pub struct FileASTMarkup {
     pub file_url: Url,
     pub file_content: String,
-    pub guid2symbol: HashMap<String, SymbolInformation>,
+    pub symbols_sorted_by_path_len: Vec<SymbolInformation>,
 }
-
