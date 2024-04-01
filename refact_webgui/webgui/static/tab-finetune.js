@@ -802,12 +802,11 @@ function render_finetune_options(settings_data,defaults = false) {
     }
 
     const ftune_name = document.querySelector('#finetune-tab-settings-modal #finetune_name');
-    ftune_name.addEventListener('input', function() {
-        const regex = /^[A-Za-z0-9_\-\.]{1,30}$/;
-        if (ftune_name.value.trim() === '' || !regex.test(ftune_name.value.trim())) {
-            ftune_name.classList.add('is-invalid');
-        } else {
-            ftune_name.classList.remove('is-invalid');
+    ftune_name.addEventListener('keypress', function(event) {
+        const regex = /^[A-Za-z0-9_\-\.]$/; // Valid characters
+        const inputValue = event.key;
+        if (!regex.test(inputValue)) {
+            event.preventDefault();
         }
     });
     
@@ -989,7 +988,7 @@ function save_finetune_settings() {
         run_name = lora_default_name();
     }
     let ctx_size = document.querySelector('#finetune-tab-settings-modal #model_ctx_size').value;
-    if(ctx_size === 'auto') {
+    if(ctx_size == 'auto') {
         ctx_size = 0;
     }
     fetch("/tab-finetune-training-launch", {
