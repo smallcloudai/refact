@@ -240,16 +240,6 @@ impl VecDb {
     pub async fn get_status(&self) -> Result<VecDbStatus, String> {
         self.vectorizer_service.lock().await.status().await
     }
-
-    // pub async fn get_indexed_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {
-    //     return self.vecdb_handler.lock().await.get_indexed_file_paths().await;
-    // }
-
-    pub async fn caps(&self) -> VecDbCaps {
-        VecDbCaps {
-            functions: vec!["@workspace".to_string()],
-        }
-    }
 }
 
 
