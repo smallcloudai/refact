@@ -4,15 +4,14 @@ use std::sync::{Arc, RwLock};
 
 use similar::DiffableStr;
 use structopt::lazy_static::lazy_static;
-use tree_sitter::{Node, Parser, Point, Query, QueryCapture, Range};
+use tree_sitter::{Node, Parser, Point, Range};
 use tree_sitter_python::language;
 use url::Url;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
-use crate::ast::treesitter::parsers::{internal_error, LanguageParser, NewLanguageParser, ParserError};
-use crate::ast::treesitter::parsers::utils::{get_children_guids, get_function_name, get_guid, str_hash};
-use crate::ast::treesitter::structs::VariableInfo;
+use crate::ast::treesitter::parsers::{internal_error, AstLanguageParser, ParserError};
+use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid, str_hash};
 
 const PYTHON_PARSER_QUERY_GLOBAL_VARIABLE: &str = "(expression_statement (assignment left: (identifier)) @global_variable)";
 const PYTHON_PARSER_QUERY_FUNCTION: &str = "((function_definition name: (identifier)) @function)";
@@ -58,6 +57,7 @@ lazy_static! {
 pub(crate) struct PythonParser {
     pub parser: Parser,
 }
+
 pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
     let kind = parent.kind();
     let text = code.slice(parent.byte_range()).to_string();
@@ -125,7 +125,6 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
                 guid: None,
                 nested_types,
             });
-
         }
         "call" => {
             let function = parent.child_by_field_name("function").unwrap();
@@ -689,136 +688,11 @@ impl PythonParser {
     }
 }
 
-impl NewLanguageParser for PythonParser {
+impl AstLanguageParser for PythonParser {
     fn parse(&mut self, code: &str, path: &Url) -> Vec<AstSymbolInstanceArc> {
         let tree = self.parser.parse(code, None).unwrap();
         let parent_guid = get_guid();
         let symbols = self.parse_block(&tree.root_node(), code, path, &parent_guid, false);
         symbols
-    }
-}
-
-impl LanguageParser for PythonParser {
-    fn get_parser(&mut self) -> &mut Parser {
-        &mut self.parser
-    }
-
-    fn get_parser_query(&self) -> &String {
-        &PYTHON_PARSER_QUERY
-    }
-
-    fn get_parser_query_find_all(&self) -> &String {
-        &PYTHON_PARSER_QUERY_FIND_ALL
-    }
-
-    fn get_namespace(&self, mut parent: Option<Node>, text: &str) -> Vec<String> {
-        let mut namespaces: Vec<String> = vec![];
-        while parent.is_some() {
-            match parent.unwrap().kind() {
-                "class_definition" => {
-                    let children_len = parent.unwrap().child_count();
-                    for i in 0..children_len {
-                        if let Some(child) = parent.unwrap().child(i) {
-                            if child.kind() == "identifier" {
-                                namespaces.push(text.slice(child.byte_range()).to_string());
-                                break;
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            }
-            parent = parent.unwrap().parent();
-        }
-        namespaces.reverse();
-        namespaces
-    }
-
-    fn get_function_name_and_scope(&self, parent: Node, text: &str) -> (String, Vec<String>) {
-        (get_function_name(parent, text), vec![])
-    }
-
-    fn get_variable_name(&self, parent: Node, text: &str) -> String {
-        for i in 0..parent.child_count() {
-            if let Some(child) = parent.child(i) {
-                let kind = child.kind();
-                match kind {
-                    "identifier" => {
-                        let name = text.slice(child.byte_range());
-                        return name.to_string();
-                    }
-                    _ => {}
-                }
-            }
-        }
-        return "".to_string();
-    }
-
-    fn get_variable(&mut self, captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
-        let mut var = VariableInfo {
-            name: "".to_string(),
-            range: Range {
-                start_byte: 0,
-                end_byte: 0,
-                start_point: Default::default(),
-                end_point: Default::default(),
-            },
-            type_names: vec![],
-            meta_path: None,
-        };
-        for capture in captures {
-            let capture_name = &query.capture_names()[capture.index as usize];
-            match capture_name.as_str() {
-                "variable" => {
-                    var.range = capture.node.range()
-                }
-                "variable_left" => {
-                    let text = code.slice(capture.node.byte_range());
-                    var.name = text.to_string();
-                }
-                "variable_type" => {
-                    let text = code.slice(capture.node.byte_range());
-                    var.type_names.push(text.to_string());
-                }
-                "variable_right" => {
-                    match capture.node.kind() {
-                        "string" => {
-                            var.type_names.push("str".to_string());
-                        }
-                        "integer" => {
-                            var.type_names.push("int".to_string());
-                        }
-                        "false" | "true" => {
-                            var.type_names.push("bool".to_string());
-                        }
-                        "float" => {
-                            var.type_names.push("float".to_string());
-                        }
-                        // "call" => {
-                        //     let node = capture.node;
-                        //     for i in 0..node.child_count() {
-                        //         if let Some(child) = node.child(i) {
-                        //             let kind = child.kind();
-                        //             match kind {
-                        //                 "identifier" => {
-                        //                     let text = code.slice(child.byte_range());
-                        //                     var.type_name = Some(text.to_string());
-                        //                 }
-                        //                 _ => {}
-                        //             }
-                        //         }
-                        //     }
-                        // }
-                        &_ => {}
-                    }
-                }
-                &_ => {}
-            }
-        }
-        if var.name.is_empty() {
-            return None;
-        }
-
-        Some(var)
     }
 }

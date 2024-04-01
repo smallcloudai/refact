@@ -2,7 +2,7 @@
 mod tests {
     use std::collections::HashMap;
     use url::Url;
-    use crate::ast::treesitter::parsers::NewLanguageParser;
+    use crate::ast::treesitter::parsers::AstLanguageParser;
     use crate::ast::treesitter::parsers::python::PythonParser;
     use crate::ast::treesitter::structs::SymbolDeclarationStruct;
 

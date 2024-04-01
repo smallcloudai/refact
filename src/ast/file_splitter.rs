@@ -1,8 +1,8 @@
 use md5;
 use ropey::Rope;
 use tracing::info;
+use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 
-use crate::ast::treesitter::parsers::get_parser_by_filename;
 use crate::files_in_workspace::{Document, DocumentInfo};
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::structs::SplitResult;
@@ -15,7 +15,7 @@ fn str_hash(s: &String) -> String {
 pub struct AstBasedFileSplitter {
     soft_window: usize,
     // hard_window: usize,
-    fallback_file_splitter: FileSplitter
+    fallback_file_splitter: FileSplitter,
 }
 
 impl AstBasedFileSplitter {
@@ -23,13 +23,12 @@ impl AstBasedFileSplitter {
         Self {
             soft_window: window_size,
             // hard_window: window_size + soft_limit,
-            fallback_file_splitter: FileSplitter::new(window_size, soft_limit)
+            fallback_file_splitter: FileSplitter::new(window_size, soft_limit),
         }
     }
 
     pub async fn split(&self, doc_info: &DocumentInfo) -> Result<Vec<SplitResult>, String> {
-        let path = doc_info.get_path();
-        let mut parser = match get_parser_by_filename(&doc_info.get_path()) {
+        let mut parser = match get_ast_parser_by_filename(&doc_info.get_path()) {
             Ok(parser) => parser,
             Err(_) => {
                 info!("cannot find a parser for {:?}, using simple file splitter", doc_info.get_path());
@@ -39,23 +38,18 @@ impl AstBasedFileSplitter {
         let text = match doc_info.read_file().await {
             Ok(s) => s,
             Err(err) => {
-                return Err(err.to_string())
+                return Err(err.to_string());
             }
         };
-        let declarations = match parser.parse_declarations(text.as_str(), &path) {
-            Ok(declarations) => declarations,
-            Err(_) => {
-                info!("cannot parse {:?}, using simple file splitter", doc_info.get_path());
-                return self.fallback_file_splitter.split(doc_info).await;
-            }
-        };
-
+        let symbols = parser.parse(text.as_str(), &doc_info.uri);
         let mut chunks = Vec::new();
         let mut split_normally: usize = 0;
         let mut split_using_fallback: usize = 0;
         let mut split_errors: usize = 0;
-        for (_, declaration) in declarations.iter() {
-            let content = match declaration.get_content().await {
+        for symbol in symbols.iter().map(|s| s.read()
+            .expect("cannot read symbol")
+            .symbol_info_struct()) {
+            let content = match symbol.get_content().await {
                 Ok(content) => content,
                 Err(err) => {
                     split_errors += 1;
@@ -68,17 +62,17 @@ impl AstBasedFileSplitter {
                     uri: doc_info.uri.clone(),
                     document: Some(Document {
                         language_id: "unknown".to_string(),
-                        text: Rope::from_str(&content)
-                    })
+                        text: Rope::from_str(&content),
+                    }),
                 };
                 match self.fallback_file_splitter.split(&temp_doc_info).await {
                     Ok(mut res) => {
                         for r in res.iter_mut() {
-                            r.start_line += declaration.definition_info.range.start_point.row as u64;
-                            r.end_line += declaration.definition_info.range.start_point.row as u64;
+                            r.start_line += symbol.full_range.start_point.row as u64;
+                            r.end_line += symbol.full_range.start_point.row as u64;
                         }
                         chunks.extend(res)
-                    },
+                    }
                     Err(err) => {
                         info!("{}", err);
                     }
@@ -91,8 +85,8 @@ impl AstBasedFileSplitter {
                     file_path: doc_info.get_path(),
                     window_text: content.clone(),
                     window_text_hash: str_hash(&content),
-                    start_line: declaration.definition_info.range.start_point.row as u64,
-                    end_line: declaration.definition_info.range.end_point.row as u64,
+                    start_line: symbol.full_range.start_point.row as u64,
+                    end_line: symbol.full_range.end_point.row as u64,
                 });
             }
         }

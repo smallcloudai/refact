@@ -1,19 +1,16 @@
-// use std::collections::HashSet;
-use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::{Arc, RwLock};
 
 use similar::DiffableStr;
 use structopt::lazy_static::lazy_static;
-use tree_sitter::{Node, Parser, Point, Query, QueryCapture, Range, Tree};
+use tree_sitter::{Node, Parser, Point, Range};
 use tree_sitter_rust::language;
 use url::Url;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
-use crate::ast::treesitter::parsers::{internal_error, LanguageParser, NewLanguageParser, ParserError};
-use crate::ast::treesitter::parsers::utils::{get_children_guids, get_function_name, get_guid, str_hash};
-use crate::ast::treesitter::structs::{SymbolInfo, VariableInfo};
+use crate::ast::treesitter::parsers::{internal_error, AstLanguageParser, ParserError};
+use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid, str_hash};
 
 const RUST_PARSER_QUERY_GLOBAL_VARIABLE: &str = "((static_item name: (identifier)) @global_variable)";
 const RUST_PARSER_QUERY_FUNCTION: &str = "((function_item name: (identifier)) @function)
@@ -46,12 +43,6 @@ const RUST_PARSER_QUERY_FIND_STATICS: &str = r#"(
 ])
 )"#;
 
-const TRY_TO_FIND_TYPE_QUERY: &str = "[
-    (primitive_type) @variable_type
-    (_ element: (type_identifier) @variable_type)
-    (_ type: (type_identifier) @variable_type)
-    ((scoped_type_identifier (_)) @variable_type)
-    ]";
 
 lazy_static! {
     static ref RUST_PARSER_QUERY: String = {
@@ -811,164 +802,11 @@ impl RustParser {
     }
 }
 
-impl NewLanguageParser for RustParser {
+impl AstLanguageParser for RustParser {
     fn parse(&mut self, code: &str, path: &Url) -> Vec<AstSymbolInstanceArc> {
         let tree = self.parser.parse(code, None).unwrap();
         let parent_guid = get_guid();
         let symbols = self.parse_block(&tree.root_node(), code, path, &parent_guid, false);
         symbols
-    }
-}
-
-fn try_to_find_type(parser: &mut Parser, parent: &Node, code: &str) -> Option<String> {
-    let mut qcursor = tree_sitter::QueryCursor::new();
-    let query = Query::new(parser.language().unwrap(), TRY_TO_FIND_TYPE_QUERY).unwrap();
-    let matches = qcursor.matches(&query, *parent, code.as_bytes());
-    for match_ in matches {
-        for capture in match_.captures {
-            return Some(code.slice(capture.node.byte_range()).to_string());
-        }
-    }
-    None
-}
-
-impl LanguageParser for RustParser {
-    fn get_parser(&mut self) -> &mut Parser {
-        &mut self.parser
-    }
-
-    fn get_parser_query(&self) -> &String {
-        &RUST_PARSER_QUERY
-    }
-
-    fn get_parser_query_find_all(&self) -> &String {
-        &RUST_PARSER_QUERY_FIND_ALL
-    }
-
-    fn get_namespace(&self, mut _parent: Option<Node>, _text: &str) -> Vec<String> {
-        let namespaces: Vec<String> = vec![];
-        namespaces
-    }
-
-    fn get_extra_declarations_for_struct(&mut self, struct_name: String, tree: &Tree, code: &str, path: &PathBuf) -> Vec<SymbolInfo> {
-        let mut res: Vec<SymbolInfo> = vec![];
-        let mut qcursor = tree_sitter::QueryCursor::new();
-        let query = Query::new(self.get_parser().language().unwrap(),
-                               &*format!("((impl_item type: (type_identifier) @impl_type) @impl (#eq? @impl_type \"{}\"))", struct_name)).unwrap();
-        let matches = qcursor.matches(&query, tree.root_node(), code.as_bytes());
-        for match_ in matches {
-            for capture in match_.captures {
-                let capture_name = &query.capture_names()[capture.index as usize];
-                match capture_name.as_str() {
-                    "impl" => {
-                        res.push(SymbolInfo {
-                            path: path.clone(),
-                            range: capture.node.range(),
-                        })
-                    }
-                    &_ => {}
-                }
-            }
-        }
-        res
-    }
-
-    fn get_variable(&mut self, captures: &[QueryCapture], query: &Query, code: &str) -> Option<VariableInfo> {
-        let mut var = VariableInfo {
-            name: "".to_string(),
-            range: Range {
-                start_byte: 0,
-                end_byte: 0,
-                start_point: Default::default(),
-                end_point: Default::default(),
-            },
-            type_names: vec![],
-            meta_path: None,
-        };
-        for capture in captures {
-            let capture_name = &query.capture_names()[capture.index as usize];
-            match capture_name.as_str() {
-                "variable" => {
-                    var.range = capture.node.range();
-                    if let Some(var_type) = try_to_find_type(&mut self.parser, &capture.node, code) {
-                        var.type_names.push(var_type);
-                    }
-                }
-                "variable_name" => {
-                    let text = code.slice(capture.node.byte_range());
-                    var.name = text.to_string();
-                }
-                &_ => {}
-            }
-        }
-
-
-        if var.name.is_empty() {
-            return None;
-        }
-
-        Some(var)
-    }
-
-    fn get_enum_name_and_all_values(&self, parent: Node, text: &str) -> (String, Vec<String>) {
-        let mut name: String = Default::default();
-        let mut values: Vec<String> = vec![];
-        for i in 0..parent.child_count() {
-            if let Some(child) = parent.child(i) {
-                let kind = child.kind();
-                match kind {
-                    "identifier" => {
-                        name = text.slice(child.byte_range()).to_string();
-                    }
-                    "enum_body" => {
-                        for i in 0..child.child_count() {
-                            if let Some(child) = child.child(i) {
-                                let kind = child.kind();
-                                match kind {
-                                    "enum_constant" => {
-                                        for i in 0..child.child_count() {
-                                            if let Some(child) = child.child(i) {
-                                                let kind = child.kind();
-                                                match kind {
-                                                    "identifier" => {
-                                                        let text = text.slice(child.byte_range());
-                                                        values.push(text.to_string());
-                                                        break;
-                                                    }
-                                                    _ => {}
-                                                }
-                                            }
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        (name, values)
-    }
-
-    fn get_function_name_and_scope(&self, parent: Node, text: &str) -> (String, Vec<String>) {
-        (get_function_name(parent, text), vec![])
-    }
-
-    fn get_variable_name(&self, parent: Node, text: &str) -> String {
-        for i in 0..parent.child_count() {
-            if let Some(child) = parent.child(i) {
-                let kind = child.kind();
-                match kind {
-                    "identifier" => {
-                        let name = text.slice(child.byte_range());
-                        return name.to_string();
-                    }
-                    _ => {}
-                }
-            }
-        }
-        return "".to_string();
     }
 }

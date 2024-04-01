@@ -17,7 +17,7 @@ use crate::ast::fst_extra_automation::Substring;
 use crate::ast::structs::{FileASTMarkup, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, SymbolInformation};
 use crate::ast::treesitter::language_id::LanguageId;
-use crate::ast::treesitter::parsers::get_new_parser_by_filename;
+use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::usages_declarations_merger::{FilePathIterator, find_decl_by_caller_guid, find_decl_by_name};
 use crate::files_in_workspace::DocumentInfo;
@@ -82,7 +82,7 @@ impl AstIndex {
     }
 
     pub fn parse(doc: &DocumentInfo) -> Result<Vec<AstSymbolInstanceArc>, String> {
-        let mut parser = match get_new_parser_by_filename(&doc.get_path()) {
+        let mut parser = match get_ast_parser_by_filename(&doc.get_path()) {
             Ok(parser) => parser,
             Err(err) => {
                 return Err(err.message);
