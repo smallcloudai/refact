@@ -2,10 +2,13 @@ use std::collections::{HashMap, VecDeque};
 use std::iter::zip;
 use std::sync::Arc;
 use std::time::SystemTime;
+
+use rayon::prelude::*;
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::info;
-use rayon::prelude::*;
+
 use crate::ast::ast_index::AstIndex;
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::files_in_workspace::DocumentInfo;
@@ -36,7 +39,8 @@ impl AstEvent {
 pub struct AstIndexService {
     update_request_queue: Arc<AMutex<VecDeque<AstEvent>>>,
     output_queue: Arc<AMutex<VecDeque<AstEvent>>>,
-    ast_index: Arc<AMutex<AstIndex>>,
+    is_busy: Arc<AMutex<bool>>,
+    ast_index: Arc<ARwLock<AstIndex>>,
 }
 
 async fn cooldown_queue_thread(
@@ -46,18 +50,17 @@ async fn cooldown_queue_thread(
 ) {
     let mut last_updated: HashMap<AstEvent, SystemTime> = HashMap::new();
     loop {
-        let (event_maybe, _unprocessed_files_count) = {
+        let mut events: Vec<AstEvent> = Vec::new();
+        {
             let mut queue_locked = update_request_queue.lock().await;
-            let queue_len = queue_locked.len();
-            if !queue_locked.is_empty() {
-                (Some(queue_locked.pop_front().unwrap()), queue_len)
-            } else {
-                (None, 0)
+            for _ in 0..queue_locked.len() {
+                if let Some(e) = queue_locked.pop_front() {
+                    events.push(e);
+                }
             }
         };
-
-        if let Some(event) = event_maybe {
-            last_updated.insert(event, SystemTime::now());
+        for doc in events {
+            last_updated.insert(doc, SystemTime::now());
         }
 
         let mut events_to_process: Vec<AstEvent> = Vec::new();
@@ -85,7 +88,8 @@ async fn cooldown_queue_thread(
 
 async fn ast_indexer_thread(
     queue: Arc<AMutex<VecDeque<AstEvent>>>,
-    ast_index: Arc<AMutex<AstIndex>>,
+    ast_index: Arc<ARwLock<AstIndex>>,
+    is_busy_flag: Arc<AMutex<bool>>
 ) {
     loop {
         let events = {
@@ -97,34 +101,36 @@ async fn ast_indexer_thread(
 
         if events.len() == 0 {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            *is_busy_flag.lock().await = false;
             continue;
+        } else {
+            *is_busy_flag.lock().await = true;
         }
 
-for event in events {
+        for event in events {
             let list_of_path = event.docs;
             match event.typ {
                 EventType::Add => {
                     let ast_index = ast_index.clone();
                     let all_symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = list_of_path
-            .par_iter()
-            .map(move |document| AstIndex::parse(&document))
-            .collect();
+                        .par_iter()
+                        .map(move |document| AstIndex::parse(&document))
+                        .collect();
 
-                    let mut ast_index = ast_index.lock().await;
-                    zip(list_of_path, all_symbols).for_each(|(doc, res)| {
+                    for (doc, res) in zip(list_of_path, all_symbols) {
                         match res {
                             Ok(symbols) => {
-                                match ast_index.add_or_update_symbols_index(&doc, &symbols) {
+                                match ast_index.write().await.add_or_update_symbols_index(&doc, &symbols) {
                                     Ok(_) => {}
                                     Err(e) => { info!("Error adding/updating records in AST index: {}", e); }
                                 }
                             }
                             Err(e) => { info!("Error adding/updating records in AST index: {}", e); }
                         }
-                    })
+                    }
                 }
                 EventType::Reset => {
-                    ast_index.lock().await.clear_index();
+                    ast_index.write().await.clear_index();
                     info!("Reset AST Index");
                 }
             }
@@ -133,24 +139,45 @@ for event in events {
 }
 
 async fn ast_indexer(
-    update_request_queue: Arc<AMutex<VecDeque<AstEvent>>>,
-    out_queue: Arc<AMutex<VecDeque<AstEvent>>>,
-    ast_index: Arc<AMutex<AstIndex>>,
+    is_busy_flag: Arc<AMutex<bool>>,
+    ast_index: Arc<ARwLock<AstIndex>>,
 ) {
     loop {
-        let mut q_len = update_request_queue.lock().await.len();
-        q_len += out_queue.lock().await.len();
-
-        if q_len > 0 {
-            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        if *is_busy_flag.lock().await {
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             continue;
         }
 
         {
-            let mut ast_index = ast_index.lock().await;
-            ast_index.rebuild_index();
+            if !ast_index.read().await.need_update() {
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                continue;
+            }
+
+            let symbols = ast_index.read().await
+                .symbols_by_guid()
+                .values()
+                .cloned()
+                .collect::<Vec<_>>();
+            info!("Building ast declarations");
+            let t0 = std::time::Instant::now();
+            ast_index.read().await.resolve_types(&symbols);
+            info!("Building ast declarations finished, took {:.3}s", t0.elapsed().as_secs_f64());
+
+            info!("Merging usages and declarations");
+            let t1 = std::time::Instant::now();
+            ast_index.read().await.merge_usages_to_declarations(&symbols);
+            info!("Merging usages and declarations finished, took {:.3}s", t1.elapsed().as_secs_f64());
+
+            info!("Creating extra indexes");
+            let t2 = std::time::Instant::now();
+            {
+                let mut ast_index_ref = ast_index.write().await;
+                ast_index_ref.create_extra_indexes(&symbols);
+                ast_index_ref.set_updated();
+            }
+            info!("Creating extra indexes finished, took {:.3}s", t2.elapsed().as_secs_f64());
         }
-        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     }
 }
 
@@ -158,13 +185,14 @@ const COOLDOWN_SECS: u64 = 2;
 
 impl AstIndexService {
     pub fn init(
-        ast_index: Arc<AMutex<AstIndex>>
+        ast_index: Arc<ARwLock<AstIndex>>
     ) -> Self {
         let update_request_queue = Arc::new(AMutex::new(VecDeque::new()));
         let output_queue = Arc::new(AMutex::new(VecDeque::new()));
         AstIndexService {
             update_request_queue: update_request_queue.clone(),
             output_queue: output_queue.clone(),
+            is_busy: Arc::new(AMutex::new(false)),
             ast_index: ast_index.clone(),
         }
     }
@@ -181,12 +209,12 @@ impl AstIndexService {
             ast_indexer_thread(
                 self.output_queue.clone(),
                 self.ast_index.clone(),
+                self.is_busy.clone(),
             )
         );
         let rebuild_index_handle = tokio::spawn(
             ast_indexer(
-                self.update_request_queue.clone(),
-                self.output_queue.clone(),
+                self.is_busy.clone(),
                 self.ast_index.clone(),
             )
         );
@@ -202,3 +230,4 @@ impl AstIndexService {
         }
     }
 }
+

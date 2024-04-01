@@ -81,7 +81,7 @@ impl AstIndex {
         }
     }
 
-    pub fn parse(doc: &DocumentInfo) -> Result<Vec<AstSymbolInstanceArc>, String> {
+    pub(crate) fn parse(doc: &DocumentInfo) -> Result<Vec<AstSymbolInstanceArc>, String> {
         let mut parser = match get_ast_parser_by_filename(&doc.get_path()) {
             Ok(parser) => parser,
             Err(err) => {
@@ -147,6 +147,9 @@ impl AstIndex {
 
     pub fn remove(&mut self, doc: &DocumentInfo) -> bool {
         let has_removed = self.symbols_search_index.remove(&doc.uri).is_some();
+        if !has_removed {
+            return false;
+        }
         let mut removed_guids = HashSet::new();
         for symbol in self.path_by_symbols
             .remove(&doc.uri)
@@ -511,37 +514,6 @@ impl AstIndex {
         &self,
         doc: &DocumentInfo,
     ) -> Result<FileASTMarkup, String> {
-        // fn within_range(
-        //     decl_range: &Range,
-        //     line_idx: usize,
-        // ) -> bool {
-        //     decl_range.start_point.row <= line_idx
-        //         && decl_range.end_point.row >= line_idx
-        // }
-
-        // fn sorted_candidates_within_line(
-        //     symbols: &Vec<AstSymbolInstanceArc>,
-        //     line_idx: usize,
-        // ) -> (Vec<AstSymbolInstanceArc>, bool) {
-        //     let filtered_symbols = symbols
-        //         .iter()
-        //         .filter(|s| within_range(&s.read().expect("the data might be broken").full_range(), line_idx))
-        //         .sorted_by_key(
-        //             |s| {
-        //                 let s_ref = s.read().expect("the data might be broken");
-        //                 s_ref.full_range().end_point.row - s_ref.full_range().start_point.row
-        //             }
-        //         )
-        //         .rev()
-        //         .cloned()
-        //         .collect::<Vec<_>>();
-        //     let is_signature = symbols
-        //         .iter()
-        //         .map(|s| within_range(&s.read().expect("the data might be broken").declaration_range(), line_idx))
-        //         .any(|x| x);
-        //     (filtered_symbols, is_signature)
-        // }
-
         let symbols: Vec<AstSymbolInstanceArc> = self.path_by_symbols
             .get(&doc.uri)
             .map(|symbols| {
@@ -622,9 +594,10 @@ impl AstIndex {
         Ok(symbols)
     }
 
-    // pub fn get_file_paths(&self) -> Vec<Url> {
-    //     self.symbols_search_index.iter().map(|(path, _)| path.clone()).collect()
-    // }
+    #[allow(unused)]
+    pub fn get_file_paths(&self) -> Vec<Url> {
+        self.symbols_search_index.iter().map(|(path, _)| path.clone()).collect()
+    }
 
     pub fn get_symbols_names(
         &self,
@@ -667,7 +640,19 @@ impl AstIndex {
         self.has_changes = false;
     }
 
-    fn resolve_types(&self, symbols: &Vec<AstSymbolInstanceArc>) {
+    pub fn symbols_by_guid(&self) -> &HashMap<String, AstSymbolInstanceArc> {
+        &self.symbols_by_guid
+    }
+
+    pub(crate) fn need_update(&self) -> bool {
+        self.has_changes
+    }
+
+    pub(crate) fn set_updated(&mut self) {
+        self.has_changes = false;
+    }
+
+    pub(crate) fn resolve_types(&self, symbols: &Vec<AstSymbolInstanceArc>) {
         for symbol in symbols {
             let (type_names, symb_type, symb_path) = {
                 let s_ref = symbol.read().expect("the data might be broken");
@@ -728,8 +713,7 @@ impl AstIndex {
         }
     }
 
-    fn merge_usages_to_declarations(&self, symbols: &Vec<AstSymbolInstanceArc>) {
-        // TODO: do not make search for similar names within a similar parent (PERF OPTIMIZATION)
+    pub(crate) fn merge_usages_to_declarations(&self, symbols: &Vec<AstSymbolInstanceArc>) {
         fn get_caller_depth(
             symbol: &AstSymbolInstanceArc,
             guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
@@ -769,38 +753,47 @@ impl AstIndex {
                 break;
             }
 
+            let mut symbols_cache: HashMap<(String, String), Option<String>> = HashMap::new();
             for (idx, usage_symbol) in symbols_to_process
-                .iter().enumerate() {
+                .iter()
+                .enumerate() {
                 info!("Processing symbol ({}/{})", idx, symbols_to_process.len());
-                let caller_guid = usage_symbol
-                    .read().expect("the data might be broken")
-                    .get_caller_guid().clone();
-                let decl_guid = match caller_guid {
-                    Some(ref guid) => {
-                        match find_decl_by_caller_guid(
-                            *usage_symbol,
-                            &guid,
-                            &self.symbols_by_guid,
-                        ) {
-                            Some(decl_guid) => { Some(decl_guid) }
-                            None => find_decl_by_name(
-                                *usage_symbol,
-                                &self.path_by_symbols,
-                                &self.symbols_by_guid,
-                                &self.symbols_by_name,
-                                1,
-                            )
-                        }
-                    }
-                    None => find_decl_by_name(
-                        *usage_symbol,
-                        &self.path_by_symbols,
-                        &self.symbols_by_guid,
-                        &self.symbols_by_name,
-                        1,
-                    )
+                let (name, parent_guid, caller_guid) = {
+                    let s_ref = usage_symbol.read().expect("the data might be broken");
+                    (s_ref.name().to_string(), s_ref.parent_guid().clone().unwrap_or_default(), s_ref.get_caller_guid().clone())
                 };
-
+                let guids_pair = (parent_guid, name);
+                let decl_guid = if !symbols_cache.contains_key(&guids_pair) {
+                    let decl_guid = match caller_guid {
+                        Some(ref guid) => {
+                            match find_decl_by_caller_guid(
+                                *usage_symbol,
+                                &guid,
+                                &self.symbols_by_guid,
+                            ) {
+                                Some(decl_guid) => { Some(decl_guid) }
+                                None => find_decl_by_name(
+                                    *usage_symbol,
+                                    &self.path_by_symbols,
+                                    &self.symbols_by_guid,
+                                    &self.symbols_by_name,
+                                    1,
+                                )
+                            }
+                        }
+                        None => find_decl_by_name(
+                            *usage_symbol,
+                            &self.path_by_symbols,
+                            &self.symbols_by_guid,
+                            &self.symbols_by_name,
+                            1,
+                        )
+                    };
+                    symbols_cache.insert(guids_pair, decl_guid.clone());
+                    decl_guid
+                } else {
+                    symbols_cache.get(&guids_pair).cloned().unwrap_or_default()
+                };
                 match decl_guid {
                     Some(guid) => {
                         {
@@ -820,7 +813,7 @@ impl AstIndex {
         }
     }
 
-    fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceArc>) {
+    pub(crate) fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceArc>) {
         for symbol in symbols
             .iter()
             .filter(|s| !s.read().expect("the data might be broken").is_type())
@@ -868,8 +861,6 @@ impl AstIndex {
         self.merge_usages_to_declarations(&symbols);
         symbols
     }
-
-    // TODO: make a status of indexing
 }
 
 

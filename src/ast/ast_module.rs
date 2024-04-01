@@ -20,7 +20,7 @@ use crate::global_context::GlobalContext;
 
 pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
-    ast_index: Arc<AMutex<AstIndex>>,
+    ast_index: Arc<ARwLock<AstIndex>>,
     // cmdline -- take from command line what's needed, don't store a copy
 }
 
@@ -34,7 +34,7 @@ impl AstModule {
     pub async fn ast_indexer_init(
         global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Result<AstModule, String> {
-        let ast_index = Arc::new(AMutex::new(AstIndex::init()));
+        let ast_index = Arc::new(ARwLock::new(AstIndex::init()));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(ast_index.clone())));
 
         let documents = files_in_jsonl(global_context.clone()).await;
@@ -55,7 +55,7 @@ impl AstModule {
     }
 
     pub async fn ast_add_file_no_queue(&self, document: &DocumentInfo) -> Result<(), String> {
-        self.ast_index.lock().await.add_or_update(&document)
+        self.ast_index.write().await.add_or_update(&document)
     }
 
     pub async fn ast_reset_index(&self) {
@@ -64,11 +64,11 @@ impl AstModule {
 
     pub async fn remove_file(&self, doc: &DocumentInfo) {
         // TODO: will not work if the same file is in the indexer queue
-        let _ = self.ast_index.lock().await.remove(doc);
+        let _ = self.ast_index.write().await.remove(doc);
     }
 
     pub async fn clear_index(&self) {
-        self.ast_index.lock().await.clear_index();
+        self.ast_index.write().await.clear_index();
     }
 
     pub async fn search_by_name(
@@ -78,7 +78,7 @@ impl AstModule {
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.read()).await {
             Ok(lock) => lock,
             Err(_) => {
                 return Err("Ast index is busy, timeout error".to_string());
@@ -109,7 +109,7 @@ impl AstModule {
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.read()).await {
             Ok(lock) => lock,
             Err(_) => {
                 return Err("Ast index is busy, timeout error".to_string());
@@ -136,7 +136,7 @@ impl AstModule {
     pub async fn search_related_declarations(&self, guid: &str) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.read()).await {
             Ok(lock) => lock,
             Err(_) => {
                 return Err("Ast index is busy, timeout error".to_string());
@@ -163,7 +163,7 @@ impl AstModule {
     pub async fn search_usages_by_declarations(&self, declaration_guid: &str) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.read()).await {
             Ok(lock) => lock,
             Err(_) => {
                 return Err("Ast index is busy, timeout error".to_string());
@@ -197,7 +197,7 @@ impl AstModule {
     ) -> Result<AstCursorSearchResult, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.read()).await {
             Ok(lock) => lock,
             Err(_) => {
                 return Err("Ast index is busy, timeout error".to_string());
@@ -278,7 +278,7 @@ impl AstModule {
     ) -> Result<FileASTMarkup, String> {
         let t0 = std::time::Instant::now();
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.read()).await {
             Ok(lock) => lock,
             Err(_) => {
                 return Err("Ast index is busy, timeout error".to_string());
@@ -295,7 +295,7 @@ impl AstModule {
 
     pub async fn get_file_symbols(&self, request_symbol_type: RequestSymbolType, doc: &DocumentInfo) -> Result<FileReferencesResult, String> {
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.read()).await {
             Ok(lock) => lock,
             Err(_) => {
                 return Err("Ast index is busy, timeout error".to_string());
@@ -313,7 +313,7 @@ impl AstModule {
 
     pub async fn get_symbols_names(&self, request_symbol_type: RequestSymbolType) -> Result<Vec<String>, String> {
         let ast_index = self.ast_index.clone();
-        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.lock()).await {
+        let ast_index_locked = match timeout(Duration::from_secs(3), ast_index.read()).await {
             Ok(lock) => lock,
             Err(_) => {
                 return Err("Ast index is busy, timeout error".to_string());
