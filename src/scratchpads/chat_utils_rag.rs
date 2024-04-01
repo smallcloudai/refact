@@ -43,6 +43,7 @@ pub async fn postprocess_rag_stage1(
     global_context: Arc<ARwLock<GlobalContext>>,
     origmsgs: Vec<ContextFile>,
     files_set: HashSet<String>,
+    close_small_gaps: bool,
 ) -> (HashMap<String, Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
     // 2. Load files, with ast or not
     let mut files: HashMap<String, Arc<File>> = HashMap::new();
@@ -74,15 +75,12 @@ pub async fn postprocess_rag_stage1(
             files.insert(file_name.clone(), f.unwrap());
         }
     }
-    for fref in files.values() {
-        info!("fref {:?} has {} bytes", fref.file_name, fref.markup.file_content.len());
-        info!("fref {:?} has {} symbols", fref.file_name, fref.markup.symbols_sorted_by_path_len.len());
-    }
 
     // 3. Generate line refs
     let mut lines_by_useful: Vec<Arc<FileLine>> = vec![];
     let mut lines_in_files: HashMap<String, Vec<Arc<FileLine>>> = HashMap::new();
     for fref in files.values() {
+        info!("fref {:?} has {} bytes, {} symbols", fref.file_name, fref.markup.file_content.len(), fref.markup.symbols_sorted_by_path_len.len());
         for (line_n, line) in fref.markup.file_content.lines().enumerate() {
             let a = Arc::new(FileLine {
                 fref: fref.clone(),
@@ -121,7 +119,7 @@ pub async fn postprocess_rag_stage1(
         }
         let fref = linevec[0].fref.clone();
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
-            info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+            // info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
             let useful = 10.0;  // depends on symbol type?
             colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), useful);
         }
@@ -164,6 +162,72 @@ pub async fn postprocess_rag_stage1(
             colorize_if_more_useful(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
         }
     }
+
+    // 5. Downgrade sub-symbols and uninteresting regions
+    let downgrade_lines_if_subsymbol = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, subsymbol: &String, downgrade_coef: f32|
+    {
+        let mut changes_cnt = 0;
+        for i in line1_base0 .. line2_base0 {
+            assert!(i < linevec.len());
+            let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+            unsafe {
+                if subsymbol.starts_with(&(*lineref_mut).color) { // && subsymbol != &(*lineref_mut).color {
+                    if i == line2_base0-1 || i == line1_base0 {
+                        if (*lineref_mut).line_content.trim().len() == 1 {
+                            // HACK: closing brackets at the end, leave it alone without downgrade
+                            continue;
+                        }
+                    }
+                    (*lineref_mut).useful *= downgrade_coef;
+                    (*lineref_mut).color = subsymbol.clone();
+                    changes_cnt += 1;
+                }
+            }
+        }
+        info!("        {}..{} ({} affected) <= subsymbol {:?} downgrade {}", changes_cnt, line1_base0, line2_base0, subsymbol, downgrade_coef);
+    };
+    for linevec in lines_in_files.values_mut() {
+        if linevec.len() == 0 {
+            continue;
+        }
+        let fref = linevec[0].fref.clone();
+        info!("degrading body of symbols in {}", fref.file_name);
+        for s in fref.markup.symbols_sorted_by_path_len.iter() {
+            info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+            if s.definition_range.end_byte != 0 {
+                // decl  void f() {
+                // def      int x = 5;
+                // def   }
+                let (def0, def1) = (
+                    s.definition_range.start_point.row.max(s.declaration_range.end_point.row + 1),   // definition must stay clear of declaration
+                    s.definition_range.end_point.row + 1
+                );
+                if def1 > def0 {
+                    downgrade_lines_if_subsymbol(linevec, def0, def1, &format!("{}::body", s.symbol_path), 0.8);
+                    // NOTE: this will not downgrade function body of a function that is a search result, because it's not a subsymbol it's the symbol itself (equal path)
+                }
+            }
+        }
+    }
+
+    // 6. A-la mathematical morphology, removes one-line holes
+    for linevec in lines_in_files.values_mut() {
+        let mut useful_copy = linevec.iter().map(|x| x.useful).collect::<Vec<f32>>();
+        for i in 1 .. linevec.len() - 1 {
+            let l = linevec[i-1].useful;
+            let m = linevec[i  ].useful;
+            let r = linevec[i+1].useful;
+            let both_l_and_r_support = l.min(r);
+            useful_copy[i] = m.max(both_l_and_r_support);
+        }
+        for i in 0 .. linevec.len() {
+            let lineref_mut: *mut FileLine = Arc::as_ptr(linevec.get(i).unwrap()) as *mut FileLine;
+            unsafe {
+                (*lineref_mut).useful = useful_copy[i];
+            }
+        }
+    }
+
     (lines_in_files, lines_by_useful)
 }
 
@@ -191,82 +255,15 @@ pub async fn postprocess_at_results2(
         }
     }
 
-    let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage1(global_context, origmsgs, files_set).await;
+    let close_small_gaps = true;
+    let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage1(global_context, origmsgs, files_set, close_small_gaps).await;
 
-    // 5. Downgrade sub-symbols and uninteresting regions
-    let downgrade_lines_if_prefix = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, subsymbol: &String, downgrade_coef: f32|
-    {
-        let mut changes_cnt = 0;
-        for i in line1_base0 .. line2_base0 {
-            assert!(i < linevec.len());
-            let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
-            unsafe {
-                if subsymbol.starts_with(&(*lineref_mut).color) { // && subsymbol != &(*lineref_mut).color {
-                    if i == line2_base0-1 || i == line1_base0 {
-                        if (*lineref_mut).line_content.trim().len() == 1 {
-                            // HACK: closing brackets at the end, leave it alone without downgrade
-                            continue;
-                        }
-                    }
-                    (*lineref_mut).useful *= downgrade_coef;
-                    changes_cnt += 1;
-                }
-            }
-        }
-        info!("        {}..{} ({} affected) <= subsymbol {:?} downgrade {}", changes_cnt, line1_base0, line2_base0, subsymbol, downgrade_coef);
-    };
-    let downgrade_unconditional = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, add: f32, mult: f32|
-    {
-        info!("        {}..{} <= add {} mult {}", line1_base0, line2_base0, add, mult);
-        for i in line1_base0.. line2_base0 {
-            assert!(i < linevec.len());
-            let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
-            unsafe {
-                (*lineref_mut).useful += add;
-                (*lineref_mut).useful *= mult;
-            }
-        }
-    };
-    for linevec in lines_in_files.values_mut() {
-        if linevec.len() == 0 {
-            continue;
-        }
-        let fref = linevec[0].fref.clone();
-        info!("looking at symbols in {}", fref.file_name);
-        let mut anything_interesting_min = usize::MAX;
-        let mut anything_interesting_max = 0;
-        for s in fref.markup.symbols_sorted_by_path_len.iter() {
-            info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
-            if s.definition_range.end_byte != 0 {
-                // decl  void f() {
-                // def      int x = 5;
-                // def   }
-                let (def0, def1) = (
-                    s.definition_range.start_point.row.max(s.declaration_range.end_point.row + 1),   // definition must stay clear of declaration
-                    s.definition_range.end_point.row + 1
-                );
-                if def1 > def0 {
-                    downgrade_lines_if_prefix(linevec, def0, def1, &format!("{}", s.symbol_path), 0.8);
-                    // NOTE: this will not downgrade function body of a function that is a search result, because it's not a subsymbol it's the symbol itself (equal path)
-                }
-            }
-            anything_interesting_min = anything_interesting_min.min(s.full_range.start_point.row);
-            anything_interesting_max = anything_interesting_max.max(s.full_range.end_point.row);
-        }
-        if anything_interesting_min > 0 && anything_interesting_min != usize::MAX {
-            downgrade_unconditional(linevec, 0, anything_interesting_min, -5.0, 1.0);
-        }
-        if anything_interesting_max < linevec.len() && anything_interesting_max != 0 {
-            downgrade_unconditional(linevec, anything_interesting_max, linevec.len(), -5.0, 1.0);
-        }
-    }
-
-    // 6. Sort
+    // 7. Sort
     lines_by_useful.sort_by(|a, b| {
         b.useful.partial_cmp(&a.useful).unwrap_or(Ordering::Equal)
     });
 
-    // 7. Convert line_content to tokens up to the limit
+    // 8. Convert line_content to tokens up to the limit
     let mut tokens_count: usize = 0;
     let mut lines_take_cnt: usize = 0;
     for lineref in lines_by_useful.iter_mut() {
@@ -294,7 +291,7 @@ pub async fn postprocess_at_results2(
         }
     }
 
-    // 8. Generate output
+    // 9. Generate output
     let mut merged: Vec<ContextFile> = vec![];
     for linevec in lines_in_files.values_mut() {
         if linevec.len() == 0 {

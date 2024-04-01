@@ -230,12 +230,13 @@ pub async fn handle_v1_ast_file_dump(
     })?;
     let mut files_set: HashSet<String> = HashSet::new();
     files_set.insert(post.file_name);
-    let (lines_in_files, _) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage1(global_context, vec![], files_set).await;
+    let close_small_gaps = false;
+    let (lines_in_files, _) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage1(global_context, vec![], files_set, close_small_gaps).await;
     let mut result = "".to_string();
     for linevec in lines_in_files.values() {
         for lineref in linevec {
             result.push_str(format!("{}:{:04} {:<43} {:>7.3} {}\n",
-                crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 40),
+                crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 30),
                 lineref.line_n,
                 crate::nicer_logs::first_n_chars(&lineref.line_content, 40),
                 lineref.useful,

@@ -606,7 +606,7 @@ impl RustParser {
                         let mut type_alias = TypeAlias::default();
                         type_alias.ast_fields.name = code.slice(alias_node.byte_range()).to_string();
                         type_alias.ast_fields.language = LanguageId::Rust;
-                        type_alias.ast_fields.full_range = parent.range();
+                        type_alias.ast_fields.full_range = child.range();
                         type_alias.ast_fields.file_url = path.clone();
                         type_alias.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                         type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
