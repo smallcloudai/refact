@@ -19,6 +19,9 @@ describe("HistorySideBar", () => {
     expect(postMessageSpy).toHaveBeenLastCalledWith(
       {
         type: EVENT_NAMES_TO_CHAT.NEW_CHAT,
+        payload: {
+          id: "",
+        },
       },
       "*",
     );
@@ -52,7 +55,7 @@ describe("HistorySideBar", () => {
       {
         type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
         payload: {
-          id: "foo",
+          id: "",
           chat: historyItem,
         },
       },
