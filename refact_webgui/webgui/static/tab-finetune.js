@@ -410,6 +410,7 @@ function render_runs() {
         run_table_row.dataset.run = run.run_id;
 
         const run_is_working = !(['interrupted', 'failed', 'finished'].includes(run.status));
+        const run_is_in_use = running_loras.includes(`${run.model_name}:${run.run_id}`)
 
         let status_pill_div = document.createElement('div');
         status_pill_div.classList.add('ft-status-pill-div');
@@ -450,10 +451,10 @@ function render_runs() {
         run_steps.innerHTML = run.worked_steps;
 
         const item_disabled = run_is_working ? "disabled" : ""
-        const rename_disabled = running_loras.includes(`${run.model_name}:${run.run_id}`) ? "disabled" : "";
+        const change_disabled = (run_is_working || run_is_in_use) ? "disabled" : ""
 
         run_name.innerHTML = `
-            <div id="run_name_${run.run_id}" class="run-table-name" data-run="${run.run_id}" ${item_disabled}>
+            <div id="run_name_${run.run_id}" class="run-table-name" data-run="${run.run_id}" ${change_disabled}>
                 <div id="run_div${run.run_id}" style="display: flex; flex-direction: row">
                     <div>
                          ${run.run_id}
@@ -462,7 +463,7 @@ function render_runs() {
                         <button class="run-rename btn btn-sm btn-hover btn-link"
                         data-run="${run.run_id}"
                         style="padding: 0; font-size: 0.9rem;" ${false}
-                        ${rename_disabled}
+                        ${change_disabled}
                         ><i class="bi bi-pencil-square"></i></button>
                         <div class="run-rename-popup" data-run="${run.run_id}"><pre>Cannot rename: currently in use</pre></div>
                     </div>
@@ -476,7 +477,7 @@ function render_runs() {
             </div>
         `
 
-        run_delete.innerHTML = `<button class="btn btn-hover btn-outline-danger btn-sm" ${item_disabled}><i class="bi bi-trash3-fill"></i></button>`;
+        run_delete.innerHTML = `<button class="btn btn-outline-danger btn-sm" ${change_disabled}><i class="bi bi-trash3-fill"></i></button>`;
         if (find_checkpoints_by_run(run.run_id).length > 0) {
             run_download.innerHTML = `
                 <a href="/lora-download?run_id=${run.run_id}"
@@ -496,7 +497,7 @@ function render_runs() {
         run_table_row.appendChild(run_download);
         run_table_row.appendChild(run_delete);
 
-        if (!run_is_working) {
+        if (!run_is_working && !run_is_in_use) {
             run_delete.addEventListener('click', () => {
                 const lora_for_delete = run_table_row.dataset.run;
                 let delete_lora_modal = document.getElementById('delete-lora-modal');
