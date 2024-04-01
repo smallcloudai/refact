@@ -1,9 +1,11 @@
 import asyncio
 import uuid
+import json
 
 import aiofiles
 import os
 import subprocess
+import tempfile
 
 from typing import Union
 from pathlib import Path
@@ -16,6 +18,7 @@ from refact_utils.scripts import env
 from refact_utils.scripts.best_lora import find_best_checkpoint
 from refact_webgui.webgui.selfhost_webutils import log
 from refact_webgui.webgui.tab_upload import download_file_from_url, UploadViaURL
+from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
 
 def rm(f):
@@ -59,11 +62,13 @@ async def unpack(file_path: Path) -> JSONResponse:
 
 class TabLorasRouter(APIRouter):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, model_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._model_assigner = model_assigner
         self.add_api_route("/lora-upload", self._upload_lora, methods=["POST"])
         self.add_api_route("/lora-upload-url", self._upload_lora_url, methods=["POST"])
         self.add_api_route("/lora-download", self._download_lora, methods=["GET"])
+        self.add_api_route("/lora-merge-download", self._download_lora_merge, methods=["GET"])
 
     async def _upload_lora(self, file: UploadFile):
         async def write_to_file() -> JSONResponse:
@@ -168,6 +173,55 @@ class TabLorasRouter(APIRouter):
 
         return StreamingResponse(
             _archived_content(run_id, checkpoint_id),
+            media_type="application/x-zip-compressed",
+            headers={
+                "Content-Type": "application/x-zip-compressed",
+                "Content-Disposition": f'attachment; filename={download_filename}',
+            })
+
+    async def _download_lora_merge(self, run_id: str = Query(default=Required), checkpoint_id: str = Query(default="")):
+
+        async def _archived_content(model_path: str, checkpoint_path: Path):
+            try:
+                with tempfile.TemporaryDirectory() as tempdir:
+                    output_filename = Path(tempdir) / f"{uuid.uuid4()}.zip"
+                    process = await asyncio.create_subprocess_exec(
+                        "python", "-m", "refact_utils.scripts.merge_lora",
+                        model_path, str(checkpoint_path), str(output_filename))
+                    await process.wait()
+                    if process.returncode != 0:
+                        raise RuntimeError(f"run copying failed")
+
+                    async with aiofiles.open(output_filename, "rb") as f:
+                        while True:
+                            if not (contents := await f.read(128 * 1024 * 1024)):
+                                break
+                            yield contents
+
+            except Exception as e:
+                err_msg = f"Error while lora merge download: {e or str(type(e))}"
+                log(err_msg)
+                raise HTTPException(detail=err_msg, status_code=500)
+
+        run_path = Path(env.DIR_LORAS) / run_id
+        try:
+            config_filename = run_path / "config.json"
+            if not config_filename.exists():
+                raise RuntimeError(f"Run {run_id} config does not exist")
+            with config_filename.open("r") as f:
+                model_name = json.load(f)["model_name"]
+            model_path = self._model_assigner.models_db[model_name]["model_path"]
+        except Exception as e:
+            log(f"Lora merge failed '{run_id}': {e}")
+            raise HTTPException(detail=f"Lora merge failed '{run_id}': {e}", status_code=500)
+
+        if not checkpoint_id:
+            checkpoint_id = find_best_checkpoint(run_id)["best_checkpoint_id"]
+        checkpoint_path = run_path / "checkpoints" / checkpoint_id
+        download_filename = f"{model_name}-{run_id}-{checkpoint_id}.zip"
+
+        return StreamingResponse(
+            _archived_content(model_path, checkpoint_path),
             media_type="application/x-zip-compressed",
             headers={
                 "Content-Type": "application/x-zip-compressed",

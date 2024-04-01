@@ -129,7 +129,9 @@ class WebGUI(FastAPI):
             stats_service: StatisticsService,
             session: RefactSession):
         return [
-            TabLorasRouter(),
+            TabLorasRouter(
+                model_assigner=model_assigner,
+            ),
             PluginsRouter(),
             LoginRouter(
                 prefix="/login",

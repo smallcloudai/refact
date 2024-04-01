@@ -74,7 +74,7 @@ class LoraMerger:
                 self._model.load_state_dict(patch_state_dict, strict=False)
                 self._model.save_pretrained(tempdir, safe_serialization=True)
                 subprocess.check_call(
-                    ["zip", "-q", "-0", "-r", str(os.getcwd() / output_filename), "."],
+                    ["zip", "-q", "-0", "-r", str(output_filename.absolute()), "."],
                     cwd=tempdir)
             except Exception as e:
                 raise RuntimeError(f"lora patch save failed: {e}")
