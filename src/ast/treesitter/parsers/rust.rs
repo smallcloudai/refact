@@ -2,70 +2,14 @@ use std::string::ToString;
 use std::sync::{Arc, RwLock};
 
 use similar::DiffableStr;
-use structopt::lazy_static::lazy_static;
 use tree_sitter::{Node, Parser, Point, Range};
 use tree_sitter_rust::language;
 use url::Url;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
-use crate::ast::treesitter::parsers::{internal_error, AstLanguageParser, ParserError};
+use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
 use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid, str_hash};
-
-const RUST_PARSER_QUERY_GLOBAL_VARIABLE: &str = "((static_item name: (identifier)) @global_variable)";
-const RUST_PARSER_QUERY_FUNCTION: &str = "((function_item name: (identifier)) @function)
-((function_signature_item name: (identifier)) @function)";
-const RUST_PARSER_QUERY_CLASS: &str = "((struct_item name: (_)) @struct)\
-((trait_item name: (_)) @trait)\
-((enum_item name: (_)) @enum)\
-((impl_item type: (_)) @impl)";
-const RUST_PARSER_QUERY_CALL_FUNCTION: &str = "";
-const RUST_PARSER_QUERY_IMPORT_STATEMENT: &str = "";
-const RUST_PARSER_QUERY_IMPORT_FROM_STATEMENT: &str = "";
-const RUST_PARSER_QUERY_CLASS_METHOD: &str = "";
-
-const RUST_PARSER_QUERY_VARIABLES: &str = r#"((let_declaration pattern: (_)) @variable)
-((let_condition) @variable)"#;
-const RUST_PARSER_QUERY_FIND_VARIABLES: &str = r#"((let_declaration pattern: (_)) @variable)"#;
-
-// const RUST_PARSER_QUERY_CALLS: &str = r#"((call_expression function: (_)) @call)"#;
-const RUST_PARSER_QUERY_FIND_CALLS: &str = r#"
-    ((call_expression function: [
-    (identifier) @call_name
-    (field_expression field: (field_identifier) @call_name)
-    ]) @call)"#;
-
-const RUST_PARSER_QUERY_FIND_STATICS: &str = r#"(
-([
-(line_comment) @comment
-(block_comment) @comment
-(string_literal) @string_literal
-])
-)"#;
-
-
-lazy_static! {
-    static ref RUST_PARSER_QUERY: String = {
-        let mut m = Vec::new();
-        m.push(RUST_PARSER_QUERY_GLOBAL_VARIABLE);
-        m.push(RUST_PARSER_QUERY_FUNCTION);
-        m.push(RUST_PARSER_QUERY_CLASS);
-        m.push(RUST_PARSER_QUERY_CALL_FUNCTION);
-        m.push(RUST_PARSER_QUERY_IMPORT_STATEMENT);
-        m.push(RUST_PARSER_QUERY_IMPORT_FROM_STATEMENT);
-        m.push(RUST_PARSER_QUERY_CLASS_METHOD);
-        m.push(RUST_PARSER_QUERY_FIND_CALLS);
-        m.push(RUST_PARSER_QUERY_VARIABLES);
-        // m.push(RUST_PARSER_QUERY_CALLS);
-        m.join("\n")
-    };
-
-    static ref RUST_PARSER_QUERY_FIND_ALL: String = format!("{}\n{}\n{}",
-        RUST_PARSER_QUERY_FIND_VARIABLES, RUST_PARSER_QUERY_FIND_CALLS, RUST_PARSER_QUERY_FIND_STATICS);
-
-    static ref IMPL_TYPE_ID: u16 = language().field_id_for_name("type").unwrap();
-    static ref STRUCT_NAME_ID: u16 = language().field_id_for_name("name").unwrap();
-}
 
 pub(crate) struct RustParser {
     pub parser: Parser,
@@ -309,63 +253,6 @@ impl RustParser {
         symbols
     }
 
-    // fn parse_argument(parent: &Node, code: &str, path: &Url) -> HashSet<FunctionArg> {
-    //     let mut res: HashSet<FunctionArg> = Default::default();
-    //     let kind = parent.kind();
-    //     match kind {
-    //         "unary_expression" | "parenthesized_expression" => {
-    //             let arg = parent.child(1).unwrap();
-    //             res.extend(RustParser::parse_argument(&arg, code, path));
-    //         }
-    //         "try_expression" => {
-    //             let arg = parent.child(0).unwrap();
-    //             res.extend(RustParser::parse_argument(&arg, code, path));
-    //         }
-    //         "type_cast_expression" => {
-    //             let value_node = parent.child_by_field_name("value").unwrap();
-    //             res.extend(RustParser::parse_argument(&value_node, code, path));
-    //             // let type_node = parent.child_by_field_name("type").unwrap();
-    //             // TODO think about this
-    //             // res.extend(RustParser::parse_argument(&right, code, path));
-    //         }
-    //         "reference_expression" => {
-    //             let arg = parent.child_by_field_name("value").unwrap();
-    //             res.extend(RustParser::parse_argument(&arg, code, path));
-    //         }
-    //         "binary_expression" => {
-    //             let left = parent.child_by_field_name("left").unwrap();
-    //             res.extend(RustParser::parse_argument(&left, code, path));
-    //             let right = parent.child_by_field_name("right").unwrap();
-    //             res.extend(RustParser::parse_argument(&right, code, path));
-    //         }
-    //         "identifier" => {
-    //             let mut type_ = TypeDef::default();
-
-    //             if let Some(dtype) = RustParser::parse_type(parent, code) {
-    //                 type_ = dtype;
-    //             }
-    //             let guid = get_guid();
-    //             type_.guid = Some(guid);
-
-    //             res.insert(FunctionArg {
-    //                 name: code.slice(parent.byte_range()).to_string(),
-    //                 type_: Some(type_),
-    //             });
-    //         }
-    //         "field_initializer" => {
-    //             let value_node = parent.child_by_field_name("value").unwrap();
-    //             res.extend(RustParser::parse_argument(&value_node, code, path));
-    //         }
-    //         "shorthand_field_initializer" => {
-    //             let value_node = parent.child(0).unwrap();
-    //             res.extend(RustParser::parse_argument(&value_node, code, path));
-    //         }
-
-    //         _ => {}
-    //     }
-    //     res
-    // }
-
     pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();
@@ -608,7 +495,6 @@ impl RustParser {
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
-                // usage.var_decl_guid = Some(RustParser::get_guid(None, parent, code, path));
                 symbols.push(Arc::new(RwLock::new(usage)));
             }
             "tuple_expression" => {

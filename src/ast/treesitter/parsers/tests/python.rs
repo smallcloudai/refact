@@ -4,7 +4,6 @@ mod tests {
     use url::Url;
     use crate::ast::treesitter::parsers::AstLanguageParser;
     use crate::ast::treesitter::parsers::python::PythonParser;
-    use crate::ast::treesitter::structs::SymbolDeclarationStruct;
 
     const MAIN_PY_CODE: &str = include_str!("cases/python/main.py");
     // const MAIN_RS_INDEXES: &str = include_str!("cases/python/main.py.indexes.json");
@@ -15,7 +14,6 @@ mod tests {
         let mut parser = Box::new(PythonParser::new().expect("PythonParser::new"));
         let path = Url::parse("file:///main.py").unwrap();
         let asd = parser.parse(MAIN_PY_CODE, &path);
-        let indexes_json: HashMap<String, SymbolDeclarationStruct> = serde_json::from_str(MAIN_PY_CODE).unwrap();
 
         // test_query_function(parser, &path, MAIN_RS_CODE,
         //                     serde_json::from_str(MAIN_RS_INDEXES).unwrap(),
