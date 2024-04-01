@@ -47,8 +47,8 @@ pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>) -> Backgro
         tokio::spawn(snippets_transmit::tele_snip_background_task(gcx.clone())),
         tokio::spawn(vecdb::vecdb::vecdb_background_reload(gcx.clone())),   // this in turn can create global_context::vec_db
     ]);
-    match *gcx.clone().read().await.ast_module.lock().await {
-        Some(ref ast) => bg.extend(ast.ast_start_background_tasks().await),
+    match gcx.clone().read().await.ast_module.clone() {
+        Some(ast) => bg.extend(ast.read().await.ast_start_background_tasks().await),
         None => ()
     };
     

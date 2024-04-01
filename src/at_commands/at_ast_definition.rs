@@ -67,10 +67,10 @@ impl AtCommand for AtAstDefinition {
             Some(x) => x,
             None => return Err("no symbol path".to_string()),
         };
-        let binding = context.global_context.read().await;
-        let x = match *binding.ast_module.lock().await {
-            Some(ref ast) => {
-                match ast.search_by_name(symbol_path.clone(), RequestSymbolType::Declaration).await {
+        let ast = context.global_context.read().await.ast_module.clone();
+        let x = match &ast {
+            Some(ast) => {
+                match ast.read().await.search_by_name(symbol_path.clone(), RequestSymbolType::Declaration).await {
                     Ok(res) => {
                         Ok(results2message(&res).await)
                     },

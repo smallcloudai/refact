@@ -8,7 +8,6 @@ use tracing::{info, warn};
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
-use tokio::sync::Mutex as AMutex;
 
 use crate::ast::ast_module::AstModule;
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -47,16 +46,12 @@ pub async fn postprocess_rag_stage1(
 ) -> (HashMap<String, Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
     // 2. Load files, with ast or not
     let mut files: HashMap<String, Arc<File>> = HashMap::new();
-    let ast_module: Arc<AMutex<Option<AstModule>>> = {
-        let cx_locked = global_context.read().await;
-        cx_locked.ast_module.clone()
-    };
+    let ast_module = global_context.read().await.ast_module.clone();
     for file_name in files_set {
         let file_info = DocumentInfo::from_pathbuf(&std::path::PathBuf::from(file_name.clone())).unwrap();
         let mut f: Option<Arc<File>> = None;
-        let option_astmod = ast_module.lock().await;
-        if let Some(astmod) = &*option_astmod {
-            match astmod.file_markup(&file_info).await {
+        if let Some(astmod) = &ast_module {
+            match astmod.read().await.file_markup(&file_info).await {
                 Ok(markup) => {
                     f = Some(Arc::new(File { markup, file_name: file_name.clone() }));
                 },

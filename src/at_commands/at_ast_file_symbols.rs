@@ -73,14 +73,14 @@ impl AtCommand for AtAstFileSymbols {
             None => return Err("no file path".to_string()),
         };
 
-        let binding = context.global_context.read().await;
-        let x = match *binding.ast_module.lock().await {
-            Some(ref ast) => {
+        let ast = context.global_context.read().await.ast_module.clone();
+        let x = match &ast {
+            Some(ast) => {
                 let doc = match DocumentInfo::from_pathbuf(&PathBuf::from(file_path)).ok() {
                     Some(doc) => doc,
                     None => return Err("file not found".to_string())
                 };
-                match ast.get_file_symbols(RequestSymbolType::All, &doc).await {
+                match ast.read().await.get_file_symbols(RequestSymbolType::All, &doc).await {
                     Ok(res) => Ok(results2message(&res)),
                     Err(err) => Err(err)
                 }

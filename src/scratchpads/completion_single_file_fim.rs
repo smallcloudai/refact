@@ -7,7 +7,6 @@ use async_trait::async_trait;
 use ropey::Rope;
 use serde_json::{Value, json};
 use tokenizers::Tokenizer;
-use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tracing::{info, error};
 use tree_sitter::Point;
@@ -37,7 +36,7 @@ pub struct SingleFileFIM {
     pub context_used: serde_json::Value,
     pub data4cache: completion_cache::CompletionSaveToCache,
     pub data4snippet: snippets_collection::SaveSnippet,
-    pub ast_module: Arc<AMutex<Option<AstModule>>>,
+    pub ast_module: Option<Arc<ARwLock<AstModule>>>,
     pub global_context: Arc<ARwLock<GlobalContext>>,
 }
 
@@ -48,7 +47,7 @@ impl SingleFileFIM {
         order: String,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
         tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
-        ast_module: Arc<AMutex<Option<AstModule>>>,
+        ast_module: Option<Arc<ARwLock<AstModule>>>,
         global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
@@ -123,8 +122,8 @@ impl ScratchpadAbstract for SingleFileFIM {
         let extra_context = String::new();
         let mut tokens_used = 0;
         let ast_messages: Vec<crate::call_validation::ChatMessage> = if true /*self.post.use_ast*/ {
-            let chat_message_maybe = match *self.ast_module.lock().await {
-                Some(ref mut ast) => {
+            let chat_message_maybe = match &self.ast_module {
+                Some(ast) => {
                     let doc_info = match DocumentInfo::from_pathbuf(&file_path) {
                         Ok(doc) => doc,
                         Err(err) => {
@@ -132,7 +131,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                             return Err(err.to_string());
                         }
                     };
-                    match ast.retrieve_cursor_symbols_by_declarations(
+                    match ast.read().await.retrieve_cursor_symbols_by_declarations(
                         &doc_info, &source, Point { row: pos.line as usize, column: pos.character as usize },
                         5, 5
                     ).await {

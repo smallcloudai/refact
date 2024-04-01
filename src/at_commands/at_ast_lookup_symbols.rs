@@ -114,7 +114,6 @@ impl AtCommand for AtAstLookupSymbols {
         };
 
         let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &file_path.to_string()).await?;
-        let binding = context.global_context.read().await;
         let doc_info = match DocumentInfo::from_pathbuf_and_text(
             &PathBuf::from(&file_path), &file_text,
         ) {
@@ -123,9 +122,10 @@ impl AtCommand for AtAstLookupSymbols {
                 return Err(format!("{err}: {file_path}"));
             }
         };
-        let x = match *binding.ast_module.lock().await {
-            Some(ref mut ast) => {
-                match ast.retrieve_cursor_symbols_by_declarations(
+        let ast = context.global_context.read().await.ast_module.clone();
+        let x = match &ast {
+            Some(ast) => {
+                match ast.read().await.retrieve_cursor_symbols_by_declarations(
                     &doc_info, &file_text, Point { row: row_idx, column: 0 }, 5,  5
                 ).await {
                     Ok(res) => Ok(results2message(&res).await),

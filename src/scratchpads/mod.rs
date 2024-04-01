@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokenizers::Tokenizer;
 use crate::ast::ast_module::AstModule;
@@ -35,7 +34,7 @@ pub async fn create_code_completion_scratchpad(
     scratchpad_patch: &serde_json::Value,
     cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
     tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
-    ast_module: Arc<AMutex<Option<AstModule>>>,
+    ast_module: Option<Arc<ARwLock<AstModule>>>,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;

@@ -83,7 +83,7 @@ pub struct GlobalContext {
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
-    pub ast_module: Arc<AMutex<Option<AstModule>>>,   // TODO: don't use AMutex, use StdMutex
+    pub ast_module: Option<Arc<ARwLock<AstModule>>>,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
 }
@@ -233,16 +233,16 @@ pub async fn create_global_context(
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vec_db: Arc::new(AMutex::new(None)),
-        ast_module: Arc::new(AMutex::new(None)),
+        ast_module: None,
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState::empty(if cmdline.workspace_folder.is_empty() { vec![] } else { vec![PathBuf::from(cmdline.workspace_folder.clone())] })
     };
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {
-        let ast_module = Arc::new(AMutex::new(Some(
+        let ast_module = Arc::new(ARwLock::new(
             AstModule::ast_indexer_init(gcx.clone()).await.expect("Failed to initialize ast module")
-        )));
-        gcx.write().await.ast_module = ast_module;
+        ));
+        gcx.write().await.ast_module = Some(ast_module);
     }
     {
         gcx.write().await.documents_state.init_watcher(gcx.clone());

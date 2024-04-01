@@ -29,9 +29,9 @@ impl AtParam for AtParamSymbolPathQuery {
     }
 
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
-        let ast_module_ptr = context.global_context.read().await.ast_module.clone();
-        let names = match *ast_module_ptr.lock().await {
-            Some(ref ast) => ast.get_symbols_names(RequestSymbolType::Declaration).await.unwrap_or_default(),
+        let ast = context.global_context.read().await.ast_module.clone();
+        let names = match &ast {
+            Some(ast) => ast.read().await.get_symbols_names(RequestSymbolType::Declaration).await.unwrap_or_default(),
             None => vec![]
         };
 
@@ -77,9 +77,9 @@ impl AtParam for AtParamSymbolReferencePathQuery {
         return true;
     }
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
-        let ast_module_ptr = context.global_context.read().await.ast_module.clone();
-        let index_paths = match *ast_module_ptr.lock().await {
-            Some(ref ast) => ast.get_symbols_names(RequestSymbolType::Usage).await.unwrap_or_default(),
+        let ast = context.global_context.read().await.ast_module.clone();
+        let index_paths = match &ast {
+            Some(ast) => ast.read().await.get_symbols_names(RequestSymbolType::Usage).await.unwrap_or_default(),
             None => vec![]
         };
         let value_lower = value.to_lowercase();

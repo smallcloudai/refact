@@ -34,16 +34,15 @@ pub async fn handle_v1_ast_search_by_name(
     let post = serde_json::from_slice::<AstQuerySearchBy>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-
-    let cx_locked = global_context.read().await;
-    let search_res = match *cx_locked.ast_module.lock().await {
-        Some(ref mut ast) => {
+    let ast_module = global_context.read().await.ast_module.clone();
+    let search_res = match &ast_module {
+        Some(ast) => {
             let symbol_type = if post.is_declaration {
                 RequestSymbolType::Declaration
             } else {
                 RequestSymbolType::Usage
             };
-            ast.search_by_name(post.query, symbol_type).await
+            ast.read().await.search_by_name(post.query, symbol_type).await
         }
         None => {
             return Err(ScratchError::new(
@@ -75,15 +74,15 @@ pub async fn handle_v1_ast_search_by_content(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let cx_locked = global_context.read().await;
-    let search_res = match *cx_locked.ast_module.lock().await {
-        Some(ref mut ast) => {
+    let ast_module = global_context.read().await.ast_module.clone();
+    let search_res = match &ast_module {
+        Some(ast) => {
             let symbol_type = if post.is_declaration {
                 RequestSymbolType::Declaration
             } else {
                 RequestSymbolType::Usage
             };
-            ast.search_by_content(post.query, symbol_type).await
+            ast.read().await.search_by_content(post.query, symbol_type).await
         }
         None => {
             return Err(ScratchError::new(
@@ -115,10 +114,10 @@ pub async fn handle_v1_ast_search_related_declarations(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let cx_locked = global_context.read().await;
-    let search_res = match *cx_locked.ast_module.lock().await {
-        Some(ref mut ast) => {
-            ast.search_related_declarations(&post.guid).await
+    let ast_module = global_context.read().await.ast_module.clone();
+    let search_res = match &ast_module {
+        Some(ast) => {
+            ast.read().await.search_related_declarations(&post.guid).await
         }
         None => {
             return Err(ScratchError::new(
@@ -150,10 +149,10 @@ pub async fn handle_v1_ast_search_usages_by_declarations(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let cx_locked = global_context.read().await;
-    let search_res = match *cx_locked.ast_module.lock().await {
-        Some(ref mut ast) => {
-            ast.search_usages_by_declarations(&post.guid).await
+    let ast_module = global_context.read().await.ast_module.clone();
+    let search_res = match &ast_module {
+        Some(ast) => {
+            ast.read().await.search_usages_by_declarations(&post.guid).await
         }
         None => {
             return Err(ScratchError::new(
@@ -185,11 +184,11 @@ pub async fn handle_v1_ast_file_markup(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let search_res = {
-        let cx_locked = global_context.read().await;
-        let x = match *cx_locked.ast_module.lock().await {
-            Some(ref mut ast) => {
+        let ast_module = global_context.read().await.ast_module.clone();
+        let x = match &ast_module {
+            Some(ast) => {
                 let doc = DocumentInfo { uri: post.file_url, document: None };
-                ast.file_markup(&doc).await
+                ast.read().await.file_markup(&doc).await
             }
             None => {
                 return Err(ScratchError::new(
@@ -256,10 +255,10 @@ pub async fn handle_v1_ast_file_symbols(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let doc = DocumentInfo { uri: post.file_url, document: None };
-    let cx_locked = global_context.read().await;
-    let search_res = match *cx_locked.ast_module.lock().await {
-        Some(ref ast) => {
-            ast.get_file_symbols(RequestSymbolType::All, &doc).await
+    let ast_module = global_context.read().await.ast_module.clone();
+    let search_res = match &ast_module {
+        Some(ast) => {
+            ast.read().await.get_file_symbols(RequestSymbolType::All, &doc).await
         }
         None => {
             return Err(ScratchError::new(
@@ -292,10 +291,10 @@ pub async fn handle_v1_ast_index_file(
     })?;
 
     let doc = DocumentInfo { uri: post.file_url, document: None };
-    let cx_locked = global_context.read().await;
-    let add_res = match *cx_locked.ast_module.lock().await {
-        Some(ref ast) => {
-            ast.ast_add_file_no_queue(&doc).await
+    let ast_module = global_context.read().await.ast_module.clone();
+    let add_res = match &ast_module {
+        Some(ast) => {
+            ast.write().await.ast_add_file_no_queue(&doc).await
         }
         None => {
             return Err(ScratchError::new(
@@ -320,10 +319,10 @@ pub async fn handle_v1_ast_clear_index(
     Extension(global_context): Extension<SharedGlobalContext>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let cx_locked = global_context.read().await;
-    let x = match *cx_locked.ast_module.lock().await {
-        Some(ref ast) => {
-            ast.clear_index().await;
+    let ast_module = global_context.read().await.ast_module.clone();
+    let x = match &ast_module {
+        Some(ast) => {
+            ast.write().await.clear_index().await;
             Ok(Response::builder().status(StatusCode::OK)
                 .body(Body::from("{}"))
                 .unwrap())

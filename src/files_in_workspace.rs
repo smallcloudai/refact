@@ -334,8 +334,8 @@ async fn enqueue_files(
         let cx_locked = gcx.read().await;
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
-    match *ast_module.lock().await {
-        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&docs, true).await,
+    match &ast_module {
+        Some(ast) => ast.read().await.ast_indexer_enqueue_files(&docs, true).await,
         None => {}
     };
     match *vecdb_module.lock().await {
@@ -367,8 +367,10 @@ pub async fn enqueue_all_files_from_workspace_folders(
         workspace_files.extend(tmp);
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
-    match *ast_module.lock().await {
-        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&docs, false).await,
+    match &ast_module {
+        Some(ast) => {
+            ast.write().await.ast_indexer_enqueue_files(&docs, false).await
+        },
         None => {
             info!("ast_module is None");
         }
@@ -444,8 +446,8 @@ pub async fn on_did_change(
             Some(ref mut db) => db.vectorizer_enqueue_files(&vec![doc_info.clone()], false).await,
             None => {}
         };
-        match *ast_module.lock().await {
-            Some(ref mut ast) => ast.ast_indexer_enqueue_files(&vec![doc_info.clone()], false).await,
+        match &ast_module {
+            Some(ast) => ast.read().await.ast_indexer_enqueue_files(&vec![doc_info.clone()], false).await,
             None => {}
         };
     }
@@ -484,13 +486,13 @@ pub async fn on_did_delete(
         };
     }
     {
-        match *ast_module.lock().await {
-            Some(ref mut ast) => {
+        match &ast_module {
+            Some(ast) => {
                 let doc = DocumentInfo {
                     uri: file_url.clone(),
                     document: None,
                 };
-                ast.remove_file(&doc).await
+                ast.write().await.remove_file(&doc).await
             }
             None => {}
         };
@@ -509,8 +511,8 @@ pub async fn add_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf) {
         let cx_locked = gcx.read().await;
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
-    match *ast_module.lock().await {
-        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&docs, false).await,
+    match &ast_module {
+        Some(ast) => ast.read().await.ast_indexer_enqueue_files(&docs, false).await,
         None => {}
     };
     match *vecdb_module.lock().await {
@@ -529,8 +531,8 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf) {
         let cx_locked = gcx.read().await;
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
-    match *ast_module.lock().await {
-        Some(ref mut ast) => ast.ast_reset_index().await,
+    match &ast_module {
+        Some(ast) => ast.read().await.ast_reset_index().await,
         None => {}
     };
 

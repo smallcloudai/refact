@@ -24,8 +24,8 @@ pub async fn enqueue_all_files_from_jsonl(
         let cx_locked = gcx.read().await;
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
-    match *ast_module.lock().await {
-        Some(ref mut ast) => ast.ast_indexer_enqueue_files(&docs, true).await,
+    match &ast_module {
+        Some(ast) => ast.read().await.ast_indexer_enqueue_files(&docs, true).await,
         None => {},
     };
     match *vecdb_module.lock().await {
