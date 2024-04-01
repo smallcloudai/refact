@@ -23,24 +23,14 @@ const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 const SMALL_GAP_LINES: usize = 10;  // lines
 
 
-pub fn count_tokens(
-    tokenizer: &Tokenizer,
-    text: &str,
-) -> usize {
-    match tokenizer.encode(text, false) {
-        Ok(tokens) => tokens.len(),
-        Err(_) => 0,
-    }
-}
-
 #[derive(Debug)]
-struct File {
+pub struct File {
     pub markup: FileASTMarkup,
     pub file_name: String,   // delete when we remove Url
 }
 
 #[derive(Debug)]
-struct FileLine {
+pub struct FileLine {
     pub fref: Arc<File>,
     pub line_n: usize,
     pub line_content: String,
@@ -49,12 +39,11 @@ struct FileLine {
     pub take: bool,
 }
 
-pub async fn postprocess_at_results2(
+
+pub async fn postprocess_rag_stage1(
     global_context: Arc<ARwLock<GlobalContext>>,
     messages: Vec<ChatMessage>,
-    tokenizer: Arc<RwLock<Tokenizer>>,
-    tokens_limit: usize,
-) -> Vec<ContextFile> {
+) -> (HashMap<String, Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
     // 1. Decode all
     let mut origmsgs: Vec<ContextFile> = vec![];
     let mut files_set: HashSet<String> = HashSet::new();
@@ -121,7 +110,7 @@ pub async fn postprocess_at_results2(
                 fref: fref.clone(),
                 line_n: line_n,
                 line_content: line.to_string(),
-                useful: 10.0 - (line_n as f32 * 0.001),
+                useful: 0.0,
                 color: "".to_string(),
                 take: false,
             });
@@ -130,23 +119,38 @@ pub async fn postprocess_at_results2(
             lines_in_files_mut.push(a.clone());
         }
     }
-
-    // 4. Fill in usefulness from search results
-    let colorize_if_more_useful = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, color: &String, useful: f32|
+    let colorize_if_more_useful = |linevec: &mut Vec<Arc<FileLine>>, line1: usize, line2: usize, color: &String, useful: f32|
     {
-        info!("colorize_if_more_useful: {}..{} <= color {:?} useful {}", line1_base0, line2_base0, color, useful);
-        for i in line1_base0 .. line2_base0 {
-            assert!(i < linevec.len());
+        info!("    colorize_if_more_useful {}..{} <= color {:?} useful {}", line1, line2, color, useful);
+        for i in line1 .. line2 {
+            if i >= linevec.len() {
+                warn!("    {} has faulty range {}..{}", color, line1, line2);
+                continue;
+            }
             let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
-            let u = useful - ((i - line1_base0) as f32) * 0.001;
+            let u = useful - (i as f32) * 0.001;
             unsafe {
-                if (*lineref_mut).useful < u {
+                if (*lineref_mut).useful < u || (*lineref_mut).color.is_empty() {
                     (*lineref_mut).useful = u;
                     (*lineref_mut).color = color.clone();
                 }
             }
         }
     };
+    for linevec in lines_in_files.values_mut() {
+        if linevec.len() == 0 {
+            continue;
+        }
+        let fref = linevec[0].fref.clone();
+        for s in fref.markup.symbols_sorted_by_path_len.iter() {
+            info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+            let useful = 10.0;  // depends on symbol type?
+            colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), useful);
+        }
+        colorize_if_more_useful(linevec, 0, linevec.len(), &"".to_string(), 10.0);
+    }
+
+    // 4. Fill in usefulness from search results
     for omsg in origmsgs.iter() {
         let linevec: &mut Vec<Arc<FileLine>> = match lines_in_files.get_mut(&omsg.file_name) {
             Some(x) => x,
@@ -172,22 +176,9 @@ pub async fn postprocess_at_results2(
             }
         }
         if let Some(s) = maybe_symbol {
-            if s.declaration_range.end_byte != 0 {
-                // full_range Range { start_byte: 696, end_byte: 1563, start_point: Point { row: 23, column: 4 }, end_point: Point { row: 47, column: 5 } }
-                // declaration_range Range { start_byte: 696, end_byte: 842, start_point: Point { row: 23, column: 4 }, end_point: Point { row: 27, column: 42 } }
-                // definition_range Range { start_byte: 843, end_byte: 1563, start_point: Point { row: 27, column: 43 }, end_point: Point { row: 47, column: 5 } }
-                info!("{:?} {} declaration_range {}-{}", s.symbol_type, s.guid, s.declaration_range.start_point.row, s.declaration_range.end_point.row);
-                info!("{:?} {} definition_range {}-{}", s.symbol_type, s.guid, s.definition_range.start_point.row, s.definition_range.end_point.row);
-                if s.definition_range.end_byte > 0 {
-                    colorize_if_more_useful(linevec, s.definition_range.start_point.row, s.definition_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness - 3.0);
-                }
-                colorize_if_more_useful(linevec, s.declaration_range.start_point.row, s.declaration_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness);
-            } else {
-                colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness - 6.0);
-            }
-
+            colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness);
         } else {
-            // no symbol in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
+            // no symbol set in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
             if omsg.line1 == 0 || omsg.line2 == 0 || omsg.line1 > omsg.line2 || omsg.line1 > linevec.len() || omsg.line2 > linevec.len() {
                 warn!("postprocess_at_results2: cannot use range {}:{}..{}", omsg.file_name, omsg.line1, omsg.line2);
                 continue;
@@ -195,16 +186,26 @@ pub async fn postprocess_at_results2(
             colorize_if_more_useful(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
         }
     }
+    (lines_in_files, lines_by_useful)
+}
+
+pub async fn postprocess_at_results2(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    messages: Vec<ChatMessage>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokens_limit: usize,
+) -> Vec<ContextFile> {
+    let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage1(global_context, messages).await;
 
     // 5. Downgrade sub-symbols and uninteresting regions
-    let downgrade_lines_if_prefix = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, prefix: &String, downgrade_coef: f32|
+    let downgrade_lines_if_prefix = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, subsymbol: &String, downgrade_coef: f32|
     {
-        info!("    downgrade_lines_if_prefix: {}..{} <= prefix {:?} downgrade_coef {}", line1_base0, line2_base0, prefix, downgrade_coef);
+        let mut changes_cnt = 0;
         for i in line1_base0 .. line2_base0 {
             assert!(i < linevec.len());
             let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
             unsafe {
-                if prefix.starts_with(&(*lineref_mut).color) && prefix != &(*lineref_mut).color {
+                if subsymbol.starts_with(&(*lineref_mut).color) { // && subsymbol != &(*lineref_mut).color {
                     if i == line2_base0-1 || i == line1_base0 {
                         if (*lineref_mut).line_content.trim().len() == 1 {
                             // HACK: closing brackets at the end, leave it alone without downgrade
@@ -212,13 +213,15 @@ pub async fn postprocess_at_results2(
                         }
                     }
                     (*lineref_mut).useful *= downgrade_coef;
+                    changes_cnt += 1;
                 }
             }
         }
+        info!("        {}..{} ({} affected) <= subsymbol {:?} downgrade {}", changes_cnt, line1_base0, line2_base0, subsymbol, downgrade_coef);
     };
     let downgrade_unconditional = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, add: f32, mult: f32|
     {
-        info!("    downgrade_unconditional: {}..{} <= add {} mult {}", line1_base0, line2_base0, add, mult);
+        info!("        {}..{} <= add {} mult {}", line1_base0, line2_base0, add, mult);
         for i in line1_base0.. line2_base0 {
             assert!(i < linevec.len());
             let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
@@ -237,6 +240,7 @@ pub async fn postprocess_at_results2(
         let mut anything_interesting_min = usize::MAX;
         let mut anything_interesting_max = 0;
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
+            info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
             if s.definition_range.end_byte != 0 {
                 // decl  void f() {
                 // def      int x = 5;
@@ -247,9 +251,8 @@ pub async fn postprocess_at_results2(
                 );
                 if def1 > def0 {
                     downgrade_lines_if_prefix(linevec, def0, def1, &format!("{}", s.symbol_path), 0.8);
+                    // NOTE: this will not downgrade function body of a function that is a search result, because it's not a subsymbol it's the symbol itself (equal path)
                 }
-            } else {
-                info!("    {:?} {} {}-{}", s.symbol_type, s.symbol_path, s.full_range.start_point.row, s.full_range.end_point.row);
             }
             anything_interesting_min = anything_interesting_min.min(s.full_range.start_point.row);
             anything_interesting_max = anything_interesting_max.max(s.full_range.end_point.row);
@@ -282,7 +285,7 @@ pub async fn postprocess_at_results2(
             lines_take_cnt += 1;
         }
     }
-    info!("{} lines in {} files  =>  tokens {} < {} tokens limit  =>  {} lines", lines_by_useful.len(), files.len(), tokens_count, tokens_limit, lines_take_cnt);
+    info!("{} lines in {} files  =>  tokens {} < {} tokens limit  =>  {} lines", lines_by_useful.len(), lines_in_files.len(), tokens_count, tokens_limit, lines_take_cnt);
     for linevec in lines_in_files.values() {
         for lineref in linevec.iter() {
             info!("{} {}:{:04} {:>7.3} {}",
@@ -334,6 +337,16 @@ pub async fn postprocess_at_results2(
         });
     }
     merged
+}
+
+pub fn count_tokens(
+    tokenizer: &Tokenizer,
+    text: &str,
+) -> usize {
+    match tokenizer.encode(text, false) {
+        Ok(tokens) => tokens.len(),
+        Err(_) => 0,
+    }
 }
 
 pub async fn run_at_commands(
