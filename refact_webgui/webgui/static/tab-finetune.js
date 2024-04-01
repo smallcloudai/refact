@@ -46,9 +46,8 @@ const finetune_settings_inputs = [
     { // column 1
         "name": "lora_r",
         "label": "Lora R",
-        "type": "text",
-        "min": "4",
-        "max": "64",
+        "type": "select",
+        "values": [4, 8, 16, 32, 64],
         "info": "Min 4, Max 64",
         "hint": "",
     },
@@ -64,9 +63,8 @@ const finetune_settings_inputs = [
     { // column 1
         "name": "lora_alpha",
         "label": "Lora Alpha",
-        "type": "text",
-        "min": "4",
-        "max": "128",
+        "type": "select",
+        "values": [4, 8, 16, 32, 64, 128],
         "info": "Min 4, Max 128",
         "hint": "",
     },
@@ -84,8 +82,8 @@ const finetune_settings_inputs = [
         "label": "Lora Dropout",
         "type": "text",
         "min": "0.0",
-        "max": "0.2",
-        "info": "Min 0.0, Max 0.2",
+        "max": "0.5",
+        "info": "Min 0.0, Max 0.5",
         "hint": "",
     },
     { // column 0
@@ -119,8 +117,8 @@ const finetune_settings_inputs = [
         "name": "filter_loss_threshold",
         "label": "Filter Loss Threshold",
         "type": "text",
-        "min": "1",
-        "max": "10",
+        "min": "1.0",
+        "max": "10.0",
         "info": "Min 1.0, Max 10.0",
         "hint": "",
     },
@@ -128,9 +126,9 @@ const finetune_settings_inputs = [
         "name": "model_ctx_size",
         "label": "N Ctx",
         "type": "text",
-        "min": "1",
-        "max": "1024",
-        "info": "Min 1, Max 1024",
+        "min": "0",
+        "max": "4096",
+        "info": "Min 0, Max 4096",
         "hint": "",
     },
 ]
@@ -754,11 +752,8 @@ function get_finetune_settings(defaults = false) {
         } else {
             settings_data = data.defaults;
         }
-        let YMD = new Date();
-        let padZero = (num) => (num < 10 ? `0${num}` : num);
-        let YMD2 = `lora-${YMD.getFullYear()}${padZero(YMD.getMonth() + 1)}${padZero(YMD.getDate())}-${padZero(YMD.getHours())}${padZero(YMD.getMinutes())}${padZero(YMD.getSeconds())}`;
         let ftname_input = document.querySelector('#finetune-tab-settings-modal #finetune_name')
-        ftname_input.value = YMD2;
+        ftname_input.value = lora_default_name();
         ftname_input.setSelectionRange(0, 4);
         setTimeout(() => {
             ftname_input.focus();
@@ -793,34 +788,94 @@ function get_finetune_settings(defaults = false) {
     })
 }
 
+function lora_default_name() {
+    let YMD = new Date();
+    let padZero = (num) => (num < 10 ? `0${num}` : num);
+    let YMD2 = `lora-${YMD.getFullYear()}${padZero(YMD.getMonth() + 1)}${padZero(YMD.getDate())}-${padZero(YMD.getHours())}${padZero(YMD.getMinutes())}${padZero(YMD.getSeconds())}`;
+    return YMD2;
+}
+
 function render_finetune_options(settings_data,defaults = false) {
     if(defaults) {
         options_block.innerHTML = '';
         tooltipList = [];
         settings_data = finetune_settings_defaults;
     }
+
+    const ftune_name = document.querySelector('#finetune-tab-settings-modal #finetune_name');
+    ftune_name.addEventListener('input', function() {
+        const regex = /^[A-Za-z0-9_\-\.]{1,30}$/;
+        if (ftune_name.value.trim() === '' || !regex.test(ftune_name.value.trim())) {
+            ftune_name.classList.add('is-invalid');
+        } else {
+            ftune_name.classList.remove('is-invalid');
+        }
+    });
+    
     if(options_block.innerHTML.trim() == "") {
         for (let i = 0; i < finetune_settings_inputs.length; i++) {
             let entry = finetune_settings_inputs[i];
             let item_group = document.createElement('div');
             let item_label = document.createElement('label');
-            let item = document.createElement('input');
-
             item_label.innerHTML = entry["label"];
-
-            item.type = 'text';
-            item.id = entry["name"];
-            item.name = entry["name"];
-            item.classList.add('form-control');
-            item.dataset.min = entry["min"];
-            item.dataset.max = entry["max"];
-            item.setAttribute('data-bs-toggle', 'tooltip');
-            item.setAttribute('data-bs-placement', 'right');
-            item.setAttribute('title', entry["info"]);
-            if(settings_data[entry["name"]] !== undefined) {
-                item.value = settings_data[entry["name"]];
-            } else {
-                item.value = 0;
+            let item;
+            if(entry["type"] === 'text') {
+                item = document.createElement('input');
+                item.type = 'text';
+                item.id = entry["name"];
+                item.name = entry["name"];
+                item.classList.add('form-control');
+                item.dataset.min = entry["min"];
+                item.dataset.max = entry["max"];
+                item.setAttribute('data-bs-toggle', 'tooltip');
+                item.setAttribute('data-bs-placement', 'right');
+                item.setAttribute('title', entry["info"]);
+                if(settings_data[entry["name"]] !== undefined) {
+                    item.value = settings_data[entry["name"]];
+                } else {
+                    item.value = 0;
+                }
+    
+                item.addEventListener('input', function() {
+                    let min = parseFloat(item.dataset.min);
+                    let max = parseFloat(item.dataset.max);
+                    let value = item.value.trim();
+                    let parsedValue;
+            
+                    if (value === '') {
+                        item.value = settings_data[entry["name"]] !== undefined ? settings_data[entry["name"]] : 0;
+                        item.classList.remove('is-invalid');
+                        return;
+                    }
+            
+                    if (entry["type"] === "text" && value.includes('.')) {
+                        parsedValue = parseFloat(value);
+                    } else {
+                        parsedValue = parseInt(value);
+                    }
+            
+                    if (isNaN(parsedValue) || parsedValue < min || parsedValue > max) {
+                        item.classList.add('is-invalid');
+                    } else {
+                        item.classList.remove('is-invalid');
+                        item.value = parsedValue;
+                    }
+                });
+            }
+            if(entry["type"] === 'select') {
+                item = document.createElement('select');
+                item.id = entry["name"];
+                item.name = entry["name"];
+                item.classList.add('form-select');
+                entry["values"].forEach(val => {
+                    let option = document.createElement('option');
+                    option.value = val;
+                    option.text = val;
+                    if(settings_data[entry["name"]] === val) {
+                        option.selected = true;
+                    }
+                    item.appendChild(option);
+                });
             }
 
             item_group.appendChild(item_label);
@@ -930,14 +985,17 @@ function save_finetune_settings() {
         finetune_settings_error.classList.remove('d-none');
         return;
     }
-
+    let run_name = document.querySelector('#finetune-tab-settings-modal #finetune_name').value;
+    if(run_name.trim() === '') {
+        run_name = lora_default_name();
+    }
     fetch("/tab-finetune-training-launch", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            run_id: document.querySelector('#finetune-tab-settings-modal #finetune_name').value,
+            run_id: run_name,
             model_name: document.querySelector('#finetune-model').value,
             pname: document.querySelector('#finetune-project').value,
             // limit_time_seconds: document.querySelector('#finetune-tab-settings-modal #limit_time_seconds').value,
@@ -953,7 +1011,7 @@ function save_finetune_settings() {
             lora_alpha: document.querySelector('#finetune-tab-settings-modal #lora_alpha').value,
             lora_dropout: document.querySelector('#finetune-tab-settings-modal #lora_dropout').value,
             gpus: gpus,
-            // filter_loss_threshold: document.querySelector('#finetune-tab-settings-modal #filter_loss_threshold').value,
+            filter_loss_threshold: document.querySelector('#finetune-tab-settings-modal #filter_loss_threshold').value,
             model_ctx_size: document.querySelector('#finetune-tab-settings-modal #model_ctx_size').value,
         })
     })
