@@ -748,9 +748,9 @@ impl RustParser {
                     let mut type_alias = TypeAlias::default();
                     type_alias.ast_fields.name = code.slice(name_node.byte_range()).to_string();
                     type_alias.ast_fields.language = LanguageId::Rust;
-                    type_alias.ast_fields.full_range = parent.range();
+                    type_alias.ast_fields.full_range = child.range();
                     type_alias.ast_fields.file_url = path.clone();
-                    type_alias.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
+                    type_alias.ast_fields.content_hash = str_hash(&code.slice(child.byte_range()).to_string());
                     type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
                     type_alias.ast_fields.guid = get_guid();
                     type_alias.ast_fields.is_error = is_error;
@@ -792,9 +792,9 @@ impl RustParser {
                 "line_comment" | "block_comment" => {
                     let mut def = CommentDefinition::default();
                     def.ast_fields.language = LanguageId::Rust;
-                    def.ast_fields.full_range = parent.range();
+                    def.ast_fields.full_range = child.range();
                     def.ast_fields.file_url = path.clone();
-                    def.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
+                    def.ast_fields.content_hash = str_hash(&code.slice(child.byte_range()).to_string());
                     def.ast_fields.guid = get_guid();
                     def.ast_fields.parent_guid = Some(parent_guid.clone());
                     def.ast_fields.is_error = is_error;
