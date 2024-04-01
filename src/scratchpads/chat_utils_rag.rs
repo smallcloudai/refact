@@ -42,36 +42,19 @@ pub struct FileLine {
 
 pub async fn postprocess_rag_stage1(
     global_context: Arc<ARwLock<GlobalContext>>,
-    messages: Vec<ChatMessage>,
+    origmsgs: Vec<ContextFile>,
+    files_set: HashSet<String>,
 ) -> (HashMap<String, Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
-    // 1. Decode all
-    let mut origmsgs: Vec<ContextFile> = vec![];
-    let mut files_set: HashSet<String> = HashSet::new();
-    for msg in messages {
-        match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
-            Ok(decoded) => {
-                origmsgs.extend(decoded.clone());
-                for cf in decoded {
-                    files_set.insert(cf.file_name.clone());
-                }
-            },
-            Err(err) => {
-                warn!("postprocess_at_results2 decoding results problem: {}", err);
-                continue;
-            }
-        }
-    }
-
     // 2. Load files, with ast or not
     let mut files: HashMap<String, Arc<File>> = HashMap::new();
     let ast_module: Arc<AMutex<Option<AstModule>>> = {
         let cx_locked = global_context.read().await;
         cx_locked.ast_module.clone()
     };
-    let option_astmod = ast_module.lock().await;
     for file_name in files_set {
         let file_info = DocumentInfo::from_pathbuf(&std::path::PathBuf::from(file_name.clone())).unwrap();
         let mut f: Option<Arc<File>> = None;
+        let option_astmod = ast_module.lock().await;
         if let Some(astmod) = &*option_astmod {
             match astmod.file_markup(&file_info).await {
                 Ok(markup) => {
@@ -195,7 +178,25 @@ pub async fn postprocess_at_results2(
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
 ) -> Vec<ContextFile> {
-    let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage1(global_context, messages).await;
+    // 1. Decode all
+    let mut origmsgs: Vec<ContextFile> = vec![];
+    let mut files_set: HashSet<String> = HashSet::new();
+    for msg in messages {
+        match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
+            Ok(decoded) => {
+                origmsgs.extend(decoded.clone());
+                for cf in decoded {
+                    files_set.insert(cf.file_name.clone());
+                }
+            },
+            Err(err) => {
+                warn!("postprocess_at_results2 decoding results problem: {}", err);
+                continue;
+            }
+        }
+    }
+
+    let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage1(global_context, origmsgs, files_set).await;
 
     // 5. Downgrade sub-symbols and uninteresting regions
     let downgrade_lines_if_prefix = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, subsymbol: &String, downgrade_coef: f32|
