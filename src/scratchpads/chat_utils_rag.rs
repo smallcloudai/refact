@@ -78,7 +78,6 @@ pub async fn postprocess_rag_stage1(
     let mut lines_by_useful: Vec<Arc<FileLine>> = vec![];
     let mut lines_in_files: HashMap<String, Vec<Arc<FileLine>>> = HashMap::new();
     for fref in files.values() {
-        info!("fref {:?} has {} bytes, {} symbols", fref.file_name, fref.markup.file_content.len(), fref.markup.symbols_sorted_by_path_len.len());
         for (line_n, line) in fref.markup.file_content.lines().enumerate() {
             let a = Arc::new(FileLine {
                 fref: fref.clone(),
@@ -116,6 +115,7 @@ pub async fn postprocess_rag_stage1(
             continue;
         }
         let fref = linevec[0].fref.clone();
+        info!("fref {:?} has {} bytes, {} symbols", fref.file_name, fref.markup.file_content.len(), fref.markup.symbols_sorted_by_path_len.len());
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
             // info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
             let useful = 10.0;  // depends on symbol type?
