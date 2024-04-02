@@ -23,7 +23,7 @@ use crate::telemetry::snippets_collection;
 use crate::telemetry::telemetry_structs;
 
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 
 pub struct SingleFileFIM {
@@ -119,7 +119,6 @@ impl ScratchpadAbstract for SingleFileFIM {
         let file_path = PathBuf::from(self.post.inputs.cursor.file.clone());
         let mut before_iter = text.lines_at(pos.line as usize).reversed();
         let mut after_iter = text.lines_at(pos.line as usize + 1);
-        let extra_context = String::new();
         let mut tokens_used = 0;
         let ast_messages: Vec<crate::call_validation::ChatMessage> = if true /*self.post.use_ast*/ {
             let chat_message_maybe = match &self.ast_module {
@@ -142,6 +141,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         } else {
             vec![]
         };
+        info!("ast_messages {:?}", ast_messages);
         let context_ctx_this_message = 1024;  // FIXME: calculate better, subtract from limit
         let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
             self.global_context.clone(),
@@ -150,6 +150,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             context_ctx_this_message,
         ).await;
         self.context_used = json!(postprocessed_messages);
+        let extra_context = String::new();
 
         let mut before_line = before_iter.next();
 

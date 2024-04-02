@@ -846,7 +846,10 @@ impl AstIndex {
         let symbols = AstIndex::parse(&doc).unwrap_or_default();
         self.resolve_types(&symbols).await;
         self.merge_usages_to_declarations(&symbols).await;
-        info!("symbols: {:?}", symbols);
+        for s in symbols.iter() {
+            let x = s.read().unwrap();
+            info!("symbol {:?} {:?}", x.name(), x.symbol_type());
+        }
         symbols
     }
 }
