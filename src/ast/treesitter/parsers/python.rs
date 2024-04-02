@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
+use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::{Arc, RwLock};
 
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Point, Range};
 use tree_sitter_python::language;
-use url::Url;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
@@ -171,14 +171,14 @@ impl PythonParser {
             .map_err(internal_error)?;
         Ok(PythonParser { parser })
     }
-    
-    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+
+    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
 
         decl.ast_fields.language = LanguageId::Python;
         decl.ast_fields.full_range = parent.range();
-        decl.ast_fields.file_url = path.clone();
+        decl.ast_fields.file_path = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
@@ -210,7 +210,7 @@ impl PythonParser {
         symbols
     }
 
-    fn parse_assignment(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    fn parse_assignment(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut is_class_field = false;
         {
             let mut parent_mb = parent.parent();
@@ -257,7 +257,7 @@ impl PythonParser {
                         let mut fields = AstSymbolFields::default();
                         fields.language = LanguageId::Python;
                         fields.full_range = parent.range();
-                        fields.file_url = path.clone();
+                        fields.file_path = path.clone();
                         fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                         fields.parent_guid = Some(parent_guid.clone());
                         fields.guid = get_guid();
@@ -326,12 +326,12 @@ impl PythonParser {
         symbols
     }
 
-    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
         // TODO lambda https://github.com/tree-sitter/tree-sitter-python/blob/master/grammar.js#L830
         match kind {
-            "expression_statement" | "module" | "block" | 
+            "expression_statement" | "module" | "block" |
             "await" | "list_splat" | "yield" | "list_splat_pattern" |
             "tuple" | "set" | "list" | "dictionary" | "expression_list" | "comparison_operator" |
             "conditional_expression" | "as_pattern_target" | "print_statement" |
@@ -381,7 +381,7 @@ impl PythonParser {
                                 let mut decl = VariableDefinition::default();
                                 decl.ast_fields.language = LanguageId::Python;
                                 decl.ast_fields.full_range = parent.range();
-                                decl.ast_fields.file_url = path.clone();
+                                decl.ast_fields.file_path = path.clone();
                                 decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                                 decl.ast_fields.parent_guid = Some(parent_guid.clone());
                                 decl.ast_fields.guid = get_guid();
@@ -423,7 +423,7 @@ impl PythonParser {
                 usage.ast_fields.name = code.slice(parent.byte_range()).to_string();
                 usage.ast_fields.language = LanguageId::Python;
                 usage.ast_fields.full_range = parent.range();
-                usage.ast_fields.file_url = path.clone();
+                usage.ast_fields.file_path = path.clone();
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
@@ -437,7 +437,7 @@ impl PythonParser {
                 usage.ast_fields.name = name;
                 usage.ast_fields.language = LanguageId::Python;
                 usage.ast_fields.full_range = parent.range();
-                usage.ast_fields.file_url = path.clone();
+                usage.ast_fields.file_path = path.clone();
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
@@ -488,12 +488,12 @@ impl PythonParser {
         symbols
     }
 
-    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionDeclaration::default();
         decl.ast_fields.language = LanguageId::Python;
         decl.ast_fields.full_range = parent.range();
-        decl.ast_fields.file_url = path.clone();
+        decl.ast_fields.file_path = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.is_error = is_error;
@@ -549,12 +549,12 @@ impl PythonParser {
         symbols
     }
 
-    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();
         decl.ast_fields.language = LanguageId::Python;
         decl.ast_fields.full_range = parent.range();
-        decl.ast_fields.file_url = path.clone();
+        decl.ast_fields.file_path = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
@@ -601,7 +601,7 @@ impl PythonParser {
 }
 
 impl AstLanguageParser for PythonParser {
-    fn parse(&mut self, code: &str, path: &Url) -> Vec<AstSymbolInstanceArc> {
+    fn parse(&mut self, code: &str, path: &PathBuf) -> Vec<AstSymbolInstanceArc> {
         let tree = self.parser.parse(code, None).unwrap();
         let parent_guid = get_guid();
         let symbols = self.parse_usages(&tree.root_node(), code, path, &parent_guid, false);

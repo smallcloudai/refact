@@ -11,7 +11,7 @@ use tracing::info;
 
 use crate::ast::ast_index::AstIndex;
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
-use crate::files_in_workspace::DocumentInfo;
+use crate::files_in_workspace::Document;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum EventType {
@@ -21,12 +21,12 @@ pub enum EventType {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct AstEvent {
-    pub docs: Vec<DocumentInfo>,
+    pub docs: Vec<Document>,
     pub typ: EventType,
 }
 
 impl AstEvent {
-    pub fn add_docs(docs: Vec<DocumentInfo>) -> Self {
+    pub fn add_docs(docs: Vec<Document>) -> Self {
         AstEvent { docs, typ: EventType::Add }
     }
 

@@ -2,7 +2,6 @@ use std::fmt::Display;
 use std::path::PathBuf;
 
 use tracing::error;
-use url::Url;
 
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
@@ -22,7 +21,7 @@ pub struct ParserError {
 }
 
 pub trait AstLanguageParser: Send {
-    fn parse(&mut self, code: &str, path: &Url) -> Vec<AstSymbolInstanceArc>;
+    fn parse(&mut self, code: &str, path: &PathBuf) -> Vec<AstSymbolInstanceArc>;
 }
 
 fn internal_error<E: Display>(err: E) -> ParserError {

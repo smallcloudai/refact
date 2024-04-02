@@ -12,11 +12,12 @@ use crate::global_context::{CommandLine, GlobalContext};
 use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
-use crate::files_in_jsonl::files_in_jsonl;
-use crate::files_in_workspace::DocumentInfo;
+use crate::files_in_jsonl::docs_in_jsonl;
+use crate::files_in_workspace::Document;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
 use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants};
+
 
 fn vecdb_constants(
     caps: Arc<StdRwLock<crate::caps::CodeAssistantCaps>>,
@@ -109,8 +110,12 @@ async fn create_vecdb(
     info!("vecdb: test request complete");
 
     // Enqueue files before background task starts: jsonl files
-    let files = files_in_jsonl(global_context.clone()).await;
-    vec_db.vectorizer_enqueue_files(&files, true).await;
+    let docs = docs_in_jsonl(global_context.clone()).await;
+    let mut documents = vec![];
+    for d in docs {
+        documents.push(d.read().await.clone());
+    }
+    vec_db.vectorizer_enqueue_files(&documents, true).await;
 
     // Enqueue files before background task starts: workspace files (needs vec_db in global_context)
     let vec_db_arc = Arc::new(AMutex::new(Some(vec_db)));
@@ -229,7 +234,7 @@ impl VecDb {
         return self.vectorizer_service.lock().await.vecdb_start_background_tasks(self.vecdb_emb_client.clone()).await;
     }
 
-    pub async fn vectorizer_enqueue_files(&self, documents: &Vec<DocumentInfo>, force: bool) {
+    pub async fn vectorizer_enqueue_files(&self, documents: &Vec<Document>, force: bool) {
         self.vectorizer_service.lock().await.vectorizer_enqueue_files(documents, force).await;
     }
 

@@ -219,6 +219,9 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
+    
+    let workspace_dirs = if cmdline.workspace_folder.is_empty() { vec![] } else { vec![PathBuf::from(cmdline.workspace_folder.clone())] };
+    let files_jsonl_path = cmdline.files_jsonl_path.clone();
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
         http_client,
@@ -235,7 +238,7 @@ pub async fn create_global_context(
         vec_db: Arc::new(AMutex::new(None)),
         ast_module: None,
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
-        documents_state: DocumentsState::empty(if cmdline.workspace_folder.is_empty() { vec![] } else { vec![PathBuf::from(cmdline.workspace_folder.clone())] })
+        documents_state: DocumentsState::new(&files_jsonl_path, workspace_dirs).await,
     };
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {

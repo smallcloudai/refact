@@ -16,7 +16,7 @@ use crate::ast::ast_module::AstModule;
 use crate::call_validation::{CodeCompletionPost, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::completion_cache;
-use crate::files_in_workspace::DocumentInfo;
+use crate::files_in_workspace::Document;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::telemetry::snippets_collection;
@@ -124,15 +124,9 @@ impl ScratchpadAbstract for SingleFileFIM {
         let ast_messages: Vec<crate::call_validation::ChatMessage> = if true /*self.post.use_ast*/ {
             let chat_message_maybe = match &self.ast_module {
                 Some(ast) => {
-                    let doc_info = match DocumentInfo::from_pathbuf(&file_path) {
-                        Ok(doc) => doc,
-                        Err(err) => {
-                            error!("can't get doc info for {}: {}", file_path.display(), err);
-                            return Err(err.to_string());
-                        }
-                    };
-                    match ast.read().await.retrieve_cursor_symbols_by_declarations(
-                        &doc_info, &source, Point { row: pos.line as usize, column: pos.character as usize },
+                    let doc = Document::new(&file_path, None);
+                    match ast.write().await.retrieve_cursor_symbols_by_declarations(
+                        &doc, &source, Point { row: pos.line as usize, column: pos.character as usize },
                         5, 5
                     ).await {
                         Ok(res) => Ok(crate::at_commands::at_ast_lookup_symbols::results2message(&res).await),

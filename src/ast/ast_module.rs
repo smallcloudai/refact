@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -12,8 +13,8 @@ use crate::ast::ast_index_service::{AstEvent, AstIndexService};
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
 use crate::ast::treesitter::structs::SymbolType;
-use crate::files_in_jsonl::files_in_jsonl;
-use crate::files_in_workspace::DocumentInfo;
+use crate::files_in_jsonl::docs_in_jsonl;
+use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
 pub struct AstModule {
@@ -35,12 +36,16 @@ impl AstModule {
         let ast_index = Arc::new(ARwLock::new(AstIndex::init()));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(ast_index.clone())));
 
-        let documents = files_in_jsonl(global_context.clone()).await;
+        let documents = docs_in_jsonl(global_context.clone()).await;
+        let mut docs = vec![];
+        for d in documents {
+            docs.push(d.read().await.clone());
+        }
         let me = AstModule {
             ast_index_service,
             ast_index,
         };
-        me.ast_indexer_enqueue_files(&documents, true).await;
+        me.ast_indexer_enqueue_files(&docs, true).await;
         Ok(me)
     }
 
@@ -48,11 +53,11 @@ impl AstModule {
         return self.ast_index_service.lock().await.ast_start_background_tasks().await;
     }
 
-    pub async fn ast_indexer_enqueue_files(&self, documents: &Vec<DocumentInfo>, force: bool) {
+    pub async fn ast_indexer_enqueue_files(&self, documents: &Vec<Document>, force: bool) {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::add_docs(documents.clone()), force).await;
     }
 
-    pub async fn ast_add_file_no_queue(&mut self, document: &DocumentInfo) -> Result<(), String> {
+    pub async fn ast_add_file_no_queue(&mut self, document: &Document) -> Result<(), String> {
         self.ast_index.write().await.add_or_update(&document).await
     }
 
@@ -64,9 +69,9 @@ impl AstModule {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::reset(), false).await;
     }
 
-    pub async fn remove_file(&mut self, doc: &DocumentInfo) {
+    pub async fn remove_file(&mut self, path: &PathBuf) {
         // TODO: will not work if the same file is in the indexer queue
-        let _ = self.ast_index.write().await.remove(doc);
+        let _ = self.ast_index.write().await.remove(&Document::new(path, None));
     }
 
     pub async fn clear_index(&mut self) {
@@ -103,7 +108,7 @@ impl AstModule {
         request_symbol_type: RequestSymbolType,
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
-        match self.ast_index.read().await.search_by_content(query.as_str(), request_symbol_type, None, None) {
+        match self.ast_index.read().await.search_by_content(query.as_str(), request_symbol_type, None, None).await {
             Ok(results) => {
                 for r in results.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
@@ -162,8 +167,8 @@ impl AstModule {
     }
 
     pub async fn retrieve_cursor_symbols_by_declarations(
-        &self,
-        doc: &DocumentInfo,
+        &mut self,
+        doc: &Document,
         code: &str,
         cursor: Point,
         top_n_near_cursor: usize,
@@ -185,7 +190,7 @@ impl AstModule {
             let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
             info!("found {last_30_chars}");
         }
-        let language = get_language_id_by_filename(&doc.uri.to_file_path().unwrap_or_default());
+        let language = get_language_id_by_filename(&doc.path);
         let matched_by_name_symbols = {
             let ast_index_locked = self.ast_index.read().await;
             cursor_usages
@@ -210,7 +215,7 @@ impl AstModule {
         Ok(
             AstCursorSearchResult {
                 query_text: "".to_string(),
-                file_path: doc.get_path(),
+                file_path: doc.path.clone(),
                 cursor,
                 cursor_symbols: cursor_usages
                     .iter()
@@ -243,7 +248,7 @@ impl AstModule {
 
     pub async fn file_markup(
         &self,
-        doc: &DocumentInfo,
+        doc: &Document,
     ) -> Result<FileASTMarkup, String> {
         let t0 = std::time::Instant::now();
         match self.ast_index.read().await.file_markup(doc).await {
@@ -255,13 +260,13 @@ impl AstModule {
         }
     }
 
-    pub async fn get_file_symbols(&self, request_symbol_type: RequestSymbolType, doc: &DocumentInfo) -> Result<FileReferencesResult, String> {
+    pub async fn get_file_symbols(&self, request_symbol_type: RequestSymbolType, doc: &Document) -> Result<FileReferencesResult, String> {
         let symbols = match self.ast_index.read().await.get_by_file_path(request_symbol_type, &doc) {
             Ok(s) => s,
             Err(err) => { return Err(format!("Error: {}", err)); }
         };
         Ok(FileReferencesResult {
-            file_path: doc.get_path(),
+            file_path: doc.path.clone(),
             symbols,
         })
     }

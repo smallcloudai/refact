@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::collections::{HashMap, HashSet};
 use std::cell::RefCell;
+use std::path::PathBuf;
 
 use fst::{Set, set, Streamer};
 use itertools::Itertools;
@@ -10,7 +11,6 @@ use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
 use tracing::info;
 use tree_sitter::Point;
-use url::Url;
 
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::fst_extra_automation::Substring;
@@ -19,16 +19,16 @@ use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, SymbolI
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::usages_declarations_merger::{FilePathIterator, find_decl_by_caller_guid, find_decl_by_name};
-use crate::files_in_workspace::DocumentInfo;
+use crate::ast::usages_declarations_merger::{FilePathIterator, find_decl_by_name, find_decl_by_caller_guid};
+use crate::files_in_workspace::{Document, read_file_from_disk, read_file_from_disk_block};
 
 
 #[derive(Debug)]
 pub struct AstIndex {
     symbols_by_name: HashMap<String, Vec<AstSymbolInstanceArc>>,
     symbols_by_guid: HashMap<String, AstSymbolInstanceArc>,
-    path_by_symbols: HashMap<Url, Vec<AstSymbolInstanceArc>>,
-    symbols_search_index: HashMap<Url, Set<Vec<u8>>>,
+    path_by_symbols: HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
+    symbols_search_index: HashMap<PathBuf, Set<Vec<u8>>>,
     type_guid_to_dependand_guids: HashMap<String, Vec<String>>,
     has_changes: bool,
 }
@@ -49,16 +49,16 @@ pub(crate) struct IndexingStats {
 
 
 fn make_a_query(
-    nodes_indexes: &HashMap<Url, Set<Vec<u8>>>,
+    nodes_indexes: &HashMap<PathBuf, Set<Vec<u8>>>,
     query_str: &str,
-    exception_doc: Option<DocumentInfo>,
+    exception_doc: Option<Document>,
 ) -> Vec<String> {
     let matcher = Substring::new(query_str, true);
     let mut stream_builder = set::OpBuilder::new();
 
-    for (doc, set) in nodes_indexes {
+    for (doc_path, set) in nodes_indexes {
         if let Some(ref exception) = exception_doc {
-            if *doc == exception.uri {
+            if *doc_path == exception.path {
                 continue;
             }
         }
@@ -87,35 +87,27 @@ impl AstIndex {
         }
     }
 
-    pub(crate) fn parse(doc: &DocumentInfo) -> Result<Vec<AstSymbolInstanceArc>, String> {
-        let mut parser = match get_ast_parser_by_filename(&doc.get_path()) {
+    pub(crate) fn parse(doc: &Document) -> Result<Vec<AstSymbolInstanceArc>, String> {
+        let mut parser = match get_ast_parser_by_filename(&doc.path) {
             Ok(parser) => parser,
             Err(err) => {
                 return Err(err.message);
             }
         };
-        let text = match doc.read_file_blocked() {
-            Ok(s) => s,
-            Err(e) => return Err(e.to_string())
-        };
-
+        let text = doc.text.clone().unwrap_or_default().to_string();
         let t_ = std::time::Instant::now();
-        let symbol_instances = parser.parse(text.as_str(), &doc.uri);
+        let symbol_instances = parser.parse(&text, &doc.path);
         let t_elapsed = t_.elapsed();
 
         info!(
             "parsed {}, {} symbols, took {:.3}s to parse",
-            crate::nicer_logs::last_n_chars(&doc.uri.to_string(), 30),
+            crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30),
             symbol_instances.len(), t_elapsed.as_secs_f32()
         );
         Ok(symbol_instances)
     }
 
-    pub async fn add_or_update_symbols_index(
-        &mut self,
-        doc: &DocumentInfo,
-        symbols: &Vec<AstSymbolInstanceArc>,
-    ) -> Result<(), String> {
+    pub async fn add_or_update_symbols_index(&mut self, doc: &Document, symbols: &Vec<AstSymbolInstanceArc>) -> Result<(), String> {
         let has_removed = self.remove(&doc);
         if has_removed {
             self.resolve_types(symbols).await;
@@ -134,31 +126,31 @@ impl AstIndex {
             let symbol_ref = symbol.read().expect("the data might be broken");
             self.symbols_by_name.entry(symbol_ref.name().to_string()).or_insert_with(Vec::new).push(symbol.clone());
             self.symbols_by_guid.insert(symbol_ref.guid().to_string(), symbol.clone());
-            self.path_by_symbols.entry(doc.uri.clone()).or_insert_with(Vec::new).push(symbol.clone());
+            self.path_by_symbols.entry(doc.path.clone()).or_insert_with(Vec::new).push(symbol.clone());
             symbol_names.push(symbol_ref.name().to_string());
         }
         let meta_names_set = match Set::from_iter(symbol_names.iter()) {
             Ok(set) => set,
             Err(e) => return Err(format!("Error creating set: {}", e)),
         };
-        self.symbols_search_index.insert(doc.uri.clone(), meta_names_set);
+        self.symbols_search_index.insert(doc.path.clone(), meta_names_set);
 
         Ok(())
     }
 
-    pub async fn add_or_update(&mut self, doc: &DocumentInfo) -> Result<(), String> {
+    pub async fn add_or_update(&mut self, doc: &Document) -> Result<(), String> {
         let symbols = AstIndex::parse(doc)?;
         self.add_or_update_symbols_index(doc, &symbols).await
     }
 
-    pub fn remove(&mut self, doc: &DocumentInfo) -> bool {
-        let has_removed = self.symbols_search_index.remove(&doc.uri).is_some();
+    pub fn remove(&mut self, doc: &Document) -> bool {
+        let has_removed = self.symbols_search_index.remove(&doc.path).is_some();
         if !has_removed {
             return false;
         }
         let mut removed_guids = HashSet::new();
         for symbol in self.path_by_symbols
-            .remove(&doc.uri)
+            .remove(&doc.path)
             .unwrap_or_default()
             .iter() {
             let (name, guid) = {
@@ -204,7 +196,7 @@ impl AstIndex {
         &self,
         query: &str,
         request_symbol_type: RequestSymbolType,
-        exception_doc: Option<DocumentInfo>,
+        exception_doc: Option<Document>,
         language: Option<LanguageId>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         fn exact_search(
@@ -230,10 +222,10 @@ impl AstIndex {
         }
 
         fn fuzzy_search(
-            search_index: &HashMap<Url, Set<Vec<u8>>>,
+            search_index: &HashMap<PathBuf, Set<Vec<u8>>>,
             symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceArc>>,
             query: &str,
-            exception_doc: Option<DocumentInfo>,
+            exception_doc: Option<Document>,
             request_symbol_type: &RequestSymbolType,
         ) -> Vec<AstSymbolInstanceArc> {
             make_a_query(search_index, query, exception_doc)
@@ -286,53 +278,45 @@ impl AstIndex {
             let content = match key.get_content_blocked() {
                 Ok(content) => content,
                 Err(err) => {
-                    info!("Error opening the file {:?}: {}", key.file_url, err);
+                    info!("Error opening the file {:?}: {}", key.file_path, err);
                     continue;
                 }
             };
             search_results.push(SymbolsSearchResultStruct {
                 symbol_declaration: key.clone(),
-                content: content,
+                content,
                 sim_to_query: dist.clone(),
             });
         }
         Ok(search_results)
     }
 
-    pub fn search_by_content(
+    pub async fn search_by_content(
         &self,
         query: &str,
         request_symbol_type: RequestSymbolType,
-        exception_doc: Option<DocumentInfo>,
+        exception_doc: Option<Document>,
         language: Option<LanguageId>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         let search_results = self.path_by_symbols
             .iter()
             .filter(|(path, _symbols)| {
-                let file_path = match path.to_file_path() {
-                    Ok(fp) => fp,
-                    Err(_) => return false,
-                };
-                let language_id = match get_language_id_by_filename(&file_path) {
+                let language_id = match get_language_id_by_filename(path) {
                     Some(lid) => lid,
                     None => return false,
                 };
                 let correct_language = language.map_or(true, |l| l == language_id);
-                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.uri != **path);
+                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.path != **path);
                 correct_doc && correct_language
             })
             .collect::<Vec<_>>()
             .par_iter()
             .filter_map(|(path, symbols)| {
                 let mut found_symbols = vec![];
-                let file_path = match path.to_file_path() {
-                    Ok(path) => path,
-                    Err(_) => return None
-                };
-                let file_content = match std::fs::read_to_string(&file_path) {
+                let file_content = match read_file_from_disk_block(path) {
                     Ok(content) => content,
                     Err(err) => {
-                        info!("Error opening the file {:?}: {}", &file_path, err);
+                        info!("Error opening the file {:?}: {}", path, err);
                         return None;
                     }
                 };
@@ -387,7 +371,7 @@ impl AstIndex {
                         let content = info_struct.get_content_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
-                            content: content,
+                            content,
                             sim_to_query: -1.0,
                         })
                     })
@@ -400,7 +384,7 @@ impl AstIndex {
     pub fn search_symbols_by_declarations_usage(
         &self,
         declaration_guid: &str,
-        exception_doc: Option<DocumentInfo>,
+        exception_doc: Option<Document>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         Ok(self.type_guid_to_dependand_guids
             .get(declaration_guid)
@@ -410,14 +394,14 @@ impl AstIndex {
             .filter_map(|guid| self.symbols_by_guid.get(guid))
             .filter(|s| {
                 let s_ref = s.read().expect("the data might be broken");
-                exception_doc.clone().map_or(true, |doc| doc.uri != *s_ref.file_url())
+                exception_doc.clone().map_or(true, |doc| doc.path != *s_ref.file_path())
             })
             .filter_map(|s| {
                 let info_struct = s.read().expect("the data might be broken").symbol_info_struct();
                 let content = info_struct.get_content_blocked().ok()?;
                 Some(SymbolsSearchResultStruct {
                     symbol_declaration: info_struct,
-                    content: content,
+                    content,
                     sim_to_query: -1.0,
                 })
             })
@@ -426,14 +410,14 @@ impl AstIndex {
 
     pub async fn retrieve_cursor_symbols_by_declarations(
         &self,
-        doc: &DocumentInfo,
+        doc: &Document,
         code: &str,
         cursor: Point,
         top_n_near_cursor: usize,
         top_n_usage_for_each_decl: usize,
     ) -> (Vec<SymbolInformation>, Vec<SymbolInformation>, Vec<SymbolInformation>) {
         let file_symbols = self.parse_single_file(doc, code).await;
-        let language = get_language_id_by_filename(&doc.uri.to_file_path().unwrap_or_default());
+        let language = get_language_id_by_filename(&doc.path);
         let unfiltered_cursor_symbols = file_symbols
             .iter()
             .unique_by(|s| s.read().expect("the data might be broken").guid().to_string())
@@ -505,12 +489,12 @@ impl AstIndex {
                 .collect(),
             declarations
                 .iter()
-                .filter(|s| doc.uri != s.file_url)
+                .filter(|s| doc.path != s.file_path)
                 .cloned()
                 .collect::<Vec<_>>(),
             usages
                 .iter()
-                .filter(|s| doc.uri != s.file_url)
+                .filter(|s| doc.path != s.file_path)
                 .cloned()
                 .collect::<Vec<_>>(),
         )
@@ -518,10 +502,10 @@ impl AstIndex {
 
     pub async fn file_markup(
         &self,
-        doc: &DocumentInfo,
+        doc: &Document,
     ) -> Result<FileASTMarkup, String> {
         let symbols: Vec<AstSymbolInstanceArc> = self.path_by_symbols
-            .get(&doc.uri)
+            .get(&doc.path)
             .map(|symbols| {
                 symbols
                     .iter()
@@ -530,8 +514,8 @@ impl AstIndex {
                     .collect()
             })
             .unwrap_or_default();
-        let file_content = match doc.read_file().await {
-            Ok(content) => content,
+        let file_content = match read_file_from_disk(&doc.path).await {
+            Ok(content) => content.to_string(),
             Err(e) => return Err(e.to_string())
         };
 
@@ -544,16 +528,16 @@ impl AstIndex {
             ).collect();
         fn recursive_path_of_guid(guid_to_symbol: &HashMap<String, Arc<RefCell<SymbolInformation>>>, guid: &String) -> String
         {
-            match guid_to_symbol.get(guid) {
+            return match guid_to_symbol.get(guid) {
                 Some(x) => {
                     let pname = if !x.borrow().name.is_empty() { x.borrow().name.clone() } else { x.borrow().guid[..8].to_string() };
                     let pp = recursive_path_of_guid(&guid_to_symbol, &x.borrow().parent_guid);
-                    return format!("{}::{}", pp, pname);
+                    format!("{}::{}", pp, pname)
                 },
                 None => {
                     // FIXME:
                     // info!("parent_guid {} not found, maybe outside of this file", guid);
-                    return format!("UNK");
+                    "UNK".to_string()
                 }
             };
         }
@@ -566,8 +550,8 @@ impl AstIndex {
             a.borrow().symbol_path.len().cmp(&b.borrow().symbol_path.len())
         });
         Ok(FileASTMarkup {
-            file_url: doc.uri.clone(),
-            file_content: file_content,
+            file_path: doc.path.clone(),
+            file_content,
             // convert to a simple Vec<SymbolInformation>
             symbols_sorted_by_path_len: symbols4export.iter().map(|s| {
                 s.borrow().clone()
@@ -578,10 +562,10 @@ impl AstIndex {
     pub fn get_by_file_path(
         &self,
         request_symbol_type: RequestSymbolType,
-        doc: &DocumentInfo,
+        doc: &Document,
     ) -> Result<Vec<SymbolInformation>, String> {
         let symbols = self.path_by_symbols
-            .get(&doc.uri)
+            .get(&doc.path)
             .map(|symbols| {
                 symbols
                     .iter()
@@ -601,7 +585,7 @@ impl AstIndex {
     }
 
     #[allow(unused)]
-    pub fn get_file_paths(&self) -> Vec<Url> {
+    pub fn get_file_paths(&self) -> Vec<PathBuf> {
         self.symbols_search_index.iter().map(|(path, _)| path.clone()).collect()
     }
 
@@ -641,7 +625,7 @@ impl AstIndex {
             tokio::task::yield_now().await;
             let (type_names, symb_type, symb_path) = {
                 let s_ref = symbol.read().expect("the data might be broken");
-                (s_ref.types(), s_ref.symbol_type(), s_ref.file_url().to_file_path().unwrap_or_default())
+                (s_ref.types(), s_ref.symbol_type(), s_ref.file_path().clone())
             };
             if symb_type == SymbolType::ImportDeclaration
                 || symb_type == SymbolType::CommentDefinition
@@ -667,10 +651,8 @@ impl AstIndex {
                             .iter()
                             .filter(|s| s.read().expect("the data might be broken").is_type())
                             .sorted_by(|a, b| {
-                                let path_a = a.read().expect("the data might be broken")
-                                    .file_url().to_file_path().unwrap_or_default();
-                                let path_b = b.read().expect("the data might be broken")
-                                    .file_url().to_file_path().unwrap_or_default();
+                                let path_a = a.read().expect("the data might be broken").file_path().clone();
+                                let path_b = b.read().expect("the data might be broken").file_path().clone();
                                 FilePathIterator::compare_paths(&symb_path, &path_a, &path_b)
                             })
                             .next()
@@ -730,7 +712,7 @@ impl AstIndex {
                 let x_ref = x.read().expect("the data might be broken");
                 ((x_ref.name().to_string(),
                   x_ref.parent_guid().clone().unwrap_or_default(),
-                  x_ref.file_url().to_file_path().unwrap_or_default().to_str().unwrap().to_string()),
+                  x_ref.file_path().to_str().unwrap_or_default().to_string()),
                  x.clone())
             })
             .collect();
@@ -856,22 +838,15 @@ impl AstIndex {
 
     async fn parse_single_file(
         &self,
-        doc: &DocumentInfo,
+        doc: &Document,
         code: &str,
     ) -> Vec<AstSymbolInstanceArc> {
-        let doc = match DocumentInfo::from_pathbuf_and_text(
-            &doc.uri.to_file_path().unwrap_or_default(),
-            &code.to_string(),
-        ) {
-            Ok(doc) => doc,
-            Err(_) => {
-                info!("Could not parse file {:?}", doc.uri.to_file_path().unwrap_or_default());
-                return vec![];
-            }
-        };
+        let mut doc = doc.clone();
+        doc.update_text(&code.to_string());
         let symbols = AstIndex::parse(&doc).unwrap_or_default();
         self.resolve_types(&symbols).await;
         self.merge_usages_to_declarations(&symbols).await;
+        info!("symbols: {:?}", symbols);
         symbols
     }
 }

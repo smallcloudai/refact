@@ -12,15 +12,14 @@ use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_file::{AtParamFilePath, RangeKind, colon_lines_range_from_arg};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ChatMessage, ContextFile};
-use crate::files_in_workspace::DocumentInfo;
 
 pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
     // info!("results2message {:?}", result);
     let mut symbols = vec![];
     for res in &result.declaration_symbols {
-        let file_path: String = res.symbol_declaration.get_path_str();
+        let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
         symbols.push(ContextFile {
-            file_name: file_path,
+            file_name,
             file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
@@ -29,9 +28,9 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
         });
     }
     for res in &result.declaration_usage_symbols {
-        let file_path: String = res.symbol_declaration.get_path_str();
+        let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
         symbols.push(ContextFile {
-            file_name: file_path,
+            file_name,
             file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
@@ -40,9 +39,9 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
         });
     }
     for res in &result.matched_by_name_symbols {
-        let file_path: String = res.symbol_declaration.get_path_str();
+        let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
         symbols.push(ContextFile {
-            file_name: file_path,
+            file_name,
             file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
@@ -114,19 +113,16 @@ impl AtCommand for AtAstLookupSymbols {
         };
 
         let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &file_path.to_string()).await?;
-        let doc_info = match DocumentInfo::from_pathbuf_and_text(
-            &PathBuf::from(&file_path), &file_text,
-        ) {
-            Ok(doc) => doc,
-            Err(err) => {
-                return Err(format!("{err}: {file_path}"));
-            }
+        let mut doc = match context.global_context.read().await.documents_state.document_map.get(&PathBuf::from(file_path)) {
+            Some(d) => d.read().await.clone(),
+            None => return Err("no document found".to_string()),
         };
+        doc.update_text(&file_text);
         let ast = context.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
-                match ast.read().await.retrieve_cursor_symbols_by_declarations(
-                    &doc_info, &file_text, Point { row: row_idx, column: 0 }, 5,  5
+                match ast.write().await.retrieve_cursor_symbols_by_declarations(
+                    &doc, &file_text, Point { row: row_idx, column: 0 }, 5,  5
                 ).await {
                     Ok(res) => Ok(results2message(&res).await),
                     Err(err) => Err(err)

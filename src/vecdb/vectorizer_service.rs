@@ -11,14 +11,14 @@ use tracing::info;
 
 use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::try_get_embedding;
-use crate::files_in_workspace::DocumentInfo;
+use crate::files_in_workspace::Document;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::structs::{Record, SplitResult, VecdbConstants, VecDbStatus};
 
 #[derive(Debug)]
 pub struct FileVectorizerService {
-    update_request_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
-    output_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    update_request_queue: Arc<AMutex<VecDeque<Document>>>,
+    output_queue: Arc<AMutex<VecDeque<Document>>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
     status: Arc<AMutex<VecDbStatus>>,
     constants: VecdbConstants,
@@ -26,15 +26,15 @@ pub struct FileVectorizerService {
 }
 
 async fn cooldown_queue_thread(
-    update_request_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
-    out_queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    update_request_queue: Arc<AMutex<VecDeque<Document>>>,
+    out_queue: Arc<AMutex<VecDeque<Document>>>,
     _status: Arc<AMutex<VecDbStatus>>,
     cooldown_secs: u64,
 ) {
     // This function delays vectorization of a file, until mtime is at least cooldown_secs old.
-    let mut last_updated: HashMap<DocumentInfo, SystemTime> = HashMap::new();
+    let mut last_updated: HashMap<Document, SystemTime> = HashMap::new();
     loop {
-        let mut docs: Vec<DocumentInfo> = Vec::new();
+        let mut docs: Vec<Document> = Vec::new();
         {
             let mut queue_locked = update_request_queue.lock().await;
             for _ in 0..queue_locked.len() {
@@ -48,7 +48,7 @@ async fn cooldown_queue_thread(
             last_updated.insert(doc, SystemTime::now());
         }
 
-        let mut docs_to_process: Vec<DocumentInfo> = Vec::new();
+        let mut docs_to_process: Vec<Document> = Vec::new();
         let mut stat_too_new = 0;
         let mut stat_proceed = 0;
         for (doc, time) in &last_updated {
@@ -73,7 +73,7 @@ async fn cooldown_queue_thread(
 
 async fn vectorize_thread(
     client: Arc<AMutex<reqwest::Client>>,
-    queue: Arc<AMutex<VecDeque<DocumentInfo>>>,
+    queue: Arc<AMutex<VecDeque<Document>>>,
     vecdb_handler_ref: Arc<AMutex<VecDBHandler>>,
     status: Arc<AMutex<VecDbStatus>>,
     constants: VecdbConstants,
@@ -144,7 +144,7 @@ async fn vectorize_thread(
         split_data_filtered = vecdb_handler.try_add_from_cache(split_data_filtered).await;
         drop(vecdb_handler);
 
-        let last_30_chars = crate::nicer_logs::last_n_chars(&doc.get_path().display().to_string(), 30);
+        let last_30_chars = crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30);
         info!("embeddings {} todo/total {}/{}", last_30_chars, split_data_filtered.len(), split_data.len());
 
         // TODO: replace with a batched call?
@@ -289,7 +289,7 @@ impl FileVectorizerService {
         return vec![cooldown_queue_join_handle, retrieve_thread_handle, cleanup_thread_handle];
     }
 
-    pub async fn vectorizer_enqueue_files(&self, documents: &Vec<DocumentInfo>, force: bool) {
+    pub async fn vectorizer_enqueue_files(&self, documents: &Vec<Document>, force: bool) {
         info!("adding {} files", documents.len());
         if !force {
             self.update_request_queue.lock().await.extend(documents.clone());

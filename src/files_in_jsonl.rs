@@ -11,54 +11,51 @@ use tokio::fs::File;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
 use tokio::sync::RwLock as ARwLock;
-use crate::files_in_workspace::DocumentInfo;
+use crate::files_in_workspace::Document;
 
 use crate::global_context::GlobalContext;
 
 
-pub async fn enqueue_all_files_from_jsonl(
-    gcx: Arc<ARwLock<GlobalContext>>,
-) {
-    let docs = files_in_jsonl(gcx.clone()).await;
+pub async fn enqueue_all_docs_from_jsonl(gcx: Arc<ARwLock<GlobalContext>>) {
+    let docs = docs_in_jsonl(gcx.clone()).await;
     let (ast_module, vecdb_module) = {
         let cx_locked = gcx.read().await;
         (cx_locked.ast_module.clone(), cx_locked.vec_db.clone())
     };
+    let mut documents = vec![];
+    for d in docs {
+        documents.push(d.read().await.clone())
+    }
     match &ast_module {
-        Some(ast) => ast.read().await.ast_indexer_enqueue_files(&docs, true).await,
+        Some(ast) => ast.read().await.ast_indexer_enqueue_files(&documents, true).await,
         None => {},
     };
     match *vecdb_module.lock().await {
-        Some(ref mut db) => db.vectorizer_enqueue_files(&docs, false).await,
+        Some(ref mut db) => db.vectorizer_enqueue_files(&documents, false).await,
         None => {},
     };
 }
 
-pub async fn parse_jsonl(path: &String) -> Result<Vec<DocumentInfo>, String> {
-    if path.is_empty() {
+pub async fn parse_jsonl(jsonl_path: &String) -> Result<Vec<PathBuf>, String> {
+    if jsonl_path.is_empty() {
         return Ok(vec![]);
     }
-    let file = File::open(path).await.map_err(|_| format!("File not found: {:?}", path))?;
+    let file = File::open(jsonl_path).await.map_err(|_| format!("File not found: {:?}", jsonl_path))?;
     let reader = BufReader::new(file);
-    let base_path = PathBuf::from(path).parent().or(Some(Path::new("/"))).unwrap().to_path_buf();
+    let base_path = PathBuf::from(jsonl_path).parent().or(Some(Path::new("/"))).unwrap().to_path_buf();
 
     let mut lines = reader.lines();
+    
     let mut paths = Vec::new();
-
     while let Some(line) = lines.next_line().await.transpose() {
         let line = line.map_err(|_| "Error reading line".to_string())?;
         if let Ok(value) = serde_json::from_str::<Value>(&line) {
             if value.is_object() {
+                
                 if let Some(filename) = value.get("path").and_then(|v| v.as_str()) {
                     // TODO: join, why it's there?
-                    let doc = match DocumentInfo::from_pathbuf(&base_path.join(filename)) {
-                        Ok(doc) => doc,
-                        Err(err) => {
-                            info!("{}", err);
-                            continue
-                        }
-                    };
-                    paths.push(doc);
+                    let path = base_path.join(filename);
+                    paths.push(path);
                 }
             }
         }
@@ -66,9 +63,18 @@ pub async fn parse_jsonl(path: &String) -> Result<Vec<DocumentInfo>, String> {
     Ok(paths)
 }
 
-pub async fn files_in_jsonl(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<DocumentInfo> {
-    let files_jsonl_path = global_context.read().await.cmdline.files_jsonl_path.clone();
-    match parse_jsonl(&files_jsonl_path).await {
+pub async fn docs_in_jsonl(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<Arc<ARwLock<Document>>> {
+    let mut docs = vec![];
+    for doc in global_context.read().await.documents_state.document_map.values() {
+        if doc.read().await.in_jsonl {
+            docs.push(doc.clone());
+        }
+    }
+    docs
+}
+
+pub async fn files_in_jsonl_w_path(files_jsonl_path: &String) -> Vec<PathBuf> {
+    match parse_jsonl(files_jsonl_path).await {
         Ok(docs) => docs,
         Err(e) => {
             info!("invalid jsonl file {:?}: {:?}", files_jsonl_path, e);
@@ -93,9 +99,26 @@ fn make_async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::
 }
 
 
+async fn add_or_set_in_jsonl(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    paths: Vec<PathBuf>,
+) {
+    let mut cx = gcx.write().await;
+    let docs_map = &mut cx.documents_state.document_map;
+    for p in paths {
+        if let Some(doc) = docs_map.get_mut(&p) {
+            doc.write().await.in_jsonl = true;
+        } else {
+            let mut doc = Document::new(&p, None);
+            doc.in_jsonl = true;
+            docs_map.insert(p.clone(), Arc::new(ARwLock::new(doc)));
+        }
+    }
+}
+
 pub async fn reload_if_jsonl_changes_background_task(
     gcx: Arc<ARwLock<GlobalContext>>,
-) -> () {
+) {
     let (mut watcher, mut rx) = make_async_watcher().expect("Failed to make file watcher");
     let files_jsonl_path = gcx.read().await.cmdline.files_jsonl_path.clone();
     if watcher.watch(&PathBuf::from(files_jsonl_path.clone()), RecursiveMode::Recursive).is_err() {
@@ -109,14 +132,16 @@ pub async fn reload_if_jsonl_changes_background_task(
                     EventKind::Any => {}
                     EventKind::Access(_) => {}
                     EventKind::Create(_) => {
-                        info!("files list {:?} was created", files_jsonl_path);
+                        info!("files_jsonl_path {:?} was created", files_jsonl_path);
                     }
                     EventKind::Modify(_) => {
-                        info!("files list {:?} was modified", files_jsonl_path);
-                        enqueue_all_files_from_jsonl(gcx.clone()).await;
+                        info!("files_jsonl_path {:?} was modified", files_jsonl_path);
+                        let paths = files_in_jsonl_w_path(&files_jsonl_path).await;
+                        add_or_set_in_jsonl(gcx.clone(), paths).await;
+                        enqueue_all_docs_from_jsonl(gcx.clone()).await;
                     }
                     EventKind::Remove(_) => {
-                        info!("files fist {:?} was removed", files_jsonl_path);
+                        info!("files_jsonl_path {:?} was removed", files_jsonl_path);
                         // TODO: do something sensible?
                     }
                     EventKind::Other => {}

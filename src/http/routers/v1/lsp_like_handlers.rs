@@ -50,9 +50,11 @@ pub async fn handle_v1_lsp_did_change(
     let post = serde_json::from_slice::<LspLikeDidChange>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
+    let path = PathBuf::from(&post.uri.to_string());
+
     files_in_workspace::on_did_change(
         global_context.clone(),
-        &post.uri,
+        &path,
         &post.text,
     ).await;
     Ok(Response::builder()

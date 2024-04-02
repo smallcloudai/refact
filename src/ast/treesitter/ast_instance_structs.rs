@@ -3,6 +3,7 @@ use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::io;
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
@@ -11,7 +12,6 @@ use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
 use tree_sitter::{Point, Range};
-use url::Url;
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::structs::{RangeDef, SymbolType};
 
@@ -88,7 +88,7 @@ pub struct AstSymbolFields {
     pub guid: String,
     pub name: String,
     pub language: LanguageId,
-    pub file_url: Url,
+    pub file_path: PathBuf,
     pub content_hash: String,
     pub namespace: String,
     pub parent_guid: Option<String>,
@@ -115,7 +115,7 @@ pub struct SymbolInformation {
     pub symbol_type: SymbolType,
     pub symbol_path: String,
     pub language: LanguageId,
-    pub file_url: Url,
+    pub file_path: PathBuf,
     pub namespace: String,
     #[serde(with = "RangeDef")]
     pub full_range: Range,
@@ -126,17 +126,8 @@ pub struct SymbolInformation {
 }
 
 impl SymbolInformation {
-    pub fn get_path_str(&self) -> String {
-        self.file_url
-            .to_file_path()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default()
-            .to_string()
-    }
     pub async fn get_content(&self) -> io::Result<String> {
-        let file_path = self.file_url.to_file_path().unwrap_or_default();
-        let content = read_to_string(file_path).await?;
+        let content = read_to_string(&self.file_path).await?;
         let text = Rope::from_str(content.as_str());
 
         let mut start_row = min(self.full_range.start_point.row, text.len_lines());
@@ -147,8 +138,7 @@ impl SymbolInformation {
     }
 
     pub fn get_content_blocked(&self) -> io::Result<String> {
-        let file_path = self.file_url.to_file_path().unwrap_or_default();
-        let content = std::fs::read_to_string(file_path)?;
+        let content = std::fs::read_to_string(&self.file_path)?;
         let text = Rope::from_str(content.as_str());
 
         let mut start_row = min(self.full_range.start_point.row, text.len_lines());
@@ -165,7 +155,7 @@ impl Default for AstSymbolFields {
             guid: "".to_string(),
             name: "".to_string(),
             language: LanguageId::Unknown,
-            file_url: Url::parse("file:///").unwrap(),
+            file_path: PathBuf::new(),
             content_hash: "".to_string(),
             namespace: "".to_string(),
             parent_guid: None,
@@ -216,7 +206,7 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
             symbol_type: self.symbol_type(),
             symbol_path: "".to_string(),
             language: self.language().clone(),
-            file_url: self.file_url().clone(),
+            file_path: self.file_path().clone(),
             namespace: self.namespace().to_string(),
             full_range: self.full_range().clone(),
             declaration_range: self.declaration_range().clone(),
@@ -236,9 +226,7 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         &self.fields().language
     }
 
-    fn file_url(&self) -> &Url {
-        &self.fields().file_url
-    }
+    fn file_path(&self) -> &PathBuf { &self.fields().file_path }
 
     fn content_hash(&self) -> &str {
         &self.fields().content_hash

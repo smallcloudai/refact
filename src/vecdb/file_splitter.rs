@@ -1,6 +1,6 @@
 use md5;
 
-use crate::files_in_workspace::DocumentInfo;
+use crate::files_in_workspace::{Document};
 use crate::vecdb::structs::SplitResult;
 
 fn str_hash(s: &String) -> String {
@@ -21,8 +21,8 @@ impl FileSplitter {
         }
     }
 
-    pub async fn split(&self, doc_info: &DocumentInfo) -> Result<Vec<SplitResult>, String> {
-        let text = match doc_info.read_file().await {
+    pub async fn split(&self, doc: &Document) -> Result<Vec<SplitResult>, String> {
+        let text = match doc.clone().get_text_or_read_from_disk().await {
             Ok(s) => s,
             Err(e) => return Err(e.to_string())
         };
@@ -53,7 +53,7 @@ impl FileSplitter {
                 current_line_number += batch.len() as u64;
 
                 chunks.push(SplitResult {
-                    file_path: doc_info.get_path(),
+                    file_path: doc.path.clone(),
                     window_text: batch.join("\n"),
                     window_text_hash: str_hash(&batch.join("\n")),
                     start_line,
@@ -72,7 +72,7 @@ impl FileSplitter {
             let end_line = start_line + batch.len() as u64;
 
             chunks.push(SplitResult {
-                file_path: doc_info.get_path(),
+                file_path: doc.path.clone(),
                 window_text: batch.join("\n"),
                 window_text_hash: str_hash(&batch.join("\n")),
                 start_line,

@@ -1,9 +1,8 @@
 use md5;
-use ropey::Rope;
 use tracing::info;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 
-use crate::files_in_workspace::{Document, DocumentInfo};
+use crate::files_in_workspace::Document;
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::structs::SplitResult;
 
@@ -27,21 +26,23 @@ impl AstBasedFileSplitter {
         }
     }
 
-    pub async fn split(&self, doc_info: &DocumentInfo) -> Result<Vec<SplitResult>, String> {
-        let mut parser = match get_ast_parser_by_filename(&doc_info.get_path()) {
+    pub async fn split(&self, doc: &Document) -> Result<Vec<SplitResult>, String> {
+        let mut doc = doc.clone();
+        let path = doc.path.clone();
+        let mut parser = match get_ast_parser_by_filename(&path) {
             Ok(parser) => parser,
             Err(_) => {
-                info!("cannot find a parser for {:?}, using simple file splitter", doc_info.get_path());
-                return self.fallback_file_splitter.split(doc_info).await;
+                info!("cannot find a parser for {:?}, using simple file splitter", path);
+                return self.fallback_file_splitter.split(&doc).await;
             }
         };
-        let text = match doc_info.read_file().await {
+        let text = match doc.get_text_or_read_from_disk().await {
             Ok(s) => s,
             Err(err) => {
                 return Err(err.to_string());
             }
         };
-        let symbols = parser.parse(text.as_str(), &doc_info.uri);
+        let symbols = parser.parse(text.as_str(), &path);
         let mut chunks = Vec::new();
         let mut split_normally: usize = 0;
         let mut split_using_fallback: usize = 0;
@@ -58,14 +59,9 @@ impl AstBasedFileSplitter {
                 }
             };
             if content.len() > self.soft_window {
-                let temp_doc_info = DocumentInfo {
-                    uri: doc_info.uri.clone(),
-                    document: Some(Document {
-                        language_id: "unknown".to_string(),
-                        text: Rope::from_str(&content),
-                    }),
-                };
-                match self.fallback_file_splitter.split(&temp_doc_info).await {
+                let mut temp_doc = Document::new(&doc.path, Some("unknown".to_string()));
+                temp_doc.update_text(&content);
+                match self.fallback_file_splitter.split(&temp_doc).await {
                     Ok(mut res) => {
                         for r in res.iter_mut() {
                             r.start_line += symbol.full_range.start_point.row as u64;
@@ -82,7 +78,7 @@ impl AstBasedFileSplitter {
             } else {
                 split_normally += 1;
                 chunks.push(SplitResult {
-                    file_path: doc_info.get_path(),
+                    file_path: doc.path.clone(),
                     window_text: content.clone(),
                     window_text_hash: str_hash(&content),
                     start_line: symbol.full_range.start_point.row as u64,
@@ -90,7 +86,7 @@ impl AstBasedFileSplitter {
                 });
             }
         }
-        let last_30_chars = crate::nicer_logs::last_n_chars(&doc_info.get_path().display().to_string(), 30);
+        let last_30_chars = crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30);
         let message = format!("split {last_30_chars} by definitions {split_normally}, fallback {split_using_fallback}, errors {split_errors}");
         info!(message);
 

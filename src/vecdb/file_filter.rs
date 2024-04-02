@@ -16,6 +16,13 @@ const SOURCE_FILE_EXTENSIONS: &[&str] = &[
     "cmake", "gradle",
 ];
 
+pub(crate) const BLACKLISTED_DIRS: &[&str] = &[
+    "target", "node_modules", "vendor", "build", "dist",
+    "bin", "pkg", "lib", "lib64", "obj",
+    "out", "venv", "env", "tmp", "temp", "logs",
+    "coverage", "backup"
+];
+
 pub fn is_valid_file(path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     if !path.is_file() {
         return Err("Path is not a file".into());
@@ -56,5 +63,23 @@ pub fn is_valid_file(path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         return Err("Unable to access file metadata".into());
     }
     Ok(())
+}
+
+pub fn is_this_inside_blacklisted_dir(path: &PathBuf) -> bool {
+    let mut path = path.clone();
+    while path.parent().is_some() {
+        path = path.parent().unwrap().to_path_buf();
+        if let Some(file_name) = path.file_name() {
+            if BLACKLISTED_DIRS.contains(&file_name.to_str().unwrap_or_default()) {
+                return true;
+            }
+            if let Some(file_name_str) = file_name.to_str() {
+                if file_name_str.starts_with(".") {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 

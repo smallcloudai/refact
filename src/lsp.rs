@@ -15,8 +15,7 @@ use tracing::{error, info};
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
 use crate::files_in_workspace;
 use crate::files_in_workspace::on_did_delete;
-use crate::global_context;
-use crate::global_context::CommandLine;
+use crate::global_context::{CommandLine, GlobalContext};
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::telemetry;
 use crate::telemetry::snippets_collection;
@@ -38,7 +37,7 @@ impl Display for APIError {
 
 // #[derive(Debug)]  GlobalContext does not implement Debug
 pub struct Backend {
-    pub gcx: Arc<ARwLock<global_context::GlobalContext>>,
+    pub gcx: Arc<ARwLock<GlobalContext>>,
     pub client: tower_lsp::Client,
 }
 
@@ -117,18 +116,10 @@ pub struct SuccessRes {
 
 impl Backend {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
-        let txt = {
-            let document_map = self.gcx.read().await.documents_state.document_map.clone();  // Arc::ARwLock
-            let document_map = document_map.read().await;
-            let document = document_map.get(&params.text_document_position.text_document.uri);
-            match document {
-                None => {
-                    return Err(internal_error("document not found"));
-                }
-                Some(doc) => {
-                    doc.text.clone()
-                }
-            }
+        let path = PathBuf::from(&params.text_document_position.text_document.uri.to_string());
+        let txt = match self.gcx.read().await.documents_state.document_map.get(&path) {
+            Some(doc) => doc.read().await.clone().get_text_or_read_from_disk().await.unwrap_or_default(),
+            None => return Err(internal_error("document not found"))
         };
         // url -> String method should be the same as in telemetry::snippets_collection::sources_changed
         let path_string = params.text_document_position.text_document.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string();
@@ -265,18 +256,20 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        let path = PathBuf::from(&params.text_document.uri.to_string());
         files_in_workspace::on_did_open(
             self.gcx.clone(),
-            &params.text_document.uri,
+            &path,
             &params.text_document.text,
             &params.text_document.language_id
         ).await
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        let path = PathBuf::from(&params.text_document.uri.to_string());
         files_in_workspace::on_did_change(
             self.gcx.clone(),
-            &params.text_document.uri,
+            &path,
             &params.content_changes[0].text  // TODO: This text could be just a part of the whole file
         ).await
     }
@@ -316,17 +309,21 @@ impl LanguageServer for Backend {
         }
     }
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
+        async fn on_delete(event: FileEvent, gcx: Arc<ARwLock<GlobalContext>>) {
+            let path = PathBuf::from(&event.uri.to_string());
+            on_did_delete(gcx, &path).await;
+        }
+        
         for event in params.changes {
-            let uri = event.uri;
             if event.typ == FileChangeType::DELETED {
-                on_did_delete(self.gcx.clone(), &uri).await;
+                on_delete(event, self.gcx.clone()).await;
             }
         }
     }
 }
 
 async fn build_lsp_service(
-    gcx: Arc<ARwLock<global_context::GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
 ) -> (LspService::<Backend>, ClientSocket) {
     let (lsp_service, socket) = LspService::build(|client| Backend {
         gcx,
@@ -340,7 +337,7 @@ async fn build_lsp_service(
 }
 
 pub async fn spawn_lsp_task(
-    gcx: Arc<ARwLock<global_context::GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     cmdline: CommandLine
 ) -> Option<JoinHandle<()>> {
     if cmdline.lsp_stdin_stdout == 0 && cmdline.lsp_port > 0 {
@@ -375,7 +372,7 @@ pub async fn spawn_lsp_task(
             let (lsp_service, socket) = build_lsp_service(gcx_t.clone()).await;
             tower_lsp::Server::new(stdin, stdout, socket).serve(lsp_service).await;
             info!("LSP loop exit");
-            gcx_t.write().await.ask_shutdown_sender.lock().unwrap().send(format!("going-down-because-lsp-exited")).unwrap();
+            gcx_t.write().await.ask_shutdown_sender.lock().unwrap().send("going-down-because-lsp-exited".to_string()).unwrap();
         }));
     }
 

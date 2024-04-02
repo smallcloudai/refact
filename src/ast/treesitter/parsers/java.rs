@@ -1,10 +1,10 @@
+use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::{Arc, RwLock};
 
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
 use tree_sitter_java::language;
-use url::Url;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
@@ -200,7 +200,7 @@ impl JavaParser {
         Ok(JavaParser { parser })
     }
 
-    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
 
@@ -208,7 +208,7 @@ impl JavaParser {
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.declaration_range = parent.range();
         decl.ast_fields.definition_range = parent.range();
-        decl.ast_fields.file_url = path.clone();
+        decl.ast_fields.file_path = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
@@ -242,7 +242,7 @@ impl JavaParser {
                 }
             }
         }
-        if let Some(node) = parent.child_by_field_name("type_parameters") {}
+        if let Some(_) = parent.child_by_field_name("type_parameters") {}
 
 
         if let Some(body) = parent.child_by_field_name("body") {
@@ -261,7 +261,7 @@ impl JavaParser {
         symbols
     }
 
-    fn parse_variable_definition(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    fn parse_variable_definition(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let mut type_ = TypeDef::default();
         if let Some(type_node) = parent.child_by_field_name("type") {
@@ -278,7 +278,7 @@ impl JavaParser {
                     let mut decl = VariableDefinition::default();
                     decl.ast_fields.language = LanguageId::Java;
                     decl.ast_fields.full_range = parent.range();
-                    decl.ast_fields.file_url = path.clone();
+                    decl.ast_fields.file_path = path.clone();
                     decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                     decl.ast_fields.parent_guid = Some(parent_guid.clone());
                     decl.ast_fields.guid = get_guid();
@@ -313,7 +313,7 @@ impl JavaParser {
         symbols
     }
 
-    fn parse_field_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    fn parse_field_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let mut dtype = TypeDef::default();
         if let Some(type_node) = parent.child_by_field_name("type") {
@@ -331,7 +331,7 @@ impl JavaParser {
                     let mut decl = ClassFieldDeclaration::default();
                     decl.ast_fields.language = LanguageId::Java;
                     decl.ast_fields.full_range = parent.range();
-                    decl.ast_fields.file_url = path.clone();
+                    decl.ast_fields.file_path = path.clone();
                     decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                     decl.ast_fields.parent_guid = Some(parent_guid.clone());
                     decl.ast_fields.guid = get_guid();
@@ -363,12 +363,12 @@ impl JavaParser {
         symbols
     }
 
-    fn parse_enum_field_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    fn parse_enum_field_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let mut decl = ClassFieldDeclaration::default();
         decl.ast_fields.language = LanguageId::Java;
         decl.ast_fields.full_range = parent.range();
-        decl.ast_fields.file_url = path.clone();
+        decl.ast_fields.file_path = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
@@ -390,7 +390,7 @@ impl JavaParser {
         symbols
     }
 
-    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
         #[cfg(test)]
@@ -419,7 +419,7 @@ impl JavaParser {
                 usage.ast_fields.name = code.slice(parent.byte_range()).to_string();
                 usage.ast_fields.language = LanguageId::Java;
                 usage.ast_fields.full_range = parent.range();
-                usage.ast_fields.file_url = path.clone();
+                usage.ast_fields.file_path = path.clone();
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
@@ -434,7 +434,7 @@ impl JavaParser {
                 usage.ast_fields.name = code.slice(field.byte_range()).to_string();
                 usage.ast_fields.language = LanguageId::Java;
                 usage.ast_fields.full_range = parent.range();
-                usage.ast_fields.file_url = path.clone();
+                usage.ast_fields.file_path = path.clone();
                 usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.caller_guid = Some(usages.last().expect("the data might be broken").read().unwrap().guid().to_string());
@@ -445,7 +445,7 @@ impl JavaParser {
                 let mut def = CommentDefinition::default();
                 def.ast_fields.language = LanguageId::Java;
                 def.ast_fields.full_range = parent.range();
-                def.ast_fields.file_url = path.clone();
+                def.ast_fields.file_path = path.clone();
                 def.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 def.ast_fields.parent_guid = Some(parent_guid.clone());
                 def.ast_fields.guid = get_guid();
@@ -468,14 +468,14 @@ impl JavaParser {
         symbols
     }
 
-    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionDeclaration::default();
         decl.ast_fields.language = LanguageId::Java;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.declaration_range = parent.range();
         decl.ast_fields.definition_range = parent.range();
-        decl.ast_fields.file_url = path.clone();
+        decl.ast_fields.file_path = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.is_error = is_error;
@@ -523,12 +523,12 @@ impl JavaParser {
         symbols
     }
 
-    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &Url, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();
         decl.ast_fields.language = LanguageId::Python;
         decl.ast_fields.full_range = parent.range();
-        decl.ast_fields.file_url = path.clone();
+        decl.ast_fields.file_path = path.clone();
         decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
@@ -559,7 +559,7 @@ impl JavaParser {
 }
 
 impl AstLanguageParser for JavaParser {
-    fn parse(&mut self, code: &str, path: &Url) -> Vec<AstSymbolInstanceArc> {
+    fn parse(&mut self, code: &str, path: &PathBuf) -> Vec<AstSymbolInstanceArc> {
         let tree = self.parser.parse(code, None).unwrap();
         let parent_guid = get_guid();
         let symbols = self.parse_usages(&tree.root_node(), code, path, &parent_guid, false);

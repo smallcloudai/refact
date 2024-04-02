@@ -5,13 +5,13 @@ use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use tracing::info;
 use std::collections::HashSet;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use strsim::normalized_damerau_levenshtein;
-use url::Url;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::utils::split_file_into_chunks_from_line_inside;
-use crate::files_in_jsonl::files_in_jsonl;
+use crate::files_in_jsonl::docs_in_jsonl;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ChatMessage, ContextFile};
 use crate::global_context::GlobalContext;
@@ -167,9 +167,7 @@ fn chunks_into_context_file(
     vector_of_context_file
 }
 
-async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>)
--> (Arc<HashMap<String, String>>, Arc<Vec<String>>)
-{
+async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, String>>, Arc<Vec<String>>) {
     let cache_dirty_arc: Arc<AMutex<bool>>;
     let mut cache_correction_arc: Arc<HashMap<String, String>>;
     let mut cache_fuzzy_arc: Arc<Vec<String>>;
@@ -188,30 +186,34 @@ async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext
         // - cx_locked.documents_state.workspace_files
         // - global_context.read().await.cmdline.files_jsonl_path
         info!("rebuilding files cache...");
-        let file_paths_from_memory = global_context.read().await.documents_state.document_map.read().await.keys().cloned().collect::<Vec<Url>>();
-        let urls_from_workspace: Vec<Url> = global_context.read().await.documents_state.workspace_files.lock().unwrap().clone();
-        let paths_in_jsonl: Vec<Url> = files_in_jsonl(global_context.clone()).await.iter()
-            .map(|doc| doc.uri.clone())
-            .collect();
+        let file_paths_from_memory = global_context.read().await.documents_state.document_map.keys().map(|x|x.clone()).collect::<Vec<_>>();
+        let paths_from_workspace: Vec<PathBuf> = global_context.read().await.documents_state.workspace_files.lock().unwrap().clone();
+        let docs  = docs_in_jsonl(global_context.clone()).await;
+        let mut paths_in_jsonl = vec![];
+        for d in docs {
+            paths_in_jsonl.push(d.read().await.path.clone());
+        }
 
         let mut cache_correction = HashMap::<String, String>::new();
         let mut cache_fuzzy_set = HashSet::<String>::new();
         let mut cnt = 0;
-        for url in file_paths_from_memory.into_iter().chain(urls_from_workspace.into_iter().chain(paths_in_jsonl.into_iter())) {
-            let path = url.to_file_path().ok().map(|p| p.to_str().unwrap_or_default().to_string()).unwrap_or_default();
-            let file_name_only = url.to_file_path().ok().map(|p| p.file_name().unwrap().to_str().unwrap().to_string()).unwrap_or_default();
-            cache_fuzzy_set.insert(file_name_only);
+        
+        let paths_from_anywhere = file_paths_from_memory.into_iter().chain(paths_from_workspace.into_iter().chain(paths_in_jsonl.into_iter()));
+        for path in paths_from_anywhere {
+            let path_str = path.to_str().unwrap_or_default().to_string();
+            let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+            cache_fuzzy_set.insert(file_name);
             cnt += 1;
 
-            cache_correction.insert(path.clone(), path.clone());
+            cache_correction.insert(path_str.clone(), path_str.clone());
             // chop off directory names one by one
             let mut index = 0;
-            while let Some(slashpos) = path[index .. ].find(|c| c == '/' || c == '\\') {
+            while let Some(slashpos) = path_str[index .. ].find(|c| c == '/' || c == '\\') {
                 let absolute_slashpos = index + slashpos;
                 index = absolute_slashpos + 1;
-                let slashpos_to_end = &path[index .. ];
+                let slashpos_to_end = &path_str[index .. ];
                 if !slashpos_to_end.is_empty() {
-                    cache_correction.insert(slashpos_to_end.to_string(), path.clone());
+                    cache_correction.insert(slashpos_to_end.to_string(), path_str.clone());
                 }
             }
         }
@@ -223,9 +225,9 @@ async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext
         cache_correction_arc = Arc::new(cache_correction);
         cache_fuzzy_arc = Arc::new(cache_fuzzy);
         {
-            let mut gcx_locked = global_context.write().await;
-            gcx_locked.documents_state.cache_correction = cache_correction_arc.clone();
-            gcx_locked.documents_state.cache_fuzzy = cache_fuzzy_arc.clone();
+            let mut cx = global_context.write().await;
+            cx.documents_state.cache_correction = cache_correction_arc.clone();
+            cx.documents_state.cache_fuzzy = cache_fuzzy_arc.clone();
         }
         *cache_dirty_ref = false;
     }
