@@ -205,8 +205,8 @@ function tab_finetune_config_and_runs() {
             }
 
             const project_selector = document.querySelector('#finetune-project');
-            project_selector.innerHTML = '';
-            if(global_projects.length > 0) {
+            if(global_projects.length > 0 && global_projects !== current_projects) {
+                project_selector.innerHTML = '';
                 document.querySelector('.finetune-new-project').style.display = 'none';
                 project_selector.disabled = false;
                 finetune_settings.disabled = false;
@@ -217,6 +217,7 @@ function tab_finetune_config_and_runs() {
                     // }
                     project_selector.appendChild(new_option);
                 })
+                current_projects = global_projects;
             }
             if (global_projects.length == 0) {
                 finetune_settings.disabled = true;
@@ -269,6 +270,7 @@ function rename_post(run_id, new_name) {
 }
 
 let global_projects = [];
+let current_projects = [];
 
 function fetch_projects() {
     const project_selector = document.querySelector('#finetune-project');
