@@ -41,6 +41,12 @@ pub(crate) enum RequestSymbolType {
     All,
 }
 
+#[derive(Debug)]
+pub(crate) struct IndexingStats {
+    pub(crate) found: usize,
+    pub(crate) non_found: usize,
+}
+
 
 fn make_a_query(
     nodes_indexes: &HashMap<Url, Set<Vec<u8>>>,
@@ -629,7 +635,8 @@ impl AstIndex {
         self.has_changes = false;
     }
 
-    pub(crate) async fn resolve_types(&self, symbols: &Vec<AstSymbolInstanceArc>) {
+    pub(crate) async fn resolve_types(&self, symbols: &Vec<AstSymbolInstanceArc>) -> IndexingStats {
+        let mut stats = IndexingStats { found: 0, non_found: 0 };
         for symbol in symbols {
             tokio::task::yield_now().await;
             let (type_names, symb_type, symb_path) = {
@@ -647,10 +654,12 @@ impl AstIndex {
             for (idx, t) in type_names.iter().enumerate() {
                 // TODO: make a type inference by `inference_info`
                 if t.is_pod || t.guid.is_some() || t.name.is_none() {
+                    stats.non_found += 1;
                     new_guids.push(t.guid.clone());
                     continue;
                 }
 
+                stats.found += 1;
                 let name = t.name.clone().expect("filter has invalid condition");
                 let maybe_guid = match self.symbols_by_name.get(&name) {
                     Some(symbols) => {
@@ -668,6 +677,7 @@ impl AstIndex {
                             .map(|s| s.read().expect("the data might be broken").guid().to_string())
                     }
                     None => {
+                        stats.non_found += 1;
                         new_guids.push(None);
                         continue;
                     }
@@ -675,12 +685,12 @@ impl AstIndex {
 
                 match maybe_guid {
                     Some(guid) => {
+                        stats.found += 1;
                         new_guids.push(Some(guid));
-                        info!("Found type name {} at index {}", name, idx);
                     }
                     None => {
+                        stats.non_found += 1;
                         new_guids.push(None);
-                        info!("Could not find type name {} at index {}", name, idx);
                     }
                 }
             }
@@ -689,9 +699,10 @@ impl AstIndex {
                 .write().expect("the data might be broken")
                 .set_guids_to_types(&new_guids);
         }
+        stats
     }
 
-    pub(crate) async fn merge_usages_to_declarations(&self, symbols: &Vec<AstSymbolInstanceArc>) {
+    pub(crate) async fn merge_usages_to_declarations(&self, symbols: &Vec<AstSymbolInstanceArc>) -> IndexingStats {
         fn get_caller_depth(
             symbol: &AstSymbolInstanceArc,
             guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
@@ -712,6 +723,7 @@ impl AstIndex {
             }
         }
 
+        let mut stats = IndexingStats { found: 0, non_found: 0 };
         let extra_index: HashMap<(String, String, String), AstSymbolInstanceArc> = symbols
             .iter()
             .map(|x| {
@@ -746,7 +758,6 @@ impl AstIndex {
                 .iter()
                 .enumerate() {
                 tokio::task::yield_now().await;
-                info!("Processing symbol ({}/{})", idx, symbols_to_process.len());
                 let (name, parent_guid, caller_guid) = {
                     let s_ref = usage_symbol.read().expect("the data might be broken");
                     (s_ref.name().to_string(), s_ref.parent_guid().clone().unwrap_or_default(), s_ref.get_caller_guid().clone())
@@ -791,15 +802,16 @@ impl AstIndex {
                                 .expect("the data might be broken")
                                 .set_linked_decl_guid(Some(guid))
                         }
-                        info!("found declaration {}", usage_symbol.read().expect("").name());
+                        stats.found += 1;
                     }
                     None => {
-                        info!("could not find declaration {}", usage_symbol.read().expect("").name());
+                        stats.non_found += 1;
                     }
                 }
             }
             depth += 1;
         }
+        stats
     }
 
     pub(crate) fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceArc>) {

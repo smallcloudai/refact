@@ -89,7 +89,7 @@ async fn cooldown_queue_thread(
 async fn ast_indexer_thread(
     queue: Arc<AMutex<VecDeque<AstEvent>>>,
     ast_index: Arc<ARwLock<AstIndex>>,
-    is_busy_flag: Arc<AMutex<bool>>
+    is_busy_flag: Arc<AMutex<bool>>,
 ) {
     loop {
         let events = {
@@ -107,6 +107,7 @@ async fn ast_indexer_thread(
             *is_busy_flag.lock().await = true;
         }
 
+        let mut unparsed_suffixes = HashMap::new();
         for event in events {
             let list_of_path = event.docs;
             match event.typ {
@@ -122,10 +123,14 @@ async fn ast_indexer_thread(
                             Ok(symbols) => {
                                 match ast_index.write().await.add_or_update_symbols_index(&doc, &symbols).await {
                                     Ok(_) => {}
-                                    Err(e) => { info!("Error adding/updating records in AST index: {}", e); }
+                                    Err(e) => {
+                                        *unparsed_suffixes.entry(e).or_insert(0) += 1;
+                                    }
                                 }
                             }
-                            Err(e) => { info!("Error adding/updating records in AST index: {}", e); }
+                            Err(e) => {
+                                *unparsed_suffixes.entry(e).or_insert(0) += 1;
+                            }
                         }
                     }
                 }
@@ -134,6 +139,9 @@ async fn ast_indexer_thread(
                     info!("Reset AST Index");
                 }
             }
+        }
+        if !unparsed_suffixes.is_empty() {
+            info!("Couldn't parse suffixes: {:#?}", unparsed_suffixes);
         }
     }
 }
@@ -159,15 +167,25 @@ async fn ast_indexer(
                 .values()
                 .cloned()
                 .collect::<Vec<_>>();
-            info!("Building ast declarations");
+            info!("Linking ast declarations");
             let t0 = std::time::Instant::now();
-            ast_index.read().await.resolve_types(&symbols).await;
-            info!("Building ast declarations finished, took {:.3}s", t0.elapsed().as_secs_f64());
+            let stats = ast_index.read().await.resolve_types(&symbols).await;
+            info!(
+                "Linking ast declarations finished, took {:.3}s, {} found, {} not found",
+                t0.elapsed().as_secs_f64(),
+                stats.found,
+                stats.non_found
+            );
 
             info!("Merging usages and declarations");
             let t1 = std::time::Instant::now();
-            ast_index.read().await.merge_usages_to_declarations(&symbols).await;
-            info!("Merging usages and declarations finished, took {:.3}s", t1.elapsed().as_secs_f64());
+            let stats = ast_index.read().await.merge_usages_to_declarations(&symbols).await;
+            info!(
+                "Merging usages and declarations finished, took {:.3}s, {} found, {} not found",
+                t1.elapsed().as_secs_f64(),
+                stats.found,
+                stats.non_found
+            );
 
             info!("Creating extra indexes");
             let t2 = std::time::Instant::now();

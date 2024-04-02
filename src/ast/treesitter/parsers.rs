@@ -54,7 +54,7 @@ pub fn get_ast_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn AstLangu
     let maybe_language_id = get_language_id_by_filename(filename);
     match maybe_language_id {
         Some(language_id) => get_ast_parser(language_id),
-        None => Err(ParserError { message: format!("Unsupported filename suffix: {suffix}") }),
+        None => Err(ParserError { message: suffix.to_string() }),
     }
 }
 
