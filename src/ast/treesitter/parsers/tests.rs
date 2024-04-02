@@ -6,6 +6,7 @@ use crate::ast::treesitter::parsers::AstLanguageParser;
 // mod cpp;
 mod rust;
 mod python;
+mod java;
 // pub(crate) fn test_query_function(mut parser: Box<dyn LanguageParser>,
 //                                   path: &PathBuf,
 //                                   code: &str,

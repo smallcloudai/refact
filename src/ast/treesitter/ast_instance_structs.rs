@@ -648,6 +648,14 @@ pub struct FunctionArg {
     pub type_: Option<TypeDef>,
 }
 
+impl Default for FunctionArg {
+    fn default() -> Self {
+        Self {
+            name: String::default(),
+            type_: None,
+        }
+    }
+}
 
 #[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct FunctionDeclaration {
