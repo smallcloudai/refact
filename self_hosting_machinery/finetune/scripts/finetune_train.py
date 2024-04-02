@@ -73,7 +73,7 @@ def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, model_
         _log_everywhere("Using finetune setup parameters")
         (cfg_builder
          .set_train_steps(user_cfg['train_steps'])
-         .set_lr_decay_steps(user_cfg['lr_decay_steps'])
+         .set_lr_decay_steps(max(user_cfg['lr_decay_steps'], user_cfg['train_steps']))
          .set_lora_r(user_cfg['lora_r'])
          .set_lora_alpha(user_cfg['lora_alpha'])
          .set_lora_dropout(user_cfg['lora_dropout'])
