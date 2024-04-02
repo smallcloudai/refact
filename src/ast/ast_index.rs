@@ -651,7 +651,7 @@ impl AstIndex {
             }
 
             let mut new_guids = vec![];
-            for (idx, t) in type_names.iter().enumerate() {
+            for (_, t) in type_names.iter().enumerate() {
                 // TODO: make a type inference by `inference_info`
                 if t.is_pod || t.guid.is_some() || t.name.is_none() {
                     stats.non_found += 1;
@@ -754,7 +754,7 @@ impl AstIndex {
             }
 
             let mut symbols_cache: HashMap<(String, String), Option<String>> = HashMap::new();
-            for (idx, usage_symbol) in symbols_to_process
+            for (_, usage_symbol) in symbols_to_process
                 .iter()
                 .enumerate() {
                 tokio::task::yield_now().await;
