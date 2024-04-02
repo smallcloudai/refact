@@ -1,0 +1,24 @@
+html {
+    min-height: 100%;
+}
+
+.container {
+  margin-top: 100px;
+}
+
+.token-error {
+  margin-top: 10px;
+  width: 100%;
+  font-size: 16px;
+  color: #dc3545;
+}
+
+.login-form {
+  border: solid #dee2e6 1px;
+  padding: 40px;
+  border-radius: 0.25rem;
+}
+
+#gotoLogin {
+  visibility: hidden;
+}

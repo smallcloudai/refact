@@ -25,6 +25,7 @@ class ScyllaModel:
 
     async def init(self, session: Scylla) -> None:
         await session.execute(self.create_table_query())
+        await self.migration(session)
         self.is_ready = True
 
     async def count(self, session: Scylla) -> int:
@@ -47,6 +48,9 @@ class ScyllaModel:
 
     def create_table_query(self) -> str:
         raise NotImplementedError()
+
+    async def migration(self, session):
+        pass
 
 
 class ScyllaBatchInserter:

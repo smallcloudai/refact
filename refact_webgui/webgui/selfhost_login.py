@@ -16,7 +16,7 @@ from refact_webgui.webgui import static_folders
 from typing import List
 
 
-__all__ = ["RefactSession", "DummySession", "AdminSession", "LoginRouter"]
+__all__ = ["RefactSession", "DummySession", "AdminSession", "AdminRouter"]
 
 
 class Credentials(BaseModel):
@@ -68,7 +68,7 @@ class AdminSession(RefactSession):
     @property
     def exclude_routes(self) -> List[str]:
         return [
-            "/login",
+            "/admin",
             "/coding_assistant_caps.json",
             "/refact-caps",
             "/customization",
@@ -118,7 +118,7 @@ class AdminSession(RefactSession):
         raise ValueError("API key mismatch")
 
 
-class LoginRouter(APIRouter):
+class AdminRouter(APIRouter):
 
     def __init__(self, session: RefactSession, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -128,10 +128,10 @@ class LoginRouter(APIRouter):
 
     async def _get_login_page(self):
         for spath in static_folders:
-            fn = os.path.join(spath, "login.html")
+            fn = os.path.join(spath, "admin.html")
             if os.path.exists(fn):
                 return FileResponse(fn, media_type="text/html")
-        raise HTTPException(404, "No login.html found")
+        raise HTTPException(404, "No admin.html found")
 
     async def _login(self, credentials: Credentials):
         try:
