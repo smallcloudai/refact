@@ -819,7 +819,7 @@ export function tab_switched_here() {
         document.querySelector('#open-upload-files-modal'),
         'Upload Files',
         'input',
-        '/tab-files-upload-url', `/tab-files-upload/${pname}`,
+        `tab-files-upload-url/${pname}`, `/tab-files-upload/${pname}`,
         "Wrapping up. Please wait...",
         "https://yourserver.com/file.zip",
         "You can upload .zip, .tar.gz, .tar.bz2 archives, or an individual file such as \"my_program.py\""
