@@ -273,7 +273,7 @@ class TrackedJob:
             if can_start:
                 self._start()
         elif "single_shot" in policy:
-            the_file = replace_variable_names_from_env.get(self.cfg["when_file_appears"], "")
+            the_file = replace_variable_names_from_env(self.cfg.get("when_file_appears", ""))
             if the_file:
                 if os.path.exists(the_file):
                     can_start = preempt_low_priority(self.cfg.get("gpus", []))
