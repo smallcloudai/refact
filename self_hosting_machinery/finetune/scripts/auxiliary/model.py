@@ -176,7 +176,10 @@ class ModelContext:
 
     def train_information(self) -> Dict[str, Any]:
         if self.use_deepspeed:
-            return dict(gpumem_p0=torch.cuda.max_memory_allocated())
+            return dict(
+                gpumem_p0=torch.cuda.max_memory_allocated(),
+                lr=self.model.get_lr()[0],
+            )
 
         return dict(
             gpumem_p0=torch.cuda.max_memory_allocated(),
