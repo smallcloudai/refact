@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use url::Url;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, FunctionDeclaration};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, FunctionDeclaration};
 use crate::ast::treesitter::structs::SymbolType;
 
 pub struct FilePathIterator {
@@ -145,32 +145,26 @@ fn find_decl_by_name_for_single_path(
             current_parent_guid.clone(),
             file_url.to_file_path().unwrap_or_default().to_str().unwrap_or_default().to_string()
         );
-        match extra_search_index
+        if let Some(s) = extra_search_index
             .get(&search_q)
             .map(|s| s.clone()) {
-            Some(s) => {
-                let s_ref = s.read().expect("the data might be broken");
-                let valid_type = is_error_node || (s_ref.symbol_type() == *search_symbol_type);
-                return if valid_type {
-                    Some(s_ref.guid().to_string())
-                } else {
-                    None
-                }
+            let s_ref = s.read().expect("the data might be broken");
+            let valid_type = is_error_node || (s_ref.symbol_type() == *search_symbol_type);
+            if valid_type {
+                return Some(s_ref.guid().to_string())
             }
-            None => {
-                if current_parent_guid.is_empty() {
-                    break;
-                } else {
-                    current_parent_guid = match guid_by_symbols.get(&current_parent_guid) {
-                        Some(s) => {
-                            s.read().expect("the data might be broken").parent_guid().clone().unwrap_or("".to_string())
-                        }
-                        None => { "".to_string() }
-                    };
-                    continue;
+        }
+        if current_parent_guid.is_empty() {
+            break;
+        } else {
+            current_parent_guid = match guid_by_symbols.get(&current_parent_guid) {
+                Some(s) => {
+                    s.read().expect("the data might be broken").parent_guid().clone().unwrap_or("".to_string())
                 }
-            }
-        };
+                None => { "".to_string() }
+            };
+            continue;
+        }
     }
     None
 }

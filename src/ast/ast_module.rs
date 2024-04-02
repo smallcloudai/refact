@@ -56,6 +56,10 @@ impl AstModule {
         self.ast_index.write().await.add_or_update(&document).await
     }
 
+    pub async fn ast_force_reindex(&mut self) {
+        self.ast_index.write().await.force_reindex().await
+    }
+
     pub async fn ast_reset_index(&self) {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::reset(), false).await;
     }

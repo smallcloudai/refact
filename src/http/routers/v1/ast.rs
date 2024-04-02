@@ -220,7 +220,6 @@ pub async fn handle_v1_ast_file_markup(
     }
 }
 
-
 pub async fn handle_v1_ast_file_dump(
     Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
@@ -316,6 +315,26 @@ pub async fn handle_v1_ast_index_file(
             Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
         }
     }
+}
+
+pub async fn handle_v1_ast_force_reindex(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    _: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let ast_module = global_context.read().await.ast_module.clone();
+    match &ast_module {
+        Some(ast) => {
+            ast.write().await.ast_force_reindex().await
+        }
+        None => {
+            return Err(ScratchError::new(
+                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+            ));
+        }
+    };
+    Ok(Response::builder().status(StatusCode::OK)
+        .body(Body::from("{}"))
+        .unwrap())
 }
 
 pub async fn handle_v1_ast_clear_index(

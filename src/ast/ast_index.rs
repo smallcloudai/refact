@@ -842,6 +842,18 @@ impl AstIndex {
         }
     }
 
+    pub(crate) async fn force_reindex(&mut self) {
+        let symbols = self
+            .symbols_by_guid()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        self.resolve_types(&symbols).await;
+        self.merge_usages_to_declarations(&symbols).await;
+        self.create_extra_indexes(&symbols);
+        self.has_changes = false;
+    }
+
     async fn parse_single_file(
         &self,
         doc: &DocumentInfo,

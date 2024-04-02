@@ -11,7 +11,7 @@ use hyper::Response;
 use crate::{telemetry_get, telemetry_post};
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::http::routers::v1::ast::{handle_v1_ast_clear_index, handle_v1_ast_file_markup, handle_v1_ast_file_dump, handle_v1_ast_file_symbols, handle_v1_ast_index_file, handle_v1_ast_search_by_content, handle_v1_ast_search_by_name, handle_v1_ast_search_related_declarations, handle_v1_ast_search_usages_by_declarations};
+use crate::http::routers::v1::ast::{handle_v1_ast_clear_index, handle_v1_ast_file_markup, handle_v1_ast_file_dump, handle_v1_ast_file_symbols, handle_v1_ast_index_file, handle_v1_ast_search_by_content, handle_v1_ast_search_by_name, handle_v1_ast_search_related_declarations, handle_v1_ast_search_usages_by_declarations, handle_v1_ast_force_reindex};
 use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::chat::handle_v1_chat;
@@ -69,7 +69,8 @@ pub fn make_v1_router() -> Router {
         .route("/ast-file-dump", telemetry_post!(handle_v1_ast_file_dump))
         .route("/ast-file-symbols", telemetry_post!(handle_v1_ast_file_symbols))
         .route("/ast-index-file", telemetry_post!(handle_v1_ast_index_file))
-        .route("/ast-clear-index", telemetry_post!(handle_v1_ast_clear_index))
+        .route("/ast-force-reindex", telemetry_get!(handle_v1_ast_force_reindex))
+        .route("/ast-clear-index", telemetry_get!(handle_v1_ast_clear_index))
 
         // experimental
         .route("/customization", telemetry_get!(handle_v1_customization))
