@@ -434,7 +434,8 @@ function render_runs() {
         run_status_div.appendChild(status_pill_div);
 
 
-        if (run['deprecated']) {
+        const is_deprecated = run['deprecated'];
+        if (is_deprecated) {
             let deprecated_pill_div = document.createElement('div');
             deprecated_pill_div.classList.add('ft-status-pill-div')
             let deprecated_pill = document.createElement('div');
@@ -480,15 +481,17 @@ function render_runs() {
         run_delete.innerHTML = `<button class="btn btn-outline-danger btn-sm" ${change_disabled}><i class="bi bi-trash3-fill"></i></button>`;
         if (find_checkpoints_by_run(run.run_id).length > 0) {
             run_download.innerHTML = `
-                <a href="/lora-download?run_id=${run.run_id}"
-                   download class="btn btn-hover btn-primary btn-sm" ${item_disabled}>
+                <button class="btn btn-hover btn-primary btn-sm" ${item_disabled}>
                 <i class="bi bi-download"></i>
-                </a>`;
-            if (!run_is_working) {
-                run_download.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                });
-            }
+                </button>`;
+            run_download.disabled = run_is_working;
+            run_download.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (run_is_working) {
+                    return;
+                }
+                download_lora_modal(run.run_id, "", is_deprecated);
+            });
         }
         run_table_row.appendChild(run_name);
         run_table_row.appendChild(run_status);
@@ -657,6 +660,42 @@ function delete_run(run_id) {
     });
 }
 
+
+function download_lora_modal(run_id, checkpoint_id, is_deprecated) {
+    const modal = document.getElementById('download-lora-modal');
+    const modal_instance = bootstrap.Modal.getOrCreateInstance(modal);
+    const modal_body = document.getElementById('download-lora-modal-body');
+
+    const download_merge_modal_button = document.querySelector('.download-merge-modal-submit');
+
+    const lora_button = document.querySelector('.download-lora-modal-submit');
+    lora_button.dataset.run_id = run_id;
+    lora_button.dataset.checkpoint_id = checkpoint_id;
+
+    const merge_button = document.querySelector('.download-merge-modal-submit');
+    if (is_deprecated) {
+        merge_button.disabled = true;
+        merge_button.dataset.run_id = "";
+        merge_button.dataset.checkpoint_id = "";
+    } else {
+        merge_button.disabled = false;
+        merge_button.dataset.run_id = run_id;
+        merge_button.dataset.checkpoint_id = checkpoint_id;
+    }
+
+    modal_instance.show();
+}
+
+
+function download_lora(run_id, checkpoint_id, do_merge) {
+    const handler_name = do_merge ? 'lora-merge-download' : 'lora-download';
+    let download_url = `/${handler_name}?run_id=${run_id}`;
+    if (checkpoint_id) {
+        download_url += `&checkpoint_id=${checkpoint_id}`;
+    }
+    window.open(download_url);
+}
+
 const find_checkpoints_by_run = (run_id) => {
     const finetune_run = finetune_configs_and_runs.finetune_runs.find((run) => run.run_id === run_id);
     if (finetune_run) {
@@ -678,11 +717,15 @@ function render_checkpoints(data = []) {
             cell.dataset.checkpoint = element.checkpoint_name;
             const download_cell = document.createElement('td');
 
+            const selected_run = finetune_configs_and_runs.finetune_runs.filter(run => run.run_id === selected_lora)[0];
             download_cell.innerHTML = `
-                <a href="/lora-download?run_id=${selected_lora}&checkpoint_id=${element.checkpoint_name}"
-                   download class="btn btn-hover btn-primary btn-sm">
+                <button class="btn btn-hover btn-primary btn-sm">
                 <i class="bi bi-download"></i>
-                </a>`;
+                </button>`;
+            download_cell.addEventListener('click', (event) => {
+                event.stopPropagation();
+                download_lora_modal(selected_lora, element.checkpoint_name, selected_run.deprecated);
+            });
 
             row.appendChild(download_cell);
             row.appendChild(cell);
@@ -1473,6 +1516,28 @@ export async function init() {
         let delete_lora_modal = document.getElementById('delete-lora-modal');
         let delete_lora_modal_instance = bootstrap.Modal.getOrCreateInstance(delete_lora_modal);
         delete_lora_modal_instance.hide();
+    });
+
+    const download_lora_modal_button = document.querySelector('.download-lora-modal-submit');
+    download_lora_modal_button.addEventListener('click', () => {
+        download_lora(
+            download_lora_modal_button.dataset.run_id,
+            download_lora_modal_button.dataset.checkpoint_id,
+            false);
+        const modal = document.getElementById('download-lora-modal');
+        const modal_instance = bootstrap.Modal.getOrCreateInstance(modal);
+        modal_instance.hide();
+    });
+
+    const download_merge_modal_button = document.querySelector('.download-merge-modal-submit');
+    download_merge_modal_button.addEventListener('click', () => {
+        download_lora(
+            download_lora_modal_button.dataset.run_id,
+            download_lora_modal_button.dataset.checkpoint_id,
+            true);
+        const modal = document.getElementById('download-lora-modal');
+        const modal_instance = bootstrap.Modal.getOrCreateInstance(modal);
+        modal_instance.hide();
     });
 
     // check_heuristics();
