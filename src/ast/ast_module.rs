@@ -53,7 +53,7 @@ impl AstModule {
     }
 
     pub async fn ast_add_file_no_queue(&mut self, document: &DocumentInfo) -> Result<(), String> {
-        self.ast_index.write().await.add_or_update(&document)
+        self.ast_index.write().await.add_or_update(&document).await
     }
 
     pub async fn ast_reset_index(&self) {
@@ -172,7 +172,7 @@ impl AstModule {
             cursor,
             top_n_near_cursor,
             top_n_usage_for_each_decl
-        );
+        ).await;
         for r in declarations.iter() {
             let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
             info!("found {last_30_chars}");

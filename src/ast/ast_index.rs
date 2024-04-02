@@ -105,15 +105,15 @@ impl AstIndex {
         Ok(symbol_instances)
     }
 
-    pub fn add_or_update_symbols_index(
+    pub async fn add_or_update_symbols_index(
         &mut self,
         doc: &DocumentInfo,
         symbols: &Vec<AstSymbolInstanceArc>,
     ) -> Result<(), String> {
         let has_removed = self.remove(&doc);
         if has_removed {
-            self.resolve_types(symbols);
-            self.merge_usages_to_declarations(symbols);
+            self.resolve_types(symbols).await;
+            self.merge_usages_to_declarations(symbols).await;
             self.create_extra_indexes(symbols);
             self.has_changes = false;
         } else {
@@ -140,9 +140,9 @@ impl AstIndex {
         Ok(())
     }
 
-    pub fn add_or_update(&mut self, doc: &DocumentInfo) -> Result<(), String> {
+    pub async fn add_or_update(&mut self, doc: &DocumentInfo) -> Result<(), String> {
         let symbols = AstIndex::parse(doc)?;
-        self.add_or_update_symbols_index(doc, &symbols)
+        self.add_or_update_symbols_index(doc, &symbols).await
     }
 
     pub fn remove(&mut self, doc: &DocumentInfo) -> bool {
@@ -418,7 +418,7 @@ impl AstIndex {
             .collect::<Vec<_>>())
     }
 
-    pub fn retrieve_cursor_symbols_by_declarations(
+    pub async fn retrieve_cursor_symbols_by_declarations(
         &self,
         doc: &DocumentInfo,
         code: &str,
@@ -426,7 +426,7 @@ impl AstIndex {
         top_n_near_cursor: usize,
         top_n_usage_for_each_decl: usize,
     ) -> (Vec<SymbolInformation>, Vec<SymbolInformation>, Vec<SymbolInformation>) {
-        let file_symbols = self.parse_single_file(doc, code);
+        let file_symbols = self.parse_single_file(doc, code).await;
         let language = get_language_id_by_filename(&doc.uri.to_file_path().unwrap_or_default());
         let unfiltered_cursor_symbols = file_symbols
             .iter()
@@ -617,30 +617,7 @@ impl AstIndex {
             .collect()
     }
 
-    pub fn rebuild_index(&mut self) {
-        if !self.has_changes {
-            return;
-        }
-        let symbols = self.symbols_by_guid.values().cloned().collect::<Vec<_>>();
-        info!("Building ast declarations");
-        let t0 = std::time::Instant::now();
-        self.resolve_types(&symbols);
-        info!("Building ast declarations finished, took {:.3}s", t0.elapsed().as_secs_f64());
-
-        info!("Merging usages and declarations");
-        let t1 = std::time::Instant::now();
-        self.merge_usages_to_declarations(&symbols);
-        info!("Merging usages and declarations finished, took {:.3}s", t1.elapsed().as_secs_f64());
-
-        info!("Creating extra indexes");
-        let t1 = std::time::Instant::now();
-        self.create_extra_indexes(&symbols);
-        info!("Creating extra indexes finished, took {:.3}s", t1.elapsed().as_secs_f64());
-
-        self.has_changes = false;
-    }
-
-    pub fn symbols_by_guid(&self) -> &HashMap<String, AstSymbolInstanceArc> {
+    pub(crate) fn symbols_by_guid(&self) -> &HashMap<String, AstSymbolInstanceArc> {
         &self.symbols_by_guid
     }
 
@@ -652,8 +629,9 @@ impl AstIndex {
         self.has_changes = false;
     }
 
-    pub(crate) fn resolve_types(&self, symbols: &Vec<AstSymbolInstanceArc>) {
+    pub(crate) async fn resolve_types(&self, symbols: &Vec<AstSymbolInstanceArc>) {
         for symbol in symbols {
+            tokio::task::yield_now().await;
             let (type_names, symb_type, symb_path) = {
                 let s_ref = symbol.read().expect("the data might be broken");
                 (s_ref.types(), s_ref.symbol_type(), s_ref.file_url().to_file_path().unwrap_or_default())
@@ -713,7 +691,7 @@ impl AstIndex {
         }
     }
 
-    pub(crate) fn merge_usages_to_declarations(&self, symbols: &Vec<AstSymbolInstanceArc>) {
+    pub(crate) async fn merge_usages_to_declarations(&self, symbols: &Vec<AstSymbolInstanceArc>) {
         fn get_caller_depth(
             symbol: &AstSymbolInstanceArc,
             guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
@@ -734,6 +712,16 @@ impl AstIndex {
             }
         }
 
+        let extra_index: HashMap<(String, String, String), AstSymbolInstanceArc> = symbols
+            .iter()
+            .map(|x| {
+                let x_ref = x.read().expect("the data might be broken");
+                ((x_ref.name().to_string(),
+                  x_ref.parent_guid().clone().unwrap_or_default(),
+                  x_ref.file_url().to_file_path().unwrap_or_default().to_str().unwrap().to_string()),
+                 x.clone())
+            })
+            .collect();
         let mut depth: usize = 0;
         loop {
             let symbols_to_process = symbols
@@ -757,6 +745,7 @@ impl AstIndex {
             for (idx, usage_symbol) in symbols_to_process
                 .iter()
                 .enumerate() {
+                tokio::task::yield_now().await;
                 info!("Processing symbol ({}/{})", idx, symbols_to_process.len());
                 let (name, parent_guid, caller_guid) = {
                     let s_ref = usage_symbol.read().expect("the data might be broken");
@@ -776,7 +765,7 @@ impl AstIndex {
                                     *usage_symbol,
                                     &self.path_by_symbols,
                                     &self.symbols_by_guid,
-                                    &self.symbols_by_name,
+                                    &extra_index,
                                     1,
                                 )
                             }
@@ -785,7 +774,7 @@ impl AstIndex {
                             *usage_symbol,
                             &self.path_by_symbols,
                             &self.symbols_by_guid,
-                            &self.symbols_by_name,
+                            &extra_index,
                             1,
                         )
                     };
@@ -841,7 +830,7 @@ impl AstIndex {
         }
     }
 
-    fn parse_single_file(
+    async fn parse_single_file(
         &self,
         doc: &DocumentInfo,
         code: &str,
@@ -857,8 +846,8 @@ impl AstIndex {
             }
         };
         let symbols = AstIndex::parse(&doc).unwrap_or_default();
-        self.resolve_types(&symbols);
-        self.merge_usages_to_declarations(&symbols);
+        self.resolve_types(&symbols).await;
+        self.merge_usages_to_declarations(&symbols).await;
         symbols
     }
 }

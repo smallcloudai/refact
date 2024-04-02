@@ -136,26 +136,26 @@ fn find_decl_by_name_for_single_path(
     is_error_node: bool,
     file_url: &Url,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
-    name_by_symbols: &HashMap<String, Vec<AstSymbolInstanceArc>>,
+    extra_search_index: &HashMap<(String, String, String), AstSymbolInstanceArc>,
 ) -> Option<String> {
     let mut current_parent_guid = parent_guid.to_string();
     loop {
-        let symbols = name_by_symbols
-            .get(name)
-            .map(|s| s.clone())
-            .unwrap_or_default();
-        let found_symbol = match symbols
-            .iter()
-            .filter(|s| {
+        let search_q = (
+            name.to_string(),
+            current_parent_guid.clone(),
+            file_url.to_file_path().unwrap_or_default().to_str().unwrap_or_default().to_string()
+        );
+        match extra_search_index
+            .get(&search_q)
+            .map(|s| s.clone()) {
+            Some(s) => {
                 let s_ref = s.read().expect("the data might be broken");
                 let valid_type = is_error_node || (s_ref.symbol_type() == *search_symbol_type);
-                valid_type
-                    && s_ref.parent_guid().clone().unwrap_or("".to_string()) == current_parent_guid
-                    && s_ref.file_url() == file_url
-            })
-            .next() {
-            Some(s) => {
-                s
+                return if valid_type {
+                    Some(s_ref.guid().to_string())
+                } else {
+                    None
+                }
             }
             None => {
                 if current_parent_guid.is_empty() {
@@ -171,7 +171,6 @@ fn find_decl_by_name_for_single_path(
                 }
             }
         };
-        return Some(found_symbol.read().expect("the data might be broken").guid().to_string());
     }
     None
 }
@@ -180,7 +179,7 @@ pub fn find_decl_by_name(
     symbol: &AstSymbolInstanceArc,
     path_by_symbols: &HashMap<Url, Vec<AstSymbolInstanceArc>>,
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
-    name_by_symbols: &HashMap<String, Vec<AstSymbolInstanceArc>>,
+    extra_search_index: &HashMap<(String, String, String), AstSymbolInstanceArc>,
     top_n_files: usize,
 ) -> Option<String> {
     let (file_path, parent_guid, name, is_function, is_error_node) = match symbol.read() {
@@ -224,7 +223,7 @@ pub fn find_decl_by_name(
             is_error_node,
             &url,
             guid_by_symbols,
-            name_by_symbols,
+            extra_search_index,
         ) {
             Some(guid) => { return Some(guid); }
             None => { continue; }

@@ -120,7 +120,7 @@ async fn ast_indexer_thread(
                     for (doc, res) in zip(list_of_path, all_symbols) {
                         match res {
                             Ok(symbols) => {
-                                match ast_index.write().await.add_or_update_symbols_index(&doc, &symbols) {
+                                match ast_index.write().await.add_or_update_symbols_index(&doc, &symbols).await {
                                     Ok(_) => {}
                                     Err(e) => { info!("Error adding/updating records in AST index: {}", e); }
                                 }
@@ -161,12 +161,12 @@ async fn ast_indexer(
                 .collect::<Vec<_>>();
             info!("Building ast declarations");
             let t0 = std::time::Instant::now();
-            ast_index.read().await.resolve_types(&symbols);
+            ast_index.read().await.resolve_types(&symbols).await;
             info!("Building ast declarations finished, took {:.3}s", t0.elapsed().as_secs_f64());
 
             info!("Merging usages and declarations");
             let t1 = std::time::Instant::now();
-            ast_index.read().await.merge_usages_to_declarations(&symbols);
+            ast_index.read().await.merge_usages_to_declarations(&symbols).await;
             info!("Merging usages and declarations finished, took {:.3}s", t1.elapsed().as_secs_f64());
 
             info!("Creating extra indexes");
