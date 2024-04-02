@@ -273,9 +273,17 @@ class TrackedJob:
             if can_start:
                 self._start()
         elif "single_shot" in policy:
-            can_start = preempt_low_priority(self.cfg.get("gpus", []))
-            if can_start:
-                self._start()
+            the_file = replace_variable_names_from_env(self.cfg["when_file_appears"])
+            if the_file:
+                if os.path.exists(the_file):
+                    can_start = preempt_low_priority(self.cfg.get("gpus", []))
+                    if can_start:
+                        os.remove(the_file)
+                        self._start()
+            else:
+                can_start = preempt_low_priority(self.cfg.get("gpus", []))
+                if can_start:
+                    self._start()
         elif "periodic" in policy:
             if self.start_ts + self.cfg["restart_every"] < time.time():
                 self._start()

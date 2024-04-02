@@ -183,6 +183,7 @@ class TabFinetuneRouter(APIRouter):
         os.makedirs(os.path.join(env.DIR_LORAS, run_id), exist_ok=False)
         ftune_cfg_j["gpus"] = post.gpus
         ftune_cfg_j["interrupt_when_file_appears"] = os.path.join(env.DIR_LORAS, run_id, "stop.flag")
+        ftune_cfg_j["when_file_appears"] = os.path.join(env.DIR_LORAS, run_id, "start.flag")
         ftune_cfg_j["save_status"] = os.path.join(env.DIR_LORAS, run_id, "watchdog_status.out")
         ftune_cfg_j["save_status_nickname"] = run_id
         del ftune_cfg_j["unfinished"]
@@ -195,6 +196,7 @@ class TabFinetuneRouter(APIRouter):
         with open(fn + ".tmp", "w") as f:
             json.dump(ftune_cfg_j, f, indent=4)
         os.rename(fn + ".tmp", fn)
+        open(os.path.join(env.DIR_LORAS, run_id, "start.flag"), 'a').close()
         return JSONResponse("OK")
 
     async def _tab_finetune_stop_now(self, run_id: str):
