@@ -1,4 +1,5 @@
 import os
+import time
 import signal
 import subprocess
 import sys
@@ -6,10 +7,19 @@ import psutil
 
 
 def catch_sigusr1(signum, frame):
-    print("catched SIGUSR1")
+    print("ftseq catched SIGUSR1", file=sys.stderr)
+    print("ftseq sending SIGUSR1", file=sys.stderr)
     current_process = psutil.Process()
+    pid_list = [x.pid for x in current_process.children(recursive=True)]
     for child in current_process.children(recursive=False):
         os.kill(child.pid, signal.SIGUSR1)
+    time.sleep(10)   # 30 seconds timeout in watchdog
+    for pid in pid_list:
+        print("ftseq sending SIGKILL to %s" % pid, file=sys.stderr)
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
 
 
 def main(finetune_train_script: str):
