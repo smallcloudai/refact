@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { ChatForm } from "../components/ChatForm";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
-import { Flex, Responsive, Button, Text } from "@radix-ui/themes";
+import { Flex, Button, Text } from "@radix-ui/themes";
 import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 
@@ -35,9 +35,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
 
-  const LeftRightPadding: Responsive<
-    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-  > =
+  const LeftRightPadding =
     host === "web"
       ? { initial: "8", xl: "9" }
       : {
@@ -49,9 +47,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
           xl: "9",
         };
 
-  const TopBottomPadding: Responsive<
-    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-  > = {
+  const TopBottomPadding = {
     initial: "5",
     // xs: "1",
     // sm: "2",
@@ -64,11 +60,9 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     <Flex
       direction="column"
       justify="between"
-      grow="1"
-      pr={LeftRightPadding}
-      pl={LeftRightPadding}
-      pt={TopBottomPadding}
-      pb={TopBottomPadding}
+      flexGrow="1"
+      px={LeftRightPadding}
+      py={TopBottomPadding}
       style={{
         ...props.style,
         height: "100dvh",
