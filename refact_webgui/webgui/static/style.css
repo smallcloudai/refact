@@ -1107,7 +1107,6 @@ h3 {
     cursor: pointer;
 }
 
-
 .projects-dropdown li:last-child button {
     border-top: 1px solid #ccc;
 }
@@ -1126,4 +1125,22 @@ h3 {
 }
 #checkpoints table tbody tr td:first-child {
     width: 50px;
+}
+.download-lora-modal-inline {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+.download-lora-modal-inline .btn {
+    width: 270px !important;
+    min-width: 270px !important;
+    display: block !important;
+}
+.download-lora-modal-inline div {
+    opacity: 0.8;
+    margin-left: 20px;
+    width: 100%;
+}
+#download-lora-modal {
+    --bs-modal-width: 600px;
 }

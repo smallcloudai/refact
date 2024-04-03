@@ -321,13 +321,19 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="urlModalLabel">Download Lora</h5>
+          <h5 class="modal-title" id="urlModalLabel">Download Finetune</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <div class="download-lora-modal-body" id="download-lora-modal-body">
-            <button type="button" class="download-lora-modal-submit submit btn btn-primary">Checkpoint</button>
-            <button type="button" class="download-merge-modal-submit submit btn btn-primary">Model</button>
+            <div class="download-lora-modal-inline">
+              <button type="button" class="download-lora-modal-submit submit btn btn-primary">Download LoRA</button>
+              <div>Download current LoRA run, please add text here.</div>
+            </div>
+            <div class="download-lora-modal-inline">
+              <button type="button" class="download-merge-modal-submit submit btn btn-primary">Download Combined weights</button>
+              <div>Download combined weights and some other text here.</div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">

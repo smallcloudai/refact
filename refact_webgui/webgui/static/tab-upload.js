@@ -9,6 +9,7 @@ let sort_order = 'asc';
 let sort_started = false;
 let dont_disable_file_types = false;
 let pname = "";
+let global_projects = null;
 
 let sources_pane = null;
 let filetypes_pane = null;
@@ -23,6 +24,7 @@ let filetypes_pane = null;
 // }
 
 function get_projects_list() {
+    global_projects = [];
     fetch("/tab-project-list")
     .catch(function(error) {
         console.log('tab-project-list',error);
@@ -33,7 +35,8 @@ function get_projects_list() {
         return response.json();
     })
     .then(function(data) {
-        console.log('tab-project-list',data);
+        // console.log('tab-project-list',data);
+        global_projects = data.projects;
         project_list_ready(data.projects);
     });
 }
@@ -58,15 +61,6 @@ function project_list_ready(projects_list)
         list_item.appendChild(link);
         document.querySelector('.projects-dropdown').prepend(list_item);
     });
-    const start_project_button = document.querySelector('.new-project-modal-submit');
-    start_project_button.addEventListener('click', () => {
-        const project_name = document.querySelector('#tab-upload-new-project').value;
-        document.querySelector('#tab-upload-new-project').value = '';
-        start_new_project(project_name);
-        const project_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-new-project-modal'));
-        get_projects_list();
-        project_modal.hide();
-    });
     const project_buttons = document.querySelectorAll('.projects-dropdown .main-tab-button');
     project_buttons.forEach(function(project_button) {
         project_button.addEventListener('click', function() {
@@ -77,7 +71,7 @@ function project_list_ready(projects_list)
     });
 }
 
-function force_show_sources() {
+function force_show_sources_pane() {
     const current_menu = document.querySelector('.nav-link.main-active');
     current_menu.classList.remove('main-active');
     const project_menu_item = document.querySelector('.dropdown-toggle');
@@ -116,19 +110,20 @@ function start_new_project(project_name) {
     .then(function(data) {
         get_projects_list();
         show_project(project_name);
-        if(!document.querySelector('#upload').classList.contains('main-active')) {
-            force_show_sources();
-        }
+        force_show_sources_pane();
+        get_tab_files();
     });
 }
 
 function delete_project(project_name) {
+    let temp_project_name = project_name;
+    pname = "";
     fetch(`/tab-project-delete`,{
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ pname: project_name })
+        body: JSON.stringify({ pname: temp_project_name })
     })
     .catch(function(error) {
         console.log('delete project', error);
@@ -136,17 +131,28 @@ function delete_project(project_name) {
     .then(function(response) { return response.json() })
     .then(function(data) {
         if (data.message === "OK") {
-            pname = '';
-            localStorage.removeItem('refact_project_name');
-            document.querySelector('.sources-pane h3').innerHTML = ``;
-            document.getElementById("upload-tab-table-body-files").innerHTML = `<tr><td>No sources added.</td><td></td><td></td><td></td><td></td></tr>`;
-            document.querySelector(".upload-tab-table-type-body").innerHTML = `<tr><td>No scanned files.</td><td></td><td></td><td></td><td></td></tr>`;   
-            document.querySelector('.sources-stats-fine-accepted span').innerHTML = ``;
-            document.querySelector('.sources-stats-fine-rejected span').innerHTML = ``;
-            document.querySelector('.sources-stats-finetune').style.display = 'none';
-            document.querySelector('.delete-project').dataset.project = '';
+            const index_to_remove = global_projects.findIndex(obj => obj.name === temp_project_name);
+            if (index_to_remove !== -1) global_projects.splice(index_to_remove, 1);
+            console.log(global_projects);
+            if(global_projects.length > 0) {
+                pname = global_projects[0].name;
+                show_project(pname);
+                localStorage.setItem('refact_project_name',pname);
+            } else {
+                temp_project_name = '';
+                localStorage.removeItem('refact_project_name');
+                document.querySelector('.sources-pane h3').innerHTML = `Code and Text Sources`;
+                document.getElementById("upload-tab-table-body-files").innerHTML = `<tr><td>No sources added.</td><td></td><td></td><td></td><td></td></tr>`;
+                document.querySelector(".upload-tab-table-type-body").innerHTML = `<tr><td>No scanned files.</td><td></td><td></td><td></td><td></td></tr>`;   
+                document.querySelector('.sources-stats-fine-accepted span').innerHTML = ``;
+                document.querySelector('.sources-stats-fine-rejected span').innerHTML = ``;
+                document.querySelector('.sources-stats-finetune').style.display = 'none';
+                document.querySelector('.delete-project').dataset.project = '';
+                document.querySelector('[data-tab="model-hosting"]').click();
+            }
             get_projects_list();
         } else {
+            pname = temp_project_name;
             console.log('Cannot delete project:', data.message);
         }
     });
@@ -179,7 +185,7 @@ function projects_dropdown() {
 }
 
 function get_tab_files() {
-    if (!pname) return;
+    if (!pname || pname === '') return;
     fetch(`/tab-files-get/${pname}`)
         .then(function(response) {
             return response.json();
@@ -189,7 +195,6 @@ function get_tab_files() {
             general_error(error);
         })
         .then(function(data) {
-            // console.log('tab-files-get',data);
             tab_files_data = data;
             if(data.scan_error && data.scan_error.length > 0) {
                 let scan_toast = document.querySelector('.upload-tab-scan-error-toast');
@@ -405,8 +410,8 @@ function render_force_filetypes(data) {
 
 
 function render_filetypes(mimetypes, filetypes) {
+    const table_body = document.querySelector('.upload-tab-table-type-body');
     if(mimetypes && mimetypes.length > 0) {
-        const table_body = document.querySelector('.upload-tab-table-type-body');
         table_body.innerHTML = '';
         let i = 0;
         const sorted_mime_types = sort_filetypes(mimetypes);
@@ -434,6 +439,11 @@ function render_filetypes(mimetypes, filetypes) {
         });
         render_stats();
         watch_filetypes();
+    } else {
+        table_body.innerHTML = `<tr><td>No scanned files.</td><td></td><td></td><td></td><td></td></tr>`;
+        document.querySelector('.sources-stats-fine-accepted span').innerHTML = ``;
+        document.querySelector('.sources-stats-fine-rejected span').innerHTML = ``;
+        document.querySelector('.sources-stats-finetune').style.display = 'none';
     }
 }
 
@@ -802,6 +812,16 @@ export async function init(general_error) {
             }
         });
     }
+
+    const start_project_button = document.querySelector('.new-project-modal-submit');
+    start_project_button.addEventListener('click', () => {
+        const project_name = document.querySelector('#tab-upload-new-project').value;
+        start_new_project(project_name);
+        document.querySelector('#tab-upload-new-project').value = '';
+        const project_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-new-project-modal'));
+        project_modal.hide();
+    });
+
     if(localStorage.getItem('active_tab_storage') === 'upload') {
         const project_is_set = localStorage.getItem('refact_project_name');
         if(project_is_set) {
