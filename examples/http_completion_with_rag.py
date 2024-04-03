@@ -3,9 +3,7 @@ import os, json, requests
 sample_code = """import initialization_for_scripts;
 
 def start():
-    initialization_for_scripts.start_rust(
-        |
-    )
+    initialization_for_scripts.start_rust(|
 
 
 if __name__ == "__main__":
