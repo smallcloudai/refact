@@ -2,3 +2,8 @@
 .vertical :global(.rt-ScrollAreaViewport) {
   display: block !important;
 }
+
+.vertical :global(.rt-ScrollAreaViewport > *) {
+  height: auto;
+  width: auto;
+}
