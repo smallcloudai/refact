@@ -10,36 +10,7 @@ import {
   Table,
 } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
-
-type FimChoices = {
-  code_completion: string;
-  finish_reason: string;
-  index: number;
-}[];
-
-type FimFile = {
-  file_content: string;
-  file_name: string;
-  line1: number;
-  line2: number;
-};
-
-type ContextFiles = FimFile[];
-
-type ContextQueries = { from: string; symbol: string }[];
-
-type Context = {
-  attached_files: ContextFiles;
-  was_looking_for: ContextQueries;
-};
-
-export type FimDebugData = {
-  choices: FimChoices;
-  context: Context;
-  created: number;
-  model: string;
-  snippet_telemetry_id: number;
-};
+import type { FimDebugData } from "../../services/refact";
 
 export type FimDebugProps = { data: FimDebugData };
 

@@ -5,3 +5,4 @@ export * from "./sidebar";
 export * from "./statistic";
 export * from "./config";
 export type * from "./config";
+export * from "./FIMDebug";
