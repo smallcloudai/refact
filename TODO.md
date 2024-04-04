@@ -150,3 +150,9 @@
 [ ] remove inline styles?
 [x] vscode select text, click new chat the selected code should be in the chat
 [ ] add debug? https://www.npmjs.com/package/debug
+
+## FIM
+
+[ ] remove old fim code
+[ ] improve uo for fim
+[ ] add back button for fim
