@@ -70,4 +70,5 @@ export const STUB: FimDebugData = {
   created: 1712158050.521,
   model: "starcoder2/7b/base",
   snippet_telemetry_id: 100,
+  elapsed: 0.08326999843120575,
 };

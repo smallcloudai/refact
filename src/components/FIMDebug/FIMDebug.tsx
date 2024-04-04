@@ -37,6 +37,10 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
             <DataList.Label>Created</DataList.Label>
             <DataList.Value>{data.created}</DataList.Value>
           </DataList.Item>
+          <DataList.Item>
+            <DataList.Label>Elapsed</DataList.Label>
+            <DataList.Value>{data.elapsed}</DataList.Value>
+          </DataList.Item>
         </DataList.Root>
       </Section>
 
