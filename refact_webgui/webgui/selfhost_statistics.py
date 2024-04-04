@@ -90,7 +90,7 @@ class BaseTabStatisticsRouter(APIRouter):
             return JSONResponse(
                 content={"reason": "users sent no statistics so far"},
                 media_type='application/json',
-                status_code=404,
+                status_code=200,
             )
 
         data = dashboard_prime(data_tables)
@@ -109,7 +109,7 @@ class BaseTabStatisticsRouter(APIRouter):
             return JSONResponse(
                 content={"reason": "users sent no statistics so far"},
                 media_type='application/json',
-                status_code=404,
+                status_code=200,
             )
 
         data = teams_data(data_tables)
@@ -128,7 +128,7 @@ class BaseTabStatisticsRouter(APIRouter):
             return JSONResponse(
                 content={"reason": "users sent no statistics so far"},
                 media_type='application/json',
-                status_code=404,
+                status_code=200,
             )
 
         data = dashboard_teams(data_tables, post.users_selected)
