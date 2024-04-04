@@ -395,7 +395,7 @@ impl AtCommand for AtFile {
         };
         info!("@file {:?} execute range {:?}", file_path, colon);
 
-        let mut file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &file_path).await?;
+        let mut file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &PathBuf::from(&file_path)).await?;
         let mut file_lines: Vec<String> = file_text.lines().map(String::from).collect();
         let lines_cnt = file_lines.len();
 

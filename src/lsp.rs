@@ -145,6 +145,7 @@ impl Backend {
             no_cache: false,
             use_ast: false,
             use_vecdb: false,
+            rag_tokens_n: 0,
         })
     }
 

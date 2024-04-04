@@ -13,7 +13,6 @@ use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use tracing::info;
 use walkdir::WalkDir;
 use which::which;
-use crate::files_in_jsonl::files_in_jsonl_w_path;
 
 use crate::telemetry;
 use crate::vecdb::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS};
@@ -71,14 +70,6 @@ pub struct DocumentsState {
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
 }
 
-pub fn create_document_map_from_documents(documents: &Vec<Document>) -> HashMap<PathBuf, Arc<ARwLock<Document>>> {
-    let mut doc_map = HashMap::new();
-    for doc in documents {
-        doc_map.insert(doc.path.clone(), Arc::new(ARwLock::new(doc.clone())));
-    }
-    doc_map
-}
-
 async fn add_paths_to_document_map_if_not_present(
     global_context: Arc<ARwLock<GlobalContext>>,
     paths: &Vec<PathBuf>,
@@ -109,26 +100,14 @@ async fn overwrite_or_create_document(global_context: Arc<ARwLock<GlobalContext>
 
 impl DocumentsState {
     pub async fn new(
-        files_jsonl_path: &String,
         workspace_dirs: Vec<PathBuf>
     ) -> Self {
-        async fn docs_from_jsonl(files_jsonl_path: &String) -> Vec<Document> {
-            let mut docs = Vec::new();
-            for path in files_in_jsonl_w_path(files_jsonl_path).await {
-                let mut doc = Document::new(&path, None);
-                doc.in_jsonl = true;
-                docs.push(doc);
-            }
-            docs
-        }
         let watcher = RecommendedWatcher::new(|_|{}, Default::default()).unwrap();
-        let docs = docs_from_jsonl(files_jsonl_path).await;
-        let document_map = create_document_map_from_documents(&docs);
         Self {
             workspace_folders: Arc::new(Mutex::new(workspace_dirs)),
             workspace_files: Arc::new(Mutex::new(Vec::new())),
-            document_map,
-            cache_dirty: Arc::new(AMutex::<bool>::new(true)),
+            document_map: HashMap::new(),
+            cache_dirty: Arc::new(AMutex::<bool>::new(false)),
             cache_correction: Arc::new(HashMap::<String, String>::new()),
             cache_fuzzy: Arc::new(Vec::<String>::new()),
             fs_watcher: Arc::new(ARwLock::new(watcher)),
@@ -156,12 +135,8 @@ impl DocumentsState {
     }
 }
 
-
-pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<GlobalContext>>, file_path_str: &String) -> Result<String, String> {
-    // if you write pathbuf_to_url(&PathBuf::from(file_path)) without unwrapping it gives: future cannot be sent between threads safe
-    let file_path = PathBuf::from(file_path_str);
-
-    if let Some(doc) = global_context.read().await.documents_state.document_map.get(&file_path) {
+pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<GlobalContext>>, file_path: &PathBuf) -> Result<String, String> {
+    if let Some(doc) = global_context.read().await.documents_state.document_map.get(file_path) {
         let doc = doc.read().await;
         if doc.text.is_some() {
             return Ok(doc.text.clone().unwrap().to_string());

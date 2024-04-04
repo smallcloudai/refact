@@ -4,7 +4,10 @@ pub const KNOWN_MODELS: &str = r####"
         "bigcode/starcoder": {
             "n_ctx": 4096,
             "supports_scratchpads": {
-                "FIM-PSM": {},
+                "FIM-PSM": {
+                    "context_format": "starcoder",
+                    "rag_tokens_n": 2048
+                },
                 "FIM-SPM": {}
             },
             "default_scratchpad": "FIM-PSM",

@@ -11,7 +11,7 @@ use tokio::fs::File;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
 use tokio::sync::RwLock as ARwLock;
-use crate::files_in_workspace::Document;
+use crate::files_in_workspace::{Document, read_file_from_disk};
 
 use crate::global_context::GlobalContext;
 
@@ -36,7 +36,7 @@ pub async fn enqueue_all_docs_from_jsonl(gcx: Arc<ARwLock<GlobalContext>>) {
     };
 }
 
-pub async fn parse_jsonl(jsonl_path: &String) -> Result<Vec<PathBuf>, String> {
+async fn parse_jsonl(jsonl_path: &String) -> Result<Vec<PathBuf>, String> {
     if jsonl_path.is_empty() {
         return Ok(vec![]);
     }
@@ -105,22 +105,32 @@ async fn add_or_set_in_jsonl(
 ) {
     let mut cx = gcx.write().await;
     let docs_map = &mut cx.documents_state.document_map;
-    for p in paths {
-        if let Some(doc) = docs_map.get_mut(&p) {
+    for p in paths.iter() {
+        let text = &read_file_from_disk(p).await.map(|x|x.to_string()).unwrap_or_default();
+        if let Some(doc) = docs_map.get_mut(p) {
             doc.write().await.in_jsonl = true;
+            doc.write().await.update_text(text);
         } else {
-            let mut doc = Document::new(&p, None);
+            let mut doc = Document::new(p, None);
             doc.in_jsonl = true;
+            doc.update_text(text);
             docs_map.insert(p.clone(), Arc::new(ARwLock::new(doc)));
         }
     }
+    *cx.documents_state.cache_dirty.lock().await = true;
 }
 
 pub async fn reload_if_jsonl_changes_background_task(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) {
+    async fn on_modify(gcx: Arc<ARwLock<GlobalContext>>, files_jsonl_path: &String) {
+        let paths = files_in_jsonl_w_path(&files_jsonl_path).await;
+        add_or_set_in_jsonl(gcx.clone(), paths).await;
+        enqueue_all_docs_from_jsonl(gcx.clone()).await;
+    }
     let (mut watcher, mut rx) = make_async_watcher().expect("Failed to make file watcher");
     let files_jsonl_path = gcx.read().await.cmdline.files_jsonl_path.clone();
+    on_modify(gcx.clone(), &files_jsonl_path).await;
     if watcher.watch(&PathBuf::from(files_jsonl_path.clone()), RecursiveMode::Recursive).is_err() {
         error!("file watcher {:?} failed to start watching", files_jsonl_path);
         return;
@@ -136,9 +146,7 @@ pub async fn reload_if_jsonl_changes_background_task(
                     }
                     EventKind::Modify(_) => {
                         info!("files_jsonl_path {:?} was modified", files_jsonl_path);
-                        let paths = files_in_jsonl_w_path(&files_jsonl_path).await;
-                        add_or_set_in_jsonl(gcx.clone(), paths).await;
-                        enqueue_all_docs_from_jsonl(gcx.clone()).await;
+                        on_modify(gcx.clone(), &files_jsonl_path).await;
                     }
                     EventKind::Remove(_) => {
                         info!("files_jsonl_path {:?} was removed", files_jsonl_path);

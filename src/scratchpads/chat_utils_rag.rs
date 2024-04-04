@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::time::Instant;
 use tracing::{info, warn};
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -18,6 +19,9 @@ use crate::ast::structs::FileASTMarkup;
 use crate::files_in_workspace::{Document, read_file_from_disk};
 
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
+
+
+const DEBUG: bool = false;
 
 
 #[derive(Debug)]
@@ -36,6 +40,31 @@ pub struct FileLine {
     pub take: bool,
 }
 
+pub fn context_to_fim_debug_page(t0: &Instant, postprocessed_messages: &[ContextFile], was_looking_for: &HashMap<String, Vec<String>>) -> Value {
+    let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
+        json!({
+            "file_name": x.file_name,
+            "file_content": x.file_content,
+            "line1": x.line1,
+            "line2": x.line2,
+        })
+    }).collect();
+
+    let was_looking_for_vec: Vec<_> = was_looking_for.iter().flat_map(|(k, v)| {
+        v.iter().map(move |i| {
+            json!({
+                "from": k,
+                "symbol": i,
+            })
+        })
+    }).collect();
+    let elapsed = t0.elapsed().as_secs_f32();
+    json!({
+        "elapsed": elapsed,
+        "was_looking_for": was_looking_for_vec,
+        "attached_files": attached_files,
+    })
+}
 
 pub async fn postprocess_rag_stage1(
     global_context: Arc<ARwLock<GlobalContext>>,
@@ -94,7 +123,9 @@ pub async fn postprocess_rag_stage1(
     }
     let colorize_if_more_useful = |linevec: &mut Vec<Arc<FileLine>>, line1: usize, line2: usize, color: &String, useful: f32|
     {
-        info!("    colorize_if_more_useful {}..{} <= color {:?} useful {}", line1, line2, color, useful);
+        if DEBUG {
+            info!("    colorize_if_more_useful {}..{} <= color {:?} useful {}", line1, line2, color, useful);
+        }
         for i in line1 .. line2 {
             if i >= linevec.len() {
                 warn!("    {} has faulty range {}..{}", color, line1, line2);
@@ -182,7 +213,9 @@ pub async fn postprocess_rag_stage1(
                 }
             }
         }
-        info!("        {}..{} ({} affected) <= subsymbol {:?} downgrade {}", changes_cnt, line1_base0, line2_base0, subsymbol, downgrade_coef);
+        if DEBUG {
+            info!("        {}..{} ({} affected) <= subsymbol {:?} downgrade {}", changes_cnt, line1_base0, line2_base0, subsymbol, downgrade_coef);
+        }
     };
     for linevec in lines_in_files.values_mut() {
         if linevec.len() == 0 {
@@ -191,7 +224,9 @@ pub async fn postprocess_rag_stage1(
         let fref = linevec[0].fref.clone();
         info!("degrading body of symbols in {}", fref.file_name);
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
-            info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+            if DEBUG {
+                info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+            }
             if s.definition_range.end_byte != 0 {
                 // decl  void f() {
                 // def      int x = 5;
@@ -279,15 +314,17 @@ pub async fn postprocess_at_results2(
         }
     }
     info!("{} lines in {} files  =>  tokens {} < {} tokens limit  =>  {} lines", lines_by_useful.len(), lines_in_files.len(), tokens_count, tokens_limit, lines_take_cnt);
-    for linevec in lines_in_files.values() {
-        for lineref in linevec.iter() {
-            info!("{} {}:{:04} {:>7.3} {}",
+    if DEBUG {
+        for linevec in lines_in_files.values() {
+            for lineref in linevec.iter() {
+                info!("{} {}:{:04} {:>7.3} {}",
                 if lineref.take { "take" } else { "dont" },
                 crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 30),
                 lineref.line_n,
                 lineref.useful,
                 crate::nicer_logs::first_n_chars(&lineref.line_content, 20)
             );
+            }
         }
     }
 
@@ -319,7 +356,9 @@ pub async fn postprocess_at_results2(
         if last_line > prev_line + 1 {
             out.push_str("...\n");
         }
-        info!("file {:?}\n{}", fname, out);
+        if DEBUG {
+            info!("file {:?}\n{}", fname, out);
+        }
         merged.push(ContextFile {
             file_name: fname,
             file_content: out,

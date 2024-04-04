@@ -112,8 +112,8 @@ impl AtCommand for AtAstLookupSymbols {
             None => return Err("line number is not a valid".to_string()),
         };
 
-        let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &file_path.to_string()).await?;
-        let mut doc = match context.global_context.read().await.documents_state.document_map.get(&PathBuf::from(file_path)) {
+        let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &PathBuf::from(&file_path)).await?;
+        let mut doc = match context.global_context.read().await.documents_state.document_map.get(&PathBuf::from(&file_path)) {
             Some(d) => d.read().await.clone(),
             None => return Err("no document found".to_string()),
         };

@@ -8,7 +8,7 @@ use url::Url;
 
 use crate::ast::ast_index::RequestSymbolType;
 use crate::custom_error::ScratchError;
-use crate::files_in_workspace::Document;
+use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 use crate::global_context::SharedGlobalContext;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -194,7 +194,10 @@ pub async fn handle_v1_ast_file_markup(
         let ast_module = global_context.read().await.ast_module.clone();
         let x = match &ast_module {
             Some(ast) => {
-                let doc = Document::new(&PathBuf::from(post.file_url.to_string()), None);
+                let mut doc = Document::new(&PathBuf::from(post.file_url.to_file_path().unwrap_or_default()), None);
+                let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
+                doc.update_text(&text);
+                
                 ast.read().await.file_markup(&doc).await
             }
             None => {
@@ -257,7 +260,9 @@ pub async fn handle_v1_ast_file_symbols(
     let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let doc = Document::new(&PathBuf::from(post.file_url.to_string()), None);
+    let mut doc = Document::new(&post.file_url.to_file_path().unwrap_or_default(), None);
+    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
+    doc.update_text(&text);
 
     let ast_module = global_context.read().await.ast_module.clone();
     let search_res = match &ast_module {
@@ -293,7 +298,9 @@ pub async fn handle_v1_ast_index_file(
     let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let doc = Document::new(&PathBuf::from(post.file_url.to_string()), None);
+    let mut doc = Document::new(&post.file_url.to_file_path().unwrap_or_default(), None);
+    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
+    doc.update_text(&text);
 
     let ast_module = global_context.read().await.ast_module.clone();
     let add_res = match &ast_module {

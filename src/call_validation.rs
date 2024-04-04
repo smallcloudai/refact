@@ -46,6 +46,8 @@ pub struct CodeCompletionPost {
     pub use_ast: bool,
     #[serde(default)]
     pub use_vecdb: bool,
+    #[serde(default)]
+    pub rag_tokens_n: usize,
 }
 
 pub(crate) fn validate_post(code_completion_post: CodeCompletionPost) -> axum::response::Result<(), ScratchError> {
@@ -96,6 +98,7 @@ mod tests {
             no_cache: false,
             use_ast: true,
             use_vecdb: true,
+            rag_tokens_n: 0,
         };
         assert!(validate_post(post).is_ok());
     }
@@ -124,6 +127,7 @@ mod tests {
             no_cache: false,
             use_ast: true,
             use_vecdb: true,
+            rag_tokens_n: 0,
         };
         assert!(validate_post(post).is_ok());
     }
@@ -152,6 +156,7 @@ mod tests {
             no_cache: false,
             use_ast: true,
             use_vecdb: true,
+            rag_tokens_n: 0,
         };
         assert!(validate_post(post).is_err());
     }
@@ -180,6 +185,7 @@ mod tests {
             no_cache: false,
             use_ast: true,
             use_vecdb: true,
+            rag_tokens_n: 0,
         };
         assert!(validate_post(post).is_err());
     }
