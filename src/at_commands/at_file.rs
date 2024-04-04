@@ -167,7 +167,8 @@ fn chunks_into_context_file(
     vector_of_context_file
 }
 
-async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, String>>, Arc<Vec<String>>) {
+async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, String>>, Arc<Vec<String>>)
+{
     let cache_dirty_arc: Arc<AMutex<bool>>;
     let mut cache_correction_arc: Arc<HashMap<String, String>>;
     let mut cache_fuzzy_arc: Arc<Vec<String>>;
@@ -197,7 +198,7 @@ async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext
         let mut cache_correction = HashMap::<String, String>::new();
         let mut cache_fuzzy_set = HashSet::<String>::new();
         let mut cnt = 0;
-        
+
         let paths_from_anywhere = file_paths_from_memory.into_iter().chain(paths_from_workspace.into_iter().chain(paths_in_jsonl.into_iter()));
         for path in paths_from_anywhere {
             let path_str = path.to_str().unwrap_or_default().to_string();
@@ -234,6 +235,48 @@ async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext
     return (cache_correction_arc, cache_fuzzy_arc)
 }
 
+pub async fn correct_to_nearest_filename(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    correction_candidate: &String,
+    fuzzy: bool,
+    top_n: usize,
+) -> Vec<String> {
+    let (cache_correction_arc, cache_fuzzy_arc) = files_cache_rebuild_as_needed(global_context.clone()).await;
+    // it's dangerous to use cache_correction_arc without a mutex, but should be fine as long as it's read-only
+    // (another thread never writes to the map itself, it can only replace the arc with a different map)
+
+    if let Some(fixed) = (*cache_correction_arc).get(&correction_candidate.clone()) {
+        info!("found {:?} in cache_correction, returning [{:?}]", correction_candidate, fixed);
+        return vec![fixed.clone()];
+    } else {
+        info!("not found {} in cache_correction", correction_candidate);
+    }
+
+    if fuzzy {
+        info!("fuzzy search {:?}, cache_fuzzy_arc.len={}", correction_candidate, cache_fuzzy_arc.len());
+        let mut top_n_records: Vec<(String, f64)> = Vec::with_capacity(top_n);
+        for p in cache_fuzzy_arc.iter() {
+            let dist = normalized_damerau_levenshtein(&correction_candidate, p);
+            top_n_records.push((p.clone(), dist));
+            if top_n_records.len() >= top_n {
+                top_n_records.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+                top_n_records.pop();
+            }
+        }
+        info!("the top{} nearest matches {:?}", top_n, top_n_records);
+        let sorted_paths = top_n_records.iter().map(|(path, _)| {
+            let mut x = path.clone();
+            if let Some(fixed) = (*cache_correction_arc).get(&x) {
+                x = fixed.clone();
+            }
+            x
+        }).collect::<Vec<String>>();
+        return sorted_paths;
+    }
+
+    return vec![];
+}
+
 fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
     if let Some(colon) = colon {
         value.push_str(":");
@@ -250,42 +293,19 @@ async fn parameter_repair_candidates(
     let mut correction_candidate = value.clone();
     let colon_mb = colon_lines_range_from_arg(&mut correction_candidate);
 
-    let (cache_correction_arc, cache_fuzzy_arc) = files_cache_rebuild_as_needed(context.global_context.clone()).await;
-    // it's dangerous to use cache_correction_arc without a mutex, but should be fine as long as it's read-only
-    // (another thread never writes to the map itself, it can only replace the arc with a different map)
+    let fuzzy = true;
+    let result: Vec<String> = correct_to_nearest_filename(
+        context.global_context.clone(),
+        &correction_candidate,
+        fuzzy,
+        top_n,
+    ).await;
 
-    if let Some(fixed) = (*cache_correction_arc).get(&correction_candidate) {
-        let mut x = fixed.clone();
+    return result.iter().map(|x| {
+        let mut x = x.clone();
         put_colon_back_to_arg(&mut x, &colon_mb);
-        info!("@file found {:?} in cache_correction, returning [{:?}]", correction_candidate, x);
-        return vec![x];
-    }
-
-    info!("fuzzy search {:?}, cache_fuzzy_arc.len={}", correction_candidate, cache_fuzzy_arc.len());
-    // fuzzy has only filenames without path
-    let mut top_n_records: Vec<(String, f64)> = Vec::with_capacity(top_n);
-    for p in cache_fuzzy_arc.iter() {
-        let dist = normalized_damerau_levenshtein(&correction_candidate, p);
-        top_n_records.push((p.clone(), dist));
-        if top_n_records.len() >= top_n {
-            top_n_records.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-            top_n_records.pop();
-        }
-    }
-
-    let sorted_paths = top_n_records.iter()
-        .map(|(path, _)| {
-            let mut x = path.clone();
-            // upgrade to full path
-            if let Some(fixed) = (*cache_correction_arc).get(&x) {
-                x = fixed.clone();
-            }
-            put_colon_back_to_arg(&mut x, &colon_mb);
-            x
-        })
-        .collect::<Vec<String>>();
-    // info!("sorted_paths: {:?}", sorted_paths);
-    sorted_paths
+        x
+    }).collect();
 }
 
 #[derive(Debug)]
