@@ -7,10 +7,14 @@ async function parse_and_display_error(response) {
     try {
         const error = await response.json();
         const error_msg = error['reason'];
-        document.querySelector('#dash-error').hidden = false;
-        document.querySelector('#dash-error h5').innerText = error_msg;
+        display_service_message(error_msg);
     }
     catch (error){}
+}
+
+function display_service_message(message) {
+    document.querySelector('#dash-error').hidden = false;
+    document.querySelector('#dash-error h5').innerText = message;
 }
 
 export async function fetch_plots_data(dash_name) {
@@ -22,7 +26,12 @@ export async function fetch_plots_data(dash_name) {
                 await parse_and_display_error(response);
                 throw new Error(`Failed to fetch dashboard data: ${dash_name}; ${response.status} ${response.statusText}`);
             }
-            plots_data[dash_name] = await response.json();
+            const j = await response.json();
+            if (j.hasOwnProperty("reason")) {
+                display_service_message(j["reason"]);
+                return;
+            }
+            plots_data[dash_name] = j;
         } catch (error) {
             console.log('fetch_plots_data', error);
             general_error(error);
@@ -48,7 +57,13 @@ export async function fetch_teams_dashboard_data(data) {
             await parse_and_display_error(response);
             throw new Error(`Failed to fetch dashboard data: dash-teams; ${response.status} ${response.statusText}`);
         }
-        return await response.json();
+        const j = await response.json();
+        if (j.hasOwnProperty("reason")) {
+            display_service_message(j["reason"]);
+            return;
+        }
+
+        return j;
     } catch (error) {
         console.log('fetch_teams_dashboard_data', error);
         general_error(error);
