@@ -66,7 +66,7 @@
           <!-- <button id="run_now" type="button" class="btn btn-primary tab-finetune-run-now"><i class="bi bi-gpu-card"></i> Run Now</button> -->
           <button data-bs-toggle="modal" data-bs-target="#finetune-tab-settings-modal" type="button" disabled class="btn btn-primary tab-finetune-fine-settings">Start Finetune...</button>
         </div>
-       
+
         <!-- <button data-bs-toggle="modal" data-bs-target="#finetune-tab-autorun-settings-modal" type="button" class="btn finetune-autorun btn-sm btn-outline-primary mt-1"><i class="bi bi-stopwatch-fill"></i>Autorun Settings</button> -->
       </div>
     </div>
@@ -76,7 +76,7 @@
     <div class="pane">
       <img src="/tab-finetune-progress-svg/none" class="fine-gfx" alt="">
     </div>
-    
+
     <div class="pane">
       <div class="start-finetune-stats d-none">
         <div class="start-finetune-wrap">
@@ -111,7 +111,7 @@
           <pre class="log-container tab-upload-finetune-logs">Select run to view logs.
           </pre>
           <a target="_blank" class="btn mt-2 btn-secondary log-link d-none" href="">View Log</a>
-        </div>       
+        </div>
         <div class="tab-pane fade" id="checkpoints" role="tabpanel" aria-labelledby="checkpoints-tab">
           <table class="table table-sm table-hover">
             <tbody class="table-checkpoints"></tbody>
@@ -120,7 +120,7 @@
         <div class="tab-pane fade show" id="parameters" role="tabpanel" aria-labelledby="parameters-tab">
           <pre class="params-container tab-upload-finetune-parameters">Select run to view parameters.
           </pre>
-        </div>   
+        </div>
         <div class="tab-pane fade show" id="files" role="tabpanel" aria-labelledby="files-tab">
           <pre class="files-container tab-upload-finetune-files">Select run to view files.
           </pre>
@@ -328,11 +328,11 @@
           <div class="download-lora-modal-body" id="download-lora-modal-body">
             <div class="download-lora-modal-inline">
               <button type="button" class="download-lora-modal-submit submit btn btn-primary">Download LoRA</button>
-              <div>Download current LoRA run, please add text here.</div>
+              <div>Download LoRA. Click here if not sure. Only one checkpoint (the best or seleted) will be downloaded.</div>
             </div>
             <div class="download-lora-modal-inline">
-              <button type="button" class="download-merge-modal-submit submit btn btn-primary">Download Combined weights</button>
-              <div>Download combined weights and some other text here.</div>
+              <button type="button" class="download-merge-modal-submit submit btn btn-primary">Download Combined Weights</button>
+              <div>Download the combined weights of the base model and LoRA in a new model you can load in <code>transformers</code>.</div>
             </div>
           </div>
         </div>
