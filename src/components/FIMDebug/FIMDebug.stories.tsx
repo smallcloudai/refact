@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { FIMDebug } from ".";
-import { STUB } from "./__stub__";
+import { STUB } from "../../__fixtures__/fim";
 
 const meta = {
   title: "FIM Debug Page",

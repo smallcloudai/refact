@@ -541,5 +541,6 @@ export type FimDebugData = {
   context: Context;
   created: number;
   model: string;
+  elapsed: number;
   snippet_telemetry_id: number;
 };

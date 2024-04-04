@@ -4,9 +4,12 @@ import { useEffectOnce } from "./useEffectOnce";
 import * as Events from "../events/FIMDebug";
 import {
   FimDebugData,
-  ActionToFIMDebug,
+  isFIMAction,
+  FIMAction,
   isClearFIMDebugError,
   ClearFIMDebugError,
+  isRequestFIMData,
+  isReceiveFIMDebugData,
 } from "../events";
 
 type FIMDebugState = {
@@ -21,13 +24,31 @@ const initialState: FIMDebugState = {
   fetching: false,
 };
 
-const reducer = (state: FIMDebugState, action: ActionToFIMDebug) => {
+const reducer = (state: FIMDebugState, action: FIMAction) => {
   if (isClearFIMDebugError(action)) {
     return {
       ...state,
       error: null,
     };
   }
+
+  if (isRequestFIMData(action)) {
+    return {
+      ...state,
+      error: null,
+      fetching: true,
+    };
+  }
+
+  if (isReceiveFIMDebugData(action)) {
+    return {
+      ...state,
+      error: null,
+      fetching: false,
+      data: action.payload,
+    };
+  }
+
   return state;
 };
 
@@ -38,7 +59,7 @@ export const useEventBysForFIMDebug = () => {
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
-      if (Events.isActionToFIMDebug(event.data)) {
+      if (isFIMAction(event.data)) {
         dispatch(event.data);
       }
     };
@@ -50,14 +71,14 @@ export const useEventBysForFIMDebug = () => {
 
   useEffectOnce(() => {
     const message: Events.FIMDebugReady = {
-      type: Events.EVENT_NAMES_FROM_FIM_DEBUG.READY,
+      type: Events.FIM_EVENT_NAMES.READY,
     };
     postMessage(message);
   });
 
   const clearErrorMessage = useCallback(() => {
     const message: ClearFIMDebugError = {
-      type: Events.EVENT_NAMES_TO_FIM_DEBUG.CLEAR_ERROR,
+      type: Events.FIM_EVENT_NAMES.CLEAR_ERROR,
     };
     dispatch(message);
   }, [dispatch]);
