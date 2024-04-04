@@ -475,7 +475,7 @@ h3 {
 .run-rename-popup {
     display: none;
     position: absolute;
-    padding: 10px 10px 4px;
+    padding: 4px 10px 4px;
     border: 1px solid #dee2e6;
     background-color: #fff;
     box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.2);
@@ -483,6 +483,10 @@ h3 {
     z-index: 999;
     margin-top: -25px;
     margin-left: 100px;
+    align-items: center;
+}
+.run-rename-popup pre {
+    margin: 0;
 }
 .run-rename {
     padding-left: 4px !important;
@@ -1062,6 +1066,7 @@ h3 {
     margin-bottom: 20px;
     max-height: 700px;
     overflow: auto;
+    padding: 0;
 }
 .toolbox-editor pre code {
     font-family: Menlo, Monaco, Consolas, monospace;

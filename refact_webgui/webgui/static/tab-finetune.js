@@ -554,7 +554,7 @@ function render_runs() {
         if (run_rename.disabled) {
             run_rename.addEventListener('mouseover', () => {
             let popup_div = document.querySelector(`.run-rename-popup[data-run='${run_rename.dataset.run}']`);
-                popup_div.style.display = 'block';
+                popup_div.style.display = 'flex';
             });
             run_rename.addEventListener('mouseout', () => {
                 let popup_div = document.querySelector(`.run-rename-popup[data-run='${run_rename.dataset.run}']`);
