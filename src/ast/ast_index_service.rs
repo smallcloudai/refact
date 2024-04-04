@@ -195,6 +195,7 @@ async fn ast_indexer(
                 ast_index_ref.set_updated();
             }
             info!("Creating extra indexes finished, took {:.3}s", t2.elapsed().as_secs_f64());
+            info!("AST COMPLETED");
         }
     }
 }
