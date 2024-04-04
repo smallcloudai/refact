@@ -4,7 +4,7 @@ import ReactDOM from "react-dom/client";
 import { Theme } from "../../components/Theme";
 import { FIMDebug } from "../../features/FIMDebug.tsx";
 
-export function renderStatistic(element: HTMLElement, config: Config) {
+export function renderFIMDebug(element: HTMLElement, config: Config) {
   const FIMDebugApp: React.FC<Config> = (config) => {
     return (
       <ConfigProvider config={config}>
