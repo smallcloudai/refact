@@ -69,7 +69,7 @@ impl AtCommand for AtAstReference {
         let ast = context.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
-                match ast.read().await.search_by_name(symbol_path.clone(), RequestSymbolType::Usage).await {
+                match ast.read().await.search_by_name(symbol_path.clone(), RequestSymbolType::Usage, true).await {
                     Ok(res) => Ok(results2message(&res).await),
                     Err(err) => Err(err)
                 }

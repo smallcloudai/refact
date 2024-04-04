@@ -198,6 +198,7 @@ impl AstIndex {
         request_symbol_type: RequestSymbolType,
         exception_doc: Option<Document>,
         language: Option<LanguageId>,
+        try_fuzzy_if_not_found: bool
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         fn exact_search(
             symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceArc>>,
@@ -247,7 +248,7 @@ impl AstIndex {
         }
 
         let mut symbols = exact_search(&self.symbols_by_name, query, &request_symbol_type);
-        if symbols.is_empty() {
+        if try_fuzzy_if_not_found && symbols.is_empty() {
             symbols = fuzzy_search(
                 &self.symbols_search_index, &self.symbols_by_name,
                 query, exception_doc, &request_symbol_type,

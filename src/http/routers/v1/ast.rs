@@ -15,6 +15,7 @@ use crate::global_context::SharedGlobalContext;
 struct AstQuerySearchBy {
     query: String,
     is_declaration: bool,
+    use_fuzzy_search: bool
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -49,7 +50,7 @@ pub async fn handle_v1_ast_search_by_name(
             } else {
                 RequestSymbolType::Usage
             };
-            ast.read().await.search_by_name(post.query, symbol_type).await
+            ast.read().await.search_by_name(post.query, symbol_type, post.use_fuzzy_search).await
         }
         None => {
             return Err(ScratchError::new(

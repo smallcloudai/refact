@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use itertools::Itertools;
 
 use serde::Serialize;
 use tokio::sync::Mutex as AMutex;
@@ -82,9 +83,10 @@ impl AstModule {
         &self,
         query: String,
         request_symbol_type: RequestSymbolType,
+        try_fuzzy_if_not_found: bool
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
-        match self.ast_index.read().await.search_by_name(query.as_str(), request_symbol_type, None, None) {
+        match self.ast_index.read().await.search_by_name(query.as_str(), request_symbol_type, None, None, try_fuzzy_if_not_found) {
             Ok(results) => {
                 for r in results.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
@@ -195,10 +197,12 @@ impl AstModule {
             let ast_index_locked = self.ast_index.read().await;
             cursor_usages
                 .iter()
+                .unique_by(|x| &x.name)
                 .take(top_n_near_cursor)
                 .map(|s| {
+                    let use_fuzzy_search = s.full_range.start_point.row == cursor.row;
                     ast_index_locked
-                        .search_by_name(&s.name, RequestSymbolType::Declaration, Some(doc.clone()), language.clone())
+                        .search_by_name(&s.name, RequestSymbolType::Declaration, Some(doc.clone()), language.clone(), use_fuzzy_search)
                         .unwrap_or_else(|_| vec![])
                 })
                 .flatten()
