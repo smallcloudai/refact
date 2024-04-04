@@ -1,6 +1,7 @@
 import type { FimDebugData } from "../events";
 
 export const STUB: FimDebugData = {
+  cached: true,
   choices: [
     {
       code_completion:

@@ -1,16 +1,7 @@
 import React from "react";
-import {
-  Flex,
-  Text,
-  Section,
-  Heading,
-  Container,
-  Code,
-  DataList,
-  Table,
-} from "@radix-ui/themes";
-import { Markdown } from "../Markdown";
+import { Flex, Section, Heading, Code, DataList } from "@radix-ui/themes";
 import type { FimDebugData } from "../../services/refact";
+import { ContextTable } from "./ContextTable";
 
 export type FimDebugProps = { data: FimDebugData };
 
@@ -25,6 +16,10 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
             xs: "horizontal",
           }}
         >
+          <DataList.Item>
+            <DataList.Label>Cached</DataList.Label>
+            <DataList.Value>{data.cached ?? false}</DataList.Value>
+          </DataList.Item>
           <DataList.Item>
             <DataList.Label>Snippet</DataList.Label>
             <DataList.Value>{data.snippet_telemetry_id}</DataList.Value>
@@ -75,40 +70,15 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
       </Section>
 
       <Heading size="5">Search Context</Heading>
-
-      <Section size="1">
-        <Table.Root variant="surface">
-          <Table.Header>
-            <Table.Row>
-              <Table.ColumnHeaderCell>Symbol</Table.ColumnHeaderCell>
-              <Table.ColumnHeaderCell>From</Table.ColumnHeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {data.context.was_looking_for.map((item, index) => {
-              return (
-                <Table.Row key={index}>
-                  <Table.RowHeaderCell>{item.symbol}</Table.RowHeaderCell>
-                  <Table.Cell>{item.from}</Table.Cell>
-                </Table.Row>
-              );
-            })}
-          </Table.Body>
-        </Table.Root>
-
-        <Section size="1">
-          {data.context.attached_files.map((file, i) => {
-            return (
-              <Container key={i}>
-                <Text>
-                  File: {file.file_name}:{file.line1}-${file.line2}
-                </Text>
-                <Markdown>{"```\n" + file.file_content + "\n```"}</Markdown>
-              </Container>
-            );
-          })}
-        </Section>
-      </Section>
+      {/** TODO: figure out if context is an array or an object */}
+      {data.context &&
+        (Array.isArray(data.context) ? (
+          data.context.map((context, idx) => (
+            <ContextTable key={idx} data={context} />
+          ))
+        ) : (
+          <ContextTable data={data.context} />
+        ))}
     </Flex>
   );
 };

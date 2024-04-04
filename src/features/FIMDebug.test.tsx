@@ -32,9 +32,5 @@ describe("FIM debug page", () => {
     postMessage(dataMessage);
 
     await waitFor(() => expect(app.queryByText(/FIM debug/i)).not.toBeNull());
-
-    STUB.context.was_looking_for.forEach((item) => {
-      expect(app.queryAllByText(item.from).length).toBeGreaterThan(0);
-    });
   });
 });

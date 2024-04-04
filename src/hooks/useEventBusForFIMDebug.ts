@@ -10,6 +10,8 @@ import {
   ClearFIMDebugError,
   isRequestFIMData,
   isReceiveFIMDebugData,
+  isReceiveFIMDebugError,
+  RequestFIMData,
 } from "../events";
 
 type FIMDebugState = {
@@ -49,6 +51,14 @@ const reducer = (state: FIMDebugState, action: FIMAction) => {
     };
   }
 
+  if (isReceiveFIMDebugError(action)) {
+    return {
+      ...state,
+      fetching: false,
+      error: action.payload.message,
+    };
+  }
+
   return state;
 };
 
@@ -75,6 +85,19 @@ export const useEventBysForFIMDebug = () => {
     };
     postMessage(message);
   });
+
+  const requestFimData = useCallback(() => {
+    const message: RequestFIMData = {
+      type: Events.FIM_EVENT_NAMES.DATA_REQUEST,
+    };
+    if (state.data === null && state.error === null && !state.fetching) {
+      postMessage(message);
+    }
+  }, [state.data, state.error, state.fetching, postMessage]);
+
+  useEffect(() => {
+    requestFimData();
+  }, [requestFimData]);
 
   const clearErrorMessage = useCallback(() => {
     const message: ClearFIMDebugError = {

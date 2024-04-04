@@ -531,16 +531,31 @@ type ContextFiles = FimFile[];
 
 type ContextQueries = { from: string; symbol: string }[];
 
-type Context = {
+export type FIMContext = {
   attached_files: ContextFiles;
-  was_looking_for: ContextQueries;
+  was_looking_for?: ContextQueries;
 };
 
 export type FimDebugData = {
   choices: FimChoices;
-  context: Context;
-  created: number;
-  model: string;
-  elapsed: number;
   snippet_telemetry_id: number;
+  model: string;
+  context?: FIMContext | FIMContext[];
+  created?: number;
+  elapsed?: number;
+  cached?: boolean;
 };
+
+// {
+//     "choices": [
+//         {
+//             "code_completion": "export type PromptSelectProps = {\n  value: string;\n  onChange: (value: string) => void;\n  options: string[];\n  disabled?: boolean;\n};",
+//             "finish_reason": "stop",
+//             "index": 0
+//         }
+//     ],
+//     "context": [],
+//     "created": 1712248098.165,
+//     "model": "starcoder2/7b/vllm",
+//     "snippet_telemetry_id": 109
+// }
