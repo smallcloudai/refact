@@ -1,5 +1,11 @@
 import React from "react";
-import { Flex, Section, Heading, Code, DataList } from "@radix-ui/themes";
+import {
+  Flex,
+  Section,
+  Heading,
+  // Code,
+  DataList,
+} from "@radix-ui/themes";
 import type { FimDebugData } from "../../services/refact";
 import { SearchContext } from "./SearchContext";
 
@@ -39,7 +45,7 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         </DataList.Root>
       </Section>
 
-      <Heading size="5">Choices</Heading>
+      {/* <Heading size="5">Choices</Heading>
       <Section size="1">
         {data.choices.map((choice, i) => {
           return (
@@ -67,7 +73,7 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
             </DataList.Root>
           );
         })}
-      </Section>
+      </Section> */}
 
       <Heading size="5" mb="1">
         Search Context
