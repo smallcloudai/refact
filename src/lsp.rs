@@ -116,7 +116,7 @@ pub struct SuccessRes {
 
 impl Backend {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
-        let path = PathBuf::from(&params.text_document_position.text_document.uri.to_string());
+        let path = PathBuf::from(&params.text_document_position.text_document.uri.to_file_path().unwrap_or_default());
         let txt = match self.gcx.read().await.documents_state.document_map.get(&path) {
             Some(doc) => doc.read().await.clone().get_text_or_read_from_disk().await.unwrap_or_default(),
             None => return Err(internal_error("document not found"))
@@ -257,7 +257,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let path = PathBuf::from(&params.text_document.uri.to_string());
+        let path = PathBuf::from(&params.text_document.uri.to_file_path().unwrap_or_default());
         files_in_workspace::on_did_open(
             self.gcx.clone(),
             &path,
@@ -267,7 +267,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let path = PathBuf::from(&params.text_document.uri.to_string());
+        let path = PathBuf::from(&params.text_document.uri.to_file_path().unwrap_or_default());
         files_in_workspace::on_did_change(
             self.gcx.clone(),
             &path,
@@ -276,19 +276,19 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        let path = PathBuf::from(&params.text_document.uri.to_file_path().unwrap_or_default());
         self.client
             .log_message(MessageType::INFO, "{refact-lsp} file saved")
             .await;
-        let uri = params.text_document.uri.to_string();
-        info!("{uri} saved");
+        info!("{} saved", path.display());
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         self.client
             .log_message(MessageType::INFO, "{refact-lsp} file closed")
             .await;
-        let uri = params.text_document.uri.to_string();
-        info!("{uri} closed");
+        let path = PathBuf::from(&params.text_document.uri.to_file_path().unwrap_or_default());
+        info!("{} closed", path.display());
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -311,10 +311,10 @@ impl LanguageServer for Backend {
     }
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         async fn on_delete(event: FileEvent, gcx: Arc<ARwLock<GlobalContext>>) {
-            let path = PathBuf::from(&event.uri.to_string());
+            let path = PathBuf::from(&event.uri.to_file_path().unwrap_or_default());
             on_did_delete(gcx, &path).await;
         }
-        
+
         for event in params.changes {
             if event.typ == FileChangeType::DELETED {
                 on_delete(event, self.gcx.clone()).await;

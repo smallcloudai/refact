@@ -343,17 +343,23 @@ pub async fn on_did_change(
         *gcx.write().await.documents_state.cache_dirty.lock().await = true;
     }
 
-    if is_valid_file(path).is_ok() {
+    let mut go_ahead = true;
+    {
+        let is_it_good = is_valid_file(path);
+        if is_it_good.is_err() {
+            info!("{:?} ignoring changes: {}", path, is_it_good.err().unwrap());
+            go_ahead = false;
+        }
+    }
+    if go_ahead {
         let (vec_db_module, ast_module) = {
             let cx = gcx.write().await;
             (cx.vec_db.clone(), cx.ast_module.clone())
         };
-
         match *vec_db_module.lock().await {
             Some(ref mut db) => db.vectorizer_enqueue_files(&vec![doc.clone()], false).await,
             None => {}
         }
-
         match &ast_module {
             Some(ast) => ast.read().await.ast_indexer_enqueue_files(&vec![doc.clone()], false).await,
             None => {}
