@@ -656,6 +656,20 @@ function file_status_color(status) {
     return status_color;
 }
 
+function project_name_regex(project_input) {
+    const regex_pattern = /^[A-Za-z0-9_\-.]+$/;
+    const input_value = project_input.value;
+    const new_project_button = document.querySelector('.new-project-modal-submit');
+
+    if (!regex_pattern.test(input_value)) {
+        new_project_button.disabled = true;
+        project_input.setCustomValidity('Input does not match the required pattern');
+    } else {
+        new_project_button.disabled = false;
+        project_input.setCustomValidity('');
+    }
+}
+
 export async function init(general_error) {
     let req = await fetch('/tab-upload.html');
     document.querySelector('#upload').innerHTML = await req.text();
@@ -797,19 +811,12 @@ export async function init(general_error) {
     });
 
     const new_project_input = document.querySelector('#tab-upload-new-project');
-    if(new_project_input) {
+    if (new_project_input) {
         new_project_input.addEventListener('keyup', function() {
-            const regex_pattern = /^[A-Za-z0-9_\-.]+$/;
-            const input_value = new_project_input.value;
-            const new_project_button = document.querySelector('.new-project-modal-submit');
-
-            if (!regex_pattern.test(input_value)) {
-                new_project_button.disabled = true;
-                new_project_input.setCustomValidity('Input does not match the required pattern');
-            } else {
-                new_project_button.disabled = false;
-                new_project_input.setCustomValidity('');
-            }
+            project_name_regex(new_project_input);
+        });
+        new_project_input.addEventListener('paste', function() {
+            project_name_regex(new_project_input);
         });
     }
 
@@ -820,6 +827,7 @@ export async function init(general_error) {
         document.querySelector('#tab-upload-new-project').value = '';
         const project_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-tab-new-project-modal'));
         project_modal.hide();
+        document.querySelector('.new-project-modal-submit').disabled = true;
     });
 
     if(localStorage.getItem('active_tab_storage') === 'upload') {
