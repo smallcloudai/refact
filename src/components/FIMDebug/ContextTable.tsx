@@ -1,5 +1,5 @@
 import React from "react";
-import { Section, Table } from "@radix-ui/themes";
+import { Section, Table, Heading } from "@radix-ui/themes";
 import { FileList } from "../FileList";
 
 import type { FIMContext } from "../../events";
@@ -33,6 +33,9 @@ export const ContextTable: React.FC<ContextTableProps> = ({ data }) => {
       )}
 
       <Section size="1">
+        <Heading as="h4" size="2" mb="1">
+          Context files
+        </Heading>
         <FileList files={data.attached_files} />
       </Section>
     </Section>
