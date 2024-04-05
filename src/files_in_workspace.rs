@@ -95,6 +95,7 @@ async fn overwrite_or_create_document(global_context: Arc<ARwLock<GlobalContext>
         *existing_doc.write().await = document;
     } else {
         doc_map.insert(document.path.clone(), Arc::new(ARwLock::new(document)));
+        (*cx.documents_state.cache_dirty.lock().await) = true;
     }
 }
 
@@ -310,7 +311,6 @@ pub async fn on_did_open(
     doc.update_text(text);
     info!("on_did_open {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30));
     overwrite_or_create_document(gcx.clone(), doc).await;
-    *gcx.write().await.documents_state.cache_dirty.lock().await = true;
 }
 
 pub async fn on_did_change(
@@ -339,7 +339,9 @@ pub async fn on_did_change(
         None => return
     };
 
-    *gcx.write().await.documents_state.cache_dirty.lock().await = mark_dirty;
+    if mark_dirty {
+        *gcx.write().await.documents_state.cache_dirty.lock().await = true;
+    }
 
     if is_valid_file(path).is_ok() {
         let (vec_db_module, ast_module) = {
