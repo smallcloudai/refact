@@ -82,14 +82,7 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         Search Context
       </Heading>
       {/** TODO: figure out if context is an array or an object */}
-      {data.context &&
-        (Array.isArray(data.context) ? (
-          data.context.map((context, idx) => (
-            <SearchContext key={idx} data={context} />
-          ))
-        ) : (
-          <SearchContext data={data.context} />
-        ))}
+      {data.context && <SearchContext data={data.context} />}
     </Flex>
   );
 };

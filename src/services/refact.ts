@@ -532,7 +532,7 @@ type ContextFiles = FimFile[];
 export type ContextQueries = { from: string; symbol: string }[];
 
 export type FIMContext = {
-  attached_files: ContextFiles;
+  attached_files?: ContextFiles;
   was_looking_for?: ContextQueries;
 };
 
@@ -540,7 +540,7 @@ export type FimDebugData = {
   choices: FimChoices;
   snippet_telemetry_id: number;
   model: string;
-  context?: FIMContext | FIMContext[];
+  context?: FIMContext;
   created?: number;
   elapsed?: number;
   cached?: boolean;
