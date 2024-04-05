@@ -30,7 +30,7 @@ export const FIMDebug: React.FC = () => {
       px={LeftRightPadding}
       py={TopBottomPadding}
       style={{
-        height: "100dvh",
+        minHeight: "100dvh",
       }}
     >
       {host === "vscode" && !tabbed && (
