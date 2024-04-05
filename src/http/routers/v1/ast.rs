@@ -5,6 +5,7 @@ use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use url::Url;
+use serde_json::json;
 
 use crate::ast::ast_index::RequestSymbolType;
 use crate::custom_error::ScratchError;
@@ -188,17 +189,30 @@ pub async fn handle_v1_ast_file_markup(
     Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
+    let post = serde_json::from_slice::<FileNameOnlyPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
+    let corrected = crate::at_commands::at_file::correct_to_nearest_filename(
+        global_context.clone(),
+        &post.file_name,
+        false,
+        1,
+    ).await;
+    if corrected.len() == 0 {
+        return Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::from(serde_json::to_string_pretty(&json!({"detail": "File not found"})).unwrap()))
+            .unwrap());
+    }
+
     let search_res = {
         let ast_module = global_context.read().await.ast_module.clone();
         let x = match &ast_module {
             Some(ast) => {
-                let mut doc = Document::new(&PathBuf::from(post.file_url.to_file_path().unwrap_or_default()), None);
+                let mut doc = Document::new(&PathBuf::from(&corrected[0]), None);
                 let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
                 doc.update_text(&text);
-                
+
                 ast.read().await.file_markup(&doc).await
             }
             None => {
@@ -232,10 +246,24 @@ pub async fn handle_v1_ast_file_dump(
     let post = serde_json::from_slice::<FileNameOnlyPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
+    let corrected = crate::at_commands::at_file::correct_to_nearest_filename(
+            global_context.clone(),
+            &post.file_name,
+            false,
+            1,
+        ).await;
+    if corrected.len() == 0 {
+        return Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::from(serde_json::to_string_pretty(&json!({"detail": "File not found"})).unwrap()))
+            .unwrap());
+    }
     let mut files_set: HashSet<String> = HashSet::new();
-    files_set.insert(post.file_name);
+    files_set.insert(corrected[0].clone());
+
     let close_small_gaps = false;
-    let (lines_in_files, _) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage1(global_context, vec![], files_set, close_small_gaps).await;
+    let (lines_in_files, _) = crate::scratchpads::chat_utils_rag::
+        postprocess_rag_stage1(global_context.clone(), vec![], files_set, close_small_gaps).await;
     let mut result = "".to_string();
     for linevec in lines_in_files.values() {
         for lineref in linevec {
