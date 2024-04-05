@@ -17,6 +17,9 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
       <Heading>FIM debug</Heading>
       <Section size="1">
         <DataList.Root
+          style={{
+            gap: "var(--space-2)",
+          }}
           orientation={{
             initial: "vertical",
             xs: "horizontal",
