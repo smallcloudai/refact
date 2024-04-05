@@ -9,72 +9,74 @@ import {
 } from "@radix-ui/themes";
 import type { FimDebugData } from "../../services/refact";
 import { SearchContext } from "./SearchContext";
+import { ScrollArea } from "../ScrollArea";
 
 export type FimDebugProps = { data: FimDebugData };
 
 export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
   return (
-    <Flex direction="column">
-      <Heading size="4">FIM debug</Heading>
-      <Section size="1" py="4">
-        <DataList.Root
-          trim="both"
-          style={{
-            gap: "var(--space-2)",
-          }}
-          orientation={{
-            initial: "vertical",
-            xs: "horizontal",
-          }}
-        >
-          <DataList.Item>
-            <DataList.Label>
-              <Text size="1" weight="medium">
-                Cached
-              </Text>
-            </DataList.Label>
-            <DataList.Value>{data.cached ? "true" : "false"}</DataList.Value>
-          </DataList.Item>
-          <DataList.Item>
-            <DataList.Label>
-              <Text size="1" weight="medium">
-                Snippet
-              </Text>
-            </DataList.Label>
-            <DataList.Value>{data.snippet_telemetry_id}</DataList.Value>
-          </DataList.Item>
-          <DataList.Item>
-            <DataList.Label>
-              <Text size="1" weight="medium">
-                Model
-              </Text>
-            </DataList.Label>
-            <DataList.Value>{data.model}</DataList.Value>
-          </DataList.Item>
-          {data.created && (
+    <ScrollArea scrollbars="both">
+      <Flex direction="column">
+        <Heading size="4">FIM debug</Heading>
+        <Section size="1" py="4">
+          <DataList.Root
+            trim="both"
+            style={{
+              gap: "var(--space-2)",
+            }}
+            orientation={{
+              initial: "vertical",
+              xs: "horizontal",
+            }}
+          >
             <DataList.Item>
               <DataList.Label>
                 <Text size="1" weight="medium">
-                  Created
+                  Cached
                 </Text>
               </DataList.Label>
-              <DataList.Value>{data.created}</DataList.Value>
+              <DataList.Value>{data.cached ? "true" : "false"}</DataList.Value>
             </DataList.Item>
-          )}
-          {data.elapsed && (
             <DataList.Item>
               <DataList.Label>
                 <Text size="1" weight="medium">
-                  Elapsed
+                  Snippet
                 </Text>
               </DataList.Label>
-              <DataList.Value>{data.elapsed}</DataList.Value>
+              <DataList.Value>{data.snippet_telemetry_id}</DataList.Value>
             </DataList.Item>
-          )}
-        </DataList.Root>
-      </Section>
+            <DataList.Item>
+              <DataList.Label>
+                <Text size="1" weight="medium">
+                  Model
+                </Text>
+              </DataList.Label>
+              <DataList.Value>{data.model}</DataList.Value>
+            </DataList.Item>
+            {data.created && (
+              <DataList.Item>
+                <DataList.Label>
+                  <Text size="1" weight="medium">
+                    Created
+                  </Text>
+                </DataList.Label>
+                <DataList.Value>{data.created}</DataList.Value>
+              </DataList.Item>
+            )}
+            {data.elapsed && (
+              <DataList.Item>
+                <DataList.Label>
+                  <Text size="1" weight="medium">
+                    Elapsed
+                  </Text>
+                </DataList.Label>
+                <DataList.Value>{data.elapsed}</DataList.Value>
+              </DataList.Item>
+            )}
+          </DataList.Root>
+        </Section>
 
-      {/* <Heading size="5">Choices</Heading>
+        {/* <Heading size="5">Choices</Heading>
       <Section size="1">
         {data.choices.map((choice, i) => {
           return (
@@ -104,7 +106,8 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         })}
       </Section> */}
 
-      {data.context && <SearchContext data={data.context} />}
-    </Flex>
+        {data.context && <SearchContext data={data.context} />}
+      </Flex>
+    </ScrollArea>
   );
 };
