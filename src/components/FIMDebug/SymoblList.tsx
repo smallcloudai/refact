@@ -2,6 +2,7 @@ import React from "react";
 import { Flex, Text } from "@radix-ui/themes";
 import { ContextQueries } from "../../events";
 import { TruncateLeft } from "../Text";
+import styles from "./fim.module.css";
 
 export const SymbolList: React.FC<{
   symbols: ContextQueries;
@@ -19,7 +20,7 @@ export const SymbolList: React.FC<{
             style={{ display: "flex" }}
           >
             🔎
-            <TruncateLeft>{symbol}</TruncateLeft>
+            <TruncateLeft className={styles.symbol}>{symbol}</TruncateLeft>
           </Text>
         );
       })}
