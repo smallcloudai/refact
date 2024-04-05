@@ -1,6 +1,7 @@
 import React from "react";
-import { Section, Table, Container, Text } from "@radix-ui/themes";
-import { Markdown } from "../Markdown";
+import { Section, Table } from "@radix-ui/themes";
+import { FileList } from "../FileList";
+
 import type { FIMContext } from "../../events";
 
 export type ContextTableProps = {
@@ -32,16 +33,7 @@ export const ContextTable: React.FC<ContextTableProps> = ({ data }) => {
       )}
 
       <Section size="1">
-        {data.attached_files.map((file, i) => {
-          return (
-            <Container key={i}>
-              <Text>
-                File: {file.file_name}:{file.line1}-${file.line2}
-              </Text>
-              <Markdown>{"```\n" + file.file_content + "\n```"}</Markdown>
-            </Container>
-          );
-        })}
+        <FileList files={data.attached_files} />
       </Section>
     </Section>
   );
