@@ -24,7 +24,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
             symbol: res.symbol_declaration.guid.clone(),
-            usefulness: res.sim_to_query,
+            usefulness: 90.0,
         });
     }
     for res in &result.declaration_usage_symbols {
@@ -35,7 +35,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
             symbol: res.symbol_declaration.guid.clone(),
-            usefulness: res.sim_to_query,
+            usefulness: 50.0,
         });
     }
     for res in &result.matched_by_name_symbols {
@@ -46,7 +46,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
             symbol: res.symbol_declaration.guid.clone(),
-            usefulness: res.sim_to_query,
+            usefulness: 20.0,
         });
     }
     ChatMessage {

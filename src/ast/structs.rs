@@ -18,13 +18,13 @@ pub struct SymbolsSearchResultStruct {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AstCursorSearchResult {
     pub query_text: String,
+    pub cursor_symbols: Vec<SymbolsSearchResultStruct>,
     pub file_path: PathBuf,
     #[serde(with = "PointDef")]
     pub cursor: Point,
-    pub cursor_symbols: Vec<SymbolsSearchResultStruct>,
-    pub declaration_symbols: Vec<SymbolsSearchResultStruct>,
-    pub declaration_usage_symbols: Vec<SymbolsSearchResultStruct>,
-    pub matched_by_name_symbols: Vec<SymbolsSearchResultStruct>,
+    pub declaration_symbols: Vec<SymbolsSearchResultStruct>,       // types around cursor
+    pub declaration_usage_symbols: Vec<SymbolsSearchResultStruct>, // examples of usage of the same symbols from other files
+    pub matched_by_name_symbols: Vec<SymbolsSearchResultStruct>,   // stupid search by name
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
