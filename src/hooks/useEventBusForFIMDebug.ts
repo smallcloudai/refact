@@ -12,6 +12,7 @@ import {
   isReceiveFIMDebugData,
   isReceiveFIMDebugError,
   RequestFIMData,
+  FIMDebugBack,
 } from "../events";
 
 type FIMDebugState = {
@@ -106,8 +107,16 @@ export const useEventBysForFIMDebug = () => {
     dispatch(message);
   }, [dispatch]);
 
+  const backFromFim = useCallback(() => {
+    const message: FIMDebugBack = {
+      type: Events.FIM_EVENT_NAMES.BACK,
+    };
+    postMessage(message);
+  }, [postMessage]);
+
   return {
     state,
     clearErrorMessage,
+    backFromFim,
   };
 };

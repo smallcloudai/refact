@@ -6,6 +6,7 @@ export enum FIM_EVENT_NAMES {
   DATA_ERROR = "fim_debug_data_error",
   READY = "fim_debug_ready",
   CLEAR_ERROR = "fim_debug_clear_error",
+  BACK = "fim_debug_back",
 }
 
 export interface FIMAction {
@@ -82,4 +83,13 @@ export function isReceiveFIMDebugError(
   if (action.payload === null) return false;
   if (!("message" in action.payload)) return false;
   return typeof action.payload.message === "string";
+}
+
+export interface FIMDebugBack extends FIMAction {
+  type: FIM_EVENT_NAMES.BACK;
+}
+
+export function isBackFromFIMDebug(action: unknown): action is FIMDebugBack {
+  if (!isFIMAction(action)) return false;
+  return action.type === FIM_EVENT_NAMES.BACK;
 }

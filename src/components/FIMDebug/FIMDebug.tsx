@@ -18,7 +18,7 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         >
           <DataList.Item>
             <DataList.Label>Cached</DataList.Label>
-            <DataList.Value>{data.cached ?? false}</DataList.Value>
+            <DataList.Value>{data.cached ? "true" : "false"}</DataList.Value>
           </DataList.Item>
           <DataList.Item>
             <DataList.Label>Snippet</DataList.Label>
