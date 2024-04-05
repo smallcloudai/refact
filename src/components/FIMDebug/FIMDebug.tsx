@@ -1,7 +1,7 @@
 import React from "react";
 import { Flex, Section, Heading, Code, DataList } from "@radix-ui/themes";
 import type { FimDebugData } from "../../services/refact";
-import { ContextTable } from "./ContextTable";
+import { SearchContext } from "./SearchContext";
 
 export type FimDebugProps = { data: FimDebugData };
 
@@ -69,15 +69,17 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         })}
       </Section>
 
-      <Heading size="5">Search Context</Heading>
+      <Heading size="5" mb="1">
+        Search Context
+      </Heading>
       {/** TODO: figure out if context is an array or an object */}
       {data.context &&
         (Array.isArray(data.context) ? (
           data.context.map((context, idx) => (
-            <ContextTable key={idx} data={context} />
+            <SearchContext key={idx} data={context} />
           ))
         ) : (
-          <ContextTable data={data.context} />
+          <SearchContext data={data.context} />
         ))}
     </Flex>
   );
