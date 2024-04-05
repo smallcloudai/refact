@@ -6,7 +6,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "FIM-PSM": {
                     "context_format": "starcoder",
-                    "rag_tokens_n": 2048
+                    "rag_tokens_n": 1024
                 },
                 "FIM-SPM": {}
             },
@@ -34,7 +34,10 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "FIM-PSM": {},
-                "FIM-SPM": {}
+                "FIM-SPM": {
+                    "context_format": "default",
+                    "rag_tokens_n": 1024
+                }
             },
             "default_scratchpad": "FIM-SPM",
             "similar_models": [

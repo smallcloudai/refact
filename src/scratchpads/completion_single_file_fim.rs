@@ -15,6 +15,8 @@ use tracing::{info, error};
 use tree_sitter::Point;
 
 use crate::ast::ast_module::AstModule;
+use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
+use crate::ast::treesitter::language_id::LanguageId;
 use crate::at_commands::at_ast_lookup_symbols::results2message;
 use crate::call_validation::{CodeCompletionPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
@@ -59,7 +61,7 @@ impl SingleFileFIM {
         let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
         SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(),
             fim_suffix: String::new(), fim_middle: String::new(),
-            context_used: json!([]),
+            context_used: json!({}),
             data4cache,
             data4snippet,
             ast_module,
@@ -76,7 +78,7 @@ impl SingleFileFIM {
     }
 }
 
-fn add_context_to_prompt(context_format: &String, prompt: &String, postprocessed_messages: &Vec<ContextFile>) -> String {
+fn add_context_to_prompt(context_format: &String, prompt: &String, postprocessed_messages: &Vec<ContextFile>, language_id: &LanguageId) -> String {
     let mut context_files = vec![];
     if context_format == "starcoder" {
         for m in postprocessed_messages {
@@ -92,6 +94,14 @@ fn add_context_to_prompt(context_format: &String, prompt: &String, postprocessed
         if !context_files.is_empty() {
             context_files.insert(0, "<repo_name>default_repo".to_string());
             context_files.push("<file_sep>".to_string())
+        }
+    } else if context_format == "default" {
+        for m in postprocessed_messages {
+            context_files.push(wrap_comments(&format!(
+                "{}\n{}",
+                m.file_name,
+                m.file_content
+            ), language_id));
         }
     } else {
         warn!("context_format \"{}\" not recognized", context_format);
@@ -234,6 +244,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         };
         if !self.t.context_format.is_empty() && self.post.use_ast && rag_tokens_n > 0 {
             let t0 = Instant::now();
+            let language_id = get_language_id_by_filename(&PathBuf::from(&self.post.inputs.cursor.file)).unwrap_or(LanguageId::Unknown);
             let (ast_messages, was_looking_for) = match &self.ast_module {
                 Some(ast) => {
                     let doc = Document::new(&file_path, None);
@@ -267,7 +278,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                 rag_tokens_n,
             ).await;
 
-            prompt = add_context_to_prompt(&self.t.context_format, &prompt, &postprocessed_messages);
+            prompt = add_context_to_prompt(&self.t.context_format, &prompt, &postprocessed_messages, &language_id);
             self.context_used = context_to_fim_debug_page(&t0, &postprocessed_messages, &was_looking_for);
         }
 
@@ -366,6 +377,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         return Err("".to_string());
     }
 }
+
 
 // async fn ast_search(
 //     ast_module: &mut AstModule,
