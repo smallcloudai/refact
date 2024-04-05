@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    use url::Url;
+    use std::path::PathBuf;
     use crate::ast::treesitter::parsers::AstLanguageParser;
     use crate::ast::treesitter::parsers::python::PythonParser;
 
@@ -12,8 +11,7 @@ mod tests {
     #[test]
     fn test_query_rust_function() {
         let mut parser = Box::new(PythonParser::new().expect("PythonParser::new"));
-        let path = Url::parse("file:///main.py").unwrap();
-        let asd = parser.parse(MAIN_PY_CODE, &path);
+        let asd = parser.parse(MAIN_PY_CODE, &PathBuf::from("main.py"));
 
         // test_query_function(parser, &path, MAIN_RS_CODE,
         //                     serde_json::from_str(MAIN_RS_INDEXES).unwrap(),
@@ -23,9 +21,9 @@ mod tests {
         // // Open a file and write the JSON string to it
         // let mut file = File::create("cases/rust/main.rs.usages.json").unwrap();
         // file.write_all(usages_json.as_bytes()).unwrap();
-        // 
+        //
         // let indexes_json = serde_json::to_string_pretty(&indexes).unwrap();
-        // 
+        //
         // // Open a file and write the JSON string to it
         // let mut file = File::create("cases/rust/main.rs.indexes.json").unwrap();
         // file.write_all(indexes_json.as_bytes()).unwrap();

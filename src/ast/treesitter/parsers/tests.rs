@@ -1,8 +1,3 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
-
-use crate::ast::treesitter::parsers::AstLanguageParser;
-
 // mod cpp;
 mod rust;
 mod python;
@@ -14,14 +9,14 @@ mod java;
 //                                   ref_usages: Vec<Box<dyn UsageSymbolInfo>>) {
 //     let indexes = parser.parse_declarations(code, &path).unwrap();
 //     let usages = parser.parse_usages(code, true).unwrap();
-//     
+//
 //     indexes.iter().for_each(|(key, index)| {
 //         assert_eq!(index, ref_indexes.get(key).unwrap());
 //     });
 //     ref_indexes.iter().for_each(|(key, index)| {
 //         assert_eq!(index, indexes.get(key).unwrap());
 //     });
-//     
+//
 //     usages.iter().for_each(|usage| {
 //         assert!(ref_usages.contains(usage));
 //     });
