@@ -26,7 +26,6 @@ export const FIMDebug: React.FC = () => {
   return (
     <Flex
       direction="column"
-      justify="between"
       flexGrow="1"
       px={LeftRightPadding}
       py={TopBottomPadding}

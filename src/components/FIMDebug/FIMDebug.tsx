@@ -5,6 +5,7 @@ import {
   Heading,
   // Code,
   DataList,
+  Text,
 } from "@radix-ui/themes";
 import type { FimDebugData } from "../../services/refact";
 import { SearchContext } from "./SearchContext";
@@ -14,9 +15,10 @@ export type FimDebugProps = { data: FimDebugData };
 export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
   return (
     <Flex direction="column">
-      <Heading>FIM debug</Heading>
-      <Section size="1">
+      <Heading size="4">FIM debug</Heading>
+      <Section size="1" py="4">
         <DataList.Root
+          trim="both"
           style={{
             gap: "var(--space-2)",
           }}
@@ -26,25 +28,49 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
           }}
         >
           <DataList.Item>
-            <DataList.Label>Cached</DataList.Label>
+            <DataList.Label>
+              <Text size="1" weight="medium">
+                Cached
+              </Text>
+            </DataList.Label>
             <DataList.Value>{data.cached ? "true" : "false"}</DataList.Value>
           </DataList.Item>
           <DataList.Item>
-            <DataList.Label>Snippet</DataList.Label>
+            <DataList.Label>
+              <Text size="1" weight="medium">
+                Snippet
+              </Text>
+            </DataList.Label>
             <DataList.Value>{data.snippet_telemetry_id}</DataList.Value>
           </DataList.Item>
           <DataList.Item>
-            <DataList.Label>Model</DataList.Label>
+            <DataList.Label>
+              <Text size="1" weight="medium">
+                Model
+              </Text>
+            </DataList.Label>
             <DataList.Value>{data.model}</DataList.Value>
           </DataList.Item>
-          <DataList.Item>
-            <DataList.Label>Created</DataList.Label>
-            <DataList.Value>{data.created}</DataList.Value>
-          </DataList.Item>
-          <DataList.Item>
-            <DataList.Label>Elapsed</DataList.Label>
-            <DataList.Value>{data.elapsed}</DataList.Value>
-          </DataList.Item>
+          {data.created && (
+            <DataList.Item>
+              <DataList.Label>
+                <Text size="1" weight="medium">
+                  Created
+                </Text>
+              </DataList.Label>
+              <DataList.Value>{data.created}</DataList.Value>
+            </DataList.Item>
+          )}
+          {data.elapsed && (
+            <DataList.Item>
+              <DataList.Label>
+                <Text size="1" weight="medium">
+                  Elapsed
+                </Text>
+              </DataList.Label>
+              <DataList.Value>{data.elapsed}</DataList.Value>
+            </DataList.Item>
+          )}
         </DataList.Root>
       </Section>
 
@@ -78,10 +104,6 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         })}
       </Section> */}
 
-      <Heading size="5" mb="1">
-        Search Context
-      </Heading>
-      {/** TODO: figure out if context is an array or an object */}
       {data.context && <SearchContext data={data.context} />}
     </Flex>
   );
