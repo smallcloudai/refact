@@ -27,6 +27,8 @@ let finetune_panel,
     finetune_settings;
 
 let select_model_panel;
+let finetune_project_selected;
+let finetune_error_block;
 
 let current_accepted,
     current_rejected;
@@ -218,12 +220,14 @@ function tab_finetune_config_and_runs() {
                     project_selector.appendChild(new_option);
                 })
                 current_projects = global_projects;
+                finetune_project_selected = current_projects[0].name;
             }
             if (global_projects.length == 0) {
                 finetune_settings.disabled = true;
                 project_selector.innerHTML = `<option value="" selected disabled>Please create first project</option>`;
                 project_selector.disabled = true;
                 document.querySelector('.finetune-new-project').style.display = 'block';
+                finetune_project_selected = null;
             }
 
             finetune_controls_state();
@@ -1447,6 +1451,26 @@ function start_log_stream(run_id) {
     fetchData();
 }
 
+function check_project_files(project) {
+    fetch(`/tab-files-get/${project}`)
+        .then(function(response) {
+            return response.json();
+        })
+        .catch(function(error) {
+            console.log('tab-files-get',error);
+            general_error(error);
+        })
+        .then(function(data) {
+            if(data.files_after_dedup > 0) {
+                finetune_error_block.classList.add('d-none');
+                finetune_error_block.innerHTML = ``;
+            } else {
+                finetune_error_block.classList.remove('d-none');
+                finetune_error_block.innerHTML = `Warning: no sources in current project.`;
+            }
+        });
+}
+
 
 export async function init() {
     let req = await fetch('/tab-finetune.html');
@@ -1460,7 +1484,7 @@ export async function init() {
     // finetune_filter_error = document.querySelector('.ftf-error');
     // finetune_filter_button = document.querySelector('.sources-run-button');
     // finetune_filter_button.addEventListener('click', filtering_button_clicked);
-
+    finetune_error_block = document.querySelector('.finetune-settings-error');
     finetune_panel = document.querySelector('.start-funetune-step2');
     finetune_panel.classList.add('pane-disabled');
     // finetune_button = document.querySelector('.tab-finetune-run-now');
@@ -1476,6 +1500,12 @@ export async function init() {
     }
 
     log_container.addEventListener('scroll', handle_auto_scroll);
+
+    const project_selector = document.querySelector('#finetune-project');
+    project_selector.addEventListener('change', function() {
+        finetune_project_selected = project_selector.value;
+        check_project_files(finetune_project_selected);
+    });
 
     // const start_finetune_button = document.querySelector('.tab-finetune-run-now');
     // start_finetune_button.addEventListener('click', function () {
@@ -1499,7 +1529,12 @@ export async function init() {
     finetune_modal.addEventListener('show.bs.modal', function () {
         gpus_block = document.querySelector('.finetune-settings-gpus .gpu-group');
         options_block = document.querySelector('.finetune-settings-options div');
+        check_project_files(finetune_project_selected);
         get_finetune_settings();
+    });
+    finetune_modal.addEventListener('hide.bs.modal', function () {
+        finetune_error_block.classList.add('d-none');
+        finetune_error_block.innerHTML = ``;
     });
 
     const finetune_submit = document.querySelector('.finetune-tab-settings-submit');
