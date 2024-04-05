@@ -21,7 +21,7 @@ use crate::files_in_workspace::{Document, read_file_from_disk};
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 
 #[derive(Debug)]
@@ -84,7 +84,7 @@ pub async fn postprocess_rag_stage1(
                     f = Some(Arc::new(File { markup, file_name: file_name.clone() }));
                 },
                 Err(err) => {
-                    warn!("postprocess_rag_stage1 query file markup problem: {}", err);
+                    warn!("postprocess_rag_stage1 query file {:?} markup problem: {}", file_name, err);
                 }
             }
         }
