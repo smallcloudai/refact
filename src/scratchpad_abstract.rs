@@ -43,13 +43,13 @@ pub struct HasTokenizerAndEot {
     pub tokenizer: Arc<RwLock<Tokenizer>>,
     pub eot: String,
     pub eos: String,
-    pub context_format: String, 
-    pub rag_tokens_n: usize,
+    pub context_format: String,
+    pub rag_ratio: f64,
 }
 
 impl HasTokenizerAndEot {
     pub fn new(tokenizer: Arc<RwLock<Tokenizer>>) -> Self {
-        HasTokenizerAndEot { tokenizer, eot: String::new(), eos: String::new(), context_format: String::new(), rag_tokens_n: 0}
+        HasTokenizerAndEot { tokenizer, eot: String::new(), eos: String::new(), context_format: String::new(), rag_ratio: 0.5}
     }
 
     pub fn count_tokens(

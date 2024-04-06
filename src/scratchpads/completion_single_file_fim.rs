@@ -18,7 +18,7 @@ use crate::ast::ast_module::AstModule;
 use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::at_commands::at_ast_lookup_symbols::results2message;
-use crate::call_validation::{CodeCompletionPost, ContextFile, SamplingParameters};
+use crate::call_validation::{CodeCompletionPost, ChatMessage, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::completion_cache;
 use crate::files_in_workspace::Document;
@@ -126,7 +126,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
         self.t.eos = patch.get("eos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.t.context_format = patch.get("context_format").and_then(|x| x.as_str()).unwrap_or_default().to_string();
-        self.t.rag_tokens_n = patch.get("rag_tokens_n").and_then(|x| x.as_u64()).unwrap_or(0) as usize;
+        self.t.rag_ratio = patch.get("rag_ratio").and_then(|x| x.as_f64()).unwrap_or(0.0);
         self.t.assert_one_token(&self.fim_prefix.as_str())?;
         self.t.assert_one_token(&self.fim_suffix.as_str())?;
         self.t.assert_one_token(&self.fim_middle.as_str())?;
@@ -142,7 +142,19 @@ impl ScratchpadAbstract for SingleFileFIM {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let limit: i32 = context_size as i32 - self.post.parameters.max_new_tokens as i32;
+        let rag_tokens_n = if self.post.rag_tokens_n > 0 {
+            self.post.rag_tokens_n.min(4096).max(1024)
+        } else {
+            ((context_size as f64 * self.t.rag_ratio) as usize).min(4096).max(1024)
+        };
+        let limit: i32 = (context_size as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32);
+        if limit < 512 {
+            let msg = format!("context_size={} - max_new_tokens={} - rag_tokens_n={} leaves too little {} space for completion to work",
+                context_size, self.post.parameters.max_new_tokens, rag_tokens_n, limit);
+            warn!("{}", msg);
+            return Err(msg);
+        }
+
         let supports_stop = true; // some hf models do not support stop, but it's a thing of the past?
         if supports_stop {
             let mut stop_list = vec![self.t.eot.clone(), "\n\n".to_string()];
@@ -182,9 +194,12 @@ impl ScratchpadAbstract for SingleFileFIM {
 
         let mut before = vec![];
         let mut after = String::new();
+        let mut fim_line1: i32 = i32::MAX;
+        let mut fim_line2: i32 = i32::MIN;
         tokens_used += self.t.count_tokens(
             (cursor_line1.clone() + &cursor_line2).as_str()
         )?;
+        let mut rel_line_n: i32 = 0;
         while before_line.is_some() || after_line.is_some() {
             if let Some(before_line) = before_line {
                 let before_line = before_line.to_string();
@@ -194,6 +209,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                 }
                 tokens_used += tokens;
                 before.push(before_line);
+                fim_line1 = pos.line - rel_line_n as i32;
             }
             if let Some(after_line) = after_line {
                 let after_line = after_line.to_string();
@@ -203,10 +219,13 @@ impl ScratchpadAbstract for SingleFileFIM {
                 }
                 tokens_used += tokens;
                 after.push_str(&after_line);
+                fim_line2 = pos.line + rel_line_n as i32;
             }
             before_line = before_iter.next();
             after_line = after_iter.next();
+            rel_line_n += 1;
         }
+
         let before = before.into_iter().rev().collect::<Vec<_>>().join("");
         info!("single file FIM prompt {} tokens used < limit {}", tokens_used, limit);
         let mut prompt: String;
@@ -237,48 +256,48 @@ impl ScratchpadAbstract for SingleFileFIM {
         } else {
             return Err(format!("order \"{}\" not recognized", self.order));
         }
-        let rag_tokens_n = if self.post.rag_tokens_n > 0 {
-            self.post.rag_tokens_n.min(2048).max(1024)
-        } else {
-            self.t.rag_tokens_n
-        };
-        if !self.t.context_format.is_empty() && self.post.use_ast && rag_tokens_n > 0 {
+
+        if !self.t.context_format.is_empty() && self.post.use_ast && rag_tokens_n > 0 && self.ast_module.is_some() {
             let t0 = Instant::now();
             let language_id = get_language_id_by_filename(&PathBuf::from(&self.post.inputs.cursor.file)).unwrap_or(LanguageId::Unknown);
-            let (ast_messages, was_looking_for) = match &self.ast_module {
-                Some(ast) => {
-                    let doc = Document::new(&file_path, None);
-                    match ast.write().await.retrieve_cursor_symbols_by_declarations(
-                        &doc, &source, Point { row: pos.line as usize, column: pos.character as usize },
-                        5, 5
-                    ).await {
-                        Ok(res) => {
-                            let mut was_looking_for = HashMap::new();
-                            let cursor_symbols = res.cursor_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                            let declarations = res.declaration_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                            let usages = res.declaration_usage_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                            let matched_by_name_symbols = res.matched_by_name_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                            info!("near cursor cursor_symbols: {:?}", cursor_symbols);
-                            info!("near cursor declarations: {:?}", declarations);
-                            info!("near cursor usages: {:?}", usages);
-                            info!("near cursor matched_by_name_symbols: {:?}", matched_by_name_symbols);
-                            was_looking_for.insert("cursor_symbols".to_string(), cursor_symbols);
-                            was_looking_for.insert("declarations".to_string(), declarations);
-                            was_looking_for.insert("usages".to_string(), usages);
-                            was_looking_for.insert("matched_by_name_symbols".to_string(), matched_by_name_symbols);
-                            (vec![results2message(&res).await], was_looking_for)
-                        },
-                        Err(err) => {
-                            error!("can't fetch ast results: {}", err);
-                            (vec![], HashMap::new())
-                        }
+            let (mut ast_messages, was_looking_for) = {
+                let doc = Document::new(&file_path, None);
+                match self.ast_module.clone().unwrap().write().await.retrieve_cursor_symbols_by_declarations(
+                    &doc, &source, Point { row: pos.line as usize, column: pos.character as usize },
+                    5, 5
+                ).await {
+                    Ok(res) => {
+                        let mut was_looking_for = HashMap::new();
+                        let cursor_symbols = res.cursor_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
+                        let declarations = res.declaration_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
+                        let usages = res.declaration_usage_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
+                        let matched_by_name_symbols = res.matched_by_name_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
+                        info!("near cursor cursor_symbols: {:?}", cursor_symbols);
+                        info!("near cursor declarations: {:?}", declarations);
+                        info!("near cursor usages: {:?}", usages);
+                        info!("near cursor matched_by_name_symbols: {:?}", matched_by_name_symbols);
+                        was_looking_for.insert("cursor_symbols".to_string(), cursor_symbols);
+                        was_looking_for.insert("declarations".to_string(), declarations);
+                        was_looking_for.insert("usages".to_string(), usages);
+                        was_looking_for.insert("matched_by_name_symbols".to_string(), matched_by_name_symbols);
+                        (vec![results2message(&res).await], was_looking_for)
+                    },
+                    Err(err) => {
+                        error!("can't fetch ast results: {}", err);
+                        (vec![], HashMap::new())
                     }
                 }
-                None => {
-                    error!("ast not initialized");
-                    (vec![], HashMap::new())
-                }
             };
+
+            let fim_ban = ContextFile {
+                file_name: self.post.inputs.cursor.file.clone(),
+                file_content: "".to_string(),
+                line1: (fim_line1 + 1) as usize,
+                line2: (fim_line2 + 1) as usize,
+                symbol: "".to_string(),
+                usefulness: -1.0,
+            };
+            ast_messages.push(ChatMessage { role: "context_file".to_string(), content: serde_json::json!([fim_ban]).to_string() });
 
             let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
                 self.global_context.clone(),
@@ -289,6 +308,8 @@ impl ScratchpadAbstract for SingleFileFIM {
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &postprocessed_messages, &language_id);
             self.context_used = context_to_fim_debug_page(&t0, &postprocessed_messages, &was_looking_for);
+        } else {
+            info!("will not use ast {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_module.is_some() as i32);
         }
 
         if DEBUG {
@@ -387,98 +408,6 @@ impl ScratchpadAbstract for SingleFileFIM {
     }
 }
 
-
-// async fn ast_search(
-//     ast_module: &mut AstModule,
-//     file_path: &PathBuf,
-//     code: &str,
-//     cursor: Point,
-//     // tokenizer: HasTokenizerAndEot,
-//     max_context_size: usize
-// ) -> (String, i32)
-// {
-//     let doc = match DocumentInfo::from_pathbuf(file_path).ok() {
-//         Some(doc) => doc,
-//         None => return ("".to_string(), 0)
-//     };
-//     let lang = get_language_id_by_filename(&doc.get_path()).unwrap_or_default();
-//     let declarations_str = wrap_comments("Useful declarations:\n ", &lang);
-//     let references_str = wrap_comments("Useful references:\n ", &lang);
-
-//     let search_result = ast_module.search_declarations_by_cursor(
-//         &doc, code, cursor, 5, true
-//     ).await;
-//     let mut extra_context: Vec<String> = vec!();
-
-
-    // let mut tokens_used = tokenizer.count_tokens(&declarations_str).expect(
-    //     "Tokenization has failed"
-    // );
-
-    // match search_result {
-    //     Ok(res) => {
-    //         if res.search_results.len() > 0 {
-    //             extra_context.push(declarations_str.to_string());
-    //         }
-    //         for res in res.search_results {
-    //             let code: String = format!(
-    //                 "symbol path: {}\ncode: \n{}\n\n",
-    //                 res.symbol_declaration.meta_path,
-    //                 res.symbol_declaration.get_content().await.unwrap_or(" ".to_string())
-    //             );
-    //             let text = wrap_comments(&code, &lang);
-    //             let tokens = tokenizer.count_tokens(&text).expect(
-    //                 "Tokenization has failed"
-    //             );
-    //             if (tokens_used + tokens) > (max_context_size / 2) as i32 {
-    //                 break
-    //             } else {
-    //                 extra_context.push(text);
-    //                 tokens_used += tokens;
-    //             }
-    //         }
-    //     }
-    //     Err(err) => {
-    //         info!("Error while calling `search_declarations_by_cursor` {:?}", err);
-    //     }
-    // }
-
-    // let search_result = ast_module.search_references_by_cursor(
-    //     &doc, code, cursor, 5, true
-    // ).await;
-    // let mut tokens_used = tokenizer.count_tokens(&references_str).expect(
-    //     "Tokenization has failed"
-    // );
-    // match search_result {
-    //     Ok(res) => {
-    //         if res.search_results.len() > 0 {
-    //             extra_context.push(references_str.to_string());
-    //         }
-    //         for res in res.search_results {
-    //             let code: String = format!(
-    //                 "symbol path: {}\ncode: {}\n\n",
-    //                 res.symbol_declaration.meta_path,
-    //                 res.symbol_declaration.get_content().await.unwrap_or("".to_string())
-    //             );
-    //             let text = wrap_comments(&code, &lang);
-    //             let tokens = tokenizer.count_tokens(&text).expect(
-    //                 "Tokenization has failed"
-    //             );
-    //             if (tokens_used + tokens) > (max_context_size / 2) as i32 {
-    //                 break
-    //             } else {
-    //                 extra_context.push(text);
-    //                 tokens_used += tokens;
-    //             }
-    //         }
-    //     }
-    //     Err(err) => {
-    //         info!("Error while calling `search_declarations_by_cursor` {:?}", err);
-    //     }
-    // }
-
-//     (extra_context.join(""), tokens_used)
-// }
 
 fn cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
     let mut cut_at = vec![];

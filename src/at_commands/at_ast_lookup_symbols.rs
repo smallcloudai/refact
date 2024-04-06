@@ -15,10 +15,10 @@ use crate::call_validation::{ChatMessage, ContextFile};
 
 pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
     // info!("results2message {:?}", result);
-    let mut symbols = vec![];
+    let mut fvec = vec![];
     for res in &result.declaration_symbols {
         let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
-        symbols.push(ContextFile {
+        fvec.push(ContextFile {
             file_name,
             file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
@@ -29,7 +29,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
     }
     for res in &result.declaration_usage_symbols {
         let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
-        symbols.push(ContextFile {
+        fvec.push(ContextFile {
             file_name,
             file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
@@ -40,7 +40,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
     }
     for res in &result.matched_by_name_symbols {
         let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
-        symbols.push(ContextFile {
+        fvec.push(ContextFile {
             file_name,
             file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
@@ -51,7 +51,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
     }
     ChatMessage {
         role: "context_file".to_string(),
-        content: json!(symbols).to_string(),
+        content: json!(fvec).to_string(),
     }
 }
 
