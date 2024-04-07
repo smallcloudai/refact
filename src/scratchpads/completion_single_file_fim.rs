@@ -201,6 +201,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         )?;
         let mut rel_line_n: i32 = 0;
         while before_line.is_some() || after_line.is_some() {
+            rel_line_n += 1;
             if let Some(before_line) = before_line {
                 let before_line = before_line.to_string();
                 let tokens = self.t.count_tokens(before_line.as_str())?;
@@ -223,7 +224,6 @@ impl ScratchpadAbstract for SingleFileFIM {
             }
             before_line = before_iter.next();
             after_line = after_iter.next();
-            rel_line_n += 1;
         }
 
         let before = before.into_iter().rev().collect::<Vec<_>>().join("");
