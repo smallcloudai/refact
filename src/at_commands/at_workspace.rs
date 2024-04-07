@@ -31,7 +31,7 @@ fn results2message(results: &Vec<Record>) -> ChatMessage {
             line1: r.start_line as usize + 1,
             line2: r.end_line as usize + 1,
             symbol: "".to_string(),
-            usefulness: 100.0 / ((i + 1) as f32),
+            usefulness: r.usefulness,
         });
     }
     ChatMessage {

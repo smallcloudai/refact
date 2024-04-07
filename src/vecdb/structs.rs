@@ -48,6 +48,7 @@ pub struct Record {
     pub model_name: String,
     pub used_counter: u64,
     pub distance: f32,
+    pub usefulness: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]

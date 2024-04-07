@@ -268,14 +268,19 @@ impl VecdbSearch for VecDb {
 
         let mut handler_locked = self.vecdb_handler.lock().await;
         let t1 = std::time::Instant::now();
-        let results = match handler_locked.search(embedding_mb.unwrap(), top_n).await {
+        let mut results = match handler_locked.search(embedding_mb.unwrap(), top_n).await {
             Ok(res) => res,
             Err(err) => { return Err(err.to_string()) }
         };
         info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
-        for rec in results.iter() {
+        let mut dist0 = 0.0;
+        for rec in results.iter_mut() {
+            if dist0 == 0.0 {
+                dist0 = rec.distance.abs();
+            }
             let last_30_chars = crate::nicer_logs::last_n_chars(&rec.file_path.display().to_string(), 30);
-            info!("distance {:.3}, found {}:{}-{}, ", rec.distance, last_30_chars, rec.start_line, rec.end_line);
+            rec.usefulness = 100.0 - 100.0 * ((rec.distance.abs() - dist0) / (dist0 + 0.01)).max(0.0).min(1.0);
+            info!("distance {:.3} -> useful {:.1}, found {}:{}-{}", rec.distance, rec.usefulness, last_30_chars, rec.start_line, rec.end_line);
         }
         let t2 = std::time::Instant::now();
         handler_locked.update_record_statistic(results.clone()).await;

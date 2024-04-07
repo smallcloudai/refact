@@ -205,6 +205,7 @@ impl VecDBHandler {
                     model_name: row.get(8)?,
                     used_counter: row.get(9)?,
                     distance: -1.0,
+                    usefulness: 0.0,
                 })
             })?
                 .filter_map(|row| row.ok())
@@ -632,6 +633,7 @@ impl VecDBHandler {
                     .expect("Missing column 'used_counter'"))
                     .value(idx),
                 distance,
+                usefulness: 0.0,
             })
         }).collect()
     }

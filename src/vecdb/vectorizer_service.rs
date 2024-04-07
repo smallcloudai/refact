@@ -201,6 +201,7 @@ async fn vectorize_thread(
                                 distance: -1.0,
                                 used_counter: 0,
                                 time_last_used: now,
+                                usefulness: 0.0,
                             }
                         );
                     }
