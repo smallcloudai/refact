@@ -177,6 +177,7 @@ impl AstModule {
         top_n_usage_for_each_decl: usize,
     ) -> Result<AstCursorSearchResult, String> {
         let t0 = std::time::Instant::now();
+        info!("ast retrieve_cursor_symbols_by_declarations started for {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
         let (cursor_usages, declarations, usages) = self.ast_index.read().await.retrieve_cursor_symbols_by_declarations(
             doc,
             code,
@@ -184,14 +185,14 @@ impl AstModule {
             top_n_near_cursor,
             top_n_usage_for_each_decl
         ).await;
-        for r in declarations.iter() {
-            let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
-            info!("found {last_30_chars}");
-        }
-        for r in usages.iter() {
-            let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
-            info!("found {last_30_chars}");
-        }
+        // for r in declarations.iter() {
+        //     let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
+        //     info!("found {last_30_chars}");
+        // }
+        // for r in usages.iter() {
+        //     let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
+        //     info!("found {last_30_chars}");
+        // }
         let language = get_language_id_by_filename(&doc.path);
         let matched_by_name_symbols = {
             let ast_index_locked = self.ast_index.read().await;
@@ -213,11 +214,7 @@ impl AstModule {
                 })
                 .collect::<Vec<_>>()
         };
-        info!("ast retrieve_cursor_symbols_by_declarations time {:.3}s, \
-            found {} declarations, {} declaration usages, {} by name",
-            t0.elapsed().as_secs_f32(), declarations.len(), usages.len(), matched_by_name_symbols.len());
-        Ok(
-            AstCursorSearchResult {
+        let result = AstCursorSearchResult {
                 query_text: "".to_string(),
                 file_path: doc.path.clone(),
                 cursor,
@@ -246,8 +243,11 @@ impl AstModule {
                     })
                     .collect::<Vec<SymbolsSearchResultStruct>>(),
                 matched_by_name_symbols: matched_by_name_symbols
-            }
-        )
+            };
+        info!("ast retrieve_cursor_symbols_by_declarations time {:.3}s, \
+            found {} declaration_symbols, {} declaration_usage_symbols, {} matched_by_name_symbols",
+            t0.elapsed().as_secs_f32(), result.declaration_symbols.len(), result.declaration_usage_symbols.len(), result.matched_by_name_symbols.len());
+        Ok(result)
     }
 
     pub async fn file_markup(
@@ -257,7 +257,7 @@ impl AstModule {
         let t0 = std::time::Instant::now();
         match self.ast_index.read().await.file_markup(doc).await {
             Ok(markup) => {
-                info!("ast file_markup time {:.3}s", t0.elapsed().as_secs_f32());
+                info!("ast file_markup {:.3}s for {}", t0.elapsed().as_secs_f32(), crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
                 Ok(markup)
             }
             Err(e) => Err(e.to_string())

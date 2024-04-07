@@ -34,8 +34,13 @@ pub async fn handle_v1_lsp_initialize(
     let post = serde_json::from_slice::<LspLikeInit>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let folders: Vec<PathBuf> = post.project_roots.iter().map(|x| PathBuf::from(x.path())).collect();
-    *global_context.write().await.documents_state.workspace_folders.lock().unwrap() = folders;
+
+    let mut workspace_dirs: Vec<PathBuf> = vec![];
+    for x in post.project_roots {
+        let path = crate::files_in_workspace::canonical_path(&x.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+        workspace_dirs.push(path);
+    }
+    *global_context.write().await.documents_state.workspace_folders.lock().unwrap() = workspace_dirs;
     let files_count = files_in_workspace::on_workspaces_init(global_context).await;
     Ok(Response::builder()
         .status(StatusCode::OK)
@@ -50,10 +55,10 @@ pub async fn handle_v1_lsp_did_change(
     let post = serde_json::from_slice::<LspLikeDidChange>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let path = PathBuf::from(&post.uri.to_file_path().unwrap_or_default());
+    let cpath = crate::files_in_workspace::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     files_in_workspace::on_did_change(
         global_context.clone(),
-        &path,
+        &cpath,
         &post.text,
     ).await;
     Ok(Response::builder()
@@ -69,7 +74,8 @@ pub async fn handle_v1_lsp_add_folder(
     let post = serde_json::from_slice::<LspLikeAddFolder>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    files_in_workspace::add_folder(global_context.clone(), &post.uri.to_file_path().unwrap()).await;
+    let cpath = crate::files_in_workspace::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+    files_in_workspace::add_folder(global_context.clone(), &cpath).await;
     Ok(Response::builder()
        .status(StatusCode::OK)
        .body(Body::from(json!({"success": 1}).to_string()))
@@ -83,7 +89,8 @@ pub async fn handle_v1_lsp_remove_folder(
     let post = serde_json::from_slice::<LspLikeAddFolder>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    files_in_workspace::remove_folder(global_context.clone(), &post.uri.to_file_path().unwrap()).await;
+    let cpath = crate::files_in_workspace::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+    files_in_workspace::remove_folder(global_context.clone(), &cpath).await;
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(json!({"success": 1}).to_string()))

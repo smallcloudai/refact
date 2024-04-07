@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -8,7 +7,6 @@ use crate::ast::ast_index::RequestSymbolType;
 
 use crate::ast::structs::FileReferencesResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-// use crate::at_commands::at_file::AtParamFilePath;
 use crate::call_validation::{ChatMessage, ContextFile};
 
 
@@ -35,17 +33,6 @@ pub struct AtAstFileSymbols {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
 }
 
-// impl AtAstFileSymbols {
-//     pub fn new() -> Self {
-//         AtAstFileSymbols {
-//             name: "@symbols-at".to_string(),
-//             params: vec![
-//                 Arc::new(AMutex::new(AtParamFilePath::new()))
-//             ],
-//         }
-//     }
-// }
-
 #[async_trait]
 impl AtCommand for AtAstFileSymbols {
     fn name(&self) -> &String {
@@ -68,8 +55,9 @@ impl AtCommand for AtAstFileSymbols {
         if !can_execute {
             return Err("incorrect arguments".to_string());
         }
+
         let file_path = match args.get(0) {
-            Some(x) => PathBuf::from(x),
+            Some(x) => crate::files_in_workspace::canonical_path(&x),
             None => return Err("no file path".to_string()),
         };
 

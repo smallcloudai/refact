@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -112,8 +111,10 @@ impl AtCommand for AtAstLookupSymbols {
             None => return Err("line number is not a valid".to_string()),
         };
 
-        let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &PathBuf::from(&file_path)).await?;
-        let mut doc = match context.global_context.read().await.documents_state.document_map.get(&PathBuf::from(&file_path)) {
+        let cpath = crate::files_in_workspace::canonical_path(&file_path);
+        let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?;
+
+        let mut doc = match context.global_context.read().await.documents_state.document_map.get(&cpath) {
             Some(d) => d.read().await.clone(),
             None => return Err("no document found".to_string()),
         };

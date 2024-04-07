@@ -192,7 +192,7 @@ pub async fn handle_v1_ast_file_markup(
     let post = serde_json::from_slice::<FileNameOnlyPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let corrected = crate::at_commands::at_file::correct_to_nearest_filename(
+    let corrected = crate::files_in_workspace::correct_to_nearest_filename(
         global_context.clone(),
         &post.file_name,
         false,
@@ -209,6 +209,7 @@ pub async fn handle_v1_ast_file_markup(
         let ast_module = global_context.read().await.ast_module.clone();
         let x = match &ast_module {
             Some(ast) => {
+                // corrected is already canonical path, so skip it here
                 let mut doc = Document::new(&PathBuf::from(&corrected[0]), None);
                 let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
                 doc.update_text(&text);
@@ -246,7 +247,7 @@ pub async fn handle_v1_ast_file_dump(
     let post = serde_json::from_slice::<FileNameOnlyPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let corrected = crate::at_commands::at_file::correct_to_nearest_filename(
+    let corrected = crate::files_in_workspace::correct_to_nearest_filename(
             global_context.clone(),
             &post.file_name,
             false,
@@ -268,7 +269,7 @@ pub async fn handle_v1_ast_file_dump(
     for linevec in lines_in_files.values() {
         for lineref in linevec {
             result.push_str(format!("{}:{:04} {:<43} {:>7.3} {}\n",
-                crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 30),
+                crate::nicer_logs::last_n_chars(&lineref.fref.cpath.to_string_lossy().to_string(), 30),
                 lineref.line_n,
                 crate::nicer_logs::first_n_chars(&lineref.line_content, 40),
                 lineref.useful,

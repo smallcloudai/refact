@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::time::Instant;
@@ -30,7 +29,7 @@ use crate::telemetry::snippets_collection;
 use crate::telemetry::telemetry_structs;
 
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 
 pub struct SingleFileFIM {
@@ -155,6 +154,8 @@ impl ScratchpadAbstract for SingleFileFIM {
             return Err(msg);
         }
 
+        let cpath = crate::files_in_workspace::canonical_path(&self.post.inputs.cursor.file);
+
         let supports_stop = true; // some hf models do not support stop, but it's a thing of the past?
         if supports_stop {
             let mut stop_list = vec![self.t.eot.clone(), "\n\n".to_string()];
@@ -171,7 +172,6 @@ impl ScratchpadAbstract for SingleFileFIM {
         let text = Rope::from_str(&*source);
 
         let pos = &self.post.inputs.cursor;
-        let file_path = PathBuf::from(self.post.inputs.cursor.file.clone());
         let mut before_iter = text.lines_at(pos.line as usize).reversed();
         let mut after_iter = text.lines_at(pos.line as usize + 1);
         let mut tokens_used = 0;
@@ -259,9 +259,9 @@ impl ScratchpadAbstract for SingleFileFIM {
 
         if !self.t.context_format.is_empty() && self.post.use_ast && rag_tokens_n > 0 && self.ast_module.is_some() {
             let t0 = Instant::now();
-            let language_id = get_language_id_by_filename(&PathBuf::from(&self.post.inputs.cursor.file)).unwrap_or(LanguageId::Unknown);
+            let language_id = get_language_id_by_filename(&cpath).unwrap_or(LanguageId::Unknown);
             let (mut ast_messages, was_looking_for) = {
-                let doc = Document::new(&file_path, None);
+                let doc = Document::new(&cpath, None);
                 match self.ast_module.clone().unwrap().write().await.retrieve_cursor_symbols_by_declarations(
                     &doc, &source, Point { row: pos.line as usize, column: pos.character as usize },
                     5, 5
@@ -290,7 +290,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             };
 
             let fim_ban = ContextFile {
-                file_name: self.post.inputs.cursor.file.clone(),
+                file_name: cpath.to_string_lossy().to_string(),
                 file_content: "".to_string(),
                 line1: (fim_line1 + 1) as usize,
                 line2: (fim_line2 + 1) as usize,

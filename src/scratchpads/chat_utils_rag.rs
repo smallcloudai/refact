@@ -21,13 +21,13 @@ use crate::files_in_workspace::{Document, read_file_from_disk};
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 
 #[derive(Debug)]
 pub struct File {
     pub markup: FileASTMarkup,
-    pub file_name: String,   // delete when we remove Url
+    pub cpath: PathBuf,
 }
 
 #[derive(Debug)]
@@ -71,17 +71,18 @@ pub async fn postprocess_rag_stage1(
     origmsgs: Vec<ContextFile>,
     files_set: HashSet<String>,
     close_small_gaps: bool,
-) -> (HashMap<String, Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
+) -> (HashMap<PathBuf, Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
     // 2. Load files, with ast or not
     let mut files: HashMap<String, Arc<File>> = HashMap::new();
     let ast_module = global_context.read().await.ast_module.clone();
     for file_name in files_set {
-        let doc = Document::new(&PathBuf::from(file_name.clone()), None);
+        let path = crate::files_in_workspace::canonical_path(&file_name.clone());
+        let doc = Document::new(&path, None);
         let mut f: Option<Arc<File>> = None;
         if let Some(astmod) = &ast_module {
             match astmod.read().await.file_markup(&doc).await {
                 Ok(markup) => {
-                    f = Some(Arc::new(File { markup, file_name: file_name.clone() }));
+                    f = Some(Arc::new(File { markup, cpath: path }));
                 },
                 Err(err) => {
                     warn!("postprocess_rag_stage1 query file {:?} markup problem: {}", file_name, err);
@@ -95,7 +96,7 @@ pub async fn postprocess_rag_stage1(
                     file_content: read_file_from_disk(&doc.path).await.unwrap_or_default().to_string(),
                     symbols_sorted_by_path_len: Vec::new(),
                 },
-                file_name: file_name.clone(),
+                cpath: doc.path.clone(),
             }));
         }
         if f.is_some() {
@@ -105,7 +106,7 @@ pub async fn postprocess_rag_stage1(
 
     // 3. Generate line refs, fill background scopes found in a file (not search results yet)
     let mut lines_by_useful: Vec<Arc<FileLine>> = vec![];
-    let mut lines_in_files: HashMap<String, Vec<Arc<FileLine>>> = HashMap::new();
+    let mut lines_in_files: HashMap<PathBuf, Vec<Arc<FileLine>>> = HashMap::new();
     for fref in files.values() {
         for (line_n, line) in fref.markup.file_content.lines().enumerate() {
             let a = Arc::new(FileLine {
@@ -117,7 +118,7 @@ pub async fn postprocess_rag_stage1(
                 take: false,
             });
             lines_by_useful.push(a.clone());
-            let lines_in_files_mut = lines_in_files.entry(fref.file_name.clone()).or_insert(vec![]);
+            let lines_in_files_mut = lines_in_files.entry(fref.cpath.clone()).or_insert(vec![]);
             lines_in_files_mut.push(a.clone());
         }
     }
@@ -159,7 +160,7 @@ pub async fn postprocess_rag_stage1(
             continue;
         }
         let fref = linevec[0].fref.clone();
-        info!("fref {:?} has {} bytes, {} symbols", fref.file_name, fref.markup.file_content.len(), fref.markup.symbols_sorted_by_path_len.len());
+        info!("fref {:?} has {} bytes, {} symbols", fref.cpath, fref.markup.file_content.len(), fref.markup.symbols_sorted_by_path_len.len());
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
             // info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
             let useful = 10.0;  // depends on symbol type?
@@ -170,10 +171,17 @@ pub async fn postprocess_rag_stage1(
 
     // 4. Fill in usefulness from search results
     for omsg in origmsgs.iter() {
-        let linevec: &mut Vec<Arc<FileLine>> = match lines_in_files.get_mut(&omsg.file_name) {
+        // Do what we can to match omsg.file_name to something real
+        let nearest = crate::files_in_workspace::correct_to_nearest_filename(global_context.clone(), &omsg.file_name, false, 1).await;
+        let cpath = if nearest.is_empty() {
+            crate::files_in_workspace::canonical_path(&omsg.file_name)
+        } else {
+            crate::files_in_workspace::canonical_path(&nearest[0])
+        };
+        let linevec: &mut Vec<Arc<FileLine>> = match lines_in_files.get_mut(&cpath) {
             Some(x) => x,
             None => {
-                warn!("postprocess_rag_stage1: file not found {}", omsg.file_name);
+                warn!("postprocess_rag_stage1: file not found {:?} or transformed to canonical path {:?}", omsg.file_name, cpath);
                 continue;
             }
         };
@@ -240,7 +248,9 @@ pub async fn postprocess_rag_stage1(
             continue;
         }
         let fref = linevec[0].fref.clone();
-        info!("degrading body of symbols in {}", fref.file_name);
+        if DEBUG {
+            info!("degrading body of symbols in {:?}", fref.cpath);
+        }
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
             if DEBUG {
                 info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
@@ -322,6 +332,9 @@ pub async fn postprocess_at_results2(
     let mut tokens_count: usize = 0;
     let mut lines_take_cnt: usize = 0;
     for lineref in lines_by_useful.iter_mut() {
+        if lineref.useful < 0.0 {
+            continue;
+        }
         let ntokens = count_tokens(&tokenizer.read().unwrap(), &lineref.line_content);
         if tokens_count + ntokens > tokens_limit {
             break;
@@ -339,7 +352,7 @@ pub async fn postprocess_at_results2(
             for lineref in linevec.iter() {
                 info!("{} {}:{:04} {:>7.3} {}",
                 if lineref.take { "take" } else { "dont" },
-                crate::nicer_logs::last_n_chars(&lineref.fref.file_name, 30),
+                crate::nicer_logs::last_n_chars(&lineref.fref.cpath.to_string_lossy().to_string(), 30),
                 lineref.line_n,
                 lineref.useful,
                 crate::nicer_logs::first_n_chars(&lineref.line_content, 20)
@@ -355,7 +368,7 @@ pub async fn postprocess_at_results2(
             continue;
         }
         let fref = linevec[0].fref.clone();
-        let fname = fref.file_name.clone();
+        let cpath = fref.cpath.clone();
         let mut out = String::new();
         let mut first_line: usize = 0;
         let mut last_line: usize = 0;
@@ -377,10 +390,10 @@ pub async fn postprocess_at_results2(
             out.push_str("...\n");
         }
         if DEBUG {
-            info!("file {:?}\n{}", fname, out);
+            info!("file {:?}\n{}", cpath, out);
         }
         merged.push(ContextFile {
-            file_name: fname,
+            file_name: cpath.to_string_lossy().to_string(),
             file_content: out,
             line1: first_line,
             line2: last_line,

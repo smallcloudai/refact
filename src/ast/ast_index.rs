@@ -20,7 +20,7 @@ use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::usages_declarations_merger::{FilePathIterator, find_decl_by_name, find_decl_by_caller_guid};
-use crate::files_in_workspace::{Document, read_file_from_disk, read_file_from_disk_block};
+use crate::files_in_workspace::{Document, read_file_from_disk};
 
 
 #[derive(Debug)]
@@ -842,17 +842,21 @@ impl AstIndex {
         doc: &Document,
         code: &str,
     ) -> Vec<AstSymbolInstanceArc> {
+        // This function runs to find symbols near cursor
         let mut doc = doc.clone();
         doc.update_text(&code.to_string());
         let symbols = AstIndex::parse(&doc).unwrap_or_default();
         self.resolve_types(&symbols).await;
         self.merge_usages_to_declarations(&symbols).await;
-        for s in symbols.iter() {
-            let x = s.read().unwrap();
-            info!("symbol {:?} {:?}", x.name(), x.symbol_type());
-        }
+        // for s in symbols.iter() {
+        //     let x = s.read().unwrap();
+        //     info!("symbol {:?} {:?}", x.name(), x.symbol_type());
+        // }
         symbols
     }
 }
 
+pub fn read_file_from_disk_block(path: &PathBuf) -> Result<String, String> {
+    std::fs::read_to_string(path).map_err(|e| format!("Failed to read file from disk: {}", e))
+}
 

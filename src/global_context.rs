@@ -219,8 +219,12 @@ pub async fn create_global_context(
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
     let http_client = http_client_builder.build().unwrap();
-    
-    let workspace_dirs = if cmdline.workspace_folder.is_empty() { vec![] } else { vec![PathBuf::from(cmdline.workspace_folder.clone())] };
+
+    let mut workspace_dirs: Vec<PathBuf> = vec![];
+    if !cmdline.workspace_folder.is_empty() {
+        let path = crate::files_in_workspace::canonical_path(&cmdline.workspace_folder);
+        workspace_dirs = vec![path];
+    }
     let cx = GlobalContext {
         cmdline: cmdline.clone(),
         http_client,
