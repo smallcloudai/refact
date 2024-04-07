@@ -21,7 +21,7 @@ use crate::files_in_workspace::{Document, read_file_from_disk};
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 
 #[derive(Debug)]
@@ -373,11 +373,13 @@ pub async fn postprocess_at_results2(
         let mut first_line: usize = 0;
         let mut last_line: usize = 0;
         let mut prev_line: usize = 0;
+        let mut anything = false;
         for (i, lineref) in linevec.iter_mut().enumerate() {
             last_line = i;
             if !lineref.take {
                 continue;
             }
+            anything = true;
             if first_line == 0 { first_line = i; }
             if i > prev_line + 1 {
                 out.push_str(format!("...{} lines\n", i - prev_line - 1).as_str());
@@ -391,6 +393,9 @@ pub async fn postprocess_at_results2(
         }
         if DEBUG {
             info!("file {:?}\n{}", cpath, out);
+        }
+        if !anything {
+            continue;
         }
         merged.push(ContextFile {
             file_name: cpath.to_string_lossy().to_string(),

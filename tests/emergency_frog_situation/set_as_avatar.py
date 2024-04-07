@@ -1,3 +1,7 @@
+# Picking up context, goal in this file:
+# - goto parent class, two times
+# - dump parent class
+
 import frog
 
 X,Y = 50, 50
@@ -11,8 +15,14 @@ class Toad(frog.Frog):
         self.name = "Bob"
 
 
+class EuropeanCommonToad(frog.Frog):
+    def __init__(self, x, y, vx, vy):
+        super().__init__(x, y, vx, vy)
+        self.name = "EU Toad"
+
+
 if __name__ == "__main__":
-    toad = Toad(100, 100, 200, -200)
+    toad = EuropeanCommonToad(100, 100, 200, -200)
     toad.jump(W, H)
     print(toad.name, toad.x, toad.y)
 

@@ -56,4 +56,5 @@ def test_completion_with_rag(fpath):
 
 if __name__ == "__main__":
     for x in TEST_THESE_FILES:
+        print(x)
         test_completion_with_rag(x)

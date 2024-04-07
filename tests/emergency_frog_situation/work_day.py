@@ -1,5 +1,5 @@
 # Picking up context, goal in this file:
-# - without any other information, find method usage in another file
+# - without any other information, find method usage in another file by text similarity
 
 import numpy as np
 import frog
