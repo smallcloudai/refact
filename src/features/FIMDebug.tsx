@@ -8,7 +8,7 @@ import { useConfig } from "../contexts/config-context";
 
 export const FIMDebug: React.FC = () => {
   const { host, tabbed } = useConfig();
-  const LeftRightPadding =
+  const LeftPadding =
     host === "web"
       ? { initial: "8", xl: "9" }
       : {
@@ -20,21 +20,21 @@ export const FIMDebug: React.FC = () => {
           xl: "9",
         };
 
-  const TopBottomPadding = { initial: "5" };
+  // const TopBottomPadding = { initial: "5" };
   const { state, clearErrorMessage, backFromFim } = useEventBysForFIMDebug();
 
   return (
     <Flex
       direction="column"
       flexGrow="1"
-      px={LeftRightPadding}
-      py={TopBottomPadding}
+      pl={LeftPadding}
+      // py={TopBottomPadding}
       style={{
         height: "100dvh",
       }}
     >
       {host === "vscode" && !tabbed && (
-        <Flex gap="2" pb="3" wrap="wrap">
+        <Flex gap="2" p="2" wrap="wrap">
           <Button size="1" variant="surface" onClick={backFromFim}>
             <ArrowLeftIcon width="16" height="16" />
             Back

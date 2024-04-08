@@ -7,3 +7,11 @@
   height: auto;
   width: auto;
 }
+
+.full_height {
+  height: 100dvh;
+}
+
+.full_height :global(.rt-ScrollAreaViewport > *) {
+  height: 100%;
+}

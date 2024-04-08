@@ -1,5 +1,5 @@
 import React from "react";
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, Text, Box } from "@radix-ui/themes";
 import { ContextQueries } from "../../events";
 import { TruncateLeft } from "../Text";
 import { Collapsible } from "../Collapsible";
@@ -10,10 +10,12 @@ const SymbolText: React.FC<{
   title?: string;
 }> = ({ children, title }) => {
   return (
-    <Text title={title} size="2" as="div" style={{ display: "flex" }}>
-      🔎
-      <TruncateLeft className={styles.symbol}>{children}</TruncateLeft>
-    </Text>
+    <Box p="1">
+      <Text title={title} size="2" as="div" style={{ display: "flex" }}>
+        🔎
+        <TruncateLeft className={styles.symbol}>{children}</TruncateLeft>
+      </Text>
+    </Box>
   );
 };
 
@@ -29,8 +31,16 @@ export const SymbolList: React.FC<{
 
   return (
     <Flex direction="column" gap="4">
+      {cursorSymbols.length > 0 && (
+        <Collapsible title="Cursor Symbols">
+          {cursorSymbols.map(({ symbol }, i) => {
+            const key = `cursor-symbols-${i}`;
+            return <SymbolText key={key}>{symbol}</SymbolText>;
+          })}
+        </Collapsible>
+      )}
       {declarations.length > 0 && (
-        <Collapsible defaultOpen={true} title="Declarations">
+        <Collapsible title="Declarations">
           {declarations.map(({ symbol }, i) => {
             const key = `declaration-${i}`;
             return <SymbolText key={key}>{symbol}</SymbolText>;
@@ -39,7 +49,7 @@ export const SymbolList: React.FC<{
       )}
 
       {matchedByNameSymbols.length > 0 && (
-        <Collapsible title="Matched by name">
+        <Collapsible title="Matches by name">
           {matchedByNameSymbols.map(({ symbol }, i) => {
             const key = `matched-by-name-${i}`;
             return <SymbolText key={key}>{symbol}</SymbolText>;
@@ -51,15 +61,6 @@ export const SymbolList: React.FC<{
         <Collapsible title="Usages">
           {usages.map(({ symbol }, i) => {
             const key = `usages-${i}`;
-            return <SymbolText key={key}>{symbol}</SymbolText>;
-          })}
-        </Collapsible>
-      )}
-
-      {cursorSymbols.length > 0 && (
-        <Collapsible title="Cursor Symbols">
-          {cursorSymbols.map(({ symbol }, i) => {
-            const key = `cursor-symbols-${i}`;
             return <SymbolText key={key}>{symbol}</SymbolText>;
           })}
         </Collapsible>
