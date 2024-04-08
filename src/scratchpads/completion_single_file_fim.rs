@@ -310,6 +310,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                     line1: (fim_line1 + 1) as usize,
                     line2: (fim_line2 + 1) as usize,
                     symbol: "".to_string(),
+                    gradient_type: -1,
                     usefulness: -1.0,
                 };
                 ast_messages.push(ChatMessage { role: "context_file".to_string(), content: serde_json::json!([fim_ban]).to_string() });

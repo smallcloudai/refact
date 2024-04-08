@@ -19,6 +19,7 @@ fn results2message(result: &FileReferencesResult) -> ChatMessage {
             line1: x.full_range.start_point.row + 1,
             line2: x.full_range.end_point.row + 1,
             symbol: "".to_string(),
+            gradient_type: -1,
             usefulness: 100.0
         }
     }).collect();

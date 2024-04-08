@@ -6,7 +6,6 @@ use tracing::info;
 use std::sync::Arc;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::utils::split_file_into_chunks_from_line_inside;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ChatMessage, ContextFile};
 
@@ -29,7 +28,7 @@ impl AtFile {
 
 #[derive(Debug, PartialEq)]
 pub enum RangeKind {
-    GradToCursorTwosided,
+    GradToCursorTwoSided,
     GradToCursorPrefix,
     GradToCursorSuffix,
     Range,
@@ -44,7 +43,7 @@ pub struct ColonLinesRange {
 
 pub fn range_print(range: &ColonLinesRange) -> String {
     match range.kind {
-        RangeKind::GradToCursorTwosided => format!("{}", range.line1),
+        RangeKind::GradToCursorTwoSided => format!("{}", range.line1),
         RangeKind::GradToCursorPrefix => format!("-{}", range.line2),
         RangeKind::GradToCursorSuffix => format!("{}-", range.line1),
         RangeKind::Range => format!("{}-{}", range.line1, range.line2),
@@ -77,88 +76,23 @@ pub fn colon_lines_range_from_arg(value: &mut String) -> Option<ColonLinesRange>
         *value = re_one_number.replace(value, "").to_string();
         if let Some(line1) = captures.get(1) {
             let line = line1.as_str().parse::<usize>().unwrap_or(0);
-            return Some(ColonLinesRange { kind: RangeKind::GradToCursorTwosided, line1: line, line2: 0 });
+            return Some(ColonLinesRange { kind: RangeKind::GradToCursorTwoSided, line1: line, line2: 0 });
         }
     }
     None
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_file_range() {
-        {
-            let mut value = String::from(":10-20");
-            let result = colon_lines_range_from_arg(&mut value);
-            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::Range, line1: 10, line2: 20 }));
+fn gradient_type_from_range_kind(range: &Option<ColonLinesRange>) -> i32 {
+    if let Some(range) = range {
+        match range.kind { 
+            RangeKind::GradToCursorTwoSided => 1,
+            RangeKind::GradToCursorPrefix => 2,
+            RangeKind::GradToCursorSuffix => 3,
+            RangeKind::Range => 4,
         }
-        {
-            let mut value = String::from(":5-");
-            let result = colon_lines_range_from_arg(&mut value);
-            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorSuffix, line1: 5, line2: 0 }));
-        }
-        {
-            let mut value = String::from(":-15");
-            let result = colon_lines_range_from_arg(&mut value);
-            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorPrefix, line1: 0, line2: 15 }));
-        }
-        {
-            let mut value = String::from(":25");
-            let result = colon_lines_range_from_arg(&mut value);
-            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorTwosided, line1: 25, line2: 0 }));
-        }
-        {
-            let mut value = String::from("invalid");
-            let result = colon_lines_range_from_arg(&mut value);
-            assert_eq!(result, None);
-
-        }
+    } else {
+        0
     }
-}
-
-fn chunks_into_context_file(
-    result_above: Vec<((usize, usize), String)>,
-    results_below: Vec<((usize, usize), String)>,
-    file_name: &String,
-) -> Vec<ContextFile> {
-    let max_val = result_above.len().max(results_below.len());
-    let mut usefulness_vec = vec![];
-    for idx in 0..max_val + 1 {
-        usefulness_vec.push(100.0 * (idx as f32 / max_val as f32));
-    }
-    let reversed_vec: Vec<f32> = usefulness_vec.iter().cloned().rev().collect();
-    let usefulness_above: Vec<f32> = reversed_vec[..result_above.len()].to_vec().iter().cloned().rev().collect();
-
-    let mut vector_of_context_file: Vec<ContextFile> = vec![];
-    for (idx, ((line1, line2), text_above)) in result_above.iter().enumerate() {
-        vector_of_context_file.push({
-            ContextFile {
-                file_name: file_name.clone(),
-                file_content: text_above.clone(),
-                line1: *line1,
-                line2: *line2,
-                symbol: "".to_string(),
-                usefulness: *usefulness_above.get(idx).unwrap_or(&100.),
-            }
-        })
-    }
-
-    let usefulness_below = reversed_vec[1..].to_vec();
-    for (idx, ((line1, line2), text_below)) in results_below.iter().enumerate() {
-        vector_of_context_file.push({
-            ContextFile {
-                file_name: file_name.clone(),
-                file_content: text_below.clone(),
-                line1: *line1,
-                line2: *line2,
-                symbol: "".to_string(),
-                usefulness: *usefulness_below.get(idx).unwrap_or(&0.0),
-            }
-        })
-    }
-    vector_of_context_file
 }
 
 fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
@@ -241,15 +175,6 @@ impl AtCommand for AtFile {
 
     async fn can_execute(&self, args: &Vec<String>, _context: &AtCommandsContext) -> bool {
         args.len() == 1
-        // let param = self.params.get(0).unwrap();
-        // if let Some(arg) = args.get(0) {
-        //     let mut arg_clone = arg.clone();
-        //     colon_lines_range_from_arg(&mut arg_clone);
-        //     if param.lock().await.is_value_valid(&arg_clone, context).await { // FIXME: is_value_valid is @file-specific, move here
-        //         return true;
-        //     }
-        // }
-        // false
     }
 
     async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String> {
@@ -265,87 +190,71 @@ impl AtCommand for AtFile {
         }
         let mut file_path = candidates[0].clone();
 
-        let mut split_into_chunks = false;
-        let mut cursor = 0;
         let mut line1 = 0;
         let mut line2 = 0;
-
-        let colon = match colon_lines_range_from_arg(&mut file_path) {
-            Some(x) => {
-                info!("@file range: {:?}", x);
-                if x.kind == RangeKind::GradToCursorTwosided {
-                    split_into_chunks = true;
-                    cursor = x.line1;
-                }
-                if x.kind == RangeKind::GradToCursorPrefix {
-                    split_into_chunks = true;
-                    cursor = x.line2;
-                }
-                if x.kind == RangeKind::GradToCursorSuffix {
-                    split_into_chunks = true;
-                    cursor = x.line1;
-                }
-                if x.kind == RangeKind::Range {
-                    line1 = x.line1;
-                    line2 = x.line2;
-                }
-                x
-            },
-            None => {
-                split_into_chunks = true;
-                cursor = 0;
-                ColonLinesRange { kind: RangeKind::GradToCursorSuffix, line1: 0, line2: 0 }  // not used if split_into_chunks is true
-            }
-        };
-        info!("@file {:?} execute range {:?}", file_path, colon);
-
+        
+        let colon_kind_mb = colon_lines_range_from_arg(&mut file_path);
+        
+        let gradient_type = gradient_type_from_range_kind(&colon_kind_mb);
+        
         let cpath = crate::files_in_workspace::canonical_path(&file_path);
-        let mut file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?;
-        let mut file_lines: Vec<String> = file_text.lines().map(String::from).collect();
-        let lines_cnt = file_lines.len();
+        let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?;
 
-        if split_into_chunks {
-            cursor = cursor.max(0).min(lines_cnt);
-            let (mut res_above, mut res_below) = split_file_into_chunks_from_line_inside(cursor, &mut file_lines, 20);
-            info!("split_into_chunks cursor: {} <= {}", cursor, lines_cnt);
-            if colon.kind == RangeKind::GradToCursorPrefix {
-                res_below.clear();
-            }
-            if colon.kind == RangeKind::GradToCursorSuffix {
-                res_above.clear();
-            }
-            for ((line1, line2), _text) in res_above.iter() {
-                info!("above: {}-{}", line1, line2);
-            }
-            for ((line1, line2), _text) in res_below.iter() {
-                info!("below: {}-{}", line1, line2);
-            }
-            return Ok(ChatMessage {
-                role: "context_file".to_string(),
-                content: json!(chunks_into_context_file(res_above, res_below, &file_path)).to_string(),
-            })
+        if let Some(colon) = &colon_kind_mb {
+            line1 = colon.line1;
+            line2 = colon.line2;
+        }
+        if line1 == 0 && line2 == 0 {
+            line2 = file_text.lines().count()
         }
 
-        if line1 == 0 || line2 == 0 {
-            return Err(format!("{} incorrect range: {}-{}", file_path, colon.line1, colon.line2));
-        }
-        line1 = (line1 - 1).max(0).min(lines_cnt);
-        line2 = line2.max(0).min(lines_cnt);
-        let lines: Vec<&str> = file_text.lines().collect();
-        file_text = lines[line1 .. line2].join("\n");
-
-        let mut vector_of_context_file: Vec<ContextFile> = vec![];
-        vector_of_context_file.push(ContextFile {
+        let context_file = ContextFile {
             file_name: file_path.clone(),
             file_content: file_text,
-            line1: line1 + 1,
-            line2: line2,
+            line1,
+            line2,
             symbol: "".to_string(),
+            gradient_type,
             usefulness: 100.0,
-        });
+        };
         Ok(ChatMessage {
             role: "context_file".to_string(),
-            content: json!(vector_of_context_file).to_string(),
+            content: json!(vec![context_file]).to_string(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_file_range() {
+        {
+            let mut value = String::from(":10-20");
+            let result = colon_lines_range_from_arg(&mut value);
+            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::Range, line1: 10, line2: 20 }));
+        }
+        {
+            let mut value = String::from(":5-");
+            let result = colon_lines_range_from_arg(&mut value);
+            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorSuffix, line1: 5, line2: 0 }));
+        }
+        {
+            let mut value = String::from(":-15");
+            let result = colon_lines_range_from_arg(&mut value);
+            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorPrefix, line1: 0, line2: 15 }));
+        }
+        {
+            let mut value = String::from(":25");
+            let result = colon_lines_range_from_arg(&mut value);
+            assert_eq!(result, Some(ColonLinesRange { kind: RangeKind::GradToCursorTwoSided, line1: 25, line2: 0 }));
+        }
+        {
+            let mut value = String::from("invalid");
+            let result = colon_lines_range_from_arg(&mut value);
+            assert_eq!(result, None);
+
+        }
     }
 }

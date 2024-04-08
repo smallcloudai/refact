@@ -66,6 +66,58 @@ pub fn context_to_fim_debug_page(t0: &Instant, postprocessed_messages: &[Context
     })
 }
 
+fn color_with_gradient_type(omsg: &ContextFile, linevec: &mut Vec<Arc<FileLine>>) {
+    fn find_line_parameters(x1: f32, y1: f32, x2: f32, y2: f32) -> (f32, f32) {
+        if y2 - y1 == 0. || x2 - x1 == 0. {
+            return (0., 0.);
+        }
+        let m = (y2 - y1) / (x2 - x1);
+        let c = y1 - m * x1;
+        (m, c)
+    }
+
+    if omsg.gradient_type < 0 || omsg.gradient_type > 4 {
+        return;
+    }
+
+    let t_fade_away_lines = 50;
+    let (m11, c11) = find_line_parameters(omsg.line1 as f32, omsg.usefulness, omsg.line1 as f32 - t_fade_away_lines as f32, 0. );
+    let (m12, c12) = find_line_parameters(omsg.line1 as f32, omsg.usefulness, omsg.line1 as f32 + t_fade_away_lines as f32, 0. );
+    let (m21, c21) = find_line_parameters(omsg.line2 as f32, omsg.usefulness, omsg.line2 as f32 - t_fade_away_lines as f32, 0. );
+    let (m22, c22) = find_line_parameters(omsg.line2 as f32, omsg.usefulness, omsg.line2 as f32 + t_fade_away_lines as f32, 0. );
+    
+    for (line_n, line) in linevec.iter().enumerate() {
+        let line_n = line_n + 1;
+        let usefulness = match omsg.gradient_type {
+            0 => omsg.usefulness - (line_n as f32) * 0.001,
+            1 => if line_n < omsg.line1 {(line_n as f32 * m11 + c11).max(0.)} else {(line_n as f32 * m12 + c12).max(0.)},
+            2 => if line_n <= omsg.line2 {(line_n as f32 * m21 + c21).max(0.) } else {-1.},
+            3 => if line_n < omsg.line1 {-1.} else {(line_n as f32 * m12 + c12).max(0.)},
+            4 => {
+                if line_n < omsg.line1 {
+                    line_n as f32 * m11 + c11
+                } else if line_n >= omsg.line1 && line_n <= omsg.line2 {
+                    100.
+                } else {
+                    line_n as f32 * m22 + c22
+                }
+            }.max(0.),
+            _ => 0.0,
+        };
+        set_useful_for_line(line, usefulness, &format!("gradient_type: {:?}", omsg.gradient_type));
+    }
+}
+
+fn set_useful_for_line(line: &Arc<FileLine>, useful: f32, color: &String) {
+    let lineref_mut: *mut FileLine = Arc::as_ptr(line) as *mut FileLine;
+    unsafe {
+        if (line.useful < useful || line.color.is_empty()) || useful < 0. {
+            (*lineref_mut).useful = useful;
+            (*lineref_mut).color = color.clone();
+        }
+    }
+}
+
 pub async fn postprocess_rag_stage1(
     global_context: Arc<ARwLock<GlobalContext>>,
     origmsgs: Vec<ContextFile>,
@@ -111,7 +163,7 @@ pub async fn postprocess_rag_stage1(
         for (line_n, line) in fref.markup.file_content.lines().enumerate() {
             let a = Arc::new(FileLine {
                 fref: fref.clone(),
-                line_n: line_n,
+                line_n,
                 line_content: line.to_string(),
                 useful: 0.0,
                 color: "".to_string(),
@@ -188,6 +240,8 @@ pub async fn postprocess_rag_stage1(
         if linevec.len() == 0 {
             continue;
         }
+
+        color_with_gradient_type(omsg, linevec);
         let fref = linevec[0].fref.clone();
         if omsg.usefulness < 0.0 {
             colorize_minus_one(linevec, omsg.line1-1, omsg.line2);
@@ -403,6 +457,7 @@ pub async fn postprocess_at_results2(
             line1: first_line,
             line2: last_line,
             symbol: "".to_string(),
+            gradient_type: -1,
             usefulness: 0.0,
         });
     }
