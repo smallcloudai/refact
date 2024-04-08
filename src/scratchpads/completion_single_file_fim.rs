@@ -77,7 +77,7 @@ impl SingleFileFIM {
     }
 }
 
-fn add_context_to_prompt(context_format: &String, prompt: &String, postprocessed_messages: &Vec<ContextFile>, language_id: &LanguageId) -> String {
+fn add_context_to_prompt(context_format: &String, prompt: &String, fim_prefix: &String, postprocessed_messages: &Vec<ContextFile>, language_id: &LanguageId) -> String {
     let mut context_files = vec![];
     if context_format == "starcoder" {
         for m in postprocessed_messages {
@@ -94,22 +94,28 @@ fn add_context_to_prompt(context_format: &String, prompt: &String, postprocessed
             context_files.insert(0, "<repo_name>default_repo".to_string());
             context_files.push("<file_sep>".to_string())
         }
+        format!(
+            "{}{}",
+            context_files.join(""),
+            prompt,
+        )
     } else if context_format == "default" {
         for m in postprocessed_messages {
             context_files.push(wrap_comments(&format!(
-                "{}\n{}",
+                "{}\n{}\n",
                 m.file_name,
                 m.file_content
             ), language_id));
         }
+        if let Some(fim_prefix_idx) = prompt.find(fim_prefix) {
+            let split_at = fim_prefix_idx + fim_prefix.len();
+            return prompt.split_at(split_at).0.to_string() + &context_files.join("\n") + prompt.split_at(split_at).1;
+        }
+        return prompt.clone();
     } else {
         warn!("context_format \"{}\" not recognized", context_format);
+        return prompt.clone();
     }
-    format!(
-        "{}{}",
-        context_files.join(""),
-        prompt,
-    )
 }
 
 #[async_trait]
@@ -308,7 +314,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                 rag_tokens_n,
             ).await;
 
-            prompt = add_context_to_prompt(&self.t.context_format, &prompt, &postprocessed_messages, &language_id);
+            prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);
             self.context_used = context_to_fim_debug_page(&t0, &postprocessed_messages, &was_looking_for);
         } else {
             info!("will not use ast {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_module.is_some() as i32);
