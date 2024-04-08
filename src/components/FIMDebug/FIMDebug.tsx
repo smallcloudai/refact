@@ -15,7 +15,7 @@ export type FimDebugProps = { data: FimDebugData };
 
 export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
   return (
-    <ScrollArea scrollbars="both">
+    <ScrollArea scrollbars="vertical">
       <Flex direction="column">
         <Heading size="4">FIM debug</Heading>
         <Section size="1" py="4">
