@@ -424,7 +424,7 @@ impl AstIndex {
             .unique_by(|s| s.read().expect("the data might be broken").guid().to_string())
             .sorted_by_key(|a| a.read().expect("the data might be broken").distance_to_cursor(&cursor))
             .collect::<Vec<_>>();
-        let cursor_symbols = unfiltered_cursor_symbols
+        let cursor_symbols_with_types = unfiltered_cursor_symbols
             .iter()
             .cloned()
             .filter_map(|s| {
@@ -438,12 +438,32 @@ impl AstIndex {
                         .flatten()
                 }
             })
+            .unique_by(|s| s.read().expect("the data might be broken").guid().to_string())
             .cloned()
             .collect::<Vec<_>>();
-        let declarations = cursor_symbols
+        let declarations_matched_by_name = unfiltered_cursor_symbols
+            .iter()
+            .cloned()
+            .unique_by(|s| s.read().expect("the data might be broken").name().to_string())
+            .map(|s| {
+                let s_ref = s.read().expect("the data might be broken");
+                let use_fuzzy_search = s_ref.full_range().start_point.row == cursor.row;
+                self.search_by_name(&s_ref.name(), RequestSymbolType::Declaration, Some(doc.clone()), language.clone(), use_fuzzy_search)
+                    .unwrap_or_else(|_| vec![])
+            })
+            .flatten()
+            .filter(|s| {
+                s.symbol_declaration.symbol_type == SymbolType::StructDeclaration
+                    || s.symbol_declaration.symbol_type == SymbolType::TypeAlias
+                    || s.symbol_declaration.symbol_type == SymbolType::FunctionDeclaration
+            })
+            .take(top_n_near_cursor)
+            .map(|s| s.symbol_declaration)
+            .collect::<Vec<_>>();
+
+        let mut declarations = cursor_symbols_with_types
             .iter()
             .filter(|s| !s.read().expect("the data might be broken").types().is_empty())
-            .take(top_n_near_cursor)
             .map(|s| {
                 s.read().expect("the data might be broken")
                     .types()
@@ -460,7 +480,10 @@ impl AstIndex {
             })
             .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
             .unique_by(|s| s.guid.clone())
+            .take(top_n_near_cursor)
             .collect::<Vec<_>>();
+        declarations.extend(declarations_matched_by_name);
+
         let usages = declarations
             .iter()
             .map(|s| {
@@ -486,6 +509,7 @@ impl AstIndex {
         (
             unfiltered_cursor_symbols
                 .iter()
+                .unique_by(|s| s.read().expect("the data might be broken").name().to_string())
                 .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
                 .collect(),
             declarations

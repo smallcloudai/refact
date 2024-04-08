@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use itertools::Itertools;
 
 use serde::Serialize;
 use tokio::sync::Mutex as AMutex;
@@ -11,9 +10,7 @@ use tree_sitter::Point;
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstIndexService};
-use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
-use crate::ast::treesitter::structs::SymbolType;
 use crate::files_in_jsonl::docs_in_jsonl;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
@@ -193,27 +190,6 @@ impl AstModule {
         //     let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
         //     info!("found {last_30_chars}");
         // }
-        let language = get_language_id_by_filename(&doc.path);
-        let matched_by_name_symbols = {
-            let ast_index_locked = self.ast_index.read().await;
-            cursor_usages
-                .iter()
-                .unique_by(|x| &x.name)
-                .take(top_n_near_cursor)
-                .map(|s| {
-                    let use_fuzzy_search = s.full_range.start_point.row == cursor.row;
-                    ast_index_locked
-                        .search_by_name(&s.name, RequestSymbolType::Declaration, Some(doc.clone()), language.clone(), use_fuzzy_search)
-                        .unwrap_or_else(|_| vec![])
-                })
-                .flatten()
-                .filter(|s| {
-                    s.symbol_declaration.symbol_type == SymbolType::StructDeclaration
-                        || s.symbol_declaration.symbol_type == SymbolType::TypeAlias
-                        || s.symbol_declaration.symbol_type == SymbolType::FunctionDeclaration
-                })
-                .collect::<Vec<_>>()
-        };
         let result = AstCursorSearchResult {
                 query_text: "".to_string(),
                 file_path: doc.path.clone(),
@@ -241,12 +217,11 @@ impl AstModule {
                         content: x.get_content_blocked().unwrap_or_default(),
                         sim_to_query: -1.0,
                     })
-                    .collect::<Vec<SymbolsSearchResultStruct>>(),
-                matched_by_name_symbols: matched_by_name_symbols
+                    .collect::<Vec<SymbolsSearchResultStruct>>()
             };
         info!("ast retrieve_cursor_symbols_by_declarations time {:.3}s, \
-            found {} declaration_symbols, {} declaration_usage_symbols, {} matched_by_name_symbols",
-            t0.elapsed().as_secs_f32(), result.declaration_symbols.len(), result.declaration_usage_symbols.len(), result.matched_by_name_symbols.len());
+            found {} declaration_symbols, {} declaration_usage_symbols",
+            t0.elapsed().as_secs_f32(), result.declaration_symbols.len(), result.declaration_usage_symbols.len());
         Ok(result)
     }
 
