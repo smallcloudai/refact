@@ -5,24 +5,18 @@ import {
   isActionToStatistic,
   isReceiveDataForStatistic,
   isReceiveDataForStatisticError,
-  isReceiveFillInTheMiddleData,
   isRequestDataForStatistic,
   isSetLoadingStatisticData,
-  isReceiveFillInTheMiddleDataError,
   isSetStatisticData,
 } from "../events";
 import { usePostMessage } from "./usePostMessage";
 import { useCallback, useEffect, useReducer } from "react";
-import { ChatContextFile, StatisticData } from "../services/refact";
+import { StatisticData } from "../services/refact";
 
 export type StatisticState = {
   statisticData: StatisticData | null;
   isLoading: boolean;
   error: string;
-  fill_in_the_middle: {
-    files: ChatContextFile[];
-    error: string;
-  };
 };
 
 function createInitialState(): StatisticState {
@@ -30,10 +24,6 @@ function createInitialState(): StatisticState {
     statisticData: null,
     isLoading: true,
     error: "",
-    fill_in_the_middle: {
-      files: [],
-      error: "",
-    },
   };
 }
 
@@ -43,26 +33,6 @@ function reducer(
   state: StatisticState,
   action: ActionToStatistic,
 ): StatisticState {
-  if (isReceiveFillInTheMiddleData(action)) {
-    return {
-      ...state,
-      fill_in_the_middle: {
-        error: "",
-        files: action.payload.files,
-      },
-    };
-  }
-
-  if (isReceiveFillInTheMiddleDataError(action)) {
-    return {
-      ...state,
-      fill_in_the_middle: {
-        ...state.fill_in_the_middle,
-        error: action.payload.message,
-      },
-    };
-  }
-
   if (isRequestDataForStatistic(action)) {
     return {
       ...state,

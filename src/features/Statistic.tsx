@@ -65,7 +65,6 @@ export const Statistic: React.FC<{
             statisticData={state.statisticData}
             isLoading={state.isLoading}
             error={state.error}
-            fimFiles={state.fill_in_the_middle}
           />
         </Flex>
       </ScrollArea>
