@@ -289,15 +289,17 @@ impl ScratchpadAbstract for SingleFileFIM {
                 }
             };
 
-            let fim_ban = ContextFile {
-                file_name: cpath.to_string_lossy().to_string(),
-                file_content: "".to_string(),
-                line1: (fim_line1 + 1) as usize,
-                line2: (fim_line2 + 1) as usize,
-                symbol: "".to_string(),
-                usefulness: -1.0,
-            };
-            ast_messages.push(ChatMessage { role: "context_file".to_string(), content: serde_json::json!([fim_ban]).to_string() });
+            if fim_line1 != i32::MAX && fim_line2 != i32::MIN {
+                let fim_ban = ContextFile {
+                    file_name: cpath.to_string_lossy().to_string(),
+                    file_content: "".to_string(),
+                    line1: (fim_line1 + 1) as usize,
+                    line2: (fim_line2 + 1) as usize,
+                    symbol: "".to_string(),
+                    usefulness: -1.0,
+                };
+                ast_messages.push(ChatMessage { role: "context_file".to_string(), content: serde_json::json!([fim_ban]).to_string() });
+            }
 
             let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
                 self.global_context.clone(),
