@@ -5,7 +5,7 @@ import { Flex, Button, Text } from "@radix-ui/themes";
 
 export type CollapsibleProps = Pick<
   RadixCollapsible.CollapsibleProps,
-  "disabled" | "className"
+  "disabled" | "className" | "defaultOpen"
 > &
   React.PropsWithChildren<{
     className?: string;
@@ -18,7 +18,7 @@ export const Collapsible: React.FC<CollapsibleProps> = ({
   title,
   ...props
 }) => {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = React.useState(props.defaultOpen ?? false);
   return (
     <RadixCollapsible.Root
       {...props}
@@ -28,7 +28,7 @@ export const Collapsible: React.FC<CollapsibleProps> = ({
     >
       <Flex align="center" justify="between">
         <RadixCollapsible.Trigger asChild>
-          <Text>
+          <Text size="3">
             <Button size="2" variant="ghost">
               {title}
               {open ? <Cross2Icon /> : <RowSpacingIcon />}
@@ -37,7 +37,11 @@ export const Collapsible: React.FC<CollapsibleProps> = ({
         </RadixCollapsible.Trigger>
       </Flex>
 
-      <RadixCollapsible.Content>{children}</RadixCollapsible.Content>
+      <RadixCollapsible.Content>
+        <Flex direction="column" gap="2">
+          {children}
+        </Flex>
+      </RadixCollapsible.Content>
     </RadixCollapsible.Root>
   );
 };

@@ -529,7 +529,14 @@ type FimFile = {
 
 type ContextFiles = FimFile[];
 
-export type ContextQueries = { from: string; symbol: string }[];
+export type ContextQueries = {
+  from:
+    | "declarations"
+    | "cursor_symbols"
+    | "usages"
+    | "matched_by_name_symbols";
+  symbol: string;
+}[];
 
 export type FIMContext = {
   attached_files?: ContextFiles;

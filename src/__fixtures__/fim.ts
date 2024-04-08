@@ -47,23 +47,23 @@ export const STUB: FimDebugData = {
     ],
     was_looking_for: [
       {
-        from: "cursor_usages",
+        from: "cursor_symbols",
         symbol: "initialization_for_scripts",
       },
       {
-        from: "cursor_usages",
+        from: "cursor_symbols",
         symbol: "start_rust",
       },
       {
-        from: "cursor_usages",
+        from: "declarations",
         symbol: "start",
       },
       {
-        from: "cursor_usages",
+        from: "usages",
         symbol: "__name__",
       },
       {
-        from: "cursor_usages",
+        from: "usages",
         symbol: "start",
       },
     ],

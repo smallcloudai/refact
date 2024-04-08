@@ -22,7 +22,7 @@ export const SearchContext: React.FC<SearchContextProps> = ({ data }) => {
       )}
       {data.was_looking_for && data.was_looking_for.length > 0 && (
         <Container py="3">
-          <Heading as="h4" size="2" mb="2">
+          <Heading as="h4" size="2" mb="4">
             Look up symbols
           </Heading>
           <SymbolList symbols={data.was_looking_for} />
