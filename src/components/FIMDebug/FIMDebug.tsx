@@ -14,7 +14,15 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         <Heading size="4" wrap="nowrap" style={{ overflow: "hidden" }}>
           Code Completion Context
         </Heading>
-        {data.context && <SearchContext data={data.context} />}
+        {data.context ? (
+          <SearchContext data={data.context} />
+        ) : (
+          <Box py="2" overflow="hidden">
+            <Text wrap="nowrap" size="2">
+              Completion Context Not Found
+            </Text>
+          </Box>
+        )}
 
         <Box mt="auto" overflow="hidden">
           <Text wrap="nowrap" style={{ overflow: "hidden" }} size="1">
