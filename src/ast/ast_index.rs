@@ -453,7 +453,7 @@ impl AstIndex {
             .map(|s| {
                 let s_ref = s.read().expect("the data might be broken");
                 let use_fuzzy_search = s_ref.full_range().start_point.row == cursor.row;
-                self.search_by_name(&s_ref.name(), RequestSymbolType::Declaration, Some(doc.clone()), language.clone(), use_fuzzy_search)
+                self.search_by_name(&s_ref.name(), RequestSymbolType::Declaration, None, language.clone(), use_fuzzy_search)
                     .unwrap_or_else(|_| vec![])
             })
             .flatten()
@@ -493,7 +493,7 @@ impl AstIndex {
         let mut usages = declarations
             .iter()
             .map(|s| {
-                self.search_symbols_by_declarations_usage(&s.guid, Some(doc.clone()))
+                self.search_symbols_by_declarations_usage(&s.guid, None)
                     .unwrap_or_default()
                     .iter()
                     .map(|x| x.symbol_declaration.clone())
@@ -518,7 +518,7 @@ impl AstIndex {
             .filter(|s| s.symbol_type == SymbolType::FunctionDeclaration)
             .map(|s| {
                 let use_fuzzy_search = s.full_range.start_point.row == cursor.row;
-                self.search_by_name(&s.name, RequestSymbolType::Usage, Some(doc.clone()), language.clone(), use_fuzzy_search)
+                self.search_by_name(&s.name, RequestSymbolType::Usage, None, language.clone(), use_fuzzy_search)
                     .unwrap_or_else(|_| vec![])
             })
            .flatten()
@@ -539,13 +539,11 @@ impl AstIndex {
                 .collect(),
             declarations
                 .iter()
-                .filter(|s| doc.path != s.file_path)
                 .unique_by(|s| (s.guid.clone(), s.name.clone()))
                 .cloned()
                 .collect::<Vec<_>>(),
             usages
                 .iter()
-                .filter(|s| doc.path != s.file_path)
                 .unique_by(|s| (s.guid.clone(), s.name.clone()))
                 .cloned()
                 .collect::<Vec<_>>(),
