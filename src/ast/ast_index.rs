@@ -463,7 +463,8 @@ impl AstIndex {
                     || s.symbol_declaration.symbol_type == SymbolType::FunctionDeclaration
             })
             .map(|s| s.symbol_declaration)
-            .unique_by(|s| (s.guid.clone(), s.name.clone()))
+            .unique_by(|s| s.guid.clone())
+            .unique_by(|s| s.name.clone())
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
 
@@ -485,7 +486,8 @@ impl AstIndex {
                 *s_ref.language() == language.unwrap_or(*s_ref.language())
             })
             .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
-            .unique_by(|s| (s.guid.clone(), s.name.clone()))
+            .unique_by(|s| s.guid.clone())
+            .unique_by(|s| s.name.clone())
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
         declarations.extend(declarations_matched_by_name);
@@ -526,7 +528,8 @@ impl AstIndex {
                 s.symbol_declaration.symbol_type == SymbolType::FunctionCall
             })
            .map(|s| s.symbol_declaration)
-           .unique_by(|s| (s.guid.clone(), s.name.clone()))
+           .unique_by(|s| s.guid.clone())
+           .unique_by(|s| s.name.clone())
            .take(top_n_usage_for_each_decl)
            .collect::<Vec<_>>();
         usages.extend(func_usages_matched_by_name);
@@ -539,12 +542,14 @@ impl AstIndex {
                 .collect(),
             declarations
                 .iter()
-                .unique_by(|s| (s.guid.clone(), s.name.clone()))
+                .unique_by(|s| s.guid.clone())
+                .unique_by(|s| s.name.clone())
                 .cloned()
                 .collect::<Vec<_>>(),
             usages
                 .iter()
-                .unique_by(|s| (s.guid.clone(), s.name.clone()))
+                .unique_by(|s| s.guid.clone())
+                .unique_by(|s| s.name.clone())
                 .cloned()
                 .collect::<Vec<_>>(),
         )
