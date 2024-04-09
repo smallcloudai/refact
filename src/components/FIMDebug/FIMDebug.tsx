@@ -16,7 +16,7 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         </Heading>
         {data.context && <SearchContext data={data.context} />}
 
-        <Box mt="auto">
+        <Box mt="auto" overflow="hidden">
           <Text wrap="nowrap" style={{ overflow: "hidden" }} size="1">
             model: {data.model}
           </Text>
