@@ -155,6 +155,7 @@ class ModelAssigner:
                 },
             },
             "completion": "Refact/1.6B",
+            "code_completion_n_ctx": 2048,
             "openai_api_enable": False,
             "anthropic_api_enable": False,
         }
