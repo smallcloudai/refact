@@ -530,11 +530,7 @@ type FimFile = {
 type ContextFiles = FimFile[];
 
 export type ContextQueries = {
-  from:
-    | "declarations"
-    | "cursor_symbols"
-    | "usages"
-    | "matched_by_name_symbols";
+  from: "declarations" | "cursor_symbols" | "usages";
   symbol: string;
 }[];
 
