@@ -20,6 +20,15 @@ def completion_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]
 
     return completion_model, ""
 
+def completion_resolve_context(inference_queue: InferenceQueue) -> Tuple[str, str]:
+    have_models: List[str] = inference_queue.models_available()
+    with open(env.CONFIG_INFERENCE, 'r') as f:
+        code_completion_n_ctx = json.load(f).get("code_completion_n_ctx", None)
+
+    if code_completion_n_ctx is None:
+        return code_completion_n_ctx, 2048
+
+    return code_completion_n_ctx, ""
 
 def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tuple[str, str]:
     # special case for longthink

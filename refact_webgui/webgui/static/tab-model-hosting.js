@@ -148,6 +148,7 @@ function save_model_assigned() {
         openai_api_enable: openai_enable.checked,
         anthropic_api_enable: anthropic_enable.checked,
     };
+    console.log(data);
     fetch("/tab-host-models-assign", {
         method: "POST",
         headers: {
@@ -178,13 +179,14 @@ function render_models_assigned(models) {
     models_table.dataset.hash = CryptoJS.MD5(JSON.stringify(models));
 
     models_table.innerHTML = '';
+    let models_index = 0;
     for(let index in models) {
         const row = document.createElement('tr');
         row.setAttribute('data-model',index);
         let model_name = document.createElement("td");
         model_name.style.width = "20%";
-        let completion = document.createElement("td");
-        completion.style.width = "15%";
+        let context = document.createElement("td");
+        context.style.width = "15%";
         let finetune_info = document.createElement("td");
         finetune_info.style.width = "35%";
         let select_gpus = document.createElement("td");
@@ -198,21 +200,49 @@ function render_models_assigned(models) {
         finetune_info.classList.add('model-finetune-info');
         finetune_info.dataset.model = index;
 
-        if (models_info[index].hasOwnProperty('has_completion') && models_info[index].has_completion) {
-            const completion_input = document.createElement("input");
-            completion_input.setAttribute('type','radio');
-            completion_input.setAttribute('name','completion-radio-button');
-            completion_input.setAttribute('value',index);
-            if (models_data.completion === index) {
-                completion_input.checked = true;
+        let btn_group = document.createElement("div");
+        btn_group.classList.add('btn-group');
+        btn_group.role = 'group';
+        let context_size = [2048,4096];
+        context_size.forEach(element => {
+            let context_input = document.createElement("input");
+            context_input.setAttribute('type','radio');
+            context_input.classList.add('btn-check');
+            context_input.setAttribute('name','context-radio' + models_index);
+            context_input.setAttribute('value',element);
+            context_input.id = `context-${models_index}-${element}`;
+            if (element === 4096) {
+                context_input.checked = true;
             }
-            completion_input.setAttribute('model',index);
-            completion_input.addEventListener('change', function() {
-                models_data.completion = this.value;
+            let context_label = document.createElement("label");
+            context_label.classList.add('btn','btn-outline-primary','btn-sm');
+            context_label.innerHTML = element;
+            context_label.setAttribute('for', `context-${models_index}-${element}`);
+            context_input.setAttribute('data-model',element);
+            context_input.addEventListener('change', function() {
+                models_data.model_assign[index].code_completion_n_ctx = Number(this.value);
                 save_model_assigned();
             });
-            completion.appendChild(completion_input);
-        }
+            btn_group.appendChild(context_input);
+            btn_group.appendChild(context_label);
+        });
+        context.appendChild(btn_group);
+
+        // if (models_info[index].hasOwnProperty('has_completion') && models_info[index].has_completion) {
+        //     const completion_input = document.createElement("input");
+        //     completion_input.setAttribute('type','radio');
+        //     completion_input.setAttribute('name','completion-radio-button');
+        //     completion_input.setAttribute('value',index);
+        //     if (models_data.completion === index) {
+        //         completion_input.checked = true;
+        //     }
+        //     completion_input.setAttribute('model',index);
+        //     completion_input.addEventListener('change', function() {
+        //         models_data.completion = this.value;
+        //         save_model_assigned();
+        //     });
+        //     completion.appendChild(completion_input);
+        // }
         let finetune_runs = [];
         if (finetune_configs_and_runs) {
             finetune_runs = finetune_configs_and_runs.finetune_runs.filter(
@@ -290,12 +320,13 @@ function render_models_assigned(models) {
         del.appendChild(del_button);
 
         row.appendChild(model_name);
-        row.appendChild(completion);
+        row.appendChild(context);
         row.appendChild(finetune_info);
         row.appendChild(select_gpus);
         row.appendChild(gpus_share);
         row.appendChild(del);
         models_table.appendChild(row);
+        models_index++;
     }
 }
 

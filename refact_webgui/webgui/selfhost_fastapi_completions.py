@@ -15,6 +15,7 @@ from fastapi.responses import Response, StreamingResponse
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
 from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model
+from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_context
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log
@@ -279,6 +280,7 @@ class BaseCompletionsRouter(APIRouter):
         running = running_models_and_loras(self._model_assigner)
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
+        code_completion_n_ctx, _ = completion_resolve_context(self._inference_queue)
         code_chat_default_model = ""
         embeddings_default_model = ""
         for model_name in models_available:
@@ -298,8 +300,8 @@ class BaseCompletionsRouter(APIRouter):
             "telemetry_basic_retrieve_my_own": "/stats/rh-stats",
             "running_models": [r for r in [*running['completion'], *running['chat']]],
             "code_completion_default_model": code_completion_default_model,
+            "code_completion_n_ctx": code_completion_n_ctx,
             "code_chat_default_model": code_chat_default_model,
-
             "default_embeddings_model": embeddings_default_model,
             "endpoint_embeddings_template": "v1/embeddings",
             "endpoint_embeddings_style": "openai",
