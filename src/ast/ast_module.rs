@@ -175,7 +175,7 @@ impl AstModule {
     ) -> Result<AstCursorSearchResult, String> {
         let t0 = std::time::Instant::now();
         info!("ast retrieve_cursor_symbols_by_declarations started for {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
-        let (cursor_usages, declarations, usages) = self.ast_index.read().await.retrieve_cursor_symbols_by_declarations(
+        let (cursor_usages, declarations, usages, most_similar_declarations) = self.ast_index.read().await.retrieve_cursor_symbols_by_declarations(
             doc,
             code,
             cursor,
@@ -217,7 +217,15 @@ impl AstModule {
                         content: x.get_content_blocked().unwrap_or_default(),
                         sim_to_query: -1.0,
                     })
-                    .collect::<Vec<SymbolsSearchResultStruct>>()
+                    .collect::<Vec<SymbolsSearchResultStruct>>(),
+                most_similar_declarations: most_similar_declarations
+                    .iter()
+                    .map(|x| SymbolsSearchResultStruct {
+                        symbol_declaration: x.clone(),
+                        content: x.get_content_blocked().unwrap_or_default(),
+                        sim_to_query: -1.0,
+                    })
+                .collect::<Vec<SymbolsSearchResultStruct>>()
             };
         info!("ast retrieve_cursor_symbols_by_declarations time {:.3}s, \
             found {} declaration_symbols, {} declaration_usage_symbols",

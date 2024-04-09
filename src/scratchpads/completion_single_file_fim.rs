@@ -285,12 +285,15 @@ impl ScratchpadAbstract for SingleFileFIM {
                         let cursor_symbols = res.cursor_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
                         let declarations = res.declaration_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
                         let usages = res.declaration_usage_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
+                        let most_similar_declarations = res.most_similar_declarations.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
                         info!("near cursor cursor_symbols: {:?}", cursor_symbols);
                         info!("near cursor declarations: {:?}", declarations);
                         info!("near cursor usages: {:?}", usages);
+                        info!("most similar declarations: {:?}", most_similar_declarations);
                         was_looking_for.insert("cursor_symbols".to_string(), cursor_symbols);
                         was_looking_for.insert("declarations".to_string(), declarations);
                         was_looking_for.insert("usages".to_string(), usages);
+                        was_looking_for.insert("most_similar_declarations".to_string(), most_similar_declarations);
                         (vec![results2message(&res).await], was_looking_for)
                     },
                     Err(err) => {

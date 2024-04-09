@@ -24,6 +24,7 @@ pub struct AstCursorSearchResult {
     pub cursor: Point,
     pub declaration_symbols: Vec<SymbolsSearchResultStruct>,       // types around cursor
     pub declaration_usage_symbols: Vec<SymbolsSearchResultStruct>, // examples of usage of the same symbols from other files
+    pub most_similar_declarations: Vec<SymbolsSearchResultStruct>, // declarations with similar usages inside them as near the cursor
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

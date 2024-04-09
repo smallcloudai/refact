@@ -29,7 +29,8 @@ pub struct AstIndex {
     symbols_by_guid: HashMap<String, AstSymbolInstanceArc>,
     path_by_symbols: HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
     symbols_search_index: HashMap<PathBuf, Set<Vec<u8>>>,
-    type_guid_to_dependand_guids: HashMap<String, Vec<String>>,
+    type_guid_to_dependent_guids: HashMap<String, HashSet<String>>,
+    declaration_guid_to_usage_names: HashMap<String, HashSet<String>>,
     has_changes: bool,
 }
 
@@ -82,7 +83,8 @@ impl AstIndex {
             symbols_by_guid: HashMap::new(),
             path_by_symbols: HashMap::new(),
             symbols_search_index: HashMap::new(),
-            type_guid_to_dependand_guids: HashMap::new(),
+            type_guid_to_dependent_guids: HashMap::new(),
+            declaration_guid_to_usage_names: HashMap::new(),
             has_changes: false,
         }
     }
@@ -170,10 +172,15 @@ impl AstIndex {
                 });
 
             self.symbols_by_guid.remove(&guid);
-            if self.type_guid_to_dependand_guids.contains_key(&guid) {
+            if self.type_guid_to_dependent_guids.contains_key(&guid) {
                 // TODO: we should do the removing more precisely,
                 // some leftovers still are in the values, but it doesn't break the overall thing for now
-                self.type_guid_to_dependand_guids.remove(&guid);
+                self.type_guid_to_dependent_guids.remove(&guid);
+            }
+            if self.declaration_guid_to_usage_names.contains_key(&guid) {
+                // TODO: we should do the removing more precisely,
+                // some leftovers still are in the values, but it doesn't break the overall thing for now
+                self.declaration_guid_to_usage_names.remove(&guid);
             }
             removed_guids.insert(guid);
         }
@@ -387,7 +394,7 @@ impl AstIndex {
         declaration_guid: &str,
         exception_doc: Option<Document>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
-        Ok(self.type_guid_to_dependand_guids
+        Ok(self.type_guid_to_dependent_guids
             .get(declaration_guid)
             .map(|x| x.clone())
             .unwrap_or_default()
@@ -416,7 +423,7 @@ impl AstIndex {
         cursor: Point,
         top_n_near_cursor: usize,
         top_n_usage_for_each_decl: usize,
-    ) -> (Vec<SymbolInformation>, Vec<SymbolInformation>, Vec<SymbolInformation>) {
+    ) -> (Vec<SymbolInformation>, Vec<SymbolInformation>, Vec<SymbolInformation>, Vec<SymbolInformation>) {
         let file_symbols = self.parse_single_file(doc, code).await;
         let language = get_language_id_by_filename(&doc.path);
 
@@ -534,6 +541,37 @@ impl AstIndex {
            .collect::<Vec<_>>();
         usages.extend(func_usages_matched_by_name);
 
+        // self.declaration_guid_to_usage_guids
+
+        let cursor_symbols_names = unfiltered_cursor_symbols
+            .iter()
+            .filter(|s| {
+                let symbol_type = s.read().expect("the data might be broken").symbol_type();
+                symbol_type == SymbolType::FunctionCall
+                    || symbol_type == SymbolType::VariableUsage
+                    || symbol_type == SymbolType::VariableDefinition
+                    || symbol_type == SymbolType::ClassFieldDeclaration
+                    || symbol_type == SymbolType::CommentDefinition
+            })
+            .map(|s| {
+                s.read().expect("the data might be broken").name().to_string()
+            })
+            .collect::<HashSet<_>>();
+        let most_similar_declarations = self.declaration_guid_to_usage_names
+            .iter()
+            .map(|(decl_guid, usage_names)| {
+                (decl_guid, cursor_symbols_names.intersection(usage_names).count())
+            })
+            .sorted_by_key(|(_, a)| -(*a as i32)) // descending
+            .filter(|(_, a)| *a > (cursor_symbols_names.len() / 5))  // at least 20% must be similar
+            .take(top_n_near_cursor * 2)
+            .filter_map(|(g, _)| self.symbols_by_guid.get(g))
+            .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
+            .unique_by(|s| s.guid.clone())
+            .unique_by(|s| s.name.clone())
+            .take(top_n_near_cursor)
+            .collect::<Vec<_>>();
+
         (
             unfiltered_cursor_symbols
                 .iter()
@@ -547,6 +585,12 @@ impl AstIndex {
                 .cloned()
                 .collect::<Vec<_>>(),
             usages
+                .iter()
+                .unique_by(|s| s.guid.clone())
+                .unique_by(|s| s.name.clone())
+                .cloned()
+                .collect::<Vec<_>>(),
+            most_similar_declarations
                 .iter()
                 .unique_by(|s| s.guid.clone())
                 .unique_by(|s| s.name.clone())
@@ -856,9 +900,23 @@ impl AstIndex {
             .iter()
             .filter(|s| !s.read().expect("the data might be broken").is_type())
             .cloned() {
-            let (s_guid, mut types, is_declaration) = {
+            let guid = symbol.read().expect("the data might be broken").guid().to_string();
+            if self.type_guid_to_dependent_guids.contains_key(&guid) {
+                self.type_guid_to_dependent_guids.remove(&guid);
+            }
+            if self.declaration_guid_to_usage_names.contains_key(&guid) {
+                self.declaration_guid_to_usage_names.remove(&guid);
+            }
+        }
+
+        for symbol in symbols
+            .iter()
+            .filter(|s| !s.read().expect("the data might be broken").is_type())
+            .cloned() {
+            let (name, s_guid, mut types, is_declaration, symbol_type, parent_guid) = {
                 let s_ref = symbol.read().expect("the data might be broken");
-                (s_ref.guid().to_string(), s_ref.types(), s_ref.is_declaration())
+                (s_ref.name().to_string(), s_ref.guid().to_string(), s_ref.types(), s_ref.is_declaration(),
+                 s_ref.symbol_type(), s_ref.parent_guid().clone())
             };
             types = if is_declaration {
                 types
@@ -874,7 +932,18 @@ impl AstIndex {
             for guid in types
                 .iter()
                 .filter_map(|t| t.guid.clone()) {
-                self.type_guid_to_dependand_guids.entry(guid).or_default().push(s_guid.clone());
+                self.type_guid_to_dependent_guids.entry(guid).or_default().insert(s_guid.clone());
+            }
+
+            // for those symbols which doesn't have their own scope
+            if symbol_type == SymbolType::FunctionCall
+                || symbol_type == SymbolType::VariableUsage
+                || symbol_type == SymbolType::VariableDefinition
+                || symbol_type == SymbolType::ClassFieldDeclaration
+                || symbol_type == SymbolType::CommentDefinition {
+                if let Some(p_guid) = parent_guid {
+                    self.declaration_guid_to_usage_names.entry(p_guid).or_default().insert(name.clone());
+                }
             }
         }
     }

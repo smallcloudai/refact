@@ -37,6 +37,17 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
             usefulness: 50.0,
         });
     }
+    for res in &result.most_similar_declarations {
+        let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
+        fvec.push(ContextFile {
+            file_name,
+            file_content: res.content.clone(),
+            line1: res.symbol_declaration.full_range.start_point.row + 1,
+            line2: res.symbol_declaration.full_range.end_point.row + 1,
+            symbol: res.symbol_declaration.guid.clone(),
+            usefulness: 40.0,
+        });
+    }
     ChatMessage {
         role: "context_file".to_string(),
         content: json!(fvec).to_string(),
