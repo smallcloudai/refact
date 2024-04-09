@@ -345,7 +345,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   }
 
   return (
-    <Card mt="1" style={{ position: "relative" }}>
+    <Card mt="1" style={{ position: "relative", flexShrink: 0 }}>
       {!isOnline && <Callout type="info">Offline</Callout>}
 
       {isStreaming && (

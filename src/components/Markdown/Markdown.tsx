@@ -2,7 +2,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import classNames from "classnames";
-import "./highlightjs.css";
+// import "./highlightjs.css";
 import styles from "./Markdown.module.css";
 import { MarkdownCodeBlock, type MarkdownControls } from "./CodeBlock";
 import {

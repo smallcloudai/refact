@@ -1,4 +1,4 @@
-import type { ChatContextFile, StatisticData } from ".";
+import type { StatisticData } from ".";
 
 export enum EVENT_NAMES_FROM_STATISTIC {
   BACK_FROM_STATISTIC = "back_from_statistic",
@@ -10,9 +10,6 @@ export enum EVENT_NAMES_TO_STATISTIC {
   RECEIVE_STATISTIC_DATA_ERROR = "receive_statistic_data_error",
   SET_LOADING_STATISTIC_DATA = "set_loading_statistic_data",
   SET_STATISTIC_DATA = "set_statistic_data",
-
-  RECEIVE_FILL_IN_THE_MIDDLE_DATA = "fill_in_the_middle_data_response",
-  RECEIVE_FILL_IN_THE_MIDDLE_DATA_ERROR = "fill_in_the_middle_data_error",
 }
 
 interface BaseAction {
@@ -103,24 +100,6 @@ export function isReceiveDataForStatisticError(
   return action.type === EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR;
 }
 
-export interface ReceiveFillInTheMiddleData extends ActionToStatistic {
-  type: EVENT_NAMES_TO_STATISTIC.RECEIVE_FILL_IN_THE_MIDDLE_DATA;
-  payload: { files: ChatContextFile[] };
-}
-
-export function isReceiveFillInTheMiddleData(
-  action: unknown,
-): action is ReceiveFillInTheMiddleData {
-  if (!isActionToStatistic(action)) return false;
-  if (action.type !== EVENT_NAMES_TO_STATISTIC.RECEIVE_FILL_IN_THE_MIDDLE_DATA)
-    return false;
-  if (!("payload" in action)) return false;
-  if (!action.payload) return false;
-  if (typeof action.payload !== "object") return false;
-  if (!("files" in action.payload)) return false;
-  return Array.isArray(action.payload.files);
-}
-
 export interface SetStatisticsData extends ActionToStatistic {
   type: EVENT_NAMES_TO_STATISTIC.SET_STATISTIC_DATA;
   payload: StatisticData;
@@ -131,21 +110,6 @@ export function isSetStatisticData(
 ): action is SetStatisticsData {
   if (!isActionToStatistic(action)) return false;
   return action.type === EVENT_NAMES_TO_STATISTIC.SET_STATISTIC_DATA;
-}
-
-export interface ReceiveFillInTheMiddleDataError extends ActionToStatistic {
-  type: EVENT_NAMES_TO_STATISTIC.RECEIVE_FILL_IN_THE_MIDDLE_DATA_ERROR;
-  payload: { message: string };
-}
-
-export function isReceiveFillInTheMiddleDataError(
-  action: unknown,
-): action is ReceiveFillInTheMiddleDataError {
-  if (!isActionToStatistic(action)) return false;
-  return (
-    action.type ===
-    EVENT_NAMES_TO_STATISTIC.RECEIVE_FILL_IN_THE_MIDDLE_DATA_ERROR
-  );
 }
 
 export function isSetLoadingStatisticData(

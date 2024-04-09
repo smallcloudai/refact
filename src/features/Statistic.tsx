@@ -1,5 +1,5 @@
 import React from "react";
-import { Flex, Button, Responsive } from "@radix-ui/themes";
+import { Flex, Button } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { useConfig } from "../contexts/config-context";
 import { ScrollArea } from "../components/ScrollArea";
@@ -11,9 +11,7 @@ export const Statistic: React.FC<{
 }> = ({ onCloseStatistic }) => {
   const { host, tabbed } = useConfig();
   const { backFromStatistic, state } = useEventBusForStatistic();
-  const LeftRightPadding: Responsive<
-    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-  > =
+  const LeftRightPadding =
     host === "web"
       ? { initial: "2", xl: "9" }
       : {
@@ -25,9 +23,7 @@ export const Statistic: React.FC<{
           xl: "9",
         };
 
-  const TopBottomPadding: Responsive<
-    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-  > = {
+  const TopBottomPadding = {
     initial: "5",
   };
 
@@ -35,7 +31,7 @@ export const Statistic: React.FC<{
     <Flex
       direction="column"
       justify="between"
-      grow="1"
+      flexGrow="1"
       pl={LeftRightPadding}
       pt={TopBottomPadding}
       pb={TopBottomPadding}
@@ -59,7 +55,7 @@ export const Statistic: React.FC<{
         <Flex
           direction="column"
           justify="between"
-          grow="1"
+          flexGrow="1"
           mr={LeftRightPadding}
           style={{
             width: "inherit",
@@ -69,7 +65,6 @@ export const Statistic: React.FC<{
             statisticData={state.statisticData}
             isLoading={state.isLoading}
             error={state.error}
-            fimFiles={state.fill_in_the_middle}
           />
         </Flex>
       </ScrollArea>

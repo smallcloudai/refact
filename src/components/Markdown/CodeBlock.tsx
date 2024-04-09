@@ -3,9 +3,11 @@ import SyntaxHighlighter from "react-syntax-highlighter";
 import { Code, Text } from "@radix-ui/themes";
 import classNames from "classnames";
 import { PreTag, type PreTagProps } from "./Pre";
-import "./highlightjs.css";
+// import "./highlightjs.css";
 import styles from "./Markdown.module.css";
 import type { Element } from "hast";
+
+import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 
 export type MarkdownControls = {
   onCopyClick: (str: string) => void;
@@ -60,6 +62,7 @@ export const MarkdownCodeBlock: React.FC<
     return (
       <Text size="2">
         <SyntaxHighlighter
+          style={hljsStyle}
           className={className}
           PreTag={(props) => <PreTag {...props} {...preTagProps} />}
           CodeTag={(props) => (
@@ -70,7 +73,7 @@ export const MarkdownCodeBlock: React.FC<
             />
           )}
           language={language}
-          useInlineStyles={false}
+          // useInlineStyles={false}
         >
           {textWithOutTrailingNewLine}
         </SyntaxHighlighter>

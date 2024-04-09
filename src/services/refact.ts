@@ -513,3 +513,56 @@ export async function getPrompts(lspUrl?: string): Promise<SystemPrompts> {
 
   return json.system_prompts;
 }
+
+type FimChoices = {
+  code_completion: string;
+  finish_reason: string;
+  index: number;
+}[];
+
+type FimFile = {
+  file_content: string;
+  file_name: string;
+  line1: number;
+  line2: number;
+};
+
+type ContextFiles = FimFile[];
+
+export type ContextQueries = {
+  from:
+    | "declarations"
+    | "cursor_symbols"
+    | "usages"
+    | "matched_by_name_symbols";
+  symbol: string;
+}[];
+
+export type FIMContext = {
+  attached_files?: ContextFiles;
+  was_looking_for?: ContextQueries;
+};
+
+export type FimDebugData = {
+  choices: FimChoices;
+  snippet_telemetry_id: number;
+  model: string;
+  context?: FIMContext;
+  created?: number;
+  elapsed?: number;
+  cached?: boolean;
+};
+
+// {
+//     "choices": [
+//         {
+//             "code_completion": "export type PromptSelectProps = {\n  value: string;\n  onChange: (value: string) => void;\n  options: string[];\n  disabled?: boolean;\n};",
+//             "finish_reason": "stop",
+//             "index": 0
+//         }
+//     ],
+//     "context": [],
+//     "created": 1712248098.165,
+//     "model": "starcoder2/7b/vllm",
+//     "snippet_telemetry_id": 109
+// }

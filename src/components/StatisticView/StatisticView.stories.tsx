@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { StatisticView } from "./StatisticView";
 import { json as stub } from "../../__fixtures__/table";
-import { CONTEXT_FILES } from "../../__fixtures__";
 
 const meta = {
   title: "StatisticView",
@@ -10,10 +9,6 @@ const meta = {
     statisticData: stub,
     isLoading: false,
     error: "",
-    fimFiles: {
-      error: "",
-      files: CONTEXT_FILES,
-    },
   },
 } satisfies Meta<typeof StatisticView>;
 

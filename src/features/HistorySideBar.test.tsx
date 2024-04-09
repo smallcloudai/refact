@@ -98,8 +98,9 @@ describe("HistorySideBar", () => {
     const restoreButtonText = await app.findByText(itemTitleToDelete);
 
     const deleteButton =
-      restoreButtonText.parentElement?.parentElement?.nextElementSibling
-        ?.children[0];
+      restoreButtonText.parentElement?.parentElement?.querySelector(
+        '[title="delete chat"]',
+      );
     expect(deleteButton).not.toBeNull();
 
     if (deleteButton) {

@@ -43,7 +43,7 @@ export const Settings: React.FC = () => {
                 <Text as="div" size="2" mb="1" weight="bold">
                   API Key
                 </Text>
-                <TextField.Input
+                <TextField.Root
                   name="apiKey"
                   type="text"
                   value={keyValue}

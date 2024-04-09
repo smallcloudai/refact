@@ -6,10 +6,12 @@ import styles from "./ScrollArea.module.css";
 export type ScrollAreaProps = React.ComponentProps<typeof RadixScrollArea> & {
   className?: string;
   scrollbars?: "vertical" | "horizontal" | "both" | undefined;
+  fullHeight?: boolean;
 };
 export const ScrollArea: React.FC<ScrollAreaProps> = ({
   scrollbars,
   className,
+  fullHeight,
   ...props
 }) => {
   const isVertical = scrollbars !== undefined && scrollbars === "vertical";
@@ -18,7 +20,11 @@ export const ScrollArea: React.FC<ScrollAreaProps> = ({
     <RadixScrollArea
       type="hover"
       {...props}
-      className={classNames(isVertical && styles.vertical, className)}
+      className={classNames(
+        isVertical && styles.vertical,
+        fullHeight && styles.full_height,
+        className,
+      )}
     />
   );
 };

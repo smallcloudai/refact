@@ -42,8 +42,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
     }, [messages]);
 
     return (
-      <ScrollArea scrollbars="vertical">
-        <Flex grow="1" direction="column" className={styles.content}>
+      <ScrollArea style={{ flexGrow: 1, height: "auto" }} scrollbars="vertical">
+        <Flex direction="column" className={styles.content}>
           {messages.length === 0 && <PlaceHolderText />}
           {messages.map((message, index) => {
             if (isChatContextFileMessage(message)) {
