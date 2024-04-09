@@ -278,7 +278,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                 let doc = Document::new(&cpath, None);
                 match self.ast_module.clone().unwrap().write().await.retrieve_cursor_symbols_by_declarations(
                     &doc, &source, Point { row: pos.line as usize, column: pos.character as usize },
-                    5, 5
+                    10, 3
                 ).await {
                     Ok(res) => {
                         let mut was_looking_for = HashMap::new();
