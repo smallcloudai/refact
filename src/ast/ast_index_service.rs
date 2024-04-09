@@ -122,7 +122,7 @@ async fn ast_indexer_thread(
                     for (doc, res) in zip(list_of_path, all_symbols) {
                         match res {
                             Ok(symbols) => {
-                                match ast_index.write().await.add_or_update_symbols_index(&doc, &symbols).await {
+                                match ast_index.write().await.add_or_update_symbols_index(&doc, &symbols, true).await {
                                     Ok(_) => {}
                                     Err(e) => {
                                         *unparsed_suffixes.entry(e).or_insert(0) += 1;

@@ -55,8 +55,8 @@ impl AstModule {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::add_docs(documents.clone()), force).await;
     }
 
-    pub async fn ast_add_file_no_queue(&mut self, document: &Document) -> Result<(), String> {
-        self.ast_index.write().await.add_or_update(&document).await
+    pub async fn ast_add_file_no_queue(&mut self, document: &Document, make_dirty: bool) -> Result<(), String> {
+        self.ast_index.write().await.add_or_update(&document, make_dirty).await
     }
 
     pub async fn ast_force_reindex(&mut self) {

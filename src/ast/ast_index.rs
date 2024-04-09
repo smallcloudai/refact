@@ -109,7 +109,12 @@ impl AstIndex {
         Ok(symbol_instances)
     }
 
-    pub async fn add_or_update_symbols_index(&mut self, doc: &Document, symbols: &Vec<AstSymbolInstanceArc>) -> Result<(), String> {
+    pub async fn add_or_update_symbols_index(
+        &mut self,
+        doc: &Document,
+        symbols: &Vec<AstSymbolInstanceArc>,
+        make_dirty: bool
+    ) -> Result<(), String> {
         let has_removed = self.remove(&doc);
         if has_removed {
             self.resolve_types(symbols).await;
@@ -120,7 +125,7 @@ impl AstIndex {
             // TODO: we don't want to update the whole index for a single file
             // even if we might miss some new cross-references
             // later we should think about some kind of force update, ie once in a while self.has_changes=false
-            self.has_changes = true;
+            self.has_changes = make_dirty;
         }
 
         let mut symbol_names: SortedVec<String> = SortedVec::new();
@@ -140,9 +145,9 @@ impl AstIndex {
         Ok(())
     }
 
-    pub async fn add_or_update(&mut self, doc: &Document) -> Result<(), String> {
+    pub async fn add_or_update(&mut self, doc: &Document, make_dirty: bool) -> Result<(), String> {
         let symbols = AstIndex::parse(doc)?;
-        self.add_or_update_symbols_index(doc, &symbols).await
+        self.add_or_update_symbols_index(doc, &symbols, make_dirty).await
     }
 
     pub fn remove(&mut self, doc: &Document) -> bool {
@@ -858,7 +863,7 @@ impl AstIndex {
                                     &self.path_by_symbols,
                                     &self.symbols_by_guid,
                                     &extra_index,
-                                    20,
+                                    1,
                                 )
                             }
                         }
@@ -867,7 +872,7 @@ impl AstIndex {
                             &self.path_by_symbols,
                             &self.symbols_by_guid,
                             &extra_index,
-                            20,
+                            1,
                         )
                     };
                     symbols_cache.insert(guids_pair, decl_guid.clone());

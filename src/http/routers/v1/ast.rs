@@ -335,7 +335,7 @@ pub async fn handle_v1_ast_index_file(
     let ast_module = global_context.read().await.ast_module.clone();
     let add_res = match &ast_module {
         Some(ast) => {
-            ast.write().await.ast_add_file_no_queue(&doc).await
+            ast.write().await.ast_add_file_no_queue(&doc, false).await
         }
         None => {
             return Err(ScratchError::new(
