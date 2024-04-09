@@ -419,11 +419,17 @@ impl AstIndex {
     ) -> (Vec<SymbolInformation>, Vec<SymbolInformation>, Vec<SymbolInformation>) {
         let file_symbols = self.parse_single_file(doc, code).await;
         let language = get_language_id_by_filename(&doc.path);
+
         let unfiltered_cursor_symbols = file_symbols
             .iter()
-            .unique_by(|s| s.read().expect("the data might be broken").guid().to_string())
+            .unique_by(|s| {
+                let s_ref = s.read().expect("the data might be broken");
+                (s_ref.guid().to_string(), s_ref.name().to_string())
+            })
+            .filter(|s| !s.read().expect("the data might be broken").name().is_empty())
             .sorted_by_key(|a| a.read().expect("the data might be broken").distance_to_cursor(&cursor))
             .collect::<Vec<_>>();
+
         let cursor_symbols_with_types = unfiltered_cursor_symbols
             .iter()
             .cloned()
@@ -444,7 +450,6 @@ impl AstIndex {
         let declarations_matched_by_name = unfiltered_cursor_symbols
             .iter()
             .cloned()
-            .unique_by(|s| s.read().expect("the data might be broken").name().to_string())
             .map(|s| {
                 let s_ref = s.read().expect("the data might be broken");
                 let use_fuzzy_search = s_ref.full_range().start_point.row == cursor.row;
@@ -457,8 +462,9 @@ impl AstIndex {
                     || s.symbol_declaration.symbol_type == SymbolType::TypeAlias
                     || s.symbol_declaration.symbol_type == SymbolType::FunctionDeclaration
             })
-            .take(top_n_near_cursor)
             .map(|s| s.symbol_declaration)
+            .unique_by(|s| (s.guid.clone(), s.name.clone()))
+            .take(top_n_near_cursor)
             .collect::<Vec<_>>();
 
         let mut declarations = cursor_symbols_with_types
@@ -479,12 +485,12 @@ impl AstIndex {
                 *s_ref.language() == language.unwrap_or(*s_ref.language())
             })
             .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
-            .unique_by(|s| s.guid.clone())
+            .unique_by(|s| (s.guid.clone(), s.name.clone()))
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
         declarations.extend(declarations_matched_by_name);
 
-        let usages = declarations
+        let mut usages = declarations
             .iter()
             .map(|s| {
                 self.search_symbols_by_declarations_usage(&s.guid, Some(doc.clone()))
@@ -506,6 +512,25 @@ impl AstIndex {
             })
             .flatten()
             .collect::<Vec<_>>();
+
+        let func_usages_matched_by_name = declarations
+            .iter()
+            .filter(|s| s.symbol_type == SymbolType::FunctionDeclaration)
+            .map(|s| {
+                let use_fuzzy_search = s.full_range.start_point.row == cursor.row;
+                self.search_by_name(&s.name, RequestSymbolType::Usage, Some(doc.clone()), language.clone(), use_fuzzy_search)
+                    .unwrap_or_else(|_| vec![])
+            })
+           .flatten()
+           .filter(|s| {
+                s.symbol_declaration.symbol_type == SymbolType::FunctionCall
+            })
+           .map(|s| s.symbol_declaration)
+           .unique_by(|s| (s.guid.clone(), s.name.clone()))
+           .take(top_n_usage_for_each_decl)
+           .collect::<Vec<_>>();
+        usages.extend(func_usages_matched_by_name);
+
         (
             unfiltered_cursor_symbols
                 .iter()
@@ -515,11 +540,13 @@ impl AstIndex {
             declarations
                 .iter()
                 .filter(|s| doc.path != s.file_path)
+                .unique_by(|s| (s.guid.clone(), s.name.clone()))
                 .cloned()
                 .collect::<Vec<_>>(),
             usages
                 .iter()
                 .filter(|s| doc.path != s.file_path)
+                .unique_by(|s| (s.guid.clone(), s.name.clone()))
                 .cloned()
                 .collect::<Vec<_>>(),
         )
@@ -784,7 +811,7 @@ impl AstIndex {
                                     &self.path_by_symbols,
                                     &self.symbols_by_guid,
                                     &extra_index,
-                                    1,
+                                    20,
                                 )
                             }
                         }
@@ -793,7 +820,7 @@ impl AstIndex {
                             &self.path_by_symbols,
                             &self.symbols_by_guid,
                             &extra_index,
-                            1,
+                            20,
                         )
                     };
                     symbols_cache.insert(guids_pair, decl_guid.clone());
