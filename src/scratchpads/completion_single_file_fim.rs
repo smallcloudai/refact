@@ -131,7 +131,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
         self.t.eos = patch.get("eos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.t.context_format = patch.get("context_format").and_then(|x| x.as_str()).unwrap_or_default().to_string();
-        self.t.rag_ratio = patch.get("rag_ratio").and_then(|x| x.as_f64()).unwrap_or(0.0);
+        self.t.rag_ratio = patch.get("rag_ratio").and_then(|x| x.as_f64()).unwrap_or(0.5);
         self.t.assert_one_token(&self.fim_prefix.as_str())?;
         self.t.assert_one_token(&self.fim_suffix.as_str())?;
         self.t.assert_one_token(&self.fim_middle.as_str())?;
@@ -147,11 +147,19 @@ impl ScratchpadAbstract for SingleFileFIM {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let rag_tokens_n = if self.post.rag_tokens_n > 0 {
+        let use_rag = !self.t.context_format.is_empty() && self.post.use_ast && self.ast_module.is_some();
+        let mut rag_tokens_n = if self.post.rag_tokens_n > 0 {
             self.post.rag_tokens_n.min(4096).max(1024)
         } else {
             ((context_size as f64 * self.t.rag_ratio) as usize).min(4096).max(1024)
         };
+        if !use_rag {
+            rag_tokens_n = 0;
+        }
+        if !use_rag && self.post.use_ast {
+            warn!("will not use ast because {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_module.is_some() as i32);
+        }
+
         let limit: i32 = (context_size as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32);
         if limit < 512 {
             let msg = format!("context_size={} - max_new_tokens={} - rag_tokens_n={} leaves too little {} space for completion to work",
@@ -263,7 +271,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             return Err(format!("order \"{}\" not recognized", self.order));
         }
 
-        if !self.t.context_format.is_empty() && self.post.use_ast && rag_tokens_n > 0 && self.ast_module.is_some() {
+        if use_rag && rag_tokens_n > 0 {
             let t0 = Instant::now();
             let language_id = get_language_id_by_filename(&cpath).unwrap_or(LanguageId::Unknown);
             let (mut ast_messages, was_looking_for) = {
@@ -313,8 +321,8 @@ impl ScratchpadAbstract for SingleFileFIM {
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);
             self.context_used = context_to_fim_debug_page(&t0, &postprocessed_messages, &was_looking_for);
-        } else {
-            info!("will not use ast {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_module.is_some() as i32);
+            self.context_used["n_ctx".to_string()] = Value::from(context_size as i64);
+            self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
         }
 
         if DEBUG {
