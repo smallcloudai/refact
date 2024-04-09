@@ -17,10 +17,11 @@ export const SearchContext: React.FC<SearchContextProps> = ({ data }) => {
           <FileList files={data.attached_files} />
         ) : (
           <Text wrap="nowrap" style={{ overflow: "hidden" }} size="2">
-            No attached files
+            No Context files attached
           </Text>
         )}
       </Container>
+
       <Container py="3">
         <Heading as="h4" size="2" mb="4">
           Look up symbols

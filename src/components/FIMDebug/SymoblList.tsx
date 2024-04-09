@@ -20,51 +20,38 @@ const SymbolText: React.FC<{
 };
 
 export const SymbolList: React.FC<{
-  symbols: ContextQueries;
-}> = ({ symbols }) => {
+  symbols?: ContextQueries;
+}> = ({ symbols = [] }) => {
   const declarations = symbols.filter(({ from }) => from === "declarations");
   const cursorSymbols = symbols.filter(({ from }) => from === "cursor_symbols");
   const usages = symbols.filter(({ from }) => from === "usages");
-  const matchedByNameSymbols = symbols.filter(
-    ({ from }) => from === "matched_by_name_symbols",
-  );
 
   return (
     <Flex direction="column" gap="4">
-      {cursorSymbols.length > 0 && (
-        <Collapsible title="Cursor Symbols">
-          {cursorSymbols.map(({ symbol }, i) => {
-            const key = `cursor-symbols-${i}`;
-            return <SymbolText key={key}>{symbol}</SymbolText>;
-          })}
-        </Collapsible>
-      )}
-      {declarations.length > 0 && (
-        <Collapsible title="Declarations">
-          {declarations.map(({ symbol }, i) => {
-            const key = `declaration-${i}`;
-            return <SymbolText key={key}>{symbol}</SymbolText>;
-          })}
-        </Collapsible>
-      )}
+      <Collapsible defaultOpen title={`Declarations: ${declarations.length}`}>
+        {declarations.map(({ symbol }, i) => {
+          const key = `declaration-${i}`;
+          return <SymbolText key={key}>{symbol}</SymbolText>;
+        })}
+      </Collapsible>
 
-      {matchedByNameSymbols.length > 0 && (
-        <Collapsible title="Matches by name">
-          {matchedByNameSymbols.map(({ symbol }, i) => {
-            const key = `matched-by-name-${i}`;
-            return <SymbolText key={key}>{symbol}</SymbolText>;
-          })}
-        </Collapsible>
-      )}
+      <Collapsible title={`Cursor Symbols: ${cursorSymbols.length}`}>
+        {cursorSymbols.map(({ symbol }, i, arr) => {
+          const key = `cursor-symbols-${i}`;
+          return (
+            <SymbolText key={key}>
+              {symbol}&nbsp;{arr.length}
+            </SymbolText>
+          );
+        })}
+      </Collapsible>
 
-      {usages.length > 0 && (
-        <Collapsible title="Usages">
-          {usages.map(({ symbol }, i) => {
-            const key = `usages-${i}`;
-            return <SymbolText key={key}>{symbol}</SymbolText>;
-          })}
-        </Collapsible>
-      )}
+      <Collapsible title={`Usages: ${usages.length}`}>
+        {usages.map(({ symbol }, i) => {
+          const key = `usages-${i}`;
+          return <SymbolText key={key}>{symbol}</SymbolText>;
+        })}
+      </Collapsible>
     </Flex>
   );
 };
