@@ -31,6 +31,8 @@ describe("FIM debug page", () => {
     };
     postMessage(dataMessage);
 
-    await waitFor(() => expect(app.queryByText(/FIM debug/i)).not.toBeNull());
+    await waitFor(() =>
+      expect(app.queryByText(/Code Completion Context/i)).not.toBeNull(),
+    );
   });
 });
