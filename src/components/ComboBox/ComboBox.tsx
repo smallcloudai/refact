@@ -53,12 +53,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     defaultActiveId: undefined,
   });
 
-  // TODO: uninstall this package
-  // const matches = matchSorter(commandsOrArguments, trigger, {
-  //   baseSort: (a, b) => (a.index < b.index ? -1 : 1),
-  //   threshold: 0,
-  // });
-
   const matches = commandsOrArguments;
 
   const hasMatches = !!trigger && !!matches.length;
@@ -198,11 +192,23 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         startPosition,
       );
 
-      setTrigger(command);
       onChange(newInput.value);
       setEndPosition(newInput.endPosition);
-      setSelectedCommand(selectedCommand ? "" : command);
+
       combobox.setValue(command);
+      if (selectedCommand) {
+        setSelectedCommand("");
+        setTrigger(command);
+        setStartPosition(null);
+        // onChange(newInput.value + "\n");
+        // setEndPosition(newInput.endPosition + 1);
+        combobox.hide();
+      } else {
+        setSelectedCommand(command);
+        setTrigger(command);
+        // onChange(newInput.value);
+        // setEndPosition(newInput.endPosition);
+      }
     }
 
     if (event.key === "Space" && state.open && commands.includes(trigger)) {
