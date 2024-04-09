@@ -149,7 +149,7 @@ impl ScratchpadAbstract for SingleFileFIM {
     ) -> Result<String, String> {
         let use_rag = !self.t.context_format.is_empty() && self.post.use_ast && self.ast_module.is_some();
         let mut rag_tokens_n = if self.post.rag_tokens_n > 0 {
-            self.post.rag_tokens_n.min(4096).max(1024)
+            self.post.rag_tokens_n.min(4096).max(50)
         } else {
             ((context_size as f64 * self.t.rag_ratio) as usize).min(4096).max(50)
         };

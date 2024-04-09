@@ -9,10 +9,9 @@ use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
-use crate::ast::treesitter::structs::SymbolType;
-
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
+use crate::ast::treesitter::structs::SymbolType;
 
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile};
 use crate::global_context::GlobalContext;

@@ -118,3 +118,60 @@ pub async fn handle_v1_code_completion_web(
     )?;
     handle_v1_code_completion(global_context.clone(), &mut code_completion_post).await
 }
+
+pub async fn handle_v1_code_completion_prompt(
+    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let mut post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    )?;
+    validate_post(post.clone())?;
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
+    let maybe = _lookup_code_completion_scratchpad(caps.clone(), &post).await;
+    if maybe.is_err() {
+        // On error, this will also invalidate caps each 10 seconds, allows to overcome empty caps situation
+        let _ = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 10).await;
+        return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", maybe.unwrap_err())))
+    }
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = maybe.unwrap();
+    if post.model == "" {
+        post.model = model_name.clone();
+    }
+    if post.scratchpad == "" {
+        post.scratchpad = scratchpad_name.clone();
+    }
+
+    // we don't need this really
+    let (cache_arc, tele_storage) = {
+        let cx_locked = global_context.write().await;
+        (cx_locked.completions_cache.clone(), cx_locked.telemetry.clone())
+    };
+
+    let ast_module = global_context.read().await.ast_module.clone();
+    let mut scratchpad = scratchpads::create_code_completion_scratchpad(
+        global_context.clone(),
+        caps,
+        model_name.clone(),
+        post.clone(),
+        &scratchpad_name,
+        &scratchpad_patch,
+        cache_arc.clone(),
+        tele_storage.clone(),
+        ast_module
+    ).await.map_err(|e|
+        ScratchError::new(StatusCode::BAD_REQUEST, e)
+    )?;
+
+    let prompt = scratchpad.prompt(n_ctx, &mut post.parameters).await.map_err(|e|
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
+    )?;
+
+    let body = serde_json::json!({"prompt": prompt}).to_string();
+    let response = Response::builder()
+        .status(200)
+        .header("Content-Type", "application/json")
+        .body(Body::from(body))
+        .unwrap();
+    return Ok(response);
+}
