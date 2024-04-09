@@ -11,7 +11,9 @@ mod tests {
     #[test]
     fn test_query_rust_function() {
         let mut parser = Box::new(JavaParser::new().expect("JavaParser::new"));
-        let asd = parser.parse(MAIN_RS_CODE, &PathBuf::from("main.java"));
+        let path = PathBuf::from("file:///main.java");
+        let asd = parser.parse(MAIN_RS_CODE, &path);
+        let asd = parser.parse(MAIN_RS_CODE, &path);
         // let indexes_json: HashMap<String, SymbolDeclarationStruct> = serde_json::from_str(MAIN_RS_INDEXES).unwrap();
 
         // test_query_function(parser, &path, MAIN_RS_CODE,

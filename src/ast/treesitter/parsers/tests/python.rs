@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use std::path::PathBuf;
+    use url::Url;
     use crate::ast::treesitter::parsers::AstLanguageParser;
     use crate::ast::treesitter::parsers::python::PythonParser;
 
@@ -11,7 +13,8 @@ mod tests {
     #[test]
     fn test_query_rust_function() {
         let mut parser = Box::new(PythonParser::new().expect("PythonParser::new"));
-        let asd = parser.parse(MAIN_PY_CODE, &PathBuf::from("main.py"));
+        let path = PathBuf::from("file:///main.py");
+        let asd = parser.parse(MAIN_PY_CODE, &path);
 
         // test_query_function(parser, &path, MAIN_RS_CODE,
         //                     serde_json::from_str(MAIN_RS_INDEXES).unwrap(),
