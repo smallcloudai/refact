@@ -43,7 +43,7 @@
     "build-storybook": "storybook build",
     "types": "tsc --noEmit",
     "prepublishOnly": "npm run build",
-    "alpha:version": "npm --preid alpha version prepatch",
+    "alpha:version": "npm --preid alpha version prerelease",
     "alpha:publish": "npm publish --tag alpha"
   },
   "devDependencies": {
