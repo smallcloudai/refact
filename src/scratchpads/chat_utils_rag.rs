@@ -85,7 +85,7 @@ fn color_with_gradient_type(omsg: &ContextFile, linevec: &mut Vec<Arc<FileLine>>
     let (m12, c12) = find_line_parameters(omsg.line1 as f32, omsg.usefulness, omsg.line1 as f32 + t_fade_away_lines as f32, 0. );
     let (m21, c21) = find_line_parameters(omsg.line2 as f32, omsg.usefulness, omsg.line2 as f32 - t_fade_away_lines as f32, 0. );
     let (m22, c22) = find_line_parameters(omsg.line2 as f32, omsg.usefulness, omsg.line2 as f32 + t_fade_away_lines as f32, 0. );
-    
+
     for (line_n, line) in linevec.iter().enumerate() {
         let line_n = line_n + 1;
         let usefulness = match omsg.gradient_type {
@@ -111,7 +111,7 @@ fn color_with_gradient_type(omsg: &ContextFile, linevec: &mut Vec<Arc<FileLine>>
 fn set_useful_for_line(line: &Arc<FileLine>, useful: f32, color: &String) {
     let lineref_mut: *mut FileLine = Arc::as_ptr(line) as *mut FileLine;
     unsafe {
-        if (line.useful < useful || line.color.is_empty()) || useful < 0. {
+        if (line.useful < useful) || useful < 0. {
             (*lineref_mut).useful = useful;
             (*lineref_mut).color = color.clone();
         }

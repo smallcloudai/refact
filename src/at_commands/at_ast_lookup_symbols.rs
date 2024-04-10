@@ -47,6 +47,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
             symbol: res.symbol_declaration.guid.clone(),
+            gradient_type: -1,
             usefulness: 40.0,
         });
     }
