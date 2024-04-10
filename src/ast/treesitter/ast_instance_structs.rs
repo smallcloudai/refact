@@ -2,7 +2,7 @@ use std::any::Any;
 use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt::Debug;
-use std::io;
+use std::{fs, io};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
@@ -138,14 +138,13 @@ impl SymbolInformation {
     }
 
     pub fn get_content_blocked(&self) -> io::Result<String> {
-        let content = std::fs::read_to_string(&self.file_path)?;
-        let text = Rope::from_str(content.as_str());
-
-        let mut start_row = min(self.full_range.start_point.row, text.len_lines());
-        let end_row = min(self.full_range.end_point.row + 1, text.len_lines());
+        let content = fs::read_to_string(&self.file_path)?;
+        let lines: Vec<&str> = content.lines().collect();
+        let mut start_row = min(self.full_range.start_point.row, lines.len());
+        let end_row = min(self.full_range.end_point.row + 1, lines.len());
         start_row = min(start_row, end_row);
-
-        Ok(text.slice(text.line_to_char(start_row)..text.line_to_char(end_row)).to_string())
+        let selected_text = lines[start_row..end_row].join("\n");
+        Ok(selected_text)
     }
 }
 

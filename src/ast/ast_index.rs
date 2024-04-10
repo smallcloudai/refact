@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use std::cell::RefCell;
 use std::path::PathBuf;
 
-use fst::{Set, set, Streamer};
 use itertools::Itertools;
 use rayon::prelude::*;
 use ropey::Rope;
@@ -13,7 +12,6 @@ use tracing::info;
 use tree_sitter::Point;
 
 use crate::ast::comments_wrapper::get_language_id_by_filename;
-use crate::ast::fst_extra_automation::Substring;
 use crate::ast::structs::{FileASTMarkup, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, SymbolInformation};
 use crate::ast::treesitter::language_id::LanguageId;
@@ -28,7 +26,6 @@ pub struct AstIndex {
     symbols_by_name: HashMap<String, Vec<AstSymbolInstanceArc>>,
     symbols_by_guid: HashMap<String, AstSymbolInstanceArc>,
     path_by_symbols: HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
-    symbols_search_index: HashMap<PathBuf, Set<Vec<u8>>>,
     type_guid_to_dependent_guids: HashMap<String, HashSet<String>>,
     declaration_guid_to_usage_names: HashMap<String, HashSet<String>>,
     has_changes: bool,
@@ -49,40 +46,12 @@ pub(crate) struct IndexingStats {
 }
 
 
-fn make_a_query(
-    nodes_indexes: &HashMap<PathBuf, Set<Vec<u8>>>,
-    query_str: &str,
-    exception_doc: Option<Document>,
-) -> Vec<String> {
-    let matcher = Substring::new(query_str, true);
-    let mut stream_builder = set::OpBuilder::new();
-
-    for (doc_path, set) in nodes_indexes {
-        if let Some(ref exception) = exception_doc {
-            if *doc_path == exception.path {
-                continue;
-            }
-        }
-        stream_builder = stream_builder.add(set.search(matcher.clone()));
-    }
-
-    let mut stream = stream_builder.union();
-    let mut found_keys = Vec::new();
-    while let Some(key) = stream.next() {
-        if let Ok(key_str) = String::from_utf8(key.to_vec()) {
-            found_keys.push(key_str);
-        }
-    }
-    found_keys
-}
-
 impl AstIndex {
     pub fn init() -> AstIndex {
         AstIndex {
             symbols_by_name: HashMap::new(),
             symbols_by_guid: HashMap::new(),
             path_by_symbols: HashMap::new(),
-            symbols_search_index: HashMap::new(),
             type_guid_to_dependent_guids: HashMap::new(),
             declaration_guid_to_usage_names: HashMap::new(),
             has_changes: false,
@@ -113,7 +82,7 @@ impl AstIndex {
         &mut self,
         doc: &Document,
         symbols: &Vec<AstSymbolInstanceArc>,
-        make_dirty: bool
+        make_dirty: bool,
     ) -> Result<(), String> {
         let has_removed = self.remove(&doc);
         if has_removed {
@@ -136,11 +105,6 @@ impl AstIndex {
             self.path_by_symbols.entry(doc.path.clone()).or_insert_with(Vec::new).push(symbol.clone());
             symbol_names.push(symbol_ref.name().to_string());
         }
-        let meta_names_set = match Set::from_iter(symbol_names.iter()) {
-            Ok(set) => set,
-            Err(e) => return Err(format!("Error creating set: {}", e)),
-        };
-        self.symbols_search_index.insert(doc.path.clone(), meta_names_set);
 
         Ok(())
     }
@@ -151,13 +115,13 @@ impl AstIndex {
     }
 
     pub fn remove(&mut self, doc: &Document) -> bool {
-        let has_removed = self.symbols_search_index.remove(&doc.path).is_some();
+        let symbols = self.path_by_symbols.remove(&doc.path);
+        let has_removed = symbols.is_some();
         if !has_removed {
             return false;
         }
         let mut removed_guids = HashSet::new();
-        for symbol in self.path_by_symbols
-            .remove(&doc.path)
+        for symbol in symbols
             .unwrap_or_default()
             .iter() {
             let (name, guid) = {
@@ -200,7 +164,6 @@ impl AstIndex {
         self.symbols_by_name.clear();
         self.symbols_by_guid.clear();
         self.path_by_symbols.clear();
-        self.symbols_search_index.clear();
         self.has_changes = true;
     }
 
@@ -210,7 +173,7 @@ impl AstIndex {
         request_symbol_type: RequestSymbolType,
         exception_doc: Option<Document>,
         language: Option<LanguageId>,
-        try_fuzzy_if_not_found: bool
+        try_fuzzy_if_not_found: bool,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         fn exact_search(
             symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceArc>>,
@@ -235,19 +198,22 @@ impl AstIndex {
         }
 
         fn fuzzy_search(
-            search_index: &HashMap<PathBuf, Set<Vec<u8>>>,
             symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceArc>>,
             query: &str,
-            exception_doc: Option<Document>,
             request_symbol_type: &RequestSymbolType,
         ) -> Vec<AstSymbolInstanceArc> {
-            make_a_query(search_index, query, exception_doc)
+            let lower_query = query.to_lowercase();
+            symbols_by_name
+                .par_iter()
+                .filter(|(name, _)| {
+                    let lower_name = name.to_lowercase();
+                    lower_name.contains(&lower_query)
+                })
+                .map(|(_, symbols)| symbols.clone())
+                .collect::<Vec<_>>()
                 .iter()
-                .map(|name| symbols_by_name
-                    .get(name)
-                    .map(|x| x.clone())
-                    .unwrap_or_default())
                 .flatten()
+                .cloned()
                 .filter(|s| {
                     let s_ref = s.read().expect("the data might be broken");
                     match request_symbol_type {
@@ -261,17 +227,16 @@ impl AstIndex {
 
         let mut symbols = exact_search(&self.symbols_by_name, query, &request_symbol_type);
         if try_fuzzy_if_not_found && symbols.is_empty() {
-            symbols = fuzzy_search(
-                &self.symbols_search_index, &self.symbols_by_name,
-                query, exception_doc, &request_symbol_type,
-            );
+            symbols = fuzzy_search(&self.symbols_by_name, query, &request_symbol_type);
         }
 
         let mut filtered_search_results = symbols
             .iter()
             .filter(|s| {
                 let s_ref = s.read().expect("the data might be broken");
-                *s_ref.language() == language.unwrap_or(*s_ref.language())
+                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.path != *s_ref.file_path());
+                let correct_language = language.map_or(true, |l| l == *s_ref.language());
+                correct_doc && correct_language
             })
             .map(|s| {
                 let s_ref = s.read().expect("the data might be broken");
@@ -312,7 +277,7 @@ impl AstIndex {
         language: Option<LanguageId>,
     ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
         let search_results = self.path_by_symbols
-            .iter()
+            .par_iter()
             .filter(|(path, _symbols)| {
                 let language_id = match get_language_id_by_filename(path) {
                     Some(lid) => lid,
@@ -322,8 +287,6 @@ impl AstIndex {
                 let correct_doc = exception_doc.clone().map_or(true, |doc| doc.path != **path);
                 correct_doc && correct_language
             })
-            .collect::<Vec<_>>()
-            .par_iter()
             .filter_map(|(path, symbols)| {
                 let mut found_symbols = vec![];
                 let file_content = match read_file_from_disk_block(path) {
@@ -461,10 +424,9 @@ impl AstIndex {
             .collect::<Vec<_>>();
         let declarations_matched_by_name = unfiltered_cursor_symbols
             .iter()
-            .cloned()
             .map(|s| {
                 let s_ref = s.read().expect("the data might be broken");
-                let use_fuzzy_search = s_ref.full_range().start_point.row == cursor.row;
+                let use_fuzzy_search = s_ref.full_range().start_point.row == cursor.row && s_ref.is_error();
                 self.search_by_name(&s_ref.name(), RequestSymbolType::Declaration, None, language.clone(), use_fuzzy_search)
                     .unwrap_or_else(|_| vec![])
             })
@@ -535,18 +497,16 @@ impl AstIndex {
                 self.search_by_name(&s.name, RequestSymbolType::Usage, None, language.clone(), use_fuzzy_search)
                     .unwrap_or_else(|_| vec![])
             })
-           .flatten()
-           .filter(|s| {
+            .flatten()
+            .filter(|s| {
                 s.symbol_declaration.symbol_type == SymbolType::FunctionCall
             })
-           .map(|s| s.symbol_declaration)
-           .unique_by(|s| s.guid.clone())
-           .unique_by(|s| s.name.clone())
-           .take(top_n_usage_for_each_decl)
-           .collect::<Vec<_>>();
+            .map(|s| s.symbol_declaration)
+            .unique_by(|s| s.guid.clone())
+            .unique_by(|s| s.name.clone())
+            .take(top_n_usage_for_each_decl)
+            .collect::<Vec<_>>();
         usages.extend(func_usages_matched_by_name);
-
-        // self.declaration_guid_to_usage_guids
 
         let cursor_symbols_names = unfiltered_cursor_symbols
             .iter()
@@ -563,14 +523,18 @@ impl AstIndex {
             })
             .collect::<HashSet<_>>();
         let most_similar_declarations = self.declaration_guid_to_usage_names
-            .iter()
+            .par_iter()
             .map(|(decl_guid, usage_names)| {
-                (decl_guid, cursor_symbols_names.intersection(usage_names).count())
+                (
+                    decl_guid,
+                    cursor_symbols_names.intersection(usage_names).count(),
+                )
             })
-            .sorted_by_key(|(_, a)| -(*a as i32)) // descending
-            .filter(|(_, a)| *a > (cursor_symbols_names.len() / 5))  // at least 20% must be similar
+            .collect::<Vec<_>>()
+            .iter()
+            .filter(|&(_, a)| *a > (cursor_symbols_names.len() / 5))
             .take(top_n_near_cursor * 2)
-            .filter_map(|(g, _)| self.symbols_by_guid.get(g))
+            .filter_map(|(g, _)| self.symbols_by_guid.get(*g))
             .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
             .unique_by(|s| s.guid.clone())
             .unique_by(|s| s.name.clone())
@@ -628,8 +592,8 @@ impl AstIndex {
             Arc::new(RefCell::new(s_ref.symbol_info_struct()))
         }).collect();
         let guid_to_symbol: HashMap<String, Arc<RefCell<SymbolInformation>>> = symbols4export.iter().map(
-                |s| (s.borrow().guid.to_string(), s.clone())
-            ).collect();
+            |s| (s.borrow().guid.to_string(), s.clone())
+        ).collect();
         fn recursive_path_of_guid(guid_to_symbol: &HashMap<String, Arc<RefCell<SymbolInformation>>>, guid: &String) -> String
         {
             return match guid_to_symbol.get(guid) {
@@ -637,7 +601,7 @@ impl AstIndex {
                     let pname = if !x.borrow().name.is_empty() { x.borrow().name.clone() } else { x.borrow().guid[..8].to_string() };
                     let pp = recursive_path_of_guid(&guid_to_symbol, &x.borrow().parent_guid);
                     format!("{}::{}", pp, pname)
-                },
+                }
                 None => {
                     // FIXME:
                     // info!("parent_guid {} not found, maybe outside of this file", guid);
@@ -659,7 +623,7 @@ impl AstIndex {
             // convert to a simple Vec<SymbolInformation>
             symbols_sorted_by_path_len: symbols4export.iter().map(|s| {
                 s.borrow().clone()
-            }).collect()
+            }).collect(),
         })
     }
 
@@ -690,7 +654,7 @@ impl AstIndex {
 
     #[allow(unused)]
     pub fn get_file_paths(&self) -> Vec<PathBuf> {
-        self.symbols_search_index.iter().map(|(path, _)| path.clone()).collect()
+        self.path_by_symbols.iter().map(|(path, _)| path.clone()).collect()
     }
 
     pub fn get_symbols_names(
