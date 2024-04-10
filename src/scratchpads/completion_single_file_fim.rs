@@ -151,7 +151,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         let mut rag_tokens_n = if self.post.rag_tokens_n > 0 {
             self.post.rag_tokens_n.min(4096).max(1024)
         } else {
-            ((context_size as f64 * self.t.rag_ratio) as usize).min(4096).max(1024)
+            ((context_size as f64 * self.t.rag_ratio) as usize).min(4096).max(50)
         };
         if !use_rag {
             rag_tokens_n = 0;

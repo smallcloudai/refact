@@ -436,7 +436,8 @@ pub async fn postprocess_at_results2(
             anything = true;
             if first_line == 0 { first_line = i; }
             if i > prev_line + 1 {
-                out.push_str(format!("...{} lines\n", i - prev_line - 1).as_str());
+                // out.push_str(format!("...{} lines\n", i - prev_line - 1).as_str());
+                out.push_str(format!("...\n").as_str());
             }
             out.push_str(&lineref.line_content);
             out.push_str("\n");
