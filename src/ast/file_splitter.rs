@@ -1,8 +1,14 @@
+use std::sync::{Arc, Weak};
+use tokio::sync::{Mutex as AMutex, Mutex, RwLock};
 use md5;
+use tokenizers::Tokenizer;
 use tracing::info;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
-
+use std::sync::RwLock as StdRwLock;
+use crate::call_validation::{ChatMessage, ContextFile};
 use crate::files_in_workspace::Document;
+use crate::global_context::GlobalContext;
+use crate::scratchpads::chat_utils_rag::postprocess_at_results2;
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::structs::SplitResult;
 
@@ -26,7 +32,11 @@ impl AstBasedFileSplitter {
         }
     }
 
-    pub async fn split(&self, doc: &Document) -> Result<Vec<SplitResult>, String> {
+    pub async fn split(&self, doc: &Document, 
+                       tokenizer: Arc<StdRwLock<Tokenizer>>, 
+                       global_context: Weak<RwLock<GlobalContext>>,
+                       tokens_limit: usize
+    ) -> Result<Vec<SplitResult>, String> {
         let mut doc = doc.clone();
         let path = doc.path.clone();
         let mut parser = match get_ast_parser_by_filename(&path) {
@@ -50,7 +60,7 @@ impl AstBasedFileSplitter {
         for symbol in symbols.iter().map(|s| s.read()
             .expect("cannot read symbol")
             .symbol_info_struct()) {
-            let content = match symbol.get_content().await {
+            let mut content = match symbol.get_content().await {
                 Ok(content) => content,
                 Err(err) => {
                     split_errors += 1;
@@ -58,6 +68,26 @@ impl AstBasedFileSplitter {
                     continue;
                 }
             };
+            if let Some(gcx) = global_context.upgrade() {
+                let full_range = symbol.full_range;
+                let messages = vec![ChatMessage {
+                    role: "user".to_string(),
+                    content: serde_json::to_string(&vec![ContextFile {
+                        file_name: symbol.file_path.to_str().unwrap().parse().unwrap(),
+                        file_content: doc.text.clone().unwrap().to_string(),
+                        line1: full_range.start_point.row,
+                        line2: full_range.end_point.row,
+                        symbol: "".to_string(),
+                        gradient_type: 0,
+                        usefulness: 0.0,
+                    }]).unwrap(),
+                }];
+                let res = postprocess_at_results2(gcx.clone(), messages, tokenizer.clone(), tokens_limit).await;
+                if let Some(first) = res.first() {
+                    content = first.file_content.clone();
+                }
+            }
+            
             if content.len() > self.soft_window {
                 let mut temp_doc = Document::new(&doc.path, Some("unknown".to_string()));
                 temp_doc.update_text(&content);

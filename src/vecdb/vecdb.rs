@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use tokio::sync::RwLock as ARwLock;
+use tokio::sync::{RwLock as ARwLock, RwLock};
 use tokio::sync::Mutex as AMutex;
 use tracing::{info, error};
 
@@ -127,7 +127,7 @@ async fn create_vecdb(
 
     {
         let vec_db_locked = vec_db_arc.lock().await;
-        let tasks = vec_db_locked.as_ref().unwrap().vecdb_start_background_tasks().await;
+        let tasks = vec_db_locked.as_ref().unwrap().vecdb_start_background_tasks(global_context.clone()).await;
         background_tasks.extend(tasks);
     }
 
@@ -229,9 +229,9 @@ impl VecDb {
         })
     }
 
-    pub async fn vecdb_start_background_tasks(&self) -> Vec<JoinHandle<()>> {
+    pub async fn vecdb_start_background_tasks(&self, global_context: Arc<RwLock<GlobalContext>>) -> Vec<JoinHandle<()>> {
         info!("vecdb: start_background_tasks");
-        return self.vectorizer_service.lock().await.vecdb_start_background_tasks(self.vecdb_emb_client.clone()).await;
+        return self.vectorizer_service.lock().await.vecdb_start_background_tasks(self.vecdb_emb_client.clone(), global_context.clone()).await;
     }
 
     pub async fn vectorizer_enqueue_files(&self, documents: &Vec<Document>, force: bool) {

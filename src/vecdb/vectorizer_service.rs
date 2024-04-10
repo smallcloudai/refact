@@ -1,17 +1,21 @@
 use std::collections::{HashMap, VecDeque};
 use std::io::Write;
 use std::ops::Div;
-use std::sync::Arc;
+use std::str::FromStr;
+use std::sync::{Arc, Weak};
 use std::time::SystemTime;
-
-use tokio::sync::Mutex as AMutex;
+use tokenizers::Tokenizer;
+use std::sync::RwLock as StdRwLock;
+use tokio::sync::{Mutex as AMutex, Mutex, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing::info;
 
 use crate::ast::file_splitter::AstBasedFileSplitter;
+use crate::cached_tokenizers;
 use crate::fetch_embedding::try_get_embedding;
 use crate::files_in_workspace::Document;
+use crate::global_context::GlobalContext;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::structs::{Record, SplitResult, VecdbConstants, VecDbStatus};
 
@@ -79,6 +83,8 @@ async fn vectorize_thread(
     constants: VecdbConstants,
     api_key: String,
     max_concurrent_tasks: usize,
+    tokenizer: Arc<StdRwLock<Tokenizer>>,
+    global_context: Weak<RwLock<GlobalContext>>,
 ) {
     let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
     let mut reported_unprocessed: usize = 0;
@@ -127,7 +133,7 @@ async fn vectorize_thread(
         };
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size, constants.splitter_soft_limit);
-        let split_data = match file_splitter.split(&doc).await {
+        let split_data = match file_splitter.split(&doc, tokenizer.clone(), global_context.clone(), constants.embedding_size as usize).await {
             Ok(data) => data,
             Err(err) => {
                 info!("{}", err);
@@ -259,7 +265,8 @@ impl FileVectorizerService {
         }
     }
 
-    pub async fn vecdb_start_background_tasks(&self, vecdb_client: Arc<AMutex<reqwest::Client>>) -> Vec<JoinHandle<()>> {
+    pub async fn vecdb_start_background_tasks(&self, vecdb_client: Arc<AMutex<reqwest::Client>>, 
+                                              global_context: Arc<RwLock<GlobalContext>>) -> Vec<JoinHandle<()>> {
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
                 self.update_request_queue.clone(),
@@ -268,6 +275,10 @@ impl FileVectorizerService {
                 self.constants.cooldown_secs,
             )
         );
+        let caps = global_context.read().await.caps.clone().expect("caps");
+        let constants = self.constants.clone();
+        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(
+            caps, global_context.clone(), constants.model_name.clone()).await.expect("cached tokenizer");
 
         let retrieve_thread_handle = tokio::spawn(
             vectorize_thread(
@@ -275,9 +286,11 @@ impl FileVectorizerService {
                 self.output_queue.clone(),
                 self.vecdb_handler.clone(),
                 self.status.clone(),
-                self.constants.clone(),
+                constants,
                 self.api_key.clone(),
                 4,
+                tokenizer_arc,
+                Arc::downgrade(&global_context.clone())
             )
         );
 
