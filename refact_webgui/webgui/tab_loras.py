@@ -187,10 +187,12 @@ class TabLorasRouter(APIRouter):
                     output_filename = Path(tempdir) / f"{uuid.uuid4()}.zip"
                     process = await asyncio.create_subprocess_exec(
                         "python", "-m", "refact_utils.scripts.merge_lora",
-                        model_path, str(checkpoint_path), str(output_filename))
+                        model_path, str(checkpoint_path), str(output_filename),
+                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
                     await process.wait()
                     if process.returncode != 0:
-                        raise RuntimeError(f"run copying failed")
+                        stderr = await process.stderr.read()
+                        raise RuntimeError(f"merge lora script failed with {process.returncode}: {stderr.decode()}")
 
                     async with aiofiles.open(output_filename, "rb") as f:
                         while True:
