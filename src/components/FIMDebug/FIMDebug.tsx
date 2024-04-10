@@ -19,7 +19,7 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         ) : (
           <Box py="2" overflow="hidden">
             <Text wrap="nowrap" size="2">
-              Completion Context Not Found
+              Completion Context {data.cached ? "Cache Used." : "Not Used."}
             </Text>
           </Box>
         )}
