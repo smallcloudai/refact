@@ -658,6 +658,7 @@ impl VecDBHandler {
             Ok(records) => {
                 let filtered: Vec<Record> = records
                     .into_iter()
+                    .dedup()
                     .sorted_unstable_by(|a, b| {
                         a.distance
                             .partial_cmp(&b.distance)

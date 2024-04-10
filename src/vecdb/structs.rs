@@ -35,7 +35,7 @@ pub struct VecDbStatus {
 }
 
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Record {
     pub vector: Option<Vec<f32>>,
     pub window_text: String,
