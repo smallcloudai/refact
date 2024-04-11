@@ -8,8 +8,6 @@ import safetensors
 import torch
 from safetensors.torch import load_file
 
-from refact_utils.finetune.utils import get_active_loras
-from refact_utils.scripts import best_lora
 from refact_utils.scripts import env
 from self_hosting_machinery.finetune.modelling.lora import LoraMixin
 from self_hosting_machinery.finetune.modelling.utils import map_model_specific_params
@@ -44,6 +42,10 @@ class LoraLoaderMixin:
 
     @property
     def model(self) -> torch.nn.Module:
+        raise NotImplementedError()
+
+    @property
+    def model_config(self) -> Dict[str, Any]:
         raise NotImplementedError()
 
     @property
@@ -127,9 +129,8 @@ class LoraLoaderMixin:
                 raise NotImplementedError("Loading of sharded checkpoint is not implemented")
             old_format_finetune_cp = finetune_cps[0]
             lora_cfg = old_format_finetune_cp['ds_config']['model_info']['lora']
-            # TODO
             _, lora_target_modules = map_model_specific_params(
-                model_name=self.model_name,
+                model_config=self.model_config,
                 freeze_exceptions=[],
                 lora_target_modules=lora_cfg.pop('lora_target_modules')
             )
