@@ -47,6 +47,10 @@ class LoraLoaderMixin:
         raise NotImplementedError()
 
     @property
+    def model_config(self) -> Dict[str, Any]:
+        raise NotImplementedError()
+
+    @property
     def model_name(self) -> str:
         raise NotImplementedError()
 
@@ -127,9 +131,8 @@ class LoraLoaderMixin:
                 raise NotImplementedError("Loading of sharded checkpoint is not implemented")
             old_format_finetune_cp = finetune_cps[0]
             lora_cfg = old_format_finetune_cp['ds_config']['model_info']['lora']
-            # TODO
             _, lora_target_modules = map_model_specific_params(
-                model_name=self.model_name,
+                model_config=self.model_config,
                 freeze_exceptions=[],
                 lora_target_modules=lora_cfg.pop('lora_target_modules')
             )

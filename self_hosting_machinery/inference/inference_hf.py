@@ -191,6 +191,10 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         return self._model_name
 
     @property
+    def model_config(self) -> Dict[str, Any]:
+        return self._model_cfg
+
+    @property
     def model_dict(self) -> Dict[str, Any]:
         return self._model_dict
 
