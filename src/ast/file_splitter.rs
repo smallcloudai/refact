@@ -5,6 +5,7 @@ use tokenizers::Tokenizer;
 use tracing::info;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use std::sync::RwLock as StdRwLock;
+use crate::ast::treesitter::structs::SymbolType;
 use crate::call_validation::{ChatMessage, ContextFile};
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
@@ -68,23 +69,25 @@ impl AstBasedFileSplitter {
                     continue;
                 }
             };
-            if let Some(gcx) = global_context.upgrade() {
-                let full_range = symbol.full_range;
-                let messages = vec![ChatMessage {
-                    role: "user".to_string(),
-                    content: serde_json::to_string(&vec![ContextFile {
-                        file_name: symbol.file_path.to_str().unwrap().parse().unwrap(),
-                        file_content: doc.text.clone().unwrap().to_string(),
-                        line1: full_range.start_point.row,
-                        line2: full_range.end_point.row,
-                        symbol: "".to_string(),
-                        gradient_type: 0,
-                        usefulness: 100.0,
-                    }]).unwrap(),
-                }];
-                let res = postprocess_at_results2(gcx.clone(), messages, tokenizer.clone(), tokens_limit).await;
-                if let Some(first) = res.first() {
-                    content = first.file_content.clone();
+            if symbol.symbol_type == SymbolType::StructDeclaration {
+                if let Some(gcx) = global_context.upgrade() {
+                    let full_range = symbol.full_range;
+                    let messages = vec![ChatMessage {
+                        role: "user".to_string(),
+                        content: serde_json::to_string(&vec![ContextFile {
+                            file_name: symbol.file_path.to_str().unwrap().parse().unwrap(),
+                            file_content: doc.text.clone().unwrap().slice(full_range.start_byte..full_range.end_byte).to_string(),
+                            line1: full_range.start_point.row + 1,
+                            line2: full_range.end_point.row + 1,
+                            symbol: symbol.name.clone(),
+                            gradient_type: -1,
+                            usefulness: 10.0,
+                        }]).unwrap(),
+                    }];
+                    let res = postprocess_at_results2(gcx.clone(), messages, tokenizer.clone(), tokens_limit).await;
+                    if let Some(first) = res.first() {
+                        content = first.file_content.clone();
+                    }
                 }
             }
             
