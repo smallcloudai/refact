@@ -1,10 +1,7 @@
-import os
-import random
+import os, time
 
 import requests
 import termcolor
-
-from pathlib import Path
 
 from pygments import highlight
 from pygments.lexers import PythonLexer
@@ -46,22 +43,24 @@ def code_completion_prompt_with_rag(rag_token_limit):
         },
     )
     prompt = response.json()["prompt"]
-    # print(prompt)
     i = prompt.index("<fim_prefix>")
-    aaaa = prompt[:i]
-    aaaa = aaaa.split("<file_sep>")[1]
-    lines_n_in_aaaa = aaaa.count("\n") + 1
-    print(termcolor.colored(aaaa, "yellow"))
-    print("\n" * (30 - lines_n_in_aaaa))
-    # for token in SPECIAL_TOKENS:
-    #     prompt = prompt.replace(token, termcolor.colored(token, "blue"))
-    # prompt = prompt.replace("\n".join(prefix_lines), termcolor.colored("\n".join(prefix_lines), "yellow"))
-    # middle = termcolor.colored(middle, 'green')
-    # print(f"{prompt}{middle}\n\n")
+    good_for_video = prompt
+    good_for_video = prompt[:i].split("<file_sep>")
+    if len(good_for_video) <= 1:
+        print(prompt)
+        return
+    good_for_video = "\n".join(good_for_video[:-1])
+    good_for_video = good_for_video.replace("<repo_name>default_repo\n", "")
+    good_for_video = highlight(good_for_video, PythonLexer(), TerminalFormatter())
+    lines_n_in_good_for_video = good_for_video.count("\n") + 1
+    # print(termcolor.colored(good_for_video, "yellow"))
+    print(good_for_video)
+    print("\n" * (50 - lines_n_in_good_for_video))
 
 
 if __name__ == "__main__":
-    for x in range(200, 512-30):
+    for x in range(50, 512-50+1):
         rag_token_limit = 512 - x
-        print(x)
+        print("rag_token_limit", rag_token_limit)
         code_completion_prompt_with_rag(rag_token_limit)
+    time.sleep(10)

@@ -9,6 +9,7 @@ use tracing::{info, warn};
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
+use std::hash::{Hash, Hasher};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
@@ -28,6 +29,7 @@ const DEBUG: bool = true;
 pub struct File {
     pub markup: FileASTMarkup,
     pub cpath: PathBuf,
+    pub cpath_symmetry_breaker: f32,
 }
 
 #[derive(Debug)]
@@ -118,6 +120,12 @@ fn set_useful_for_line(line: &Arc<FileLine>, useful: f32, color: &String) {
     }
 }
 
+fn calculate_hash(path: &PathBuf) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    path.hash(&mut hasher);
+    hasher.finish()
+}
+
 pub async fn postprocess_rag_stage1(
     global_context: Arc<ARwLock<GlobalContext>>,
     origmsgs: Vec<ContextFile>,
@@ -129,12 +137,13 @@ pub async fn postprocess_rag_stage1(
     let ast_module = global_context.read().await.ast_module.clone();
     for file_name in files_set {
         let path = crate::files_in_workspace::canonical_path(&file_name.clone());
+        let cpath_symmetry_breaker: f32 = (calculate_hash(&path) as f32) / (u64::MAX as f32) / 100.0;
         let doc = Document::new(&path, None);
         let mut f: Option<Arc<File>> = None;
         if let Some(astmod) = &ast_module {
             match astmod.read().await.file_markup(&doc).await {
                 Ok(markup) => {
-                    f = Some(Arc::new(File { markup, cpath: path }));
+                    f = Some(Arc::new(File { markup, cpath: path, cpath_symmetry_breaker }));
                 },
                 Err(err) => {
                     warn!("postprocess_rag_stage1 query file {:?} markup problem: {}", file_name, err);
@@ -149,6 +158,7 @@ pub async fn postprocess_rag_stage1(
                     symbols_sorted_by_path_len: Vec::new(),
                 },
                 cpath: doc.path.clone(),
+                cpath_symmetry_breaker,
             }));
         }
         if f.is_some() {
@@ -379,17 +389,28 @@ pub async fn postprocess_at_results2(
 
     // 7. Sort
     lines_by_useful.sort_by(|a, b| {
-        b.useful.partial_cmp(&a.useful).unwrap_or(Ordering::Equal)
+        let av = a.useful + a.fref.cpath_symmetry_breaker;
+        let bv = b.useful + b.fref.cpath_symmetry_breaker;
+        bv.partial_cmp(&av).unwrap()
     });
 
     // 8. Convert line_content to tokens up to the limit
     let mut tokens_count: usize = 0;
     let mut lines_take_cnt: usize = 0;
+    let mut files_mentioned_set: HashSet<String> = HashSet::new();
+    let mut files_mentioned_sequence: Vec<PathBuf> = vec![];
     for lineref in lines_by_useful.iter_mut() {
         if lineref.useful < 0.0 {
             continue;
         }
-        let ntokens = count_tokens(&tokenizer.read().unwrap(), &lineref.line_content);
+        let mut ntokens = count_tokens(&tokenizer.read().unwrap(), &lineref.line_content);
+        let filename = lineref.fref.cpath.to_string_lossy().to_string();
+        if !files_mentioned_set.contains(&filename) {
+            files_mentioned_set.insert(filename.clone());
+            files_mentioned_sequence.push(lineref.fref.cpath.clone());
+            ntokens += count_tokens(&tokenizer.read().unwrap(), &filename.as_str());
+            ntokens += 5;  // any overhead: file_sep, new line, etc
+        }
         if tokens_count + ntokens > tokens_limit {
             break;
         }
@@ -417,7 +438,9 @@ pub async fn postprocess_at_results2(
 
     // 9. Generate output
     let mut merged: Vec<ContextFile> = vec![];
-    for linevec in lines_in_files.values_mut() {
+    let mut re_check_tokens_n = 0;
+    for cpath in files_mentioned_sequence.iter() {
+        let linevec = lines_in_files.get_mut(cpath).unwrap();
         if linevec.len() == 0 {
             continue;
         }
@@ -454,14 +477,18 @@ pub async fn postprocess_at_results2(
         }
         merged.push(ContextFile {
             file_name: cpath.to_string_lossy().to_string(),
-            file_content: out,
+            file_content: out.clone(),
             line1: first_line,
             line2: last_line,
             symbol: "".to_string(),
             gradient_type: -1,
             usefulness: 0.0,
         });
+        let tokens_n = count_tokens(&tokenizer.read().unwrap(), &out.as_str());
+        info!("re-check tokens {} {}", crate::nicer_logs::last_n_chars(&cpath.to_string_lossy().to_string(), 30), tokens_n);
+        re_check_tokens_n += tokens_n;
     }
+    info!("re-check tokens Σ={} < tokens_limit={}", re_check_tokens_n, tokens_limit);
     merged
 }
 
