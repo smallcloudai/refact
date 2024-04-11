@@ -135,12 +135,14 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
     def __init__(self,
                  model_name: str,
                  model_dict: Dict[str, Any],
+                 model_cfg: Optional[Dict] = None,
                  load_lora: Optional[str] = None,
                  **kwargs):
         LoraLoaderMixin.__init__(self, load_lora)
 
         self._model_name = model_name
         self._model_dict = model_dict
+        self._model_cfg = model_cfg
         self._model_dir = f"models--{self._model_dict['model_path'].replace('/', '--')}"
 
         assert torch.cuda.is_available(), "model is only supported on GPU"
@@ -197,29 +199,21 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         return env.DIR_WEIGHTS
 
     def _dump_embeddings(self):
-        try:
-            from self_hosting_machinery.finetune.configuration import supported_models
-        except ImportError:
-            raise ImportError("please install refact_data_pipeline")
-        if self._model_name not in supported_models.config:
+        if self._model_cfg is None:
             logging.getLogger("MODEL").error(f"Skipping embeddings dumping for the model {self._model_name}")
             return
-        model_cfg = supported_models.config[self._model_name]
-        for name in chain(model_cfg["freeze_exceptions_mapping"]["wte"],
-                          model_cfg["freeze_exceptions_mapping"]["lm_head"]):
+
+        for name in chain(self._model_cfg["freeze_exceptions_mapping"]["wte"],
+                          self._model_cfg["freeze_exceptions_mapping"]["lm_head"]):
             param = find_param_by_name(model=self._model, name=name)
             torch.save(param, f"{self.cache_dir}/{self._model_dir}/{name}")
 
     def load_embeddings(self):
-        try:
-            from self_hosting_machinery.finetune.configuration import supported_models
-        except ImportError:
-            raise ImportError("please install refact_data_pipeline")
+        if self._model_cfg is None:
+            raise RuntimeError(f"model {self._model_name} has no finetune configuration")
 
-        model_cfg = supported_models.config[self._model_name]
-
-        for name in chain(model_cfg["freeze_exceptions_mapping"]["wte"],
-                          model_cfg["freeze_exceptions_mapping"]["lm_head"]):
+        for name in chain(self._model_cfg["freeze_exceptions_mapping"]["wte"],
+                          self._model_cfg["freeze_exceptions_mapping"]["lm_head"]):
             param = find_param_by_name(model=self._model, name=name)
             weights = torch.load(f"{self.cache_dir}/{self._model_dir}/{name}", map_location=self._device)
             param.data.copy_(weights)
