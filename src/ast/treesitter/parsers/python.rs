@@ -478,10 +478,7 @@ impl PythonParser {
                 symbols.extend(self.parse_function_declaration(&parent, code, path, parent_guid, is_error));
             }
             "ERROR" => {
-                for i in 0..parent.child_count() {
-                    let child = parent.child(i).unwrap();
-                    symbols.extend(self.parse_usages(&child, code, path, parent_guid, true));
-                }
+                symbols.extend(self.parse_error_usages(&parent, code, path, parent_guid));
             }
             _ => {}
         }
@@ -548,7 +545,54 @@ impl PythonParser {
         symbols.push(Arc::new(RwLock::new(decl)));
         symbols
     }
+    
+    fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+        let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
+        match parent.kind() {
+            "identifier" => {
+                let mut usage = VariableUsage::default();
+                usage.ast_fields.name = code.slice(parent.byte_range()).to_string();
+                usage.ast_fields.language = LanguageId::Python;
+                usage.ast_fields.full_range = parent.range();
+                usage.ast_fields.file_path = path.clone();
+                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
+                usage.ast_fields.parent_guid = Some(parent_guid.clone());
+                usage.ast_fields.guid = get_guid();
+                usage.ast_fields.is_error = true;
+                symbols.push(Arc::new(RwLock::new(usage)));
+            }
+            "attribute" => {
+                let attribute = parent.child_by_field_name("attribute").unwrap();
+                let name = code.slice(attribute.byte_range()).to_string();
+                let mut usage = VariableUsage::default();
+                usage.ast_fields.name = name;
+                usage.ast_fields.language = LanguageId::Python;
+                usage.ast_fields.full_range = parent.range();
+                usage.ast_fields.file_path = path.clone();
+                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
+                usage.ast_fields.parent_guid = Some(parent_guid.clone());
+                usage.ast_fields.guid = get_guid();
+                usage.ast_fields.is_error = true;
 
+                let object_node = parent.child_by_field_name("object").unwrap();
+                let usages = self.parse_error_usages(&object_node, code, path, parent_guid);
+                if let Some(last) = usages.last() {
+                    usage.ast_fields.caller_guid = last.read().expect("the data might be broken").fields().parent_guid.clone();
+                }
+                symbols.extend(usages);
+                symbols.push(Arc::new(RwLock::new(usage)));
+            }
+            &_ => {
+                for i in 0..parent.child_count() {
+                    let child = parent.child(i).unwrap();
+                    symbols.extend(self.parse_error_usages(&child, code, path, parent_guid));
+                }
+            }
+        }
+        
+        symbols
+    }
+    
     pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();

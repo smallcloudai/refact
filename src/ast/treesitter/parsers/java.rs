@@ -455,10 +455,7 @@ impl JavaParser {
                 symbols.push(Arc::new(RwLock::new(def)));
             }
             "ERROR" => {
-                for i in 0..parent.child_count() {
-                    let child = parent.child(i).unwrap();
-                    symbols.extend(self.parse_usages(&child, code, path, parent_guid, true));
-                }
+                symbols.extend(self.parse_error_usages(&parent, code, path, parent_guid));
             }
             _ => {
                 for i in 0..parent.child_count() {
@@ -469,7 +466,50 @@ impl JavaParser {
         }
         symbols
     }
+    
+    fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+        let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
+        match parent.kind() {
+            "identifier" => {
+                let mut usage = VariableUsage::default();
+                usage.ast_fields.name = code.slice(parent.byte_range()).to_string();
+                usage.ast_fields.language = LanguageId::Java;
+                usage.ast_fields.full_range = parent.range();
+                usage.ast_fields.file_path = path.clone();
+                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
+                usage.ast_fields.parent_guid = Some(parent_guid.clone());
+                usage.ast_fields.guid = get_guid();
+                usage.ast_fields.is_error = true;
+                symbols.push(Arc::new(RwLock::new(usage)));
+            }
+            "field_access" => {
+                let object = parent.child_by_field_name("object").unwrap();
+                let usages = self.parse_error_usages(&object, code, path, parent_guid);
+                let field = parent.child_by_field_name("field").unwrap();
+                let mut usage = VariableUsage::default();
+                usage.ast_fields.name = code.slice(field.byte_range()).to_string();
+                usage.ast_fields.language = LanguageId::Java;
+                usage.ast_fields.full_range = parent.range();
+                usage.ast_fields.file_path = path.clone();
+                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
+                usage.ast_fields.parent_guid = Some(parent_guid.clone());
+                if let Some(last) = usages.last() {
+                    usage.ast_fields.caller_guid = last.read().unwrap().fields().parent_guid.clone();
+                }
+                symbols.extend(usages);
+                symbols.push(Arc::new(RwLock::new(usage)));
+            }
+            &_ => {
+                for i in 0..parent.child_count() {
+                    let child = parent.child(i).unwrap();
+                    symbols.extend(self.parse_error_usages(&child, code, path, parent_guid));
+                }
+            }
+        }
 
+        symbols
+    }
+    
     pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionDeclaration::default();

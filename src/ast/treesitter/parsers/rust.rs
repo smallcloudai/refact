@@ -461,6 +461,9 @@ impl RustParser {
 
                 let value_node = parent.child_by_field_name("value").unwrap();
                 let usages = self.parse_usages(&value_node, code, path, parent_guid, is_error);
+                if let Some(last) = usages.last() {
+                    usage.ast_fields.caller_guid = Some(last.read().unwrap().guid().to_string());
+                }
                 symbols.extend(usages);
                 symbols.push(Arc::new(RwLock::new(usage)));
             }
@@ -555,12 +558,83 @@ impl RustParser {
                 symbols.extend(self.parse_expression_statement(&body_node, code, path, parent_guid, is_error));
             }
             "ERROR" => {
-                symbols.extend(self.parse_block(&parent, code, path, parent_guid, true));
+                symbols.extend(self.parse_error_usages(&parent, code, path, parent_guid));
             }
             _ => {}
         }
         symbols
     }
+
+
+    fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+        let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
+        match parent.kind() {
+            "field_expression" => {
+                let field_node = parent.child_by_field_name("field").unwrap();
+                let name = code.slice(field_node.byte_range()).to_string();
+                let mut usage = VariableUsage::default();
+                usage.ast_fields.name = name;
+                usage.ast_fields.language = LanguageId::Rust;
+                usage.ast_fields.full_range = parent.range();
+                usage.ast_fields.file_path = path.clone();
+                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
+                usage.ast_fields.parent_guid = Some(parent_guid.clone());
+                usage.ast_fields.guid = get_guid();
+                usage.ast_fields.is_error = true;
+
+                let value_node = parent.child_by_field_name("value").unwrap();
+                let usages = self.parse_error_usages(&value_node, code, path, parent_guid);
+                if let Some(last) = usages.last() {
+                    usage.ast_fields.caller_guid = Some(last.read().unwrap().guid().to_string());
+                }
+                symbols.extend(usages);
+                symbols.push(Arc::new(RwLock::new(usage)));
+            }
+            "identifier" => {
+                let mut usage = VariableUsage::default();
+                usage.ast_fields.name = code.slice(parent.byte_range()).to_string();
+                usage.ast_fields.language = LanguageId::Rust;
+                usage.ast_fields.full_range = parent.range();
+                usage.ast_fields.file_path = path.clone();
+                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
+                usage.ast_fields.parent_guid = Some(parent_guid.clone());
+                usage.ast_fields.guid = get_guid();
+                usage.ast_fields.is_error = true;
+                symbols.push(Arc::new(RwLock::new(usage)));
+            }
+            "scoped_identifier" => {
+                let mut usage = VariableUsage::default();
+                let namespace = {
+                    if let Some(namespace) = parent.child_by_field_name("path") {
+                        code.slice(namespace.byte_range()).to_string()
+                    } else {
+                        "".to_string()
+                    }
+                };
+                let name_node = parent.child_by_field_name("name").unwrap();
+
+                usage.ast_fields.name = code.slice(name_node.byte_range()).to_string();
+                usage.ast_fields.language = LanguageId::Rust;
+                usage.ast_fields.namespace = namespace;
+                usage.ast_fields.full_range = parent.range();
+                usage.ast_fields.file_path = path.clone();
+                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
+                usage.ast_fields.parent_guid = Some(parent_guid.clone());
+                usage.ast_fields.guid = get_guid();
+                usage.ast_fields.is_error = true;
+                symbols.push(Arc::new(RwLock::new(usage)));
+            }
+            &_ => {
+                for i in 0..parent.child_count() {
+                    let child = parent.child(i).unwrap();
+                    symbols.extend(self.parse_error_usages(&child, code, path, parent_guid));
+                }
+            }
+        }
+
+        symbols
+    }
+    
 
     pub fn parse_expression_statement(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols = vec![];
