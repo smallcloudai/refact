@@ -36,13 +36,9 @@ export const SymbolList: React.FC<{
       </Collapsible>
 
       <Collapsible title={`Cursor Symbols: ${cursorSymbols.length}`}>
-        {cursorSymbols.map(({ symbol }, i, arr) => {
+        {cursorSymbols.map(({ symbol }, i) => {
           const key = `cursor-symbols-${i}`;
-          return (
-            <SymbolText key={key}>
-              {symbol}&nbsp;{arr.length}
-            </SymbolText>
-          );
+          return <SymbolText key={key}>{symbol}</SymbolText>;
         })}
       </Collapsible>
 
