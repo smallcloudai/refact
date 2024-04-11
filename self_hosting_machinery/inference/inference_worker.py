@@ -19,7 +19,7 @@ quit_flag = False
 log = logging.getLogger("MODEL").info
 
 
-def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
+def worker_loop(model_name: str, models_db: Dict[str, Any], supported_models: Dict, compile: bool):
     if model_name not in models_db:
         log(f"STATUS not found {model_name}")
         if compile:
@@ -50,6 +50,7 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], compile: bool):
         inference_model = InferenceHF(
             model_name=model_name,
             model_dict=model_dict,
+            model_cfg=supported_models.get(model_name, None),
         )
 
         dummy_call = {
@@ -132,6 +133,7 @@ def catch_sigkill(signum, frame):
 if __name__ == "__main__":
     from argparse import ArgumentParser
     from known_models_db.refact_known_models import models_mini_db
+    from self_hosting_machinery.finetune.configuration import supported_models
 
     parser = ArgumentParser()
     parser.add_argument("--model", type=str)
@@ -146,4 +148,4 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGUSR1, catch_sigkill)
 
-    worker_loop(args.model, models_mini_db, compile=args.compile)
+    worker_loop(args.model, models_mini_db, supported_models.config, compile=args.compile)
