@@ -162,6 +162,12 @@ fn parse_function_arg(parent: &Node, code: &str) -> Vec<FunctionArg> {
 }
 
 const SPECIAL_SYMBOLS: &str = "{}(),.;_|&";
+const PYTHON_KEYWORDS: [&'static str; 35] = [
+    "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class",
+    "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global",
+    "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise",
+    "return", "try", "while", "with", "yield"
+];
 
 impl PythonParser {
     pub fn new() -> Result<PythonParser, ParserError> {
@@ -184,6 +190,8 @@ impl PythonParser {
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
 
+        symbols.extend(self.find_error_usages(&parent, code, path, &decl.ast_fields.guid));
+
         if let Some(parent_node) = parent.parent() {
             if parent_node.kind() == "decorated_definition" {
                 decl.ast_fields.full_range = parent_node.range();
@@ -200,6 +208,7 @@ impl PythonParser {
                     decl.inherited_types.push(dtype);
                 }
             }
+            symbols.extend(self.find_error_usages(&superclasses, code, path, &decl.ast_fields.guid));
         }
         if let Some(body) = parent.child_by_field_name("body") {
             symbols.extend(self.parse_usages(&body, code, path, &decl.ast_fields.guid, is_error));
@@ -329,6 +338,8 @@ impl PythonParser {
     pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
+        #[cfg(test)]
+            let text = code.slice(parent.byte_range());
         // TODO lambda https://github.com/tree-sitter/tree-sitter-python/blob/master/grammar.js#L830
         match kind {
             "expression_statement" | "module" | "block" |
@@ -342,6 +353,9 @@ impl PythonParser {
                     let child = parent.child(i).unwrap();
                     symbols.extend(self.parse_usages(&child, code, path, parent_guid, is_error));
                 }
+            }
+            "import_statement" => {
+                // TODO
             }
             "with_item" => {
                 let value = parent.child_by_field_name("value").unwrap();
@@ -480,7 +494,12 @@ impl PythonParser {
             "ERROR" => {
                 symbols.extend(self.parse_error_usages(&parent, code, path, parent_guid));
             }
-            _ => {}
+            _ => {
+                for i in 0..parent.child_count() {
+                    let child = parent.child(i).unwrap();
+                    symbols.extend(self.parse_usages(&child, code, path, parent_guid, is_error));
+                }
+            }
         }
         symbols
     }
@@ -499,6 +518,7 @@ impl PythonParser {
                 decl.ast_fields.full_range = parent_node.range();
             }
         }
+        symbols.extend(self.find_error_usages(&parent, code, path, &decl.ast_fields.guid));
 
         let mut decl_end_byte: usize = parent.end_byte();
         let mut decl_end_point: Point = parent.end_position();
@@ -510,6 +530,7 @@ impl PythonParser {
         if let Some(parameters_node) = parent.child_by_field_name("parameters") {
             decl_end_byte = parameters_node.end_byte();
             decl_end_point = parameters_node.end_position();
+            symbols.extend(self.find_error_usages(&parameters_node, code, path, &decl.ast_fields.guid));
 
             let params_len = parameters_node.child_count();
             let mut function_args = vec![];
@@ -524,8 +545,9 @@ impl PythonParser {
             decl.return_type = parse_type(&return_type, code);
             decl_end_byte = return_type.end_byte();
             decl_end_point = return_type.end_position();
+            symbols.extend(self.find_error_usages(&return_type, code, path, &decl.ast_fields.guid));
         }
-
+        
         if let Some(body_node) = parent.child_by_field_name("body") {
             decl.ast_fields.definition_range = body_node.range();
             decl.ast_fields.declaration_range = Range {
@@ -533,12 +555,10 @@ impl PythonParser {
                 end_byte: decl_end_byte,
                 start_point: decl.ast_fields.full_range.start_point,
                 end_point: decl_end_point,
-            }
+            };
+            symbols.extend(self.parse_usages(&body_node, code, path, &decl.ast_fields.guid, is_error));
         } else {
             decl.ast_fields.declaration_range = decl.ast_fields.full_range.clone();
-        }
-        if let Some(body_node) = parent.child_by_field_name("body") {
-            symbols.extend(self.parse_usages(&body_node, code, path, &decl.ast_fields.guid, is_error));
         }
 
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
@@ -546,12 +566,27 @@ impl PythonParser {
         symbols
     }
     
+    fn find_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+        let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
+        for i in 0..parent.child_count() {
+            let child = parent.child(i).unwrap();
+            if  child.kind() == "ERROR" {
+                symbols.extend(self.parse_error_usages(&child, code, path, parent_guid));
+            }
+        }
+        symbols
+    }
+    
     fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         match parent.kind() {
             "identifier" => {
+                let name = code.slice(parent.byte_range()).to_string();
+                if PYTHON_KEYWORDS.contains(&name.as_str()) {
+                    return vec![];
+                }
                 let mut usage = VariableUsage::default();
-                usage.ast_fields.name = code.slice(parent.byte_range()).to_string();
+                usage.ast_fields.name = name;
                 usage.ast_fields.language = LanguageId::Python;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
@@ -604,6 +639,8 @@ impl PythonParser {
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
 
+        symbols.extend(self.find_error_usages(&parent, code, path, &decl.ast_fields.guid));
+
         let arguments_node = parent.child_by_field_name("arguments").unwrap();
         for i in 0..arguments_node.child_count() {
             let child = arguments_node.child(i).unwrap();
@@ -611,6 +648,7 @@ impl PythonParser {
             if SPECIAL_SYMBOLS.contains(&text) { continue; }
             symbols.extend(self.parse_usages(&child, code, path, &decl.ast_fields.guid, is_error));
         }
+        symbols.extend(self.find_error_usages(&arguments_node, code, path, &decl.ast_fields.guid));
 
         let function_node = parent.child_by_field_name("function").unwrap();
         let text = code.slice(function_node.byte_range());
