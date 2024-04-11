@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::sync::RwLock;
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -438,7 +437,6 @@ pub async fn postprocess_at_results2(
 
     // 9. Generate output
     let mut merged: Vec<ContextFile> = vec![];
-    let mut re_check_tokens_n = 0;
     for cpath in files_mentioned_sequence.iter() {
         let linevec = lines_in_files.get_mut(cpath).unwrap();
         if linevec.len() == 0 {
@@ -484,11 +482,7 @@ pub async fn postprocess_at_results2(
             gradient_type: -1,
             usefulness: 0.0,
         });
-        let tokens_n = count_tokens(&tokenizer.read().unwrap(), &out.as_str());
-        info!("re-check tokens {} {}", crate::nicer_logs::last_n_chars(&cpath.to_string_lossy().to_string(), 30), tokens_n);
-        re_check_tokens_n += tokens_n;
     }
-    info!("re-check tokens Σ={} < tokens_limit={}", re_check_tokens_n, tokens_limit);
     merged
 }
 
