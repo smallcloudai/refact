@@ -79,7 +79,7 @@ impl AstBasedFileSplitter {
                         line2: full_range.end_point.row,
                         symbol: "".to_string(),
                         gradient_type: 0,
-                        usefulness: 0.0,
+                        usefulness: 100.0,
                     }]).unwrap(),
                 }];
                 let res = postprocess_at_results2(gcx.clone(), messages, tokenizer.clone(), tokens_limit).await;
