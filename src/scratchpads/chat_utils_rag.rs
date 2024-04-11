@@ -242,7 +242,7 @@ pub async fn postprocess_rag_stage1(
         let linevec: &mut Vec<Arc<FileLine>> = match lines_in_files.get_mut(&cpath) {
             Some(x) => x,
             None => {
-                warn!("postprocess_rag_stage1: file not found {:?} or transformed to canonical path {:?}", omsg.file_name, cpath);
+                warn!("postprocess_rag_stage1: file not found by name {:?} or cpath {:?}", omsg.file_name, cpath);
                 continue;
             }
         };
