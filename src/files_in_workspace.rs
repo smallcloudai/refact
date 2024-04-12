@@ -182,15 +182,20 @@ impl Document {
         let language_id = language_id.unwrap_or("unknown".to_string());
         Self { path: path.clone(), language_id, text: None, in_jsonl: false }
     }
+    // TODO: remove
     pub async fn update_text_from_disk(&mut self) {
         if let Ok(res) = read_file_from_disk(&self.path).await {
             self.text = Some(res);
         }
     }
+    // TODO: remove
     pub async fn get_text_or_read_from_disk(&mut self) -> Result<String, String> {
-        if let Some(text) = self.text.clone() {
-            return Ok(text.to_string());
+        if self.text.is_some() {
+            return Ok(self.text.as_ref().unwrap().to_string());
         }
+        // if let Some(text) = self.text.clone() {
+        //     return Ok(text.to_string());
+        // }
         read_file_from_disk(&self.path).await.map(|x|x.to_string())
     }
     pub fn update_text(&mut self, text: &String) {

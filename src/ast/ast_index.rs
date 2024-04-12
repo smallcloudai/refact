@@ -517,59 +517,26 @@ impl AstIndex {
         &self,
         doc: &Document,
     ) -> Result<FileASTMarkup, String> {
-        let symbols: Vec<AstSymbolInstanceArc> = self.path_by_symbols
-            .get(&doc.path)
-            .map(|symbols| {
-                symbols
-                    .iter()
-                    .filter(|s| read_symbol(s).is_declaration())
-                    .cloned()
-                    .collect()
-            })
-            .unwrap_or_default();
-        let file_content = match read_file_from_disk(&doc.path).await {
-            Ok(content) => content.to_string(),
-            Err(e) => return Err(e.to_string())
-        };
+        assert!(doc.text.is_some());
 
-        let mut symbols4export: Vec<Arc<RefCell<SymbolInformation>>> = symbols.iter().map(|s| {
-            let s_ref = read_symbol(s);
-            Arc::new(RefCell::new(s_ref.symbol_info_struct()))
-        }).collect();
-        let guid_to_symbol: HashMap<String, Arc<RefCell<SymbolInformation>>> = symbols4export.iter().map(
-            |s| (s.borrow().guid.to_string(), s.clone())
-        ).collect();
-        fn recursive_path_of_guid(guid_to_symbol: &HashMap<String, Arc<RefCell<SymbolInformation>>>, guid: &String) -> String
-        {
-            return match guid_to_symbol.get(guid) {
-                Some(x) => {
-                    let pname = if !x.borrow().name.is_empty() { x.borrow().name.clone() } else { x.borrow().guid[..8].to_string() };
-                    let pp = recursive_path_of_guid(&guid_to_symbol, &x.borrow().parent_guid);
-                    format!("{}::{}", pp, pname)
-                }
-                None => {
-                    // FIXME:
-                    // info!("parent_guid {} not found, maybe outside of this file", guid);
-                    "UNK".to_string()
-                }
-            };
-        }
-        for s in symbols4export.iter_mut() {
-            let symbol_path = recursive_path_of_guid(&guid_to_symbol, &s.borrow().guid);
-            s.borrow_mut().symbol_path = symbol_path.clone();
-        }
-        // longer symbol path at the bottom => parent always higher than children
-        symbols4export.sort_by(|a, b| {
-            a.borrow().symbol_path.len().cmp(&b.borrow().symbol_path.len())
-        });
-        Ok(FileASTMarkup {
-            file_path: doc.path.clone(),
-            file_content,
-            // convert to a simple Vec<SymbolInformation>
-            symbols_sorted_by_path_len: symbols4export.iter().map(|s| {
-                s.borrow().clone()
-            }).collect(),
-        })
+        // let symbols: Vec<AstSymbolInstanceArc> = self.path_by_symbols
+        // .get(&doc.path)
+        // .map(|symbols| {
+        //     symbols
+        //         .iter()
+        //         .filter(|s| read_symbol(s).is_declaration())
+        //         .cloned()
+        //         .collect()
+        // })
+        // .unwrap_or_default();
+
+        let symbols = match self.path_by_symbols.get(&doc.path) {
+            Some(symbols) => symbols,
+            None => {
+                return Err(format!("no symbols in index for {}", doc.path.display()))
+            }
+        };
+        crate::ast::ast_file_markup::lowlevel_file_markup(doc, symbols).await
     }
 
     pub fn get_by_file_path(

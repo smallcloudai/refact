@@ -137,7 +137,9 @@ pub async fn postprocess_rag_stage1(
     for file_name in files_set {
         let path = crate::files_in_workspace::canonical_path(&file_name.clone());
         let cpath_symmetry_breaker: f32 = (calculate_hash(&path) as f32) / (u64::MAX as f32) / 100.0;
-        let doc = Document::new(&path, None);
+        let mut doc = Document::new(&path, None);
+        let text = crate::files_in_workspace::get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
+        doc.update_text(&text);
         let mut f: Option<Arc<File>> = None;
         if let Some(astmod) = &ast_module {
             match astmod.read().await.file_markup(&doc).await {
@@ -153,7 +155,7 @@ pub async fn postprocess_rag_stage1(
             f = Some(Arc::new(File {
                 markup: FileASTMarkup {
                     file_path: doc.path.clone(),
-                    file_content: read_file_from_disk(&doc.path).await.unwrap_or_default().to_string(),
+                    file_content: text,
                     symbols_sorted_by_path_len: Vec::new(),
                 },
                 cpath: doc.path.clone(),
@@ -242,7 +244,7 @@ pub async fn postprocess_rag_stage1(
         let linevec: &mut Vec<Arc<FileLine>> = match lines_in_files.get_mut(&cpath) {
             Some(x) => x,
             None => {
-                warn!("postprocess_rag_stage1: file not found by name {:?} or cpath {:?}", omsg.file_name, cpath);
+                warn!("file not found by name {:?} or cpath {:?}", omsg.file_name, cpath);
                 continue;
             }
         };
@@ -265,7 +267,7 @@ pub async fn postprocess_rag_stage1(
                 }
             }
             if maybe_symbol.is_none() {
-                warn!("postprocess_rag_stage1: cannot find symbol {} in file {}", omsg.symbol, omsg.file_name);
+                warn!("cannot find symbol {} in file {}", omsg.symbol, omsg.file_name);
             }
         }
         if let Some(s) = maybe_symbol {
@@ -274,7 +276,7 @@ pub async fn postprocess_rag_stage1(
         } else {
             // no symbol set in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
             if omsg.line1 == 0 || omsg.line2 == 0 || omsg.line1 > omsg.line2 || omsg.line1 > linevec.len() || omsg.line2 > linevec.len() {
-                warn!("postprocess_rag_stage1: cannot use range {}:{}..{}", omsg.file_name, omsg.line1, omsg.line2);
+                warn!("cannot use range {}:{}..{}", omsg.file_name, omsg.line1, omsg.line2);
                 continue;
             }
             colorize_if_more_useful(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
