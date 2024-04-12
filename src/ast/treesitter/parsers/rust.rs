@@ -128,11 +128,11 @@ impl RustParser {
         decl.ast_fields.is_error = is_error;
         decl.ast_fields.guid = get_guid();
 
-        symbols.extend(self.find_error_usages(&parent, code, &mut symbols, &decl.ast_fields.guid));
+        symbols.extend(self.find_error_usages(&parent, code, path, &decl.ast_fields.guid));
 
         let name_node = parent.child_by_field_name("name").unwrap();
         let parameters_node = parent.child_by_field_name("parameters").unwrap();
-        symbols.extend(self.find_error_usages(&parameters_node, code, &mut symbols, &decl.ast_fields.guid));
+        symbols.extend(self.find_error_usages(&parameters_node, code, path, &decl.ast_fields.guid));
         let mut decl_end_byte: usize = parameters_node.end_byte();
         let mut decl_end_point: Point = parameters_node.end_position();
 
@@ -159,7 +159,7 @@ impl RustParser {
 
         decl.ast_fields.name = code.slice(name_node.byte_range()).to_string();
         if let Some(return_type) = parent.child_by_field_name("return_type") {
-            symbols.extend(self.find_error_usages(&return_type, code, &mut symbols, &decl.ast_fields.guid));
+            symbols.extend(self.find_error_usages(&return_type, code, path, &decl.ast_fields.guid));
             decl.return_type = RustParser::parse_type(&return_type, code);
             decl_end_byte = return_type.end_byte();
             decl_end_point = return_type.end_position();
@@ -171,7 +171,7 @@ impl RustParser {
                     templates.push(t);
                 }
             }
-            symbols.extend(self.find_error_usages(&type_parameters, code, &mut symbols, &decl.ast_fields.guid));
+            symbols.extend(self.find_error_usages(&type_parameters, code, path, &decl.ast_fields.guid));
             decl.template_types = templates;
         }
         decl.args = function_args;
@@ -204,15 +204,15 @@ impl RustParser {
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
 
-        symbols.extend(self.find_error_usages(&parent, code, &mut symbols, &decl.ast_fields.guid));
+        symbols.extend(self.find_error_usages(&parent, code, path, &decl.ast_fields.guid));
 
         if let Some(name_node) = parent.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name_node.byte_range()).to_string();
         }
         if let Some(type_node) = parent.child_by_field_name("type") {
-            symbols.extend(self.find_error_usages(&type_node, code, &mut symbols, &decl.ast_fields.guid));
+            symbols.extend(self.find_error_usages(&type_node, code, path, &decl.ast_fields.guid));
             if let Some(trait_node) = parent.child_by_field_name("trait") {
-                symbols.extend(self.find_error_usages(&trait_node, code, &mut symbols, &decl.ast_fields.guid));
+                symbols.extend(self.find_error_usages(&trait_node, code, path, &decl.ast_fields.guid));
                 if let Some(trait_name) = RustParser::parse_type(&trait_node, code) {
                     decl.template_types.push(trait_name);
                 }
@@ -232,7 +232,7 @@ impl RustParser {
         if let Some(body_node) = parent.child_by_field_name("body") {
             match body_node.kind() {
                 "field_declaration_list" => {
-                    symbols.extend(self.find_error_usages(&body_node, code, &mut symbols, &decl.ast_fields.guid));
+                    symbols.extend(self.find_error_usages(&body_node, code, path, &decl.ast_fields.guid));
                     for idx in 0..body_node.child_count() {
                         let field_declaration_node = body_node.child(idx).unwrap();
                         match field_declaration_node.kind() {
@@ -278,7 +278,7 @@ impl RustParser {
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
 
-        symbols.extend(self.find_error_usages(&parent, code, &mut symbols, &parent_guid));
+        symbols.extend(self.find_error_usages(&parent, code, path, &parent_guid));
 
         let mut arguments_node: Option<Node> = None;
         let kind = parent.kind();
@@ -302,7 +302,7 @@ impl RustParser {
                     "scoped_identifier" => {
                         let namespace = {
                             if let Some(namespace) = parent.child_by_field_name("path") {
-                                symbols.extend(self.find_error_usages(&namespace, code, &mut symbols, &parent_guid));
+                                symbols.extend(self.find_error_usages(&namespace, code, path, &parent_guid));
                                 code.slice(namespace.byte_range()).to_string()
                             } else {
                                 "".to_string()
@@ -328,7 +328,7 @@ impl RustParser {
         }
 
         if let Some(arguments_node) = arguments_node {
-            symbols.extend(self.find_error_usages(&arguments_node, code, &mut symbols, &parent_guid));
+            symbols.extend(self.find_error_usages(&arguments_node, code, path, &parent_guid));
             for idx in 0..arguments_node.child_count() {
                 let arg_node = arguments_node.child(idx).unwrap();
                 let arg_type = self.parse_usages(&arg_node, code, path, &decl.ast_fields.guid, is_error);
@@ -369,10 +369,10 @@ impl RustParser {
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
 
-        symbols.extend(self.find_error_usages(&parent, code, &mut symbols, &parent_guid));
+        symbols.extend(self.find_error_usages(&parent, code, path, &parent_guid));
 
         if let Some(type_node) = parent.child_by_field_name("type") {
-            symbols.extend(self.find_error_usages(&type_node, code, &mut symbols, &parent_guid));
+            symbols.extend(self.find_error_usages(&type_node, code, path, &parent_guid));
             if let Some(type_) = RustParser::parse_type(&type_node, code) {
                 decl.type_ = type_;
             }
@@ -606,7 +606,7 @@ impl RustParser {
                 let field_node = parent.child_by_field_name("field").unwrap();
                 let name = code.slice(field_node.byte_range()).to_string();
                 let mut usage = VariableUsage::default();
-                usage.ast_fields.name = name;
+                usage.ast_fields.name = name.clone();
                 usage.ast_fields.language = LanguageId::Rust;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
