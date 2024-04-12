@@ -15,6 +15,13 @@ pub(crate) struct RustParser {
     pub parser: Parser,
 }
 
+static RUST_KEYWORDS: [&str; 37] = [
+    "as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum",
+    "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move",
+    "mut", "pub", "ref", "return", "self", "static", "struct", "super", "trait", "true",
+    "type", "unsafe", "use", "where", "while"
+];
+
 impl RustParser {
     pub fn new() -> Result<RustParser, ParserError> {
         let mut parser = Parser::new();
@@ -196,7 +203,7 @@ impl RustParser {
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
-        
+
         symbols.extend(self.find_error_usages(&parent, code, &mut symbols, &decl.ast_fields.guid));
 
         if let Some(name_node) = parent.child_by_field_name("name") {
@@ -272,7 +279,7 @@ impl RustParser {
         decl.ast_fields.guid = get_guid();
 
         symbols.extend(self.find_error_usages(&parent, code, &mut symbols, &parent_guid));
-        
+
         let mut arguments_node: Option<Node> = None;
         let kind = parent.kind();
         match kind {
@@ -373,7 +380,7 @@ impl RustParser {
 
         if let Some(value_node) = parent.child_by_field_name("value") {
             decl.type_ = parse_type_in_value(&value_node, code);
-            
+
             symbols.extend(self.parse_usages(&value_node, code, path, &decl.ast_fields.guid.clone(), is_error));
         }
 
@@ -585,7 +592,7 @@ impl RustParser {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         for i in 0..parent.child_count() {
             let child = parent.child(i).unwrap();
-            if  child.kind() == "ERROR" {
+            if child.kind() == "ERROR" {
                 symbols.extend(self.parse_error_usages(&child, code, path, parent_guid));
             }
         }
@@ -614,9 +621,15 @@ impl RustParser {
                     usage.ast_fields.caller_guid = Some(last.read().unwrap().guid().to_string());
                 }
                 symbols.extend(usages);
-                symbols.push(Arc::new(RwLock::new(usage)));
+                if !RUST_KEYWORDS.contains(&name.as_str()) {
+                    symbols.push(Arc::new(RwLock::new(usage)));
+                }
             }
             "identifier" => {
+                let name = code.slice(parent.byte_range()).to_string();
+                if RUST_KEYWORDS.contains(&name.as_str()) {
+                    return vec![];
+                }
                 let mut usage = VariableUsage::default();
                 usage.ast_fields.name = code.slice(parent.byte_range()).to_string();
                 usage.ast_fields.language = LanguageId::Rust;
@@ -638,8 +651,11 @@ impl RustParser {
                     }
                 };
                 let name_node = parent.child_by_field_name("name").unwrap();
-
-                usage.ast_fields.name = code.slice(name_node.byte_range()).to_string();
+                let name = code.slice(name_node.byte_range()).to_string();
+                if RUST_KEYWORDS.contains(&name.as_str()) {
+                    return vec![];
+                }
+                usage.ast_fields.name = name;
                 usage.ast_fields.language = LanguageId::Rust;
                 usage.ast_fields.namespace = namespace;
                 usage.ast_fields.full_range = parent.range();

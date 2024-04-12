@@ -15,6 +15,14 @@ pub(crate) struct JavaParser {
     pub parser: Parser,
 }
 
+static JAVA_KEYWORDS: [&str; 50] = [
+    "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const",
+    "continue", "default", "do", "double", "else", "enum", "extends", "final", "finally", "float",
+    "for", "if", "goto", "implements", "import", "instanceof", "int", "interface", "long", "native",
+    "new", "package", "private", "protected", "public", "return", "short", "static", "strictfp", "super",
+    "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while"
+];
+
 pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
     let kind = parent.kind();
     let text = code.slice(parent.byte_range()).to_string();
@@ -501,8 +509,13 @@ impl JavaParser {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         match parent.kind() {
             "identifier" => {
+                let name = code.slice(parent.byte_range()).to_string();
+                if JAVA_KEYWORDS.contains(&name.as_str()) {
+                    return symbols;
+                }
+                
                 let mut usage = VariableUsage::default();
-                usage.ast_fields.name = code.slice(parent.byte_range()).to_string();
+                usage.ast_fields.name = name;
                 usage.ast_fields.language = LanguageId::Java;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
@@ -527,7 +540,9 @@ impl JavaParser {
                     usage.ast_fields.caller_guid = last.read().unwrap().fields().parent_guid.clone();
                 }
                 symbols.extend(usages);
-                symbols.push(Arc::new(RwLock::new(usage)));
+                if !JAVA_KEYWORDS.contains(&usage.ast_fields.name.as_str()) {
+                    symbols.push(Arc::new(RwLock::new(usage)));
+                }
             }
             &_ => {
                 for i in 0..parent.child_count() {
