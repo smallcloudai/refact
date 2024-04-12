@@ -194,6 +194,7 @@ impl ScratchpadAbstract for SingleFileFIM {
 
         let cursor_line1: String;
         let col = pos.character as usize;
+        // TODO: use get_slice and handle error
         cursor_line1 = text.line(pos.line as usize).slice(0..col).to_string();
         // UNFINISHED LI|
 
@@ -201,6 +202,7 @@ impl ScratchpadAbstract for SingleFileFIM {
 
         let cursor_line2: String;
         if self.post.inputs.multiline {
+            // TODO: use get_slice and handle error
             cursor_line2 = text.line(pos.line as usize).slice(col..).to_string();
         } else {
             cursor_line2 = "".to_string();
@@ -321,6 +323,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                 ast_messages,
                 self.t.tokenizer.clone(),
                 rag_tokens_n,
+                false,
             ).await;
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);

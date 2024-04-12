@@ -21,7 +21,7 @@ use crate::files_in_workspace::{Document, read_file_from_disk};
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 
 #[derive(Debug)]
@@ -362,6 +362,7 @@ pub async fn postprocess_at_results2(
     messages: Vec<ChatMessage>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
+    single_file_mode: bool,
 ) -> Vec<ContextFile> {
     // 1. Decode all
     let mut origmsgs: Vec<ContextFile> = vec![];
@@ -406,9 +407,11 @@ pub async fn postprocess_at_results2(
         let filename = lineref.fref.cpath.to_string_lossy().to_string();
         if !files_mentioned_set.contains(&filename) {
             files_mentioned_set.insert(filename.clone());
-            files_mentioned_sequence.push(lineref.fref.cpath.clone());
-            ntokens += count_tokens(&tokenizer.read().unwrap(), &filename.as_str());
-            ntokens += 5;  // any overhead: file_sep, new line, etc
+            if !single_file_mode {
+                files_mentioned_sequence.push(lineref.fref.cpath.clone());
+                ntokens += count_tokens(&tokenizer.read().unwrap(), &filename.as_str());
+                ntokens += 5;  // any overhead: file_sep, new line, etc
+            }
         }
         if tokens_count + ntokens > tokens_limit {
             break;
@@ -564,6 +567,7 @@ pub async fn run_at_commands(
             messages_for_postprocessing,
             tokenizer.clone(),
             context_limit,
+            false,
         ).await;
         info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
         if processed.len() > 0 {

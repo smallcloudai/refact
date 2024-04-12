@@ -1,12 +1,11 @@
 use std::collections::{HashMap, VecDeque};
 use std::io::Write;
 use std::ops::Div;
-use std::str::FromStr;
 use std::sync::{Arc, Weak};
 use std::time::SystemTime;
 use tokenizers::Tokenizer;
 use std::sync::RwLock as StdRwLock;
-use tokio::sync::{Mutex as AMutex, Mutex, RwLock};
+use tokio::sync::{Mutex as AMutex, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing::info;
@@ -133,7 +132,8 @@ async fn vectorize_thread(
         };
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size, constants.splitter_soft_limit);
-        let split_data = match file_splitter.split(&doc, tokenizer.clone(), global_context.clone(), constants.embedding_size as usize).await {
+        let tokens_limit = 512;
+        let split_data = match file_splitter.vectorization_split(&doc, tokenizer.clone(), global_context.clone(), tokens_limit).await {
             Ok(data) => data,
             Err(err) => {
                 info!("{}", err);
@@ -265,7 +265,7 @@ impl FileVectorizerService {
         }
     }
 
-    pub async fn vecdb_start_background_tasks(&self, vecdb_client: Arc<AMutex<reqwest::Client>>, 
+    pub async fn vecdb_start_background_tasks(&self, vecdb_client: Arc<AMutex<reqwest::Client>>,
                                               global_context: Arc<RwLock<GlobalContext>>) -> Vec<JoinHandle<()>> {
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(

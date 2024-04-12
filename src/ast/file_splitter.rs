@@ -1,5 +1,5 @@
 use std::sync::{Arc, Weak};
-use tokio::sync::{Mutex as AMutex, Mutex, RwLock};
+use tokio::sync::RwLock;
 use md5;
 use tokenizers::Tokenizer;
 use tracing::info;
@@ -33,8 +33,8 @@ impl AstBasedFileSplitter {
         }
     }
 
-    pub async fn split(&self, doc: &Document, 
-                       tokenizer: Arc<StdRwLock<Tokenizer>>, 
+    pub async fn vectorization_split(&self, doc: &Document,
+                       tokenizer: Arc<StdRwLock<Tokenizer>>,
                        global_context: Weak<RwLock<GlobalContext>>,
                        tokens_limit: usize
     ) -> Result<Vec<SplitResult>, String> {
@@ -69,6 +69,12 @@ impl AstBasedFileSplitter {
                     continue;
                 }
             };
+            let symbol_text_maybe = text.get(symbol.full_range.start_byte .. symbol.full_range.end_byte);
+            if symbol_text_maybe.is_none() {
+                tracing::warn!("path {:?} range {}..{} is not vaild to get symbol {}", &doc.path, symbol.full_range.start_byte, symbol.full_range.end_byte, symbol.name);
+                continue;
+            }
+            let symbol_text = symbol_text_maybe.unwrap();
             if symbol.symbol_type == SymbolType::StructDeclaration {
                 if let Some(gcx) = global_context.upgrade() {
                     let full_range = symbol.full_range;
@@ -76,21 +82,25 @@ impl AstBasedFileSplitter {
                         role: "user".to_string(),
                         content: serde_json::to_string(&vec![ContextFile {
                             file_name: symbol.file_path.to_str().unwrap().parse().unwrap(),
-                            file_content: doc.text.clone().unwrap().slice(full_range.start_byte..full_range.end_byte).to_string(),
+                            file_content: symbol_text.to_string(),
                             line1: full_range.start_point.row + 1,
                             line2: full_range.end_point.row + 1,
-                            symbol: symbol.name.clone(),
+                            symbol: symbol.guid.clone(),
                             gradient_type: -1,
-                            usefulness: 10.0,
+                            usefulness: 100.0,
                         }]).unwrap(),
                     }];
-                    let res = postprocess_at_results2(gcx.clone(), messages, tokenizer.clone(), tokens_limit).await;
+                    // info!("messages: {:?}", messages);
+                    info!("tokens_limit: {:?}", tokens_limit);
+                    let single_file_mode = true;
+                    let res = postprocess_at_results2(gcx.clone(), messages, tokenizer.clone(), tokens_limit, single_file_mode).await;
                     if let Some(first) = res.first() {
+                        info!("{} content was:\n{}", symbol.name, content);
                         content = first.file_content.clone();
+                        info!("content updated:\n{}", content);
                     }
                 }
             }
-            
             if content.len() > self.soft_window {
                 let mut temp_doc = Document::new(&doc.path, Some("unknown".to_string()));
                 temp_doc.update_text(&content);
