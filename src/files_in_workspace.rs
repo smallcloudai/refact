@@ -182,24 +182,35 @@ impl Document {
         let language_id = language_id.unwrap_or("unknown".to_string());
         Self { path: path.clone(), language_id, text: None, in_jsonl: false }
     }
-    // TODO: remove
-    pub async fn update_text_from_disk(&mut self) {
-        if let Ok(res) = read_file_from_disk(&self.path).await {
-            self.text = Some(res);
+
+    pub async fn update_text_from_disk(&mut self) -> Result<(), String> {
+        match read_file_from_disk(&self.path).await {
+            Ok(res) => {
+                self.text = Some(res);
+                return Ok(());
+            },
+            Err(e) => {
+                return Err(e)
+            }
         }
     }
-    // TODO: remove
+
     pub async fn get_text_or_read_from_disk(&mut self) -> Result<String, String> {
         if self.text.is_some() {
             return Ok(self.text.as_ref().unwrap().to_string());
         }
-        // if let Some(text) = self.text.clone() {
-        //     return Ok(text.to_string());
-        // }
         read_file_from_disk(&self.path).await.map(|x|x.to_string())
     }
+
     pub fn update_text(&mut self, text: &String) {
         self.text = Some(Rope::from_str(text));
+    }
+
+    pub fn text_as_string(&self) -> Result<String, String> {
+        if let Some(r) = &self.text {
+            return Ok(r.to_string());
+        }
+        return Err(format!("no text loaded in {}", self.path.display()));
     }
 }
 
@@ -284,7 +295,7 @@ impl DocumentsState {
 pub async fn read_file_from_disk(path: &PathBuf) -> Result<Rope, String> {
     tokio::fs::read_to_string(path).await
         .map(|x|Rope::from_str(&x))
-        .map_err(|e| format!("Failed to read file from disk: {}", e))
+        .map_err(|e| format!("failed to read file {}: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e))
 }
 
 async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<PathBuf>> {

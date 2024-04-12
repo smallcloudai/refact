@@ -105,7 +105,7 @@ async fn vectorize_thread(
         }
         status.lock().await.unprocessed_files_count = unprocessed_files_count;
         reported_vecdb_complete &= unprocessed_files_count==0;
-        let doc = {
+        let mut doc = {
             match doc_maybe {
                 Some(doc) => doc,
                 None => {
@@ -130,6 +130,12 @@ async fn vectorize_thread(
                 }
             }
         };
+
+        // Not from memory, vecdb works on files from disk
+        if let Err(err) = doc.update_text_from_disk().await {
+            info!("{}", err);
+            continue;
+        }
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size, constants.splitter_soft_limit);
         let tokens_limit = 512;

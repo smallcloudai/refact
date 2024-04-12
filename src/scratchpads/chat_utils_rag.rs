@@ -21,7 +21,7 @@ use crate::files_in_workspace::Document;
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 
 #[derive(Debug)]
@@ -130,7 +130,7 @@ pub async fn postprocess_rag_load_ast_markup(
     files_set: HashSet<String>,
 ) -> HashMap<String, Arc<File>> {
     // 2. Load AST markup
-    let mut files: HashMap<String, Arc<File>> = HashMap::new();
+    let mut files_markup: HashMap<String, Arc<File>> = HashMap::new();
     let ast_module = global_context.read().await.ast_module.clone();
     for file_name in files_set {
         let path = crate::files_in_workspace::canonical_path(&file_name.clone());
@@ -161,10 +161,10 @@ pub async fn postprocess_rag_load_ast_markup(
             }));
         }
         if f.is_some() {
-            files.insert(file_name.clone(), f.unwrap());
+            files_markup.insert(file_name.clone(), f.unwrap());
         }
     }
-    files
+    files_markup
 }
 
 pub async fn postprocess_rag_stage_3_6(
@@ -231,7 +231,9 @@ pub async fn postprocess_rag_stage_3_6(
         let fref = linevec[0].fref.clone();
         info!("fref {:?} has {} bytes, {} symbols", fref.cpath, fref.markup.file_content.len(), fref.markup.symbols_sorted_by_path_len.len());
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
-            // info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+            if DEBUG {
+                info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+            }
             let useful = 10.0;  // depends on symbol type?
             colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), useful);
         }
@@ -273,7 +275,7 @@ pub async fn postprocess_rag_stage_3_6(
                 }
             }
             if maybe_symbol.is_none() {
-                warn!("- cannot find symbol {} in file {}", omsg.symbol, omsg.file_name);
+                warn!("- cannot find symbol {} in file {}:{}-{}", omsg.symbol, omsg.file_name, omsg.line1, omsg.line2);
             }
         }
         if let Some(s) = maybe_symbol {
@@ -372,6 +374,19 @@ pub async fn postprocess_at_results2(
     tokens_limit: usize,
     single_file_mode: bool,
 ) -> Vec<ContextFile> {
+    let (files_markup, origmsgs) = postprocess_rag_stage_1_2(global_context.clone(), messages).await;
+    let close_small_gaps = true;
+    let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage_3_6(
+        global_context.clone(), origmsgs, files_markup, close_small_gaps,
+    ).await;
+    let y = postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode).await;
+    y
+}
+
+pub async fn postprocess_rag_stage_1_2(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    messages: Vec<ChatMessage>,
+) -> (HashMap<String, Arc<File>>, Vec<ContextFile>) {
     // 1. Decode all
     let mut origmsgs: Vec<ContextFile> = vec![];
     let mut files_set: HashSet<String> = HashSet::new();
@@ -391,14 +406,17 @@ pub async fn postprocess_at_results2(
     }
 
     // 2. Load ast markup
-    let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), files_set).await;
-    let close_small_gaps = true;
+    let files_markup: HashMap<String, Arc<File>> = postprocess_rag_load_ast_markup(global_context.clone(), files_set).await;
+    (files_markup, origmsgs)
+}
 
-    //
-    let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage_3_6(
-        global_context.clone(), origmsgs, files_markup, close_small_gaps,
-    ).await;
-
+pub async fn postprocess_rag_stage_7_9(
+    lines_in_files: &mut HashMap<PathBuf, Vec<Arc<FileLine>>>,
+    lines_by_useful: &mut Vec<Arc<FileLine>>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokens_limit: usize,
+    single_file_mode: bool,
+) -> Vec<ContextFile> {
     // 7. Sort
     lines_by_useful.sort_by(|a, b| {
         let av = a.useful + a.fref.cpath_symmetry_breaker;
