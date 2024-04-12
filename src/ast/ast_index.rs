@@ -1,6 +1,4 @@
-use std::sync::Arc;
 use std::collections::{HashMap, HashSet};
-use std::cell::RefCell;
 use std::path::PathBuf;
 
 use itertools::Itertools;
@@ -19,7 +17,7 @@ use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::usages_declarations_merger::{FilePathIterator, find_decl_by_name, find_decl_by_caller_guid};
-use crate::files_in_workspace::{Document, read_file_from_disk};
+use crate::files_in_workspace::Document;
 
 
 #[derive(Debug)]
@@ -531,12 +529,20 @@ impl AstIndex {
         // .unwrap_or_default();
 
         let symbols = match self.path_by_symbols.get(&doc.path) {
-            Some(symbols) => symbols,
+            Some(x) => x.clone(),
             None => {
-                return Err(format!("no symbols in index for {}", doc.path.display()))
+                info!("no symbols in index for {:?}, assuming it's a new file of some sort and parsing it", doc.path);
+                let mut parser = match get_ast_parser_by_filename(&doc.path) {
+                    Ok(parser) => parser,
+                    Err(e) => {
+                        return Err(format!("no symbols in index for {:?}, and cannot find a parser this kind of file: {}", doc.path, e.message));
+                    }
+                };
+                let symbols = parser.parse(doc.text.as_ref().unwrap().to_string().as_str(), &doc.path);
+                symbols
             }
         };
-        crate::ast::ast_file_markup::lowlevel_file_markup(doc, symbols).await
+        crate::ast::ast_file_markup::lowlevel_file_markup(doc, &symbols).await
     }
 
     pub fn get_by_file_path(

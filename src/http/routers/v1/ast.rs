@@ -262,10 +262,11 @@ pub async fn handle_v1_ast_file_dump(
     }
     let mut files_set: HashSet<String> = HashSet::new();
     files_set.insert(corrected[0].clone());
-
+    let files_markup = crate::scratchpads::chat_utils_rag::
+        postprocess_rag_load_ast_markup(global_context.clone(), files_set).await;
     let close_small_gaps = false;
     let (lines_in_files, _) = crate::scratchpads::chat_utils_rag::
-        postprocess_rag_stage1(global_context.clone(), vec![], files_set, close_small_gaps).await;
+        postprocess_rag_stage_3_6(global_context.clone(), vec![], files_markup, close_small_gaps).await;
     let mut result = "".to_string();
     for linevec in lines_in_files.values() {
         for lineref in linevec {

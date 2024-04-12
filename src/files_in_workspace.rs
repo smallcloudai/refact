@@ -171,7 +171,7 @@ pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<Globa
     if let Some(doc) = global_context.read().await.documents_state.document_map.get(file_path) {
         let doc = doc.read().await;
         if doc.text.is_some() {
-            return Ok(doc.text.clone().unwrap().to_string());
+            return Ok(doc.text.as_ref().unwrap().to_string());
         }
     }
     read_file_from_disk(&file_path).await.map(|x|x.to_string())

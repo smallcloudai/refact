@@ -40,6 +40,8 @@ impl AstBasedFileSplitter {
     ) -> Result<Vec<SplitResult>, String> {
         let mut doc = doc.clone();
         let path = doc.path.clone();
+        // return self.fallback_file_splitter.split(&doc).await;
+
         let mut parser = match get_ast_parser_by_filename(&path) {
             Ok(parser) => parser,
             Err(_) => {

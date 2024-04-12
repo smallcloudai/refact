@@ -16,7 +16,7 @@ use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
-use crate::files_in_workspace::{Document, read_file_from_disk};
+use crate::files_in_workspace::Document;
 
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 
@@ -125,13 +125,11 @@ fn calculate_hash(path: &PathBuf) -> u64 {
     hasher.finish()
 }
 
-pub async fn postprocess_rag_stage1(
+pub async fn postprocess_rag_load_ast_markup(
     global_context: Arc<ARwLock<GlobalContext>>,
-    origmsgs: Vec<ContextFile>,
     files_set: HashSet<String>,
-    close_small_gaps: bool,
-) -> (HashMap<PathBuf, Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
-    // 2. Load files, with ast or not
+) -> HashMap<String, Arc<File>> {
+    // 2. Load AST markup
     let mut files: HashMap<String, Arc<File>> = HashMap::new();
     let ast_module = global_context.read().await.ast_module.clone();
     for file_name in files_set {
@@ -166,7 +164,15 @@ pub async fn postprocess_rag_stage1(
             files.insert(file_name.clone(), f.unwrap());
         }
     }
+    files
+}
 
+pub async fn postprocess_rag_stage_3_6(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    origmsgs: Vec<ContextFile>,
+    files: HashMap<String, Arc<File>>,
+    close_small_gaps: bool,
+) -> (HashMap<PathBuf, Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
     // 3. Generate line refs, fill background scopes found in a file (not search results yet)
     let mut lines_by_useful: Vec<Arc<FileLine>> = vec![];
     let mut lines_in_files: HashMap<PathBuf, Vec<Arc<FileLine>>> = HashMap::new();
@@ -384,9 +390,13 @@ pub async fn postprocess_at_results2(
         }
     }
 
+    // 2. Load ast markup
+    let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), files_set).await;
     let close_small_gaps = true;
-    let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage1(
-        global_context, origmsgs, files_set, close_small_gaps,
+
+    //
+    let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage_3_6(
+        global_context.clone(), origmsgs, files_markup, close_small_gaps,
     ).await;
 
     // 7. Sort
