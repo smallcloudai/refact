@@ -273,11 +273,11 @@ pub async fn postprocess_rag_stage_3_6(
                 }
             }
             if maybe_symbol.is_none() {
-                warn!("cannot find symbol {} in file {}", omsg.symbol, omsg.file_name);
+                warn!("- cannot find symbol {} in file {}", omsg.symbol, omsg.file_name);
             }
         }
         if let Some(s) = maybe_symbol {
-            info!("    search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, omsg.usefulness);
+            info!("+ search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, omsg.usefulness);
             colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness);
         } else {
             // no symbol set in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
