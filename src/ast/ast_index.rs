@@ -355,7 +355,7 @@ impl AstIndex {
                 let s_ref = read_symbol(s);
                 (s_ref.guid().to_string(), s_ref.name().to_string())
             })
-            .filter(|s| read_symbol(s).name().is_empty())
+            .filter(|s| !read_symbol(s).name().is_empty())
             .sorted_by_key(|a| read_symbol(a).distance_to_cursor(&cursor))
             .cloned()
             .collect::<Vec<_>>();
