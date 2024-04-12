@@ -149,7 +149,8 @@ pub async fn cached_tokenizer(
     };
     try_download_tokenizer_file_and_open(&client2, http_path.as_str(), api_key.clone(), &to).await?;
     info!("loading tokenizer \"{}\"", to.display());
-    let tokenizer = Tokenizer::from_file(to).map_err(|e| format!("failed to load tokenizer: {}", e))?;
+    let mut tokenizer = Tokenizer::from_file(to).map_err(|e| format!("failed to load tokenizer: {}", e))?;
+    tokenizer.with_padding(None);
     let arc = Arc::new(StdRwLock::new(tokenizer));
 
     global_context.write().await.tokenizer_map.insert(model_name.clone(), arc.clone());
