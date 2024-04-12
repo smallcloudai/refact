@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, FunctionDeclaration};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, FunctionDeclaration, read_symbol};
 use crate::ast::treesitter::structs::SymbolType;
 
 pub struct FilePathIterator {
@@ -61,7 +61,7 @@ pub fn find_decl_by_caller_guid(
     guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
 ) -> Option<String> {
     let (symbol_type, name, is_error_node) = {
-        let s = symbol.read().expect("the data might be broken");
+        let s = read_symbol(symbol);
         (s.symbol_type().to_owned(), s.name().to_owned(), s.is_error())
     };
     let search_symbol_type = match symbol_type {
@@ -74,12 +74,10 @@ pub fn find_decl_by_caller_guid(
         None => { return None; }
     };
 
-    let decl_symbol = match caller_symbol
-        .read().expect("the data might be broken")
+    let decl_symbol = match read_symbol(caller_symbol)
         .symbol_type() {
         SymbolType::FunctionCall => {
-            let linked_decl_guid = caller_symbol
-                .read().expect("the data might be broken")
+            let linked_decl_guid = read_symbol(caller_symbol)
                 .get_linked_decl_guid()
                 .to_owned();
             linked_decl_guid
@@ -97,8 +95,7 @@ pub fn find_decl_by_caller_guid(
                 })?
         }
         SymbolType::VariableUsage => {
-            caller_symbol
-                .read().expect("the data might be broken")
+            read_symbol(caller_symbol)
                 .get_linked_decl_guid()
                 .as_ref()
                 .map(|guid| guid_by_symbols.get(guid))?
@@ -106,23 +103,22 @@ pub fn find_decl_by_caller_guid(
         _ => None
     };
 
-    let decl_symbol_parent = decl_symbol?
-        .read().expect("the data might be broken")
+    let decl_symbol_parent = read_symbol(decl_symbol?)
         .parent_guid()
         .as_ref()
         .map(|guid| { guid_by_symbols.get(guid) })??;
     return match guid_by_symbols
         .iter()
         .filter(|(_, symbol)| {
-            let s_ref = symbol.read().expect("the data might be broken");
+            let s_ref = read_symbol(symbol);
             let valid_type = is_error_node || (s_ref.symbol_type() == search_symbol_type);
             valid_type
-                && s_ref.parent_guid().clone().unwrap_or_default() == decl_symbol_parent.read().expect("the data might be broken").guid()
+                && s_ref.parent_guid().clone().unwrap_or_default() == read_symbol(decl_symbol_parent).guid()
                 && s_ref.name() == name
         })
         .map(|(_, symbol)| symbol)
         .next() {
-        Some(s) => { Some(s.read().expect("the data might be broken").guid().to_string()) }
+        Some(s) => { Some(read_symbol(s).guid().to_string()) }
         None => { return None; }
     };
 }
@@ -146,7 +142,7 @@ fn find_decl_by_name_for_single_path(
         if let Some(s) = extra_search_index
             .get(&search_q)
             .map(|s| s.clone()) {
-            let s_ref = s.read().expect("the data might be broken");
+            let s_ref = read_symbol(&s);
             let valid_type = is_error_node || (s_ref.symbol_type() == *search_symbol_type);
             if valid_type {
                 return Some(s_ref.guid().to_string())
@@ -157,7 +153,7 @@ fn find_decl_by_name_for_single_path(
         } else {
             current_parent_guid = match guid_by_symbols.get(&current_parent_guid) {
                 Some(s) => {
-                    s.read().expect("the data might be broken").parent_guid().clone().unwrap_or("".to_string())
+                    read_symbol(s).parent_guid().clone().unwrap_or("".to_string())
                 }
                 None => { "".to_string() }
             };

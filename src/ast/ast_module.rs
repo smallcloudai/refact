@@ -11,6 +11,7 @@ use tree_sitter::Point;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstIndexService};
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
+use crate::ast::treesitter::ast_instance_structs::read_symbol;
 use crate::files_in_jsonl::docs_in_jsonl;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
@@ -80,12 +81,26 @@ impl AstModule {
         &self,
         query: String,
         request_symbol_type: RequestSymbolType,
-        try_fuzzy_if_not_found: bool
+        try_fuzzy_if_not_found: bool,
+        top_n: usize,
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         match self.ast_index.read().await.search_by_name(query.as_str(), request_symbol_type, None, None, try_fuzzy_if_not_found) {
             Ok(results) => {
-                for r in results.iter() {
+                let symbol_structs = results
+                    .iter()
+                    .take(top_n)
+                    .filter_map(|s| {
+                        let info_struct = read_symbol(s).symbol_info_struct();
+                        let content = info_struct.get_content_blocked().ok()?;
+                        Some(SymbolsSearchResultStruct {
+                            symbol_declaration: info_struct,
+                            content: content,
+                            sim_to_query: -1.0,
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                for r in symbol_structs.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
                     info!("def-distance {:.3}, found {last_30_chars}", r.sim_to_query);
                 }
@@ -93,7 +108,7 @@ impl AstModule {
                 Ok(
                     AstQuerySearchResult {
                         query_text: query,
-                        search_results: results,
+                        search_results: symbol_structs
                     }
                 )
             }
@@ -105,11 +120,25 @@ impl AstModule {
         &self,
         query: String,
         request_symbol_type: RequestSymbolType,
+        top_n: usize,
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         match self.ast_index.read().await.search_by_content(query.as_str(), request_symbol_type, None, None).await {
             Ok(results) => {
-                for r in results.iter() {
+                let symbol_structs = results
+                    .iter()
+                    .take(top_n)
+                    .filter_map(|s| {
+                        let info_struct = read_symbol(s).symbol_info_struct();
+                        let content = info_struct.get_content_blocked().ok()?;
+                        Some(SymbolsSearchResultStruct {
+                            symbol_declaration: info_struct,
+                            content: content,
+                            sim_to_query: -1.0,
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                for r in symbol_structs.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
                     info!("def-distance {:.3}, found {last_30_chars}", r.sim_to_query);
                 }
@@ -117,7 +146,7 @@ impl AstModule {
                 Ok(
                     AstQuerySearchResult {
                         query_text: query,
-                        search_results: results,
+                        search_results: symbol_structs,
                     }
                 )
             }
@@ -129,7 +158,19 @@ impl AstModule {
         let t0 = std::time::Instant::now();
         match self.ast_index.read().await.search_related_declarations(guid) {
             Ok(results) => {
-                for r in results.iter() {
+                let symbol_structs = results
+                    .iter()
+                    .filter_map(|s| {
+                        let info_struct = read_symbol(s).symbol_info_struct();
+                        let content = info_struct.get_content_blocked().ok()?;
+                        Some(SymbolsSearchResultStruct {
+                            symbol_declaration: info_struct,
+                            content: content,
+                            sim_to_query: -1.0,
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                for r in symbol_structs.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
                     info!("found {last_30_chars}");
                 }
@@ -137,7 +178,7 @@ impl AstModule {
                 Ok(
                     AstQuerySearchResult {
                         query_text: guid.to_string(),
-                        search_results: results,
+                        search_results: symbol_structs
                     }
                 )
             }
@@ -149,7 +190,19 @@ impl AstModule {
         let t0 = std::time::Instant::now();
         match self.ast_index.read().await.search_symbols_by_declarations_usage(declaration_guid, None) {
             Ok(results) => {
-                for r in results.iter() {
+                let symbol_structs = results
+                    .iter()
+                    .filter_map(|s| {
+                        let info_struct = read_symbol(s).symbol_info_struct();
+                        let content = info_struct.get_content_blocked().ok()?;
+                        Some(SymbolsSearchResultStruct {
+                            symbol_declaration: info_struct,
+                            content: content,
+                            sim_to_query: -1.0,
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                for r in symbol_structs.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
                     info!("found {last_30_chars}");
                 }
@@ -157,7 +210,7 @@ impl AstModule {
                 Ok(
                     AstQuerySearchResult {
                         query_text: declaration_guid.to_string(),
-                        search_results: results,
+                        search_results: symbol_structs,
                     }
                 )
             }
@@ -180,7 +233,7 @@ impl AstModule {
             code,
             cursor,
             top_n_near_cursor,
-            top_n_usage_for_each_decl
+            top_n_usage_for_each_decl,
         ).await;
         // for r in declarations.iter() {
         //     let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
@@ -191,42 +244,58 @@ impl AstModule {
         //     info!("found {last_30_chars}");
         // }
         let result = AstCursorSearchResult {
-                query_text: "".to_string(),
-                file_path: doc.path.clone(),
-                cursor,
-                cursor_symbols: cursor_usages
-                    .iter()
-                    .map(|x| SymbolsSearchResultStruct {
-                        symbol_declaration: x.clone(),
-                        content: x.get_content_blocked().unwrap_or_default(),
+            query_text: "".to_string(),
+            file_path: doc.path.clone(),
+            cursor,
+            cursor_symbols: cursor_usages
+                .iter()
+                .map(|x| {
+                    let symbol_declaration = read_symbol(x).symbol_info_struct();
+                    let content = symbol_declaration.get_content_blocked().unwrap_or_default();
+                    SymbolsSearchResultStruct {
+                        symbol_declaration,
+                        content,
                         sim_to_query: -1.0,
-                    })
-                    .collect::<Vec<SymbolsSearchResultStruct>>(),
-                declaration_symbols: declarations
-                    .iter()
-                    .map(|x| SymbolsSearchResultStruct {
-                        symbol_declaration: x.clone(),
-                        content: x.get_content_blocked().unwrap_or_default(),
+                    }
+                })
+                .collect::<Vec<SymbolsSearchResultStruct>>(),
+            declaration_symbols: declarations
+                .iter()
+                .map(|x| {
+                    let symbol_declaration = read_symbol(x).symbol_info_struct();
+                    let content = symbol_declaration.get_content_blocked().unwrap_or_default();
+                    SymbolsSearchResultStruct {
+                        symbol_declaration,
+                        content,
                         sim_to_query: -1.0,
-                    })
-                    .collect::<Vec<SymbolsSearchResultStruct>>(),
-                declaration_usage_symbols: usages
-                    .iter()
-                    .map(|x| SymbolsSearchResultStruct {
-                        symbol_declaration: x.clone(),
-                        content: x.get_content_blocked().unwrap_or_default(),
+                    }
+                })
+                .collect::<Vec<SymbolsSearchResultStruct>>(),
+            declaration_usage_symbols: usages
+                .iter()
+                .map(|x| {
+                    let symbol_declaration = read_symbol(x).symbol_info_struct();
+                    let content = symbol_declaration.get_content_blocked().unwrap_or_default();
+                    SymbolsSearchResultStruct {
+                        symbol_declaration,
+                        content,
                         sim_to_query: -1.0,
-                    })
-                    .collect::<Vec<SymbolsSearchResultStruct>>(),
-                most_similar_declarations: most_similar_declarations
-                    .iter()
-                    .map(|x| SymbolsSearchResultStruct {
-                        symbol_declaration: x.clone(),
-                        content: x.get_content_blocked().unwrap_or_default(),
+                    }
+                })
+                .collect::<Vec<SymbolsSearchResultStruct>>(),
+            most_similar_declarations: most_similar_declarations
+                .iter()
+                .map(|x| {
+                    let symbol_declaration = read_symbol(x).symbol_info_struct();
+                    let content = symbol_declaration.get_content_blocked().unwrap_or_default();
+                    SymbolsSearchResultStruct {
+                        symbol_declaration,
+                        content,
                         sim_to_query: -1.0,
-                    })
-                .collect::<Vec<SymbolsSearchResultStruct>>()
-            };
+                    }
+                })
+                .collect::<Vec<SymbolsSearchResultStruct>>(),
+        };
         info!("ast retrieve_cursor_symbols_by_declarations time {:.3}s, \
             found {} declaration_symbols, {} declaration_usage_symbols",
             t0.elapsed().as_secs_f32(), result.declaration_symbols.len(), result.declaration_usage_symbols.len());

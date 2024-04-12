@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::{fs, io};
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use async_trait::async_trait;
 use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
@@ -318,6 +318,11 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
 pub type AstSymbolInstanceArc = Arc<RwLock<dyn AstSymbolInstance>>;
 
 
+pub fn read_symbol(
+    s: &AstSymbolInstanceArc
+) -> RwLockReadGuard<'_, dyn AstSymbolInstance> {
+    s.read().expect("the data might be broken")
+}
 /*
 StructDeclaration
 */

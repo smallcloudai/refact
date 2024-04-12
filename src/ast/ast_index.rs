@@ -12,8 +12,9 @@ use tracing::info;
 use tree_sitter::Point;
 
 use crate::ast::comments_wrapper::get_language_id_by_filename;
-use crate::ast::structs::{FileASTMarkup, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, SymbolInformation};
+use crate::ast::structs::FileASTMarkup;
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, read_symbol, SymbolInformation};
+
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
@@ -99,7 +100,7 @@ impl AstIndex {
 
         let mut symbol_names: SortedVec<String> = SortedVec::new();
         for symbol in symbols.iter() {
-            let symbol_ref = symbol.read().expect("the data might be broken");
+            let symbol_ref = read_symbol(symbol);
             self.symbols_by_name.entry(symbol_ref.name().to_string()).or_insert_with(Vec::new).push(symbol.clone());
             self.symbols_by_guid.insert(symbol_ref.guid().to_string(), symbol.clone());
             self.path_by_symbols.entry(doc.path.clone()).or_insert_with(Vec::new).push(symbol.clone());
@@ -125,7 +126,7 @@ impl AstIndex {
             .unwrap_or_default()
             .iter() {
             let (name, guid) = {
-                let symbol_ref = symbol.read().expect("the data might be broken");
+                let symbol_ref = read_symbol(symbol);
                 (symbol_ref.name().to_string(), symbol_ref.guid().to_string())
             };
             self.symbols_by_name
@@ -134,7 +135,7 @@ impl AstIndex {
                     let indices_to_remove = v
                         .iter()
                         .enumerate()
-                        .filter(|(_idx, s)| s.read().expect("the data might be broken").guid() == guid)
+                        .filter(|(_idx, s)| read_symbol(s).guid() == guid)
                         .map(|(idx, _s)| idx)
                         .collect::<Vec<_>>();
                     indices_to_remove.iter().for_each(|i| { v.remove(*i); });
@@ -174,7 +175,7 @@ impl AstIndex {
         exception_doc: Option<Document>,
         language: Option<LanguageId>,
         try_fuzzy_if_not_found: bool,
-    ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
+    ) -> Result<Vec<AstSymbolInstanceArc>, String> {
         fn exact_search(
             symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceArc>>,
             query: &str,
@@ -187,7 +188,7 @@ impl AstIndex {
                 .iter()
                 .cloned()
                 .filter(|s| {
-                    let s_ref = s.read().expect("the data might be broken");
+                    let s_ref = read_symbol(s);
                     match request_symbol_type {
                         RequestSymbolType::Declaration => s_ref.is_declaration(),
                         RequestSymbolType::Usage => !s_ref.is_declaration(),
@@ -215,7 +216,7 @@ impl AstIndex {
                 .flatten()
                 .cloned()
                 .filter(|s| {
-                    let s_ref = s.read().expect("the data might be broken");
+                    let s_ref = read_symbol(s);
                     match request_symbol_type {
                         RequestSymbolType::Declaration => s_ref.is_declaration(),
                         RequestSymbolType::Usage => !s_ref.is_declaration(),
@@ -230,43 +231,24 @@ impl AstIndex {
             symbols = fuzzy_search(&self.symbols_by_name, query, &request_symbol_type);
         }
 
-        let mut filtered_search_results = symbols
+        Ok(symbols
             .iter()
             .filter(|s| {
-                let s_ref = s.read().expect("the data might be broken");
+                let s_ref = read_symbol(s);
                 let correct_doc = exception_doc.clone().map_or(true, |doc| doc.path != *s_ref.file_path());
                 let correct_language = language.map_or(true, |l| l == *s_ref.language());
                 correct_doc && correct_language
             })
             .map(|s| {
-                let s_ref = s.read().expect("the data might be broken");
-                (s_ref.symbol_info_struct(), (jaro_winkler(query, s_ref.name()) as f32).max(f32::MIN_POSITIVE))
+                let s_ref = read_symbol(s);
+                (s, (jaro_winkler(query, s_ref.name()) as f32).max(f32::MIN_POSITIVE))
             })
-            .collect::<Vec<_>>();
-
-        filtered_search_results
-            .sort_by(|(_, dist_1), (_, dist_2)|
+            .sorted_by(|(_, dist_1), (_, dist_2)|
                 dist_1.partial_cmp(dist_2).unwrap_or(std::cmp::Ordering::Equal)
-            );
-
-        let mut search_results: Vec<SymbolsSearchResultStruct> = vec![];
-        for (key, dist) in filtered_search_results
-            .iter()
-            .rev() {
-            let content = match key.get_content_blocked() {
-                Ok(content) => content,
-                Err(err) => {
-                    info!("Error opening the file {:?}: {}", key.file_path, err);
-                    continue;
-                }
-            };
-            search_results.push(SymbolsSearchResultStruct {
-                symbol_declaration: key.clone(),
-                content,
-                sim_to_query: dist.clone(),
-            });
-        }
-        Ok(search_results)
+            )
+            .rev()
+            .map(|(s, _)| s.clone())
+            .collect::<Vec<_>>())
     }
 
     pub async fn search_by_content(
@@ -275,8 +257,8 @@ impl AstIndex {
         request_symbol_type: RequestSymbolType,
         exception_doc: Option<Document>,
         language: Option<LanguageId>,
-    ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
-        let search_results = self.path_by_symbols
+    ) -> Result<Vec<AstSymbolInstanceArc>, String> {
+        Ok(self.path_by_symbols
             .par_iter()
             .filter(|(path, _symbols)| {
                 let language_id = match get_language_id_by_filename(path) {
@@ -298,7 +280,7 @@ impl AstIndex {
                 };
                 let text_rope = Rope::from_str(file_content.as_str());
                 for symbol in symbols.iter() {
-                    let s_ref = symbol.read().expect("the data might be broken");
+                    let s_ref = read_symbol(symbol);
                     let symbol_content = text_rope
                         .slice(text_rope.line_to_char(s_ref.full_range().start_point.row)..
                             text_rope.line_to_char(s_ref.full_range().end_point.row))
@@ -312,45 +294,25 @@ impl AstIndex {
             })
             .flatten()
             .filter(|s| {
-                let s_ref = s.read().expect("the data might be broken");
+                let is_declaration = read_symbol(s).is_declaration();
                 match request_symbol_type {
-                    RequestSymbolType::Declaration => s_ref.is_declaration(),
-                    RequestSymbolType::Usage => !s_ref.is_declaration(),
+                    RequestSymbolType::Declaration => is_declaration,
+                    RequestSymbolType::Usage => !is_declaration,
                     RequestSymbolType::All => true,
                 }
             })
-            .filter_map(|s| {
-                let info_struct = s.read().expect("the data might be broken").symbol_info_struct();
-                let content = info_struct.get_content_blocked().ok()?;
-                Some(SymbolsSearchResultStruct {
-                    symbol_declaration: info_struct,
-                    content: content,
-                    sim_to_query: -1.0,
-                })
-            })
-            .collect::<Vec<_>>();
-
-        Ok(search_results)
+            .collect::<Vec<_>>())
     }
 
-    pub fn search_related_declarations(&self, guid: &str) -> Result<Vec<SymbolsSearchResultStruct>, String> {
+    pub fn search_related_declarations(&self, guid: &str) -> Result<Vec<AstSymbolInstanceArc>, String> {
         match self.symbols_by_guid.get(guid) {
             Some(symbol) => {
-                Ok(symbol
-                    .read().expect("the data might be broken")
+                Ok(read_symbol(symbol)
                     .types()
                     .iter()
                     .filter_map(|t| t.guid.clone())
                     .filter_map(|g| self.symbols_by_guid.get(&g))
-                    .filter_map(|s| {
-                        let info_struct = s.read().expect("the data might be broken").symbol_info_struct();
-                        let content = info_struct.get_content_blocked().ok()?;
-                        Some(SymbolsSearchResultStruct {
-                            symbol_declaration: info_struct,
-                            content,
-                            sim_to_query: -1.0,
-                        })
-                    })
+                    .cloned()
                     .collect::<Vec<_>>())
             }
             _ => Ok(vec![])
@@ -361,7 +323,7 @@ impl AstIndex {
         &self,
         declaration_guid: &str,
         exception_doc: Option<Document>,
-    ) -> Result<Vec<SymbolsSearchResultStruct>, String> {
+    ) -> Result<Vec<AstSymbolInstanceArc>, String> {
         Ok(self.type_guid_to_dependent_guids
             .get(declaration_guid)
             .map(|x| x.clone())
@@ -369,18 +331,10 @@ impl AstIndex {
             .iter()
             .filter_map(|guid| self.symbols_by_guid.get(guid))
             .filter(|s| {
-                let s_ref = s.read().expect("the data might be broken");
+                let s_ref = read_symbol(s);
                 exception_doc.clone().map_or(true, |doc| doc.path != *s_ref.file_path())
             })
-            .filter_map(|s| {
-                let info_struct = s.read().expect("the data might be broken").symbol_info_struct();
-                let content = info_struct.get_content_blocked().ok()?;
-                Some(SymbolsSearchResultStruct {
-                    symbol_declaration: info_struct,
-                    content,
-                    sim_to_query: -1.0,
-                })
-            })
+            .cloned()
             .collect::<Vec<_>>())
     }
 
@@ -391,25 +345,25 @@ impl AstIndex {
         cursor: Point,
         top_n_near_cursor: usize,
         top_n_usage_for_each_decl: usize,
-    ) -> (Vec<SymbolInformation>, Vec<SymbolInformation>, Vec<SymbolInformation>, Vec<SymbolInformation>) {
+    ) -> (Vec<AstSymbolInstanceArc>, Vec<AstSymbolInstanceArc>, Vec<AstSymbolInstanceArc>, Vec<AstSymbolInstanceArc>) {
         let file_symbols = self.parse_single_file(doc, code).await;
         let language = get_language_id_by_filename(&doc.path);
 
         let unfiltered_cursor_symbols = file_symbols
             .iter()
             .unique_by(|s| {
-                let s_ref = s.read().expect("the data might be broken");
+                let s_ref = read_symbol(s);
                 (s_ref.guid().to_string(), s_ref.name().to_string())
             })
-            .filter(|s| !s.read().expect("the data might be broken").name().is_empty())
-            .sorted_by_key(|a| a.read().expect("the data might be broken").distance_to_cursor(&cursor))
+            .filter(|s| read_symbol(s).name().is_empty())
+            .sorted_by_key(|a| read_symbol(a).distance_to_cursor(&cursor))
+            .cloned()
             .collect::<Vec<_>>();
 
         let cursor_symbols_with_types = unfiltered_cursor_symbols
             .iter()
-            .cloned()
             .filter_map(|s| {
-                let s_ref = s.read().expect("the data might be broken");
+                let s_ref = read_symbol(s);
                 if s_ref.is_declaration() {
                     Some(s)
                 } else {
@@ -419,34 +373,34 @@ impl AstIndex {
                         .flatten()
                 }
             })
-            .unique_by(|s| s.read().expect("the data might be broken").guid().to_string())
+            .unique_by(|s| read_symbol(s).guid().to_string())
             .cloned()
             .collect::<Vec<_>>();
+
         let declarations_matched_by_name = unfiltered_cursor_symbols
             .iter()
             .map(|s| {
-                let s_ref = s.read().expect("the data might be broken");
+                let s_ref = read_symbol(s);
                 let use_fuzzy_search = s_ref.full_range().start_point.row == cursor.row && s_ref.is_error();
                 self.search_by_name(&s_ref.name(), RequestSymbolType::Declaration, None, language.clone(), use_fuzzy_search)
                     .unwrap_or_else(|_| vec![])
             })
             .flatten()
             .filter(|s| {
-                s.symbol_declaration.symbol_type == SymbolType::StructDeclaration
-                    || s.symbol_declaration.symbol_type == SymbolType::TypeAlias
-                    || s.symbol_declaration.symbol_type == SymbolType::FunctionDeclaration
+                let symbol_type = read_symbol(s).symbol_type();
+                symbol_type == SymbolType::StructDeclaration
+                    || symbol_type == SymbolType::TypeAlias
+                    || symbol_type == SymbolType::FunctionDeclaration
             })
-            .map(|s| s.symbol_declaration)
-            .unique_by(|s| s.guid.clone())
-            .unique_by(|s| s.name.clone())
+            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
-
-        let mut declarations = cursor_symbols_with_types
+        let declarations = cursor_symbols_with_types
             .iter()
-            .filter(|s| !s.read().expect("the data might be broken").types().is_empty())
+            .filter(|s| read_symbol(s).types().is_empty())
             .map(|s| {
-                s.read().expect("the data might be broken")
+                read_symbol(s)
                     .types()
                     .iter()
                     .filter_map(|t| t.guid.clone())
@@ -456,25 +410,46 @@ impl AstIndex {
             })
             .flatten()
             .filter(|s| {
-                let s_ref = s.read().expect("the data might be broken");
+                let s_ref = read_symbol(s);
                 *s_ref.language() == language.unwrap_or(*s_ref.language())
             })
-            .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
-            .unique_by(|s| s.guid.clone())
-            .unique_by(|s| s.name.clone())
+            .chain(declarations_matched_by_name)
+            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
-        declarations.extend(declarations_matched_by_name);
 
-        let mut usages = declarations
+        let func_usages_matched_by_name = declarations
+            .iter()
+            .filter(|s| read_symbol(s).symbol_type() == SymbolType::FunctionDeclaration)
+            .map(|s| {
+                let (full_range, name) = {
+                    let s_ref = read_symbol(s);
+                    (s_ref.full_range().clone(), s_ref.name().to_string())
+                };
+                let use_fuzzy_search = full_range.start_point.row == cursor.row;
+                self.search_by_name(&name, RequestSymbolType::Usage, None, language.clone(), use_fuzzy_search)
+                    .unwrap_or_else(|_| vec![])
+            })
+            .flatten()
+            .filter(|s| {
+                read_symbol(s).symbol_type() == SymbolType::FunctionCall
+            })
+            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).name().to_string())
+            .take(top_n_usage_for_each_decl)
+            .collect::<Vec<_>>();
+        let usages = declarations
             .iter()
             .map(|s| {
-                self.search_symbols_by_declarations_usage(&s.guid, None)
+                let guid = read_symbol(s).guid().to_string();
+                let symbols_by_declarations = self.search_symbols_by_declarations_usage(&guid, None)
                     .unwrap_or_default()
+                    .clone();
+                symbols_by_declarations
                     .iter()
-                    .map(|x| x.symbol_declaration.clone())
                     .sorted_by_key(|s| {
-                        match s.symbol_type {
+                        match read_symbol(s).symbol_type() {
                             SymbolType::ClassFieldDeclaration => 1,
                             SymbolType::VariableDefinition => 1,
                             SymbolType::FunctionDeclaration => 1,
@@ -484,34 +459,19 @@ impl AstIndex {
                         }
                     })
                     .take(top_n_usage_for_each_decl)
+                    .cloned()
                     .collect::<Vec<_>>()
             })
             .flatten()
+            .chain(func_usages_matched_by_name)
+            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).name().to_string())
             .collect::<Vec<_>>();
-
-        let func_usages_matched_by_name = declarations
-            .iter()
-            .filter(|s| s.symbol_type == SymbolType::FunctionDeclaration)
-            .map(|s| {
-                let use_fuzzy_search = s.full_range.start_point.row == cursor.row;
-                self.search_by_name(&s.name, RequestSymbolType::Usage, None, language.clone(), use_fuzzy_search)
-                    .unwrap_or_else(|_| vec![])
-            })
-            .flatten()
-            .filter(|s| {
-                s.symbol_declaration.symbol_type == SymbolType::FunctionCall
-            })
-            .map(|s| s.symbol_declaration)
-            .unique_by(|s| s.guid.clone())
-            .unique_by(|s| s.name.clone())
-            .take(top_n_usage_for_each_decl)
-            .collect::<Vec<_>>();
-        usages.extend(func_usages_matched_by_name);
 
         let cursor_symbols_names = unfiltered_cursor_symbols
             .iter()
             .filter(|s| {
-                let symbol_type = s.read().expect("the data might be broken").symbol_type();
+                let symbol_type = read_symbol(s).symbol_type();
                 symbol_type == SymbolType::FunctionCall
                     || symbol_type == SymbolType::VariableUsage
                     || symbol_type == SymbolType::VariableDefinition
@@ -519,7 +479,7 @@ impl AstIndex {
                     || symbol_type == SymbolType::CommentDefinition
             })
             .map(|s| {
-                s.read().expect("the data might be broken").name().to_string()
+                read_symbol(s).name().to_string()
             })
             .collect::<HashSet<_>>();
         let most_similar_declarations = self.declaration_guid_to_usage_names
@@ -535,36 +495,21 @@ impl AstIndex {
             .filter(|&(_, a)| *a > (cursor_symbols_names.len() / 5))
             .take(top_n_near_cursor * 2)
             .filter_map(|(g, _)| self.symbols_by_guid.get(*g))
-            .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
-            .unique_by(|s| s.guid.clone())
-            .unique_by(|s| s.name.clone())
+            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
+            .cloned()
             .collect::<Vec<_>>();
 
         (
             unfiltered_cursor_symbols
                 .iter()
-                .unique_by(|s| s.read().expect("the data might be broken").name().to_string())
-                .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
-                .collect(),
-            declarations
-                .iter()
-                .unique_by(|s| s.guid.clone())
-                .unique_by(|s| s.name.clone())
+                .unique_by(|s| read_symbol(s).name().to_string())
                 .cloned()
                 .collect::<Vec<_>>(),
-            usages
-                .iter()
-                .unique_by(|s| s.guid.clone())
-                .unique_by(|s| s.name.clone())
-                .cloned()
-                .collect::<Vec<_>>(),
-            most_similar_declarations
-                .iter()
-                .unique_by(|s| s.guid.clone())
-                .unique_by(|s| s.name.clone())
-                .cloned()
-                .collect::<Vec<_>>(),
+            declarations,
+            usages,
+            most_similar_declarations,
         )
     }
 
@@ -577,7 +522,7 @@ impl AstIndex {
             .map(|symbols| {
                 symbols
                     .iter()
-                    .filter(|s| s.read().expect("the data might be broken").is_declaration())
+                    .filter(|s| read_symbol(s).is_declaration())
                     .cloned()
                     .collect()
             })
@@ -588,7 +533,7 @@ impl AstIndex {
         };
 
         let mut symbols4export: Vec<Arc<RefCell<SymbolInformation>>> = symbols.iter().map(|s| {
-            let s_ref = s.read().expect("the data might be broken");
+            let s_ref = read_symbol(s);
             Arc::new(RefCell::new(s_ref.symbol_info_struct()))
         }).collect();
         let guid_to_symbol: HashMap<String, Arc<RefCell<SymbolInformation>>> = symbols4export.iter().map(
@@ -638,14 +583,14 @@ impl AstIndex {
                 symbols
                     .iter()
                     .filter(|s| {
-                        let s_ref = s.read().expect("the data might be broken");
+                        let s_ref = read_symbol(s);
                         match request_symbol_type {
                             RequestSymbolType::Declaration => s_ref.is_declaration(),
                             RequestSymbolType::Usage => !s_ref.is_declaration(),
                             RequestSymbolType::All => true,
                         }
                     })
-                    .map(|s| s.read().expect("the data might be broken").symbol_info_struct())
+                    .map(|s| read_symbol(s).symbol_info_struct())
                     .collect()
             })
             .unwrap_or_default();
@@ -664,14 +609,14 @@ impl AstIndex {
         self.symbols_by_guid
             .iter()
             .filter(|(_guid, s)| {
-                let s_ref = s.read().expect("the data might be broken");
+                let s_ref = read_symbol(s);
                 match request_symbol_type {
                     RequestSymbolType::Declaration => s_ref.is_declaration(),
                     RequestSymbolType::Usage => !s_ref.is_declaration(),
                     RequestSymbolType::All => true,
                 }
             })
-            .map(|(_guid, s)| s.read().expect("the data might be broken").name().to_string())
+            .map(|(_guid, s)| read_symbol(s).name().to_string())
             .collect()
     }
 
@@ -692,7 +637,7 @@ impl AstIndex {
         for symbol in symbols {
             tokio::task::yield_now().await;
             let (type_names, symb_type, symb_path) = {
-                let s_ref = symbol.read().expect("the data might be broken");
+                let s_ref = read_symbol(symbol);
                 (s_ref.types(), s_ref.symbol_type(), s_ref.file_path().clone())
             };
             if symb_type == SymbolType::ImportDeclaration
@@ -717,14 +662,14 @@ impl AstIndex {
                     Some(symbols) => {
                         symbols
                             .iter()
-                            .filter(|s| s.read().expect("the data might be broken").is_type())
+                            .filter(|s| read_symbol(s).is_type())
                             .sorted_by(|a, b| {
-                                let path_a = a.read().expect("the data might be broken").file_path().clone();
-                                let path_b = b.read().expect("the data might be broken").file_path().clone();
+                                let path_a = read_symbol(a).file_path().clone();
+                                let path_b = read_symbol(b).file_path().clone();
                                 FilePathIterator::compare_paths(&symb_path, &path_a, &path_b)
                             })
                             .next()
-                            .map(|s| s.read().expect("the data might be broken").guid().to_string())
+                            .map(|s| read_symbol(s).guid().to_string())
                     }
                     None => {
                         stats.non_found += 1;
@@ -758,8 +703,7 @@ impl AstIndex {
             guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
             current_depth: usize,
         ) -> usize {
-            let caller_guid = match symbol
-                .read().expect("the data might be broken")
+            let caller_guid = match read_symbol(symbol)
                 .get_caller_guid()
                 .clone() {
                 Some(g) => g,
@@ -777,7 +721,7 @@ impl AstIndex {
         let extra_index: HashMap<(String, String, String), AstSymbolInstanceArc> = symbols
             .iter()
             .map(|x| {
-                let x_ref = x.read().expect("the data might be broken");
+                let x_ref = read_symbol(x);
                 ((x_ref.name().to_string(),
                   x_ref.parent_guid().clone().unwrap_or_default(),
                   x_ref.file_path().to_str().unwrap_or_default().to_string()),
@@ -789,10 +733,10 @@ impl AstIndex {
             let symbols_to_process = symbols
                 .iter()
                 .filter(|symbol| {
-                    symbol.read().expect("the data might be broken").get_linked_decl_guid().is_none()
+                    read_symbol(symbol).get_linked_decl_guid().is_none()
                 })
                 .filter(|symbol| {
-                    let s_ref = symbol.read().expect("the data might be broken");
+                    let s_ref = read_symbol(symbol);
                     let valid_depth = get_caller_depth(symbol, &self.symbols_by_guid, 0) == depth;
                     valid_depth && (s_ref.symbol_type() == SymbolType::FunctionCall
                         || s_ref.symbol_type() == SymbolType::VariableUsage)
@@ -809,7 +753,7 @@ impl AstIndex {
                 .enumerate() {
                 tokio::task::yield_now().await;
                 let (name, parent_guid, caller_guid) = {
-                    let s_ref = usage_symbol.read().expect("the data might be broken");
+                    let s_ref = read_symbol(usage_symbol);
                     (s_ref.name().to_string(), s_ref.parent_guid().clone().unwrap_or_default(), s_ref.get_caller_guid().clone())
                 };
                 let guids_pair = (parent_guid, name);
@@ -867,9 +811,9 @@ impl AstIndex {
     pub(crate) fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceArc>) {
         for symbol in symbols
             .iter()
-            .filter(|s| !s.read().expect("the data might be broken").is_type())
+            .filter(|s| read_symbol(s).is_type())
             .cloned() {
-            let guid = symbol.read().expect("the data might be broken").guid().to_string();
+            let guid = read_symbol(&symbol).guid().to_string();
             if self.type_guid_to_dependent_guids.contains_key(&guid) {
                 self.type_guid_to_dependent_guids.remove(&guid);
             }
@@ -880,22 +824,22 @@ impl AstIndex {
 
         for symbol in symbols
             .iter()
-            .filter(|s| !s.read().expect("the data might be broken").is_type())
+            .filter(|s| read_symbol(s).is_type())
             .cloned() {
             let (name, s_guid, mut types, is_declaration, symbol_type, parent_guid) = {
-                let s_ref = symbol.read().expect("the data might be broken");
+                let s_ref = read_symbol(&symbol);
                 (s_ref.name().to_string(), s_ref.guid().to_string(), s_ref.types(), s_ref.is_declaration(),
                  s_ref.symbol_type(), s_ref.parent_guid().clone())
             };
             types = if is_declaration {
                 types
             } else {
-                symbol.read().expect("the data might be broken")
+                read_symbol(&symbol)
                     .get_linked_decl_guid()
                     .clone()
                     .map(|guid| self.symbols_by_guid.get(&guid))
                     .flatten()
-                    .map(|s| s.read().expect("the data might be broken").types())
+                    .map(|s| read_symbol(s).types())
                     .unwrap_or_default()
             };
             for guid in types
@@ -947,6 +891,7 @@ impl AstIndex {
         symbols
     }
 }
+
 
 pub fn read_file_from_disk_block(path: &PathBuf) -> Result<String, String> {
     std::fs::read_to_string(path).map_err(|e| format!("Failed to read file from disk: {}", e))

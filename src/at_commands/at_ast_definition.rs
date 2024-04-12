@@ -71,7 +71,12 @@ impl AtCommand for AtAstDefinition {
         let ast = context.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
-                match ast.read().await.search_by_name(symbol_path.clone(), RequestSymbolType::Declaration, true).await {
+                match ast.read().await.search_by_name(
+                    symbol_path.clone(),
+                    RequestSymbolType::Declaration,
+                    true,
+                    10
+                ).await {
                     Ok(res) => {
                         Ok(results2message(&res).await)
                     },
