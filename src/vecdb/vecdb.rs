@@ -279,7 +279,7 @@ impl VecdbSearch for VecDb {
                 dist0 = rec.distance.abs();
             }
             let last_30_chars = crate::nicer_logs::last_n_chars(&rec.file_path.display().to_string(), 30);
-            rec.usefulness = 100.0 - 100.0 * ((rec.distance.abs() - dist0) / (dist0 + 0.01)).max(0.0).min(1.0);
+            rec.usefulness = 100.0 - 75.0 * ((rec.distance.abs() - dist0) / (dist0 + 0.01)).max(0.0).min(1.0);
             info!("distance {:.3} -> useful {:.1}, found {}:{}-{}", rec.distance, rec.usefulness, last_30_chars, rec.start_line, rec.end_line);
         }
         let t2 = std::time::Instant::now();

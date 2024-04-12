@@ -237,7 +237,11 @@ async fn add_paths_to_document_map_if_not_present(
         if !doc_map.contains_key(path) {
             let mut doc_new = Document::new(path, None);
             if read_text {
-                doc_new.update_text_from_disk().await;
+                let are_we_good = doc_new.update_text_from_disk().await;
+                if are_we_good.is_err() {
+                    warn!("instructed to add document but can't read it: {}", are_we_good.unwrap_err());  // error message already has the path inside
+                    continue;
+                }
             }
             doc_map.insert(path.clone(), Arc::new(ARwLock::new(doc_new)));
         }
@@ -601,7 +605,11 @@ pub async fn file_watcher_thread(event: Event, gcx: Weak<ARwLock<GlobalContext>>
             }
             if is_valid_file(path).is_ok() {
                 let mut doc = Document::new(path, None);
-                doc.update_text_from_disk().await;
+                let are_we_good = doc.update_text_from_disk().await;
+                if are_we_good.is_err() {
+                    info!("hmm can't read: {}", are_we_good.unwrap_err());
+                    continue;
+                }
                 docs.push(doc);
             }
         }

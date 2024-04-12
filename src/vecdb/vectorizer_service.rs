@@ -138,7 +138,7 @@ async fn vectorize_thread(
         }
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size, constants.splitter_soft_limit);
-        let tokens_limit = 512;
+        let tokens_limit = 256;
         let split_data = match file_splitter.vectorization_split(&doc, tokenizer.clone(), global_context.clone(), tokens_limit).await {
             Ok(data) => data,
             Err(err) => {

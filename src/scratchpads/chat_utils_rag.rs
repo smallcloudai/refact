@@ -167,12 +167,30 @@ pub async fn postprocess_rag_load_ast_markup(
     files_markup
 }
 
+pub struct PostprocessSettings {
+    pub degrade_body_coef: f32,
+    pub useful_background: f32,
+    pub useful_symbol_default: f32,
+    pub close_small_gaps: bool,
+}
+
+impl PostprocessSettings {
+    pub fn new() -> Self {
+        PostprocessSettings {
+            degrade_body_coef: 0.8,
+            useful_background: 5.0,
+            useful_symbol_default: 10.0,
+            close_small_gaps: true,
+        }
+    }
+}
+
 pub async fn postprocess_rag_stage_3_6(
     global_context: Arc<ARwLock<GlobalContext>>,
     origmsgs: Vec<ContextFile>,
-    files: HashMap<String, Arc<File>>,
-    close_small_gaps: bool,
-) -> (HashMap<PathBuf, Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
+    files: &HashMap<String, Arc<File>>,
+    settings: &PostprocessSettings,
+) -> (HashMap<PathBuf,Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
     // 3. Generate line refs, fill background scopes found in a file (not search results yet)
     let mut lines_by_useful: Vec<Arc<FileLine>> = vec![];
     let mut lines_in_files: HashMap<PathBuf, Vec<Arc<FileLine>>> = HashMap::new();
@@ -234,10 +252,10 @@ pub async fn postprocess_rag_stage_3_6(
             if DEBUG {
                 info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
             }
-            let useful = 10.0;  // depends on symbol type?
+            let useful = settings.useful_symbol_default;  // depends on symbol type?
             colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), useful);
         }
-        colorize_if_more_useful(linevec, 0, linevec.len(), &"".to_string(), 5.0);
+        colorize_if_more_useful(linevec, 0, linevec.len(), &"".to_string(), settings.useful_background);
     }
 
     // 4. Fill in usefulness from search results
@@ -284,7 +302,7 @@ pub async fn postprocess_rag_stage_3_6(
         } else {
             // no symbol set in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
             if omsg.line1 == 0 || omsg.line2 == 0 || omsg.line1 > omsg.line2 || omsg.line1 > linevec.len() || omsg.line2 > linevec.len() {
-                warn!("cannot use range {}:{}..{}", omsg.file_name, omsg.line1, omsg.line2);
+                warn!("cannot use range {}:{}-{}", omsg.file_name, omsg.line1, omsg.line2);
                 continue;
             }
             colorize_if_more_useful(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
@@ -337,7 +355,7 @@ pub async fn postprocess_rag_stage_3_6(
                     s.definition_range.end_point.row + 1
                 );
                 if def1 > def0 {
-                    downgrade_lines_if_subsymbol(linevec, def0, def1, &format!("{}::body", s.symbol_path), 0.8);
+                    downgrade_lines_if_subsymbol(linevec, def0, def1, &format!("{}::body", s.symbol_path), settings.degrade_body_coef);
                     // NOTE: this will not downgrade function body of a function that is a search result, because it's not a subsymbol it's the symbol itself (equal path)
                 }
             }
@@ -345,7 +363,7 @@ pub async fn postprocess_rag_stage_3_6(
     }
 
     // 6. A-la mathematical morphology, removes one-line holes
-    if close_small_gaps {
+    if settings.close_small_gaps {
         for linevec in lines_in_files.values_mut() {
             let mut useful_copy = linevec.iter().map(|x| x.useful).collect::<Vec<f32>>();
             for i in 1 .. linevec.len() - 1 {
@@ -375,9 +393,12 @@ pub async fn postprocess_at_results2(
     single_file_mode: bool,
 ) -> Vec<ContextFile> {
     let (files_markup, origmsgs) = postprocess_rag_stage_1_2(global_context.clone(), messages).await;
-    let close_small_gaps = true;
+    let settings = crate::scratchpads::chat_utils_rag::PostprocessSettings::new();
     let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage_3_6(
-        global_context.clone(), origmsgs, files_markup, close_small_gaps,
+        global_context.clone(),
+        origmsgs,
+        &files_markup,
+        &settings,
     ).await;
     let y = postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode).await;
     y
@@ -430,15 +451,16 @@ pub async fn postprocess_rag_stage_7_9(
     let mut files_mentioned_set: HashSet<String> = HashSet::new();
     let mut files_mentioned_sequence: Vec<PathBuf> = vec![];
     for lineref in lines_by_useful.iter_mut() {
-        if lineref.useful < 0.0 {
+        if lineref.useful <= 0.0 {
             continue;
         }
         let mut ntokens = count_tokens(&tokenizer.read().unwrap(), &lineref.line_content);
         let filename = lineref.fref.cpath.to_string_lossy().to_string();
+
         if !files_mentioned_set.contains(&filename) {
             files_mentioned_set.insert(filename.clone());
+            files_mentioned_sequence.push(lineref.fref.cpath.clone());
             if !single_file_mode {
-                files_mentioned_sequence.push(lineref.fref.cpath.clone());
                 ntokens += count_tokens(&tokenizer.read().unwrap(), &filename.as_str());
                 ntokens += 5;  // any overhead: file_sep, new line, etc
             }
@@ -453,7 +475,7 @@ pub async fn postprocess_rag_stage_7_9(
             lines_take_cnt += 1;
         }
     }
-    info!("{} lines in {} files  =>  tokens {} < {} tokens limit  =>  {} lines", lines_by_useful.len(), lines_in_files.len(), tokens_count, tokens_limit, lines_take_cnt);
+    info!("{} lines in {} files  =>  tokens {} < {} tokens limit  =>  {} lines in {} files", lines_by_useful.len(), lines_in_files.len(), tokens_count, tokens_limit, lines_take_cnt, files_mentioned_sequence.len());
     if DEBUG {
         for linevec in lines_in_files.values() {
             for lineref in linevec.iter() {
