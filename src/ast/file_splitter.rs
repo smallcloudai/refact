@@ -19,7 +19,7 @@ fn str_hash(s: &String) -> String {
 }
 
 pub struct AstBasedFileSplitter {
-    soft_window: usize,
+    // soft_window: usize,
     // hard_window: usize,
     fallback_file_splitter: FileSplitter,
 }
@@ -27,7 +27,7 @@ pub struct AstBasedFileSplitter {
 impl AstBasedFileSplitter {
     pub fn new(window_size: usize, soft_limit: usize) -> Self {
         Self {
-            soft_window: window_size,
+            // soft_window: window_size,
             // hard_window: window_size + soft_limit,
             fallback_file_splitter: FileSplitter::new(window_size, soft_limit),
         }
@@ -74,7 +74,19 @@ impl AstBasedFileSplitter {
             .expect("cannot read symbol")
             .symbol_info_struct())
         {
-            if symbol.symbol_type == SymbolType::StructDeclaration {
+            // TypeAlias,
+            // ClassFieldDeclaration,
+            // ImportDeclaration,
+            // VariableDefinition,
+            // FunctionDeclaration,
+            // CommentDefinition,
+            // FunctionCall,
+            // VariableUsage,
+            let go_via_postprocessing = match symbol.symbol_type {
+                SymbolType::StructDeclaration | SymbolType::FunctionDeclaration | SymbolType::TypeAlias => true,
+                _ => false,
+            };
+            if go_via_postprocessing {
                 let full_range = symbol.full_range;
                 let messages = vec![ContextFile {
                     file_name: symbol.file_path.to_str().unwrap().parse().unwrap(),
@@ -88,7 +100,7 @@ impl AstBasedFileSplitter {
                 let single_file_mode = true;
 
                 let mut settings = crate::scratchpads::chat_utils_rag::PostprocessSettings::new();
-                settings.degrade_body_coef = 0.0;
+                // settings.degrade_body_coef = 0.0;
                 settings.useful_background = 0.0;
                 settings.useful_symbol_default = 0.0;
                 settings.close_small_gaps = false;
@@ -109,10 +121,10 @@ impl AstBasedFileSplitter {
 
                 if let Some(first) = res.first() {
                     let mut content = first.file_content.clone();
-                    if content.starts_with("...") {
-                        content = content[3..].to_string();
+                    if content.starts_with("...\n") {
+                        content = content[4..].to_string();
                     }
-                    info!("{} content updated:\n{}", symbol.symbol_path, content);
+                    info!("{:?} content updated:\n{}", symbol.name, content);
                     chunks.push(SplitResult {
                         file_path: path.clone(),
                         window_text: content.clone(),

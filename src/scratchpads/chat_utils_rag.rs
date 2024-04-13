@@ -21,7 +21,7 @@ use crate::files_in_workspace::Document;
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 
 #[derive(Debug)]
@@ -169,6 +169,7 @@ pub async fn postprocess_rag_load_ast_markup(
 
 pub struct PostprocessSettings {
     pub degrade_body_coef: f32,
+    pub degrade_parent_coef: f32,
     pub useful_background: f32,
     pub useful_symbol_default: f32,
     pub close_small_gaps: bool,
@@ -178,6 +179,7 @@ impl PostprocessSettings {
     pub fn new() -> Self {
         PostprocessSettings {
             degrade_body_coef: 0.8,
+            degrade_parent_coef: 0.6,
             useful_background: 5.0,
             useful_symbol_default: 10.0,
             close_small_gaps: true,
@@ -229,6 +231,31 @@ pub async fn postprocess_rag_stage_3_6(
             }
         }
     };
+    let colorize_parentof = |linevec: &mut Vec<Arc<FileLine>>, long_child_path: &String, bg: f32, maxuseful: f32|
+    {
+        if DEBUG {
+            info!("    colorize_parentof long_child_path={} bg={} maxuseful={}", long_child_path, bg, maxuseful);
+        }
+        for i in 0 .. linevec.len() {
+            let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+            unsafe {
+                let color = &(*lineref_mut).color;
+                if long_child_path.starts_with(color) && color.len() > 0 {
+                    let plen = (*lineref_mut).color.len();
+                    let long = long_child_path.len();
+                    let mut u = bg + (maxuseful - bg)*(plen as f32)/(long as f32);
+                    u -= (i as f32) * 0.001;
+                    // if (*lineref_mut).useful > 0.0 && (*lineref_mut).useful < u {
+                    if (*lineref_mut).useful < u {
+                        if DEBUG {
+                            info!("    colorize_parentof line{:04} {} <= {:>7.3}", i, color, u);
+                        }
+                        (*lineref_mut).useful = u;
+                    }
+                }
+            }
+        }
+    };
     let colorize_minus_one = |linevec: &mut Vec<Arc<FileLine>>, line1: usize, line2: usize| {
         for i in line1 .. line2 {
             if i >= linevec.len() {
@@ -247,7 +274,9 @@ pub async fn postprocess_rag_stage_3_6(
             continue;
         }
         let fref = linevec[0].fref.clone();
-        info!("fref {:?} has {} bytes, {} symbols", fref.cpath, fref.markup.file_content.len(), fref.markup.symbols_sorted_by_path_len.len());
+        if DEBUG {
+            info!("fref {:?} has {} bytes, {} symbols", fref.cpath, fref.markup.file_content.len(), fref.markup.symbols_sorted_by_path_len.len());
+        }
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
             if DEBUG {
                 info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
@@ -255,7 +284,7 @@ pub async fn postprocess_rag_stage_3_6(
             let useful = settings.useful_symbol_default;  // depends on symbol type?
             colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), useful);
         }
-        colorize_if_more_useful(linevec, 0, linevec.len(), &"".to_string(), settings.useful_background);
+        colorize_if_more_useful(linevec, 0, linevec.len(), &"empty".to_string(), settings.useful_background);
     }
 
     // 4. Fill in usefulness from search results
@@ -297,8 +326,16 @@ pub async fn postprocess_rag_stage_3_6(
             }
         }
         if let Some(s) = maybe_symbol {
-            info!("+ search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, omsg.usefulness);
+            if DEBUG {
+                info!("+ search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, omsg.usefulness);
+            }
             colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness);
+            let mut parent_path = s.symbol_path.split("::").collect::<Vec<&str>>();
+            if parent_path.len() > 1 {
+                parent_path.pop();
+                let parent_path_str = parent_path.join("::");
+                colorize_parentof(linevec, &parent_path_str, settings.useful_symbol_default, omsg.usefulness*settings.degrade_parent_coef);
+            }
         } else {
             // no symbol set in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
             if omsg.line1 == 0 || omsg.line2 == 0 || omsg.line1 > omsg.line2 || omsg.line1 > linevec.len() || omsg.line2 > linevec.len() {
@@ -343,10 +380,10 @@ pub async fn postprocess_rag_stage_3_6(
             info!("degrading body of symbols in {:?}", fref.cpath);
         }
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
-            if DEBUG {
-                info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
-            }
             if s.definition_range.end_byte != 0 {
+                if DEBUG {
+                    info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+                }
                 // decl  void f() {
                 // def      int x = 5;
                 // def   }
