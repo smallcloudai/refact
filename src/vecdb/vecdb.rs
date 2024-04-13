@@ -57,7 +57,7 @@ pub struct VecDbCaps {
 async fn vecdb_test_request(
     vecdb: &VecDb
 ) -> Result<(), String> {
-    let search_result = vecdb.search("test query".to_string(), 3).await;
+    let search_result = vecdb.vecdb_search("test query".to_string(), 3).await;
     match search_result {
         Ok(_) => {
             Ok(())
@@ -250,7 +250,7 @@ impl VecDb {
 
 #[async_trait]
 impl VecdbSearch for VecDb {
-    async fn search(&self, query: String, top_n: usize) -> Result<SearchResult, String> {
+    async fn vecdb_search(&self, query: String, top_n: usize) -> Result<SearchResult, String> {
         let t0 = std::time::Instant::now();
         let embedding_mb = fetch_embedding::try_get_embedding(
             self.vecdb_emb_client.clone(),

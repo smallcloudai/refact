@@ -11,7 +11,7 @@ pub struct VecDbRemote {}
 
 #[async_trait]
 impl VecdbSearch for VecDbRemote {
-    async fn search(
+    async fn vecdb_search(
         &self,
         query: String,
         top_n: usize,

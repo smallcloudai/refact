@@ -26,7 +26,7 @@ pub async fn handle_v1_vecdb_search(
 
     let cx_locked = global_context.read().await;
     let search_res = match *cx_locked.vec_db.lock().await {
-        Some(ref db) => db.search(post.query.to_string(), post.top_n).await,
+        Some(ref db) => db.vecdb_search(post.query.to_string(), post.top_n).await,
         None => {
             return Err(ScratchError::new(
                 StatusCode::INTERNAL_SERVER_ERROR, NO_VECDB.to_string()

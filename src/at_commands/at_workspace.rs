@@ -58,7 +58,7 @@ impl AtCommand for AtWorkspace {
                 if db_query.is_empty() {
                     db_query = query.clone();
                 }
-                let search_result = db.search(db_query, top_n).await?;
+                let search_result = db.vecdb_search(db_query, top_n).await?;
                 let mut results = search_result.results.clone();
                 results.dedup_by(|a, b| a.file_path == b.file_path && a.window_text == b.window_text);
                 Ok(results2message(&results))

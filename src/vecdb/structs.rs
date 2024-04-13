@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[async_trait]
 pub trait VecdbSearch: Send {
-    async fn search(
+    async fn vecdb_search(
         &self,
         query: String,
         top_n: usize,
