@@ -9,6 +9,7 @@ W = 100
 H = 100
 
 
+# This this a comment for the Toad class, above the class
 class Toad(frog.Frog):
     def __init__(self, x, y, vx, vy):
         super().__init__(x, y, vx, vy)
@@ -16,6 +17,10 @@ class Toad(frog.Frog):
 
 
 class EuropeanCommonToad(frog.Frog):
+    """
+    This is a comment for EuropeanCommonToad class, inside the class
+    """
+
     def __init__(self, x, y, vx, vy):
         super().__init__(x, y, vx, vy)
         self.name = "EU Toad"

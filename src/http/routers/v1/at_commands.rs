@@ -101,7 +101,7 @@ pub async fn handle_v1_command_preview(
     };
 
     let mut messages_for_postprocessing = vec![];
-    let top_n = 5;
+    let top_n = 10;  // sync with top_n in chats
     let at_context = AtCommandsContext::new(global_context.clone()).await;
     let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &at_context).await;
     for cmd in valid_commands {

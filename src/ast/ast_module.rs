@@ -96,7 +96,7 @@ impl AstModule {
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
-                            sim_to_query: -1.0,
+                            sim_to_query: 1.0,
                         })
                     })
                     .collect::<Vec<_>>();

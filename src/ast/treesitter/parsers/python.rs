@@ -7,7 +7,7 @@ use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Point, Range};
 use tree_sitter_python::language;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage, CommentDefinition};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
 use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid, str_hash};
@@ -491,6 +491,17 @@ impl PythonParser {
             "lambda" => {
                 symbols.extend(self.parse_function_declaration(&parent, code, path, parent_guid, is_error));
             }
+            "comment" => {
+                let mut def = CommentDefinition::default();
+                def.ast_fields.language = LanguageId::Python;
+                def.ast_fields.full_range = parent.range();
+                def.ast_fields.file_path = path.clone();
+                def.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
+                def.ast_fields.parent_guid = Some(parent_guid.clone());
+                def.ast_fields.guid = get_guid();
+                def.ast_fields.is_error = false;
+                symbols.push(Arc::new(RwLock::new(def)));
+            }
             "ERROR" => {
                 symbols.extend(self.parse_error_usages(&parent, code, path, parent_guid));
             }
@@ -547,7 +558,7 @@ impl PythonParser {
             decl_end_point = return_type.end_position();
             symbols.extend(self.find_error_usages(&return_type, code, path, &decl.ast_fields.guid));
         }
-        
+
         if let Some(body_node) = parent.child_by_field_name("body") {
             decl.ast_fields.definition_range = body_node.range();
             decl.ast_fields.declaration_range = Range {
@@ -565,7 +576,7 @@ impl PythonParser {
         symbols.push(Arc::new(RwLock::new(decl)));
         symbols
     }
-    
+
     fn find_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         for i in 0..parent.child_count() {
@@ -576,7 +587,7 @@ impl PythonParser {
         }
         symbols
     }
-    
+
     fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         match parent.kind() {
@@ -624,10 +635,10 @@ impl PythonParser {
                 }
             }
         }
-        
+
         symbols
     }
-    
+
     pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();

@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
+use crate::ast::treesitter::structs::SymbolType;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
@@ -170,6 +171,7 @@ pub async fn postprocess_rag_load_ast_markup(
 pub struct PostprocessSettings {
     pub degrade_body_coef: f32,
     pub degrade_parent_coef: f32,
+    pub comments_propogate_up_coef: f32,
     pub useful_background: f32,
     pub useful_symbol_default: f32,
     pub close_small_gaps: bool,
@@ -183,6 +185,7 @@ impl PostprocessSettings {
             useful_background: 5.0,
             useful_symbol_default: 10.0,
             close_small_gaps: true,
+            comments_propogate_up_coef: 0.99,
         }
     }
 }
@@ -269,6 +272,24 @@ pub async fn postprocess_rag_stage_3_6(
             }
         }
     };
+    let colorize_comments_up = |linevec: &mut Vec<Arc<FileLine>>|
+    {
+        for i in (0 .. linevec.len() - 1).rev() {
+            // info!("    xxx{}", i);
+            let thisline: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+            let nextline: *mut FileLine = Arc::as_ptr(&linevec[i + 1]) as *mut FileLine;
+            unsafe {
+                let u = (*nextline).useful * settings.comments_propogate_up_coef;
+                info!("    comments_up_from_symbol line{:04} {} <= {:>7.3}", i, (*thisline).color, u);
+                if (*thisline).color == "comment" && (*thisline).useful < u {
+                    (*thisline).useful = u;
+                    if DEBUG {
+                        info!("    comments_up_from_symbol line{:04} <= {:>7.3}", i, u);
+                    }
+                }
+            }
+        }
+    };
     for linevec in lines_in_files.values_mut() {
         if linevec.len() == 0 {
             continue;
@@ -281,8 +302,13 @@ pub async fn postprocess_rag_stage_3_6(
             if DEBUG {
                 info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
             }
-            let useful = settings.useful_symbol_default;  // depends on symbol type?
-            colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), useful);
+            if s.symbol_type == SymbolType::CommentDefinition {
+                let useful = settings.useful_symbol_default;
+                colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &"comment".to_string(), useful);
+            } else {
+                let useful = settings.useful_symbol_default;  // depends on symbol type?
+                colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), useful);
+            }
         }
         colorize_if_more_useful(linevec, 0, linevec.len(), &"empty".to_string(), settings.useful_background);
     }
@@ -344,6 +370,7 @@ pub async fn postprocess_rag_stage_3_6(
             }
             colorize_if_more_useful(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
         }
+        colorize_comments_up(linevec);
     }
 
     // 5. Downgrade sub-symbols and uninteresting regions
