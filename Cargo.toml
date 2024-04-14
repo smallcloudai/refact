@@ -83,3 +83,5 @@ strsim = "0.8.0"
 typetag = "0.2"
 dyn_partial_eq = "=0.1.2"
 rayon = "1.8.0"
+backtrace = "0.3.71"
+

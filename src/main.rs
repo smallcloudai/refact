@@ -3,6 +3,8 @@ use std::io::Write;
 use tokio::task::JoinHandle;
 use tracing::{info, Level};
 use tracing_appender;
+use std::panic;
+use backtrace;
 
 use crate::background_tasks::start_background_tasks;
 use crate::lsp::spawn_lsp_task;
@@ -61,6 +63,10 @@ async fn main() {
         .compact()
         .with_ansi(false)
         .init();
+    panic::set_hook(Box::new(|panic_info| {
+        let backtrace = backtrace::Backtrace::new();
+        tracing::error!("Panic occurred: {:?}\n{:?}", panic_info, backtrace);
+    }));
 
     {
         info!("cache dir: {}", cache_dir.display());
