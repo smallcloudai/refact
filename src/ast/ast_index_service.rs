@@ -106,13 +106,13 @@ async fn ast_indexer_thread(
         };
 
         if events.len() == 0 {
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-            *is_busy_flag.lock().await = false;
             if !reported_stats {
                 info!("finished parsing, processed {} files in {:>.3}s", stats_parsed_cnt, stats_t0.elapsed().as_secs_f64());
                 stats_parsed_cnt = 0;
                 reported_stats = true;
             }
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            *is_busy_flag.lock().await = false;
             continue;
         } else {
             *is_busy_flag.lock().await = true;
