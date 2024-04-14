@@ -123,6 +123,7 @@ pub async fn handle_v1_code_completion_prompt(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
+    // Almost the same function, but only returns the prompt (good for generating data)
     let mut post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     )?;
@@ -130,19 +131,11 @@ pub async fn handle_v1_code_completion_prompt(
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
     let maybe = _lookup_code_completion_scratchpad(caps.clone(), &post).await;
     if maybe.is_err() {
-        // On error, this will also invalidate caps each 10 seconds, allows to overcome empty caps situation
-        let _ = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 10).await;
         return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", maybe.unwrap_err())))
     }
     let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = maybe.unwrap();
-    if post.model == "" {
-        post.model = model_name.clone();
-    }
-    if post.scratchpad == "" {
-        post.scratchpad = scratchpad_name.clone();
-    }
 
-    // we don't need this really
+    // don't need cache, but go along
     let (cache_arc, tele_storage) = {
         let cx_locked = global_context.write().await;
         (cx_locked.completions_cache.clone(), cx_locked.telemetry.clone())

@@ -139,7 +139,7 @@ pub fn cache_part2_from_post(post: &CodeCompletionPost) -> String {
 impl Drop for CompletionSaveToCache {
     fn drop(&mut self) {
         // flush to cache on destruction
-        if self.completion0_finish_reason.is_empty() { // error happened
+        if self.completion0_finish_reason.is_empty() { // error happened, no nothing happened (prompt only request)
             return;
         }
         let mut believe_chars = self.completion0_text.len();
