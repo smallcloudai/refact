@@ -130,13 +130,7 @@ impl AstIndex {
             self.symbols_by_name
                 .entry(name)
                 .and_modify(|v| {
-                    let indices_to_remove = v
-                        .iter()
-                        .enumerate()
-                        .filter(|(_idx, s)| read_symbol(s).guid() == guid)
-                        .map(|(idx, _s)| idx)
-                        .collect::<Vec<_>>();
-                    indices_to_remove.iter().for_each(|i| { v.remove(*i); });
+                    v.retain(|s| read_symbol(s).guid() != guid);
                 });
 
             self.symbols_by_guid.remove(&guid);
