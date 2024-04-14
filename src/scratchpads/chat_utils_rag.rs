@@ -169,12 +169,14 @@ pub async fn postprocess_rag_load_ast_markup(
 }
 
 pub struct PostprocessSettings {
-    pub degrade_body_coef: f32,
-    pub degrade_parent_coef: f32,
-    pub comments_propogate_up_coef: f32,
-    pub useful_background: f32,
-    pub useful_symbol_default: f32,
+    pub useful_background: f32,          // first, fill usefulness of all lines with this
+    pub useful_symbol_default: f32,      // when a symbol present, set usefulness higher
+    // search results fill usefulness as it passed from outside
+    pub degrade_parent_coef: f32,        // goto parent from search results and mark it useful, with this coef
+    pub degrade_body_coef: f32,          // multiply body usefulness by this, so it's less useful than the declaration
+    pub comments_propogate_up_coef: f32, // mark comments above a symbol as useful, with this coef
     pub close_small_gaps: bool,
+    pub take_floor: f32,                 // take/dont value
 }
 
 impl PostprocessSettings {
@@ -186,6 +188,7 @@ impl PostprocessSettings {
             useful_symbol_default: 10.0,
             close_small_gaps: true,
             comments_propogate_up_coef: 0.99,
+            take_floor: 0.0,
         }
     }
 }
@@ -280,7 +283,6 @@ pub async fn postprocess_rag_stage_3_6(
             let nextline: *mut FileLine = Arc::as_ptr(&linevec[i + 1]) as *mut FileLine;
             unsafe {
                 let u = (*nextline).useful * settings.comments_propogate_up_coef;
-                info!("    comments_up_from_symbol line{:04} {} <= {:>7.3}", i, (*thisline).color, u);
                 if (*thisline).color == "comment" && (*thisline).useful < u {
                     (*thisline).useful = u;
                     if DEBUG {
@@ -464,7 +466,7 @@ pub async fn postprocess_at_results2(
         &files_markup,
         &settings,
     ).await;
-    let y = postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode).await;
+    let y = postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode, &settings).await;
     y
 }
 
@@ -501,6 +503,7 @@ pub async fn postprocess_rag_stage_7_9(
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
+    settings: &PostprocessSettings,
 ) -> Vec<ContextFile> {
     // 7. Sort
     lines_by_useful.sort_by(|a, b| {
@@ -515,7 +518,7 @@ pub async fn postprocess_rag_stage_7_9(
     let mut files_mentioned_set: HashSet<String> = HashSet::new();
     let mut files_mentioned_sequence: Vec<PathBuf> = vec![];
     for lineref in lines_by_useful.iter_mut() {
-        if lineref.useful <= 0.0 {
+        if lineref.useful <= settings.take_floor {
             continue;
         }
         let mut ntokens = count_tokens(&tokenizer.read().unwrap(), &lineref.line_content);

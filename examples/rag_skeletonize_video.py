@@ -1,7 +1,6 @@
 import os, time
 
 import requests
-import termcolor
 
 from pygments import highlight
 from pygments.lexers import PythonLexer
@@ -42,7 +41,12 @@ def code_completion_prompt_with_rag(rag_token_limit):
             "Content-Type": "application/json",
         },
     )
-    prompt = response.json()["prompt"]
+    try:
+        prompt = response.json()["prompt"]
+    except requests.exceptions.JSONDecodeError as e:
+        print(response.text)
+        print(e)
+        quit()
     i = prompt.index("<fim_prefix>")
     good_for_video = prompt
     good_for_video = prompt[:i].split("<file_sep>")
@@ -53,7 +57,6 @@ def code_completion_prompt_with_rag(rag_token_limit):
     good_for_video = good_for_video.replace("<repo_name>default_repo\n", "")
     good_for_video = highlight(good_for_video, PythonLexer(), TerminalFormatter())
     lines_n_in_good_for_video = good_for_video.count("\n") + 1
-    # print(termcolor.colored(good_for_video, "yellow"))
     print(good_for_video)
     print("\n" * (50 - lines_n_in_good_for_video))
 

@@ -99,7 +99,7 @@ impl AstBasedFileSplitter {
                 let single_file_mode = true;
 
                 let mut settings = crate::scratchpads::chat_utils_rag::PostprocessSettings::new();
-                // settings.degrade_body_coef = 0.0;
+                settings.take_floor = 50.0;
                 settings.useful_background = 0.0;
                 settings.useful_symbol_default = 0.0;
                 settings.close_small_gaps = false;
@@ -115,7 +115,8 @@ impl AstBasedFileSplitter {
                     &mut lines_by_useful,
                     tokenizer.clone(),
                     tokens_limit,
-                    single_file_mode
+                    single_file_mode,
+                    &settings,
                 ).await;
 
                 if let Some(first) = res.first() {
