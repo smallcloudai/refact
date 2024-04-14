@@ -74,8 +74,9 @@ pub fn cache_put(
     }
     // info!("cache put: {:?} = {:?}", new_key, value);
     let mut new_key_copy = new_key.clone();
-    if new_key_copy.0.len() > CACHE_KEY_CHARS {
-        new_key_copy.0 = new_key_copy.0[..CACHE_KEY_CHARS].to_string();
+    let k0_chars = new_key_copy.0.chars();
+    if k0_chars.clone().count() > CACHE_KEY_CHARS {
+        new_key_copy.0 = k0_chars.clone().skip(k0_chars.count() - CACHE_KEY_CHARS).collect();
     }
     cache_locked.map.entry(new_key_copy.clone()).or_insert(value);
     cache_locked.in_added_order.push(new_key_copy.clone());
