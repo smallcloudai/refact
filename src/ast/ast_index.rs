@@ -163,6 +163,8 @@ impl AstIndex {
         self.symbols_by_name.clear();
         self.symbols_by_guid.clear();
         self.path_by_symbols.clear();
+        self.type_guid_to_dependent_guids.clear();
+        self.declaration_guid_to_usage_names.clear();
         self.has_changes = true;
     }
 
@@ -479,6 +481,7 @@ impl AstIndex {
             .map(|s| {
                 read_symbol(s).name().to_string()
             })
+            .take(50)  // top 50 usages near the cursor
             .collect::<HashSet<_>>();
         let most_similar_declarations = self.declaration_guid_to_usage_names
             .par_iter()
@@ -784,7 +787,7 @@ impl AstIndex {
     pub(crate) fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceArc>) {
         for symbol in symbols
             .iter()
-            .filter(|s| read_symbol(s).is_type())
+            .filter(|s| !read_symbol(s).is_type())
             .cloned() {
             let guid = read_symbol(&symbol).guid().to_string();
             if self.type_guid_to_dependent_guids.contains_key(&guid) {
@@ -797,7 +800,7 @@ impl AstIndex {
 
         for symbol in symbols
             .iter()
-            .filter(|s| read_symbol(s).is_type())
+            .filter(|s| !read_symbol(s).is_type())
             .cloned() {
             let (name, s_guid, mut types, is_declaration, symbol_type, parent_guid) = {
                 let s_ref = read_symbol(&symbol);
