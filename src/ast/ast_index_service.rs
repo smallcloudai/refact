@@ -94,6 +94,9 @@ async fn ast_indexer_thread(
     ast_index: Arc<ARwLock<AstIndex>>,
     is_busy_flag: Arc<AMutex<bool>>,
 ) {
+    let mut reported_stats = false;
+    let mut stats_parsed_cnt = 0;    // by language?
+    let mut stats_t0 = std::time::Instant::now();
     loop {
         let mut events = {
             let mut queue_locked = queue.lock().await;
@@ -105,9 +108,18 @@ async fn ast_indexer_thread(
         if events.len() == 0 {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             *is_busy_flag.lock().await = false;
+            if !reported_stats {
+                info!("finished parsing, processed {} files in {:>.3}s", stats_parsed_cnt, stats_t0.elapsed().as_secs_f64());
+                stats_parsed_cnt = 0;
+                reported_stats = true;
+            }
             continue;
         } else {
             *is_busy_flag.lock().await = true;
+            reported_stats = false;
+            if stats_parsed_cnt == 0 {
+                stats_t0 = std::time::Instant::now();
+            }
         }
 
         let mut unparsed_suffixes = HashMap::new();
@@ -122,7 +134,10 @@ async fn ast_indexer_thread(
             };
             for doc in docs.iter_mut() {
                 match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.path).await {
-                    Ok(file_text) => { doc.update_text(&file_text); }
+                    Ok(file_text) => {
+                        stats_parsed_cnt += 1;
+                        doc.update_text(&file_text);
+                    }
                     Err(e) => {
                         tracing::warn!("cannot read file {}: {}", crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30), e);
                         continue;
@@ -266,7 +281,7 @@ impl AstIndexService {
     }
 
     pub async fn ast_indexer_enqueue_files(&self, event: AstEvent, force: bool) {
-        info!("adding to indexer queue {} events", event.docs.len());
+        info!("adding to indexer queue an event with {} documents", event.docs.len());
         if !force {
             self.update_request_queue.lock().await.push_back(event);
         } else {
