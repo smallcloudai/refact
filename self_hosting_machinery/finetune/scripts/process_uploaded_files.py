@@ -204,7 +204,8 @@ def _prepare_git_repo(filepath: str, want_pull: bool) -> bool:
             ["expect", "-f", GIT_EXE, "git", "-C", sources_dir, "pull"],
             env=_make_git_env(),
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL)
+            stderr=subprocess.DEVNULL,
+            timeout=600)
         log(f"git pull {filepath} => {'error' if completed_process.returncode else 'success'}")
         if completed_process.returncode != 0:
             raise Exception(completed_process.stdout.decode())
