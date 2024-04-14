@@ -105,6 +105,17 @@ pub struct AstSymbolFields {
     pub is_error: bool
 }
 
+impl AstSymbolFields {
+    pub fn from_data(language: LanguageId, file_path: PathBuf, is_error: bool) -> Self {
+        AstSymbolFields {
+            language,
+            file_path,
+            is_error,
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct SymbolInformation {
     pub guid: String,
