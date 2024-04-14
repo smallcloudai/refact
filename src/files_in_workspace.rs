@@ -342,8 +342,18 @@ async fn ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf>
                 continue;
             }
             let maybe_files = ls_files_under_version_control(&local_path).await;
-            if let Some(files) = maybe_files {
-                paths.extend(files);
+            if let Some(v) = maybe_files {
+                for x in v.iter() {
+                    let maybe_valid = is_valid_file(x);
+                    match maybe_valid {
+                        Ok(_) => {
+                            paths.push(x.clone());
+                        }
+                        Err(e) => {
+                            rejected_reasons.entry(e.to_string()).and_modify(|x| *x += 1).or_insert(1);
+                        }
+                    }
+                }
             } else {
                 let local_paths: Vec<PathBuf> = WalkDir::new(local_path.clone()).max_depth(1)
                     .into_iter()

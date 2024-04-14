@@ -176,7 +176,7 @@ async fn ast_indexer_thread(
             }
         }
         if !unparsed_suffixes.is_empty() {
-            info!("Couldn't parse suffixes: {:#?}", unparsed_suffixes);
+            info!("AST didn't parse these files, even though they were passed in input queue:\n{:#?}", unparsed_suffixes);
         }
     }
 }
@@ -280,7 +280,8 @@ impl AstIndexService {
         return vec![cooldown_queue_join_handle, indexer_handle, rebuild_index_handle];
     }
 
-    pub async fn ast_indexer_enqueue_files(&self, event: AstEvent, force: bool) {
+    pub async fn ast_indexer_enqueue_files(&self, event: AstEvent, force: bool)
+    {
         info!("adding to indexer queue an event with {} documents", event.docs.len());
         if !force {
             self.update_request_queue.lock().await.push_back(event);
