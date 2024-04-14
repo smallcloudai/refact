@@ -13,7 +13,7 @@ pub(crate) mod rust;
 mod tests;
 mod utils;
 mod java;
-// mod cpp;
+mod cpp;
 
 
 #[derive(Debug, PartialEq, Eq)]
@@ -45,6 +45,10 @@ fn get_ast_parser(language_id: LanguageId) -> Result<Box<dyn AstLanguageParser +
         }
         LanguageId::Java => {
             let parser = java::JavaParser::new()?;
+            Ok(Box::new(parser))
+        }
+        LanguageId::Cpp => {
+            let parser = cpp::CppParser::new()?;
             Ok(Box::new(parser))
         }
         other => Err(ParserError {

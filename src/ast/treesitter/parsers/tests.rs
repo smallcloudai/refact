@@ -2,7 +2,7 @@
 mod rust;
 mod python;
 mod java;
-// mod cpp;
+mod cpp;
 // pub(crate) fn test_query_function(mut parser: Box<dyn LanguageParser>,
 //                                   path: &PathBuf,
 //                                   code: &str,
