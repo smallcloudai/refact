@@ -64,7 +64,7 @@ impl AstIndex {
                 return Err(err.message);
             }
         };
-        let text = doc.text.clone().unwrap_or_default().to_string();
+        let text = doc.text.clone().unwrap().to_string();
         let t_ = std::time::Instant::now();
         let symbol_instances = parser.parse(&text, &doc.path);
         let t_elapsed = t_.elapsed();

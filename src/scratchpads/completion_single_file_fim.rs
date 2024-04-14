@@ -277,7 +277,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             let t0 = Instant::now();
             let language_id = get_language_id_by_filename(&cpath).unwrap_or(LanguageId::Unknown);
             let (mut ast_messages, was_looking_for) = {
-                let doc = Document::new(&cpath, None);
+                let doc = Document::new(&cpath);
                 match self.ast_module.clone().unwrap().write().await.retrieve_cursor_symbols_by_declarations(
                     &doc, &source, Point { row: pos.line as usize, column: pos.character as usize },
                     10, 3

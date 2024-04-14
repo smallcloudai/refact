@@ -57,7 +57,7 @@ impl AtCommand for AtAstFileSymbols {
             return Err("incorrect arguments".to_string());
         }
 
-        let file_path = match args.get(0) {
+        let cpath = match args.get(0) {
             Some(x) => crate::files_in_workspace::canonical_path(&x),
             None => return Err("no file path".to_string()),
         };
@@ -65,10 +65,7 @@ impl AtCommand for AtAstFileSymbols {
         let ast = context.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
-                let doc = match context.global_context.read().await.documents_state.document_map.get(&file_path).cloned() {
-                    Some(doc) => doc.read().await.clone(),
-                    None => return Err(format!("file not found: {}", file_path.display()))
-                };
+                let doc = crate::files_in_workspace::Document { path: cpath, text: None };
                 match ast.read().await.get_file_symbols(RequestSymbolType::All, &doc).await {
                     Ok(res) => Ok(results2message(&res)),
                     Err(err) => Err(err)

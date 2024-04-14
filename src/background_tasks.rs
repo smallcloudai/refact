@@ -5,6 +5,7 @@ use std::vec;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 
+use crate::ast::ast_module::AstModule;
 use crate::vecdb;
 use crate::global_context::GlobalContext;
 use crate::snippets_transmit;
@@ -47,11 +48,10 @@ pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>) -> Backgro
         tokio::spawn(snippets_transmit::tele_snip_background_task(gcx.clone())),
         tokio::spawn(vecdb::vecdb::vecdb_background_reload(gcx.clone())),   // this in turn can create global_context::vec_db
     ]);
-    match gcx.clone().read().await.ast_module.clone() {
-        Some(ast) => bg.extend(ast.read().await.ast_start_background_tasks().await),
-        None => ()
-    };
-    
+    let ast: Option<Arc<ARwLock<AstModule>>> = gcx.clone().read().await.ast_module.clone();
+    if ast.is_some() {
+        bg.extend(ast.unwrap().read().await.ast_start_background_tasks(gcx.clone()).await);
+    }
     let files_jsonl_path = gcx.clone().read().await.cmdline.files_jsonl_path.clone();
     if !files_jsonl_path.is_empty() {
         bg.extend(vec![

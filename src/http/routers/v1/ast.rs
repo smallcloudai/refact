@@ -211,8 +211,8 @@ pub async fn handle_v1_ast_file_markup(
         let x = match &ast_module {
             Some(ast) => {
                 // corrected is already canonical path, so skip it here
-                let mut doc = Document::new(&PathBuf::from(&corrected[0]), None);
-                let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
+                let mut doc = Document::new(&PathBuf::from(&corrected[0]));
+                let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default(); // FIXME unwrap
                 doc.update_text(&text);
 
                 ast.read().await.file_markup(&doc).await
@@ -297,9 +297,10 @@ pub async fn handle_v1_ast_file_symbols(
     let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let mut doc = Document::new(&post.file_url.to_file_path().unwrap_or_default(), None);
-    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
-    doc.update_text(&text);
+    let cpath = crate::files_in_workspace::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+    let mut doc = Document::new(&cpath);
+    let file_text = get_file_text_from_memory_or_disk(global_context.clone(), &cpath).await.unwrap_or_default(); // FIXME unwrap
+    doc.update_text(&file_text);
 
     let ast_module = global_context.read().await.ast_module.clone();
     let search_res = match &ast_module {
@@ -335,8 +336,9 @@ pub async fn handle_v1_ast_index_file(
     let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let mut doc = Document::new(&post.file_url.to_file_path().unwrap_or_default(), None);
-    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
+    let cpath = crate::files_in_workspace::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+    let mut doc = Document::new(&cpath);
+    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default(); // FIXME unwrap
     doc.update_text(&text);
 
     let ast_module = global_context.read().await.ast_module.clone();

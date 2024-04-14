@@ -1,6 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::iter::zip;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::time::SystemTime;
 use std::io::Write;
 
@@ -10,6 +10,7 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::info;
 
+use crate::global_context::GlobalContext;
 use crate::ast::ast_index::AstIndex;
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::files_in_workspace::Document;
@@ -88,12 +89,13 @@ async fn cooldown_queue_thread(
 
 
 async fn ast_indexer_thread(
+    gcx_weak: Weak<ARwLock<GlobalContext>>,
     queue: Arc<AMutex<VecDeque<AstEvent>>>,
     ast_index: Arc<ARwLock<AstIndex>>,
     is_busy_flag: Arc<AMutex<bool>>,
 ) {
     loop {
-        let events = {
+        let mut events = {
             let mut queue_locked = queue.lock().await;
             let events: Vec<AstEvent> = Vec::from(queue_locked.to_owned());
             queue_locked.clear();
@@ -109,17 +111,34 @@ async fn ast_indexer_thread(
         }
 
         let mut unparsed_suffixes = HashMap::new();
-        for event in events {
-            let list_of_path = event.docs;
+        for event in events.iter_mut() {
+            let docs = &mut event.docs;
+            let gcx = match gcx_weak.upgrade() {
+                Some(x) => x,
+                None => {
+                    info!("detected program shutdown, quit");
+                    break;
+                }
+            };
+            for doc in docs.iter_mut() {
+                match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.path).await {
+                    Ok(file_text) => { doc.update_text(&file_text); }
+                    Err(e) => {
+                        tracing::warn!("cannot read file {}: {}", crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30), e);
+                        continue;
+                    }
+                }
+            }
+            let docs_with_text: Vec<Document> = docs.iter().filter(|doc| doc.text.is_some()).cloned().collect();
             match event.typ {
                 EventType::Add => {
                     let ast_index = ast_index.clone();
-                    let all_symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = list_of_path
+                    let all_symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = docs_with_text
                         .par_iter()
                         .map(move |document| AstIndex::parse(&document))
                         .collect();
 
-                    for (doc, res) in zip(list_of_path, all_symbols) {
+                    for (doc, res) in zip(docs_with_text, all_symbols) {
                         match res {
                             Ok(symbols) => {
                                 match ast_index.write().await.add_or_update_symbols_index(&doc, &symbols, true).await {
@@ -218,7 +237,10 @@ impl AstIndexService {
         }
     }
 
-    pub async fn ast_start_background_tasks(&mut self) -> Vec<JoinHandle<()>> {
+    pub async fn ast_start_background_tasks(
+        &mut self,
+        gcx: Arc<ARwLock<GlobalContext>>,
+    ) -> Vec<JoinHandle<()>> {
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
                 self.update_request_queue.clone(),
@@ -228,6 +250,7 @@ impl AstIndexService {
         );
         let indexer_handle = tokio::spawn(
             ast_indexer_thread(
+                Arc::downgrade(&gcx),
                 self.output_queue.clone(),
                 self.ast_index.clone(),
                 self.is_busy.clone(),

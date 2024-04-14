@@ -135,7 +135,7 @@ pub async fn postprocess_rag_load_ast_markup(
     for file_name in files_set {
         let path = crate::files_in_workspace::canonical_path(&file_name.clone());
         let cpath_symmetry_breaker: f32 = (calculate_hash(&path) as f32) / (u64::MAX as f32) / 100.0;
-        let mut doc = Document::new(&path, None);
+        let mut doc = Document::new(&path);
         let text = crate::files_in_workspace::get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
         doc.update_text(&text);
         let mut f: Option<Arc<File>> = None;

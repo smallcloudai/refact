@@ -9,7 +9,6 @@ use tree_sitter::Point;
 use crate::ast::structs::AstCursorSearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_file::{AtParamFilePath, RangeKind, colon_lines_range_from_arg};
-use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ChatMessage, ContextFile};
 
 pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
@@ -115,16 +114,12 @@ impl AtCommand for AtAstLookupSymbols {
         };
 
         let cpath = crate::files_in_workspace::canonical_path(&file_path);
-        let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?;
-
-        let mut doc = match context.global_context.read().await.documents_state.document_map.get(&cpath) {
-            Some(d) => d.read().await.clone(),
-            None => return Err("no document found".to_string()),
-        };
-        doc.update_text(&file_text);
         let ast = context.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
+                let mut doc = crate::files_in_workspace::Document { path: cpath.clone(), text: None };
+                let file_text = crate::files_in_workspace::get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?; // FIXME
+                doc.update_text(&file_text);
                 match ast.write().await.retrieve_cursor_symbols_by_declarations(
                     &doc, &file_text, Point { row: row_idx, column: 0 }, 15,  3
                 ).await {

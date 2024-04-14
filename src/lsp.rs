@@ -117,7 +117,7 @@ pub struct SuccessRes {
 impl Backend {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
         let path = crate::files_in_workspace::canonical_path(&params.text_document_position.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
-        let txt = match self.gcx.read().await.documents_state.document_map.get(&path) {
+        let txt = match self.gcx.read().await.documents_state.memory_document_map.get(&path) {
             Some(doc) => doc.read().await.clone().get_text_or_read_from_disk().await.unwrap_or_default(),
             None => return Err(internal_error("document not found"))
         };
@@ -260,10 +260,10 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let path = crate::files_in_workspace::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
+        let cpath = crate::files_in_workspace::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
         files_in_workspace::on_did_open(
             self.gcx.clone(),
-            &path,
+            &cpath,
             &params.text_document.text,
             &params.text_document.language_id
         ).await
@@ -312,10 +312,11 @@ impl LanguageServer for Backend {
             // TODO
         }
     }
+
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         async fn on_delete(event: FileEvent, gcx: Arc<ARwLock<GlobalContext>>) {
-            let path = crate::files_in_workspace::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
-            on_did_delete(gcx, &path).await;
+            let cpath = crate::files_in_workspace::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
+            on_did_delete(gcx, &cpath).await;
         }
 
         for event in params.changes {
