@@ -12,7 +12,7 @@ use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstIndexService};
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::read_symbol;
-use crate::files_in_jsonl::docs_in_jsonl;
+// use crate::files_in_jsonl::docs_in_jsonl;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
@@ -30,30 +30,25 @@ pub struct VecDbCaps {
 
 impl AstModule {
     pub async fn ast_indexer_init(
-        global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Result<AstModule, String> {
         let ast_index = Arc::new(ARwLock::new(AstIndex::init()));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(ast_index.clone())));
-
-        let documents = docs_in_jsonl(global_context.clone()).await;
-        let mut docs = vec![];
-        for d in documents {
-            docs.push(d.read().await.clone());
-        }
         let me = AstModule {
             ast_index_service,
             ast_index,
         };
-        me.ast_indexer_enqueue_files(&docs, true).await;
         Ok(me)
     }
 
-    pub async fn ast_start_background_tasks(&self) -> Vec<JoinHandle<()>> {
-        return self.ast_index_service.lock().await.ast_start_background_tasks().await;
+    pub async fn ast_start_background_tasks(&self, gcx: Arc<ARwLock<GlobalContext>>) -> Vec<JoinHandle<()>> {
+        return self.ast_index_service.lock().await.ast_start_background_tasks(gcx).await;
     }
 
     pub async fn ast_indexer_enqueue_files(&self, documents: &Vec<Document>, force: bool) {
-        self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::add_docs(documents.clone()), force).await;
+        let mut documents_chunked = documents.chunks(16);
+        while let Some(chunk) = documents_chunked.next() {
+            self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::add_docs(chunk.to_vec()), force).await;
+        }
     }
 
     pub async fn ast_add_file_no_queue(&mut self, document: &Document, make_dirty: bool) -> Result<(), String> {
@@ -64,13 +59,13 @@ impl AstModule {
         self.ast_index.write().await.force_reindex().await
     }
 
-    pub async fn ast_reset_index(&self) {
-        self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::reset(), false).await;
+    pub async fn ast_reset_index(&self, force: bool) {
+        self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::reset(), force).await;
     }
 
-    pub async fn remove_file(&mut self, path: &PathBuf) {
+    pub async fn ast_remove_file(&mut self, path: &PathBuf) {
         // TODO: will not work if the same file is in the indexer queue
-        let _ = self.ast_index.write().await.remove(&Document::new(path, None));
+        let _ = self.ast_index.write().await.remove(&Document::new(path));
     }
 
     pub async fn clear_index(&mut self) {

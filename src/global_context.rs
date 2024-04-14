@@ -246,13 +246,12 @@ pub async fn create_global_context(
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {
         let ast_module = Arc::new(ARwLock::new(
-            AstModule::ast_indexer_init(gcx.clone()).await.expect("Failed to initialize ast module")
+            AstModule::ast_indexer_init().await.expect("Failed to initialize ast module")
         ));
         gcx.write().await.ast_module = Some(ast_module);
     }
     {
         gcx.write().await.documents_state.init_watcher(gcx.clone());
     }
-
     (gcx, ask_shutdown_receiver, cmdline)
 }

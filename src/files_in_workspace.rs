@@ -401,6 +401,8 @@ async fn enqueue_some_docs(
 
 pub async fn enqueue_all_files_from_workspace_folders(
     gcx: Arc<ARwLock<GlobalContext>>,
+    force: bool,
+    vecdb_only: bool,
 ) -> i32 {
     let folders: Vec<PathBuf> = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
 
@@ -433,20 +435,25 @@ pub async fn enqueue_all_files_from_workspace_folders(
     let full_rebuild = removed_old.len() > 0;
 
     if let Some(ref mut db) = *vec_db_module.lock().await {
-        db.vectorizer_enqueue_files(&documents, true).await;
+        db.vectorizer_enqueue_files(&documents, force).await;
     }
     if let Some(ast) = &ast_module {
-        let x = ast.read().await;
-        if full_rebuild {
-            x.ast_reset_index().await;
+        if !vecdb_only {
+            let x = ast.read().await;
+            if full_rebuild {
+                x.ast_reset_index(force).await;
+            }
+            x.ast_indexer_enqueue_files(&documents, force).await;
         }
-        x.ast_indexer_enqueue_files(&documents, false).await;
     }
     documents.len() as i32
 }
 
-pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32 {
-    enqueue_all_files_from_workspace_folders(gcx.clone()).await
+pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
+{
+    // Called from lsp and lsp_like
+    // Not called from main.rs as part of initialization
+    enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await
 }
 
 pub async fn on_did_open(
@@ -521,7 +528,7 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         None => {}
     }
     match &ast_module {
-        Some(ast) => ast.write().await.remove_file(path).await,
+        Some(ast) => ast.write().await.ast_remove_file(path).await,
         None => {}
     };
 }
@@ -545,7 +552,7 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         documents_state.workspace_folders.lock().unwrap().retain(|p| p != path);
         let _ = documents_state.fs_watcher.write().await.unwatch(&path.clone());
     }
-    enqueue_all_files_from_workspace_folders(gcx.clone()).await;
+    enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 }
 
 pub async fn file_watcher_thread(event: Event, gcx: Weak<ARwLock<GlobalContext>>)
@@ -579,7 +586,7 @@ pub async fn file_watcher_thread(event: Event, gcx: Weak<ARwLock<GlobalContext>>
             info!("EventKind::Remove {:?}", event.paths);
             info!("Likely a useful file was removed, rebuild index");
             if let Some(gcx) = gcx.upgrade() {
-                enqueue_all_files_from_workspace_folders(gcx).await;
+                enqueue_all_files_from_workspace_folders(gcx, false, false).await;
             }
         }
     }

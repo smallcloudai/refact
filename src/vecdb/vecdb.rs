@@ -12,7 +12,6 @@ use crate::global_context::{CommandLine, GlobalContext};
 use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
-use crate::files_in_jsonl::docs_in_jsonl;
 use crate::files_in_workspace::Document;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
@@ -109,21 +108,14 @@ async fn create_vecdb(
     }
     info!("vecdb: test request complete");
 
-    // Enqueue files before background task starts: jsonl files
-    let docs = docs_in_jsonl(global_context.clone()).await;
-    let mut documents = vec![];
-    for d in docs {
-        documents.push(d.read().await.clone());
-    }
-    vec_db.vectorizer_enqueue_files(&documents, true).await;
-
     // Enqueue files before background task starts: workspace files (needs vec_db in global_context)
     let vec_db_arc = Arc::new(AMutex::new(Some(vec_db)));
     {
         let mut gcx_locked = global_context.write().await;
         gcx_locked.vec_db = vec_db_arc.clone();
     }
-    crate::files_in_workspace::enqueue_all_files_from_workspace_folders(global_context.clone()).await;
+    crate::files_in_workspace::enqueue_all_files_from_workspace_folders(global_context.clone(), true, true).await;
+    crate::files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(global_context.clone(), true, true).await;
 
     {
         let vec_db_locked = vec_db_arc.lock().await;
@@ -175,7 +167,6 @@ pub async fn vecdb_background_reload(
         return;
     }
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
-    let mut dont_enqueue_first = true;
     loop {
         let (need_reload, consts) = do_i_need_to_reload_vecdb(global_context.clone()).await;
         if need_reload && consts.is_some() {
@@ -187,12 +178,6 @@ pub async fn vecdb_background_reload(
                 consts.unwrap(),
             ).await {
                 Ok(_) => {
-                    if dont_enqueue_first {
-                        // The first time all the files are already enqueued, to prevent race between enqeue and processing saying it's completed
-                        dont_enqueue_first = false;
-                    } else {
-                        crate::files_in_workspace::enqueue_all_files_from_workspace_folders(global_context.clone()).await;
-                    }
                 }
                 Err(err) => {
                     error!("vecdb: init failed: {}", err);

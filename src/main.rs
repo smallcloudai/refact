@@ -76,7 +76,9 @@ async fn main() {
             info!("{:>20} {}", k, v);
         }
     }
-    files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone()).await;
+    files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;
+    files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, false).await;
+
     let mut background_tasks = start_background_tasks(gcx.clone()).await;
     // vector db will spontaneously start if the downloaded caps and command line parameters are right
 

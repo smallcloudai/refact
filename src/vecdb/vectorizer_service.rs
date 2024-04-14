@@ -63,7 +63,7 @@ async fn cooldown_queue_thread(
             }
         }
         if stat_proceed > 0 || stat_too_new > 0 {
-            info!("cooldown_queue_thread: {} files to process, {} files too new", stat_proceed, stat_too_new);
+            info!("{} files to process, {} files too new", stat_proceed, stat_too_new);
         }
         for doc in docs_to_process {
             last_updated.remove(&doc);
