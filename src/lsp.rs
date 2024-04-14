@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::io::Write;
 
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
@@ -349,7 +350,14 @@ pub async fn spawn_lsp_task(
         let gcx_t = gcx.clone();
         let addr: std::net::SocketAddr = ([127, 0, 0, 1], cmdline.lsp_port).into();
         return Some(tokio::spawn(async move {
-            let listener: TcpListener = TcpListener::bind(&addr).await.unwrap();
+            let listener_maybe = TcpListener::bind(&addr).await;
+            if listener_maybe.is_err() {
+                write!(std::io::stderr(), "PORT_BUSY\n{}: {}\n", addr, listener_maybe.unwrap_err()).unwrap();
+                std::io::stderr().flush().unwrap();
+                gcx_t.write().await.ask_shutdown_sender.lock().unwrap().send("LSP PORT_BUSY".to_string()).unwrap();
+                return;
+            }
+            let listener = listener_maybe.unwrap();
             info!("LSP listening on {}", listener.local_addr().unwrap());
             loop {
                 // possibly wrong code, look at
