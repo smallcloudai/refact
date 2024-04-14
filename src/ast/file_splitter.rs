@@ -48,7 +48,7 @@ impl AstBasedFileSplitter {
         let mut parser = match get_ast_parser_by_filename(&path) {
             Ok(parser) => parser,
             Err(e) => {
-                info!("cannot find a parser for {:?}, using simple file splitter: {}", path, e.message);
+                info!("cannot find a parser for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e.message);
                 return self.fallback_file_splitter.split(&doc).await;
             }
         };
@@ -58,7 +58,7 @@ impl AstBasedFileSplitter {
         let ast_markup: crate::ast::structs::FileASTMarkup = match crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols).await {
             Ok(x) => x,
             Err(e) => {
-                info!("lowlevel_file_markup failed for {:?}, using simple file splitter: {}", path, e);
+                info!("lowlevel_file_markup failed for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e);
                 return self.fallback_file_splitter.split(&doc).await;
             }
         };
@@ -66,21 +66,10 @@ impl AstBasedFileSplitter {
         files_markup.insert(path_str.to_string(), Arc::new(crate::scratchpads::chat_utils_rag::File { markup: ast_markup, cpath: path.clone(), cpath_symmetry_breaker: 0.0 }));
 
         let mut chunks: Vec<SplitResult> = Vec::new();
-        // let mut split_normally: usize = 0;
-        // let mut split_using_fallback: usize = 0;
-        // let mut split_errors: usize = 0;
         for symbol in symbols.iter().map(|s| s.read()
             .expect("cannot read symbol")
             .symbol_info_struct())
         {
-            // TypeAlias,
-            // ClassFieldDeclaration,
-            // ImportDeclaration,
-            // VariableDefinition,
-            // FunctionDeclaration,
-            // CommentDefinition,
-            // FunctionCall,
-            // VariableUsage,
             let go_via_postprocessing = match symbol.symbol_type {
                 SymbolType::StructDeclaration | SymbolType::FunctionDeclaration | SymbolType::TypeAlias => true,
                 _ => false,
@@ -135,79 +124,6 @@ impl AstBasedFileSplitter {
                 }
             }
         }
-
-        // let mut content = match symbol.get_content().await {
-        //     Ok(content) => content,
-        //     Err(err) => {
-        //         split_errors += 1;
-        //         info!("cannot retrieve symbol's content {}", err);
-        //         continue;
-        //     }
-        // };
-        //     let symbol_text_maybe = text.get(symbol.full_range.start_byte .. symbol.full_range.end_byte);
-        //     if symbol_text_maybe.is_none() {
-        //         tracing::warn!("path {:?} range {}..{} is not vaild to get symbol {}", &doc.path, symbol.full_range.start_byte, symbol.full_range.end_byte, symbol.name);
-        //         continue;
-        //     }
-        //     let symbol_text = symbol_text_maybe.unwrap();
-        //     if symbol.symbol_type == SymbolType::StructDeclaration {
-        //         if let Some(gcx) = global_context.upgrade() {
-        //             let full_range = symbol.full_range;
-        //             let messages = vec![ChatMessage {
-        //                 role: "user".to_string(),
-        //                 content: serde_json::to_string(&vec![ContextFile {
-        //                     file_name: symbol.file_path.to_str().unwrap().parse().unwrap(),
-        //                     file_content: symbol_text.to_string(),
-        //                     line1: full_range.start_point.row + 1,
-        //                     line2: full_range.end_point.row + 1,
-        //                     symbol: symbol.guid.clone(),
-        //                     gradient_type: -1,
-        //                     usefulness: 100.0,
-        //                 }]).unwrap(),
-        //             }];
-        //             // info!("messages: {:?}", messages);
-        //             info!("tokens_limit: {:?}", tokens_limit);
-        //             let single_file_mode = true;
-        //             let res = postprocess_at_results2(gcx.clone(), messages, tokenizer.clone(), tokens_limit, single_file_mode).await;
-        //             if let Some(first) = res.first() {
-        //                 info!("{} content was:\n{}", symbol.name, content);
-        //                 content = first.file_content.clone();
-        //                 info!("content updated:\n{}", content);
-        //             }
-        //         }
-        //     }
-        //     if content.len() > self.soft_window {
-        //         let mut temp_doc = Document::new(&doc.path, Some("unknown".to_string()));
-        //         temp_doc.update_text(&content);
-        //         match self.fallback_file_splitter.split(&temp_doc).await {
-        //             Ok(mut res) => {
-        //                 for r in res.iter_mut() {
-        //                     r.start_line += symbol.full_range.start_point.row as u64;
-        //                     r.end_line += symbol.full_range.start_point.row as u64;
-        //                 }
-        //                 chunks.extend(res)
-        //             }
-        //             Err(err) => {
-        //                 info!("{}", err);
-        //             }
-        //         }
-        //         split_using_fallback += 1;
-        //         continue;
-        //     } else {
-        //         split_normally += 1;
-        //         chunks.push(SplitResult {
-        //             file_path: doc.path.clone(),
-        //             window_text: content.clone(),
-        //             window_text_hash: str_hash(&content),
-        //             start_line: symbol.full_range.start_point.row as u64,
-        //             end_line: symbol.full_range.end_point.row as u64,
-        //         });
-        //     }
-        // }
-        // let last_30_chars = crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30);
-        // let message = format!("split {last_30_chars} by definitions {split_normally}, fallback {split_using_fallback}, errors {split_errors}");
-        // info!(message);
-
         Ok(chunks)
     }
 }
