@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -119,9 +119,6 @@ impl VecDBHandler {
                         vector BLOB,
                         window_text TEXT NOT NULL,
                         window_text_hash TEXT NOT NULL,
-                        file_path TEXT NOT NULL,
-                        start_line INTEGER NOT NULL,
-                        end_line INTEGER NOT NULL,
                         time_added INTEGER NOT NULL,
                         time_last_used INTEGER NOT NULL,
                         model_name TEXT NOT NULL,
@@ -169,14 +166,18 @@ impl VecDBHandler {
         }
     }
 
-    async fn get_records_from_cache(&mut self, hashes: Vec<String>) -> Result<(Vec<Record>, Vec<String>), String> {
-        let mut hashes_set: HashSet<String> = HashSet::from_iter(hashes.iter().cloned());
-        let placeholders: String = hashes.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
+    async fn get_records_from_cache(&mut self, splits: &Vec<SplitResult>) -> Result<(Vec<Record>, Vec<String>), String> {
+        let mut hashes_by_split = splits
+            .iter()
+            .map(|x| (x.window_text_hash.clone(), x.clone()))
+            .collect::<HashMap<String, SplitResult>>();
+        let placeholders: String = splits.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
         let query = format!("SELECT * FROM data WHERE window_text_hash IN ({})", placeholders);
 
+        let hashes_by_split_clone = hashes_by_split.clone();
         let records = match self.cache_database.lock().await.call(move |connection| {
             let mut statement = connection.prepare(&query)?;
-            let params = rusqlite::params_from_iter(hashes.iter());
+            let params = rusqlite::params_from_iter(hashes_by_split_clone.keys());
             let records = statement.query_map(params, |row| {
                 let vector_blob: Vec<u8> = row.get(0)?;
                 let vector: Vec<f32> = vector_blob
@@ -184,26 +185,27 @@ impl VecDBHandler {
                     .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
                     .collect();
 
-                let file_path_str: String = row.get(3)?;
-                let file_path = PathBuf::from(file_path_str);
-
-                let time_added_timestamp: i64 = row.get(6)?;
+                let window_text_hash: String = row.get(2)?;
+                let time_added_timestamp: i64 = row.get(3)?;
                 let time_added = SystemTime::UNIX_EPOCH + Duration::from_secs(time_added_timestamp as u64);
 
-                let time_last_used_timestamp: i64 = row.get(7)?;
+                let time_last_used_timestamp: i64 = row.get(4)?;
                 let time_last_used = SystemTime::UNIX_EPOCH + Duration::from_secs(time_last_used_timestamp as u64);
 
+                let split = hashes_by_split_clone
+                    .get(&window_text_hash)
+                    .expect("An attempt to get split from cache DB");
                 Ok(Record {
                     vector: Some(vector),
                     window_text: row.get(1)?,
-                    window_text_hash: row.get(2)?,
-                    file_path: file_path,
-                    start_line: row.get(4)?,
-                    end_line: row.get(5)?,
+                    window_text_hash: window_text_hash,
+                    file_path: split.file_path.clone(),
+                    start_line: split.start_line,
+                    end_line: split.end_line,
                     time_added: time_added,
                     time_last_used: time_last_used,
-                    model_name: row.get(8)?,
-                    used_counter: row.get(9)?,
+                    model_name: row.get(5)?,
+                    used_counter: row.get(6)?,
                     distance: -1.0,
                     usefulness: 0.0,
                 })
@@ -217,9 +219,9 @@ impl VecDBHandler {
         };
 
         for r in &records {
-            hashes_set.remove(&r.window_text_hash);
+            hashes_by_split.remove(&r.window_text_hash);
         }
-        Ok((records, hashes_set.iter().map(|x| x.clone()).collect()))
+        Ok((records, hashes_by_split.iter().map(|(hash, _)| hash.clone()).collect()))
     }
 
     async fn insert_records_to_cache(&mut self, records: Vec<Record>) -> Result<(), String> {
@@ -243,16 +245,12 @@ impl VecDBHandler {
                     .collect();
 
                 match transaction.execute(
-                    "INSERT INTO data (vector, window_text, window_text_hash, \
-                    file_path, start_line, end_line, time_added, \
-                    time_last_used, model_name, used_counter) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                    "INSERT INTO data (vector, window_text, window_text_hash, time_added, \
+                    time_last_used, model_name, used_counter) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                     rusqlite::params![
                     vector_as_bytes,
                     record.window_text,
                     record.window_text_hash,
-                    record.file_path.to_str(),
-                    record.start_line,
-                    record.end_line,
                     time_added as i64,
                     time_last_used as i64,
                     record.model_name,
@@ -398,8 +396,7 @@ impl VecDBHandler {
             return vec![];
         }
 
-        let hashes = data.iter().map(|x| x.window_text_hash.clone()).collect();
-        let (found_records, left_hashes) = match self.get_records_from_cache(hashes).await {
+        let (found_records, left_hashes) = match self.get_records_from_cache(&data).await {
             Ok(records) => records,
             Err(err) => {
                 info!("Error while getting values from cache: {:?}", err);
@@ -522,31 +519,30 @@ impl VecDBHandler {
     }
 
     pub async fn remove(&mut self, file_path: &PathBuf) {
-        let _file_path_str = match file_path.to_str() {
+        let file_path_str = match file_path.to_str() {
             None => {
                 info!("File path is not a string");
                 return;
             }
             Some(res) => res
         };
-    }
 
-    //     match self.remove_records_from_cache(file_path_str.to_string()).await {
-    //         Ok(_) => {}
-    //         Err(err) => {
-    //             info!("Error while deleting from cache table: {:?}", err);
-    //         }
-    //     }
-    //     // valerii: In documentation I found no way to preprocess strings to prevent SQL injections
-    //     match self.data_table.delete(
-    //         format!("(file_path = \"{}\")", file_path_str).as_str()  // TODO: Prevent a possible sql injection here
-    //     ).await {
-    //         Ok(_) => {}
-    //         Err(err) => {
-    //             info!("Error while deleting from data table: {:?}", err);
-    //         }
-    //     }
-    // }
+        match self.remove_records_from_cache(file_path_str.to_string()).await {
+            Ok(_) => {}
+            Err(err) => {
+                info!("Error while deleting from cache table: {:?}", err);
+            }
+        }
+        // valerii: In documentation I found no way to preprocess strings to prevent SQL injections
+        match self.data_table.delete(
+            format!("(file_path = \"{}\")", file_path_str).as_str()  // TODO: Prevent a possible sql injection here
+        ).await {
+            Ok(_) => {}
+            Err(err) => {
+                info!("Error while deleting from data table: {:?}", err);
+            }
+        }
+    }
 
     // pub async fn create_index(&mut self) -> vectordb::error::Result<()> {
     //     let size = self.size().await.unwrap_or(0);
