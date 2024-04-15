@@ -96,8 +96,10 @@ impl CppParser {
         -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
-
-        decl.ast_fields = info.ast_fields.clone();
+        
+        decl.ast_fields.language = info.ast_fields.language;
+        decl.ast_fields.file_path = info.ast_fields.file_path.clone();
+        decl.ast_fields.is_error = info.ast_fields.is_error;
         decl.ast_fields.full_range = info.node.range();
         decl.ast_fields.declaration_range = info.node.range();
         decl.ast_fields.definition_range = info.node.range();
@@ -203,7 +205,9 @@ impl CppParser {
             symbols.extend(symbols_l);
 
             let mut decl = VariableDefinition::default();
-            decl.ast_fields = info.ast_fields.clone();
+            decl.ast_fields.language = info.ast_fields.language;
+            decl.ast_fields.file_path = info.ast_fields.file_path.clone();
+            decl.ast_fields.is_error = info.ast_fields.is_error;
             decl.ast_fields.full_range = info.node.range();
             decl.ast_fields.content_hash = str_hash(&code.slice(info.node.byte_range()).to_string());
             decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
@@ -272,7 +276,9 @@ impl CppParser {
             symbols.extend(symbols_l);
 
             let mut decl = ClassFieldDeclaration::default();
-            decl.ast_fields = info.ast_fields.clone();
+            decl.ast_fields.language = info.ast_fields.language;
+            decl.ast_fields.file_path = info.ast_fields.file_path.clone();
+            decl.ast_fields.is_error = info.ast_fields.is_error;
             decl.ast_fields.full_range = info.node.range();
             decl.ast_fields.content_hash = str_hash(&code.slice(info.node.byte_range()).to_string());
             decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
@@ -298,7 +304,9 @@ impl CppParser {
     fn parse_enum_field_declaration<'a>(&mut self, info: &CandidateInfo<'a>, code: &str, candidates: &mut VecDeque<CandidateInfo<'a>>) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let mut decl = ClassFieldDeclaration::default();
-        decl.ast_fields = info.ast_fields.clone();
+        decl.ast_fields.language = info.ast_fields.language;
+        decl.ast_fields.file_path = info.ast_fields.file_path.clone();
+        decl.ast_fields.is_error = info.ast_fields.is_error;
         decl.ast_fields.full_range = info.node.range();
         decl.ast_fields.content_hash = str_hash(&code.slice(info.node.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
@@ -437,7 +445,9 @@ impl CppParser {
     pub fn parse_function_declaration<'a>(&mut self, info: &CandidateInfo<'a>, code: &str, candidates: &mut VecDeque<CandidateInfo<'a>>) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionDeclaration::default();
-        decl.ast_fields = info.ast_fields.clone();
+        decl.ast_fields.language = info.ast_fields.language;
+        decl.ast_fields.file_path = info.ast_fields.file_path.clone();
+        decl.ast_fields.is_error = info.ast_fields.is_error;
         decl.ast_fields.full_range = info.node.range();
         decl.ast_fields.declaration_range = info.node.range();
         decl.ast_fields.definition_range = info.node.range();
@@ -550,7 +560,9 @@ impl CppParser {
     pub fn parse_call_expression<'a>(&mut self, info: &CandidateInfo<'a>, code: &str, candidates: &mut VecDeque<CandidateInfo<'a>>) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();
-        decl.ast_fields = info.ast_fields.clone();
+        decl.ast_fields.language = info.ast_fields.language;
+        decl.ast_fields.file_path = info.ast_fields.file_path.clone();
+        decl.ast_fields.is_error = info.ast_fields.is_error;
         decl.ast_fields.full_range = info.node.range();
         decl.ast_fields.content_hash = str_hash(&code.slice(info.node.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
@@ -680,7 +692,9 @@ impl CppParser {
             }
             "identifier" | "field_identifier" => {
                 let mut usage = VariableUsage::default();
-                usage.ast_fields = info.ast_fields.clone();
+                usage.ast_fields.language = info.ast_fields.language;
+                usage.ast_fields.file_path = info.ast_fields.file_path.clone();
+                usage.ast_fields.is_error = info.ast_fields.is_error;
                 usage.ast_fields.name = code.slice(info.node.byte_range()).to_string();
                 usage.ast_fields.full_range = info.node.range();
                 usage.ast_fields.content_hash = str_hash(&code.slice(info.node.byte_range()).to_string());
@@ -693,7 +707,9 @@ impl CppParser {
             }
             "field_expression" => {
                 let mut usage = VariableUsage::default();
-                usage.ast_fields = info.ast_fields.clone();
+                usage.ast_fields.language = info.ast_fields.language;
+                usage.ast_fields.file_path = info.ast_fields.file_path.clone();
+                usage.ast_fields.is_error = info.ast_fields.is_error;
                 if let Some(field) = info.node.child_by_field_name("field") {
                     usage.ast_fields.name = code.slice(field.byte_range()).to_string();
                 }
