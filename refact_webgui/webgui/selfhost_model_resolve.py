@@ -1,9 +1,10 @@
 import json
 
+from known_models_db.refact_known_models import models_mini_db, passthrough_mini_db
 from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
 
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 
 def completion_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]:
@@ -50,3 +51,14 @@ def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tu
             return have_model, ""
     else:
         return "", f"model \"{model_name}\" is not loaded (3)"
+
+
+def resolve_model_context_size(model_name: str) -> Optional[int]:
+    if model_name in models_mini_db:
+        return models_mini_db[model_name].get('T')
+
+    PASSTHROUGH_MAX_TOKENS_LIMIT = 16_000
+
+    if model_name in passthrough_mini_db:
+        if max_tokens := passthrough_mini_db[model_name].get('T'):
+            return min(PASSTHROUGH_MAX_TOKENS_LIMIT, max_tokens)

@@ -14,13 +14,14 @@ from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
-from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model
+from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model, resolve_model_context_size
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_login import RefactSession
+from known_models_db.refact_known_models import passthrough_mini_db
 
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union, Optional, Tuple, Any
@@ -299,6 +300,7 @@ class BaseCompletionsRouter(APIRouter):
             "running_models": [r for r in [*running['completion'], *running['chat']]],
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
+            "n_ctx_rewrite": {model: t for model in models_available if (t := resolve_model_context_size(model))},
 
             "default_embeddings_model": embeddings_default_model,
             "endpoint_embeddings_template": "v1/embeddings",
@@ -570,13 +572,14 @@ class BaseCompletionsRouter(APIRouter):
         account = await self._account_from_bearer(authorization)
 
         prefix, postfix = "data: ", "\n\n"
+        model_name = passthrough_mini_db.get(post.model, {}).get("resolve_as", post.model)
 
         if post.model in litellm.model_list:
             async def litellm_streamer(post: ChatContext):
                 try:
                     self._integrations_env_setup()
                     response = await litellm.acompletion(
-                        model=post.model, messages=[m.dict() for m in post.messages], stream=True,
+                        model=model_name, messages=[m.dict() for m in post.messages], stream=True,
                         temperature=post.temperature, top_p=post.top_p, max_tokens=post.max_tokens, stop=post.stop)
                     finish_reason = None
                     async for model_response in response:

@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from typing import Dict, List, Any
 import uuid
 
+from known_models_db.refact_known_models import passthrough_mini_db
 from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_webutils import log
 
@@ -53,11 +54,11 @@ class InferenceQueue:
             for model in j["model_assign"]:
                 self._models_available.append(model)
             self._models_available_ts = time.time()
-            if j.get("openai_api_enable", False):
-                self._models_available.append('gpt-3.5-turbo')
-                self._models_available.append('gpt-3.5-turbo-1106')
-                self._models_available.append('gpt-4')
-            if j.get("anthropic_api_enable", False):
-                self._models_available.append('claude-instant-1.2')
-                self._models_available.append('claude-2.1')
+
+            if j.get("openai_api_enable"):
+                self._models_available.extend(k for k, v in passthrough_mini_db.items() if v.get('provider') == 'openai')
+
+            if j.get("anthropic_api_enable"):
+                self._models_available.extend(k for k, v in passthrough_mini_db.items() if v.get('provider') == 'anthropic')
+
         return self._models_available
