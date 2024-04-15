@@ -9,7 +9,7 @@ use tracing::info;
 use tree_sitter::Point;
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
-use crate::ast::ast_index_service::{AstEvent, AstIndexService};
+use crate::ast::ast_index_service::{AstEvent, AstIndexService, AstEventType};
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::read_symbol;
 // use crate::files_in_jsonl::docs_in_jsonl;
@@ -59,8 +59,12 @@ impl AstModule {
         self.ast_index.write().await.force_reindex().await
     }
 
-    pub async fn ast_reset_index(&self, force: bool) {
-        self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::reset(), force).await;
+    pub async fn ast_reset_index(&self, force: bool)
+    {
+        self.ast_index_service.lock().await.ast_indexer_enqueue_files(
+            AstEvent { docs: vec![], typ: AstEventType::AstReset, posted_ts: std::time::SystemTime::now() },
+            force
+        ).await;
     }
 
     pub async fn ast_remove_file(&mut self, path: &PathBuf) {

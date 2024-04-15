@@ -47,8 +47,9 @@ async fn cooldown_queue_thread(
             }
         }
 
+        let current_time = SystemTime::now();
         for doc in docs {
-            last_updated.insert(doc, SystemTime::now());
+            last_updated.insert(doc, current_time);
         }
 
         let mut docs_to_process: Vec<Document> = Vec::new();

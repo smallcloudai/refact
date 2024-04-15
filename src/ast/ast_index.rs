@@ -698,7 +698,7 @@ impl AstIndex {
                  x.clone())
             })
             .collect();
-        let mut depth: usize = 0;
+        let mut depth: usize = 0; // depth means "a.b.c" it's 2 for c
         loop {
             let symbols_to_process = symbols
                 .iter()

@@ -1,7 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, VecDeque, HashSet};
 use std::iter::zip;
 use std::sync::{Arc, Weak};
-use std::time::SystemTime;
+use std::time::{SystemTime, Duration};
 use std::io::Write;
 
 use rayon::prelude::*;
@@ -16,73 +16,87 @@ use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::files_in_workspace::Document;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum EventType {
+pub enum AstEventType {
     Add,
-    Reset,
+    AstReset,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct AstEvent {
     pub docs: Vec<Document>,
-    pub typ: EventType,
+    pub typ: AstEventType,
+    pub posted_ts: SystemTime,
 }
 
 impl AstEvent {
     pub fn add_docs(docs: Vec<Document>) -> Self {
-        AstEvent { docs, typ: EventType::Add }
-    }
-
-    pub fn reset() -> Self {
-        AstEvent { docs: Vec::new(), typ: EventType::Reset }
+        AstEvent { docs, typ: AstEventType::Add, posted_ts: SystemTime::now() }
     }
 }
 
 #[derive(Debug)]
 pub struct AstIndexService {
-    update_request_queue: Arc<AMutex<VecDeque<AstEvent>>>,
-    output_queue: Arc<AMutex<VecDeque<AstEvent>>>,
+    update_request_queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
+    output_queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     is_busy: Arc<AMutex<bool>>,
     ast_index: Arc<ARwLock<AstIndex>>,
 }
 
+use std::path::PathBuf;
+
 async fn cooldown_queue_thread(
-    update_request_queue: Arc<AMutex<VecDeque<AstEvent>>>,
-    out_queue: Arc<AMutex<VecDeque<AstEvent>>>,
+    update_request_queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
+    out_queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     cooldown_secs: u64,
 ) {
-    let mut last_updated: HashMap<AstEvent, SystemTime> = HashMap::new();
+    let mut latest_events: HashMap<PathBuf, Arc<AstEvent>> = HashMap::new();
     loop {
-        let mut events: Vec<AstEvent> = Vec::new();
+        let mut have_reset: bool = false;
         {
             let mut queue_locked = update_request_queue.lock().await;
-            for _ in 0..queue_locked.len() {
-                if let Some(e) = queue_locked.pop_front() {
-                    events.push(e);
+            while let Some(e) = queue_locked.pop_front() {
+                if e.typ == AstEventType::AstReset {
+                    have_reset = true;
+                    latest_events.clear();
+                    break;
+                }
+                for doc in e.docs.iter() {
+                    latest_events.insert(doc.path.clone(), e.clone());
                 }
             }
-        };
-        for doc in events {
-            last_updated.insert(doc, SystemTime::now());
         }
 
-        let mut events_to_process: Vec<AstEvent> = Vec::new();
-        let mut stat_too_new = 0;
-        let mut stat_proceed = 0;
-        for (event, time) in &last_updated {
-            if time.elapsed().unwrap().as_secs() > cooldown_secs {
-                events_to_process.push(event.clone());
-                stat_proceed += 1;
-            } else {
-                stat_too_new += 1;
+        let now = SystemTime::now();
+        if have_reset {
+            let mut out = out_queue.lock().await;
+            out.clear();
+            out.push_back(Arc::new(AstEvent { docs: Vec::new(), typ: AstEventType::AstReset, posted_ts: now }));
+            continue;
+        }
+
+        let mut paths_to_launch = HashSet::new();
+        for (_path, original_event) in latest_events.iter() {
+            if original_event.posted_ts + Duration::from_secs(cooldown_secs) < now {  // old enough
+                for doc in original_event.docs.iter() {
+                    paths_to_launch.insert(doc.path.clone());
+                }
+            }
+            if paths_to_launch.len() >= 32 {
+                break;
             }
         }
-        if stat_proceed > 0 || stat_too_new > 0 {
-            info!("{} events to process, {} events too new", stat_proceed, stat_too_new);
+
+        if paths_to_launch.len() > 0 {
+            info!("cooldown see {} files on stack, launch parse for {} of them", latest_events.len(), paths_to_launch.len());
+            let mut launch_event = AstEvent { docs: Vec::new(), typ: AstEventType::Add, posted_ts: now };
+            for path in paths_to_launch {
+                latest_events.remove(&path);
+                launch_event.docs.push(Document { path: path.clone(), text: None });
+            }
+            out_queue.lock().await.push_back(Arc::new(launch_event));
+            continue;
         }
-        for event in events_to_process {
-            last_updated.remove(&event);
-            out_queue.lock().await.push_back(event);
-        }
+
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 }
@@ -90,31 +104,38 @@ async fn cooldown_queue_thread(
 
 async fn ast_indexer_thread(
     gcx_weak: Weak<ARwLock<GlobalContext>>,
-    queue: Arc<AMutex<VecDeque<AstEvent>>>,
+    queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_index: Arc<ARwLock<AstIndex>>,
     is_busy_flag: Arc<AMutex<bool>>,
 ) {
     let mut reported_stats = false;
     let mut stats_parsed_cnt = 0;    // by language?
     let mut stats_t0 = std::time::Instant::now();
+    let mut hold_on_after_reset = false;
     loop {
         let mut events = {
             let mut queue_locked = queue.lock().await;
-            let events: Vec<AstEvent> = Vec::from(queue_locked.to_owned());
+            let events: Vec<Arc<AstEvent>> = Vec::from(queue_locked.to_owned());
             queue_locked.clear();
             events
         };
 
         if events.len() == 0 {
-            if !reported_stats {
+            if hold_on_after_reset {
+                // hold on, don't report anything, don't say this thread isn't busy.
+                // after reset, real data will follow, now sleep and do nothing.
+            } else if !reported_stats {
                 info!("finished parsing, processed {} files in {:>.3}s", stats_parsed_cnt, stats_t0.elapsed().as_secs_f64());
                 stats_parsed_cnt = 0;
                 reported_stats = true;
             }
+            if !hold_on_after_reset {
+                *is_busy_flag.lock().await = false;
+            }
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-            *is_busy_flag.lock().await = false;
             continue;
         } else {
+            hold_on_after_reset = false;
             *is_busy_flag.lock().await = true;
             reported_stats = false;
             if stats_parsed_cnt == 0 {
@@ -124,7 +145,6 @@ async fn ast_indexer_thread(
 
         let mut unparsed_suffixes = HashMap::new();
         for event in events.iter_mut() {
-            let docs = &mut event.docs;
             let gcx = match gcx_weak.upgrade() {
                 Some(x) => x,
                 None => {
@@ -132,11 +152,14 @@ async fn ast_indexer_thread(
                     break;
                 }
             };
-            for doc in docs.iter_mut() {
+            let mut docs_with_text: Vec<Document> = Vec::new();
+            for doc in event.docs.iter() {
                 match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.path).await {
                     Ok(file_text) => {
                         stats_parsed_cnt += 1;
-                        doc.update_text(&file_text);
+                        let mut doc_copy = doc.clone();
+                        doc_copy.update_text(&file_text);
+                        docs_with_text.push(doc_copy);
                     }
                     Err(e) => {
                         tracing::warn!("cannot read file {}: {}", crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30), e);
@@ -144,9 +167,8 @@ async fn ast_indexer_thread(
                     }
                 }
             }
-            let docs_with_text: Vec<Document> = docs.iter().filter(|doc| doc.text.is_some()).cloned().collect();
             match event.typ {
-                EventType::Add => {
+                AstEventType::Add => {
                     let ast_index = ast_index.clone();
                     let all_symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = docs_with_text
                         .par_iter()
@@ -169,9 +191,10 @@ async fn ast_indexer_thread(
                         }
                     }
                 }
-                EventType::Reset => {
-                    ast_index.write().await.clear_index();
+                AstEventType::AstReset => {
                     info!("Reset AST Index");
+                    ast_index.write().await.clear_index();
+                    hold_on_after_reset = true;
                 }
             }
         }
@@ -282,11 +305,11 @@ impl AstIndexService {
 
     pub async fn ast_indexer_enqueue_files(&self, event: AstEvent, force: bool)
     {
-        info!("adding to indexer queue an event with {} documents", event.docs.len());
+        info!("adding to indexer queue an event with {} documents, force={}", event.docs.len(), force as i32);
         if !force {
-            self.update_request_queue.lock().await.push_back(event);
+            self.update_request_queue.lock().await.push_back(Arc::new(event));
         } else {
-            self.output_queue.lock().await.push_back(event);
+            self.output_queue.lock().await.push_back(Arc::new(event));
         }
     }
 }

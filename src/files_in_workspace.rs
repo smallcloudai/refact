@@ -388,8 +388,8 @@ async fn retrieve_files_by_proj_folders(proj_folders: Vec<PathBuf>) -> Vec<PathB
 async fn enqueue_some_docs(
     gcx: Arc<ARwLock<GlobalContext>>,
     docs: &Vec<Document>,
+    force: bool,
 ) {
-    info!("=> enqueue {} of them", docs.len());
     info!("detected {} modified or added files", docs.len());
     for d in docs.iter().take(5) {
         info!("    added/modified {}", crate::nicer_logs::last_n_chars(&d.path.display().to_string(), 30));
@@ -402,10 +402,10 @@ async fn enqueue_some_docs(
         (cx.vec_db.clone(), cx.ast_module.clone())
     };
     if let Some(ref mut db) = *vec_db_module.lock().await {
-        db.vectorizer_enqueue_files(&docs, false).await;
+        db.vectorizer_enqueue_files(&docs, force).await;
     }
     if let Some(ast) = &ast_module {
-        ast.read().await.ast_indexer_enqueue_files(&docs, true).await;
+        ast.read().await.ast_indexer_enqueue_files(&docs, force).await;
     }
 }
 
@@ -509,7 +509,7 @@ pub async fn on_did_change(
 
     let doc = Document { path: doc_arc.read().await.path.clone(), text: None };
     if go_ahead {
-        enqueue_some_docs(gcx.clone(), &vec![doc]).await;
+        enqueue_some_docs(gcx.clone(), &vec![doc], false).await;
     }
 
     telemetry::snippets_collection::sources_changed(
@@ -552,7 +552,7 @@ pub async fn add_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
     }
     let paths = retrieve_files_by_proj_folders(vec![path.clone()]).await;
     let docs: Vec<Document> = paths.into_iter().map(|p| Document { path: p, text: None }).collect();
-    enqueue_some_docs(gcx, &docs).await;
+    enqueue_some_docs(gcx, &docs, false).await;
 }
 
 pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
@@ -581,7 +581,7 @@ pub async fn file_watcher_thread(event: Event, gcx: Weak<ARwLock<GlobalContext>>
         }
         info!("EventKind::Create/Modify {} paths", event.paths.len());
         if let Some(gcx) = gcx.upgrade() {
-            enqueue_some_docs(gcx, &docs).await;
+            enqueue_some_docs(gcx, &docs, false).await;
         }
     }
 
