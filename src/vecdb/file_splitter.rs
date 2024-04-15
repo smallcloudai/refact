@@ -21,7 +21,7 @@ impl FileSplitter {
         }
     }
 
-    pub async fn split(&self, doc: &Document) -> Result<Vec<SplitResult>, String> {
+    pub async fn vectorization_split(&self, doc: &Document) -> Result<Vec<SplitResult>, String> {
         let text = match doc.clone().get_text_or_read_from_disk().await {
             Ok(s) => s,
             Err(e) => return Err(e.to_string())
@@ -47,9 +47,10 @@ impl FileSplitter {
 
                 let (remaining, to_next_batch) = soft_batch.split_at(best_break_line_n);
                 batch.extend_from_slice(remaining);
+                assert!(batch.len() > 0);
 
                 let start_line = current_line_number;
-                let end_line = start_line + batch.len() as u64;
+                let end_line = start_line + (batch.len() - 1) as u64;  // range includes end line
                 current_line_number += batch.len() as u64;
 
                 chunks.push(SplitResult {
@@ -69,7 +70,7 @@ impl FileSplitter {
         if !batch.is_empty() || !soft_batch.is_empty() {
             batch.extend(soft_batch);
             let start_line = current_line_number;
-            let end_line = start_line + batch.len() as u64;
+            let end_line = start_line + (batch.len() - 1) as u64;
 
             chunks.push(SplitResult {
                 file_path: doc.path.clone(),

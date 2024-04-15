@@ -366,8 +366,7 @@ pub async fn postprocess_rag_stage_3_6(
         } else {
             // no symbol set in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
             if omsg.line1 == 0 || omsg.line2 == 0 || omsg.line1 > omsg.line2 || omsg.line1 > linevec.len() || omsg.line2 > linevec.len() {
-                warn!("cannot use range {}:{}-{}", omsg.file_name, omsg.line1, omsg.line2);
-                continue;
+                warn!("range in search results is outside of file lines that actually exist {}:{}-{}", omsg.file_name, omsg.line1, omsg.line2);
             }
             colorize_if_more_useful(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
         }

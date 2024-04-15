@@ -47,9 +47,9 @@ impl AstBasedFileSplitter {
 
         let mut parser = match get_ast_parser_by_filename(&path) {
             Ok(parser) => parser,
-            Err(e) => {
-                info!("cannot find a parser for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e.message);
-                return self.fallback_file_splitter.split(&doc).await;
+            Err(_e) => {
+                // info!("cannot find a parser for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e.message);
+                return self.fallback_file_splitter.vectorization_split(&doc).await;
             }
         };
 
@@ -59,7 +59,7 @@ impl AstBasedFileSplitter {
             Ok(x) => x,
             Err(e) => {
                 info!("lowlevel_file_markup failed for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e);
-                return self.fallback_file_splitter.split(&doc).await;
+                return self.fallback_file_splitter.vectorization_split(&doc).await;
             }
         };
         let mut files_markup: HashMap<String, Arc<crate::scratchpads::chat_utils_rag::File>> = HashMap::new();
