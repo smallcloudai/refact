@@ -7,7 +7,6 @@ use crate::global_context::GlobalContext;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use notify::event::{CreateKind, DataChange, ModifyKind, RemoveKind};
 use ropey::Rope;
-use tokio::runtime::Runtime;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use strsim::normalized_damerau_levenshtein;
 
@@ -221,6 +220,8 @@ pub struct DocumentsState {
     pub cache_correction: Arc<HashMap<String, String>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
     pub cache_fuzzy: Arc<Vec<String>>,                   // slow linear search
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
+    pub total_reset: bool,
+    pub total_reset_ts: std::time::SystemTime,
 }
 
 async fn overwrite_or_create_document(
@@ -242,7 +243,7 @@ async fn overwrite_or_create_document(
 
 impl DocumentsState {
     pub async fn new(
-        workspace_dirs: Vec<PathBuf>
+        workspace_dirs: Vec<PathBuf>,
     ) -> Self {
         let watcher = RecommendedWatcher::new(|_|{}, Default::default()).unwrap();
         Self {
@@ -254,22 +255,36 @@ impl DocumentsState {
             cache_correction: Arc::new(HashMap::<String, String>::new()),
             cache_fuzzy: Arc::new(Vec::<String>::new()),
             fs_watcher: Arc::new(ARwLock::new(watcher)),
+            total_reset: false,
+            total_reset_ts: std::time::SystemTime::now(),
         }
     }
 
-    pub fn init_watcher(&mut self, gcx: Arc<ARwLock<GlobalContext>>) {
-        let gcx_cloned = Arc::downgrade(&gcx.clone());
-        let mut watcher = RecommendedWatcher::new(
-            move |res| {
-                let rt = Runtime::new().unwrap();
-                rt.block_on(async {
-                    if let Ok(event) = res {
-                        file_watcher_thread(event, gcx_cloned.clone()).await;
+    pub fn init_watcher(&mut self, gcx_weak: Weak<ARwLock<GlobalContext>>, rt: tokio::runtime::Handle) {
+        let event_callback = move |res| {
+            rt.block_on(async {
+                let mut new_total_reset = false;
+                if let Ok(event) = res {
+                    if let Some(gcx) = gcx_weak.upgrade() {
+                        let have_already_total_reset = gcx.read().await.documents_state.total_reset;
+                        if !have_already_total_reset {
+                            new_total_reset = file_watcher_event(event, gcx_weak.clone()).await;
+                        } else {
+                            info!("more events about files, ignored because total index reset is planned");
+                            gcx.write().await.documents_state.total_reset_ts = std::time::SystemTime::now() + std::time::Duration::from_secs(10);
+                        }
                     }
-                })
-            },
-            Config::default(),
-        ).unwrap();
+                }
+                if new_total_reset {
+                    if let Some(gcx) = gcx_weak.upgrade() {
+                        let mut gcx_locked = gcx.write().await;
+                        gcx_locked.documents_state.total_reset = true;
+                    }
+                    rt.spawn(file_watcher_total_reset(gcx_weak.clone()));
+                }
+            });
+        };
+        let mut watcher = RecommendedWatcher::new(event_callback, Config::default()).unwrap();
         for folder in self.workspace_folders.lock().unwrap().iter() {
             watcher.watch(folder, RecursiveMode::Recursive).unwrap();
         }
@@ -277,6 +292,27 @@ impl DocumentsState {
     }
 }
 
+pub async fn file_watcher_total_reset(gcx_weak: Weak<ARwLock<GlobalContext>>) {
+    loop {
+        info!("waiting for a good moment for total index reset...");
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        let now = std::time::SystemTime::now();
+        let gcx_maybe = gcx_weak.clone().upgrade();
+        if gcx_maybe.is_none() {
+            return;
+        }
+        let gcx = gcx_maybe.unwrap();
+        let mut cx_locked = gcx.write().await;
+        if cx_locked.documents_state.total_reset_ts < now {
+            cx_locked.documents_state.total_reset = false;
+            info!("done waiting, go!");
+            break;
+        }
+    }
+    if let Some(gcx) = gcx_weak.upgrade() {
+        enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
+    }
+}
 
 pub async fn read_file_from_disk(path: &PathBuf) -> Result<Rope, String> {
     tokio::fs::read_to_string(path).await
@@ -565,7 +601,7 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
     enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 }
 
-pub async fn file_watcher_thread(event: Event, gcx: Weak<ARwLock<GlobalContext>>)
+pub async fn file_watcher_event(event: Event, gcx: Weak<ARwLock<GlobalContext>>) -> bool
 {
     async fn on_create_modify(gcx: Weak<ARwLock<GlobalContext>>, event: Event) {
         let mut docs = vec![];
@@ -585,7 +621,7 @@ pub async fn file_watcher_thread(event: Event, gcx: Weak<ARwLock<GlobalContext>>
         }
     }
 
-    async fn on_remove(gcx: Weak<ARwLock<GlobalContext>>, event: Event) {
+    async fn on_remove(event: Event) -> bool {
         let mut never_mind = true;
         for p in &event.paths {
             never_mind &= is_this_inside_blacklisted_dir(&p);
@@ -595,18 +631,18 @@ pub async fn file_watcher_thread(event: Event, gcx: Weak<ARwLock<GlobalContext>>
         if !never_mind {
             info!("EventKind::Remove {:?}", event.paths);
             info!("Likely a useful file was removed, rebuild index");
-            if let Some(gcx) = gcx.upgrade() {
-                enqueue_all_files_from_workspace_folders(gcx, false, false).await;
-            }
+            return true;
         }
+        return false;
     }
 
     match event.kind {
         EventKind::Any => {},
         EventKind::Access(_) => {},
         EventKind::Create(CreateKind::File) | EventKind::Modify(ModifyKind::Data(DataChange::Content)) => on_create_modify(gcx.clone(), event).await,
-        EventKind::Remove(RemoveKind::File) => on_remove(gcx.clone(), event).await,
+        EventKind::Remove(RemoveKind::File) => return on_remove(event).await,
         EventKind::Other => {}
         _ => {}
     }
+    return false;
 }

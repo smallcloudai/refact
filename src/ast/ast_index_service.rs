@@ -305,7 +305,11 @@ impl AstIndexService {
 
     pub async fn ast_indexer_enqueue_files(&self, event: AstEvent, force: bool)
     {
-        info!("adding to indexer queue an event with {} documents, force={}", event.docs.len(), force as i32);
+        if event.type_ == AstEventType::AstReset {
+            info!("adding to indexer a reset instruction, force={}", force as i32);
+        } else {
+            info!("adding to indexer queue an event with {} documents, force={}", event.docs.len(), force as i32);
+        }
         if !force {
             self.update_request_queue.lock().await.push_back(Arc::new(event));
         } else {

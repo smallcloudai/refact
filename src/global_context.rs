@@ -251,7 +251,8 @@ pub async fn create_global_context(
         gcx.write().await.ast_module = Some(ast_module);
     }
     {
-        gcx.write().await.documents_state.init_watcher(gcx.clone());
+        let gcx_weak = Arc::downgrade(&gcx);
+        gcx.write().await.documents_state.init_watcher(gcx_weak, tokio::runtime::Handle::current());
     }
     (gcx, ask_shutdown_receiver, cmdline)
 }
