@@ -573,6 +573,7 @@ class BaseCompletionsRouter(APIRouter):
 
         prefix, postfix = "data: ", "\n\n"
         model_name = passthrough_mini_db.get(post.model, {}).get("resolve_as", post.model)
+        log(f"chat/completions: model resolve {post.model} -> {model_name}")
 
         if post.model in litellm.model_list:
             async def litellm_streamer(post: ChatContext):
