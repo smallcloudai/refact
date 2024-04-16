@@ -2,10 +2,21 @@ html {
     min-height: 100%;
 }
 body {
-    font-family: 'Space Grotesk',sans-serif;
+    font-family: "Manrope", sans-serif;
     font-size: .94rem;
     background-image: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
     min-height: 100%;
+}
+code {
+    font-family: "Azeret Mono", monospace;
+}
+.navbar-brand {
+    display: flex;
+    align-items: center;
+}
+.navbar-brand svg {
+    width: 132px;
+    height: auto;
 }
 .pane {
     background-color: #fff;
@@ -1149,4 +1160,17 @@ h3 {
 }
 #download-lora-modal {
     --bs-modal-width: 600px;
+}
+.team-model-dropdown {
+    padding-left: 0;
+    padding-top: 0;
+    font-size: 0.8rem;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    max-width: 420px !important;
+    overflow: hidden;
+}
+.team-model-dropdown:active {
+    border-color: transparent !important;
 }

@@ -801,13 +801,7 @@ export async function init(general_error) {
 
     const proceed_finetune_button = document.querySelector('.proceed-finetune');
     proceed_finetune_button.addEventListener('click', function() {
-        document.querySelector('#upload').classList.remove('main-active');
-        document.querySelector('#finetune').classList.add('main-active');
-        document.querySelectorAll('.nav-link').forEach(function(link) {
-            link.classList.remove('main-active');
-        });
-        let nav_link = document.querySelector('[data-tab="finetune"]');
-        nav_link.classList.add('main-active');
+        document.querySelector('button[data-tab="finetune"]').click();
     });
 
     const new_project_input = document.querySelector('#tab-upload-new-project');

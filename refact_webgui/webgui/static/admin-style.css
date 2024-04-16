@@ -22,3 +22,7 @@ html {
 #gotoLogin {
   visibility: hidden;
 }
+#login-form svg {
+  width: 140px;
+  height: auto;
+}
