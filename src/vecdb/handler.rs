@@ -59,6 +59,55 @@ const TWO_WEEKS: i32 = 2 * 7 * 24 * 3600;
 const ONE_MONTH: i32 = 30 * 24 * 3600;
 const MIN_LIKES: i32 = 3;
 
+#[derive(Debug, PartialEq)]
+struct DataColumn {
+    name: String,
+    type_: String,
+}
+
+async fn check_and_recreate_table(db: Arc<AMutex<Connection>>) -> tokio_rusqlite::Result<()> {
+    let expected_schema = vec![
+        DataColumn { name: "vector".to_string(), type_: "BLOB".to_string() },
+        DataColumn { name: "window_text".to_string(), type_: "TEXT".to_string() },
+        DataColumn { name: "window_text_hash".to_string(), type_: "TEXT".to_string() },
+        DataColumn { name: "time_added".to_string(), type_: "INTEGER".to_string() },
+        DataColumn { name: "time_last_used".to_string(), type_: "INTEGER".to_string() },
+        DataColumn { name: "model_name".to_string(), type_: "TEXT".to_string() },
+        DataColumn { name: "used_counter".to_string(), type_: "INTEGER".to_string() },
+    ];
+    db.lock().await.call(move |conn| {
+        let mut stmt = conn.prepare("PRAGMA table_info(data);")?;
+        let schema_iter = stmt.query_map([], |row| {
+            Ok(DataColumn {
+                name: row.get(1)?,
+                type_: row.get(2)?,
+            })
+        })?;
+        let mut schema = Vec::new();
+        for column in schema_iter {
+            schema.push(column?);
+        }
+        if schema != expected_schema {
+            conn.execute("DROP TABLE IF EXISTS data", [])?;
+            conn.execute(
+                "CREATE TABLE data (
+                vector BLOB,
+                window_text TEXT NOT NULL,
+                window_text_hash TEXT NOT NULL,
+                time_added INTEGER NOT NULL,
+                time_last_used INTEGER NOT NULL,
+                model_name TEXT NOT NULL,
+                used_counter INTEGER NOT NULL
+            )", [])?;
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_window_text_hash ON data (window_text_hash)",
+                []
+            )?;
+        }
+        Ok(())
+    }).await
+}
+
 impl VecDBHandler {
     pub async fn init(cache_dir: &PathBuf, model_name: &String, embedding_size: i32) -> Result<VecDBHandler, String> {
         let cache_dir_str = match cache_dir.join("refact_vecdb_cache")
@@ -113,24 +162,8 @@ impl VecDBHandler {
             Field::new("model_name", DataType::Utf8, true),
             Field::new("used_counter", DataType::UInt64, true),
         ]));
-        match cache_database.lock().await.call(|conn| {
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS data (
-                        vector BLOB,
-                        window_text TEXT NOT NULL,
-                        window_text_hash TEXT NOT NULL,
-                        time_added INTEGER NOT NULL,
-                        time_last_used INTEGER NOT NULL,
-                        model_name TEXT NOT NULL,
-                        used_counter INTEGER NOT NULL
-                    )", [],
-            )?;
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_window_text_hash ON data (window_text_hash)",
-                [],
-            )?;
-            Ok(())
-        }).await {
+
+        match check_and_recreate_table(cache_database.clone()).await {
             Ok(_) => {}
             Err(err) => return Err(format!("{:?}", err))
         }
