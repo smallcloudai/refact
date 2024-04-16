@@ -304,6 +304,7 @@ let toggle_menu_display = (menu) => {
 }
 
 function on_add_finetune_btn_click(el, event, models_info) {
+    get_models();
     const target = event.currentTarget;
 
     let finetune_info = document.querySelector(`.model-finetune-info[data-model="${target.dataset.model}"]`);

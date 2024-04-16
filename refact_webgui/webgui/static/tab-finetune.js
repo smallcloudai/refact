@@ -486,18 +486,20 @@ function render_runs() {
 
         run_delete.innerHTML = `<button class="btn btn-outline-danger btn-sm" ${change_disabled}><i class="bi bi-trash3-fill"></i></button>`;
         if (find_checkpoints_by_run(run.run_id).length > 0) {
-            run_download.innerHTML = `
-                <button class="btn btn-hover btn-primary btn-sm" ${item_disabled}>
-                <i class="bi bi-download"></i>
-                </button>`;
-            run_download.disabled = run_is_working;
-            run_download.addEventListener('click', (event) => {
-                event.stopPropagation();
-                if (run_is_working) {
-                    return;
-                }
-                download_lora_modal(run.run_id, "", is_deprecated);
-            });
+            if(!run_is_working) {
+                run_download.innerHTML = `
+                    <button class="btn btn-hover btn-primary btn-sm">
+                    <i class="bi bi-download"></i>
+                    </button>`;
+                // run_download.disabled = run_is_working;
+                run_download.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    // if (run_is_working) {
+                    //     return;
+                    // }
+                    download_lora_modal(run.run_id, "", is_deprecated);
+                });
+            }
         }
         run_table_row.appendChild(run_name);
         run_table_row.appendChild(run_status);
