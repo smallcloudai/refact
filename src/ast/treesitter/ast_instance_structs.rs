@@ -114,6 +114,15 @@ impl AstSymbolFields {
             ..Default::default()
         }
     }
+    
+    pub fn from_fields(fields: &AstSymbolFields) -> Self {
+        Self {
+            language: fields.language,
+            file_path: fields.file_path.clone(),
+            is_error: fields.is_error,
+           ..Default::default()
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -794,12 +803,14 @@ FunctionCall
 #[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct FunctionCall {
     pub ast_fields: AstSymbolFields,
+    pub template_types: Vec<TypeDef>
 }
 
 impl Default for FunctionCall {
     fn default() -> Self {
         Self {
             ast_fields: AstSymbolFields::default(),
+            template_types: vec![],
         }
     }
 }
