@@ -35,6 +35,8 @@ pub(crate) struct CandidateInfo<'a> {
 #[cfg(test)]
 pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
     use std::collections::{HashMap, HashSet, VecDeque};
+    use similar::DiffableStr;
+    use itertools::Itertools;
 
     let guid_to_symbol_map = symbols.iter()
         .map(|s| (s.clone().read().unwrap().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
