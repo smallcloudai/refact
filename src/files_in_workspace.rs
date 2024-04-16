@@ -333,6 +333,9 @@ pub async fn file_watcher_total_reset(gcx_weak: Weak<ARwLock<GlobalContext>>) {
         }
     }
     if let Some(gcx) = gcx_weak.upgrade() {
+        // We don't tell enqueue_all_files_from_workspace_folders that we want to rebuild the whole thing.
+        // But it has inside another detector for deleted files, by comparing lists. If it decides we don't need a
+        // rebuild really, so be it.
         enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
     }
 }
