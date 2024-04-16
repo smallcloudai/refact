@@ -88,6 +88,9 @@ async fn check_and_recreate_table(db: Arc<AMutex<Connection>>) -> tokio_rusqlite
             schema.push(column?);
         }
         if schema != expected_schema {
+            if schema.len() > 0 {
+                info!("vector cache database has invalid schema, recreating the database");
+            }
             conn.execute("DROP TABLE IF EXISTS data", [])?;
             conn.execute(
                 "CREATE TABLE data (
