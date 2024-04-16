@@ -39,8 +39,12 @@ class ModelAssigner:
         return models_mini_db
 
     @property
+    def passthrough_mini_db(self) -> Dict[str, Any]:
+        return passthrough_mini_db
+
+    @property
     def models_db_with_passthrough(self) -> Dict[str, Any]:
-        return {**models_mini_db, **passthrough_mini_db}
+        return {**self.models_db, **self.passthrough_mini_db}
 
     @property
     def models_caps_db(self) -> List:

@@ -6,7 +6,6 @@ import time
 from pathlib import Path
 from typing import List
 
-from known_models_db.refact_known_models import passthrough_mini_db
 from refact_utils.scripts import env
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 
@@ -97,11 +96,18 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
         if model_dict.get('has_chat'):
             result['chat'].append(k)
 
+    def add_results_for_passthrough_provider(provider: str) -> None:
+        [
+            add_result(k, {'has_chat': 'chat' in v.get('filter_caps', [])})
+            for k, v in model_assigner.passthrough_mini_db.items()
+            if v.get('provider') == provider
+        ]
+
     if data.get("openai_api_enable"):
-        [add_result(k, {'has_chat': True}) for k, v in passthrough_mini_db.items() if v.get('provider') == 'openai' and 'chat' in v.get('filter_caps', [])]
+        add_results_for_passthrough_provider('openai')
 
     if data.get('anthropic_api_enable'):
-        [add_result(k, {'has_chat': True}) for k, v in passthrough_mini_db.items() if v.get('provider') == 'anthropic' and 'chat' in v.get('filter_caps', [])]
+        add_results_for_passthrough_provider('anthropic')
 
     for k, v in data.get("model_assign", {}).items():
         if model_dict := [d for d in data['models'] if d['name'] == k]:

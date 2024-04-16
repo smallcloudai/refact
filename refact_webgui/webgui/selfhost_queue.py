@@ -7,8 +7,8 @@ from fastapi import HTTPException
 from typing import Dict, List, Any
 import uuid
 
-from known_models_db.refact_known_models import passthrough_mini_db
 from refact_utils.scripts import env
+from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_webutils import log
 
 
@@ -32,10 +32,11 @@ class Ticket:
 class InferenceQueue:
     CACHE_MODELS_AVAILABLE = 5
 
-    def __init__(self):
+    def __init__(self, model_assigner: ModelAssigner):
         self._user2gpu_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)
         self._models_available: List[str] = []
         self._models_available_ts = 0
+        self._model_assigner = model_assigner
 
     def model_name_to_queue(self, ticket, model_name, no_checks=False):
         available_models = self.models_available()
@@ -56,9 +57,9 @@ class InferenceQueue:
             self._models_available_ts = time.time()
 
             if j.get("openai_api_enable"):
-                self._models_available.extend(k for k, v in passthrough_mini_db.items() if v.get('provider') == 'openai')
+                self._models_available.extend(k for k, v in self._model_assigner.passthrough_mini_db.items() if v.get('provider') == 'openai')
 
             if j.get("anthropic_api_enable"):
-                self._models_available.extend(k for k, v in passthrough_mini_db.items() if v.get('provider') == 'anthropic')
+                self._models_available.extend(k for k, v in self._model_assigner.passthrough_mini_db.items() if v.get('provider') == 'anthropic')
 
         return self._models_available
