@@ -301,7 +301,7 @@ impl DocumentsState {
                         info!("total index rebuild\n");
                         let mut gcx_locked = gcx.write().await;
                         gcx_locked.documents_state.total_reset = true;
-                        gcx.write().await.documents_state.total_reset_ts = std::time::SystemTime::now() + std::time::Duration::from_secs(10);
+                        gcx_locked.documents_state.total_reset_ts = std::time::SystemTime::now() + std::time::Duration::from_secs(10);
                     }
                     rt.spawn(file_watcher_total_reset(gcx_weak.clone()));
                 }
@@ -667,7 +667,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
                             }
                         }
                         if a_known_file {
-                            info!("    found {} was indexed previously => rebuild index\n", crate::nicer_logs::last_n_chars(&cpath.to_string_lossy().to_string(), 30));
+                            info!("    found {} was indexed previously => rebuild index", crate::nicer_logs::last_n_chars(&cpath.to_string_lossy().to_string(), 30));
                             return true;
                         } else {
                             info!("    deleted file {} wasn't in the index, ignore", crate::nicer_logs::last_n_chars(&cpath.to_string_lossy().to_string(), 30));
