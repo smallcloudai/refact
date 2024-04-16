@@ -30,15 +30,17 @@ pub(crate) struct CandidateInfo<'a> {
     pub ast_fields: AstSymbolFields,
     pub node: Node<'a>,
     pub parent_guid: Uuid
-} 
+}
 
 #[cfg(test)]
 pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
+    use std::collections::{HashMap, HashSet, VecDeque};
+
     let guid_to_symbol_map = symbols.iter()
         .map(|s| (s.clone().read().unwrap().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
     let sorted = symbols.iter().sorted_by_key(|x| x.read().unwrap().full_range().start_byte).collect::<Vec<_>>();
     let mut used_guids: HashSet<String> = Default::default();
-    
+
     for sym in sorted {
         let guid = sym.read().unwrap().guid().clone();
         if used_guids.contains(&guid) {
@@ -62,7 +64,7 @@ pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
                 candidates = new_candidates;
             }
         }
-        
+
     }
-    
+
 }
