@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use axum::http::StatusCode;
 use ropey::Rope;
+use uuid::Uuid;
 use crate::custom_error::ScratchError;
 
 
@@ -197,7 +198,7 @@ pub struct ContextFile {
     pub file_content: String,
     pub line1: usize,   // starts from 1, zero means non-valid
     pub line2: usize,   // starts from 1
-    pub symbol: String,
+    pub symbol: Uuid,
     #[serde(default = "default_gradient_type_value")]
     pub gradient_type: i32,
     #[serde(default)]

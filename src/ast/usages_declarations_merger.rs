@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, FunctionDeclaration, read_symbol};
 use crate::ast::treesitter::structs::SymbolType;
@@ -57,9 +58,9 @@ impl Iterator for FilePathIterator {
 
 pub fn find_decl_by_caller_guid(
     symbol: &AstSymbolInstanceArc,
-    caller_guid: &str,
-    guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
-) -> Option<String> {
+    caller_guid: &Uuid,
+    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>,
+) -> Option<Uuid> {
     let (symbol_type, name, is_error_node) = {
         let s = read_symbol(symbol);
         (s.symbol_type().to_owned(), s.name().to_owned(), s.is_error())
@@ -113,26 +114,26 @@ pub fn find_decl_by_caller_guid(
             let s_ref = read_symbol(symbol);
             let valid_type = is_error_node || (s_ref.symbol_type() == search_symbol_type);
             valid_type
-                && s_ref.parent_guid().clone().unwrap_or_default() == read_symbol(decl_symbol_parent).guid()
+                && s_ref.parent_guid().clone().unwrap_or_default() == *read_symbol(decl_symbol_parent).guid()
                 && s_ref.name() == name
         })
         .map(|(_, symbol)| symbol)
         .next() {
-        Some(s) => { Some(read_symbol(s).guid().to_string()) }
+        Some(s) => { Some(read_symbol(s).guid().clone()) }
         None => { return None; }
     };
 }
 
 fn find_decl_by_name_for_single_path(
     name: &str,
-    parent_guid: &str,
+    parent_guid: &Uuid,
     search_symbol_type: &SymbolType,
     is_error_node: bool,
     file_path: &PathBuf,
-    guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
-    extra_search_index: &HashMap<(String, String, String), AstSymbolInstanceArc>,
-) -> Option<String> {
-    let mut current_parent_guid = parent_guid.to_string();
+    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>,
+    extra_search_index: &HashMap<(String, Uuid, String), AstSymbolInstanceArc>,
+) -> Option<Uuid> {
+    let mut current_parent_guid = parent_guid.clone();
     loop {
         let search_q = (
             name.to_string(),
@@ -145,17 +146,17 @@ fn find_decl_by_name_for_single_path(
             let s_ref = read_symbol(&s);
             let valid_type = is_error_node || (s_ref.symbol_type() == *search_symbol_type);
             if valid_type {
-                return Some(s_ref.guid().to_string())
+                return Some(s_ref.guid().clone())
             }
         }
-        if current_parent_guid.is_empty() {
+        if current_parent_guid.is_nil() {
             break;
         } else {
             current_parent_guid = match guid_by_symbols.get(&current_parent_guid) {
                 Some(s) => {
-                    read_symbol(s).parent_guid().clone().unwrap_or("".to_string())
+                    read_symbol(s).parent_guid().clone().unwrap_or(Uuid::default())
                 }
-                None => { "".to_string() }
+                None => { Uuid::default() }
             };
             continue;
         }
@@ -166,10 +167,10 @@ fn find_decl_by_name_for_single_path(
 pub fn find_decl_by_name(
     symbol: &AstSymbolInstanceArc,
     path_by_symbols: &HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
-    guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
-    extra_search_index: &HashMap<(String, String, String), AstSymbolInstanceArc>,
+    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>,
+    extra_search_index: &HashMap<(String, Uuid, String), AstSymbolInstanceArc>,
     top_n_files: usize,
-) -> Option<String> {
+) -> Option<Uuid> {
     let (file_path, parent_guid, name, is_function, is_error_node) = match symbol.read() {
         Ok(s) => {
             (s.file_path().to_owned(),
@@ -192,7 +193,7 @@ pub fn find_decl_by_name(
     for file in file_iterator.iter().take(top_n_files) {
         let current_parent_guid = match file_path == *file {
             true => parent_guid.clone(),
-            false => "".to_string()
+            false => Uuid::default()
         };
         match find_decl_by_name_for_single_path(
             &name,

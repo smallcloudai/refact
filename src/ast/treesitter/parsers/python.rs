@@ -6,6 +6,7 @@ use std::sync::{Arc, RwLock};
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Point, Range};
 use tree_sitter_python::language;
+use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage, CommentDefinition};
 use crate::ast::treesitter::language_id::LanguageId;
@@ -178,7 +179,7 @@ impl PythonParser {
         Ok(PythonParser { parser })
     }
 
-    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
 
@@ -219,7 +220,7 @@ impl PythonParser {
         symbols
     }
 
-    fn parse_assignment(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    fn parse_assignment(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut is_class_field = false;
         {
             let mut parent_mb = parent.parent();
@@ -335,7 +336,7 @@ impl PythonParser {
         symbols
     }
 
-    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
         #[cfg(test)]
@@ -515,7 +516,7 @@ impl PythonParser {
         symbols
     }
 
-    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionDeclaration::default();
         decl.ast_fields.language = LanguageId::Python;
@@ -577,7 +578,7 @@ impl PythonParser {
         symbols
     }
 
-    fn find_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    fn find_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         for i in 0..parent.child_count() {
             let child = parent.child(i).unwrap();
@@ -588,7 +589,7 @@ impl PythonParser {
         symbols
     }
 
-    fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         match parent.kind() {
             "identifier" => {
@@ -639,7 +640,7 @@ impl PythonParser {
         symbols
     }
 
-    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();
         decl.ast_fields.language = LanguageId::Python;

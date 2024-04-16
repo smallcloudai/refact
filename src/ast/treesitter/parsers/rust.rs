@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Point, Range};
 use tree_sitter_rust::language;
+use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
@@ -117,7 +118,7 @@ impl RustParser {
         None
     }
 
-    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_function_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionDeclaration::default();
         decl.ast_fields.language = LanguageId::Rust;
@@ -192,7 +193,7 @@ impl RustParser {
         symbols
     }
 
-    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_struct_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
 
@@ -268,7 +269,7 @@ impl RustParser {
         symbols
     }
 
-    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_call_expression(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();
         decl.ast_fields.language = LanguageId::Rust;
@@ -340,7 +341,7 @@ impl RustParser {
         symbols
     }
 
-    pub fn parse_variable_definition(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_variable_definition(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         fn parse_type_in_value(parent: &Node, code: &str) -> TypeDef {
             let mut dtype = TypeDef::default();
             let kind = parent.kind();
@@ -433,7 +434,7 @@ impl RustParser {
         symbols
     }
 
-    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
         let _text = code.slice(parent.byte_range()).to_string();
@@ -485,7 +486,7 @@ impl RustParser {
                 let value_node = parent.child_by_field_name("value").unwrap();
                 let usages = self.parse_usages(&value_node, code, path, parent_guid, is_error);
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = Some(last.read().unwrap().guid().to_string());
+                    usage.ast_fields.caller_guid = Some(last.read().unwrap().guid().clone());
                 }
                 symbols.extend(usages);
                 symbols.push(Arc::new(RwLock::new(usage)));
@@ -588,7 +589,7 @@ impl RustParser {
         symbols
     }
 
-    fn find_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    fn find_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         for i in 0..parent.child_count() {
             let child = parent.child(i).unwrap();
@@ -599,7 +600,7 @@ impl RustParser {
         symbols
     }
 
-    fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         match parent.kind() {
             "field_expression" => {
@@ -618,7 +619,7 @@ impl RustParser {
                 let value_node = parent.child_by_field_name("value").unwrap();
                 let usages = self.parse_error_usages(&value_node, code, path, parent_guid);
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = Some(last.read().unwrap().guid().to_string());
+                    usage.ast_fields.caller_guid = Some(last.read().unwrap().guid().clone());
                 }
                 symbols.extend(usages);
                 if !RUST_KEYWORDS.contains(&name.as_str()) {
@@ -677,7 +678,7 @@ impl RustParser {
         symbols
     }
 
-    pub fn parse_expression_statement(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_expression_statement(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols = vec![];
         let kind = parent.kind();
         let _text = code.slice(parent.byte_range()).to_string();
@@ -707,7 +708,7 @@ impl RustParser {
         symbols
     }
 
-    pub fn parse_block(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_block(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         for i in 0..parent.child_count() {
             let child = parent.child(i).unwrap();

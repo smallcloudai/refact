@@ -12,6 +12,7 @@ use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
 use tree_sitter::{Point, Range};
+use uuid::Uuid;
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::structs::{RangeDef, SymbolType};
 
@@ -21,7 +22,7 @@ pub struct TypeDef {
     pub inference_info: Option<String>,
     pub is_pod: bool,
     pub namespace: String,
-    pub guid: Option<String>,
+    pub guid: Option<Uuid>,
     pub nested_types: Vec<TypeDef>, // for nested types, presented in templates
 }
 
@@ -85,14 +86,14 @@ impl TypeDef {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct AstSymbolFields {
-    pub guid: String,
+    pub guid: Uuid,
     pub name: String,
     pub language: LanguageId,
     pub file_path: PathBuf,
     pub content_hash: String,
     pub namespace: String,
-    pub parent_guid: Option<String>,
-    pub childs_guid: Vec<String>,
+    pub parent_guid: Option<Uuid>,
+    pub childs_guid: Vec<Uuid>,
     #[serde(with = "RangeDef")]
     pub full_range: Range,
     #[serde(with = "RangeDef")]
@@ -100,8 +101,8 @@ pub struct AstSymbolFields {
     #[serde(with = "RangeDef")]
     pub definition_range: Range,
     // extra fields for usage structs to prevent multiple downcast operations
-    pub linked_decl_guid: Option<String>,
-    pub caller_guid: Option<String>,
+    pub linked_decl_guid: Option<Uuid>,
+    pub caller_guid: Option<Uuid>,
     pub is_error: bool
 }
 
@@ -127,11 +128,11 @@ impl AstSymbolFields {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct SymbolInformation {
-    pub guid: String,
+    pub guid: Uuid,
     pub name: String,
-    pub parent_guid: String,
-    pub linked_decl_guid: String,
-    pub caller_guid: String,
+    pub parent_guid: Uuid,
+    pub linked_decl_guid: Uuid,
+    pub caller_guid: Uuid,
     pub symbol_type: SymbolType,
     pub symbol_path: String,
     pub language: LanguageId,
@@ -171,7 +172,7 @@ impl SymbolInformation {
 impl Default for AstSymbolFields {
     fn default() -> Self {
         AstSymbolFields {
-            guid: "".to_string(),
+            guid: Uuid::default(),
             name: "".to_string(),
             language: LanguageId::Unknown,
             file_path: PathBuf::new(),
@@ -217,7 +218,7 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
 
     fn symbol_info_struct(&self) -> SymbolInformation {
         SymbolInformation {
-            guid: self.guid().to_string(),
+            guid: self.guid().clone(),
             name: self.name().to_string(),
             parent_guid: self.parent_guid().clone().unwrap_or_default(),
             linked_decl_guid: self.get_linked_decl_guid().clone().unwrap_or_default(),
@@ -233,7 +234,7 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         }
     }
 
-    fn guid(&self) -> &str {
+    fn guid(&self) -> &Uuid {
         &self.fields().guid
     }
 
@@ -257,17 +258,17 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
 
     fn types(&self) -> Vec<TypeDef>;
 
-    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>);
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>);
 
     fn namespace(&self) -> &str {
         &self.fields().namespace
     }
 
-    fn parent_guid(&self) -> &Option<String> {
+    fn parent_guid(&self) -> &Option<Uuid> {
         &self.fields().parent_guid
     }
 
-    fn childs_guid(&self) -> &Vec<String> {
+    fn childs_guid(&self) -> &Vec<Uuid> {
         &self.fields().childs_guid
     }
 
@@ -287,19 +288,19 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         &self.fields().definition_range
     }
 
-    fn get_caller_guid(&self) -> &Option<String> {
+    fn get_caller_guid(&self) -> &Option<Uuid> {
         &self.fields().caller_guid
     }
 
-    fn set_caller_guid(&mut self, caller_guid: String) {
+    fn set_caller_guid(&mut self, caller_guid: Uuid) {
         self.fields_mut().caller_guid = Some(caller_guid);
     }
 
-    fn get_linked_decl_guid(&self) -> &Option<String> {
+    fn get_linked_decl_guid(&self) -> &Option<Uuid> {
         &self.fields().linked_decl_guid
     }
 
-    fn set_linked_decl_guid(&mut self, linked_decl_guid: Option<String>) {
+    fn set_linked_decl_guid(&mut self, linked_decl_guid: Option<Uuid>) {
         self.fields_mut().linked_decl_guid = linked_decl_guid;
     }
 
@@ -307,12 +308,12 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         self.fields().is_error
     }
 
-    fn remove_linked_guids(&mut self, guids: &HashSet<String>) {
+    fn remove_linked_guids(&mut self, guids: &HashSet<Uuid>) {
         let mut new_guids = vec![];
         for t in self
             .types()
             .iter_mut() {
-            if guids.contains(&t.guid.to_owned().unwrap_or_default()) {
+            if guids.contains(&t.guid.unwrap_or_default()) {
                 new_guids.push(None);
             } else {
                 new_guids.push(t.guid.clone());
@@ -390,7 +391,7 @@ impl AstSymbolInstance for StructDeclaration {
         types
     }
 
-    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>) {
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
         let mut idx = 0;
         for t in self.inherited_types.iter_mut() {
             t.guid = guids[idx].clone();
@@ -462,7 +463,7 @@ impl AstSymbolInstance for TypeAlias {
         types
     }
 
-    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>) {
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
         let mut idx = 0;
         for t in self.types.iter_mut() {
             t.guid = guids[idx].clone();
@@ -524,7 +525,7 @@ impl AstSymbolInstance for ClassFieldDeclaration {
         types
     }
 
-    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>) {
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
         let mut idx = 0;
         self.type_.guid = guids[idx].clone();
         idx += 1;
@@ -571,7 +572,7 @@ impl AstSymbolInstance for ImportDeclaration {
         vec![]
     }
 
-    fn set_guids_to_types(&mut self, _: &Vec<Option<String>>) { }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
 
     fn is_type(&self) -> bool {
         false
@@ -623,7 +624,7 @@ impl AstSymbolInstance for VariableDefinition {
         types
     }
 
-    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>) {
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
         let mut idx = 0;
         self.type_.guid = guids[idx].clone();
         idx += 1;
@@ -651,7 +652,7 @@ FunctionDeclaration
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct FunctionCaller {
     pub inference_info: String,
-    pub guid: Option<String>,
+    pub guid: Option<Uuid>,
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -720,7 +721,7 @@ impl AstSymbolInstance for FunctionDeclaration {
         types
     }
 
-    fn set_guids_to_types(&mut self, guids: &Vec<Option<String>>) {
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
         let mut idx = 0;
         if let Some(t) = &mut self.return_type {
             t.guid = guids[idx].clone();
@@ -787,7 +788,7 @@ impl AstSymbolInstance for CommentDefinition {
         vec![]
     }
 
-    fn set_guids_to_types(&mut self, _: &Vec<Option<String>>) { }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
 
     fn is_declaration(&self) -> bool { true }
 
@@ -836,7 +837,7 @@ impl AstSymbolInstance for FunctionCall {
         vec![]
     }
 
-    fn set_guids_to_types(&mut self, _: &Vec<Option<String>>) { }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
 
     fn is_declaration(&self) -> bool { false }
 
@@ -883,7 +884,7 @@ impl AstSymbolInstance for VariableUsage {
         vec![]
     }
 
-    fn set_guids_to_types(&mut self, _: &Vec<Option<String>>) { }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
 
     fn is_declaration(&self) -> bool { false }
 

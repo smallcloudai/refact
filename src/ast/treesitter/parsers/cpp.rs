@@ -1,5 +1,4 @@
-use std::collections::{HashMap, LinkedList, VecDeque};
-use std::ops::DerefMut;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::{Arc, RwLock};
@@ -8,11 +7,12 @@ use itertools::Itertools;
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
 use tree_sitter_cpp::language;
+use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
-use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_children_guids, get_guid, str_hash};
+use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid, str_hash};
 
 pub(crate) struct CppParser {
     pub parser: Parser,
@@ -183,7 +183,7 @@ impl CppParser {
         if let Some(type_node) = info.node.child_by_field_name("type") {
             if vec!["class_specifier", "struct_specifier", "enum_specifier"].contains(&type_node.kind()) {
                 let usages = self.parse_struct_declaration(info, code, candidates);
-                type_.guid = Some(usages.last().unwrap().read().unwrap().guid().to_string());
+                type_.guid = Some(*usages.last().unwrap().read().unwrap().guid());
                 type_.name = Some(usages.last().unwrap().read().unwrap().name().to_string());
                 symbols.extend(usages);
             } else {
@@ -333,7 +333,7 @@ impl CppParser {
                              parent: &Node<'a>,
                              code: &str,
                              path: &PathBuf,
-                             parent_guid: &String,
+                             parent_guid: &Uuid,
                              is_error: bool,
                              candidates: &mut VecDeque<CandidateInfo<'a>>)
                              -> (Vec<AstSymbolInstanceArc>, Vec<TypeDef>, String, String) {
@@ -599,7 +599,7 @@ impl CppParser {
         symbols
     }
 
-    fn find_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    fn find_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         for i in 0..parent.child_count() {
             let child = parent.child(i).unwrap();
@@ -610,7 +610,7 @@ impl CppParser {
         symbols
     }
 
-    fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &String) -> Vec<AstSymbolInstanceArc> {
+    fn parse_error_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         match parent.kind() {
             "identifier" | "field_identifier" => {
@@ -799,9 +799,9 @@ impl CppParser {
             symbols.extend(symbols_l);
         }
         let guid_to_symbol_map = symbols.iter()
-            .map(|s| (s.clone().read().unwrap().guid().to_string(), s.clone())).collect::<HashMap<_, _>>();
+            .map(|s| (s.clone().read().unwrap().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
         for symbol in symbols.iter_mut() {
-            let guid = symbol.read().unwrap().guid().to_string();
+            let guid = symbol.read().unwrap().guid().clone();
             if let Some(parent_guid) = symbol.read().unwrap().parent_guid() {
                 if let Some(parent) = guid_to_symbol_map.get(parent_guid) {
                     parent.write().unwrap().fields_mut().childs_guid.push(guid);

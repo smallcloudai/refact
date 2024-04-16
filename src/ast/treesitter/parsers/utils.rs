@@ -1,15 +1,10 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::io::repeat;
-use itertools::Itertools;
-use similar::DiffableStr;
 use tree_sitter::Node;
 use uuid::Uuid;
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc};
 
 
-pub(crate) fn get_guid() -> String {
-    let id = Uuid::new_v4();
-    id.to_string()
+pub(crate) fn get_guid() -> Uuid {
+    Uuid::new_v4()
 }
 
 pub(crate) fn str_hash(s: &String) -> String {
@@ -17,13 +12,13 @@ pub(crate) fn str_hash(s: &String) -> String {
     format!("{:x}", digest)
 }
 
-pub(crate) fn get_children_guids(parent_guid: &String, children: &Vec<AstSymbolInstanceArc>) -> Vec<String> {
+pub(crate) fn get_children_guids(parent_guid: &Uuid, children: &Vec<AstSymbolInstanceArc>) -> Vec<Uuid> {
     let mut result = Vec::new();
     for child in children {
         let child_ref = child.read().expect("the data might be broken");
         if let Some(child_guid) = child_ref.parent_guid() {
             if child_guid == parent_guid {
-                result.push(child_ref.guid().to_string());
+                result.push(child_ref.guid().clone());
             }
         }
     }
@@ -34,18 +29,18 @@ pub(crate) fn get_children_guids(parent_guid: &String, children: &Vec<AstSymbolI
 pub(crate) struct CandidateInfo<'a> {
     pub ast_fields: AstSymbolFields,
     pub node: Node<'a>,
-    pub parent_guid: String
+    pub parent_guid: Uuid
 } 
 
 #[cfg(test)]
 pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
     let guid_to_symbol_map = symbols.iter()
-        .map(|s| (s.clone().read().unwrap().guid().to_string(), s.clone())).collect::<HashMap<_, _>>();
+        .map(|s| (s.clone().read().unwrap().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
     let sorted = symbols.iter().sorted_by_key(|x| x.read().unwrap().full_range().start_byte).collect::<Vec<_>>();
     let mut used_guids: HashSet<String> = Default::default();
     
     for sym in sorted {
-        let guid = sym.read().unwrap().guid().to_string();
+        let guid = sym.read().unwrap().guid().clone();
         if used_guids.contains(&guid) {
             continue;
         }

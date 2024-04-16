@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use serde_json::json;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use tokio::sync::Mutex as AMutex;
+use uuid::Uuid;
 use crate::call_validation::{ChatMessage, ContextFile};
 use crate::vecdb::structs::{Record, VecdbSearch};
 
@@ -30,7 +31,7 @@ fn results2message(results: &Vec<Record>) -> ChatMessage {
             file_content: r.window_text.clone(),
             line1: r.start_line as usize + 1,
             line2: r.end_line as usize + 1,
-            symbol: "".to_string(),
+            symbol: Uuid::default(),
             gradient_type: -1,
             usefulness: r.usefulness,
         });

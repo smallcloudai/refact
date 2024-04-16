@@ -32,7 +32,7 @@ async fn _lookup_code_completion_scratchpad(
         &recommended_model_record.default_scratchpad,
     )?;
     let mut n_ctx = caps_locked.code_completion_n_ctx;
-    if n_ctx == 0 { n_ctx = 2048 }
+    if n_ctx == 0 { n_ctx = 4096 }
     Ok((model_name, sname.clone(), patch.clone(), n_ctx))
 }
 

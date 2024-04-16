@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::collections::HashMap;
 use std::cell::RefCell;
+use uuid::Uuid;
 use crate::ast::structs::FileASTMarkup;
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, read_symbol, SymbolInformation};
 use crate::files_in_workspace::Document;
@@ -16,14 +17,14 @@ pub async fn lowlevel_file_markup(
         // filter is_declaration?
         Arc::new(RefCell::new(s_ref.symbol_info_struct()))
     }).collect();
-    let guid_to_symbol: HashMap<String, Arc<RefCell<SymbolInformation>>> = symbols4export.iter().map(
-        |s| (s.borrow().guid.to_string(), s.clone())
+    let guid_to_symbol: HashMap<Uuid, Arc<RefCell<SymbolInformation>>> = symbols4export.iter().map(
+        |s| (s.borrow().guid.clone(), s.clone())
     ).collect();
-    fn recursive_path_of_guid(guid_to_symbol: &HashMap<String, Arc<RefCell<SymbolInformation>>>, guid: &String) -> String
+    fn recursive_path_of_guid(guid_to_symbol: &HashMap<Uuid, Arc<RefCell<SymbolInformation>>>, guid: &Uuid) -> String
     {
         return match guid_to_symbol.get(guid) {
             Some(x) => {
-                let pname = if !x.borrow().name.is_empty() { x.borrow().name.clone() } else { x.borrow().guid[..8].to_string() };
+                let pname = if !x.borrow().name.is_empty() { x.borrow().name.clone() } else { x.borrow().guid.to_string()[..8].to_string() };
                 let pp = recursive_path_of_guid(&guid_to_symbol, &x.borrow().parent_guid);
                 format!("{}::{}", pp, pname)
             }

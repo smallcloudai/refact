@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
+use uuid::Uuid;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
@@ -341,7 +342,7 @@ pub async fn postprocess_rag_stage_3_6(
             continue;
         }
         let mut maybe_symbol: Option<&SymbolInformation> = None;
-        if !omsg.symbol.is_empty() {
+        if !omsg.symbol.is_nil() {
             for x in fref.markup.symbols_sorted_by_path_len.iter() {
                 if x.guid == omsg.symbol {
                     maybe_symbol = Some(x);
@@ -598,7 +599,7 @@ pub async fn postprocess_rag_stage_7_9(
             file_content: out.clone(),
             line1: first_line,
             line2: last_line,
-            symbol: "".to_string(),
+            symbol: Uuid::default(),
             gradient_type: -1,
             usefulness: 0.0,
         });

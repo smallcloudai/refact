@@ -12,6 +12,7 @@ use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use tracing::{info, error};
 use tree_sitter::Point;
+use uuid::Uuid;
 
 use crate::ast::ast_module::AstModule;
 use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
@@ -311,7 +312,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                     file_content: "".to_string(),
                     line1: (fim_line1 + 1) as usize,
                     line2: (fim_line2 + 1) as usize,
-                    symbol: "".to_string(),
+                    symbol: Uuid::default(),
                     gradient_type: -1,
                     usefulness: -1.0,
                 };

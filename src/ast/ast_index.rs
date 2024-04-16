@@ -8,6 +8,7 @@ use sorted_vec::SortedVec;
 use strsim::jaro_winkler;
 use tracing::info;
 use tree_sitter::Point;
+use uuid::Uuid;
 
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::FileASTMarkup;
@@ -23,10 +24,10 @@ use crate::files_in_workspace::Document;
 #[derive(Debug)]
 pub struct AstIndex {
     symbols_by_name: HashMap<String, Vec<AstSymbolInstanceArc>>,
-    symbols_by_guid: HashMap<String, AstSymbolInstanceArc>,
+    symbols_by_guid: HashMap<Uuid, AstSymbolInstanceArc>,
     path_by_symbols: HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
-    type_guid_to_dependent_guids: HashMap<String, HashSet<String>>,
-    declaration_guid_to_usage_names: HashMap<String, HashSet<String>>,
+    type_guid_to_dependent_guids: HashMap<Uuid, HashSet<Uuid>>,
+    declaration_guid_to_usage_names: HashMap<Uuid, HashSet<String>>,
     has_changes: bool,
 }
 
@@ -100,7 +101,7 @@ impl AstIndex {
         for symbol in symbols.iter() {
             let symbol_ref = read_symbol(symbol);
             self.symbols_by_name.entry(symbol_ref.name().to_string()).or_insert_with(Vec::new).push(symbol.clone());
-            self.symbols_by_guid.insert(symbol_ref.guid().to_string(), symbol.clone());
+            self.symbols_by_guid.insert(symbol_ref.guid().clone(), symbol.clone());
             self.path_by_symbols.entry(doc.path.clone()).or_insert_with(Vec::new).push(symbol.clone());
             symbol_names.push(symbol_ref.name().to_string());
         }
@@ -125,12 +126,12 @@ impl AstIndex {
             .iter() {
             let (name, guid) = {
                 let symbol_ref = read_symbol(symbol);
-                (symbol_ref.name().to_string(), symbol_ref.guid().to_string())
+                (symbol_ref.name().to_string(), symbol_ref.guid().clone())
             };
             self.symbols_by_name
                 .entry(name)
                 .and_modify(|v| {
-                    v.retain(|s| read_symbol(s).guid() != guid);
+                    v.retain(|s| *read_symbol(s).guid() != guid);
                 });
 
             self.symbols_by_guid.remove(&guid);
@@ -144,7 +145,7 @@ impl AstIndex {
                 // some leftovers still are in the values, but it doesn't break the overall thing for now
                 self.declaration_guid_to_usage_names.remove(&guid);
             }
-            removed_guids.insert(guid);
+            removed_guids.insert(guid.clone());
         }
         for symbol in self.symbols_by_guid.values_mut() {
             symbol.write().expect("the data might be broken").remove_linked_guids(&removed_guids);
@@ -298,7 +299,7 @@ impl AstIndex {
             .collect::<Vec<_>>())
     }
 
-    pub fn search_related_declarations(&self, guid: &str) -> Result<Vec<AstSymbolInstanceArc>, String> {
+    pub fn search_related_declarations(&self, guid: &Uuid) -> Result<Vec<AstSymbolInstanceArc>, String> {
         match self.symbols_by_guid.get(guid) {
             Some(symbol) => {
                 Ok(read_symbol(symbol)
@@ -315,7 +316,7 @@ impl AstIndex {
 
     pub fn search_symbols_by_declarations_usage(
         &self,
-        declaration_guid: &str,
+        declaration_guid: &Uuid,
         exception_doc: Option<Document>,
     ) -> Result<Vec<AstSymbolInstanceArc>, String> {
         Ok(self.type_guid_to_dependent_guids
@@ -347,7 +348,7 @@ impl AstIndex {
             .iter()
             .unique_by(|s| {
                 let s_ref = read_symbol(s);
-                (s_ref.guid().to_string(), s_ref.name().to_string())
+                (s_ref.guid().clone(), s_ref.name().to_string())
             })
             .filter(|s| !read_symbol(s).name().is_empty())
             .sorted_by_key(|a| read_symbol(a).distance_to_cursor(&cursor))
@@ -367,7 +368,7 @@ impl AstIndex {
                         .flatten()
                 }
             })
-            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).guid().clone())
             .cloned()
             .collect::<Vec<_>>();
 
@@ -386,7 +387,7 @@ impl AstIndex {
                     || symbol_type == SymbolType::TypeAlias
                     || symbol_type == SymbolType::FunctionDeclaration
             })
-            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
@@ -408,7 +409,7 @@ impl AstIndex {
                 *s_ref.language() == language.unwrap_or(*s_ref.language())
             })
             .chain(declarations_matched_by_name)
-            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
@@ -429,14 +430,14 @@ impl AstIndex {
             .filter(|s| {
                 read_symbol(s).symbol_type() == SymbolType::FunctionCall
             })
-            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_usage_for_each_decl)
             .collect::<Vec<_>>();
         let usages = declarations
             .iter()
             .map(|s| {
-                let guid = read_symbol(s).guid().to_string();
+                let guid = read_symbol(s).guid().clone();
                 let symbols_by_declarations = self.search_symbols_by_declarations_usage(&guid, None)
                     .unwrap_or_default()
                     .clone();
@@ -458,7 +459,7 @@ impl AstIndex {
             })
             .flatten()
             .chain(func_usages_matched_by_name)
-            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .collect::<Vec<_>>();
 
@@ -490,7 +491,7 @@ impl AstIndex {
             .filter(|&(_, a)| *a > (cursor_symbols_names.len() / 5))
             .take(top_n_near_cursor * 2)
             .filter_map(|(g, _)| self.symbols_by_guid.get(*g))
-            .unique_by(|s| read_symbol(s).guid().to_string())
+            .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
             .cloned()
@@ -590,7 +591,7 @@ impl AstIndex {
             .collect()
     }
 
-    pub(crate) fn symbols_by_guid(&self) -> &HashMap<String, AstSymbolInstanceArc> {
+    pub(crate) fn symbols_by_guid(&self) -> &HashMap<Uuid, AstSymbolInstanceArc> {
         &self.symbols_by_guid
     }
 
@@ -639,7 +640,7 @@ impl AstIndex {
                                 FilePathIterator::compare_paths(&symb_path, &path_a, &path_b)
                             })
                             .next()
-                            .map(|s| read_symbol(s).guid().to_string())
+                            .map(|s| read_symbol(s).guid().clone())
                     }
                     None => {
                         stats.non_found += 1;
@@ -670,7 +671,7 @@ impl AstIndex {
     pub(crate) async fn merge_usages_to_declarations(&self, symbols: &Vec<AstSymbolInstanceArc>) -> IndexingStats {
         fn get_caller_depth(
             symbol: &AstSymbolInstanceArc,
-            guid_by_symbols: &HashMap<String, AstSymbolInstanceArc>,
+            guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>,
             current_depth: usize,
         ) -> usize {
             let caller_guid = match read_symbol(symbol)
@@ -688,7 +689,7 @@ impl AstIndex {
         }
 
         let mut stats = IndexingStats { found: 0, non_found: 0 };
-        let extra_index: HashMap<(String, String, String), AstSymbolInstanceArc> = symbols
+        let extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceArc> = symbols
             .iter()
             .map(|x| {
                 let x_ref = read_symbol(x);
@@ -717,7 +718,7 @@ impl AstIndex {
                 break;
             }
 
-            let mut symbols_cache: HashMap<(String, String), Option<String>> = HashMap::new();
+            let mut symbols_cache: HashMap<(Uuid, String), Option<Uuid>> = HashMap::new();
             for (_, usage_symbol) in symbols_to_process
                 .iter()
                 .enumerate() {
@@ -783,7 +784,7 @@ impl AstIndex {
             .iter()
             .filter(|s| !read_symbol(s).is_type())
             .cloned() {
-            let guid = read_symbol(&symbol).guid().to_string();
+            let guid = read_symbol(&symbol).guid().clone();
             if self.type_guid_to_dependent_guids.contains_key(&guid) {
                 self.type_guid_to_dependent_guids.remove(&guid);
             }
@@ -798,7 +799,7 @@ impl AstIndex {
             .cloned() {
             let (name, s_guid, mut types, is_declaration, symbol_type, parent_guid) = {
                 let s_ref = read_symbol(&symbol);
-                (s_ref.name().to_string(), s_ref.guid().to_string(), s_ref.types(), s_ref.is_declaration(),
+                (s_ref.name().to_string(), s_ref.guid().clone(), s_ref.types(), s_ref.is_declaration(),
                  s_ref.symbol_type(), s_ref.parent_guid().clone())
             };
             types = if is_declaration {

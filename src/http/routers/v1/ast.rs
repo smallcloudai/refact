@@ -6,6 +6,7 @@ use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use url::Url;
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::ast::ast_index::RequestSymbolType;
 use crate::custom_error::ScratchError;
@@ -22,7 +23,7 @@ struct AstQuerySearchBy {
 
 #[derive(Serialize, Deserialize, Clone)]
 struct AstQuerySearchByGuid {
-    guid: String,
+    guid: Uuid,
 }
 
 

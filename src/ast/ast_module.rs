@@ -7,6 +7,7 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::info;
 use tree_sitter::Point;
+use uuid::Uuid;
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstIndexService, AstEventType};
@@ -153,7 +154,7 @@ impl AstModule {
         }
     }
 
-    pub async fn search_related_declarations(&self, guid: &str) -> Result<AstQuerySearchResult, String> {
+    pub async fn search_related_declarations(&self, guid: &Uuid) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         match self.ast_index.read().await.search_related_declarations(guid) {
             Ok(results) => {
@@ -185,7 +186,7 @@ impl AstModule {
         }
     }
 
-    pub async fn search_usages_by_declarations(&self, declaration_guid: &str) -> Result<AstQuerySearchResult, String> {
+    pub async fn search_usages_by_declarations(&self, declaration_guid: &Uuid) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
         match self.ast_index.read().await.search_symbols_by_declarations_usage(declaration_guid, None) {
             Ok(results) => {

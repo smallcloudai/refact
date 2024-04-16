@@ -3,6 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde_json::json;
 use tokio::sync::Mutex as AMutex;
+use uuid::Uuid;
 use crate::ast::ast_index::RequestSymbolType;
 
 use crate::ast::structs::FileReferencesResult;
@@ -18,7 +19,7 @@ fn results2message(result: &FileReferencesResult) -> ChatMessage {
             file_content: format!("{:?}", x.symbol_type),
             line1: x.full_range.start_point.row + 1,
             line2: x.full_range.end_point.row + 1,
-            symbol: "".to_string(),
+            symbol: Uuid::default(),
             gradient_type: -1,
             usefulness: 100.0
         }

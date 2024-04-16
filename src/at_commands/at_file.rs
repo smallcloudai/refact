@@ -4,6 +4,7 @@ use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 use std::sync::Arc;
+use uuid::Uuid;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
@@ -213,7 +214,7 @@ impl AtCommand for AtFile {
             file_content: file_text,
             line1,
             line2,
-            symbol: "".to_string(),
+            symbol: Uuid::default(),
             gradient_type,
             usefulness: 100.0,
         };
