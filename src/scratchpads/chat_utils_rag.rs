@@ -379,7 +379,9 @@ pub async fn postprocess_rag_stage_3_6(
     {
         let mut changes_cnt = 0;
         for i in line1_base0 .. line2_base0 {
-            assert!(i < linevec.len());
+            if i >= linevec.len() {
+                continue;
+            }
             let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
             unsafe {
                 if subsymbol.starts_with(&(*lineref_mut).color) { // && subsymbol != &(*lineref_mut).color {
