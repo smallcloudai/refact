@@ -132,12 +132,33 @@ pub async fn correct_to_nearest_filename(
     return vec![];
 }
 
+fn absolute(path: &std::path::Path) -> std::io::Result<PathBuf> {
+    let mut components = path.strip_prefix(".").unwrap_or(path).components();
+    let path_os = path.as_os_str().as_encoded_bytes();
+    let mut normalized = if path.is_absolute() {
+        if path_os.starts_with(b"//") && !path_os.starts_with(b"///") {
+            components.next();
+            PathBuf::from("//")
+        } else {
+            PathBuf::new()
+        }
+    } else {
+        std::env::current_dir()?
+    };
+    normalized.extend(components);
+    if path_os.ends_with(b"/") {
+        normalized.push("");
+    }
+    Ok(normalized)
+}
+
 pub fn canonical_path(s: &String) -> PathBuf {
     let mut res = match PathBuf::from(s).canonicalize() {
         Ok(x) => x,
         Err(e) => {
-            warn!("canonical_path: {:?} doesn't work: {}", s, e);
-            return PathBuf::from(s);
+            let a = absolute(std::path::Path::new(s)).unwrap_or(PathBuf::from(s));
+            // warn!("canonical_path: {:?} doesn't work: {}\n using absolute path instead {}", s, e, a.display());
+            a
         }
     };
     // info!("WTF: {:?}", res);
@@ -601,9 +622,9 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
     enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 }
 
-pub async fn file_watcher_event(event: Event, gcx: Weak<ARwLock<GlobalContext>>) -> bool
+pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalContext>>) -> bool
 {
-    async fn on_create_modify(gcx: Weak<ARwLock<GlobalContext>>, event: Event) {
+    async fn on_create_modify(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         let mut docs = vec![];
         for p in &event.paths {
             if is_this_inside_blacklisted_dir(&p) {  // important to filter BEFORE canonical_path
@@ -616,22 +637,43 @@ pub async fn file_watcher_event(event: Event, gcx: Weak<ARwLock<GlobalContext>>)
             return;
         }
         info!("EventKind::Create/Modify {} paths", event.paths.len());
-        if let Some(gcx) = gcx.upgrade() {
+        if let Some(gcx) = gcx_weak.clone().upgrade() {
             enqueue_some_docs(gcx, &docs, false).await;
         }
     }
 
-    async fn on_remove(event: Event) -> bool {
+    async fn on_remove(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) -> bool {
         let mut never_mind = true;
         for p in &event.paths {
             never_mind &= is_this_inside_blacklisted_dir(&p);
-            // let cpath = crate::files_in_workspace::canonical_path(&p.to_string_lossy().to_string());
-            // nothing we can do with cpath
         }
         if !never_mind {
             info!("EventKind::Remove {:?}", event.paths);
-            info!("Likely a useful file was removed, rebuild index");
-            return true;
+            if let Some(gcx) = gcx_weak.clone().upgrade() {
+                let wf_arc = gcx.read().await.documents_state.workspace_files.clone();
+                if let Ok(wf_locked) = wf_arc.lock() {
+                    for p in &event.paths {
+                        let mut a_known_file = false;
+                        if is_this_inside_blacklisted_dir(&p) {
+                            continue;
+                        }
+                        let cpath = crate::files_in_workspace::canonical_path(&p.to_string_lossy().to_string());
+                        for p in wf_locked.iter() {
+                            if *p == cpath {
+                                a_known_file = true;
+                                break;
+                            }
+                        }
+                        if a_known_file {
+                            info!("    found {} was indexed previously => rebuild index\n", crate::nicer_logs::last_n_chars(&cpath.to_string_lossy().to_string(), 30));
+                            return true;
+                        } else {
+                            info!("    deleted file {} wasn't in the index, ignore", crate::nicer_logs::last_n_chars(&cpath.to_string_lossy().to_string(), 30));
+                        }
+                    }
+                }
+                drop(wf_arc);
+            }
         }
         return false;
     }
@@ -639,8 +681,8 @@ pub async fn file_watcher_event(event: Event, gcx: Weak<ARwLock<GlobalContext>>)
     match event.kind {
         EventKind::Any => {},
         EventKind::Access(_) => {},
-        EventKind::Create(CreateKind::File) | EventKind::Modify(ModifyKind::Data(DataChange::Content)) => on_create_modify(gcx.clone(), event).await,
-        EventKind::Remove(RemoveKind::File) => return on_remove(event).await,
+        EventKind::Create(CreateKind::File) | EventKind::Modify(ModifyKind::Data(DataChange::Content)) => on_create_modify(gcx_weak.clone(), event).await,
+        EventKind::Remove(RemoveKind::File) => return on_remove(gcx_weak.clone(), event).await,
         EventKind::Other => {}
         _ => {}
     }

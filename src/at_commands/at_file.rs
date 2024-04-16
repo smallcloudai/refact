@@ -85,7 +85,7 @@ pub fn colon_lines_range_from_arg(value: &mut String) -> Option<ColonLinesRange>
 
 fn gradient_type_from_range_kind(range: &Option<ColonLinesRange>) -> i32 {
     if let Some(range) = range {
-        match range.kind { 
+        match range.kind {
             RangeKind::GradToCursorTwoSided => 1,
             RangeKind::GradToCursorPrefix => 2,
             RangeKind::GradToCursorSuffix => 3,
@@ -193,11 +193,11 @@ impl AtCommand for AtFile {
 
         let mut line1 = 0;
         let mut line2 = 0;
-        
+
         let colon_kind_mb = colon_lines_range_from_arg(&mut file_path);
-        
+
         let gradient_type = gradient_type_from_range_kind(&colon_kind_mb);
-        
+
         let cpath = crate::files_in_workspace::canonical_path(&file_path);
         let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?;
 
