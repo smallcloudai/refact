@@ -1,19 +1,21 @@
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-
     use crate::ast::treesitter::parsers::AstLanguageParser;
-    use crate::ast::treesitter::parsers::rust::RustParser;
+    use crate::ast::treesitter::parsers::tests::print;
+    use crate::ast::treesitter::parsers::ts::TSParser;
 
-    const MAIN_RS_CODE: &str = include_str!("cases/rust/main.rs");
+
+    const MAIN_RS_CODE: &str = include_str!("cases/ts/main.ts");
     // const MAIN_RS_INDEXES: &str = include_str!("cases/rust/main.rs.indexes.json");
     // const MAIN_RS_USAGES: &str = include_str!("cases/rust/main.rs.usages.json");
 
     #[test]
     fn test_query_rust_function() {
-        let mut parser = Box::new(RustParser::new().expect("RustParser::new"));
-        let asd = parser.parse(MAIN_RS_CODE, &PathBuf::from("main.rs"));
-        let asd = parser.parse(MAIN_RS_CODE, &PathBuf::from("main.rs"));
+        let mut parser = Box::new(TSParser::new().expect("TSParser::new"));
+        let asd = parser.parse(MAIN_RS_CODE, &PathBuf::from("main.ts"));
+        print(&asd, MAIN_RS_CODE);
+        let asd = parser.parse(MAIN_RS_CODE, &PathBuf::from("main.ts"));
         // let indexes_json: HashMap<String, SymbolDeclarationStruct> = serde_json::from_str(MAIN_RS_INDEXES).unwrap();
 
         // test_query_function(parser, &path, MAIN_RS_CODE,

@@ -14,6 +14,7 @@ mod tests;
 mod utils;
 mod java;
 mod cpp;
+mod ts;
 
 
 #[derive(Debug, PartialEq, Eq)]
@@ -49,6 +50,10 @@ fn get_ast_parser(language_id: LanguageId) -> Result<Box<dyn AstLanguageParser +
         }
         LanguageId::Cpp => {
             let parser = cpp::CppParser::new()?;
+            Ok(Box::new(parser))
+        }
+        LanguageId::TypeScript => {
+            let parser = ts::TSParser::new()?;
             Ok(Box::new(parser))
         }
         other => Err(ParserError {
