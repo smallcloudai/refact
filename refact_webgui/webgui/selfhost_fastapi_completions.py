@@ -309,9 +309,9 @@ class BaseCompletionsRouter(APIRouter):
 
             "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
             "tokenizer_rewrite_path": {
-                model: self._model_assigner.models_db[model]["model_path"]
+                model: self._model_assigner.models_db_with_passthrough[model]["model_path"]
                 for model in models_available
-                if model in self._model_assigner.models_db
+                if model in self._model_assigner.models_db_with_passthrough
             },
             "caps_version": self._caps_version,
         }
@@ -575,7 +575,7 @@ class BaseCompletionsRouter(APIRouter):
         model_name = passthrough_mini_db.get(post.model, {}).get("resolve_as", post.model)
         log(f"chat/completions: model resolve {post.model} -> {model_name}")
 
-        if post.model in litellm.model_list:
+        if model_name in litellm.model_list:
             async def litellm_streamer(post: ChatContext):
                 try:
                     self._integrations_env_setup()

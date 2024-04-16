@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_webutils import log
-from known_models_db.refact_known_models import models_mini_db
+from known_models_db.refact_known_models import models_mini_db, passthrough_mini_db
 from known_models_db.refact_toolbox_db import modelcap_records
 
 from typing import List, Dict, Set, Any
@@ -37,6 +37,10 @@ class ModelAssigner:
     @property
     def models_db(self) -> Dict[str, Any]:
         return models_mini_db
+
+    @property
+    def models_db_with_passthrough(self) -> Dict[str, Any]:
+        return {**models_mini_db, **passthrough_mini_db}
 
     @property
     def models_caps_db(self) -> List:
