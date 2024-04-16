@@ -10,7 +10,7 @@ use ropey::Rope;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use strsim::normalized_damerau_levenshtein;
 
-use tracing::{info, warn};
+use tracing::info;
 use walkdir::WalkDir;
 use which::which;
 
@@ -155,7 +155,7 @@ fn absolute(path: &std::path::Path) -> std::io::Result<PathBuf> {
 pub fn canonical_path(s: &String) -> PathBuf {
     let mut res = match PathBuf::from(s).canonicalize() {
         Ok(x) => x,
-        Err(e) => {
+        Err(_) => {
             let a = absolute(std::path::Path::new(s)).unwrap_or(PathBuf::from(s));
             // warn!("canonical_path: {:?} doesn't work: {}\n using absolute path instead {}", s, e, a.display());
             a
