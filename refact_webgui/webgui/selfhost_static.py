@@ -38,7 +38,7 @@ class StaticRouter(APIRouter):
             raise HTTPException(404, "Path \"%s\" not found" % file_path)
 
         for spath in self.static_folders:
-            fn = os.path.join(spath, file_path)
+            fn = spath + "/" + file_path
             if os.path.exists(fn):
                 if fn.endswith(".cjs"):
                     return FileResponse(fn, media_type="text/javascript")
