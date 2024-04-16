@@ -298,8 +298,10 @@ impl DocumentsState {
                 }
                 if new_total_reset {
                     if let Some(gcx) = gcx_weak.upgrade() {
+                        info!("total index rebuild\n");
                         let mut gcx_locked = gcx.write().await;
                         gcx_locked.documents_state.total_reset = true;
+                        gcx.write().await.documents_state.total_reset_ts = std::time::SystemTime::now() + std::time::Duration::from_secs(10);
                     }
                     rt.spawn(file_watcher_total_reset(gcx_weak.clone()));
                 }
