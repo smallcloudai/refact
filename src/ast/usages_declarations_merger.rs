@@ -60,32 +60,37 @@ pub fn find_decl_by_caller_guid(
     symbol: &AstSymbolInstanceArc,
     caller_guid: &Uuid,
     guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>,
+    extra_search_index: &HashMap<(String, Uuid, SymbolType), Uuid>,
 ) -> Option<Uuid> {
     let (symbol_type, name, is_error_node) = {
         let s = read_symbol(symbol);
         (s.symbol_type().to_owned(), s.name().to_owned(), s.is_error())
     };
-    let search_symbol_type = match symbol_type {
-        SymbolType::FunctionCall => { SymbolType::FunctionDeclaration }
-        SymbolType::VariableUsage => { SymbolType::ClassFieldDeclaration }
-        _ => { return None; }
+    let search_symbol_types: Vec<SymbolType> = if !is_error_node {
+        match symbol_type {
+            SymbolType::FunctionCall => { vec![SymbolType::FunctionDeclaration] }
+            SymbolType::VariableUsage => { vec![SymbolType::VariableDefinition, SymbolType::ClassFieldDeclaration] }
+            _ => { return None; }
+        }
+    } else {
+        vec![SymbolType::ClassFieldDeclaration, SymbolType::VariableDefinition, SymbolType::FunctionDeclaration]
     };
+
     let caller_symbol = match guid_by_symbols.get(caller_guid) {
         Some(s) => { s }
         None => { return None; }
     };
 
-    let decl_symbol = match read_symbol(caller_symbol)
-        .symbol_type() {
+    let (symbol_type, linked_decl_guid) = {
+        let s_ref = read_symbol(caller_symbol);
+        (s_ref.symbol_type().clone(), s_ref.get_linked_decl_guid().clone())
+    };
+    let decl_symbol = match symbol_type {
         SymbolType::FunctionCall => {
-            let linked_decl_guid = read_symbol(caller_symbol)
-                .get_linked_decl_guid()
-                .to_owned();
             linked_decl_guid
                 .map(|guid| {
-                    guid_by_symbols
-                        .get(&guid)?
-                        .read().expect("the data might be broken")
+                    let symbol_ref = read_symbol(guid_by_symbols.get(&guid)?);
+                    symbol_ref
                         .as_any()
                         .downcast_ref::<FunctionDeclaration>()?
                         .return_type
@@ -96,8 +101,7 @@ pub fn find_decl_by_caller_guid(
                 })?
         }
         SymbolType::VariableUsage => {
-            read_symbol(caller_symbol)
-                .get_linked_decl_guid()
+            linked_decl_guid
                 .as_ref()
                 .map(|guid| guid_by_symbols.get(guid))?
         }
@@ -108,20 +112,19 @@ pub fn find_decl_by_caller_guid(
         .parent_guid()
         .as_ref()
         .map(|guid| { guid_by_symbols.get(guid) })??;
-    return match guid_by_symbols
+    let decl_symbol_parent_guid = read_symbol(decl_symbol_parent).guid().clone();
+
+    search_symbol_types
         .iter()
-        .filter(|(_, symbol)| {
-            let s_ref = read_symbol(symbol);
-            let valid_type = is_error_node || (s_ref.symbol_type() == search_symbol_type);
-            valid_type
-                && s_ref.parent_guid().clone().unwrap_or_default() == *read_symbol(decl_symbol_parent).guid()
-                && s_ref.name() == name
+        .map(|symbol_type| {
+            let search_q = (name.clone(), decl_symbol_parent_guid, symbol_type.clone());
+            extra_search_index.get(&search_q)
         })
-        .map(|(_, symbol)| symbol)
-        .next() {
-        Some(s) => { Some(read_symbol(s).guid().clone()) }
-        None => { return None; }
-    };
+        .filter_map(|guid| guid)
+        .cloned()
+        .collect::<Vec<_>>()
+        .first()
+        .cloned()
 }
 
 fn find_decl_by_name_for_single_path(

@@ -22,7 +22,7 @@ pub(crate) struct RangeDef {
     pub end_point: Point,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Eq, Hash)]
 pub enum SymbolType {
     StructDeclaration,
     TypeAlias,

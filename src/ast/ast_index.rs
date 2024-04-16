@@ -605,8 +605,10 @@ impl AstIndex {
 
     pub(crate) async fn resolve_types(&self, symbols: &Vec<AstSymbolInstanceArc>) -> IndexingStats {
         let mut stats = IndexingStats { found: 0, non_found: 0 };
-        for symbol in symbols {
-            tokio::task::yield_now().await;
+        for (idx, symbol) in symbols.iter().enumerate() {
+            if idx % 100 == 0 {
+                tokio::task::yield_now().await;
+            }
             let (type_names, symb_type, symb_path) = {
                 let s_ref = read_symbol(symbol);
                 (s_ref.types(), s_ref.symbol_type(), s_ref.file_path().clone())
@@ -634,12 +636,11 @@ impl AstIndex {
                         symbols
                             .iter()
                             .filter(|s| read_symbol(s).is_type())
-                            .sorted_by(|a, b| {
+                            .min_by(|a, b| {
                                 let path_a = read_symbol(a).file_path().clone();
                                 let path_b = read_symbol(b).file_path().clone();
                                 FilePathIterator::compare_paths(&symb_path, &path_a, &path_b)
                             })
-                            .next()
                             .map(|s| read_symbol(s).guid().clone())
                     }
                     None => {
@@ -689,7 +690,7 @@ impl AstIndex {
         }
 
         let mut stats = IndexingStats { found: 0, non_found: 0 };
-        let extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceArc> = symbols
+        let search_by_name_extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceArc> = symbols
             .iter()
             .map(|x| {
                 let x_ref = read_symbol(x);
@@ -699,17 +700,25 @@ impl AstIndex {
                  x.clone())
             })
             .collect();
+        let search_by_caller_extra_index: HashMap<(String, Uuid, SymbolType), Uuid> = symbols
+            .iter()
+            .map(|x| {
+                let x_ref = read_symbol(x);
+                ((x_ref.name().to_string(),
+                  x_ref.parent_guid().clone().unwrap_or_default(),
+                  x_ref.symbol_type().clone()),
+                 x_ref.guid().clone())
+            })
+            .collect();
         let mut depth: usize = 0; // depth means "a.b.c" it's 2 for c
         loop {
             let symbols_to_process = symbols
                 .iter()
                 .filter(|symbol| {
-                    read_symbol(symbol).get_linked_decl_guid().is_none()
-                })
-                .filter(|symbol| {
                     let s_ref = read_symbol(symbol);
+                    let has_no_linked_decl = s_ref.get_linked_decl_guid().is_none();
                     let valid_depth = get_caller_depth(symbol, &self.symbols_by_guid, 0) == depth;
-                    valid_depth && (s_ref.symbol_type() == SymbolType::FunctionCall
+                    has_no_linked_decl && valid_depth && (s_ref.symbol_type() == SymbolType::FunctionCall
                         || s_ref.symbol_type() == SymbolType::VariableUsage)
                 })
                 .collect::<Vec<_>>();
@@ -719,10 +728,12 @@ impl AstIndex {
             }
 
             let mut symbols_cache: HashMap<(Uuid, String), Option<Uuid>> = HashMap::new();
-            for (_, usage_symbol) in symbols_to_process
+            for (idx, usage_symbol) in symbols_to_process
                 .iter()
                 .enumerate() {
-                tokio::task::yield_now().await;
+                if idx % 100 == 0 {
+                    tokio::task::yield_now().await;
+                }
                 let (name, parent_guid, caller_guid) = {
                     let s_ref = read_symbol(usage_symbol);
                     (s_ref.name().to_string(), s_ref.parent_guid().clone().unwrap_or_default(), s_ref.get_caller_guid().clone())
@@ -735,13 +746,14 @@ impl AstIndex {
                                 *usage_symbol,
                                 &guid,
                                 &self.symbols_by_guid,
+                                &search_by_caller_extra_index,
                             ) {
                                 Some(decl_guid) => { Some(decl_guid) }
                                 None => find_decl_by_name(
                                     *usage_symbol,
                                     &self.path_by_symbols,
                                     &self.symbols_by_guid,
-                                    &extra_index,
+                                    &search_by_name_extra_index,
                                     1,
                                 )
                             }
@@ -750,7 +762,7 @@ impl AstIndex {
                             *usage_symbol,
                             &self.path_by_symbols,
                             &self.symbols_by_guid,
-                            &extra_index,
+                            &search_by_name_extra_index,
                             1,
                         )
                     };
