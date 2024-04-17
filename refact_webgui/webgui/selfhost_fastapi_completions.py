@@ -14,7 +14,9 @@ from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
-from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model, resolve_model_context_size, resolve_tokenizer_name_for_model
+from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model
+from refact_webgui.webgui.selfhost_model_resolve import resolve_model_context_size
+from refact_webgui.webgui.selfhost_model_resolve import resolve_tokenizer_name_for_model
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log
@@ -300,7 +302,7 @@ class BaseCompletionsRouter(APIRouter):
             "running_models": [r for r in [*running['completion'], *running['chat']]],
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
-            "n_ctx_rewrite": {model: t for model in models_available if (t := resolve_model_context_size(model, self._model_assigner))},
+            "n_ctx_rewrite": {model: n_ctx for model in models_available if (n_ctx := resolve_model_context_size(model, self._model_assigner))},
 
             "default_embeddings_model": embeddings_default_model,
             "endpoint_embeddings_template": "v1/embeddings",

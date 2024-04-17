@@ -69,4 +69,4 @@ def resolve_tokenizer_name_for_model(model_name: str, model_assigner: ModelAssig
         return model_assigner.models_db[model_name].get('model_path')
 
     if model_name in model_assigner.passthrough_mini_db:
-        return model_assigner.passthrough_mini_db[model_name].get('tokenizer')
+        return model_assigner.passthrough_mini_db[model_name].get('tokenizer_path')

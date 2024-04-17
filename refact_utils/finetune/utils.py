@@ -96,18 +96,16 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
         if model_dict.get('has_chat'):
             result['chat'].append(k)
 
-    def add_results_for_passthrough_provider(provider: str) -> None:
-        [
-            add_result(k, {'has_chat': 'chat' in v.get('filter_caps', [])})
-            for k, v in model_assigner.passthrough_mini_db.items()
-            if v.get('provider') == provider
-        ]
+    def _add_results_for_passthrough_provider(provider: str) -> None:
+        for k, v in model_assigner.passthrough_mini_db.items():
+            if v.get('provider') == provider:
+                result['chat'].append(k)
 
     if data.get("openai_api_enable"):
-        add_results_for_passthrough_provider('openai')
+        _add_results_for_passthrough_provider('openai')
 
     if data.get('anthropic_api_enable'):
-        add_results_for_passthrough_provider('anthropic')
+        _add_results_for_passthrough_provider('anthropic')
 
     for k, v in data.get("model_assign", {}).items():
         if model_dict := [d for d in data['models'] if d['name'] == k]:
