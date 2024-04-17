@@ -1,9 +1,10 @@
 import json
 
 from refact_utils.scripts import env
+from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
 
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 
 def completion_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]:
@@ -50,3 +51,22 @@ def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tu
             return have_model, ""
     else:
         return "", f"model \"{model_name}\" is not loaded (3)"
+
+
+def resolve_model_context_size(model_name: str, model_assigner: ModelAssigner) -> Optional[int]:
+    if model_name in model_assigner.models_db:
+        return model_assigner.models_db[model_name].get('T')
+
+    PASSTHROUGH_MAX_TOKENS_LIMIT = 16_000
+
+    if model_name in model_assigner.passthrough_mini_db:
+        if max_tokens := model_assigner.passthrough_mini_db[model_name].get('T'):
+            return min(PASSTHROUGH_MAX_TOKENS_LIMIT, max_tokens)
+
+
+def resolve_tokenizer_name_for_model(model_name: str, model_assigner: ModelAssigner) -> Optional[str]:
+    if model_name in model_assigner.models_db:
+        return model_assigner.models_db[model_name].get('model_path')
+
+    if model_name in model_assigner.passthrough_mini_db:
+        return model_assigner.passthrough_mini_db[model_name].get('tokenizer_path')

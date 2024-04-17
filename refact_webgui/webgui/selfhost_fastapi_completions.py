@@ -15,6 +15,8 @@ from fastapi.responses import Response, StreamingResponse
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
 from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model
+from refact_webgui.webgui.selfhost_model_resolve import resolve_model_context_size
+from refact_webgui.webgui.selfhost_model_resolve import resolve_tokenizer_name_for_model
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log
@@ -299,6 +301,7 @@ class BaseCompletionsRouter(APIRouter):
             "running_models": [r for r in [*running['completion'], *running['chat']]],
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
+            "n_ctx_rewrite": {model: n_ctx for model in models_available if (n_ctx := resolve_model_context_size(model, self._model_assigner))},
 
             "default_embeddings_model": embeddings_default_model,
             "endpoint_embeddings_template": "v1/embeddings",
@@ -306,11 +309,7 @@ class BaseCompletionsRouter(APIRouter):
             "size_embeddings": 768,
 
             "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
-            "tokenizer_rewrite_path": {
-                model: self._model_assigner.models_db[model]["model_path"]
-                for model in models_available
-                if model in self._model_assigner.models_db
-            },
+            "tokenizer_rewrite_path": {model: t for model in models_available if (t := resolve_tokenizer_name_for_model(model, self._model_assigner))},
             "caps_version": self._caps_version,
         }
 
@@ -570,14 +569,19 @@ class BaseCompletionsRouter(APIRouter):
         account = await self._account_from_bearer(authorization)
 
         prefix, postfix = "data: ", "\n\n"
+        model_dict = self._model_assigner.models_db_with_passthrough.get(post.model, {})
 
-        if post.model in litellm.model_list:
+        if model_dict.get('backend') == 'litellm' and (model_name := model_dict.get('resolve_as', post.model)) in litellm.model_list:
+            log(f"chat/completions: model resolve {post.model} -> {model_name}")
+
             async def litellm_streamer(post: ChatContext):
                 try:
                     self._integrations_env_setup()
                     response = await litellm.acompletion(
-                        model=post.model, messages=[m.dict() for m in post.messages], stream=True,
-                        temperature=post.temperature, top_p=post.top_p, max_tokens=post.max_tokens, stop=post.stop)
+                        model=model_name, messages=[m.dict() for m in post.messages], stream=True,
+                        temperature=post.temperature, top_p=post.top_p,
+                        max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
+                        stop=post.stop)
                     finish_reason = None
                     async for model_response in response:
                         try:

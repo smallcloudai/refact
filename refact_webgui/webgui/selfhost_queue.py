@@ -8,6 +8,7 @@ from typing import Dict, List, Any
 import uuid
 
 from refact_utils.scripts import env
+from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_webutils import log
 
 
@@ -31,10 +32,11 @@ class Ticket:
 class InferenceQueue:
     CACHE_MODELS_AVAILABLE = 5
 
-    def __init__(self):
+    def __init__(self, model_assigner: ModelAssigner):
         self._user2gpu_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)
         self._models_available: List[str] = []
         self._models_available_ts = 0
+        self._model_assigner = model_assigner
 
     def model_name_to_queue(self, ticket, model_name, no_checks=False):
         available_models = self.models_available()
@@ -44,6 +46,10 @@ class InferenceQueue:
         return self._user2gpu_queue[model_name]
 
     def models_available(self, force_read: bool = False) -> List[str]:
+
+        def _add_models_for_passthrough_provider(provider):
+            self._models_available.extend(k for k, v in self._model_assigner.passthrough_mini_db.items() if v.get('provider') == provider)
+
         t1 = time.time()
         if not force_read and self._models_available_ts + self.CACHE_MODELS_AVAILABLE > t1:
             return self._models_available
@@ -53,11 +59,10 @@ class InferenceQueue:
             for model in j["model_assign"]:
                 self._models_available.append(model)
             self._models_available_ts = time.time()
-            if j.get("openai_api_enable", False):
-                self._models_available.append('gpt-3.5-turbo')
-                self._models_available.append('gpt-3.5-turbo-1106')
-                self._models_available.append('gpt-4')
-            if j.get("anthropic_api_enable", False):
-                self._models_available.append('claude-instant-1.2')
-                self._models_available.append('claude-2.1')
+
+            if j.get("openai_api_enable"):
+                _add_models_for_passthrough_provider('openai')
+            if j.get("anthropic_api_enable"):
+                _add_models_for_passthrough_provider('anthropic')
+
         return self._models_available

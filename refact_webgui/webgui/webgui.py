@@ -51,7 +51,9 @@ class WebGUI(FastAPI):
         self._stats_service = stats_service
         self._session = session
 
-        inference_queue = InferenceQueue()
+        inference_queue = InferenceQueue(
+            model_assigner=model_assigner,
+        )
         id2ticket: Dict[str, Ticket] = weakref.WeakValueDictionary()
         for router in self._routers_list(
                 id2ticket,
