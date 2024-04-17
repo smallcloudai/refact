@@ -1,8 +1,8 @@
-use std::collections::{HashMap, LinkedList, VecDeque};
-use std::ops::DerefMut;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::{Arc, RwLock};
+#[allow(unused_imports)]
 use itertools::Itertools;
 
 use similar::DiffableStr;
@@ -10,10 +10,10 @@ use tree_sitter::{Node, Parser, Range};
 use tree_sitter_typescript::language_typescript as language;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
-use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_children_guids, get_guid, str_hash};
+use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid, str_hash};
 
 pub(crate) struct TSParser {
     pub parser: Parser,
@@ -60,9 +60,9 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
-               nested_types: vec![],
+                nested_types: vec![],
             };
-            
+
             if let Some(name) = parent.child_by_field_name("name") {
                 dtype.name = Some(code.slice(name.byte_range()).to_string());
             }
@@ -157,7 +157,7 @@ impl TSParser {
         } else {
             decl.ast_fields.name = format!("anon-{}", decl.ast_fields.guid);
         }
-        
+
         if let Some(type_parameters) = info.node.child_by_field_name("type_parameters") {
             for i in 0..type_parameters.child_count() {
                 let child = type_parameters.child(i).unwrap();
@@ -167,7 +167,7 @@ impl TSParser {
                 }
             }
         }
-        
+
         // find base classes
         for i in 0..info.node.child_count() {
             let class_heritage = info.node.child(i).unwrap();
@@ -180,7 +180,7 @@ impl TSParser {
                     start_point: decl.ast_fields.full_range.start_point,
                     end_point: class_heritage.end_position(),
                 };
-                
+
                 for i in 0..class_heritage.child_count() {
                     let extends_clause = class_heritage.child(i).unwrap();
                     symbols.extend(self.find_error_usages(&extends_clause, code, &info.ast_fields.file_path, &decl.ast_fields.guid));
@@ -222,7 +222,7 @@ impl TSParser {
         if let None = body_mb {
             body_mb = info.node.child_by_field_name("value");
         }
-        
+
         if let Some(body) = body_mb {
             decl.ast_fields.declaration_range = body.range();
             decl.ast_fields.definition_range = Range {
@@ -253,7 +253,7 @@ impl TSParser {
         decl.ast_fields.content_hash = str_hash(&code.slice(info.node.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
         decl.ast_fields.guid = get_guid();
-        
+
         if let Some(name) = info.node.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name.byte_range()).to_string();
         }
@@ -270,12 +270,12 @@ impl TSParser {
                 parent_guid: info.parent_guid.clone(),
             });
         }
-        
+
         symbols.push(Arc::new(RwLock::new(decl)));
         symbols
     }
 
-    fn parse_field_declaration<'a>(&mut self, info: &CandidateInfo<'a>, code: &str, candidates: &mut VecDeque<CandidateInfo<'a>>) -> Vec<AstSymbolInstanceArc> {
+    fn parse_field_declaration<'a>(&mut self, info: &CandidateInfo<'a>, code: &str, _: &mut VecDeque<CandidateInfo<'a>>) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let mut decl = ClassFieldDeclaration::default();
         decl.ast_fields = AstSymbolFields::from_fields(&info.ast_fields);
@@ -285,7 +285,7 @@ impl TSParser {
         decl.ast_fields.content_hash = str_hash(&code.slice(info.node.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
         decl.ast_fields.guid = get_guid();
-        
+
         if let Some(name) = info.node.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name.byte_range()).to_string();
         }
@@ -358,119 +358,6 @@ impl TSParser {
         symbols
     }
 
-    fn parse_declaration<'a>(&mut self,
-                             parent: &Node<'a>,
-                             code: &str,
-                             path: &PathBuf,
-                             parent_guid: &Uuid,
-                             is_error: bool,
-                             candidates: &mut VecDeque<CandidateInfo<'a>>)
-                             -> (Vec<AstSymbolInstanceArc>, Vec<TypeDef>, String, String) {
-        let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
-        let mut types: Vec<TypeDef> = Default::default();
-        let mut name: String = String::new();
-        let mut namespace: String = String::new();
-        #[cfg(test)]
-            let text = code.slice(parent.byte_range());
-        let kind = parent.kind();
-        match kind {
-            "identifier" | "field_identifier" => {
-                name = code.slice(parent.byte_range()).to_string();
-            }
-            "template_function" | "template_type" => {
-                if let Some(name_node) = parent.child_by_field_name("name") {
-                    name = code.slice(name_node.byte_range()).to_string();
-                    symbols.extend(self.find_error_usages(&name_node, code, path, &parent_guid));
-                }
-                if let Some(arguments_node) = parent.child_by_field_name("arguments") {
-                    symbols.extend(self.find_error_usages(&arguments_node, code, path, &parent_guid));
-                    self.find_error_usages(&arguments_node, code, path, &parent_guid);
-                    for i in 0..arguments_node.child_count() {
-                        let child = arguments_node.child(i).unwrap();
-                        #[cfg(test)]
-                            let text = code.slice(child.byte_range());
-                        symbols.extend(self.find_error_usages(&child, code, path, &parent_guid));
-                        self.find_error_usages(&child, code, path, &parent_guid);
-                        if let Some(dtype) = parse_type(&child, code) {
-                            types.push(dtype);
-                        }
-                    }
-                }
-            }
-            "init_declarator" => {
-                if let Some(declarator) = parent.child_by_field_name("declarator") {
-                    let (symbols_l, _, name_l, _) =
-                        self.parse_declaration(&declarator, code, path, parent_guid, is_error, candidates);
-                    symbols.extend(symbols_l);
-                    name = name_l;
-                }
-                if let Some(value) = parent.child_by_field_name("value") {
-                    candidates.push_back(CandidateInfo {
-                        ast_fields: AstSymbolFields::from_data(LanguageId::Cpp, path.clone(), is_error),
-                        node: value,
-                        parent_guid: parent_guid.clone(),
-                    });
-                    // symbols.extend(self.parse_usages(&value, code, path, parent_guid, is_error));
-                }
-            }
-            "qualified_identifier" => {
-                if let Some(scope) = parent.child_by_field_name("scope") {
-                    symbols.extend(self.find_error_usages(&scope, code, path, &parent_guid));
-                    let (symbols_l, types_l, name_l, namespace_l) =
-                        self.parse_declaration(&scope, code, path, parent_guid, is_error, candidates);
-                    symbols.extend(symbols_l);
-                    types.extend(types_l);
-                    namespace = vec![namespace, name_l, namespace_l].iter().filter(|x| !x.is_empty()).join("::");
-                }
-                if let Some(name_node) = parent.child_by_field_name("name") {
-                    symbols.extend(self.find_error_usages(&name_node, code, path, &parent_guid));
-                    let (symbols_l, types_l, name_l, namespace_l) =
-                        self.parse_declaration(&name_node, code, path, parent_guid, is_error, candidates);
-                    symbols.extend(symbols_l);
-                    types.extend(types_l);
-                    name = name_l;
-                    namespace = vec![namespace, namespace_l].iter().filter(|x| !x.is_empty()).join("::");
-                }
-            }
-            "pointer_declarator" => {
-                if let Some(declarator) = parent.child_by_field_name("declarator") {
-                    let (symbols_l, _, name_l, _) =
-                        self.parse_declaration(&declarator, code, path, parent_guid, is_error, candidates);
-                    symbols.extend(symbols_l);
-                    name = name_l;
-                }
-            }
-            "reference_declarator" => {
-                for i in 0..parent.child_count() {
-                    let child = parent.child(i).unwrap();
-                    symbols.extend(self.find_error_usages(&child, code, path, &parent_guid));
-                    let (symbols_l, _, name_l, _) =
-                        self.parse_declaration(&child, code, path, parent_guid, is_error, candidates);
-                    symbols.extend(symbols_l);
-                    if !name_l.is_empty() {
-                        name = name_l;
-                    }
-                }
-            }
-            "parameter_declaration" => {
-                if let Some(type_) = parent.child_by_field_name("type") {
-                    if let Some(type_) = parse_type(&type_, code) {
-                        types.push(type_);
-                    }
-                }
-                if let Some(declarator) = parent.child_by_field_name("declarator") {
-                    let (symbols_l, _, name_l, _) =
-                        self.parse_declaration(&declarator, code, path, parent_guid, is_error, candidates);
-                    symbols.extend(symbols_l);
-                    name = name_l;
-                }
-            }
-            &_ => {}
-        }
-
-        (symbols, types, name, namespace)
-    }
-
     pub fn parse_function_declaration<'a>(&mut self, info: &CandidateInfo<'a>, code: &str, candidates: &mut VecDeque<CandidateInfo<'a>>) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionDeclaration::default();
@@ -483,7 +370,7 @@ impl TSParser {
         decl.ast_fields.guid = get_guid();
 
         symbols.extend(self.find_error_usages(&info.node, code, &decl.ast_fields.file_path, &decl.ast_fields.guid));
-        
+
         if let Some(name) = info.node.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name.byte_range()).to_string();
         }
@@ -497,7 +384,7 @@ impl TSParser {
                 }
             }
         }
-        
+
         if let Some(parameters) = info.node.child_by_field_name("parameters") {
             decl.ast_fields.declaration_range = Range {
                 start_byte: decl.ast_fields.full_range.start_byte,
@@ -509,7 +396,6 @@ impl TSParser {
             for i in 0..parameters.child_count() {
                 let child = parameters.child(i).unwrap();
                 symbols.extend(self.find_error_usages(&child, code, &info.ast_fields.file_path, &decl.ast_fields.guid));
-                let kind = child.kind();
                 match child.kind() {
                     "optional_parameter" | "required_parameter" => {
                         let mut arg = FunctionArg::default();
@@ -534,7 +420,7 @@ impl TSParser {
                         candidates.push_back(CandidateInfo {
                             ast_fields: decl.ast_fields.clone(),
                             node: child,
-                            parent_guid: decl.ast_fields.guid.clone()
+                            parent_guid: decl.ast_fields.guid.clone(),
                         });
                     }
                 }
@@ -570,10 +456,10 @@ impl TSParser {
     }
 
     pub fn parse_call_expression<'a>(
-        &mut self, 
-        info: &CandidateInfo<'a>, 
-        code: &str, 
-        candidates: &mut VecDeque<CandidateInfo<'a>>) 
+        &mut self,
+        info: &CandidateInfo<'a>,
+        code: &str,
+        candidates: &mut VecDeque<CandidateInfo<'a>>)
         -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionCall::default();
@@ -616,7 +502,7 @@ impl TSParser {
                 }
             }
         }
-        
+
         if let Some(type_arguments) = info.node.child_by_field_name("type_arguments") {
             for i in 0..type_arguments.child_count() {
                 let child = type_arguments.child(i).unwrap();
@@ -631,7 +517,7 @@ impl TSParser {
                 }
             }
         }
-        
+
         if let Some(arguments) = info.node.child_by_field_name("arguments") {
             for i in 0..arguments.child_count() {
                 let child = arguments.child(i).unwrap();
@@ -796,7 +682,7 @@ impl TSParser {
             "ERROR" => {
                 let mut ast = info.ast_fields.clone();
                 ast.is_error = true;
-            
+
                 for i in 0..info.node.child_count() {
                     let child = info.node.child(i).unwrap();
                     candidates.push_back(CandidateInfo {
