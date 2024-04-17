@@ -1,9 +1,18 @@
 import os
+import re
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 
 __all__ = ["StaticRouter"]
+
+
+def validate_file_path(file_path: str) -> None:
+    if os.path.isabs(file_path) or any(x in file_path for x in ['..', '.\\', '//', '\\\\']):
+        raise HTTPException(404, 'file_path must be a relative path and must not contain harmful sequences')
+    forbidden_chars = r"[\0:*?\"<>|~!#$%&’()+,;=\\[\]{}^`@%\x00-\x1F\x7F]"
+    if re.search(forbidden_chars, file_path):
+        raise HTTPException(404, 'file_path contains forbidden characters')
 
 
 class StaticRouter(APIRouter):
@@ -34,8 +43,7 @@ class StaticRouter(APIRouter):
         raise HTTPException(404, "No tab-chat.html found")
 
     async def _static_file(self, file_path: str):
-        if ".." in file_path:
-            raise HTTPException(404, "Path \"%s\" not found" % file_path)
+        validate_file_path(file_path)
 
         for spath in self.static_folders:
             fn = os.path.join(spath, file_path)
