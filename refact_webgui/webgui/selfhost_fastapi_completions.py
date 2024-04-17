@@ -23,7 +23,6 @@ from refact_webgui.webgui.selfhost_webutils import log
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_login import RefactSession
-from known_models_db.refact_known_models import passthrough_mini_db
 
 from pydantic import BaseModel, Required
 from typing import List, Dict, Union, Optional, Tuple, Any

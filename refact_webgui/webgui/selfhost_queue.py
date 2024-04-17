@@ -46,6 +46,10 @@ class InferenceQueue:
         return self._user2gpu_queue[model_name]
 
     def models_available(self, force_read: bool = False) -> List[str]:
+
+        def _add_models_for_passthrough_provider(provider):
+            self._models_available.extend(k for k, v in self._model_assigner.passthrough_mini_db.items() if v.get('provider') == provider)
+
         t1 = time.time()
         if not force_read and self._models_available_ts + self.CACHE_MODELS_AVAILABLE > t1:
             return self._models_available
@@ -57,9 +61,8 @@ class InferenceQueue:
             self._models_available_ts = time.time()
 
             if j.get("openai_api_enable"):
-                self._models_available.extend(k for k, v in self._model_assigner.passthrough_mini_db.items() if v.get('provider') == 'openai')
-
+                _add_models_for_passthrough_provider('openai')
             if j.get("anthropic_api_enable"):
-                self._models_available.extend(k for k, v in self._model_assigner.passthrough_mini_db.items() if v.get('provider') == 'anthropic')
+                _add_models_for_passthrough_provider('anthropic')
 
         return self._models_available
