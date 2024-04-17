@@ -1,5 +1,4 @@
 import os
-import re
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
@@ -7,12 +6,11 @@ from fastapi.responses import FileResponse
 __all__ = ["StaticRouter"]
 
 
-def validate_file_path(file_path: str) -> None:
-    if os.path.isabs(file_path) or any(x in file_path for x in ['..', '.\\', '//', '\\\\']):
-        raise HTTPException(404, 'file_path must be a relative path and must not contain harmful sequences')
-    forbidden_chars = r"[\0:*?\"<>|~!#$%&’()+,;=\\[\]{}^`@%\x00-\x1F\x7F]"
-    if re.search(forbidden_chars, file_path):
-        raise HTTPException(404, 'file_path contains forbidden characters')
+def is_paths_join_safe(p1: str, p2: str) -> bool:
+    p_joined = os.path.abspath(os.path.join(p1, p2))
+    if p_joined.startswith(os.path.abspath(p1)):
+        return True
+    return False
 
 
 class StaticRouter(APIRouter):
@@ -43,9 +41,9 @@ class StaticRouter(APIRouter):
         raise HTTPException(404, "No tab-chat.html found")
 
     async def _static_file(self, file_path: str):
-        validate_file_path(file_path)
-
         for spath in self.static_folders:
+            if not is_paths_join_safe(spath, file_path):
+                return HTTPException(404, f'Paths "{spath}" and "{file_path}" are not safe to join')
             fn = os.path.join(spath, file_path)
             if os.path.exists(fn):
                 if fn.endswith(".cjs"):
