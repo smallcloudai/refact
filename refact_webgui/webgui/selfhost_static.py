@@ -6,11 +6,11 @@ from fastapi.responses import FileResponse
 __all__ = ["StaticRouter"]
 
 
-def is_paths_join_safe(p1: str, p2: str) -> bool:
+def safe_paths_join(p1: str, p2: str) -> str:
     p_joined = os.path.abspath(os.path.join(p1, p2))
     if p_joined.startswith(os.path.abspath(p1)):
-        return True
-    return False
+        return p_joined
+    raise ValueError(f"Paths {p1} and {p2} are not safe to join")
 
 
 class StaticRouter(APIRouter):
@@ -42,9 +42,10 @@ class StaticRouter(APIRouter):
 
     async def _static_file(self, file_path: str):
         for spath in self.static_folders:
-            if not is_paths_join_safe(spath, file_path):
-                return HTTPException(404, f'Paths "{spath}" and "{file_path}" are not safe to join')
-            fn = os.path.join(spath, file_path)
+            try:
+                fn = safe_paths_join(spath, file_path)
+            except ValueError as e:
+                raise HTTPException(404, str(e))
             if os.path.exists(fn):
                 if fn.endswith(".cjs"):
                     return FileResponse(fn, media_type="text/javascript")
