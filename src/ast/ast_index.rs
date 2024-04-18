@@ -629,7 +629,6 @@ impl AstIndex {
                     continue;
                 }
 
-                stats.found += 1;
                 let name = t.name.clone().expect("filter has invalid condition");
                 let maybe_guid = match self.symbols_by_name.get(&name) {
                     Some(symbols) => {
