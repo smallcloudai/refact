@@ -25,6 +25,8 @@ use crate::vecdb::vecdb::VecDb;
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CommandLine {
+    #[structopt(long, default_value="pong", help="A message to return in /v1/ping, useful to verify you're talking to the same process that you've started.")]
+    pub ping_message: String,
     #[structopt(long, help="Send logs to stderr, as opposed to ~/.cache/refact/logs, so it's easier to debug.")]
     pub logs_stderr: bool,
     #[structopt(long, short="u", help="URL to start working. The first step is to fetch refact-caps / coding_assistant_caps.json.")]

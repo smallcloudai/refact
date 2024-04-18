@@ -1,15 +1,29 @@
+use std::sync::Arc;
+use tokio::sync::RwLock as ARwLock;
+
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 
 use crate::custom_error::ScratchError;
-use crate::global_context::SharedGlobalContext;
+use crate::global_context::GlobalContext;
 
 const MAX_CAPS_AGE: u64 = 10;
 
+pub async fn handle_v1_ping(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    _: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let ping_message: String = gcx.read().await.cmdline.ping_message.clone();
+    let response = Response::builder()
+       .header("Content-Type", "application/json")
+       .body(Body::from(ping_message + "\n"))
+      .unwrap();
+    Ok(response)
+}
 
 pub async fn handle_v1_caps(
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let caps_result = crate::global_context::try_load_caps_quickly_if_not_present(

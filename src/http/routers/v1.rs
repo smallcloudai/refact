@@ -14,6 +14,7 @@ use crate::global_context::SharedGlobalContext;
 use crate::http::routers::v1::ast::{handle_v1_ast_clear_index, handle_v1_ast_file_markup, handle_v1_ast_file_dump, handle_v1_ast_file_symbols, handle_v1_ast_index_file, handle_v1_ast_search_by_content, handle_v1_ast_search_by_name, handle_v1_ast_search_related_declarations, handle_v1_ast_search_usages_by_declarations, handle_v1_ast_force_reindex};
 use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview};
 use crate::http::routers::v1::caps::handle_v1_caps;
+use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::handle_v1_chat;
 use crate::http::routers::v1::code_completion::{handle_v1_code_completion_web, handle_v1_code_completion_prompt};
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
@@ -41,6 +42,8 @@ mod ast;
 
 pub fn make_v1_router() -> Router {
     Router::new()
+        .route("/ping", telemetry_get!(handle_v1_ping))
+
         .route("/code-completion", telemetry_post!(handle_v1_code_completion_web))
         .route("/chat", telemetry_post!(handle_v1_chat))
         .route("/telemetry-network", telemetry_post!(handle_v1_telemetry_network))
