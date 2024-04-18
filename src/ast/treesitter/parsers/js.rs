@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::{Arc, RwLock};
 
-use itertools::Itertools;
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
 use tree_sitter_javascript::language;
