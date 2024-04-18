@@ -4,6 +4,7 @@ mod tests {
 
     use crate::ast::treesitter::parsers::AstLanguageParser;
     use crate::ast::treesitter::parsers::python::PythonParser;
+    use crate::ast::treesitter::parsers::tests::print;
 
     const MAIN_PY_CODE: &str = include_str!("cases/python/main.py");
     // const MAIN_RS_INDEXES: &str = include_str!("cases/python/main.py.indexes.json");
@@ -13,8 +14,8 @@ mod tests {
     fn test_query_rust_function() {
         let mut parser = Box::new(PythonParser::new().expect("PythonParser::new"));
         let path = PathBuf::from("file:///main.py");
-        let asd = parser.parse(MAIN_PY_CODE, &path);
-        let asd = parser.parse(MAIN_PY_CODE, &path);
+        let symbols = parser.parse(MAIN_PY_CODE, &path);
+        print(&symbols, MAIN_PY_CODE);
 
         // test_query_function(parser, &path, MAIN_RS_CODE,
         //                     serde_json::from_str(MAIN_RS_INDEXES).unwrap(),

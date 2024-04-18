@@ -1,39 +1,18 @@
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
+
 use itertools::Itertools;
 use similar::DiffableStr;
-use tree_sitter::Node;
 use uuid::Uuid;
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc};
 
-// mod cpp;
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
+
 mod rust;
 mod python;
 mod java;
 mod cpp;
 mod ts;
-// pub(crate) fn test_query_function(mut parser: Box<dyn LanguageParser>,
-//                                   path: &PathBuf,
-//                                   code: &str,
-//                                   ref_indexes: HashMap<String, SymbolDeclarationStruct>,
-//                                   ref_usages: Vec<Box<dyn UsageSymbolInfo>>) {
-//     let indexes = parser.parse_declarations(code, &path).unwrap();
-//     let usages = parser.parse_usages(code, true).unwrap();
-//
-//     indexes.iter().for_each(|(key, index)| {
-//         assert_eq!(index, ref_indexes.get(key).unwrap());
-//     });
-//     ref_indexes.iter().for_each(|(key, index)| {
-//         assert_eq!(index, indexes.get(key).unwrap());
-//     });
-//
-//     usages.iter().for_each(|usage| {
-//         assert!(ref_usages.contains(usage));
-//     });
-//     ref_usages.iter().for_each(|usage| {
-//         assert!(usages.contains(usage));
-//     });
-// }
+mod js;
 
 pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
     let guid_to_symbol_map = symbols.iter()
@@ -70,13 +49,11 @@ pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
                 }
                 let full_range = sym_l.read().unwrap().full_range().clone();
                 let range = full_range.start_byte..full_range.end_byte;
-                println!("{0} {1} {2} [{3}]", cand.to_string().slice(0..6), str::repeat(" ", offest as usize),name, code.slice(range).lines().collect::<Vec<_>>().first().unwrap());
+                println!("{0} {1} {2} [{3}]", cand.to_string().slice(0..6), str::repeat(" ", offest as usize), name, code.slice(range).lines().collect::<Vec<_>>().first().unwrap());
                 let mut new_candidates = VecDeque::from_iter(sym_l.read().unwrap().childs_guid().iter().map(|x| (offest + 2, x.clone())));
                 new_candidates.extend(candidates.clone());
                 candidates = new_candidates;
             }
         }
-
     }
-
 }

@@ -340,6 +340,7 @@ impl PythonParser {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
         #[cfg(test)]
+        #[allow(unused)]
             let text = code.slice(parent.byte_range());
         // TODO lambda https://github.com/tree-sitter/tree-sitter-python/blob/master/grammar.js#L830
         match kind {

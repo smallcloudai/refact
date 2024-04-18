@@ -422,6 +422,7 @@ impl JavaParser {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
         #[cfg(test)]
+        #[allow(unused)]
             let text = code.slice(parent.byte_range());
         match kind {
             "class_declaration" | "interface_declaration" | "enum_declaration" => {

@@ -2,12 +2,11 @@ use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::{Arc, RwLock};
-#[allow(unused_imports)]
-use itertools::Itertools;
 
+use itertools::Itertools;
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
-use tree_sitter_typescript::language_typescript as language;
+use tree_sitter_javascript::language;
 use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
@@ -15,34 +14,43 @@ use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
 use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid, str_hash};
 
-pub(crate) struct TSParser {
+pub(crate) struct JSParser {
     pub parser: Parser,
 }
 
-pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
+static LAMBDA_KINDS: [&str; 2] = ["function_expression", "arrow_function"];
+
+fn parse_type_from_value(parent: &Node, code: &str) -> Option<TypeDef> {
+    let kind = parent.kind();
+    let text = code.slice(parent.byte_range()).to_string();
+    return match kind {
+        "number" | "null" | "string" | "true" | "false" | "undefined" => {
+            Some(TypeDef {
+                name: None,
+                inference_info: Some(text),
+                is_pod: true,
+                namespace: "".to_string(),
+                guid: None,
+                nested_types: vec![],
+            })
+        }
+        &_ => {
+            Some(TypeDef {
+                name: None,
+                inference_info: Some(text),
+                is_pod: false,
+                namespace: "".to_string(),
+                guid: None,
+                nested_types: vec![],
+            })
+        }
+    }
+}
+
+fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
     let kind = parent.kind();
     let text = code.slice(parent.byte_range()).to_string();
     match kind {
-        "type_annotation" => {
-            for i in 0..parent.child_count() {
-                let child = parent.child(i).unwrap();
-                if let Some(nested_dtype) = parse_type(&child, code) {
-                    return Some(nested_dtype);
-                }
-            }
-        }
-        "type_parameter" => {
-            if let Some(name) = parent.child_by_field_name("name") {
-                return Some(TypeDef {
-                    name: Some(code.slice(name.byte_range()).to_string()),
-                    inference_info: None,
-                    is_pod: false,
-                    namespace: "".to_string(),
-                    guid: None,
-                    nested_types: vec![],
-                });
-            }
-        }
         "predefined_type" | "type_identifier" | "identifier" => {
             return Some(TypeDef {
                 name: Some(text),
@@ -124,7 +132,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
     None
 }
 
-impl TSParser {
+impl JSParser {
     pub fn new() -> Result<Self, ParserError> {
         let mut parser = Parser::new();
         parser
@@ -137,7 +145,8 @@ impl TSParser {
         &mut self,
         info: &CandidateInfo<'a>,
         code: &str,
-        candidates: &mut VecDeque<CandidateInfo<'a>>)
+        candidates: &mut VecDeque<CandidateInfo<'a>>,
+        name_from_var: Option<String>)
         -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
@@ -154,18 +163,10 @@ impl TSParser {
 
         if let Some(name) = info.node.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name.byte_range()).to_string();
+        } else if let Some(name) = name_from_var {
+            decl.ast_fields.name = name;
         } else {
             decl.ast_fields.name = format!("anon-{}", decl.ast_fields.guid);
-        }
-
-        if let Some(type_parameters) = info.node.child_by_field_name("type_parameters") {
-            for i in 0..type_parameters.child_count() {
-                let child = type_parameters.child(i).unwrap();
-                symbols.extend(self.find_error_usages(&child, code, &info.ast_fields.file_path, &decl.ast_fields.guid));
-                if let Some(dtype) = parse_type(&child, code) {
-                    decl.template_types.push(dtype);
-                }
-            }
         }
 
         // find base classes
@@ -184,35 +185,8 @@ impl TSParser {
                 for i in 0..class_heritage.child_count() {
                     let extends_clause = class_heritage.child(i).unwrap();
                     symbols.extend(self.find_error_usages(&extends_clause, code, &info.ast_fields.file_path, &decl.ast_fields.guid));
-                    if extends_clause.kind() == "extends_clause" {
-                        let mut current_dtype: Option<TypeDef> = None;
-                        for i in 0..extends_clause.child_count() {
-                            let child = extends_clause.child(i).unwrap();
-                            if let Some(field_name) = extends_clause.field_name_for_child(i as u32) {
-                                match field_name {
-                                    "value" => {
-                                        if let Some(current_dtype) = &current_dtype {
-                                            decl.inherited_types.push(current_dtype.clone());
-                                        }
-                                        if let Some(dtype) = parse_type(&child, code) {
-                                            current_dtype = Some(dtype);
-                                        }
-                                    }
-                                    "type_arguments" => {
-                                        for i in 0..child.child_count() {
-                                            let child = child.child(i).unwrap();
-                                            symbols.extend(self.find_error_usages(&child, code, &info.ast_fields.file_path, &decl.ast_fields.guid));
-                                            if let Some(dtype) = parse_type(&child, code) {
-                                                if let Some(current_dtype) = current_dtype.as_mut() {
-                                                    current_dtype.nested_types.push(dtype);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    &_ => {}
-                                }
-                            }
-                        }
+                    if let Some(dtype) = parse_type(&extends_clause, code) {
+                        decl.inherited_types.push(dtype);
                     }
                 }
             }
@@ -236,6 +210,15 @@ impl TSParser {
                 node: body,
                 parent_guid: decl.ast_fields.guid.clone(),
             })
+        } else if info.node.kind() == "object" {
+            for i in 0..info.node.child_count() {
+                let child = info.node.child(i).unwrap();
+                candidates.push_back(CandidateInfo {
+                    ast_fields: decl.ast_fields.clone(),
+                    node: child,
+                    parent_guid: decl.ast_fields.guid.clone(),
+                })
+            }
         }
         symbols.push(Arc::new(RwLock::new(decl)));
         symbols
@@ -257,12 +240,13 @@ impl TSParser {
         if let Some(name) = info.node.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name.byte_range()).to_string();
         }
-        if let Some(type_node) = info.node.child_by_field_name("type") {
-            if let Some(type_) = parse_type(&type_node, code) {
-                decl.type_ = type_;
-            }
-        }
         if let Some(value) = info.node.child_by_field_name("value") {
+            match value.kind() {
+                "number" | "string" | "boolean" | "null" | "undefined" | "false" | "true" => {
+                    decl.type_.is_pod = true;
+                }
+                &_ => {}
+            }
             decl.type_.inference_info = Some(code.slice(value.byte_range()).to_string());
             candidates.push_back(CandidateInfo {
                 ast_fields: info.ast_fields.clone(),
@@ -275,7 +259,7 @@ impl TSParser {
         symbols
     }
 
-    fn parse_field_declaration<'a>(&mut self, info: &CandidateInfo<'a>, code: &str, _: &mut VecDeque<CandidateInfo<'a>>) -> Vec<AstSymbolInstanceArc> {
+    fn parse_field_declaration<'a>(&mut self, info: &CandidateInfo<'a>, code: &str, candidates: &mut VecDeque<CandidateInfo<'a>>) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let mut decl = ClassFieldDeclaration::default();
         decl.ast_fields = AstSymbolFields::from_fields(&info.ast_fields);
@@ -286,79 +270,36 @@ impl TSParser {
         decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
         decl.ast_fields.guid = get_guid();
 
-        if let Some(name) = info.node.child_by_field_name("name") {
+        if let Some(name) = info.node.child_by_field_name("property") {
             decl.ast_fields.name = code.slice(name.byte_range()).to_string();
+        } else if let Some(key) = info.node.child_by_field_name("key") {
+            decl.ast_fields.name = code.slice(key.byte_range()).to_string();
+        } else if info.node.kind() == "shorthand_property_identifier" {
+            decl.ast_fields.name = code.slice(info.node.byte_range()).to_string();
         }
-        if let Some(type_) = info.node.child_by_field_name("type") {
-            if let Some(type_) = parse_type(&type_, code) {
-                decl.type_ = type_;
+
+        if let Some(value) = info.node.child_by_field_name("value") {
+            if let Some(value) = parse_type_from_value(&value, code) {
+                decl.type_ = value;
             }
+            candidates.push_back(CandidateInfo {
+                ast_fields: info.ast_fields.clone(),
+                node: value,
+                parent_guid: info.parent_guid.clone(),
+            })
         }
         symbols.push(Arc::new(RwLock::new(decl)));
         symbols
     }
 
-    fn parse_enum_declaration<'a>(&mut self, info: &CandidateInfo<'a>, code: &str, candidates: &mut VecDeque<CandidateInfo<'a>>) -> Vec<AstSymbolInstanceArc> {
-        let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
-        let mut decl = StructDeclaration::default();
-        decl.ast_fields = AstSymbolFields::from_fields(&info.ast_fields);
-        decl.ast_fields.full_range = info.node.range();
-        decl.ast_fields.content_hash = str_hash(&code.slice(info.node.byte_range()).to_string());
-        decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
-        decl.ast_fields.guid = get_guid();
-
-        symbols.extend(self.find_error_usages(&info.node, code, &decl.ast_fields.file_path, &info.parent_guid));
-
-        if let Some(name) = info.node.child_by_field_name("name") {
-            decl.ast_fields.name = code.slice(name.byte_range()).to_string();
-        }
-        if let Some(body) = info.node.child_by_field_name("body") {
-            for i in 0..body.child_count() {
-                let child = body.child(i).unwrap();
-                let kind = child.kind();
-                match kind {
-                    "enum_assignment" => {
-                        let mut field = ClassFieldDeclaration::default();
-                        field.ast_fields = AstSymbolFields::from_fields(&decl.ast_fields);
-                        field.ast_fields.full_range = child.range();
-                        field.ast_fields.declaration_range = child.range();
-                        field.ast_fields.content_hash = str_hash(&code.slice(child.byte_range()).to_string());
-                        field.ast_fields.parent_guid = Some(decl.ast_fields.guid.clone());
-                        field.ast_fields.guid = get_guid();
-                        if let Some(name) = child.child_by_field_name("name") {
-                            field.ast_fields.name = code.slice(name.byte_range()).to_string();
-                        }
-                        if let Some(value) = child.child_by_field_name("value") {
-                            field.type_.inference_info = Some(code.slice(value.byte_range()).to_string());
-                        }
-                        symbols.push(Arc::new(RwLock::new(field)));
-                    }
-                    "property_identifier" => {
-                        let mut field = ClassFieldDeclaration::default();
-                        field.ast_fields = AstSymbolFields::from_fields(&decl.ast_fields);
-                        field.ast_fields.full_range = child.range();
-                        field.ast_fields.declaration_range = child.range();
-                        field.ast_fields.content_hash = str_hash(&code.slice(child.byte_range()).to_string());
-                        field.ast_fields.parent_guid = Some(decl.ast_fields.guid.clone());
-                        field.ast_fields.guid = get_guid();
-                        field.ast_fields.name = code.slice(child.byte_range()).to_string();
-                        symbols.push(Arc::new(RwLock::new(field)));
-                    }
-                    &_ => {
-                        candidates.push_back(CandidateInfo {
-                            ast_fields: decl.ast_fields.clone(),
-                            node: child,
-                            parent_guid: info.parent_guid.clone(),
-                        });
-                    }
-                }
-            }
-        }
-        symbols.push(Arc::new(RwLock::new(decl)));
-        symbols
-    }
-
-    pub fn parse_function_declaration<'a>(&mut self, info: &CandidateInfo<'a>, code: &str, candidates: &mut VecDeque<CandidateInfo<'a>>) -> Vec<AstSymbolInstanceArc> {
+    pub fn parse_function_declaration<'a>(
+        &mut self,
+        info: &CandidateInfo<'a>,
+        code: &str, candidates:
+        &mut VecDeque<CandidateInfo<'a>>,
+        name_from_var: Option<String>,
+    )
+        -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = FunctionDeclaration::default();
         decl.ast_fields = AstSymbolFields::from_fields(&info.ast_fields);
@@ -373,16 +314,10 @@ impl TSParser {
 
         if let Some(name) = info.node.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name.byte_range()).to_string();
-        }
-
-        if let Some(type_parameters) = info.node.child_by_field_name("type_parameters") {
-            for i in 0..type_parameters.child_count() {
-                let child = type_parameters.child(i).unwrap();
-                symbols.extend(self.find_error_usages(&child, code, &info.ast_fields.file_path, &decl.ast_fields.guid));
-                if let Some(dtype) = parse_type(&child, code) {
-                    decl.template_types.push(dtype);
-                }
-            }
+        } else if let Some(name) = name_from_var {
+            decl.ast_fields.name = name.clone();
+        } else {
+            decl.ast_fields.name = format!("lambda-{}", decl.ast_fields.guid);
         }
 
         if let Some(parameters) = info.node.child_by_field_name("parameters") {
@@ -396,45 +331,36 @@ impl TSParser {
             for i in 0..parameters.child_count() {
                 let child = parameters.child(i).unwrap();
                 symbols.extend(self.find_error_usages(&child, code, &info.ast_fields.file_path, &decl.ast_fields.guid));
-                match child.kind() {
-                    "optional_parameter" | "required_parameter" => {
+                let kind = child.kind();
+                match kind {
+                    "identifier" => {
                         let mut arg = FunctionArg::default();
-                        if let Some(pattern) = child.child_by_field_name("pattern") {
-                            arg.name = code.slice(pattern.byte_range()).to_string();
-                        }
-                        if let Some(type_) = child.child_by_field_name("type") {
-                            arg.type_ = parse_type(&type_, code);
-                        }
-                        if let Some(value) = child.child_by_field_name("value") {
-                            if let Some(dtype) = arg.type_.as_mut() {
-                                dtype.inference_info = Some(code.slice(value.byte_range()).to_string());
-                            } else {
-                                let mut dtype = TypeDef::default();
-                                dtype.inference_info = Some(code.slice(value.byte_range()).to_string());
-                                arg.type_ = Some(dtype);
-                            }
-                        }
+                        arg.name = code.slice(child.byte_range()).to_string();
                         decl.args.push(arg);
+                    }
+                    "assignment_pattern" => {
+                        let mut arg = FunctionArg::default();
+                        if let Some(left) = child.child_by_field_name("left") {
+                            arg.name = code.slice(left.byte_range()).to_string();
+                        }
+                        if let Some(right) = child.child_by_field_name("right") {
+                            arg.type_ = parse_type_from_value(&right, code);
+                            candidates.push_back(CandidateInfo {
+                                ast_fields: info.ast_fields.clone(),
+                                node: right,
+                                parent_guid: info.ast_fields.guid.clone(),
+                            })
+                        }
                     }
                     &_ => {
                         candidates.push_back(CandidateInfo {
-                            ast_fields: decl.ast_fields.clone(),
+                            ast_fields: info.ast_fields.clone(),
                             node: child,
-                            parent_guid: decl.ast_fields.guid.clone(),
+                            parent_guid: info.ast_fields.guid.clone(),
                         });
                     }
                 }
             }
-        }
-
-        if let Some(return_type) = info.node.child_by_field_name("return_type") {
-            decl.return_type = parse_type(&return_type, code);
-            decl.ast_fields.declaration_range = Range {
-                start_byte: decl.ast_fields.full_range.start_byte,
-                end_byte: return_type.end_byte(),
-                start_point: decl.ast_fields.full_range.start_point,
-                end_point: return_type.end_position(),
-            };
         }
 
         if let Some(body_node) = info.node.child_by_field_name("body") {
@@ -601,23 +527,78 @@ impl TSParser {
         #[allow(unused)]
             let text = code.slice(info.node.byte_range());
         match kind {
-            "class_declaration" | "class" | "interface_declaration" | "type_alias_declaration" => {
-                symbols.extend(self.parse_struct_declaration(info, code, candidates));
+            "object" | "class_declaration" => {
+                symbols.extend(self.parse_struct_declaration(info, code, candidates, None));
             }
-            /*"lexical_declaration" |*/ "variable_declarator" => {
-                symbols.extend(self.parse_variable_definition(info, code, candidates));
+            "variable_declarator" => {
+                if let Some(value) = info.node.child_by_field_name("value") {
+                    let kind = value.kind();
+                    if let Some(name) = info.node.child_by_field_name("name") {
+                        let name = code.slice(name.byte_range()).to_string();
+                        let new_info = CandidateInfo {
+                            ast_fields: info.ast_fields.clone(),
+                            node: value,
+                            parent_guid: info.parent_guid.clone(),
+                        };
+                        if LAMBDA_KINDS.contains(&kind) {
+                            symbols.extend(self.parse_function_declaration(&new_info, code, candidates, Some(name)));
+                        } else if kind == "class" {
+                            symbols.extend(self.parse_struct_declaration(&new_info, code, candidates, Some(name)));
+                        } else {
+                            symbols.extend(self.parse_variable_definition(info, code, candidates));
+                        }
+                    } else {
+                        symbols.extend(self.parse_variable_definition(info, code, candidates));
+                    }
+                } else {
+                    symbols.extend(self.parse_variable_definition(info, code, candidates));
+                }
             }
-            "function_declaration" | "method_definition" | "arrow_function" | "function_expression" => {
-                symbols.extend(self.parse_function_declaration(info, code, candidates));
+            "method_definition" | "function_declaration" => {
+                symbols.extend(self.parse_function_declaration(info, code, candidates, None));
             }
             "call_expression" => {
                 symbols.extend(self.parse_call_expression(info, code, candidates));
             }
-            "property_signature" | "public_field_definition" => {
-                symbols.extend(self.parse_field_declaration(info, code, candidates));
+            "pair" => {
+                if let Some(parent) = info.node.parent() {
+                    if parent.kind() == "object" {
+                        let value = info.node.child_by_field_name("value").unwrap();
+                        if LAMBDA_KINDS.contains(&value.kind()) {
+                            let name = info.node.child_by_field_name("key").unwrap();
+                            let name = code.slice(name.byte_range()).to_string();
+                            let new_info = CandidateInfo {
+                                ast_fields: info.ast_fields.clone(),
+                                node: value,
+                                parent_guid: info.parent_guid.clone(),
+                            };
+                            symbols.extend(self.parse_function_declaration(&new_info, code, candidates, Some(name)));
+                        } else {
+                            symbols.extend(self.parse_field_declaration(info, code, candidates));
+                        }
+                    } else {
+                        for i in 0..info.node.child_count() {
+                            let child = info.node.child(i).unwrap();
+                            candidates.push_back(CandidateInfo {
+                                ast_fields: info.ast_fields.clone(),
+                                node: child,
+                                parent_guid: info.parent_guid.clone(),
+                            })
+                        }
+                    }
+                } else {
+                    for i in 0..info.node.child_count() {
+                        let child = info.node.child(i).unwrap();
+                        candidates.push_back(CandidateInfo {
+                            ast_fields: info.ast_fields.clone(),
+                            node: child,
+                            parent_guid: info.parent_guid.clone(),
+                        })
+                    }
+                }
             }
-            "enum_declaration" => {
-                symbols.extend(self.parse_enum_declaration(info, code, candidates));
+            "field_definition" | "shorthand_property_identifier" => {
+                symbols.extend(self.parse_field_declaration(info, code, candidates));
             }
             "identifier" /*| "field_identifier"*/ => {
                 let mut usage = VariableUsage::default();
@@ -654,22 +635,6 @@ impl TSParser {
                     });
                 }
                 symbols.push(Arc::new(RwLock::new(usage)));
-            }
-            "new_expression" => {
-                if let Some(constructor) = info.node.child_by_field_name("constructor") {
-                    candidates.push_back(CandidateInfo {
-                        ast_fields: info.ast_fields.clone(),
-                        node: constructor,
-                        parent_guid: info.parent_guid.clone(),
-                    });
-                }
-                if let Some(arguments) = info.node.child_by_field_name("arguments") {
-                    candidates.push_back(CandidateInfo {
-                        ast_fields: info.ast_fields.clone(),
-                        node: arguments,
-                        parent_guid: info.parent_guid.clone(),
-                    })
-                }
             }
             "comment" => {
                 let mut def = CommentDefinition::default();
@@ -712,7 +677,7 @@ impl TSParser {
         let mut ast_fields = AstSymbolFields::default();
         ast_fields.file_path = path.clone();
         ast_fields.is_error = false;
-        ast_fields.language = LanguageId::TypeScript;
+        ast_fields.language = LanguageId::from(language());
 
         let mut candidates = VecDeque::from(vec![CandidateInfo {
             ast_fields,
@@ -747,7 +712,7 @@ impl TSParser {
     }
 }
 
-impl AstLanguageParser for TSParser {
+impl AstLanguageParser for JSParser {
     fn parse(&mut self, code: &str, path: &PathBuf) -> Vec<AstSymbolInstanceArc> {
         let tree = self.parser.parse(code, None).unwrap();
         let symbols = self.parse_(&tree.root_node(), code, path);

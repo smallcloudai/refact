@@ -14,8 +14,7 @@ mod tests {
     fn test_query_cpp_function() {
         let mut parser = Box::new(CppParser::new().expect("CppParser::new"));
         let path = PathBuf::from("/main.cpp");
-        let asd = parser.parse(MAIN_CPP_CODE, &path);
-        print(&asd, MAIN_CPP_CODE);
-        let asd = parser.parse(MAIN_CPP_CODE, &path);
+        let symbols = parser.parse(MAIN_CPP_CODE, &path);
+        print(&symbols, MAIN_CPP_CODE);
     }
 }
