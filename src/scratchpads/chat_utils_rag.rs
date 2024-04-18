@@ -42,6 +42,10 @@ pub struct FileLine {
     pub take: bool,
 }
 
+pub fn max_tokens_for_rag_chat(n_ctx: usize, maxgen: usize) -> usize {
+    (n_ctx as i32 - maxgen as i32 - RESERVE_FOR_QUESTION_AND_FOLLOWUP as i32).max(0) as usize
+}
+
 pub fn context_to_fim_debug_page(t0: &Instant, postprocessed_messages: &[ContextFile], was_looking_for: &HashMap<String, Vec<String>>) -> Value {
     let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
         json!({
@@ -649,7 +653,7 @@ pub async fn run_at_commands(
         }
     }
     user_messages_with_at = user_messages_with_at.max(1);
-    let reserve_for_context = n_ctx - maxgen - RESERVE_FOR_QUESTION_AND_FOLLOWUP;
+    let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     info!("reserve_for_context {} tokens", reserve_for_context);
 
     // Token limit works like this:
