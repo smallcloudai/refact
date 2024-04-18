@@ -6,6 +6,13 @@ from fastapi.responses import FileResponse
 __all__ = ["StaticRouter"]
 
 
+def safe_paths_join(p1: str, p2: str) -> str:
+    p_joined = os.path.abspath(os.path.join(p1, p2))
+    if p_joined.startswith(os.path.abspath(p1)):
+        return p_joined
+    raise ValueError(f"Paths {p1} and {p2} are not safe to join")
+
+
 class StaticRouter(APIRouter):
 
     def __init__(self, *args, **kwargs):
@@ -34,11 +41,11 @@ class StaticRouter(APIRouter):
         raise HTTPException(404, "No tab-chat.html found")
 
     async def _static_file(self, file_path: str):
-        if ".." in file_path:
-            raise HTTPException(404, "Path \"%s\" not found" % file_path)
-
         for spath in self.static_folders:
-            fn = os.path.join(spath, file_path)
+            try:
+                fn = safe_paths_join(spath, file_path)
+            except ValueError as e:
+                raise HTTPException(404, str(e))
             if os.path.exists(fn):
                 if fn.endswith(".cjs"):
                     return FileResponse(fn, media_type="text/javascript")
