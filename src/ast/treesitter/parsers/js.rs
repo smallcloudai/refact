@@ -524,7 +524,7 @@ impl JSParser {
         let kind = info.node.kind();
         #[cfg(test)]
         #[allow(unused)]
-            let text = code.slice(info.node.byte_range());
+        let text = code.slice(info.node.byte_range());
         match kind {
             "object" | "class_declaration" => {
                 symbols.extend(self.parse_struct_declaration(info, code, candidates, None));
@@ -687,6 +687,7 @@ impl JSParser {
             let symbols_l = self.parse_usages_(&candidate, code, &mut candidates);
             symbols.extend(symbols_l);
         }
+
         let guid_to_symbol_map = symbols.iter()
             .map(|s| (s.clone().read().unwrap().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
         for symbol in symbols.iter_mut() {
@@ -699,12 +700,15 @@ impl JSParser {
         }
 
         #[cfg(test)]
-        for symbol in symbols.iter_mut() {
-            let mut sym = symbol.write().unwrap();
-            sym.fields_mut().childs_guid = sym.fields_mut().childs_guid.iter()
-                .sorted_by_key(|x| {
-                    guid_to_symbol_map.get(*x).unwrap().read().unwrap().full_range().start_byte
-                }).map(|x| x.clone()).collect();
+        {
+            use itertools::Itertools;
+            for symbol in symbols.iter_mut() {
+                let mut sym = symbol.write().unwrap();
+                sym.fields_mut().childs_guid = sym.fields_mut().childs_guid.iter()
+                    .sorted_by_key(|x| {
+                        guid_to_symbol_map.get(*x).unwrap().read().unwrap().full_range().start_byte
+                    }).map(|x| x.clone()).collect();
+            }
         }
 
         symbols
