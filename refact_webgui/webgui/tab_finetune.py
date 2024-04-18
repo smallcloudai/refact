@@ -17,6 +17,7 @@ from refact_utils.finetune.utils import get_finetune_config
 from refact_utils.finetune.utils import get_finetune_runs
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
+from refact_webgui.webgui.selfhost_static import safe_paths_join
 from refact_webgui.webgui.selfhost_webutils import log
 
 from typing import Optional, List, Dict
@@ -107,9 +108,11 @@ class TabFinetuneRouter(APIRouter):
         if post.run_id_new == post.run_id_old:
             log("rename: same name, nothing to do")
             return JSONResponse("OK")
-
-        path_old = os.path.join(env.DIR_LORAS, post.run_id_old)
-        path_new = os.path.join(env.DIR_LORAS, post.run_id_new)
+        try:
+            path_old = safe_paths_join(env.DIR_LORAS, post.run_id_old)
+            path_new = safe_paths_join(env.DIR_LORAS, post.run_id_new)
+        except ValueError as e:
+            raise HTTPException(404, str(e))
 
         run_config = {
             "status": "preparing",
