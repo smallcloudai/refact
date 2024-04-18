@@ -202,62 +202,66 @@ impl VecDBHandler {
         }
     }
 
-    async fn get_records_from_cache(&mut self, splits: &Vec<SplitResult>) -> Result<(Vec<Record>, Vec<String>), String> {
-        let mut hashes_by_split = splits
-            .iter()
-            .map(|x| (x.window_text_hash.clone(), x.clone()))
-            .collect::<HashMap<String, SplitResult>>();
+    async fn get_records_from_cache(&mut self, splits: &Vec<SplitResult>) -> Result<(Vec<Record>, Vec<SplitResult>), String> {
         let placeholders: String = splits.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
         let query = format!("SELECT * FROM data WHERE window_text_hash IN ({})", placeholders);
-
-        let hashes_by_split_clone = hashes_by_split.clone();
-        let records = match self.cache_database.lock().await.call(move |connection| {
+        let splits_clone = splits.clone();
+        let found_hashes = match self.cache_database.lock().await.call(move |connection| {
             let mut statement = connection.prepare(&query)?;
-            let params = rusqlite::params_from_iter(hashes_by_split_clone.keys());
-            let records = statement.query_map(params, |row| {
+            let params = rusqlite::params_from_iter(splits_clone.iter().map(|x| &x.window_text_hash));
+            let x = match statement.query_map(params, |row| {
                 let vector_blob: Vec<u8> = row.get(0)?;
                 let vector: Vec<f32> = vector_blob
                     .chunks_exact(4)
                     .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
                     .collect();
-
+                let window_text: String = row.get(1)?;
                 let window_text_hash: String = row.get(2)?;
                 let time_added_timestamp: i64 = row.get(3)?;
                 let time_added = SystemTime::UNIX_EPOCH + Duration::from_secs(time_added_timestamp as u64);
-
                 let time_last_used_timestamp: i64 = row.get(4)?;
                 let time_last_used = SystemTime::UNIX_EPOCH + Duration::from_secs(time_last_used_timestamp as u64);
-
-                let split = hashes_by_split_clone
-                    .get(&window_text_hash)
-                    .expect("An attempt to get split from cache DB");
-                Ok(Record {
-                    vector: Some(vector),
-                    window_text: row.get(1)?,
-                    window_text_hash: window_text_hash,
-                    file_path: split.file_path.clone(),
-                    start_line: split.start_line,
-                    end_line: split.end_line,
-                    time_added: time_added,
-                    time_last_used: time_last_used,
-                    model_name: row.get(5)?,
-                    used_counter: row.get(6)?,
-                    distance: -1.0,
-                    usefulness: 0.0,
-                })
-            })?
-                .filter_map(|row| row.ok())
-                .collect::<Vec<Record>>();
-            Ok(records)
+                let model_name: String = row.get(5)?;
+                let used_counter: u64 = row.get(6)?;
+                Ok((
+                    window_text_hash,
+                    (vector, window_text, time_added, time_last_used, model_name, used_counter)
+                ))
+            }) {
+                Ok(mapped_rows) => {
+                    Ok(mapped_rows.filter_map(|r| r.ok()).collect::<HashMap<_, _>>())
+                },
+                Err(e) => {
+                    Err(tokio_rusqlite::Error::Rusqlite(e))
+                }
+            }; x
         }).await {
             Ok(records) => records,
             Err(err) => return Err(format!("{:?}", err))
         };
-
-        for r in &records {
-            hashes_by_split.remove(&r.window_text_hash);
+        let mut records = vec![];
+        let mut non_found_splits = vec![];
+        for split in splits.iter() {
+            if let Some(query_data) = found_hashes.get(&split.window_text_hash) {
+                records.push(Record {
+                    vector: Some(query_data.0.clone()),
+                    window_text: split.window_text.clone(),
+                    window_text_hash: split.window_text_hash.clone(),
+                    file_path: split.file_path.clone(),
+                    start_line: split.start_line,
+                    end_line: split.end_line,
+                    time_added: query_data.2.clone(),
+                    time_last_used: query_data.3.clone(),
+                    model_name: query_data.4.clone(),
+                    used_counter: query_data.5.clone(),
+                    distance: -1.0,
+                    usefulness: 0.0,
+                })
+            } else {
+                non_found_splits.push(split.clone());
+            }
         }
-        Ok((records, hashes_by_split.iter().map(|(hash, _)| hash.clone()).collect()))
+        Ok((records, non_found_splits))
     }
 
     async fn insert_records_to_cache(&mut self, records: Vec<Record>) -> Result<(), String> {
@@ -423,30 +427,24 @@ impl VecDBHandler {
         self.indexed_file_paths = Arc::new(AMutex::new(res));
     }
 
-    // pub async fn get_indexed_file_paths(&self) -> Arc<AMutex<Vec<PathBuf>>> {
-    //     return self.indexed_file_paths.clone();
-    // }
-
     pub async fn try_add_from_cache(&mut self, data: Vec<SplitResult>) -> Vec<SplitResult> {
         if data.is_empty() {
             return vec![];
         }
 
-        let (found_records, left_hashes) = match self.get_records_from_cache(&data).await {
+        let (found_records, left_splits) = match self.get_records_from_cache(&data).await {
             Ok(records) => records,
             Err(err) => {
                 info!("Error while getting values from cache: {:?}", err);
                 return vec![];
             }
         };
-        let left_results: Vec<SplitResult> =
-            data.into_iter().filter(|x| left_hashes.contains(&x.window_text_hash)).collect();
 
         match self.add_or_update(found_records, false).await {
             Ok(_) => {}
             Err(err) => info!("Error while adding values from cache: {:?}", err),
         };
-        left_results
+        left_splits
     }
 
     pub async fn add_or_update(&mut self, records: Vec<Record>, add_to_cache: bool) -> Result<(), String> {
