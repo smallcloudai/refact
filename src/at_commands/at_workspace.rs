@@ -60,8 +60,7 @@ impl AtCommand for AtWorkspace {
                     db_query = query.clone();
                 }
                 let search_result = db.vecdb_search(db_query, top_n).await?;
-                let mut results = search_result.results.clone();
-                results.dedup_by(|a, b| a.file_path == b.file_path && a.window_text == b.window_text);
+                let results = search_result.results.clone();
                 Ok(results2message(&results))
             }
             None => Err("vecdb is not available".to_string())
