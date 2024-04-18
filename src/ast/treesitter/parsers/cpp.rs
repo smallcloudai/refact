@@ -790,6 +790,7 @@ impl CppParser {
         let mut ast_fields = AstSymbolFields::default();
         ast_fields.file_path = path.clone();
         ast_fields.is_error = false;
+        ast_fields.language = LanguageId::Cpp;
 
         let mut candidates = VecDeque::from(vec![CandidateInfo {
             ast_fields,
