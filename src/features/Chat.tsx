@@ -47,22 +47,14 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
           xl: "9",
         };
 
-  const TopBottomPadding = {
-    initial: "5",
-    // xs: "1",
-    // sm: "2",
-    // md: "3",
-    // lg: "4",
-    // xl: "5",
-  };
-
+  const yPadding = host === "web" ? "5" : "23";
   return (
     <Flex
       direction="column"
       justify="between"
       flexGrow="1"
       px={LeftRightPadding}
-      py={TopBottomPadding}
+      py={yPadding}
       style={{
         ...props.style,
         height: "100dvh",
