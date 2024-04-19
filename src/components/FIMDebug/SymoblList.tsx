@@ -1,6 +1,6 @@
 import React from "react";
 import { Flex, Text, Box } from "@radix-ui/themes";
-import { ContextQueries } from "../../events";
+import { Buckets } from "../../events";
 import { TruncateLeft } from "../Text";
 import { Collapsible } from "../Collapsible";
 import styles from "./fim.module.css";
@@ -19,33 +19,47 @@ const SymbolText: React.FC<{
   );
 };
 
-export const SymbolList: React.FC<{
-  symbols?: ContextQueries;
-}> = ({ symbols = [] }) => {
-  const declarations = symbols.filter(({ from }) => from === "declarations");
-  const cursorSymbols = symbols.filter(({ from }) => from === "cursor_symbols");
-  const usages = symbols.filter(({ from }) => from === "usages");
+export type SymbolListProps = {
+  symbols: {
+    bucket_declarations: Buckets;
+    bucket_usage_of_same_stuff: Buckets;
+    bucket_high_overlap: Buckets;
+    cursor_symbols: Buckets;
+  };
+};
+export const SymbolList: React.FC<SymbolListProps> = ({ symbols }) => {
+  const declarations = symbols.bucket_declarations;
+  const usages = symbols.bucket_usage_of_same_stuff;
+  const overLap = symbols.bucket_high_overlap;
+  const cursorSymbols = symbols.cursor_symbols;
 
   return (
     <Flex direction="column" gap="4">
       <Collapsible defaultOpen title={`Declarations: ${declarations.length}`}>
-        {declarations.map(({ symbol }, i) => {
+        {declarations.map(({ name }, i) => {
           const key = `declaration-${i}`;
-          return <SymbolText key={key}>{symbol}</SymbolText>;
+          return <SymbolText key={key}>{name}</SymbolText>;
         })}
       </Collapsible>
 
       <Collapsible title={`Cursor Symbols: ${cursorSymbols.length}`}>
-        {cursorSymbols.map(({ symbol }, i) => {
+        {cursorSymbols.map(({ name }, i) => {
           const key = `cursor-symbols-${i}`;
-          return <SymbolText key={key}>{symbol}</SymbolText>;
+          return <SymbolText key={key}>{name}</SymbolText>;
         })}
       </Collapsible>
 
       <Collapsible title={`Usages: ${usages.length}`}>
-        {usages.map(({ symbol }, i) => {
+        {usages.map(({ name }, i) => {
           const key = `usages-${i}`;
-          return <SymbolText key={key}>{symbol}</SymbolText>;
+          return <SymbolText key={key}>{name}</SymbolText>;
+        })}
+      </Collapsible>
+
+      <Collapsible title={`High Overlap: ${overLap.length}`}>
+        {overLap.map(({ name }, i) => {
+          const key = `high-overlap-${i}`;
+          return <SymbolText key={key}>{name}</SymbolText>;
         })}
       </Collapsible>
     </Flex>

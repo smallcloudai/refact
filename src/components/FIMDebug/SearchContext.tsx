@@ -26,7 +26,7 @@ export const SearchContext: React.FC<SearchContextProps> = ({ data }) => {
         <Heading as="h4" size="2" mb="4">
           Look up symbols
         </Heading>
-        <SymbolList symbols={data.was_looking_for} />
+        <SymbolList symbols={data} />
       </Container>
     </Flex>
   );

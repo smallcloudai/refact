@@ -529,14 +529,27 @@ type FimFile = {
 
 type ContextFiles = FimFile[];
 
-export type ContextQueries = {
-  from: "declarations" | "cursor_symbols" | "usages";
-  symbol: string;
-}[];
+export type ContextBucket = {
+  file_path: string;
+  line1: number;
+  line2: number;
+  name: string;
+};
+
+export type Buckets = ContextBucket[];
 
 export type FIMContext = {
   attached_files?: ContextFiles;
-  was_looking_for?: ContextQueries;
+
+  bucket_declarations: Buckets;
+  bucket_usage_of_same_stuff: Buckets;
+  bucket_high_overlap: Buckets;
+  cursor_symbols: Buckets;
+
+  fim_ms: number;
+  n_ctx: number;
+  rag_ms: number;
+  rag_tokens_limit: number;
 };
 
 export type FimDebugData = {
