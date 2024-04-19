@@ -27,7 +27,13 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
 
         <Box mt="auto" overflow="hidden">
           <Text wrap="nowrap" style={{ overflow: "hidden" }} size="1">
-            model: {data.model}
+            {data.context?.fim_ms !== undefined && (
+              <div>milliseconds: {data.context.fim_ms}</div>
+            )}
+            {data.context?.n_ctx !== undefined && (
+              <div>context size: {data.context.n_ctx}</div>
+            )}
+            <div>model: {data.model}</div>
           </Text>
         </Box>
       </Flex>
