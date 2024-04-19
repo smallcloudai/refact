@@ -22,9 +22,9 @@ pub struct AstCursorSearchResult {
     pub file_path: PathBuf,
     #[serde(with = "PointDef")]
     pub cursor: Point,
-    pub declaration_symbols: Vec<SymbolsSearchResultStruct>,       // types around cursor
-    pub declaration_usage_symbols: Vec<SymbolsSearchResultStruct>, // examples of usage of the same symbols from other files
-    pub most_similar_declarations: Vec<SymbolsSearchResultStruct>, // declarations with similar usages inside them as near the cursor
+    pub bucket_declarations: Vec<SymbolsSearchResultStruct>,        // types and functions around cursor, found in indexes (matched by guid and by name)
+    pub bucket_usage_of_same_stuff: Vec<SymbolsSearchResultStruct>, // sum of (4) find anything that uses the same types and functions and (5) find function calls by name
+    pub bucket_high_overlap: Vec<SymbolsSearchResultStruct>,        // (6) declarations with high symbols overlap
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

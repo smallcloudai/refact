@@ -279,24 +279,24 @@ impl ScratchpadAbstract for SingleFileFIM {
             let language_id = get_language_id_by_filename(&cpath).unwrap_or(LanguageId::Unknown);
             let (mut ast_messages, was_looking_for) = {
                 let doc = Document::new(&cpath);
-                match self.ast_module.clone().unwrap().write().await.retrieve_cursor_symbols_by_declarations(
+                match self.ast_module.clone().unwrap().write().await.symbols_near_cursor_to_buckets(
                     &doc, &source, Point { row: pos.line as usize, column: pos.character as usize },
                     10, 3
                 ).await {
                     Ok(res) => {
                         let mut was_looking_for = HashMap::new();
                         let cursor_symbols = res.cursor_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                        let declarations = res.declaration_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                        let usages = res.declaration_usage_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                        let most_similar_declarations = res.most_similar_declarations.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
+                        let bucket_declarations = res.bucket_declarations.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
+                        let bucket_usage_of_same_stuff = res.bucket_usage_of_same_stuff.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
+                        let bucket_high_overlap = res.bucket_high_overlap.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
                         info!("near cursor cursor_symbols: {:?}", cursor_symbols);
-                        info!("near cursor declarations: {:?}", declarations);
-                        info!("near cursor usages: {:?}", usages);
-                        info!("most similar declarations: {:?}", most_similar_declarations);
+                        info!("bucket_declarations: {:?}", bucket_declarations);
+                        info!("bucket_usage_of_same_stuff: {:?}", bucket_usage_of_same_stuff);
+                        info!("bucket_high_overlap: {:?}", bucket_high_overlap);
                         was_looking_for.insert("cursor_symbols".to_string(), cursor_symbols);
-                        was_looking_for.insert("declarations".to_string(), declarations);
-                        was_looking_for.insert("usages".to_string(), usages);
-                        was_looking_for.insert("most_similar_declarations".to_string(), most_similar_declarations);
+                        was_looking_for.insert("declarations".to_string(), bucket_declarations);
+                        was_looking_for.insert("usages".to_string(), bucket_usage_of_same_stuff);
+                        was_looking_for.insert("most_similar_declarations".to_string(), bucket_high_overlap);
                         (vec![results2message(&res).await], was_looking_for)
                     },
                     Err(err) => {

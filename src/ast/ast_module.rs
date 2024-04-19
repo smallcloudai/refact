@@ -218,7 +218,7 @@ impl AstModule {
         }
     }
 
-    pub async fn retrieve_cursor_symbols_by_declarations(
+    pub async fn symbols_near_cursor_to_buckets(
         &mut self,
         doc: &Document,
         code: &str,
@@ -227,8 +227,8 @@ impl AstModule {
         top_n_usage_for_each_decl: usize,
     ) -> Result<AstCursorSearchResult, String> {
         let t0 = std::time::Instant::now();
-        info!("ast retrieve_cursor_symbols_by_declarations started for {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
-        let (cursor_usages, declarations, usages, most_similar_declarations) = self.ast_index.read().await.retrieve_cursor_symbols_by_declarations(
+        info!("symbols_near_cursor_to_buckets started for {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
+        let (cursor_usages, declarations, usages, bucket_high_overlap) = self.ast_index.read().await.symbols_near_cursor_to_buckets(
             doc,
             code,
             cursor,
@@ -259,7 +259,7 @@ impl AstModule {
                     }
                 })
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
-            declaration_symbols: declarations
+            bucket_declarations: declarations
                 .iter()
                 .map(|x| {
                     let symbol_declaration = read_symbol(x).symbol_info_struct();
@@ -271,7 +271,7 @@ impl AstModule {
                     }
                 })
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
-            declaration_usage_symbols: usages
+            bucket_usage_of_same_stuff: usages
                 .iter()
                 .map(|x| {
                     let symbol_declaration = read_symbol(x).symbol_info_struct();
@@ -283,7 +283,7 @@ impl AstModule {
                     }
                 })
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
-            most_similar_declarations: most_similar_declarations
+            bucket_high_overlap: bucket_high_overlap
                 .iter()
                 .map(|x| {
                     let symbol_declaration = read_symbol(x).symbol_info_struct();
@@ -296,9 +296,13 @@ impl AstModule {
                 })
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
         };
-        info!("ast retrieve_cursor_symbols_by_declarations time {:.3}s, \
-            found {} declaration_symbols, {} declaration_usage_symbols",
-            t0.elapsed().as_secs_f32(), result.declaration_symbols.len(), result.declaration_usage_symbols.len());
+        info!("symbols_near_cursor_to_buckets {:.3}s, \
+            found bucket_declarations {}, bucket_usage_of_same_stuff {}, bucket_high_overlap {}",
+            t0.elapsed().as_secs_f32(),
+            result.bucket_declarations.len(),
+            result.bucket_usage_of_same_stuff.len(),
+            result.bucket_high_overlap.len()
+        );
         Ok(result)
     }
 

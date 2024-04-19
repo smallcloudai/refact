@@ -14,7 +14,7 @@ use crate::call_validation::{ChatMessage, ContextFile};
 pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
     // info!("results2message {:?}", result);
     let mut fvec = vec![];
-    for res in &result.declaration_symbols {
+    for res in &result.bucket_declarations {
         let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
         fvec.push(ContextFile {
             file_name,
@@ -26,7 +26,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
             usefulness: 90.0,
         });
     }
-    for res in &result.declaration_usage_symbols {
+    for res in &result.bucket_usage_of_same_stuff {
         let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
         fvec.push(ContextFile {
             file_name,
@@ -38,7 +38,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
             usefulness: 50.0,
         });
     }
-    for res in &result.most_similar_declarations {
+    for res in &result.bucket_high_overlap {
         let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
         fvec.push(ContextFile {
             file_name,
@@ -120,7 +120,7 @@ impl AtCommand for AtAstLookupSymbols {
                 let mut doc = crate::files_in_workspace::Document { path: cpath.clone(), text: None };
                 let file_text = crate::files_in_workspace::get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?; // FIXME
                 doc.update_text(&file_text);
-                match ast.write().await.retrieve_cursor_symbols_by_declarations(
+                match ast.write().await.symbols_near_cursor_to_buckets(
                     &doc, &file_text, Point { row: row_idx, column: 0 }, 15,  3
                 ).await {
                     Ok(res) => Ok(results2message(&res).await),

@@ -314,7 +314,7 @@ impl AstIndex {
         }
     }
 
-    pub fn search_symbols_by_declarations_usage(
+    pub fn search_usages_with_this_declaration(
         &self,
         declaration_guid: &Uuid,
         exception_doc: Option<Document>,
@@ -333,7 +333,7 @@ impl AstIndex {
             .collect::<Vec<_>>())
     }
 
-    pub async fn retrieve_cursor_symbols_by_declarations(
+    pub async fn symbols_near_cursor_to_buckets(
         &self,
         doc: &Document,
         code: &str,
@@ -391,6 +391,8 @@ impl AstIndex {
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
+
+        // (3) cursor_symbols_with_types + declarations_matched_by_name
         let declarations = cursor_symbols_with_types
             .iter()
             .filter(|s| read_symbol(s).types().is_empty())
@@ -414,7 +416,8 @@ impl AstIndex {
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
 
-        let func_usages_matched_by_name = declarations
+        // (5) Match function calls by name, with fuzzy search on the current line
+        let func_calls_matched_by_name = declarations
             .iter()
             .filter(|s| read_symbol(s).symbol_type() == SymbolType::FunctionDeclaration)
             .map(|s| {
@@ -434,11 +437,13 @@ impl AstIndex {
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_usage_for_each_decl)
             .collect::<Vec<_>>();
+
+        // (4) Find anything (especially FunctionCall, VariableUsage) that uses the same declarations (list from step 3, matched by guid)
         let usages = declarations
             .iter()
             .map(|s| {
                 let guid = read_symbol(s).guid().clone();
-                let symbols_by_declarations = self.search_symbols_by_declarations_usage(&guid, None)
+                let symbols_by_declarations = self.search_usages_with_this_declaration(&guid, None)
                     .unwrap_or_default()
                     .clone();
                 symbols_by_declarations
@@ -458,11 +463,12 @@ impl AstIndex {
                     .collect::<Vec<_>>()
             })
             .flatten()
-            .chain(func_usages_matched_by_name)
+            .chain(func_calls_matched_by_name)
             .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .collect::<Vec<_>>();
 
+        // (6) Detect declarations with high symbols overlap (compile cursor_symbols_names first)
         let cursor_symbols_names = unfiltered_cursor_symbols
             .iter()
             .filter(|s| {
@@ -478,7 +484,7 @@ impl AstIndex {
             })
             .take(50)  // top 50 usages near the cursor
             .collect::<HashSet<_>>();
-        let most_similar_declarations = self.declaration_guid_to_usage_names
+        let high_overlap_declarations = self.declaration_guid_to_usage_names
             .par_iter()
             .map(|(decl_guid, usage_names)| {
                 (
@@ -489,6 +495,7 @@ impl AstIndex {
             .collect::<Vec<_>>()
             .iter()
             .filter(|&(_, a)| *a > (cursor_symbols_names.len() / 5))
+            // TODO: sort then take?
             .take(top_n_near_cursor * 2)
             .filter_map(|(g, _)| self.symbols_by_guid.get(*g))
             .unique_by(|s| read_symbol(s).guid().clone())
@@ -505,7 +512,7 @@ impl AstIndex {
                 .collect::<Vec<_>>(),
             declarations,
             usages,
-            most_similar_declarations,
+            high_overlap_declarations,
         )
     }
 
@@ -514,18 +521,6 @@ impl AstIndex {
         doc: &Document,
     ) -> Result<FileASTMarkup, String> {
         assert!(doc.text.is_some());
-
-        // let symbols: Vec<AstSymbolInstanceArc> = self.path_by_symbols
-        // .get(&doc.path)
-        // .map(|symbols| {
-        //     symbols
-        //         .iter()
-        //         .filter(|s| read_symbol(s).is_declaration())
-        //         .cloned()
-        //         .collect()
-        // })
-        // .unwrap_or_default();
-
         let symbols = match self.path_by_symbols.get(&doc.path) {
             Some(x) => x.clone(),
             None => {
