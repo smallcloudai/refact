@@ -28,7 +28,10 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         <Box mt="auto" overflow="hidden">
           <Text wrap="nowrap" style={{ overflow: "hidden" }} size="1">
             {data.context?.fim_ms !== undefined && (
-              <div>milliseconds: {data.context.fim_ms}</div>
+              <div>fim: {data.context.fim_ms}ms</div>
+            )}
+            {data.context?.rag_ms !== undefined && (
+              <div>rag: {data.context.rag_ms}ms</div>
             )}
             {data.context?.n_ctx !== undefined && (
               <div>context size: {data.context.n_ctx}</div>
