@@ -23,6 +23,10 @@ html {
   visibility: hidden;
 }
 #login-form svg {
-  width: 140px;
+  width: 340px;
+  height: auto;
+}
+.admin-logo {
+  width: 340px;
   height: auto;
 }
