@@ -277,6 +277,16 @@ class BaseCompletionsRouter(APIRouter):
         _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
         _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
 
+    def _models_available_dict_rewrite(self, models_available: List[str]) -> Dict[str, Any]:
+        rewrite_dict = {}
+        for model in models_available:
+            d = {}
+            if n_ctx := resolve_model_context_size(model, self._model_assigner):
+                d["n_ctx"] = n_ctx
+
+            rewrite_dict[model] = d
+        return rewrite_dict
+
     def _caps_base_data(self) -> Dict[str, Any]:
         running = running_models_and_loras(self._model_assigner)
         models_available = self._inference_queue.models_available(force_read=True)
@@ -301,7 +311,7 @@ class BaseCompletionsRouter(APIRouter):
             "running_models": [r for r in [*running['completion'], *running['chat']]],
             "code_completion_default_model": code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
-            "n_ctx_rewrite": {model: n_ctx for model in models_available if (n_ctx := resolve_model_context_size(model, self._model_assigner))},
+            "models_dict_patch": self._models_available_dict_rewrite(models_available),
 
             "default_embeddings_model": embeddings_default_model,
             "endpoint_embeddings_template": "v1/embeddings",
