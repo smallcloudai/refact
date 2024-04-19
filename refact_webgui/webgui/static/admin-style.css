@@ -22,3 +22,11 @@ html {
 #gotoLogin {
   visibility: hidden;
 }
+#login-form svg {
+  width: 340px;
+  height: auto;
+}
+.admin-logo {
+  width: 340px;
+  height: auto;
+}
