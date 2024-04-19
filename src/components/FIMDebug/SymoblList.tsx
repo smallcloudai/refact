@@ -9,17 +9,27 @@ const SymbolText: React.FC<{
   children: React.ReactNode;
   title?: string;
   horizontal?: boolean;
-}> = ({ children, title, horizontal = false }) => {
+  withIcon?: boolean;
+}> = ({ children, title, withIcon = false, horizontal = false }) => {
   return (
-    <Box pr="2" py="1" display={horizontal ? "inline-block" : "block"}>
+    <Box
+      pr="2"
+      py={horizontal ? "0" : "1"}
+      display={horizontal ? "inline-block" : "block"}
+    >
       <Text
         title={title}
         size="2"
         as="span"
         style={{ display: horizontal ? "inline-flex" : "flex" }}
       >
-        🔎
-        <TruncateLeft className={styles.symbol}>{children}</TruncateLeft>
+        {withIcon ? (
+          <>
+            🔎 <TruncateLeft className={styles.symbol}>{children}</TruncateLeft>
+          </>
+        ) : (
+          children
+        )}
       </Text>
     </Box>
   );
@@ -44,18 +54,7 @@ export const SymbolList: React.FC<SymbolListProps> = ({ symbols }) => {
     <Flex direction="column">
       <Collapsible
         className={styles.symbol_list_button}
-        defaultOpen
-        title={`Declarations: ${declarations.length}`}
-      >
-        {declarations.map(({ name }, i) => {
-          const key = `declaration-${i}`;
-          return <SymbolText key={key}>{name}</SymbolText>;
-        })}
-      </Collapsible>
-
-      <Collapsible
-        className={styles.symbol_list_button}
-        title={`Cursor Symbols: ${cursorSymbols.length}`}
+        title={`Symbols near cursor: ${cursorSymbols.length}`}
       >
         {cursorSymbols.map(({ name }, i) => {
           const key = `cursor-symbols-${i}`;
@@ -68,13 +67,14 @@ export const SymbolList: React.FC<SymbolListProps> = ({ symbols }) => {
       </Collapsible>
 
       <Collapsible
+        defaultOpen
         className={styles.symbol_list_button}
-        title={`Usages: ${usages.length}`}
+        title={`Declarations: ${declarations.length}`}
       >
-        {usages.map(({ name }, i) => {
-          const key = `usages-${i}`;
+        {declarations.map(({ name }, i) => {
+          const key = `declaration-${i}`;
           return (
-            <SymbolText horizontal key={key}>
+            <SymbolText withIcon key={key}>
               {name}
             </SymbolText>
           );
@@ -82,13 +82,29 @@ export const SymbolList: React.FC<SymbolListProps> = ({ symbols }) => {
       </Collapsible>
 
       <Collapsible
+        defaultOpen
         className={styles.symbol_list_button}
-        title={`High Overlap: ${overLap.length}`}
+        title={`Usages of the same symbols: ${usages.length}`}
+      >
+        {usages.map(({ name }, i) => {
+          const key = `usages-${i}`;
+          return (
+            <SymbolText withIcon key={key}>
+              {name}
+            </SymbolText>
+          );
+        })}
+      </Collapsible>
+
+      <Collapsible
+        defaultOpen
+        className={styles.symbol_list_button}
+        title={`Similar code: ${overLap.length}`}
       >
         {overLap.map(({ name }, i) => {
           const key = `high-overlap-${i}`;
           return (
-            <SymbolText horizontal key={key}>
+            <SymbolText withIcon key={key}>
               {name}
             </SymbolText>
           );
