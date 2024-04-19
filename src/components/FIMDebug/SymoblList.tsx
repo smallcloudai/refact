@@ -8,10 +8,16 @@ import styles from "./fim.module.css";
 const SymbolText: React.FC<{
   children: React.ReactNode;
   title?: string;
-}> = ({ children, title }) => {
+  horizontal?: boolean;
+}> = ({ children, title, horizontal = false }) => {
   return (
-    <Box p="1">
-      <Text title={title} size="2" as="div" style={{ display: "flex" }}>
+    <Box pr="2" py="1" display={horizontal ? "inline-block" : "block"}>
+      <Text
+        title={title}
+        size="2"
+        as="span"
+        style={{ display: horizontal ? "inline-flex" : "flex" }}
+      >
         🔎
         <TruncateLeft className={styles.symbol}>{children}</TruncateLeft>
       </Text>
@@ -27,6 +33,7 @@ export type SymbolListProps = {
     cursor_symbols: Buckets;
   };
 };
+
 export const SymbolList: React.FC<SymbolListProps> = ({ symbols }) => {
   const declarations = symbols.bucket_declarations;
   const usages = symbols.bucket_usage_of_same_stuff;
@@ -34,32 +41,57 @@ export const SymbolList: React.FC<SymbolListProps> = ({ symbols }) => {
   const cursorSymbols = symbols.cursor_symbols;
 
   return (
-    <Flex direction="column" gap="4">
-      <Collapsible defaultOpen title={`Declarations: ${declarations.length}`}>
+    <Flex direction="column">
+      <Collapsible
+        className={styles.symbol_list_button}
+        defaultOpen
+        title={`Declarations: ${declarations.length}`}
+      >
         {declarations.map(({ name }, i) => {
           const key = `declaration-${i}`;
           return <SymbolText key={key}>{name}</SymbolText>;
         })}
       </Collapsible>
 
-      <Collapsible title={`Cursor Symbols: ${cursorSymbols.length}`}>
+      <Collapsible
+        className={styles.symbol_list_button}
+        title={`Cursor Symbols: ${cursorSymbols.length}`}
+      >
         {cursorSymbols.map(({ name }, i) => {
           const key = `cursor-symbols-${i}`;
-          return <SymbolText key={key}>{name}</SymbolText>;
+          return (
+            <SymbolText horizontal key={key}>
+              {name}
+            </SymbolText>
+          );
         })}
       </Collapsible>
 
-      <Collapsible title={`Usages: ${usages.length}`}>
+      <Collapsible
+        className={styles.symbol_list_button}
+        title={`Usages: ${usages.length}`}
+      >
         {usages.map(({ name }, i) => {
           const key = `usages-${i}`;
-          return <SymbolText key={key}>{name}</SymbolText>;
+          return (
+            <SymbolText horizontal key={key}>
+              {name}
+            </SymbolText>
+          );
         })}
       </Collapsible>
 
-      <Collapsible title={`High Overlap: ${overLap.length}`}>
+      <Collapsible
+        className={styles.symbol_list_button}
+        title={`High Overlap: ${overLap.length}`}
+      >
         {overLap.map(({ name }, i) => {
           const key = `high-overlap-${i}`;
-          return <SymbolText key={key}>{name}</SymbolText>;
+          return (
+            <SymbolText horizontal key={key}>
+              {name}
+            </SymbolText>
+          );
         })}
       </Collapsible>
     </Flex>

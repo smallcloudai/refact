@@ -37,11 +37,7 @@ export const Collapsible: React.FC<CollapsibleProps> = ({
         </RadixCollapsible.Trigger>
       </Flex>
 
-      <RadixCollapsible.Content>
-        <Flex direction="column" gap="2">
-          {children}
-        </Flex>
-      </RadixCollapsible.Content>
+      <RadixCollapsible.Content>{children}</RadixCollapsible.Content>
     </RadixCollapsible.Root>
   );
 };
