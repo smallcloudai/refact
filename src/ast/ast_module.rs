@@ -188,7 +188,7 @@ impl AstModule {
 
     pub async fn search_usages_by_declarations(&self, declaration_guid: &Uuid) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
-        match self.ast_index.read().await.search_symbols_by_declarations_usage(declaration_guid, None) {
+        match self.ast_index.read().await.search_usages_with_this_declaration(declaration_guid, None) {
             Ok(results) => {
                 let symbol_structs = results
                     .iter()

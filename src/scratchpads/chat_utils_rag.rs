@@ -3,13 +3,13 @@ use std::sync::RwLock;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::time::Instant;
 use tracing::{info, warn};
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
+use crate::ast::structs::SymbolsSearchResultStruct;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
@@ -46,7 +46,28 @@ pub fn max_tokens_for_rag_chat(n_ctx: usize, maxgen: usize) -> usize {
     (n_ctx as i32 - maxgen as i32 - RESERVE_FOR_QUESTION_AND_FOLLOWUP as i32).max(0) as usize
 }
 
-pub fn context_to_fim_debug_page(t0: &Instant, postprocessed_messages: &[ContextFile], was_looking_for: &HashMap<String, Vec<String>>) -> Value {
+pub fn context_to_fim_debug_page(
+    postprocessed_messages: &[ContextFile],
+    search_traces: &crate::ast::structs::AstCursorSearchResult,
+) -> Value {
+    let mut context = serde_json::json!({});
+    fn shorter_symbol(x: &SymbolsSearchResultStruct) -> serde_json::Value {
+        let mut t: serde_json::Value = serde_json::json!({});
+        t["name"] = serde_json::Value::String(x.symbol_declaration.name.clone());
+        t["file_path"] = serde_json::Value::String(x.symbol_declaration.file_path.display().to_string());
+        t["line1"] = serde_json::json!(x.symbol_declaration.full_range.start_point.row + 1);
+        t["line2"] = serde_json::json!(x.symbol_declaration.full_range.end_point.row + 1);
+        t
+    }
+    context["cursor_symbols"] = serde_json::Value::Array(search_traces.cursor_symbols.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_declarations"] = serde_json::Value::Array(search_traces.bucket_declarations.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_usage_of_same_stuff"] = serde_json::Value::Array(search_traces.bucket_usage_of_same_stuff.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_high_overlap"] = serde_json::Value::Array(search_traces.bucket_high_overlap.iter()
+        .map(|x| shorter_symbol(x)).collect());
+
     let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
         json!({
             "file_name": x.file_name,
@@ -55,21 +76,8 @@ pub fn context_to_fim_debug_page(t0: &Instant, postprocessed_messages: &[Context
             "line2": x.line2,
         })
     }).collect();
-
-    let was_looking_for_vec: Vec<_> = was_looking_for.iter().flat_map(|(k, v)| {
-        v.iter().map(move |i| {
-            json!({
-                "from": k,
-                "symbol": i,
-            })
-        })
-    }).collect();
-    let elapsed = t0.elapsed().as_secs_f32();
-    json!({
-        "elapsed": elapsed,
-        "was_looking_for": was_looking_for_vec,
-        "attached_files": attached_files,
-    })
+    context["attached_files"] = serde_json::Value::Array(attached_files);
+    context
 }
 
 fn color_with_gradient_type(omsg: &ContextFile, linevec: &mut Vec<Arc<FileLine>>) {

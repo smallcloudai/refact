@@ -25,7 +25,6 @@ use crate::files_in_workspace::Document;
 use crate::nicer_logs::last_n_chars;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::scratchpads::chat_utils_rag::context_to_fim_debug_page;
 use crate::telemetry::snippets_collection;
 use crate::telemetry::telemetry_structs;
 
@@ -148,6 +147,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
+        let fim_t0 = Instant::now();
         let use_rag = !self.t.context_format.is_empty() && self.post.use_ast && self.ast_module.is_some();
         let mut rag_tokens_n = if self.post.rag_tokens_n > 0 {
             self.post.rag_tokens_n.min(4096).max(50)
@@ -273,9 +273,10 @@ impl ScratchpadAbstract for SingleFileFIM {
         } else {
             return Err(format!("order \"{}\" not recognized", self.order));
         }
+        let fim_ms = fim_t0.elapsed().as_secs_f64();
 
         if use_rag && rag_tokens_n > 0 {
-            let t0 = Instant::now();
+            let rag_t0 = Instant::now();
             let language_id = get_language_id_by_filename(&cpath).unwrap_or(LanguageId::Unknown);
             let (mut ast_messages, was_looking_for) = {
                 let doc = Document::new(&cpath);
@@ -284,24 +285,11 @@ impl ScratchpadAbstract for SingleFileFIM {
                     10, 3
                 ).await {
                     Ok(res) => {
-                        let mut was_looking_for = HashMap::new();
-                        let cursor_symbols = res.cursor_symbols.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                        let bucket_declarations = res.bucket_declarations.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                        let bucket_usage_of_same_stuff = res.bucket_usage_of_same_stuff.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                        let bucket_high_overlap = res.bucket_high_overlap.iter().map(|x| last_n_chars(&x.symbol_declaration.name, 30)).collect::<Vec<_>>();
-                        info!("near cursor cursor_symbols: {:?}", cursor_symbols);
-                        info!("bucket_declarations: {:?}", bucket_declarations);
-                        info!("bucket_usage_of_same_stuff: {:?}", bucket_usage_of_same_stuff);
-                        info!("bucket_high_overlap: {:?}", bucket_high_overlap);
-                        was_looking_for.insert("cursor_symbols".to_string(), cursor_symbols);
-                        was_looking_for.insert("declarations".to_string(), bucket_declarations);
-                        was_looking_for.insert("usages".to_string(), bucket_usage_of_same_stuff);
-                        was_looking_for.insert("most_similar_declarations".to_string(), bucket_high_overlap);
-                        (vec![results2message(&res).await], was_looking_for)
+                        (vec![results2message(&res).await], Some(res))
                     },
                     Err(err) => {
                         error!("can't fetch ast results: {}", err);
-                        (vec![], HashMap::new())
+                        (vec![], None)
                     }
                 }
             };
@@ -328,9 +316,18 @@ impl ScratchpadAbstract for SingleFileFIM {
             ).await;
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);
-            self.context_used = context_to_fim_debug_page(&t0, &postprocessed_messages, &was_looking_for);
-            self.context_used["n_ctx".to_string()] = Value::from(context_size as i64);
-            self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
+            let rag_ms = rag_t0.elapsed().as_secs_f64();
+
+            if was_looking_for.is_some() {
+                self.context_used = crate::scratchpads::chat_utils_rag::context_to_fim_debug_page(
+                    &postprocessed_messages,
+                    &was_looking_for.unwrap()
+                );
+                self.context_used["fim_ms"] = Value::from((fim_ms*1000.0) as i32);
+                self.context_used["rag_ms"] = Value::from((rag_ms*1000.0) as i32);
+                self.context_used["n_ctx".to_string()] = Value::from(context_size as i64);
+                self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
+            }
         }
 
         if DEBUG {
