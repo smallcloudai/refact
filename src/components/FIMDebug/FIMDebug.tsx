@@ -19,8 +19,7 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
         ) : (
           <Box py="2" overflow="hidden">
             <Text wrap="nowrap" size="2">
-              Completion Context{" "}
-              {data.cached ? "Cache Used." : "Cache Not Used."}
+              Completion Context Cached response.
             </Text>
           </Box>
         )}
@@ -34,7 +33,10 @@ export const FIMDebug: React.FC<FimDebugProps> = ({ data }) => {
               <div>rag: {data.context.rag_ms}ms</div>
             )}
             {data.context?.n_ctx !== undefined && (
-              <div>context size: {data.context.n_ctx}</div>
+              <div>
+                rag tokens: {data.context.rag_tokens_limit} /{" "}
+                {data.context.n_ctx}
+              </div>
             )}
             <div>model: {data.model}</div>
           </Text>
