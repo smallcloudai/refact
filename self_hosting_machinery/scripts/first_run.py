@@ -5,13 +5,13 @@ from self_hosting_machinery.scripts import enum_gpus
 from refact_utils.scripts import env
 
 
-def copy_watchdog_configs_if_first_run_detected(model_assigner: ModelAssigner):
+def assign_gpus_if_first_run_detected(model_assigner: ModelAssigner):
     if not os.path.exists(env.CONFIG_ENUM_GPUS):
         enum_gpus.enum_gpus()
-        model_assigner.first_run()
+        model_assigner.first_run()   # has models_to_watchdog_configs() inside
 
 
-def convert_old_configs(model_assigner: ModelAssigner):
+def convert_old_configs():
     # longthink.cfg and openai_api_worker.cfg are deprecated watchdog configs
     old_longthink = os.path.join(env.DIR_WATCHDOG_D, "longthink.cfg")
     if os.path.exists(old_longthink):
@@ -20,16 +20,8 @@ def convert_old_configs(model_assigner: ModelAssigner):
     if os.path.exists(openai_watchdog_cfg_fn):
         os.unlink(openai_watchdog_cfg_fn)
 
-    for gpu in range(16):
-        fn = os.path.join(env.DIR_WATCHDOG_D, "model-gpu%d.cfg" % gpu)
-        if not os.path.exists(fn):
-            continue
-        text = open(fn).read()
-
-    model_assigner.models_to_watchdog_configs()
-
 
 if __name__ == '__main__':
+    convert_old_configs()
     model_assigner = ModelAssigner()
-    convert_old_configs(model_assigner)
-    copy_watchdog_configs_if_first_run_detected(model_assigner)
+    assign_gpus_if_first_run_detected(model_assigner)
