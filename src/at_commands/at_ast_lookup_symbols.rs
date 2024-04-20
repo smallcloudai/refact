@@ -120,7 +120,7 @@ impl AtCommand for AtAstLookupSymbols {
                 let mut doc = crate::files_in_workspace::Document { path: cpath.clone(), text: None };
                 let file_text = crate::files_in_workspace::get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?; // FIXME
                 doc.update_text(&file_text);
-                match ast.write().await.symbols_near_cursor_to_buckets(
+                match ast.read().await.symbols_near_cursor_to_buckets(
                     &doc, &file_text, Point { row: row_idx, column: 0 }, 15,  3
                 ).await {
                     Ok(res) => Ok(results2message(&res).await),
