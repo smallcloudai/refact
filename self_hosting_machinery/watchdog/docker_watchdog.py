@@ -15,6 +15,7 @@ from typing import Dict, Optional, List
 
 from refact_utils.scripts import env
 
+HEADLESS = ("--headless" in sys.argv)    # for ui-less docker: skip all standard cfg-s (web ui, enum gpus, etc), skip first_run script
 FIRST_RUN_CMDLINE = [sys.executable, "-m", "self_hosting_machinery.scripts.first_run"]
 
 
@@ -304,9 +305,8 @@ class TrackedJob:
                f"  remove: {self.remove_this}\n" \
                f"  status: {self.status_from_stderr}\n"
 
-
 tracked: Dict[str, TrackedJob] = {}
-watchdog_templates = list(Path(env.DIR_WATCHDOG_TEMPLATES).iterdir())
+watchdog_templates = list(Path(env.DIR_WATCHDOG_TEMPLATES).iterdir()) if not HEADLESS else []
 
 
 def create_tracked_jobs_from_configs():
@@ -446,14 +446,19 @@ def factory_reset():
 
 
 def first_run():
+    if HEADLESS:
+        return
     subprocess.check_call(FIRST_RUN_CMDLINE)
 
 
 def main_loop():
-    # Generate a random SMALLCLOUD_API_KEY, it will be inherited by subprocesses,
-    # this allows inference_worker to authorize on the local web server (both use
-    # this variable), and work safely even if we expose http port to the world.
-    os.environ["SMALLCLOUD_API_KEY"] = str(uuid.uuid4())
+    if not HEADLESS:
+        # Generate a random SMALLCLOUD_API_KEY, it will be inherited by subprocesses,
+        # this allows inference_worker to authorize on the local web server (both use
+        # this variable), and work safely even if we expose http port to the world.
+        os.environ["SMALLCLOUD_API_KEY"] = str(uuid.uuid4())
+    else:
+        assert "SMALLCLOUD_API_KEY" in os.environ
 
     first_run()
     while 1:

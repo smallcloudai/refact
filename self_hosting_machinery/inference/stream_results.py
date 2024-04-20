@@ -108,10 +108,12 @@ def completions_wait_batch(req_session: requests.Session, my_desc, verbose=False
     if json_resp is None:
         return "ERROR", []
     t1 = time.time()
-    logger.info("%0.1fms %s %s" % (1000*(t1 - t0), url, termcolor.colored(json_resp.get("retcode", "no retcode"), "green")))
+    retcode = json_resp.get("retcode", "ERROR")
+    if retcode != "WAIT":
+        logger.info("%0.1fms %s %s" % (1000*(t1 - t0), url, termcolor.colored(retcode, "green")))
     if verbose or "retcode" not in json_resp:
         logger.warning("%s unrecognized json: %s" % (url, json.dumps(json_resp, indent=4)))
-    return json_resp.get("retcode", "ERROR"), json_resp.get("batch", [])
+    return retcode, json_resp.get("batch", [])
 
 
 def head_and_tail(base: str, modified: str):
