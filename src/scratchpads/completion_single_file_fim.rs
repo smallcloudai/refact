@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::time::Instant;
@@ -22,7 +21,6 @@ use crate::call_validation::{CodeCompletionPost, ChatMessage, ContextFile, Sampl
 use crate::global_context::GlobalContext;
 use crate::completion_cache;
 use crate::files_in_workspace::Document;
-use crate::nicer_logs::last_n_chars;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::telemetry::snippets_collection;
@@ -280,7 +278,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             let language_id = get_language_id_by_filename(&cpath).unwrap_or(LanguageId::Unknown);
             let (mut ast_messages, was_looking_for) = {
                 let doc = Document::new(&cpath);
-                match self.ast_module.clone().unwrap().write().await.symbols_near_cursor_to_buckets(
+                match self.ast_module.clone().unwrap().read().await.symbols_near_cursor_to_buckets(
                     &doc, &source, Point { row: pos.line as usize, column: pos.character as usize },
                     10, 3
                 ).await {

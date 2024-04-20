@@ -219,7 +219,7 @@ impl AstModule {
     }
 
     pub async fn symbols_near_cursor_to_buckets(
-        &mut self,
+        &self,
         doc: &Document,
         code: &str,
         cursor: Point,
