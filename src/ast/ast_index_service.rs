@@ -37,7 +37,7 @@ impl AstEvent {
 #[derive(Debug)]
 pub struct AstIndexService {
     update_request_queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
-    output_queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
+    ast_immediate_todo: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     is_busy: Arc<AMutex<bool>>,
     ast_index: Arc<ARwLock<AstIndex>>,
 }
@@ -46,7 +46,7 @@ use std::path::PathBuf;
 
 async fn cooldown_queue_thread(
     update_request_queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
-    out_queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
+    ast_immediate_todo: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     cooldown_secs: u64,
 ) {
     let mut latest_events: HashMap<PathBuf, Arc<AstEvent>> = HashMap::new();
@@ -68,9 +68,9 @@ async fn cooldown_queue_thread(
 
         let now = SystemTime::now();
         if have_reset {
-            let mut out = out_queue.lock().await;
-            out.clear();
-            out.push_back(Arc::new(AstEvent { docs: Vec::new(), typ: AstEventType::AstReset, posted_ts: now }));
+            let mut q = ast_immediate_todo.lock().await;
+            q.clear();
+            q.push_back(Arc::new(AstEvent { docs: Vec::new(), typ: AstEventType::AstReset, posted_ts: now }));
             continue;
         }
 
@@ -93,7 +93,7 @@ async fn cooldown_queue_thread(
                 latest_events.remove(&path);
                 launch_event.docs.push(Document { path: path.clone(), text: None });
             }
-            out_queue.lock().await.push_back(Arc::new(launch_event));
+            ast_immediate_todo.lock().await.push_back(Arc::new(launch_event));
             continue;
         }
 
@@ -104,7 +104,7 @@ async fn cooldown_queue_thread(
 
 async fn ast_indexer_thread(
     gcx_weak: Weak<ARwLock<GlobalContext>>,
-    queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
+    ast_immediate_todo: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_index: Arc<ARwLock<AstIndex>>,
     is_busy_flag: Arc<AMutex<bool>>,
 ) {
@@ -114,9 +114,9 @@ async fn ast_indexer_thread(
     let mut hold_on_after_reset = false;
     loop {
         let mut events = {
-            let mut queue_locked = queue.lock().await;
-            let events: Vec<Arc<AstEvent>> = Vec::from(queue_locked.to_owned());
-            queue_locked.clear();
+            let mut q = ast_immediate_todo.lock().await;
+            let events: Vec<Arc<AstEvent>> = Vec::from(q.to_owned());
+            q.clear();
             events
         };
 
@@ -266,10 +266,10 @@ impl AstIndexService {
         ast_index: Arc<ARwLock<AstIndex>>
     ) -> Self {
         let update_request_queue = Arc::new(AMutex::new(VecDeque::new()));
-        let output_queue = Arc::new(AMutex::new(VecDeque::new()));
+        let ast_immediate_todo = Arc::new(AMutex::new(VecDeque::new()));
         AstIndexService {
             update_request_queue: update_request_queue.clone(),
-            output_queue: output_queue.clone(),
+            ast_immediate_todo: ast_immediate_todo.clone(),
             is_busy: Arc::new(AMutex::new(false)),
             ast_index: ast_index.clone(),
         }
@@ -282,14 +282,14 @@ impl AstIndexService {
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
                 self.update_request_queue.clone(),
-                self.output_queue.clone(),
+                self.ast_immediate_todo.clone(),
                 COOLDOWN_SECS,
             )
         );
         let indexer_handle = tokio::spawn(
             ast_indexer_thread(
                 Arc::downgrade(&gcx),
-                self.output_queue.clone(),
+                self.ast_immediate_todo.clone(),
                 self.ast_index.clone(),
                 self.is_busy.clone(),
             )
@@ -313,7 +313,7 @@ impl AstIndexService {
         if !force {
             self.update_request_queue.lock().await.push_back(Arc::new(event));
         } else {
-            self.output_queue.lock().await.push_back(Arc::new(event));
+            self.ast_immediate_todo.lock().await.push_back(Arc::new(event));
         }
     }
 }
