@@ -27,7 +27,10 @@ pub const KNOWN_MODELS: &str = r####"
                 "starcoder2/15b/base",
                 "starcoder2/3b/vllm",
                 "starcoder2/7b/vllm",
-                "starcoder2/15b/vllm"
+                "starcoder2/15b/vllm",
+                "starcoder2/3b",
+                "starcoder2/7b",
+                "starcoder2/15b"
             ]
         },
         "smallcloudai/Refact-1_6B-fim": {
@@ -36,7 +39,7 @@ pub const KNOWN_MODELS: &str = r####"
                 "FIM-PSM": {},
                 "FIM-SPM": {
                     "context_format": "default",
-                    "rag_ratio": 0.5
+                    "rag_ratio": 0
                 }
             },
             "default_scratchpad": "FIM-SPM",
@@ -244,7 +247,8 @@ pub const KNOWN_MODELS: &str = r####"
     "tokenizer_rewrite_path": {
         "gpt-3.5-turbo": "Xenova/gpt-3.5-turbo-16k",
         "gpt-3.5-turbo-1106": "Xenova/gpt-3.5-turbo-16k",
-        "gpt-4": "Xenova/gpt-4"
+        "gpt-4": "Xenova/gpt-4",
+        "starcoder2/3b": "bigcode/starcoder2-3b"
     }
 }
 "####;

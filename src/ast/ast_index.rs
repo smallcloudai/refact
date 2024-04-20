@@ -148,6 +148,7 @@ impl AstIndex {
             removed_guids.insert(guid.clone());
         }
         for symbol in self.symbols_by_guid.values_mut() {
+            // FIXME: spends a lot of time here
             symbol.write().expect("the data might be broken").remove_linked_guids(&removed_guids);
         }
         self.has_changes = true;
