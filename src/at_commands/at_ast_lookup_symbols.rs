@@ -113,7 +113,7 @@ impl AtCommand for AtAstLookupSymbols {
             None => return Err("line number is not a valid".to_string()),
         };
 
-        let cpath = crate::files_in_workspace::canonical_path(&file_path);
+        let cpath = crate::files_correction::canonical_path(&file_path);
         let ast = context.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {

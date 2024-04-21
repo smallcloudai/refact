@@ -194,7 +194,7 @@ pub async fn handle_v1_ast_file_markup(
     let post = serde_json::from_slice::<FileNameOnlyPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let corrected = crate::files_in_workspace::correct_to_nearest_filename(
+    let corrected = crate::files_correction::correct_to_nearest_filename(
         global_context.clone(),
         &post.file_name,
         false,
@@ -249,7 +249,7 @@ pub async fn handle_v1_ast_file_dump(
     let post = serde_json::from_slice::<FileNameOnlyPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let corrected = crate::files_in_workspace::correct_to_nearest_filename(
+    let corrected = crate::files_correction::correct_to_nearest_filename(
             global_context.clone(),
             &post.file_name,
             false,
@@ -298,7 +298,7 @@ pub async fn handle_v1_ast_file_symbols(
     let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let cpath = crate::files_in_workspace::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+    let cpath = crate::files_correction::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     let mut doc = Document::new(&cpath);
     let file_text = get_file_text_from_memory_or_disk(global_context.clone(), &cpath).await.unwrap_or_default(); // FIXME unwrap
     doc.update_text(&file_text);
@@ -337,7 +337,7 @@ pub async fn handle_v1_ast_index_file(
     let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let cpath = crate::files_in_workspace::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+    let cpath = crate::files_correction::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     let mut doc = Document::new(&cpath);
     let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default(); // FIXME unwrap
     doc.update_text(&text);

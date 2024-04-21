@@ -146,7 +146,7 @@ pub async fn postprocess_rag_load_ast_markup(
     let mut files_markup: HashMap<String, Arc<File>> = HashMap::new();
     let ast_module = global_context.read().await.ast_module.clone();
     for file_name in files_set {
-        let path = crate::files_in_workspace::canonical_path(&file_name.clone());
+        let path = crate::files_correction::canonical_path(&file_name.clone());
         let cpath_symmetry_breaker: f32 = (calculate_hash(&path) as f32) / (u64::MAX as f32) / 100.0;
         let mut doc = Document::new(&path);
         let text = crate::files_in_workspace::get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
@@ -330,11 +330,11 @@ pub async fn postprocess_rag_stage_3_6(
     // 4. Fill in usefulness from search results
     for omsg in origmsgs.iter() {
         // Do what we can to match omsg.file_name to something real
-        let nearest = crate::files_in_workspace::correct_to_nearest_filename(global_context.clone(), &omsg.file_name, false, 1).await;
+        let nearest = crate::files_correction::correct_to_nearest_filename(global_context.clone(), &omsg.file_name, false, 1).await;
         let cpath = if nearest.is_empty() {
-            crate::files_in_workspace::canonical_path(&omsg.file_name)
+            crate::files_correction::canonical_path(&omsg.file_name)
         } else {
-            crate::files_in_workspace::canonical_path(&nearest[0])
+            crate::files_correction::canonical_path(&nearest[0])
         };
         let linevec: &mut Vec<Arc<FileLine>> = match lines_in_files.get_mut(&cpath) {
             Some(x) => x,

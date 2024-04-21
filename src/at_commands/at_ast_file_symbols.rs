@@ -59,7 +59,7 @@ impl AtCommand for AtAstFileSymbols {
         }
 
         let cpath = match args.get(0) {
-            Some(x) => crate::files_in_workspace::canonical_path(&x),
+            Some(x) => crate::files_correction::canonical_path(&x),
             None => return Err("no file path".to_string()),
         };
 

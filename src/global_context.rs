@@ -224,7 +224,7 @@ pub async fn create_global_context(
 
     let mut workspace_dirs: Vec<PathBuf> = vec![];
     if !cmdline.workspace_folder.is_empty() {
-        let path = crate::files_in_workspace::canonical_path(&cmdline.workspace_folder);
+        let path = crate::files_correction::canonical_path(&cmdline.workspace_folder);
         workspace_dirs = vec![path];
     }
     let cx = GlobalContext {

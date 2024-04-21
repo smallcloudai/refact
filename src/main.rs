@@ -30,6 +30,7 @@ mod known_models;
 mod dashboard;
 mod files_in_workspace;
 mod files_in_jsonl;
+mod files_correction;
 mod vecdb;
 mod fetch_embedding;
 mod at_commands;

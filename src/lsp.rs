@@ -117,7 +117,7 @@ pub struct SuccessRes {
 
 impl Backend {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
-        let path = crate::files_in_workspace::canonical_path(&params.text_document_position.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
+        let path = crate::files_correction::canonical_path(&params.text_document_position.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
         let txt = match self.gcx.read().await.documents_state.memory_document_map.get(&path) {
             Some(doc) => doc.read().await.clone().get_text_or_read_from_disk().await.unwrap_or_default(),
             None => return Err(internal_error("document not found"))
@@ -192,7 +192,7 @@ impl LanguageServer for Backend {
         let mut folders: Vec<PathBuf> = vec![];
         if let Some(nonzero_folders) = params.workspace_folders {
             folders = nonzero_folders.iter().map(|x| {
-                let path = crate::files_in_workspace::canonical_path(&x.uri.to_file_path().unwrap_or_default().display().to_string());
+                let path = crate::files_correction::canonical_path(&x.uri.to_file_path().unwrap_or_default().display().to_string());
                 path
             }).collect();
         }
@@ -261,7 +261,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let cpath = crate::files_in_workspace::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
+        let cpath = crate::files_correction::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
         files_in_workspace::on_did_open(
             self.gcx.clone(),
             &cpath,
@@ -271,7 +271,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let path = crate::files_in_workspace::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
+        let path = crate::files_correction::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
         files_in_workspace::on_did_change(
             self.gcx.clone(),
             &path,
@@ -280,7 +280,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let path = crate::files_in_workspace::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
+        let path = crate::files_correction::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
         self.client
             .log_message(MessageType::INFO, "{refact-lsp} file saved")
             .await;
@@ -291,7 +291,7 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::INFO, "{refact-lsp} file closed")
             .await;
-        let path = crate::files_in_workspace::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
+        let path = crate::files_correction::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
         info!("{} closed", path.display());
     }
 
@@ -316,7 +316,7 @@ impl LanguageServer for Backend {
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         async fn on_delete(event: FileEvent, gcx: Arc<ARwLock<GlobalContext>>) {
-            let cpath = crate::files_in_workspace::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
+            let cpath = crate::files_correction::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
             on_did_delete(gcx, &cpath).await;
         }
 

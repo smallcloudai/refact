@@ -113,7 +113,7 @@ async fn parameter_repair_candidates(
     let colon_mb = colon_lines_range_from_arg(&mut correction_candidate);
 
     let fuzzy = true;
-    let result: Vec<String> = crate::files_in_workspace::correct_to_nearest_filename(
+    let result: Vec<String> = crate::files_correction::correct_to_nearest_filename(
         context.global_context.clone(),
         &correction_candidate,
         fuzzy,
@@ -149,7 +149,7 @@ impl AtParam for AtParamFilePath {
     async fn is_value_valid(&self, value: &String, context: &AtCommandsContext) -> bool {
         let mut value = value.clone();
         colon_lines_range_from_arg(&mut value);
-        let (cache_correction_arc, _cache_fuzzy_arc) = crate::files_in_workspace::files_cache_rebuild_as_needed(context.global_context.clone()).await;
+        let (cache_correction_arc, _cache_fuzzy_arc) = crate::files_correction::files_cache_rebuild_as_needed(context.global_context.clone()).await;
         // it's dangerous to use cache_correction_arc without a mutex, but should be fine as long as it's read-only
         // (another thread never writes to the map itself, it can only replace the arc with a different map)
         if (*cache_correction_arc).contains_key(&value) {
@@ -198,7 +198,7 @@ impl AtCommand for AtFile {
 
         let gradient_type = gradient_type_from_range_kind(&colon_kind_mb);
 
-        let cpath = crate::files_in_workspace::canonical_path(&file_path);
+        let cpath = crate::files_correction::canonical_path(&file_path);
         let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?;
 
         if let Some(colon) = &colon_kind_mb {

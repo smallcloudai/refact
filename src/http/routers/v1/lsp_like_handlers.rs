@@ -37,7 +37,7 @@ pub async fn handle_v1_lsp_initialize(
 
     let mut workspace_dirs: Vec<PathBuf> = vec![];
     for x in post.project_roots {
-        let path = crate::files_in_workspace::canonical_path(&x.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+        let path = crate::files_correction::canonical_path(&x.to_file_path().unwrap_or_default().to_string_lossy().to_string());
         workspace_dirs.push(path);
     }
     *global_context.write().await.documents_state.workspace_folders.lock().unwrap() = workspace_dirs;
@@ -55,7 +55,7 @@ pub async fn handle_v1_lsp_did_change(
     let post = serde_json::from_slice::<LspLikeDidChange>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let cpath = crate::files_in_workspace::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+    let cpath = crate::files_correction::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     files_in_workspace::on_did_change(
         global_context.clone(),
         &cpath,
@@ -74,7 +74,7 @@ pub async fn handle_v1_lsp_add_folder(
     let post = serde_json::from_slice::<LspLikeAddFolder>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let cpath = crate::files_in_workspace::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+    let cpath = crate::files_correction::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     files_in_workspace::add_folder(global_context.clone(), &cpath).await;
     Ok(Response::builder()
        .status(StatusCode::OK)
@@ -89,7 +89,7 @@ pub async fn handle_v1_lsp_remove_folder(
     let post = serde_json::from_slice::<LspLikeAddFolder>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let cpath = crate::files_in_workspace::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+    let cpath = crate::files_correction::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     files_in_workspace::remove_folder(global_context.clone(), &cpath).await;
     Ok(Response::builder()
         .status(StatusCode::OK)
