@@ -40,6 +40,8 @@ def test_completion_with_rag():
                 "max_new_tokens": 20,
             },
             "use_ast": True,
+            # "model": "starcoder2/3b"
+            # "model": "Refact/1.6B"
         },
         headers={
             "Content-Type": "application/json",
