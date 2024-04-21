@@ -355,9 +355,12 @@ impl AstIndex {
         top_n_near_cursor: usize,
         top_n_usage_for_each_decl: usize,
     ) -> (Vec<AstSymbolInstanceArc>, Vec<AstSymbolInstanceArc>, Vec<AstSymbolInstanceArc>, Vec<AstSymbolInstanceArc>) {
+        let t_parse_t0 = std::time::Instant::now();
         let file_symbols = self.parse_single_file(doc, code).await;
         let language = get_language_id_by_filename(&doc.path);
+        let t_parse_ms = t_parse_t0.elapsed().as_millis() as i32;
 
+        let t_cursor_t0 = std::time::Instant::now();
         let unfiltered_cursor_symbols = file_symbols
             .iter()
             .unique_by(|s| {
@@ -385,7 +388,9 @@ impl AstIndex {
             .unique_by(|s| read_symbol(s).guid().clone())
             .cloned()
             .collect::<Vec<_>>();
+        let t_cursor_ms = t_cursor_t0.elapsed().as_millis() as i32;
 
+        let t_decl_t0 = std::time::Instant::now();
         let declarations_matched_by_name = unfiltered_cursor_symbols
             .iter()
             .map(|s| {
@@ -405,8 +410,10 @@ impl AstIndex {
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
+        let t_decl_ms = t_decl_t0.elapsed().as_millis() as i32;
 
         // (3) cursor_symbols_with_types + declarations_matched_by_name
+        let t_stage3_t0 = std::time::Instant::now();
         let declarations = cursor_symbols_with_types
             .iter()
             .filter(|s| read_symbol(s).types().is_empty())
@@ -429,8 +436,10 @@ impl AstIndex {
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
             .collect::<Vec<_>>();
+        let t_stage3_ms = t_stage3_t0.elapsed().as_millis() as i32;
 
         // (5) Match function calls by name, with fuzzy search on the current line
+        let t_stage5_t0 = std::time::Instant::now();
         let func_calls_matched_by_name = declarations
             .iter()
             .filter(|s| read_symbol(s).symbol_type() == SymbolType::FunctionDeclaration)
@@ -451,8 +460,10 @@ impl AstIndex {
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_usage_for_each_decl)
             .collect::<Vec<_>>();
+        let t_stage5_ms = t_stage5_t0.elapsed().as_millis() as i32;
 
         // (4) Find anything (especially FunctionCall, VariableUsage) that uses the same declarations (list from step 3, matched by guid)
+        let t_stage4_t0 = std::time::Instant::now();
         let usages = declarations
             .iter()
             .map(|s| {
@@ -481,8 +492,10 @@ impl AstIndex {
             .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .collect::<Vec<_>>();
+        let t_stage4_ms = t_stage4_t0.elapsed().as_millis() as i32;
 
         // (6) Detect declarations with high symbols overlap (compile cursor_symbols_names first)
+        let t_stage6_t0 = std::time::Instant::now();
         let cursor_symbols_names = unfiltered_cursor_symbols
             .iter()
             .filter(|s| {
@@ -517,6 +530,8 @@ impl AstIndex {
             .take(top_n_near_cursor)
             .cloned()
             .collect::<Vec<_>>();
+        let t_stage6_ms = t_stage6_t0.elapsed().as_millis() as i32;
+        info!("t_parse={t_parse_ms}ms t_cursor={t_cursor_ms}ms t_decl={t_decl_ms}ms t_stage3={t_stage3_ms}ms t_stage5={t_stage5_ms}ms t_stage4={t_stage4_ms}ms t_stage6={t_stage6_ms}ms");
 
         (
             unfiltered_cursor_symbols
@@ -545,7 +560,9 @@ impl AstIndex {
                         return Err(format!("no symbols in index for {:?}, and cannot find a parser this kind of file: {}", doc.path, e.message));
                     }
                 };
+                let t0 = std::time::Instant::now();
                 let symbols = parser.parse(doc.text.as_ref().unwrap().to_string().as_str(), &doc.path);
+                info!("/parse {}ms", t0.elapsed().as_millis());
                 symbols
             }
         };

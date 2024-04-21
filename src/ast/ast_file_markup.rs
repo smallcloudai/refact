@@ -11,6 +11,7 @@ pub async fn lowlevel_file_markup(
     doc: &Document,
     symbols: &Vec<AstSymbolInstanceArc>,
 ) -> Result<FileASTMarkup, String> {
+    let t0 = std::time::Instant::now();
     assert!(doc.text.is_some());
     let mut symbols4export: Vec<Arc<RefCell<SymbolInformation>>> = symbols.iter().map(|s| {
         let s_ref = read_symbol(s);
@@ -43,12 +44,18 @@ pub async fn lowlevel_file_markup(
     symbols4export.sort_by(|a, b| {
         a.borrow().symbol_path.len().cmp(&b.borrow().symbol_path.len())
     });
-    Ok(FileASTMarkup {
+    let x = FileASTMarkup {
         file_path: doc.path.clone(),
         file_content: doc.text.as_ref().unwrap().to_string(),
         symbols_sorted_by_path_len: symbols4export.iter().map(|s| {
             s.borrow().clone()
         }).collect(),
-    })
+    };
+    tracing::info!("file_markup {:>4} symbols in {:.3}ms for {}",
+        x.symbols_sorted_by_path_len.len(),
+        t0.elapsed().as_secs_f32(),
+        crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(),
+        30));
+    Ok(x)
 }
 

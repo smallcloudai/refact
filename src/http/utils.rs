@@ -31,7 +31,7 @@ pub async fn telemetry_wrapper(func: impl Fn(Extension<SharedGlobalContext>, hyp
         error!("{} returning \"{}\"", path, e.status_code);
         return Ok(e.to_response());
     }
-    info!("{} completed in {:?}", path, t0.elapsed());
+    info!("{} completed {}ms", path, t0.elapsed().as_millis());
     return Ok(result.unwrap());
 }
 

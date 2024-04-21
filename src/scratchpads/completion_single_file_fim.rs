@@ -167,7 +167,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             return Err(msg);
         }
 
-        let cpath = crate::files_in_workspace::canonical_path(&self.post.inputs.cursor.file);
+        let cpath = crate::files_correction::canonical_path(&self.post.inputs.cursor.file);
 
         let supports_stop = true; // some hf models do not support stop, but it's a thing of the past?
         if supports_stop {
@@ -242,7 +242,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         }
 
         let before = before.into_iter().rev().collect::<Vec<_>>().join("");
-        info!("single file FIM prompt {} tokens used < limit {}", tokens_used, limit);
+        info!("FIM prompt {} tokens used < limit {}", tokens_used, limit);
         let mut prompt: String;
         if self.order == "PSM" {
             prompt = format!(
@@ -271,9 +271,10 @@ impl ScratchpadAbstract for SingleFileFIM {
         } else {
             return Err(format!("order \"{}\" not recognized", self.order));
         }
-        let fim_ms = fim_t0.elapsed().as_secs_f64();
+        let fim_ms = fim_t0.elapsed().as_millis() as i32;
 
         if use_rag && rag_tokens_n > 0 {
+            info!(" -- rag search starts --");
             let rag_t0 = Instant::now();
             let language_id = get_language_id_by_filename(&cpath).unwrap_or(LanguageId::Unknown);
             let (mut ast_messages, was_looking_for) = {
@@ -291,6 +292,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                     }
                 }
             };
+            let to_buckets_ms = rag_t0.elapsed().as_millis() as i32;
 
             if fim_line1 != i32::MAX && fim_line2 != i32::MIN {
                 let fim_ban = ContextFile {
@@ -305,6 +307,8 @@ impl ScratchpadAbstract for SingleFileFIM {
                 ast_messages.push(ChatMessage { role: "context_file".to_string(), content: serde_json::json!([fim_ban]).to_string() });
             }
 
+            info!(" -- post processing starts --");
+            let post_t0 = Instant::now();
             let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
                 self.global_context.clone(),
                 ast_messages,
@@ -314,15 +318,20 @@ impl ScratchpadAbstract for SingleFileFIM {
             ).await;
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);
-            let rag_ms = rag_t0.elapsed().as_secs_f64();
+            let rag_ms = rag_t0.elapsed().as_millis() as i32;
+            let post_ms = post_t0.elapsed().as_millis() as i32;
+            info!("fim {}ms, buckets {}ms, post {}ms",
+                fim_ms,
+                to_buckets_ms, post_ms
+            );
 
             if was_looking_for.is_some() {
                 self.context_used = crate::scratchpads::chat_utils_rag::context_to_fim_debug_page(
                     &postprocessed_messages,
                     &was_looking_for.unwrap()
                 );
-                self.context_used["fim_ms"] = Value::from((fim_ms*1000.0) as i32);
-                self.context_used["rag_ms"] = Value::from((rag_ms*1000.0) as i32);
+                self.context_used["fim_ms"] = Value::from(fim_ms);
+                self.context_used["rag_ms"] = Value::from(rag_ms);
                 self.context_used["n_ctx".to_string()] = Value::from(context_size as i64);
                 self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
             }
@@ -333,6 +342,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             info!("prompt\n{}", prompt);
             info!("re-encode whole prompt again gives {} tokens", self.t.count_tokens(prompt.as_str())?);
         }
+        info!("re-encode whole prompt again gives {} tokens", self.t.count_tokens(prompt.as_str())?);
         Ok(prompt)
     }
 

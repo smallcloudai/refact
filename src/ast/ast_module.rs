@@ -227,7 +227,7 @@ impl AstModule {
         top_n_usage_for_each_decl: usize,
     ) -> Result<AstCursorSearchResult, String> {
         let t0 = std::time::Instant::now();
-        info!("symbols_near_cursor_to_buckets started for {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
+        info!("to_buckets {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
         let (cursor_usages, declarations, usages, bucket_high_overlap) = self.ast_index.read().await.symbols_near_cursor_to_buckets(
             doc,
             code,
@@ -296,8 +296,7 @@ impl AstModule {
                 })
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
         };
-        info!("symbols_near_cursor_to_buckets {:.3}s, \
-            found bucket_declarations {}, bucket_usage_of_same_stuff {}, bucket_high_overlap {}",
+        info!("to_buckets {:.3}s => bucket_declarations {} bucket_usage_of_same_stuff {} bucket_high_overlap {}",
             t0.elapsed().as_secs_f32(),
             result.bucket_declarations.len(),
             result.bucket_usage_of_same_stuff.len(),
@@ -310,10 +309,8 @@ impl AstModule {
         &self,
         doc: &Document,
     ) -> Result<FileASTMarkup, String> {
-        let t0 = std::time::Instant::now();
         match self.ast_index.read().await.file_markup(doc).await {
             Ok(markup) => {
-                info!("ast file_markup {:.3}s for {}", t0.elapsed().as_secs_f32(), crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
                 Ok(markup)
             }
             Err(e) => Err(e.to_string())
