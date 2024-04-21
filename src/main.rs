@@ -10,6 +10,7 @@ use crate::background_tasks::start_background_tasks;
 use crate::lsp::spawn_lsp_task;
 use crate::telemetry::{basic_transmit, snippets_transmit};
 
+mod version;
 mod global_context;
 mod caps;
 mod call_validation;

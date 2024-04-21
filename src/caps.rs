@@ -1,4 +1,4 @@
-use tracing::{info, error};
+use tracing::{info, warn, error};
 use serde::Deserialize;
 use serde::Serialize;
 use std::fs::File;
@@ -109,14 +109,15 @@ pub async fn load_caps(
     let mut headers = reqwest::header::HeaderMap::new();
     if !api_key.is_empty() {
         headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
+        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(format!("refact-lsp {}", crate::version::build_info::PKG_VERSION).as_str()).unwrap());
     }
-
     let mut r1_mb: Option<CodeAssistantCaps> = None;
     let mut r1_mb_error_text = "".to_string();
 
     if is_remote_address {
         let mut status: u16 = 0;
         for url in caps_urls.iter() {
+            info!("fetching caps from {}", url);
             let response = http_client.get(url).headers(headers.clone()).send().await.map_err(|e| format!("{}", e))?;
             status = response.status().as_u16();
             buffer = match response.text().await {
@@ -135,7 +136,6 @@ pub async fn load_caps(
                 }
             };
             if r1_mb.is_some() {
-                info!("reading caps from {}", url);
                 break
             }
         }
@@ -191,6 +191,7 @@ fn _inherit_r1_from_r0(
     r1: &mut CodeAssistantCaps,
     r0: &ModelsOnly,
 ) {
+    // XXX: only patches running models, patch all?
     for k in r1.running_models.iter() {
         let k_stripped = strip_model_from_finetune(k);
 
@@ -208,8 +209,8 @@ fn _inherit_r1_from_r0(
     }
 
     for k in r1.running_models.iter() {
-        if !r1.code_completion_models.contains_key(k) && !r1.code_chat_models.contains_key(k) {
-            info!("indicated as running, unknown model {}", k);
+        if !r1.code_completion_models.contains_key(k) && !r1.code_chat_models.contains_key(k) && *k != r1.default_embeddings_model {
+            warn!("indicated as running, unknown model {:?}, maybe update this rust binary", k);
         }
     }
 

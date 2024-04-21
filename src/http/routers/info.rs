@@ -3,19 +3,17 @@ use std::collections::HashMap;
 use axum::http::Response;
 use hyper::Body;
 use serde_json::json;
-use shadow_rs::shadow;
 
 use crate::custom_error::ScratchError;
 
-shadow!(build);
 
 pub fn get_build_info() -> HashMap<&'static str, &'static str> {
     HashMap::from([
-        ("version", build::PKG_VERSION),
-        ("commit", build::COMMIT_HASH),
-        ("build_os", build::BUILD_OS),
-        ("rust_version", build::RUST_VERSION),
-        ("cargo_version", build::CARGO_VERSION),
+        ("version", crate::version::build_info::PKG_VERSION),
+        ("commit", crate::version::build_info::COMMIT_HASH),
+        ("build_os", crate::version::build_info::BUILD_OS),
+        ("rust_version", crate::version::build_info::RUST_VERSION),
+        ("cargo_version", crate::version::build_info::CARGO_VERSION),
     ])
 }
 
