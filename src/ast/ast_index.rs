@@ -21,6 +21,9 @@ use crate::ast::usages_declarations_merger::{FilePathIterator, find_decl_by_name
 use crate::files_in_workspace::Document;
 
 
+const TOO_MANY_SYMBOLS_IN_FILE: usize = 2000;
+
+
 #[derive(Debug)]
 pub struct AstIndex {
     symbols_by_name: HashMap<String, Vec<AstSymbolInstanceArc>>,
@@ -69,12 +72,22 @@ impl AstIndex {
         let t_ = std::time::Instant::now();
         let symbol_instances = parser.parse(&text, &doc.path);
         let t_elapsed = t_.elapsed();
-
-        info!(
-            "parsed {}, {} symbols, took {:.3}s to parse",
-            crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30),
-            symbol_instances.len(), t_elapsed.as_secs_f32()
-        );
+        if symbol_instances.len() > TOO_MANY_SYMBOLS_IN_FILE {
+            info!(
+                "parsed {}, {} symbols, took {:.3}s to parse, skip",
+                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30),
+                symbol_instances.len(),
+                t_elapsed.as_secs_f32()
+            );
+            return Err("too many symbols, assuming generated file".to_string());
+        } else {
+            info!(
+                "parsed {}, {} symbols, took {:.3}s to parse",
+                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30),
+                symbol_instances.len(),
+                t_elapsed.as_secs_f32()
+            );
+        }
         Ok(symbol_instances)
     }
 
