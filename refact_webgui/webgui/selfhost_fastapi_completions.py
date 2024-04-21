@@ -284,7 +284,12 @@ class BaseCompletionsRouter(APIRouter):
         log(f"Your refact-lsp version is deprecated, finetune is unavailable. Please update your plugin.")
         return Response(content=json.dumps(self._caps_base_data(), indent=4), media_type="application/json")
 
-    async def _caps(self, authorization: str = Header(None)):
+    async def _caps(self, authorization: str = Header(None), user_agent: str = Header(None)):
+        if isinstance(user_agent, str):
+            m = re.match(r"^refact-lsp (\d+)\.(\d+)\.(\d+)$", user_agent)
+            if m:
+                major, minor, patch = map(int, m.groups())
+                log("user version %d.%d.%d" % (major, minor, patch))
         data = self._caps_base_data()
         running = running_models_and_loras(self._model_assigner)
 
