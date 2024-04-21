@@ -3,8 +3,8 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
-const LARGE_FILE_SIZE_THRESHOLD: u64 = 10_000_000; // 10 MB
-const SMALL_FILE_SIZE_THRESHOLD: u64 = 5;          // 5 Bytes
+const LARGE_FILE_SIZE_THRESHOLD: u64 = 180*1024; // 180k files (180k is ~0.2% of all files on our dataset)
+const SMALL_FILE_SIZE_THRESHOLD: u64 = 5;        // 5 Bytes
 
 const SOURCE_FILE_EXTENSIONS: &[&str] = &[
     "c", "cpp", "cc", "h", "hpp", "cs", "java", "py", "rb", "go", "rs", "swift",
