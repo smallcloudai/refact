@@ -110,6 +110,7 @@ async fn ast_indexer_thread(
 ) {
     let mut reported_stats = false;
     let mut stats_parsed_cnt = 0;    // by language?
+    let mut stats_symbols_cnt = 0;
     let mut stats_t0 = std::time::Instant::now();
     let mut hold_on_after_reset = false;
     loop {
@@ -125,8 +126,13 @@ async fn ast_indexer_thread(
                 // hold on, don't report anything, don't say this thread isn't busy.
                 // after reset, real data will follow, now sleep and do nothing.
             } else if !reported_stats {
-                info!("finished parsing, processed {} files in {:>.3}s", stats_parsed_cnt, stats_t0.elapsed().as_secs_f64());
+                info!("finished parsing, got {} symbols by processing {} files in {:>.3}s",
+                    stats_symbols_cnt,
+                    stats_parsed_cnt,
+                    stats_t0.elapsed().as_secs_f64()
+                );
                 stats_parsed_cnt = 0;
+                stats_symbols_cnt = 0;
                 reported_stats = true;
             }
             if !hold_on_after_reset {
@@ -178,6 +184,7 @@ async fn ast_indexer_thread(
                     for (doc, res) in zip(docs_with_text, all_symbols) {
                         match res {
                             Ok(symbols) => {
+                                stats_symbols_cnt += symbols.len();
                                 match ast_index.write().await.add_or_update_symbols_index(&doc, &symbols, true).await {
                                     Ok(_) => {}
                                     Err(e) => {
