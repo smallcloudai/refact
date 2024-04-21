@@ -146,7 +146,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         let fim_t0 = Instant::now();
-        let use_rag = !self.t.context_format.is_empty() && self.post.use_ast && self.ast_module.is_some();
+        let use_rag = !self.t.context_format.is_empty() && self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_module.is_some();
         let mut rag_tokens_n = if self.post.rag_tokens_n > 0 {
             self.post.rag_tokens_n.min(4096).max(50)
         } else {
