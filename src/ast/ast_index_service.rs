@@ -36,24 +36,24 @@ impl AstEvent {
 
 #[derive(Debug)]
 pub struct AstIndexService {
-    update_request_queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
-    ast_immediate_todo: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
-    is_busy: Arc<AMutex<bool>>,
+    ast_delayed_requests_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
+    ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
+    ast_hold_off_indexes_rebuild: Arc<AMutex<bool>>,  // TODO: replace with tokio::sync::Condvar or remove ast_index_rebuild_thread()
     ast_index: Arc<ARwLock<AstIndex>>,
 }
 
 use std::path::PathBuf;
 
 async fn cooldown_queue_thread(
-    update_request_queue: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
-    ast_immediate_todo: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
+    ast_delayed_requests_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
+    ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     cooldown_secs: u64,
 ) {
     let mut latest_events: HashMap<PathBuf, Arc<AstEvent>> = HashMap::new();
     loop {
         let mut have_reset: bool = false;
         {
-            let mut queue_locked = update_request_queue.lock().await;
+            let mut queue_locked = ast_delayed_requests_q.lock().await;
             while let Some(e) = queue_locked.pop_front() {
                 if e.typ == AstEventType::AstReset {
                     have_reset = true;
@@ -68,7 +68,7 @@ async fn cooldown_queue_thread(
 
         let now = SystemTime::now();
         if have_reset {
-            let mut q = ast_immediate_todo.lock().await;
+            let mut q = ast_immediate_q.lock().await;
             q.clear();
             q.push_back(Arc::new(AstEvent { docs: Vec::new(), typ: AstEventType::AstReset, posted_ts: now }));
             continue;
@@ -93,7 +93,7 @@ async fn cooldown_queue_thread(
                 latest_events.remove(&path);
                 launch_event.docs.push(Document { path: path.clone(), text: None });
             }
-            ast_immediate_todo.lock().await.push_back(Arc::new(launch_event));
+            ast_immediate_q.lock().await.push_back(Arc::new(launch_event));
             continue;
         }
 
@@ -104,9 +104,9 @@ async fn cooldown_queue_thread(
 
 async fn ast_indexer_thread(
     gcx_weak: Weak<ARwLock<GlobalContext>>,
-    ast_immediate_todo: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
+    ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_index: Arc<ARwLock<AstIndex>>,
-    is_busy_flag: Arc<AMutex<bool>>,
+    ast_hold_off_indexes_rebuild: Arc<AMutex<bool>>,
 ) {
     let mut reported_stats = false;
     let mut stats_parsed_cnt = 0;    // by language?
@@ -114,7 +114,7 @@ async fn ast_indexer_thread(
     let mut hold_on_after_reset = false;
     loop {
         let mut events = {
-            let mut q = ast_immediate_todo.lock().await;
+            let mut q = ast_immediate_q.lock().await;
             let events: Vec<Arc<AstEvent>> = Vec::from(q.to_owned());
             q.clear();
             events
@@ -130,13 +130,13 @@ async fn ast_indexer_thread(
                 reported_stats = true;
             }
             if !hold_on_after_reset {
-                *is_busy_flag.lock().await = false;
+                *ast_hold_off_indexes_rebuild.lock().await = false;
             }
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             continue;
         } else {
             hold_on_after_reset = false;
-            *is_busy_flag.lock().await = true;
+            *ast_hold_off_indexes_rebuild.lock().await = true;
             reported_stats = false;
             if stats_parsed_cnt == 0 {
                 stats_t0 = std::time::Instant::now();
@@ -204,12 +204,12 @@ async fn ast_indexer_thread(
     }
 }
 
-async fn ast_indexer(
-    is_busy_flag: Arc<AMutex<bool>>,
+async fn ast_index_rebuild_thread(
+    ast_hold_off_indexes_rebuild: Arc<AMutex<bool>>,
     ast_index: Arc<ARwLock<AstIndex>>,
 ) {
     loop {
-        if *is_busy_flag.lock().await {
+        if *ast_hold_off_indexes_rebuild.lock().await {
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             continue;
         }
@@ -265,12 +265,12 @@ impl AstIndexService {
     pub fn init(
         ast_index: Arc<ARwLock<AstIndex>>
     ) -> Self {
-        let update_request_queue = Arc::new(AMutex::new(VecDeque::new()));
-        let ast_immediate_todo = Arc::new(AMutex::new(VecDeque::new()));
+        let ast_delayed_requests_q = Arc::new(AMutex::new(VecDeque::new()));
+        let ast_immediate_q = Arc::new(AMutex::new(VecDeque::new()));
         AstIndexService {
-            update_request_queue: update_request_queue.clone(),
-            ast_immediate_todo: ast_immediate_todo.clone(),
-            is_busy: Arc::new(AMutex::new(false)),
+            ast_delayed_requests_q: ast_delayed_requests_q.clone(),
+            ast_immediate_q: ast_immediate_q.clone(),
+            ast_hold_off_indexes_rebuild: Arc::new(AMutex::new(false)),
             ast_index: ast_index.clone(),
         }
     }
@@ -281,22 +281,22 @@ impl AstIndexService {
     ) -> Vec<JoinHandle<()>> {
         let cooldown_queue_join_handle = tokio::spawn(
             cooldown_queue_thread(
-                self.update_request_queue.clone(),
-                self.ast_immediate_todo.clone(),
+                self.ast_delayed_requests_q.clone(),
+                self.ast_immediate_q.clone(),
                 COOLDOWN_SECS,
             )
         );
         let indexer_handle = tokio::spawn(
             ast_indexer_thread(
                 Arc::downgrade(&gcx),
-                self.ast_immediate_todo.clone(),
+                self.ast_immediate_q.clone(),
                 self.ast_index.clone(),
-                self.is_busy.clone(),
+                self.ast_hold_off_indexes_rebuild.clone(),
             )
         );
         let rebuild_index_handle = tokio::spawn(
-            ast_indexer(
-                self.is_busy.clone(),
+            ast_index_rebuild_thread(
+                self.ast_hold_off_indexes_rebuild.clone(),
                 self.ast_index.clone(),
             )
         );
@@ -311,9 +311,9 @@ impl AstIndexService {
             info!("adding to indexer queue an event with {} documents, force={}", event.docs.len(), force as i32);
         }
         if !force {
-            self.update_request_queue.lock().await.push_back(Arc::new(event));
+            self.ast_delayed_requests_q.lock().await.push_back(Arc::new(event));
         } else {
-            self.ast_immediate_todo.lock().await.push_back(Arc::new(event));
+            self.ast_immediate_q.lock().await.push_back(Arc::new(event));
         }
     }
 }
