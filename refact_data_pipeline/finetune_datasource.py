@@ -197,23 +197,23 @@ class ReadJSONLFileByFile(ReadFileByFile):
         sample_num = 0
         file_num = 0
         epoch = 0
-        while True:
-            for j in self.inner_filter:
-                with jsonlines.open(os.path.join(self.basedir, j["path"])) as r:
-                    for data in r:
-                        if not data["middle"]:
-                            continue
-                        yield {
-                            **data,
-                            "path": j["path"],
-                            "stats": {
-                                "sample_num": sample_num,
-                                "file_num": file_num,
-                                "epoch": epoch,
-                            },
-                        }
-                        sample_num += 1
-                file_num += 1
+
+        for j in self.inner_filter:
+            with jsonlines.open(os.path.join(self.basedir, j["path"])) as r:
+                for data in r:
+                    if not data["middle"]:
+                        continue
+                    yield {
+                        **data,
+                        "path": j["path"],
+                        "stats": {
+                            "sample_num": sample_num,
+                            "file_num": file_num,
+                            "epoch": epoch,
+                        },
+                    }
+                    sample_num += 1
+            file_num += 1
             epoch += 1
             self.epoch_callback(epoch)
             if epoch == self.quit_on_epoch:
