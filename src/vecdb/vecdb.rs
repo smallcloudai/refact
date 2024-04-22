@@ -237,12 +237,12 @@ impl VecDb {
 impl VecdbSearch for VecDb {
     async fn vecdb_search(&self, query: String, top_n: usize) -> Result<SearchResult, String> {
         let t0 = std::time::Instant::now();
-        let embedding_mb = fetch_embedding::try_get_embedding(
+        let embedding_mb = fetch_embedding::get_embedding_with_retry(
             self.vecdb_emb_client.clone(),
             &self.constants.endpoint_embeddings_style,
             &self.constants.model_name,
             &self.constants.endpoint_embeddings_template,
-            query.clone(),
+            vec![query.clone()],
             &self.cmdline.api_key,
             5
         ).await;
@@ -253,7 +253,7 @@ impl VecdbSearch for VecDb {
 
         let mut handler_locked = self.vecdb_handler.lock().await;
         let t1 = std::time::Instant::now();
-        let mut results = match handler_locked.search(embedding_mb.unwrap(), top_n).await {
+        let mut results = match handler_locked.search(&embedding_mb.unwrap()[0], top_n).await {
             Ok(res) => res,
             Err(err) => { return Err(err.to_string()) }
         };

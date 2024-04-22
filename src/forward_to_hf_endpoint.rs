@@ -118,6 +118,7 @@ pub async fn get_embedding_hf_style(
         .send()
         .await;
 
+    // FIXME: doesn't support batch
     match maybe_response {
         Ok(response) => {
             if response.status().is_success() {

@@ -5,7 +5,7 @@ use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
 use reqwest::header::HeaderValue;
 use reqwest_eventsource::EventSource;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
@@ -117,18 +117,24 @@ fn _passthrough_messages_to_json(
 
 #[derive(Serialize)]
 struct EmbeddingsPayloadOpenAI {
-    pub input: String,
+    pub input: Vec<String>,
     pub model: String,
 }
 
+#[derive(Deserialize)]
+struct EmbeddingsResultOpenAI {
+    pub embedding: Vec<f32>,
+    pub index: usize,
+}
 
 pub async fn get_embedding_openai_style(
     client: Arc<AMutex<reqwest::Client>>,
-    text: String,
+    text: Vec<String>,
     endpoint_template: &String,
     model_name: &String,
     api_key: &String,
-) -> Result<Vec<f32>, String> {
+) -> Result<Vec<Vec<f32>>, String> {
+    let B = text.len();
     let payload = EmbeddingsPayloadOpenAI {
         input: text,
         model: model_name.clone(),
@@ -153,11 +159,20 @@ pub async fn get_embedding_openai_style(
         .map_err(|err| format!("get_embedding_openai_style: failed to parse the response: {:?}", err))?;
 
     // info!("get_embedding_openai_style: {:?}", json);
-    match &json["data"][0]["embedding"] {
-        serde_json::Value::Array(embedding) => {
-            serde_json::from_value(serde_json::Value::Array(embedding.clone()))
-                .map_err(|err| { format!("Failed to parse the response: {:?}", err) })
+    // {"data":[{"embedding":[0.0121664945...],"index":0,"object":"embedding"}, {}, {}]}
+    let unordered: Vec<EmbeddingsResultOpenAI> = match serde_json::from_value(json["data"].clone()) {
+        Ok(x) => x,
+        Err(err) => {
+            return Err(format!("get_embedding_openai_style: failed to parse unordered: {:?}", err));
         }
-        _ => Err("Response is missing 'data[0].embedding' field or it's not an array".to_string()),
+    };
+    let mut result: Vec<Vec<f32>> = vec![vec![]; B];
+    for ures in unordered.into_iter() {
+        let index = ures.index;
+        if index >= B {
+            return Err(format!("get_embedding_openai_style: index out of bounds: {:?}", json));
+        }
+        result[index] = ures.embedding;
     }
+    Ok(result)
 }

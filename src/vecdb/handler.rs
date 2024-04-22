@@ -670,7 +670,7 @@ impl VecDBHandler {
 
     pub async fn search(
         &mut self,
-        embedding: Vec<f32>,
+        embedding: &Vec<f32>,
         top_n: usize
     ) -> vectordb::error::Result<Vec<Record>> {
         let query = self

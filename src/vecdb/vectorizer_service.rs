@@ -6,13 +6,12 @@ use std::time::SystemTime;
 use tokenizers::Tokenizer;
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::{Mutex as AMutex, RwLock};
-use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::cached_tokenizers;
-use crate::fetch_embedding::try_get_embedding;
+use crate::fetch_embedding::get_embedding_with_retry;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 use crate::vecdb::handler::VecDBHandler;
@@ -82,11 +81,9 @@ async fn vectorize_thread(
     status: Arc<AMutex<VecDbStatus>>,
     constants: VecdbConstants,
     api_key: String,
-    max_concurrent_tasks: usize,
     tokenizer: Arc<StdRwLock<Tokenizer>>,
     global_context: Weak<RwLock<GlobalContext>>,
 ) {
-    let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
     let mut reported_unprocessed: usize = 0;
     let mut reported_vecdb_complete: bool = false;
 
@@ -125,16 +122,22 @@ async fn vectorize_thread(
                         // }
                         write!(std::io::stderr(), "VECDB COMPLETE\n").unwrap();
                         info!("VECDB COMPLETE"); // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
+                        info!("embedding API calls since start {}", status.lock().await.requests_made_since_start);
                     }
                     tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
                     continue;
                 }
             }
         };
+        let last_30_chars = crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30);
 
         // Not from memory, vecdb works on files from disk
         if let Err(err) = doc.update_text_from_disk().await {
-            info!("{}", err);
+            info!("{}: {}", last_30_chars, err);
+            continue;
+        }
+        if !doc.does_text_look_good() {
+            info!("embeddings {} skip because text doesn't look good", last_30_chars);
             continue;
         }
 
@@ -149,87 +152,69 @@ async fn vectorize_thread(
         };
 
         let mut vecdb_handler = vecdb_handler_ref.lock().await;
-        let mut split_data_filtered: Vec<SplitResult> = split_data
+        let mut split_data_unknown: Vec<SplitResult> = split_data
             .iter()
             .filter(|x| !vecdb_handler.contains(&x.window_text_hash))
             .cloned() // Clone to avoid borrowing issues
             .collect();
-        split_data_filtered = vecdb_handler.try_add_from_cache(split_data_filtered).await;
+        split_data_unknown = vecdb_handler.try_add_from_cache(split_data_unknown).await;
         drop(vecdb_handler);
 
-        let last_30_chars = crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30);
-        info!("embeddings {} todo/total {}/{}", last_30_chars, split_data_filtered.len(), split_data.len());
+        info!("embeddings {} todo/total {}/{}", last_30_chars, split_data_unknown.len(), split_data.len());
 
-        // TODO: replace with a batched call?
-        let join_handles: Vec<_> = split_data_filtered.into_iter().map(|x| {
-            let model_name_clone = constants.model_name.clone();
-            let api_key_clone = api_key.clone();
-            let endpoint_embeddings_style_clone = constants.endpoint_embeddings_style.clone();
-            let endpoint_template_clone = constants.endpoint_embeddings_template.clone();
-            let status_clone = Arc::clone(&status);
-            let client_clone = Arc::clone(&client);
-
-            let semaphore_clone = Arc::clone(&semaphore);
-            tokio::spawn(async move {
-                let _permit = match semaphore_clone.acquire().await {
-                    Ok(permit) => permit,
-                    Err(_) => {
-                        return None;
-                    }
-                };
-
-                let result = try_get_embedding(
-                    client_clone,
-                    &endpoint_embeddings_style_clone,
-                    &model_name_clone,
-                    &endpoint_template_clone,
-                    x.window_text.clone(),
-                    &api_key_clone,
-                    1,
-                ).await;
-                status_clone.lock().await.requests_made_since_start += 1;
-
-                drop(_permit);
-                Some((x, result))
-            })
-        }).collect();
-
+        const B: usize = 4;
         let mut records = vec![];
-
-        for handle in join_handles {
-            if let Some((data_res, result_mb)) = handle.await.unwrap() {
-                match result_mb {
-                    Ok(result) => {
-                        let now = SystemTime::now();
-                        records.push(
-                            Record {
-                                vector: Some(result),
-                                window_text: data_res.window_text,
-                                window_text_hash: data_res.window_text_hash,
-                                file_path: data_res.file_path,
-                                start_line: data_res.start_line,
-                                end_line: data_res.end_line,
-                                time_added: now,
-                                model_name: constants.model_name.clone(),
-                                distance: -1.0,
-                                used_counter: 0,
-                                time_last_used: now,
-                                usefulness: 0.0,
-                            }
-                        );
-                    }
-                    Err(e) => {
-                        info!("Error retrieving embeddings for {}: {}", data_res.file_path.to_str().unwrap(), e);
-                        // queue.lock().await.push_back(data_res.file_path);  // push it back again
-                    }
+        for chunked in split_data_unknown.chunks(B) {
+            let mut batch_req: Vec<String> = Vec::new();
+            for x in chunked {
+                batch_req.push(x.window_text.clone());
+            }
+            status.lock().await.requests_made_since_start += 1;
+            let batch_result = match get_embedding_with_retry(
+                client.clone(),
+                &constants.endpoint_embeddings_style.clone(),
+                &constants.model_name.clone(),
+                &constants.endpoint_embeddings_template.clone(),
+                batch_req,
+                &api_key,
+                1,
+            ).await {
+                Ok(x) => x,
+                Err(err) => {
+                    info!("Error retrieving embeddings for {}: {}", doc.path.to_str().unwrap(), err);
+                    continue; // next chunk
                 }
+            };
+            info!("received {} vectors", batch_result.len());
+            assert!(batch_result.len() == chunked.len());
+            let now = SystemTime::now();
+            for (i, data_res) in chunked.iter().enumerate() {
+                records.push(
+                    Record {
+                        vector: Some(batch_result[i].clone()),
+                        window_text: data_res.window_text.clone(),
+                        window_text_hash: data_res.window_text_hash.clone(),
+                        file_path: data_res.file_path.clone(),
+                        start_line: data_res.start_line,
+                        end_line: data_res.end_line,
+                        time_added: now,
+                        model_name: constants.model_name.clone(),
+                        distance: -1.0,
+                        used_counter: 0,
+                        time_last_used: now,
+                        usefulness: 0.0,
+                    }
+                );
             }
         }
-        match vecdb_handler_ref.lock().await.add_or_update(records, true).await {
-            Err(e) => {
-                info!("Error adding/updating records in VecDB: {}", e);
+        if records.len() > 0 {
+            info!("saving {} records", records.len());
+            match vecdb_handler_ref.lock().await.add_or_update(records, true).await {
+                Err(e) => {
+                    warn!("Error adding/updating records in VecDB: {}", e);
+                }
+                _ => {}
             }
-            _ => {}
         }
     }
 }
@@ -295,7 +280,6 @@ impl FileVectorizerService {
                 self.status.clone(),
                 constants,
                 self.api_key.clone(),
-                4,
                 tokenizer_arc,
                 Arc::downgrade(&global_context.clone())
             )

@@ -72,6 +72,19 @@ impl Document {
         }
         return Err(format!("no text loaded in {}", self.path.display()));
     }
+
+    pub fn does_text_look_good(&self) -> bool {
+        // Some simple tests to find if the text is suitable to parse (not generated or compressed code)
+        assert!(self.text.is_some());
+        let r = self.text.as_ref().unwrap();
+        let test1 = {
+            let total_chars: usize = r.chars().count();
+            let total_lines: usize = r.lines().count();
+            let avg_line_length = total_chars / total_lines;
+            avg_line_length <= 100
+        };
+        return test1;
+    }
 }
 
 pub struct DocumentsState {
