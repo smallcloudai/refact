@@ -206,6 +206,7 @@ async fn vectorize_thread(
                     }
                 );
             }
+            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;  // be nice to the server: up to 60 requests per minute
         }
         if records.len() > 0 {
             info!("saving {} records", records.len());
