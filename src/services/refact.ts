@@ -541,15 +541,15 @@ export type Buckets = ContextBucket[];
 export type FIMContext = {
   attached_files?: ContextFiles;
 
-  bucket_declarations: Buckets;
-  bucket_usage_of_same_stuff: Buckets;
-  bucket_high_overlap: Buckets;
-  cursor_symbols: Buckets;
+  bucket_declarations?: Buckets;
+  bucket_usage_of_same_stuff?: Buckets;
+  bucket_high_overlap?: Buckets;
+  cursor_symbols?: Buckets;
 
-  fim_ms: number;
-  n_ctx: number;
-  rag_ms: number;
-  rag_tokens_limit: number;
+  fim_ms?: number;
+  n_ctx?: number;
+  rag_ms?: number;
+  rag_tokens_limit?: number;
 };
 
 export type FimDebugData = {

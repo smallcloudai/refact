@@ -37,18 +37,18 @@ const SymbolText: React.FC<{
 
 export type SymbolListProps = {
   symbols: {
-    bucket_declarations: Buckets;
-    bucket_usage_of_same_stuff: Buckets;
-    bucket_high_overlap: Buckets;
-    cursor_symbols: Buckets;
+    bucket_declarations?: Buckets;
+    bucket_usage_of_same_stuff?: Buckets;
+    bucket_high_overlap?: Buckets;
+    cursor_symbols?: Buckets;
   };
 };
 
 export const SymbolList: React.FC<SymbolListProps> = ({ symbols }) => {
-  const declarations = symbols.bucket_declarations;
-  const usages = symbols.bucket_usage_of_same_stuff;
-  const overLap = symbols.bucket_high_overlap;
-  const cursorSymbols = symbols.cursor_symbols;
+  const declarations = symbols.bucket_declarations ?? [];
+  const usages = symbols.bucket_usage_of_same_stuff ?? [];
+  const overLap = symbols.bucket_high_overlap ?? [];
+  const cursorSymbols = symbols.cursor_symbols ?? [];
 
   return (
     <Flex direction="column">
