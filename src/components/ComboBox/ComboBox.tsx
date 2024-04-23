@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { useComboboxStore, Combobox } from "@ariakit/react";
 import { getAnchorRect, replaceValue, detectCommand } from "./utils";
 import type { TextAreaProps } from "../TextArea/TextArea";
@@ -43,9 +43,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const [wasDelete, setWasDelete] = React.useState<boolean>(false);
   const [endPosition, setEndPosition] = React.useState<null | number>(null);
 
-  const commandsOrArguments = selectedCommand
-    ? commandArguments.map((arg) => selectedCommand + arg)
-    : commands;
+  const commandsOrArguments = useMemo(() => {
+    return selectedCommand
+      ? commandArguments.map((arg) => selectedCommand + arg)
+      : commands;
+  }, [selectedCommand, commandArguments, commands]);
 
   const combobox = useComboboxStore({
     defaultOpen: false,
@@ -53,16 +55,18 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     defaultActiveId: undefined,
   });
 
-  const matches = commandsOrArguments;
+  const matches = useMemo(() => commandsOrArguments, [commandsOrArguments]);
 
-  const hasMatches = !!trigger && !!matches.length;
+  const hasMatches = useMemo(() => {
+    return !!trigger && !!matches.length;
+  }, [matches, trigger]);
 
-  const getValueOrTrigger = () => {
+  const getValueOrTrigger = useCallback(() => {
     const state = combobox.getState();
     if (state.activeValue) return state.activeValue;
     if (state.activeId) return combobox.item(state.activeId)?.value ?? trigger;
     return trigger;
-  };
+  }, [combobox, trigger]);
 
   React.useLayoutEffect(() => {
     if (!ref.current) return;
@@ -96,163 +100,184 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const state = combobox.getState();
+  const onKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      const state = combobox.getState();
 
-    if (state.open && event.key === "Tab") {
-      event.preventDefault();
-    }
-    if (wasDelete && event.key !== "Backspace") {
-      setWasDelete(false);
-    } else if (event.key === "Backspace") {
-      setWasDelete(true);
-    }
-    if (!ref.current) return;
-    const isMod = event.metaKey || event.ctrlKey;
-    if (isMod && event.key === "z") {
-      setWasDelete(true);
-    }
-  };
-
-  const onKeyUp = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (!ref.current) return;
-
-    const state = combobox.getState();
-
-    if (
-      !state.activeValue &&
-      event.key === "Enter" &&
-      !event.shiftKey &&
-      !hasMatches
-    ) {
-      event.stopPropagation();
-      onSubmit(event);
-      setStartPosition(null);
-      setTrigger("");
-      combobox.hide();
-      return;
-    }
-
-    if (event.key === "Enter" && event.shiftKey) {
-      setTrigger("");
-      combobox.hide();
-      return;
-    }
-
-    const maybeCommand = detectCommand(ref.current);
-    const maybeCommandWithArguments = maybeCommand?.command.split(" ");
-
-    if (maybeCommand) {
-      setTrigger(maybeCommand.command);
-      setStartPosition(maybeCommand.startPosition);
-      if (maybeCommandWithArguments && maybeCommandWithArguments.length > 1) {
-        setSelectedCommand(maybeCommandWithArguments[0] + " ");
-      } else {
-        setSelectedCommand("");
+      if (state.open && event.key === "Tab") {
+        event.preventDefault();
       }
-      combobox.show();
-    } else if (wasDelete) {
-      setTrigger("");
-      setSelectedCommand("");
-      setStartPosition(null);
-      combobox.hide();
-    }
+      if (wasDelete && event.key !== "Backspace") {
+        setWasDelete(false);
+      } else if (event.key === "Backspace") {
+        setWasDelete(true);
+      }
+      if (!ref.current) return;
+      const isMod = event.metaKey || event.ctrlKey;
+      if (isMod && event.key === "z") {
+        setWasDelete(true);
+      }
+    },
+    [combobox, wasDelete],
+  );
 
-    const wasArrowLeftOrRight =
-      event.key === "ArrowLeft" || event.key === "ArrowRight";
+  const onKeyUp = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!ref.current) return;
 
-    if (wasArrowLeftOrRight && !maybeCommand) {
-      setTrigger("");
-      setSelectedCommand("");
-      setStartPosition(null);
-    }
+      const state = combobox.getState();
 
-    if (event.key === "@" && !state.open && !selectedCommand) {
-      setTrigger(event.key);
-      const command = detectCommand(ref.current);
-      const start = command?.startPosition ?? ref.current.selectionStart;
-      setStartPosition(start);
-      combobox.setValue("");
-      combobox.show();
-    }
-
-    const tabOrEnter = event.key === "Tab" || event.key === "Enter";
-
-    const activeValue = getValueOrTrigger();
-
-    const command = selectedCommand ? activeValue : activeValue + " ";
-
-    if (state.open && tabOrEnter && command) {
-      event.preventDefault();
-      event.stopPropagation();
-      const newInput = replaceValue(
-        ref.current,
-        trigger,
-        command,
-        startPosition,
-      );
-
-      onChange(newInput.value);
-      setEndPosition(newInput.endPosition);
-
-      combobox.setValue(command);
-      if (selectedCommand) {
-        setSelectedCommand("");
-        setTrigger(command);
+      if (
+        !state.activeValue &&
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        !hasMatches
+      ) {
+        event.stopPropagation();
+        onSubmit(event);
         setStartPosition(null);
-        // onChange(newInput.value + "\n");
-        // setEndPosition(newInput.endPosition + 1);
+        setTrigger("");
         combobox.hide();
-      } else {
-        setSelectedCommand(command);
-        setTrigger(command);
-        // onChange(newInput.value);
-        // setEndPosition(newInput.endPosition);
+        return;
       }
-    }
 
-    if (event.key === "Space" && state.open && commands.includes(trigger)) {
-      const newInput = replaceValue(
-        ref.current,
-        trigger,
-        command,
-        startPosition,
-      );
-      event.preventDefault();
-      event.stopPropagation();
-      onChange(newInput.value);
-      setEndPosition(newInput.endPosition);
-      combobox.setValue(trigger + " ");
-      setTrigger(trigger + " ");
-      setSelectedCommand(trigger + " ");
-    }
+      if (event.key === "Enter" && event.shiftKey) {
+        setTrigger("");
+        combobox.hide();
+        return;
+      }
 
-    if (event.key === "Escape") {
-      setTrigger("");
-      setSelectedCommand("");
-      setStartPosition(null);
-      setEndPosition(null);
-    }
-  };
+      const maybeCommand = detectCommand(ref.current);
+      const maybeCommandWithArguments = maybeCommand?.command.split(" ");
 
-  const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(event.target.value);
-    const maybeCommand = detectCommand(event.target);
-    if (maybeCommand) {
-      setTrigger(maybeCommand.command);
-      setStartPosition(maybeCommand.startPosition);
-      const [command, ...args] = maybeCommand.command
-        .split(" ")
-        .filter((d) => d);
-      setSelectedCommand(args.length > 0 ? command + " " : "");
-    } else {
-      setTrigger("");
-      setSelectedCommand("");
-      setStartPosition(null);
-    }
-  };
+      if (maybeCommand) {
+        setTrigger(maybeCommand.command);
+        setStartPosition(maybeCommand.startPosition);
+        if (maybeCommandWithArguments && maybeCommandWithArguments.length > 1) {
+          setSelectedCommand(maybeCommandWithArguments[0] + " ");
+        } else {
+          setSelectedCommand("");
+        }
+        combobox.show();
+      } else if (wasDelete) {
+        setTrigger("");
+        setSelectedCommand("");
+        setStartPosition(null);
+        combobox.hide();
+      }
 
-  const onItemClick =
+      const wasArrowLeftOrRight =
+        event.key === "ArrowLeft" || event.key === "ArrowRight";
+
+      if (wasArrowLeftOrRight && !maybeCommand) {
+        setTrigger("");
+        setSelectedCommand("");
+        setStartPosition(null);
+      }
+
+      if (event.key === "@" && !state.open && !selectedCommand) {
+        setTrigger(event.key);
+        const command = detectCommand(ref.current);
+        const start = command?.startPosition ?? ref.current.selectionStart;
+        setStartPosition(start);
+        combobox.setValue("");
+        combobox.show();
+      }
+
+      const tabOrEnter = event.key === "Tab" || event.key === "Enter";
+
+      const activeValue = getValueOrTrigger();
+
+      const command = selectedCommand ? activeValue : activeValue + " ";
+
+      if (state.open && tabOrEnter && command) {
+        event.preventDefault();
+        event.stopPropagation();
+        const newInput = replaceValue(
+          ref.current,
+          trigger,
+          command,
+          startPosition,
+        );
+
+        onChange(newInput.value);
+        setEndPosition(newInput.endPosition);
+
+        combobox.setValue(command);
+        if (selectedCommand) {
+          setSelectedCommand("");
+          setTrigger(command);
+          setStartPosition(null);
+          // onChange(newInput.value + "\n");
+          // setEndPosition(newInput.endPosition + 1);
+          combobox.hide();
+        } else {
+          setSelectedCommand(command);
+          setTrigger(command);
+          // onChange(newInput.value);
+          // setEndPosition(newInput.endPosition);
+        }
+      }
+
+      if (event.key === "Space" && state.open && commands.includes(trigger)) {
+        const newInput = replaceValue(
+          ref.current,
+          trigger,
+          command,
+          startPosition,
+        );
+        event.preventDefault();
+        event.stopPropagation();
+        onChange(newInput.value);
+        setEndPosition(newInput.endPosition);
+        combobox.setValue(trigger + " ");
+        setTrigger(trigger + " ");
+        setSelectedCommand(trigger + " ");
+      }
+
+      if (event.key === "Escape") {
+        setTrigger("");
+        setSelectedCommand("");
+        setStartPosition(null);
+        setEndPosition(null);
+      }
+    },
+    [
+      combobox,
+      commands,
+      getValueOrTrigger,
+      hasMatches,
+      onChange,
+      onSubmit,
+      selectedCommand,
+      setSelectedCommand,
+      startPosition,
+      trigger,
+      wasDelete,
+    ],
+  );
+
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onChange(event.target.value);
+      const maybeCommand = detectCommand(event.target);
+      if (maybeCommand) {
+        setTrigger(maybeCommand.command);
+        setStartPosition(maybeCommand.startPosition);
+        const [command, ...args] = maybeCommand.command
+          .split(" ")
+          .filter((d) => d);
+        setSelectedCommand(args.length > 0 ? command + " " : "");
+      } else {
+        setTrigger("");
+        setSelectedCommand("");
+        setStartPosition(null);
+      }
+    },
+    [onChange, setSelectedCommand],
+  );
+
+  const onItemClick = useCallback(
     (item: string) => (event: React.MouseEvent<HTMLDivElement>) => {
       event.stopPropagation();
       event.preventDefault();
@@ -274,7 +299,16 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
       onChange(nextValue.value);
       setEndPosition(nextValue.endPosition);
-    };
+    },
+    [
+      combobox,
+      onChange,
+      selectedCommand,
+      setSelectedCommand,
+      startPosition,
+      trigger,
+    ],
+  );
 
   const popoverWidth = ref.current
     ? ref.current.getBoundingClientRect().width - 8

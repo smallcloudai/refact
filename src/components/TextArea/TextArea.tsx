@@ -3,6 +3,7 @@ import React, {
   useImperativeHandle,
   useRef,
   useLayoutEffect,
+  useCallback,
 } from "react";
 import { TextArea as RadixTextArea } from "@radix-ui/themes";
 import classNames from "classnames";
@@ -24,30 +25,36 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
     useImperativeHandle(ref, () => innerRef.current!, []);
     const undoRedo = useUndoRedo(value);
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      const isMod = event.metaKey || event.ctrlKey;
-      if (isMod && event.key === "z" && !event.shiftKey) {
-        event.preventDefault();
-        undoRedo.undo();
-        setCallChange(true);
-      }
+    const handleKeyDown = useCallback(
+      (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        const isMod = event.metaKey || event.ctrlKey;
+        if (isMod && event.key === "z" && !event.shiftKey) {
+          event.preventDefault();
+          undoRedo.undo();
+          setCallChange(true);
+        }
 
-      if (isMod && event.key === "z" && event.shiftKey) {
-        event.preventDefault();
-        undoRedo.redo();
-        setCallChange(true);
-      }
+        if (isMod && event.key === "z" && event.shiftKey) {
+          event.preventDefault();
+          undoRedo.redo();
+          setCallChange(true);
+        }
 
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-      }
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+        }
 
-      onKeyDown && onKeyDown(event);
-    };
+        onKeyDown && onKeyDown(event);
+      },
+      [onKeyDown, undoRedo],
+    );
 
-    const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      onChange(event);
-    };
+    const handleChange = useCallback(
+      (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onChange(event);
+      },
+      [onChange],
+    );
 
     useEffect(() => {
       if (innerRef.current) {

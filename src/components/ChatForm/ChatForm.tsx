@@ -268,44 +268,47 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     value,
   ]);
 
-  const addCheckboxValuesToInput = (input: string) => {
-    if (!showControls) {
-      return input;
-    }
+  const addCheckboxValuesToInput = useCallback(
+    (input: string) => {
+      if (!showControls) {
+        return input;
+      }
 
-    let result = input;
-    if (!result.endsWith("\n")) {
-      result += "\n";
-    }
-    if (
-      checkboxes.search_workspace.checked &&
-      checkboxes.search_workspace.hide !== true
-    ) {
-      result += `@workspace\n`;
-    }
+      let result = input;
+      if (!result.endsWith("\n")) {
+        result += "\n";
+      }
+      if (
+        checkboxes.search_workspace.checked &&
+        checkboxes.search_workspace.hide !== true
+      ) {
+        result += `@workspace\n`;
+      }
 
-    if (
-      checkboxes.lookup_symbols.checked &&
-      checkboxes.lookup_symbols.hide !== true
-    ) {
-      result += `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n`;
-    }
+      if (
+        checkboxes.lookup_symbols.checked &&
+        checkboxes.lookup_symbols.hide !== true
+      ) {
+        result += `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n`;
+      }
 
-    if (
-      checkboxes.selected_lines.checked &&
-      checkboxes.selected_lines.hide !== true
-    ) {
-      result += `${checkboxes.selected_lines.value ?? ""}\n`;
-    }
+      if (
+        checkboxes.selected_lines.checked &&
+        checkboxes.selected_lines.hide !== true
+      ) {
+        result += `${checkboxes.selected_lines.value ?? ""}\n`;
+      }
 
-    if (
-      checkboxes.file_upload.checked &&
-      checkboxes.file_upload.hide !== true
-    ) {
-      result += `@file ${checkboxes.file_upload.value ?? ""}\n`;
-    }
-    return result;
-  };
+      if (
+        checkboxes.file_upload.checked &&
+        checkboxes.file_upload.hide !== true
+      ) {
+        result += `@file ${checkboxes.file_upload.value ?? ""}\n`;
+      }
+      return result;
+    },
+    [showControls, checkboxes],
+  );
 
   useEffectOnce(() => {
     if (selectedSnippet.code) {
@@ -321,21 +324,25 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const isOnline = useIsOnline();
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
     if (trimmedValue.length > 0 && !isStreaming && isOnline) {
       const valueIncludingChecks = addCheckboxValuesToInput(trimmedValue);
       onSubmit(valueIncludingChecks);
       setValue(() => "");
     }
-  };
+  }, [value, onSubmit, isStreaming, isOnline, addCheckboxValuesToInput]);
 
   const handleEnter = useOnPressedEnter(handleSubmit);
 
-  const handleChange = (command: string) => {
-    setInteracted(true);
-    setValue(command);
-  };
+  const handleChange = useCallback(
+    (command: string) => {
+      setInteracted(true);
+      setValue(command);
+    },
+    [setInteracted],
+  );
+
   if (error) {
     return (
       <ErrorCallout mt="2" onClick={clearError} timeout={null}>
