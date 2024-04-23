@@ -1,10 +1,9 @@
 use std::sync::Arc;
 use async_trait::async_trait;
-use serde_json::json;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use tokio::sync::Mutex as AMutex;
 use uuid::Uuid;
-use crate::call_validation::{ChatMessage, ContextFile};
+use crate::call_validation::ContextFile;
 use crate::vecdb::structs::{Record, VecdbSearch};
 
 
@@ -22,7 +21,7 @@ impl AtWorkspace {
     }
 }
 
-fn results2message(results: &Vec<Record>) -> ChatMessage {
+fn results2message(results: &Vec<Record>) -> Vec<ContextFile> {
     let mut vector_of_context_file: Vec<ContextFile> = vec![];
     for i in 0..results.len() {
         let r = &results[i];
@@ -36,10 +35,7 @@ fn results2message(results: &Vec<Record>) -> ChatMessage {
             usefulness: r.usefulness,
         });
     }
-    ChatMessage {
-        role: "context_file".to_string(),
-        content: json!(vector_of_context_file).to_string(),
-    }
+    vector_of_context_file
 }
 
 #[async_trait]
@@ -52,7 +48,7 @@ impl AtCommand for AtWorkspace {
     {
         &self.params
     }
-    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String> {
+    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String> {
         match *context.global_context.read().await.vec_db.lock().await {
             Some(ref db) => {
                 let mut db_query = args.join(" ");

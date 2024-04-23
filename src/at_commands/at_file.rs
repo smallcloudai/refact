@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use regex::Regex;
-use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 use std::sync::Arc;
@@ -8,7 +7,7 @@ use uuid::Uuid;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
-use crate::call_validation::{ChatMessage, ContextFile};
+use crate::call_validation::ContextFile;
 
 
 pub struct AtFile {
@@ -178,7 +177,7 @@ impl AtCommand for AtFile {
         args.len() == 1
     }
 
-    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String> {
         let can_execute = self.can_execute(args, context).await;
         if !can_execute {
             return Err("incorrect arguments".to_string());
@@ -218,10 +217,7 @@ impl AtCommand for AtFile {
             gradient_type,
             usefulness: 100.0,
         };
-        Ok(ChatMessage {
-            role: "context_file".to_string(),
-            content: json!(vec![context_file]).to_string(),
-        })
+        Ok(vec![context_file])
     }
 }
 

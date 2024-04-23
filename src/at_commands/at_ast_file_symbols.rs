@@ -1,17 +1,16 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use uuid::Uuid;
 use crate::ast::ast_index::RequestSymbolType;
 
 use crate::ast::structs::FileReferencesResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::call_validation::{ChatMessage, ContextFile};
+use crate::call_validation::ContextFile;
 
 
-fn results2message(result: &FileReferencesResult) -> ChatMessage {
+fn results2message(result: &FileReferencesResult) -> Vec<ContextFile> {
     let simplified_symbols: Vec<ContextFile> = result.symbols.iter().map(|x| {
         // let path = format!("{:?}::", result.file_path).to_string();
         ContextFile {
@@ -24,10 +23,7 @@ fn results2message(result: &FileReferencesResult) -> ChatMessage {
             usefulness: 100.0
         }
     }).collect();
-    ChatMessage {
-        role: "simplified_symbol_declaration".to_string(),
-        content: json!(simplified_symbols).to_string(),
-    }
+    simplified_symbols
 }
 
 pub struct AtAstFileSymbols {
@@ -52,7 +48,7 @@ impl AtCommand for AtAstFileSymbols {
         }
         false
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String> {
         let can_execute = self.can_execute(args, context).await;
         if !can_execute {
             return Err("incorrect arguments".to_string());

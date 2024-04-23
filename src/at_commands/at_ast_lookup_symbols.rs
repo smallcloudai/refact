@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 use tree_sitter::Point;
@@ -9,9 +8,10 @@ use tree_sitter::Point;
 use crate::ast::structs::AstCursorSearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_file::{AtParamFilePath, RangeKind, colon_lines_range_from_arg};
-use crate::call_validation::{ChatMessage, ContextFile};
+use crate::call_validation::ContextFile;
 
-pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
+
+pub async fn results2message(result: &AstCursorSearchResult) -> Vec<ContextFile> {
     // info!("results2message {:?}", result);
     let mut fvec = vec![];
     for res in &result.bucket_declarations {
@@ -50,10 +50,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> ChatMessage {
             usefulness: 40.0,
         });
     }
-    ChatMessage {
-        role: "context_file".to_string(),
-        content: json!(fvec).to_string(),
-    }
+    fvec
 }
 
 pub struct AtAstLookupSymbols {
@@ -91,7 +88,7 @@ impl AtCommand for AtAstLookupSymbols {
         }
         false
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String> {
         let can_execute = self.can_execute(args, context).await;
         if !can_execute {
             return Err("incorrect arguments".to_string());

@@ -10,8 +10,9 @@ use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
 use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_workspace::AtWorkspace;
-use crate::call_validation::ChatMessage;
+use crate::call_validation::ContextFile;
 use crate::global_context::GlobalContext;
+
 
 pub struct AtCommandsContext {
     pub global_context: Arc<ARwLock<GlobalContext>>,
@@ -32,7 +33,7 @@ pub trait AtCommand: Send + Sync {
     fn name(&self) -> &String;
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>;
     async fn can_execute(&self, _args: &Vec<String>, _context: &AtCommandsContext) -> bool {true}
-    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<ChatMessage, String>;
+    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String>;
 }
 
 #[async_trait]

@@ -12,6 +12,7 @@ use crate::ast::ast_index::RequestSymbolType;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 use crate::global_context::SharedGlobalContext;
+use crate::scratchpads::chat_utils_rag::{context_msgs_from_paths, postprocess_rag_load_ast_markup};
 
 #[derive(Serialize, Deserialize, Clone)]
 struct AstQuerySearchBy {
@@ -263,8 +264,8 @@ pub async fn handle_v1_ast_file_dump(
     }
     let mut files_set: HashSet<String> = HashSet::new();
     files_set.insert(corrected[0].clone());
-    let files_markup = crate::scratchpads::chat_utils_rag::
-        postprocess_rag_load_ast_markup(global_context.clone(), files_set).await;
+    let messages = context_msgs_from_paths(global_context.clone(), files_set).await;
+    let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), &messages).await;
     let mut settings = crate::scratchpads::chat_utils_rag::PostprocessSettings::new();
     settings.close_small_gaps = false;
     let (lines_in_files, _) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage_3_6(

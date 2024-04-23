@@ -16,7 +16,7 @@ use crate::at_commands::query::QueryLine;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::call_validation::ChatMessage;
-use crate::scratchpads::chat_utils_rag::max_tokens_for_rag_chat;
+use crate::scratchpads::chat_utils_rag::{max_tokens_for_rag_chat, postprocess_at_results2};
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -107,8 +107,8 @@ pub async fn handle_v1_command_preview(
     let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &at_context).await;
     for cmd in valid_commands {
         match cmd.command.lock().await.execute(&query, &cmd.args, top_n, &at_context).await {
-            Ok(msg) => {
-                messages_for_postprocessing.push(msg);
+            Ok(msgs) => {
+                messages_for_postprocessing.extend(msgs);
             },
             Err(e) => {
                 tracing::warn!("can't execute command that indicated it can execute: {}", e);
@@ -116,7 +116,7 @@ pub async fn handle_v1_command_preview(
         }
     }
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
-    let processed = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
+    let processed = postprocess_at_results2(
         global_context.clone(),
         messages_for_postprocessing,
         tokenizer_arc.clone(),

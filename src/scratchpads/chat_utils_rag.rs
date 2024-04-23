@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::sync::RwLock;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use tracing::{info, warn};
 use serde_json::{json, Value};
@@ -17,11 +16,10 @@ use crate::ast::treesitter::structs::SymbolType;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
-use crate::files_in_workspace::Document;
+use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
+
 
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
-
-
 const DEBUG: bool = false;
 
 
@@ -140,16 +138,17 @@ fn calculate_hash(path: &PathBuf) -> u64 {
 
 pub async fn postprocess_rag_load_ast_markup(
     global_context: Arc<ARwLock<GlobalContext>>,
-    files_set: HashSet<String>,
+    messages: &Vec<ContextFile>,
 ) -> HashMap<String, Arc<File>> {
     // 2. Load AST markup
     let mut files_markup: HashMap<String, Arc<File>> = HashMap::new();
     let ast_module = global_context.read().await.ast_module.clone();
-    for file_name in files_set {
+    for message in messages {
+        let file_name = message.file_name.clone();
         let path = crate::files_correction::canonical_path(&file_name.clone());
         let cpath_symmetry_breaker: f32 = (calculate_hash(&path) as f32) / (u64::MAX as f32) / 100.0;
         let mut doc = Document::new(&path);
-        let text = crate::files_in_workspace::get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
+        let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
         doc.update_text(&text);
         let mut f: Option<Arc<File>> = None;
         if let Some(astmod) = &ast_module {
@@ -205,6 +204,126 @@ impl PostprocessSettings {
     }
 }
 
+fn colorize_if_more_useful(linevec: &mut Vec<Arc<FileLine>>, line1: usize, line2: usize, color: &String, useful: f32) {
+    if DEBUG {
+        info!("    colorize_if_more_useful {}..{} <= color {:?} useful {}", line1, line2, color, useful);
+    }
+    for i in line1 .. line2 {
+        if i >= linevec.len() {
+            warn!("    {} has faulty range {}..{}", color, line1, line2);
+            continue;
+        }
+        let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+        let u = useful - (i as f32) * 0.001;
+        unsafe {
+            if (*lineref_mut).useful < u || (*lineref_mut).color.is_empty() {
+                (*lineref_mut).useful = u;
+                (*lineref_mut).color = color.clone();
+            }
+        }
+    }
+}
+
+pub async fn context_msgs_from_paths(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    files_set: HashSet<String>
+) -> Vec<ContextFile> {
+    let mut messages = vec![];
+    for file_name in files_set {
+        let path = crate::files_correction::canonical_path(&file_name.clone());
+        let text = get_file_text_from_memory_or_disk(global_context.clone(), &path).await.unwrap_or_default();
+        messages.push(ContextFile {
+            file_name: file_name.clone(),
+            file_content: text.clone(),
+            line1: 0,
+            line2: text.lines().count(),
+            symbol: Uuid::default(),
+            gradient_type: -1,
+            usefulness: 0.,
+        });
+    }
+    messages
+}
+
+fn colorize_parentof(linevec: &mut Vec<Arc<FileLine>>, long_child_path: &String, bg: f32, maxuseful: f32) {
+    if DEBUG {
+        info!("    colorize_parentof long_child_path={} bg={} maxuseful={}", long_child_path, bg, maxuseful);
+    }
+    for i in 0 .. linevec.len() {
+        let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+        unsafe {
+            let color = &(*lineref_mut).color;
+            if long_child_path.starts_with(color) && color.len() > 0 {
+                let plen = (*lineref_mut).color.len();
+                let long = long_child_path.len();
+                let mut u = bg + (maxuseful - bg)*(plen as f32)/(long as f32);
+                u -= (i as f32) * 0.001;
+                if (*lineref_mut).useful < u {
+                    if DEBUG {
+                        info!("    colorize_parentof line{:04} {} <= {:>7.3}", i, color, u);
+                    }
+                    (*lineref_mut).useful = u;
+                }
+            }
+        }
+    }
+}
+
+fn colorize_minus_one(linevec: &mut Vec<Arc<FileLine>>, line1: usize, line2: usize) {
+    for i in line1 .. line2 {
+        if i >= linevec.len() {
+            continue;
+        }
+        let l = &linevec[i];
+        let l_mut: *mut FileLine = Arc::as_ptr(l) as *mut FileLine;
+        unsafe {
+            (*l_mut).useful = -1.;
+            (*l_mut).color = "disabled".to_string();
+        }
+    }
+}
+
+fn colorize_comments_up(linevec: &mut Vec<Arc<FileLine>>, settings: &PostprocessSettings) {
+    for i in (0 .. linevec.len() - 1).rev() {
+        let thisline: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+        let nextline: *mut FileLine = Arc::as_ptr(&linevec[i + 1]) as *mut FileLine;
+        unsafe {
+            let u = (*nextline).useful * settings.comments_propogate_up_coef;
+            if (*thisline).color == "comment" && (*thisline).useful < u {
+                (*thisline).useful = u;
+                if DEBUG {
+                    info!("    comments_up_from_symbol line{:04} <= {:>7.3}", i, u);
+                }
+            }
+        }
+    }
+}
+
+fn downgrade_lines_if_subsymbol(linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, subsymbol: &String, downgrade_coef: f32) {
+    let mut changes_cnt = 0;
+    for i in line1_base0 .. line2_base0 {
+        if i >= linevec.len() {
+            continue;
+        }
+        let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
+        unsafe {
+            if subsymbol.starts_with(&(*lineref_mut).color) {
+                if i == line2_base0-1 || i == line1_base0 {
+                    if (*lineref_mut).line_content.trim().len() == 1 {
+                        continue;
+                    }
+                }
+                (*lineref_mut).useful *= downgrade_coef;
+                (*lineref_mut).color = subsymbol.clone();
+                changes_cnt += 1;
+            }
+        }
+    }
+    if DEBUG {
+        info!("        {}..{} ({} affected) <= subsymbol {:?} downgrade {}", changes_cnt, line1_base0, line2_base0, subsymbol, downgrade_coef);
+    }
+}
+
 pub async fn postprocess_rag_stage_3_6(
     global_context: Arc<ARwLock<GlobalContext>>,
     origmsgs: Vec<ContextFile>,
@@ -229,81 +348,6 @@ pub async fn postprocess_rag_stage_3_6(
             lines_in_files_mut.push(a.clone());
         }
     }
-    let colorize_if_more_useful = |linevec: &mut Vec<Arc<FileLine>>, line1: usize, line2: usize, color: &String, useful: f32|
-    {
-        if DEBUG {
-            info!("    colorize_if_more_useful {}..{} <= color {:?} useful {}", line1, line2, color, useful);
-        }
-        for i in line1 .. line2 {
-            if i >= linevec.len() {
-                warn!("    {} has faulty range {}..{}", color, line1, line2);
-                continue;
-            }
-            let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
-            let u = useful - (i as f32) * 0.001;
-            unsafe {
-                if (*lineref_mut).useful < u || (*lineref_mut).color.is_empty() {
-                    (*lineref_mut).useful = u;
-                    (*lineref_mut).color = color.clone();
-                }
-            }
-        }
-    };
-    let colorize_parentof = |linevec: &mut Vec<Arc<FileLine>>, long_child_path: &String, bg: f32, maxuseful: f32|
-    {
-        if DEBUG {
-            info!("    colorize_parentof long_child_path={} bg={} maxuseful={}", long_child_path, bg, maxuseful);
-        }
-        for i in 0 .. linevec.len() {
-            let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
-            unsafe {
-                let color = &(*lineref_mut).color;
-                if long_child_path.starts_with(color) && color.len() > 0 {
-                    let plen = (*lineref_mut).color.len();
-                    let long = long_child_path.len();
-                    let mut u = bg + (maxuseful - bg)*(plen as f32)/(long as f32);
-                    u -= (i as f32) * 0.001;
-                    // if (*lineref_mut).useful > 0.0 && (*lineref_mut).useful < u {
-                    if (*lineref_mut).useful < u {
-                        if DEBUG {
-                            info!("    colorize_parentof line{:04} {} <= {:>7.3}", i, color, u);
-                        }
-                        (*lineref_mut).useful = u;
-                    }
-                }
-            }
-        }
-    };
-    let colorize_minus_one = |linevec: &mut Vec<Arc<FileLine>>, line1: usize, line2: usize| {
-        for i in line1 .. line2 {
-            if i >= linevec.len() {
-                continue;
-            }
-            let l = &linevec[i];
-            let l_mut: *mut FileLine = Arc::as_ptr(l) as *mut FileLine;
-            unsafe {
-                (*l_mut).useful = -1.;
-                (*l_mut).color = "disabled".to_string();
-            }
-        }
-    };
-    let colorize_comments_up = |linevec: &mut Vec<Arc<FileLine>>|
-    {
-        for i in (0 .. linevec.len() - 1).rev() {
-            // info!("    xxx{}", i);
-            let thisline: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
-            let nextline: *mut FileLine = Arc::as_ptr(&linevec[i + 1]) as *mut FileLine;
-            unsafe {
-                let u = (*nextline).useful * settings.comments_propogate_up_coef;
-                if (*thisline).color == "comment" && (*thisline).useful < u {
-                    (*thisline).useful = u;
-                    if DEBUG {
-                        info!("    comments_up_from_symbol line{:04} <= {:>7.3}", i, u);
-                    }
-                }
-            }
-        }
-    };
     for linevec in lines_in_files.values_mut() {
         if linevec.len() == 0 {
             continue;
@@ -384,36 +428,10 @@ pub async fn postprocess_rag_stage_3_6(
             }
             colorize_if_more_useful(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
         }
-        colorize_comments_up(linevec);
+        colorize_comments_up(linevec, settings);
     }
 
     // 5. Downgrade sub-symbols and uninteresting regions
-    let downgrade_lines_if_subsymbol = |linevec: &mut Vec<Arc<FileLine>>, line1_base0: usize, line2_base0: usize, subsymbol: &String, downgrade_coef: f32|
-    {
-        let mut changes_cnt = 0;
-        for i in line1_base0 .. line2_base0 {
-            if i >= linevec.len() {
-                continue;
-            }
-            let lineref_mut: *mut FileLine = Arc::as_ptr(&linevec[i]) as *mut FileLine;
-            unsafe {
-                if subsymbol.starts_with(&(*lineref_mut).color) { // && subsymbol != &(*lineref_mut).color {
-                    if i == line2_base0-1 || i == line1_base0 {
-                        if (*lineref_mut).line_content.trim().len() == 1 {
-                            // HACK: closing brackets at the end, leave it alone without downgrade
-                            continue;
-                        }
-                    }
-                    (*lineref_mut).useful *= downgrade_coef;
-                    (*lineref_mut).color = subsymbol.clone();
-                    changes_cnt += 1;
-                }
-            }
-        }
-        if DEBUG {
-            info!("        {}..{} ({} affected) <= subsymbol {:?} downgrade {}", changes_cnt, line1_base0, line2_base0, subsymbol, downgrade_coef);
-        }
-    };
     for linevec in lines_in_files.values_mut() {
         if linevec.len() == 0 {
             continue;
@@ -467,48 +485,21 @@ pub async fn postprocess_rag_stage_3_6(
 
 pub async fn postprocess_at_results2(
     global_context: Arc<ARwLock<GlobalContext>>,
-    messages: Vec<ChatMessage>,
+    messages: Vec<ContextFile>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
 ) -> Vec<ContextFile> {
-    let (files_markup, origmsgs) = postprocess_rag_stage_1_2(global_context.clone(), messages).await;
-    let settings = crate::scratchpads::chat_utils_rag::PostprocessSettings::new();
+    let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), &messages).await;
+
+    let settings = PostprocessSettings::new();
     let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage_3_6(
         global_context.clone(),
-        origmsgs,
+        messages,
         &files_markup,
         &settings,
     ).await;
-    let y = postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode, &settings).await;
-    y
-}
-
-pub async fn postprocess_rag_stage_1_2(
-    global_context: Arc<ARwLock<GlobalContext>>,
-    messages: Vec<ChatMessage>,
-) -> (HashMap<String, Arc<File>>, Vec<ContextFile>) {
-    // 1. Decode all
-    let mut origmsgs: Vec<ContextFile> = vec![];
-    let mut files_set: HashSet<String> = HashSet::new();
-    for msg in messages {
-        match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
-            Ok(decoded) => {
-                origmsgs.extend(decoded.clone());
-                for cf in decoded {
-                    files_set.insert(cf.file_name.clone());
-                }
-            },
-            Err(err) => {
-                warn!("postprocess_at_results2 decoding results problem: {}", err);
-                continue;
-            }
-        }
-    }
-
-    // 2. Load ast markup
-    let files_markup: HashMap<String, Arc<File>> = postprocess_rag_load_ast_markup(global_context.clone(), files_set).await;
-    (files_markup, origmsgs)
+    postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode, &settings).await
 }
 
 pub async fn postprocess_rag_stage_7_9(
@@ -686,11 +677,11 @@ pub async fn run_at_commands(
         let mut messages_for_postprocessing = vec![];
         for cmd in valid_commands {
             match cmd.command.lock().await.execute(&user_posted, &cmd.args, top_n, &context).await {
-                Ok(msg) => {
-                    messages_for_postprocessing.push(msg);
+                Ok(msgs) => {
+                    messages_for_postprocessing.extend(msgs);
                 },
                 Err(e) => {
-                    tracing::warn!("can't execute command that indicated it can execute: {}", e);
+                    warn!("can't execute command that indicated it can execute: {}", e);
                 }
             }
         }
