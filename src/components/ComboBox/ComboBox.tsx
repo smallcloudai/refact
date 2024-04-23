@@ -44,9 +44,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const [endPosition, setEndPosition] = React.useState<null | number>(null);
 
   const commandsOrArguments = useMemo(() => {
-    return selectedCommand
+    const items = selectedCommand
       ? commandArguments.map((arg) => selectedCommand + arg)
       : commands;
+    const uniqueItems = new Set<string>(items);
+    return Array.from(uniqueItems);
   }, [selectedCommand, commandArguments, commands]);
 
   const combobox = useComboboxStore({
