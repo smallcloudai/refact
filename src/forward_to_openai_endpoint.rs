@@ -134,6 +134,7 @@ pub async fn get_embedding_openai_style(
     model_name: &String,
     api_key: &String,
 ) -> Result<Vec<Vec<f32>>, String> {
+    #[allow(non_snake_case)]
     let B = text.len();
     let payload = EmbeddingsPayloadOpenAI {
         input: text,
