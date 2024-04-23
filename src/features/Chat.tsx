@@ -93,6 +93,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         messages={state.chat.messages}
         onRetry={retryQuestion}
         isWaiting={state.waiting_for_response}
+        isStreaming={state.streaming}
         onNewFileClick={handleNewFileClick}
         onPasteClick={handlePasteDiffClick}
         canPaste={state.active_file.can_paste}

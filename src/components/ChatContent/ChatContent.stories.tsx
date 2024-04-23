@@ -11,6 +11,7 @@ const meta = {
     messages: MARS_ROVER_CHAT.messages,
     onRetry: noop,
     isWaiting: false,
+    isStreaming: false,
     canPaste: true,
     onNewFileClick: noop,
     onPasteClick: noop,

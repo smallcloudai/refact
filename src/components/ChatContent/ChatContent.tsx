@@ -19,6 +19,7 @@ export type ChatContentProps = {
   onRetry: (question: ChatMessages) => void;
   isWaiting: boolean;
   canPaste: boolean;
+  isStreaming: boolean;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
@@ -30,6 +31,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       onNewFileClick,
       onPasteClick,
       canPaste,
+      isStreaming,
     } = props;
 
     const innerRef = React.useRef<HTMLDivElement>(null);
@@ -61,7 +63,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                 onRetry(toSend);
               };
               return (
-                <UserInput onRetry={handleRetry} key={index}>
+                <UserInput
+                  onRetry={handleRetry}
+                  key={index}
+                  disableRetry={isStreaming || isWaiting}
+                >
                   {text}
                 </UserInput>
               );

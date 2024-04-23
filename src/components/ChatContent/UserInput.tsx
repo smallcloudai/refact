@@ -5,10 +5,13 @@ import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
 import styles from "./ChatContent.module.css";
 
-export const UserInput: React.FC<{
+export type UserInputProps = {
   children: string;
   onRetry: (value: string) => void;
-}> = (props) => {
+  disableRetry?: boolean;
+};
+
+export const UserInput: React.FC<UserInputProps> = (props) => {
   const [showTextArea, setShowTextArea] = useState(false);
   const handleSubmit = (value: string) => {
     props.onRetry(value);
@@ -40,6 +43,7 @@ export const UserInput: React.FC<{
           className={styles.retryButton}
           title="retry"
           onClick={() => setShowTextArea(true)}
+          disabled={props.disableRetry}
         >
           Retry
         </RightButton>
