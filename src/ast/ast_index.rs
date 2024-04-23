@@ -343,6 +343,42 @@ impl AstIndex {
             .collect::<Vec<_>>())
     }
 
+    fn get_declarations_by_parent(
+        &self,
+        symbol: &AstSymbolInstanceArc,
+        base_usefulness: f32
+    ) -> (Vec<AstSymbolInstanceArc>, HashMap<Uuid, f32>) {
+        let mut current_symbol = symbol.clone();
+        let mut parents_symbols: Vec<AstSymbolInstanceArc> = vec![];
+        let mut guid_to_usefulness: HashMap<Uuid, f32> = HashMap::new();
+        let mut level: u64 = 0;
+        loop {
+            let parent_guid = read_symbol(&current_symbol).parent_guid().unwrap_or_default();
+            if let Some(parent_symbol) = self.symbols_by_guid.get(&parent_guid) {
+                parents_symbols.extend(
+                    read_symbol(parent_symbol)
+                        .types()
+                        .iter()
+                        .filter_map(|t| t.guid.clone())
+                        .filter_map(|g| self.symbols_by_guid.get(&g))
+                        .cloned()
+                        .map(|s| {
+                            *guid_to_usefulness
+                                .entry(read_symbol(&s).guid().clone())
+                                .or_insert_with(|| base_usefulness) -= 10.0 * level as f32;
+                            s
+                        })
+                        .collect::<Vec<_>>()
+                );
+                current_symbol = parent_symbol.clone();
+                level += 1
+            } else {
+                break;
+            }
+        }
+        (parents_symbols, guid_to_usefulness)
+    }
+
     pub async fn symbols_near_cursor_to_buckets(
         &self,
         doc: &Document,
@@ -351,17 +387,30 @@ impl AstIndex {
         top_n_near_cursor: usize,
         top_n_usage_for_each_decl: usize,
         fuzzy_search_limit: usize
-    ) -> (Vec<AstSymbolInstanceArc>, Vec<AstSymbolInstanceArc>, Vec<AstSymbolInstanceArc>, Vec<AstSymbolInstanceArc>) {
+    ) -> (
+        Vec<AstSymbolInstanceArc>,
+        Vec<AstSymbolInstanceArc>,
+        Vec<AstSymbolInstanceArc>,
+        Vec<AstSymbolInstanceArc>,
+        HashMap<Uuid, f32>
+    ) {
         let t_parse_t0 = std::time::Instant::now();
         let file_symbols = self.parse_single_file(doc, code).await;
         let language = get_language_id_by_filename(&doc.path);
         let t_parse_ms = t_parse_t0.elapsed().as_millis() as i32;
+        let mut guid_to_usefulness: HashMap<Uuid, f32> = HashMap::new();
 
         let t_cursor_t0 = std::time::Instant::now();
         let unfiltered_cursor_symbols = file_symbols
             .iter()
             .filter(|s| !read_symbol(s).name().is_empty())
             .sorted_by_key(|a| read_symbol(a).distance_to_cursor(&cursor))
+            .map(|s| {
+                *guid_to_usefulness
+                    .entry(read_symbol(&s).guid().clone())
+                    .or_default() = 0.0;
+                s
+            })
             .cloned()
             .collect::<Vec<_>>();
         let scope_symbols = if let Some(parent_guid) = unfiltered_cursor_symbols
@@ -418,8 +467,32 @@ impl AstIndex {
             .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
+            .map(|s| {
+                *guid_to_usefulness
+                    .entry(read_symbol(&s).guid().clone())
+                    .or_default() += 70.0;
+                s
+            })
             .collect::<Vec<_>>();
         let t_decl_ms = t_decl_t0.elapsed().as_millis() as i32;
+
+        // use usage symbol's parents to get definition of extra types (template types, signature types, parent classes, ...)
+        let (declarations_matched_by_parent, guid_to_usefulness_to_merge) = if let Some(symbol) = unfiltered_cursor_symbols
+            .iter()
+            .filter(|s| !read_symbol(s).is_declaration())
+            .next() {
+            self.get_declarations_by_parent(symbol, 70.0)
+        } else {
+            (vec![], HashMap::new())
+        };
+        guid_to_usefulness_to_merge
+            .iter()
+            .for_each(|(guid, usefulness)| {
+                *guid_to_usefulness
+                    .entry(guid.clone())
+                    .or_default() += *usefulness;
+            });
+
 
         // (3) cursor_symbols_with_types + declarations_matched_by_name
         let t_stage3_t0 = std::time::Instant::now();
@@ -440,7 +513,14 @@ impl AstIndex {
                 let s_ref = read_symbol(s);
                 *s_ref.language() == language.unwrap_or(*s_ref.language())
             })
+            .map(|s| {
+                *guid_to_usefulness
+                    .entry(read_symbol(&s).guid().clone())
+                    .or_default() += 90.0;
+                s
+            })
             .chain(declarations_matched_by_name)
+            .chain(declarations_matched_by_parent)
             .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
@@ -471,6 +551,12 @@ impl AstIndex {
             .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_usage_for_each_decl)
+            .map(|s| {
+                *guid_to_usefulness
+                    .entry(read_symbol(&s).guid().clone())
+                    .or_default() += 40.0;
+                s
+            })
             .collect::<Vec<_>>();
         let t_stage5_ms = t_stage5_t0.elapsed().as_millis() as i32;
 
@@ -500,6 +586,12 @@ impl AstIndex {
                     .collect::<Vec<_>>()
             })
             .flatten()
+            .map(|s| {
+                *guid_to_usefulness
+                    .entry(read_symbol(&s).guid().clone())
+                    .or_default() += 50.0;
+                s
+            })
             .chain(func_calls_matched_by_name)
             .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
@@ -524,13 +616,19 @@ impl AstIndex {
             })
             .collect::<Vec<_>>()
             .iter()
+            .sorted_by_key(|a| a.1)
             .filter(|&(_, a)| *a > (cursor_symbols_names.len() / 5))
-            // TODO: sort then take?
             .take(top_n_near_cursor * 2)
             .filter_map(|(g, _)| self.symbols_by_guid.get(*g))
             .unique_by(|s| read_symbol(s).guid().clone())
             .unique_by(|s| read_symbol(s).name().to_string())
             .take(top_n_near_cursor)
+            .map(|s| {
+                *guid_to_usefulness
+                    .entry(read_symbol(&s).guid().clone())
+                    .or_default() += 35.0;
+                s
+            })
             .cloned()
             .collect::<Vec<_>>();
         let t_stage6_ms = t_stage6_t0.elapsed().as_millis() as i32;
@@ -550,6 +648,7 @@ impl AstIndex {
             declarations,
             usages,
             high_overlap_declarations,
+            guid_to_usefulness
         )
     }
 

@@ -26,7 +26,7 @@ async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
             line2: res.symbol_declaration.full_range.end_point.row + 1,
             symbol: res.symbol_declaration.guid.clone(),
             gradient_type: -1,
-            usefulness: 100.0 * res.sim_to_query
+            usefulness: res.usefulness
         });
     }
     symbols

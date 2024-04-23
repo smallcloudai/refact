@@ -11,7 +11,7 @@ use crate::ast::treesitter::structs::PointDef;
 pub struct SymbolsSearchResultStruct {
     pub symbol_declaration: SymbolInformation,
     pub content: String,
-    pub sim_to_query: f32,
+    pub usefulness: f32,
 }
 
 

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::Serialize;
+use strsim::jaro_winkler;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
@@ -12,7 +13,7 @@ use uuid::Uuid;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstIndexService, AstEventType};
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::read_symbol;
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, read_symbol};
 // use crate::files_in_jsonl::docs_in_jsonl;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
@@ -92,17 +93,18 @@ impl AstModule {
                     .take(top_n)
                     .filter_map(|s| {
                         let info_struct = read_symbol(s).symbol_info_struct();
+                        let name = info_struct.name.clone();
                         let content = info_struct.get_content_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
-                            sim_to_query: 1.0,
+                            usefulness: jaro_winkler(&query, &name) as f32 * 100.0,
                         })
                     })
                     .collect::<Vec<_>>();
                 for r in symbol_structs.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
-                    info!("def-distance {:.3}, found {last_30_chars}", r.sim_to_query);
+                    info!("def-distance {:.3}, found {last_30_chars}", r.usefulness);
                 }
                 info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(
@@ -134,13 +136,13 @@ impl AstModule {
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
-                            sim_to_query: -1.0,
+                            usefulness: 100.0,
                         })
                     })
                     .collect::<Vec<_>>();
                 for r in symbol_structs.iter() {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
-                    info!("def-distance {:.3}, found {last_30_chars}", r.sim_to_query);
+                    info!("def-distance {:.3}, found {last_30_chars}", r.usefulness);
                 }
                 info!("ast search_by_content time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(
@@ -166,7 +168,7 @@ impl AstModule {
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
-                            sim_to_query: -1.0,
+                            usefulness: 100.0,
                         })
                     })
                     .collect::<Vec<_>>();
@@ -198,7 +200,7 @@ impl AstModule {
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
-                            sim_to_query: -1.0,
+                            usefulness: 100.0,
                         })
                     })
                     .collect::<Vec<_>>();
@@ -228,7 +230,9 @@ impl AstModule {
     ) -> Result<AstCursorSearchResult, String> {
         let t0 = std::time::Instant::now();
         info!("to_buckets {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
-        let (cursor_usages, declarations, usages, bucket_high_overlap) = self.ast_index.read().await.symbols_near_cursor_to_buckets(
+        let (cursor_usages, declarations, usages, bucket_high_overlap, guid_to_usefulness) = self.ast_index
+            .read().await
+            .symbols_near_cursor_to_buckets(
             doc,
             code,
             cursor,
@@ -236,65 +240,39 @@ impl AstModule {
             top_n_usage_for_each_decl,
             3
         ).await;
-        // for r in declarations.iter() {
-        //     let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
-        //     info!("found {last_30_chars}");
-        // }
-        // for r in usages.iter() {
-        //     let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);
-        //     info!("found {last_30_chars}");
-        // }
+        let symbol_to_search_res = |x: &AstSymbolInstanceArc| {
+            let symbol_declaration = read_symbol(x).symbol_info_struct();
+            let content = symbol_declaration.get_content_blocked().unwrap_or_default();
+            let usefulness = *guid_to_usefulness
+                .get(&symbol_declaration.guid)
+                .expect("Guid has not found in `guid_to_usefulness` dict, \
+                        something is wrong with the `symbols_near_cursor_to_buckets`");
+            SymbolsSearchResultStruct {
+                symbol_declaration,
+                content,
+                usefulness
+            }
+        };
+
         let result = AstCursorSearchResult {
             query_text: "".to_string(),
             file_path: doc.path.clone(),
             cursor,
             cursor_symbols: cursor_usages
                 .iter()
-                .map(|x| {
-                    let symbol_declaration = read_symbol(x).symbol_info_struct();
-                    let content = symbol_declaration.get_content_blocked().unwrap_or_default();
-                    SymbolsSearchResultStruct {
-                        symbol_declaration,
-                        content,
-                        sim_to_query: -1.0,
-                    }
-                })
+                .map(symbol_to_search_res)
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
             bucket_declarations: declarations
                 .iter()
-                .map(|x| {
-                    let symbol_declaration = read_symbol(x).symbol_info_struct();
-                    let content = symbol_declaration.get_content_blocked().unwrap_or_default();
-                    SymbolsSearchResultStruct {
-                        symbol_declaration,
-                        content,
-                        sim_to_query: -1.0,
-                    }
-                })
+                .map(symbol_to_search_res)
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
             bucket_usage_of_same_stuff: usages
                 .iter()
-                .map(|x| {
-                    let symbol_declaration = read_symbol(x).symbol_info_struct();
-                    let content = symbol_declaration.get_content_blocked().unwrap_or_default();
-                    SymbolsSearchResultStruct {
-                        symbol_declaration,
-                        content,
-                        sim_to_query: -1.0,
-                    }
-                })
+                .map(symbol_to_search_res)
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
             bucket_high_overlap: bucket_high_overlap
                 .iter()
-                .map(|x| {
-                    let symbol_declaration = read_symbol(x).symbol_info_struct();
-                    let content = symbol_declaration.get_content_blocked().unwrap_or_default();
-                    SymbolsSearchResultStruct {
-                        symbol_declaration,
-                        content,
-                        sim_to_query: -1.0,
-                    }
-                })
+                .map(symbol_to_search_res)
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
         };
         info!("to_buckets {:.3}s => bucket_declarations {} bucket_usage_of_same_stuff {} bucket_high_overlap {}",

@@ -23,7 +23,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> Vec<ContextFile>
             line2: res.symbol_declaration.full_range.end_point.row + 1,
             symbol: res.symbol_declaration.guid.clone(),
             gradient_type: -1,
-            usefulness: 90.0,
+            usefulness: res.usefulness
         });
     }
     for res in &result.bucket_usage_of_same_stuff {
@@ -35,7 +35,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> Vec<ContextFile>
             line2: res.symbol_declaration.full_range.end_point.row + 1,
             symbol: res.symbol_declaration.guid.clone(),
             gradient_type: -1,
-            usefulness: 50.0,
+            usefulness: res.usefulness
         });
     }
     for res in &result.bucket_high_overlap {
@@ -47,7 +47,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> Vec<ContextFile>
             line2: res.symbol_declaration.full_range.end_point.row + 1,
             symbol: res.symbol_declaration.guid.clone(),
             gradient_type: -1,
-            usefulness: 40.0,
+            usefulness: res.usefulness
         });
     }
     fvec
