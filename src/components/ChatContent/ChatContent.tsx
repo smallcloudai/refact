@@ -1,5 +1,9 @@
 import React, { useEffect, useImperativeHandle } from "react";
-import { ChatMessages, isChatContextFileMessage } from "../../services/refact";
+import {
+  ChatMessages,
+  isChatContextFileMessage,
+  isUserMessage,
+} from "../../services/refact";
 import { Markdown, MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
@@ -13,6 +17,16 @@ import { AssistantInput } from "./AssistantInput";
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
 );
+
+function findLastIndexOf<T>(items: T[], predicate: (item: T) => boolean) {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    if (predicate(item)) {
+      return i;
+    }
+  }
+  return -1;
+}
 
 export type ChatContentProps = {
   messages: ChatMessages;
@@ -43,6 +57,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
         innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
     }, [messages]);
 
+    const lastUserMessageIndex = findLastIndexOf(messages, isUserMessage);
+
     return (
       <ScrollArea style={{ flexGrow: 1, height: "auto" }} scrollbars="vertical">
         <Flex direction="column" className={styles.content}>
@@ -67,6 +83,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                   onRetry={handleRetry}
                   key={index}
                   disableRetry={isStreaming || isWaiting}
+                  canRetry={lastUserMessageIndex === index}
                 >
                   {text}
                 </UserInput>

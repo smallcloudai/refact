@@ -9,6 +9,7 @@ export type UserInputProps = {
   children: string;
   onRetry: (value: string) => void;
   disableRetry?: boolean;
+  canRetry?: boolean;
 };
 
 export const UserInput: React.FC<UserInputProps> = (props) => {
@@ -39,14 +40,16 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
       }}
     >
       <Box style={{ minHeight: "var(--space-5)" }}>
-        <RightButton
-          className={styles.retryButton}
-          title="retry"
-          onClick={() => setShowTextArea(true)}
-          disabled={props.disableRetry}
-        >
-          Retry
-        </RightButton>
+        {props.canRetry && (
+          <RightButton
+            className={styles.retryButton}
+            title="retry"
+            onClick={() => setShowTextArea(true)}
+            disabled={props.disableRetry}
+          >
+            Retry
+          </RightButton>
+        )}
 
         <Box py="4">
           <Text>
