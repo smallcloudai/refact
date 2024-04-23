@@ -71,6 +71,7 @@ log = "0.4.20"
 md5 = "0.7"
 mockito = "0.28.0"
 notify = { version = "6.1.1", features = ["serde"] }
+parking_lot = "0.12.1"
 rusqlite = { version = "0.30.0", features = ["bundled"] }
 tempfile = "3.8.1"
 time = "0.3.30"

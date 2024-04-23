@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::string::ToString;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use parking_lot::RwLock;
 
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
@@ -10,7 +11,7 @@ use uuid::Uuid;
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
-use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid, str_hash};
+use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid};
 
 pub(crate) struct JavaParser {
     pub parser: Parser,
@@ -218,7 +219,6 @@ impl JavaParser {
         decl.ast_fields.declaration_range = parent.range();
         decl.ast_fields.definition_range = parent.range();
         decl.ast_fields.file_path = path.clone();
-        decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
@@ -297,7 +297,6 @@ impl JavaParser {
                     decl.ast_fields.language = LanguageId::Java;
                     decl.ast_fields.full_range = parent.range();
                     decl.ast_fields.file_path = path.clone();
-                    decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                     decl.ast_fields.parent_guid = Some(parent_guid.clone());
                     decl.ast_fields.guid = get_guid();
                     decl.ast_fields.is_error = is_error;
@@ -355,7 +354,6 @@ impl JavaParser {
                     decl.ast_fields.language = LanguageId::Java;
                     decl.ast_fields.full_range = parent.range();
                     decl.ast_fields.file_path = path.clone();
-                    decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                     decl.ast_fields.parent_guid = Some(parent_guid.clone());
                     decl.ast_fields.guid = get_guid();
                     decl.ast_fields.is_error = is_error;
@@ -394,7 +392,6 @@ impl JavaParser {
         decl.ast_fields.language = LanguageId::Java;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_path = path.clone();
-        decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
@@ -449,7 +446,6 @@ impl JavaParser {
                 usage.ast_fields.language = LanguageId::Java;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = is_error;
@@ -464,10 +460,9 @@ impl JavaParser {
                 usage.ast_fields.language = LanguageId::Java;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = last.read().unwrap().fields().parent_guid.clone();
+                    usage.ast_fields.caller_guid = last.read().fields().parent_guid.clone();
                 }
                 symbols.extend(usages);
                 symbols.push(Arc::new(RwLock::new(usage)));
@@ -477,7 +472,6 @@ impl JavaParser {
                 def.ast_fields.language = LanguageId::Java;
                 def.ast_fields.full_range = parent.range();
                 def.ast_fields.file_path = path.clone();
-                def.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 def.ast_fields.parent_guid = Some(parent_guid.clone());
                 def.ast_fields.guid = get_guid();
                 def.ast_fields.is_error = is_error;
@@ -521,7 +515,6 @@ impl JavaParser {
                 usage.ast_fields.language = LanguageId::Java;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = true;
@@ -536,10 +529,9 @@ impl JavaParser {
                 usage.ast_fields.language = LanguageId::Java;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = last.read().unwrap().fields().parent_guid.clone();
+                    usage.ast_fields.caller_guid = last.read().fields().parent_guid.clone();
                 }
                 symbols.extend(usages);
                 if !JAVA_KEYWORDS.contains(&usage.ast_fields.name.as_str()) {
@@ -565,7 +557,6 @@ impl JavaParser {
         decl.ast_fields.declaration_range = parent.range();
         decl.ast_fields.definition_range = parent.range();
         decl.ast_fields.file_path = path.clone();
-        decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.is_error = is_error;
         decl.ast_fields.guid = get_guid();
@@ -623,7 +614,6 @@ impl JavaParser {
         decl.ast_fields.language = LanguageId::Python;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_path = path.clone();
-        decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
@@ -646,7 +636,7 @@ impl JavaParser {
         if let Some(object) = parent.child_by_field_name("object") {
             let usages = self.parse_usages(&object, code, path, parent_guid, is_error);
             if let Some(last) = usages.last() {
-                decl.ast_fields.caller_guid = last.read().unwrap().fields().parent_guid.clone();
+                decl.ast_fields.caller_guid = last.read().fields().parent_guid.clone();
             }
             symbols.extend(usages);
         }

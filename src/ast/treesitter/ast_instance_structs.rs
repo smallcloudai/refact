@@ -4,10 +4,11 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::{fs, io};
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::{Arc};
 
 use async_trait::async_trait;
 use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
+use parking_lot::{RwLock, RwLockReadGuard};
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
@@ -90,7 +91,6 @@ pub struct AstSymbolFields {
     pub name: String,
     pub language: LanguageId,
     pub file_path: PathBuf,
-    pub content_hash: String,
     pub namespace: String,
     pub parent_guid: Option<Uuid>,
     pub childs_guid: Vec<Uuid>,
@@ -176,7 +176,6 @@ impl Default for AstSymbolFields {
             name: "".to_string(),
             language: LanguageId::Unknown,
             file_path: PathBuf::new(),
-            content_hash: "".to_string(),
             namespace: "".to_string(),
             parent_guid: None,
             childs_guid: vec![],
@@ -247,10 +246,6 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
     }
 
     fn file_path(&self) -> &PathBuf { &self.fields().file_path }
-
-    fn content_hash(&self) -> &str {
-        &self.fields().content_hash
-    }
 
     fn is_type(&self) -> bool;
 
@@ -342,7 +337,7 @@ pub type AstSymbolInstanceArc = Arc<RwLock<dyn AstSymbolInstance>>;
 pub fn read_symbol(
     s: &AstSymbolInstanceArc
 ) -> RwLockReadGuard<'_, dyn AstSymbolInstance> {
-    s.read().expect("the data might be broken")
+    s.read()
 }
 /*
 StructDeclaration

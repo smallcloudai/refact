@@ -174,15 +174,13 @@ pub fn find_decl_by_name(
     extra_search_index: &HashMap<(String, Uuid, String), AstSymbolInstanceArc>,
     top_n_files: usize,
 ) -> Option<Uuid> {
-    let (file_path, parent_guid, name, is_function, is_error_node) = match symbol.read() {
-        Ok(s) => {
-            (s.file_path().to_owned(),
-             s.parent_guid().to_owned().unwrap_or_default(),
-             s.name().to_owned(),
-             s.symbol_type() == SymbolType::FunctionCall,
-             s.is_error())
-        }
-        Err(_) => { return None; }
+    let (file_path, parent_guid, name, is_function, is_error_node) =  {
+        let s_ref = symbol.read();
+        (s_ref.file_path().clone(),
+         s_ref.parent_guid().clone().unwrap_or_default(),
+         s_ref.name().to_string(),
+         s_ref.symbol_type() == SymbolType::FunctionCall,
+         s_ref.is_error())
     };
     let search_symbol_type = match is_function {
         true => SymbolType::FunctionDeclaration,

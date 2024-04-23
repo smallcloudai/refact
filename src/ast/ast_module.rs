@@ -85,7 +85,7 @@ impl AstModule {
         top_n: usize,
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
-        match self.ast_index.read().await.search_by_name(query.as_str(), request_symbol_type, None, None, try_fuzzy_if_not_found) {
+        match self.ast_index.read().await.search_by_name(query.as_str(), request_symbol_type, None, None, try_fuzzy_if_not_found, true) {
             Ok(results) => {
                 let symbol_structs = results
                     .iter()
@@ -234,6 +234,7 @@ impl AstModule {
             cursor,
             top_n_near_cursor,
             top_n_usage_for_each_decl,
+            3
         ).await;
         // for r in declarations.iter() {
         //     let last_30_chars = crate::nicer_logs::last_n_chars(&r.name, 30);

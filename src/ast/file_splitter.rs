@@ -66,9 +66,7 @@ impl AstBasedFileSplitter {
         files_markup.insert(path_str.to_string(), Arc::new(crate::scratchpads::chat_utils_rag::File { markup: ast_markup, cpath: path.clone(), cpath_symmetry_breaker: 0.0 }));
 
         let mut chunks: Vec<SplitResult> = Vec::new();
-        for symbol in symbols.iter().map(|s| s.read()
-            .expect("cannot read symbol")
-            .symbol_info_struct())
+        for symbol in symbols.iter().map(|s| s.read().symbol_info_struct())
         {
             let go_via_postprocessing = match symbol.symbol_type {
                 SymbolType::StructDeclaration | SymbolType::FunctionDeclaration | SymbolType::TypeAlias => true,

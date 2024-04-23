@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::string::ToString;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use parking_lot::RwLock;
 
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Point, Range};
@@ -10,7 +11,7 @@ use uuid::Uuid;
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
-use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid, str_hash};
+use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid};
 
 pub(crate) struct RustParser {
     pub parser: Parser,
@@ -124,7 +125,6 @@ impl RustParser {
         decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_path = path.clone();
-        decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.is_error = is_error;
         decl.ast_fields.guid = get_guid();
@@ -200,7 +200,6 @@ impl RustParser {
         decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_path = path.clone();
-        decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
@@ -244,7 +243,6 @@ impl RustParser {
                                 let mut decl_ = ClassFieldDeclaration::default();
                                 decl_.ast_fields.full_range = field_declaration_node.range();
                                 decl_.ast_fields.file_path = path.clone();
-                                decl_.ast_fields.content_hash = str_hash(&code.slice(field_declaration_node.byte_range()).to_string());
                                 decl_.ast_fields.parent_guid = Some(decl.ast_fields.guid.clone());
                                 decl_.ast_fields.guid = get_guid();
                                 decl_.ast_fields.name = code.slice(name_node.byte_range()).to_string();
@@ -275,7 +273,6 @@ impl RustParser {
         decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_path = path.clone();
-        decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
 
@@ -295,7 +292,7 @@ impl RustParser {
                         if !usages.is_empty() {
                             if let Some(last) = usages.last() {
                                 // dirty hack: last element is first element in the tree
-                                decl.set_caller_guid(last.read().expect("the data might be broken").fields().guid.clone());
+                                decl.set_caller_guid(last.read().fields().guid.clone());
                             }
                         }
                         symbols.extend(usages);
@@ -365,7 +362,6 @@ impl RustParser {
         decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
         decl.ast_fields.file_path = path.clone();
-        decl.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = is_error;
@@ -479,14 +475,13 @@ impl RustParser {
                 usage.ast_fields.language = LanguageId::Rust;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
 
                 let value_node = parent.child_by_field_name("value").unwrap();
                 let usages = self.parse_usages(&value_node, code, path, parent_guid, is_error);
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = Some(last.read().unwrap().guid().clone());
+                    usage.ast_fields.caller_guid = Some(last.read().guid().clone());
                 }
                 symbols.extend(usages);
                 symbols.push(Arc::new(RwLock::new(usage)));
@@ -497,7 +492,6 @@ impl RustParser {
                 usage.ast_fields.language = LanguageId::Rust;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 // usage.var_decl_guid = Some(RustParser::get_guid(Some(usage.ast_fields.name.clone()), parent, code, path));
@@ -519,7 +513,6 @@ impl RustParser {
                 usage.ast_fields.namespace = namespace;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 symbols.push(Arc::new(RwLock::new(usage)));
@@ -611,7 +604,6 @@ impl RustParser {
                 usage.ast_fields.language = LanguageId::Rust;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = true;
@@ -619,7 +611,7 @@ impl RustParser {
                 let value_node = parent.child_by_field_name("value").unwrap();
                 let usages = self.parse_error_usages(&value_node, code, path, parent_guid);
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = Some(last.read().unwrap().guid().clone());
+                    usage.ast_fields.caller_guid = Some(last.read().guid().clone());
                 }
                 symbols.extend(usages);
                 if !RUST_KEYWORDS.contains(&name.as_str()) {
@@ -636,7 +628,6 @@ impl RustParser {
                 usage.ast_fields.language = LanguageId::Rust;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = true;
@@ -661,7 +652,6 @@ impl RustParser {
                 usage.ast_fields.namespace = namespace;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = true;
@@ -724,7 +714,6 @@ impl RustParser {
                         type_alias.ast_fields.language = LanguageId::Rust;
                         type_alias.ast_fields.full_range = child.range();
                         type_alias.ast_fields.file_path = path.clone();
-                        type_alias.ast_fields.content_hash = str_hash(&code.slice(parent.byte_range()).to_string());
                         type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
                         type_alias.ast_fields.guid = get_guid();
                         type_alias.ast_fields.is_error = is_error;
@@ -743,7 +732,6 @@ impl RustParser {
                     type_alias.ast_fields.language = LanguageId::Rust;
                     type_alias.ast_fields.full_range = child.range();
                     type_alias.ast_fields.file_path = path.clone();
-                    type_alias.ast_fields.content_hash = str_hash(&code.slice(child.byte_range()).to_string());
                     type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
                     type_alias.ast_fields.guid = get_guid();
                     type_alias.ast_fields.is_error = is_error;
@@ -787,7 +775,6 @@ impl RustParser {
                     def.ast_fields.language = LanguageId::Rust;
                     def.ast_fields.full_range = child.range();
                     def.ast_fields.file_path = path.clone();
-                    def.ast_fields.content_hash = str_hash(&code.slice(child.byte_range()).to_string());
                     def.ast_fields.guid = get_guid();
                     def.ast_fields.parent_guid = Some(parent_guid.clone());
                     def.ast_fields.is_error = is_error;
