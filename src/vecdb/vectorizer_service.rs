@@ -162,7 +162,7 @@ async fn vectorize_thread(
 
         info!("embeddings {} todo/total {}/{}", last_30_chars, split_data_unknown.len(), split_data.len());
 
-        const B: usize = 4;
+        const B: usize = 64;
         let mut records = vec![];
         for chunked in split_data_unknown.chunks(B) {
             let mut batch_req: Vec<String> = Vec::new();
