@@ -15,7 +15,9 @@ from refact_utils.huggingface.utils import huggingface_hub_token
 from self_hosting_machinery.inference import InferenceBase
 from self_hosting_machinery.inference.lora_loader_mixin import LoraLoaderMixin
 
-log = logging.getLogger("MODEL").info
+
+def log(*args):
+    logging.getLogger("MODEL").info(*args)
 
 
 class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
@@ -72,7 +74,7 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
     def cache_dir(self) -> str:
         return env.DIR_WEIGHTS
 
-    def infer(self, request: Dict[str, Any], upload_proxy: Any, upload_proxy_args: Dict, log=print):
+    def infer(self, request: Dict[str, Any], upload_proxy: Any, upload_proxy_args: Dict):
         request_id = request["id"]
         try:
             inputs = request["inputs"]
@@ -101,5 +103,5 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
             )
 
         except Exception as e: # noqa
-            log.error(e)
-            log.error(traceback.format_exc())
+            log(e)
+            log(traceback.format_exc())
