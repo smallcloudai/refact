@@ -43,7 +43,7 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], supported_models: Di
         dummy_call = {
                 'id': 'emb-legit-42',
                 'function': 'embeddings',
-                'inputs': "Common Knowledge",
+                'inputs': 128*["A"*8000],   # max size validated at 9000 chars, 128 batch size
                 'created': time.time(),
         }
     else:
@@ -73,7 +73,8 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], supported_models: Di
             return set()
 
     log("STATUS test batch")
-    inference_model.infer(dummy_call, DummyUploadProxy, {})
+    for _ in range(10):
+        inference_model.infer(dummy_call, DummyUploadProxy, {})
     if compile:
         return
 

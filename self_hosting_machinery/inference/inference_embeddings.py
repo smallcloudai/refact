@@ -15,6 +15,8 @@ from refact_utils.huggingface.utils import huggingface_hub_token
 from self_hosting_machinery.inference import InferenceBase
 from self_hosting_machinery.inference.lora_loader_mixin import LoraLoaderMixin
 
+log = logging.getLogger("MODEL").info
+
 
 class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
     def __init__(
@@ -34,7 +36,7 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
         for local_files_only in [True, False]:
             try:
                 # WARNING: this may not work if you have no access to the web as it may try to download tokenizer
-                logging.getLogger("MODEL").info("loading model local_files_only=%i" % local_files_only)
+                log("loading model local_files_only=%i" % local_files_only)
                 if local_files_only:
                     self._model = SentenceTransformer(
                         os.path.join(self.cache_dir, self._model_dir),
@@ -71,17 +73,22 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
         return env.DIR_WEIGHTS
 
     def infer(self, request: Dict[str, Any], upload_proxy: Any, upload_proxy_args: Dict, log=print):
-
         request_id = request["id"]
         try:
+            inputs = request["inputs"]
+            B = len(inputs)
+            log("embeddings B=%d" % B)
             upload_proxy_args["ts_prompt"] = time.time()
             if request_id in upload_proxy.check_cancelled():
                 return
-
+            t0 = time.time()
             files = {
-                "results": json.dumps(self._model.encode(request["inputs"]).tolist()),
+                "results": json.dumps(self._model.encode(inputs).tolist()),
             }
-
+            log("/embeddings %0.3fs" % (time.time() - t0))
+            # 8   => 0.141s 0.023s
+            # 64  => 0.166s 0.060s
+            # 128 => 0.214s 0.120s  *1024 => 1.600s
             upload_proxy_args["ts_batch_finished"] = time.time()
             finish_reason = 'DONE'
             upload_proxy.upload_result(
@@ -94,5 +101,5 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
             )
 
         except Exception as e: # noqa
-            logging.getLogger("MODEL").error(e)
-            logging.getLogger("MODEL").error(traceback.format_exc())
+            log.error(e)
+            log.error(traceback.format_exc())
