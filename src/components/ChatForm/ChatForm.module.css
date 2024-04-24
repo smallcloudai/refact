@@ -19,7 +19,8 @@
   overflow: hidden;
 }
 
-.chatFormScrollArea {
+.chatForm_ScrollArea {
+  max-height: 50vh;
   max-height: 50dvh;
 }
 

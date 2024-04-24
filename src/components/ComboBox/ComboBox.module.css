@@ -3,6 +3,8 @@
   z-index: 50;
   min-width: 180px;
   /* max-width: 280px; */
+  /* JB doesn't support dvw */
+  max-width: 50vw;
   max-width: 50dvw;
   border-radius: max(var(--radius-2), var(--radius-full));
 }

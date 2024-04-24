@@ -5,8 +5,9 @@ import { ChatContent } from "../components/ChatContent";
 import { Flex, Button, Text } from "@radix-ui/themes";
 import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import { PageWrapper } from "../components/PageWrapper";
 
-export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
+export const Chat: React.FC<{ style?: React.CSSProperties }> = () => {
   const { host, tabbed } = useConfig();
 
   const chatContentRef = useRef<HTMLDivElement>(null);
@@ -35,31 +36,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
 
-  const LeftRightPadding =
-    host === "web"
-      ? { initial: "8", xl: "9" }
-      : {
-          initial: "2",
-          xs: "2",
-          sm: "4",
-          md: "8",
-          lg: "8",
-          xl: "9",
-        };
-
-  const yPadding = host === "web" ? "5" : "2";
   return (
-    <Flex
-      direction="column"
-      justify="between"
-      flexGrow="1"
-      px={LeftRightPadding}
-      py={yPadding}
-      style={{
-        ...props.style,
-        height: "100dvh",
-      }}
-    >
+    <PageWrapper host={host}>
       {host === "vscode" && !tabbed && (
         <Flex gap="2" pb="3" wrap="wrap">
           <Button size="1" variant="surface" onClick={backFromChat}>
@@ -144,6 +122,6 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
           </Text>
         )}
       </Flex>
-    </Flex>
+    </PageWrapper>
   );
 };

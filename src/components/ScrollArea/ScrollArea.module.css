@@ -9,6 +9,8 @@
 }
 
 .full_height {
+  /* JB doesn't support dvh */
+  height: 100vh;
   height: 100dvh;
 }
 

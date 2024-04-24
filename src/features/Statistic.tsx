@@ -5,6 +5,7 @@ import { useConfig } from "../contexts/config-context";
 import { ScrollArea } from "../components/ScrollArea";
 import { useEventBusForStatistic } from "../hooks";
 import { StatisticView } from "../components/StatisticView/StatisticView";
+import { PageWrapper } from "../components/PageWrapper";
 
 export const Statistic: React.FC<{
   onCloseStatistic?: () => void;
@@ -23,22 +24,8 @@ export const Statistic: React.FC<{
           xl: "9",
         };
 
-  const TopBottomPadding = {
-    initial: "5",
-  };
-
   return (
-    <Flex
-      direction="column"
-      justify="between"
-      flexGrow="1"
-      pl={LeftRightPadding}
-      pt={TopBottomPadding}
-      pb={TopBottomPadding}
-      style={{
-        height: "100dvh",
-      }}
-    >
+    <PageWrapper host={host}>
       {host === "vscode" && !tabbed ? (
         <Flex gap="2" pb="3">
           <Button variant="surface" onClick={backFromStatistic}>
@@ -68,6 +55,6 @@ export const Statistic: React.FC<{
           />
         </Flex>
       </ScrollArea>
-    </Flex>
+    </PageWrapper>
   );
 };

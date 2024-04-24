@@ -12,9 +12,8 @@ export const Form: React.FC<
 > = ({ onSubmit, ...props }) => {
   return (
     <Box mt="1" className={styles.chatForm}>
-      <ScrollArea scrollbars="vertical" style={{ maxHeight: "50dvh" }}>
+      <ScrollArea scrollbars="vertical" className={styles.chatForm_ScrollArea}>
         <form
-          // className={classNames(styles.chatForm, className)}
           onSubmit={(event) => {
             event.preventDefault();
             onSubmit(event);
