@@ -47,7 +47,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
           xl: "9",
         };
 
-  const yPadding = host === "web" ? "5" : "23";
+  const yPadding = host === "web" ? "5" : "2";
   return (
     <Flex
       direction="column"
