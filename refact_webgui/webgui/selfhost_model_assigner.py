@@ -158,7 +158,6 @@ class ModelAssigner:
                     'share_gpu': True,
                 },
             },
-            "completion": "Refact/1.6B",
             "openai_api_enable": False,
             "anthropic_api_enable": False,
         }
@@ -235,7 +234,7 @@ class ModelAssigner:
             j = {"model_assign": {}}
 
         def _set_n_ctx(model: str, record: Dict) -> Dict:
-            if has_context_switch(self.models_db[model].get("filter_caps", [])):
+            if not has_context_switch(self.models_db[model].get("filter_caps", [])):
                 record["n_ctx"] = self.models_db[model].get("T")
                 return record
             _allowed_n_ctx = [2048, 4096]

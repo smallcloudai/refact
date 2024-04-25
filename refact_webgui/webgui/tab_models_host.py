@@ -35,7 +35,6 @@ class TabHostModelRec(BaseModel):
 
 class TabHostModelsAssign(BaseModel):
     model_assign: Dict[str, TabHostModelRec] = {}
-    completion: str
 
     # integrations
     openai_api_enable: bool = False
@@ -85,14 +84,5 @@ class TabHostRouter(APIRouter):
         }, indent=4) + "\n")
 
     async def _tab_host_models_assign(self, post: TabHostModelsAssign):
-        validated = post.dict()
-        current_completion_model = validated.get("completion", "")
-        if not current_completion_model or current_completion_model not in post.model_assign:
-            for info in self._model_assigner.models_info["models"]:
-                if info["has_completion"] and info["name"] in post.model_assign:
-                    validated["completion"] = info["name"]
-                    break
-            else:
-                validated["completion"] = ""
-        self._model_assigner.models_to_watchdog_configs(validated)
+        self._model_assigner.models_to_watchdog_configs(post.dict())
         return JSONResponse("OK")

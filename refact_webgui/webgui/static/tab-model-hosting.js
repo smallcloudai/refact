@@ -144,7 +144,6 @@ function save_model_assigned() {
         model_assign: {
             ...models_data.model_assign,
         },
-        completion: models_data.completion ? models_data.completion : "",
         openai_api_enable: openai_enable.checked,
         anthropic_api_enable: anthropic_enable.checked,
     };

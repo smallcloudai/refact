@@ -4,7 +4,7 @@ import os
 import json
 from collections import defaultdict
 from fastapi import HTTPException
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 import uuid
 
 from refact_utils.scripts import env
@@ -66,3 +66,13 @@ class InferenceQueue:
                 _add_models_for_passthrough_provider('anthropic')
 
         return self._models_available
+
+    def completion_model(self) -> Tuple[str, str]:
+
+        if os.path.exists(env.CONFIG_INFERENCE):
+            j = json.load(open(env.CONFIG_INFERENCE, 'r'))
+            for model in j["model_assign"]:
+                if model in self._model_assigner.models_db:
+                    return model, ""
+
+        return "", f"completion model is not set"

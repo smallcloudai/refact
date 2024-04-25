@@ -1,35 +1,8 @@
-import json
-
-from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
 
 from typing import Tuple, List, Optional
 
-
-def completion_resolve_model(inference_queue: InferenceQueue) -> Tuple[str, str]:
-    have_models: List[str] = inference_queue.models_available()
-
-    with open(env.CONFIG_INFERENCE, 'r') as f:
-        completion_model = json.load(f).get("completion", None)
-
-    if completion_model is None:
-        return "", f"completion model is not set"
-
-    if completion_model not in have_models:
-        return "", f"model is not loaded (1)"
-
-    return completion_model, ""
-
-# def completion_resolve_context(inference_queue: InferenceQueue) -> Tuple[str, str]:
-#     have_models: List[str] = inference_queue.models_available()
-#     with open(env.CONFIG_INFERENCE, 'r') as f:
-#         code_completion_n_ctx = json.load(f).get("code_completion_n_ctx", None)
-#
-#     if code_completion_n_ctx is None:
-#         return code_completion_n_ctx, 2048
-#
-#     return code_completion_n_ctx, ""
 
 def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tuple[str, str]:
     # special case for longthink
