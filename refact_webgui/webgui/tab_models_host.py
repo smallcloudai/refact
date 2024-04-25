@@ -7,8 +7,8 @@ from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel, validator
-from typing import Dict
+from pydantic import BaseModel, validator, Required
+from typing import Dict, Optional
 
 
 __all__ = ["TabHostRouter"]
@@ -30,11 +30,11 @@ class ModifyLorasPost(BaseModel):
 class TabHostModelRec(BaseModel):
     gpus_shard: int = Query(default=1, ge=1, le=4)
     share_gpu: bool = False
+    n_ctx: Optional[int] = Query(default=None)
 
 
 class TabHostModelsAssign(BaseModel):
     model_assign: Dict[str, TabHostModelRec] = {}
-    completion: str
 
     # integrations
     openai_api_enable: bool = False
@@ -84,14 +84,8 @@ class TabHostRouter(APIRouter):
         }, indent=4) + "\n")
 
     async def _tab_host_models_assign(self, post: TabHostModelsAssign):
-        validated = post.dict()
-        current_completion_model = validated.get("completion", "")
-        if not current_completion_model or current_completion_model not in post.model_assign:
-            for info in self._model_assigner.models_info["models"]:
-                if info["has_completion"] and info["name"] in post.model_assign:
-                    validated["completion"] = info["name"]
-                    break
-            else:
-                validated["completion"] = ""
-        self._model_assigner.models_to_watchdog_configs(validated)
+        for model_name, model_assign in post.model_assign.items():
+            if model_assign.n_ctx is None:
+                model_assign.n_ctx = self._model_assigner.models_db.get(model_name, {}).get("T")
+        self._model_assigner.models_to_watchdog_configs(post.dict())
         return JSONResponse("OK")

@@ -16,6 +16,10 @@ from typing import List, Dict, Set, Any
 __all__ = ["ModelAssigner"]
 
 
+def has_context_switch(filter_caps: List[str]) -> bool:
+    return "chat" in filter_caps or "completion" in filter_caps
+
+
 @dataclass
 class ModelGroup:
     model_assign: Dict[str, Dict] = field(default_factory=dict)
@@ -154,7 +158,6 @@ class ModelAssigner:
                     'share_gpu': True,
                 },
             },
-            "completion": "Refact/1.6B",
             "openai_api_enable": False,
             "anthropic_api_enable": False,
         }
@@ -193,7 +196,6 @@ class ModelAssigner:
                 if func.type == func_type
             }
 
-        chat_caps = _capabilities("chat")
         toolbox_caps = _capabilities("toolbox")
         active_loras = get_active_loras(self.models_db)
         for k, rec in self.models_db.items():
@@ -220,6 +222,7 @@ class ModelAssigner:
                 "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
                 "has_sharding": rec["backend"] in ["transformers"],
+                "has_context_switch": has_context_switch(rec["filter_caps"]),
             })
         return {"models": info}
 
@@ -229,8 +232,20 @@ class ModelAssigner:
             j = json.load(open(env.CONFIG_INFERENCE, "r"))
         else:
             j = {"model_assign": {}}
+
+        def _set_n_ctx(model: str, record: Dict) -> Dict:
+            if not has_context_switch(self.models_db[model].get("filter_caps", [])):
+                record["n_ctx"] = self.models_db[model].get("T")
+                return record
+            _allowed_n_ctx = [2048, 4096]
+            n_ctx = record.get("n_ctx", self.models_db[model].get("T"))
+            if n_ctx not in _allowed_n_ctx:
+                n_ctx = _allowed_n_ctx[0]
+            record["n_ctx"] = n_ctx
+            return record
+
         j["model_assign"] = {
-            model: v for model, v in j["model_assign"].items()
+            model: _set_n_ctx(model, v) for model, v in j["model_assign"].items()
             if model in self.models_db
         }
         return j

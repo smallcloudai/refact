@@ -14,7 +14,6 @@ from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
-from refact_webgui.webgui.selfhost_model_resolve import completion_resolve_model
 from refact_webgui.webgui.selfhost_model_resolve import resolve_model_context_size
 from refact_webgui.webgui.selfhost_model_resolve import resolve_tokenizer_name_for_model
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
@@ -290,7 +289,7 @@ class BaseCompletionsRouter(APIRouter):
     def _caps_base_data(self) -> Dict[str, Any]:
         running = running_models_and_loras(self._model_assigner)
         models_available = self._inference_queue.models_available(force_read=True)
-        code_completion_default_model, _ = completion_resolve_model(self._inference_queue)
+        code_completion_default_model, _ = self._inference_queue.completion_model()
         code_chat_default_model = ""
         embeddings_default_model = ""
         for model_name in models_available:
