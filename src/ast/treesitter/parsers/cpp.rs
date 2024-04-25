@@ -10,7 +10,7 @@ use tree_sitter::{Node, Parser, Range};
 use tree_sitter_cpp::language;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
 use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid};
@@ -750,6 +750,32 @@ impl CppParser {
                 def.ast_fields.parent_guid = Some(info.parent_guid.clone());
                 def.ast_fields.guid = get_guid();
                 symbols.push(Arc::new(RwLock::new(def)));
+            }
+            "preproc_include" => {
+                let mut def = ImportDeclaration::default();
+                def.ast_fields = AstSymbolFields::from_fields(&info.ast_fields);
+                if let Some(path) = info.node.child_by_field_name("path") {
+                    match path.kind() {
+                        "system_lib_string" | "string_literal" => {
+                            let mut name = code.slice(path.byte_range()).to_string();
+                            def.ast_fields.name = name.slice(1..name.len()-1).to_string();
+                            def.is_stl = path.kind() == "system_lib_string";
+                        }
+                        &_ => {}
+                    }
+                }
+                def.ast_fields.full_range = info.node.range();
+                def.ast_fields.parent_guid = Some(info.parent_guid.clone());
+                def.ast_fields.guid = get_guid();
+                symbols.push(Arc::new(RwLock::new(def)));
+                for i in 0..info.node.child_count() {
+                    let child = info.node.child(i).unwrap();
+                    candidates.push_back(CandidateInfo {
+                        ast_fields: info.ast_fields.clone(),
+                        node: child,
+                        parent_guid: info.parent_guid.clone(),
+                    })
+                }
             }
             "ERROR" => {
                 let mut ast = info.ast_fields.clone();
