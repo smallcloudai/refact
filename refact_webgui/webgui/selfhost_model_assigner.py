@@ -16,6 +16,10 @@ from typing import List, Dict, Set, Any
 __all__ = ["ModelAssigner"]
 
 
+def has_context_switch(filter_caps: List[str]) -> bool:
+    return "chat" in filter_caps or "completion" in filter_caps
+
+
 @dataclass
 class ModelGroup:
     model_assign: Dict[str, Dict] = field(default_factory=dict)
@@ -219,6 +223,7 @@ class ModelAssigner:
                 "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
                 "has_sharding": rec["backend"] in ["transformers"],
+                "has_context_switch": has_context_switch(rec["filter_caps"]),
             })
         return {"models": info}
 
@@ -230,9 +235,8 @@ class ModelAssigner:
             j = {"model_assign": {}}
 
         def _set_n_ctx(model: str, record: Dict) -> Dict:
-            filter_caps = self.models_db[model].get("filter_caps", [])
-            if "completion" not in filter_caps and "chat" not in filter_caps:
-                record["n_ctx"] = None  # TODO: no n_ctx
+            if has_context_switch(self.models_db[model].get("filter_caps", [])):
+                record["n_ctx"] = self.models_db[model].get("T")
                 return record
             _allowed_n_ctx = [2048, 4096]
             n_ctx = record.get("n_ctx", self.models_db[model].get("T"))

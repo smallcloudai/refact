@@ -7,8 +7,8 @@ from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel, validator
-from typing import Dict
+from pydantic import BaseModel, validator, Required
+from typing import Dict, Optional
 
 
 __all__ = ["TabHostRouter"]
@@ -30,7 +30,7 @@ class ModifyLorasPost(BaseModel):
 class TabHostModelRec(BaseModel):
     gpus_shard: int = Query(default=1, ge=1, le=4)
     share_gpu: bool = False
-    n_ctx: int = Query(default=1, ge=1, le=4)  # TODO: validate if one of 2048 and 4096 or so
+    n_ctx: Optional[int] = Query(default=None)
 
 
 class TabHostModelsAssign(BaseModel):

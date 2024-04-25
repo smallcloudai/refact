@@ -206,9 +206,7 @@ function render_models_assigned(models) {
 
         const context_size = [2048, 4096];
         const model_n_ctx = models_data.model_assign[index].n_ctx
-        if (!context_size.includes(model_n_ctx)) {
-            console.log(index, "doesn't support context switch");
-        } else {
+        if (models_info[index].has_context_switch) {
             context_size.forEach(element => {
                 const context_input = document.createElement("input");
                 context_input.setAttribute('type','radio');
