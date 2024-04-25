@@ -84,5 +84,8 @@ class TabHostRouter(APIRouter):
         }, indent=4) + "\n")
 
     async def _tab_host_models_assign(self, post: TabHostModelsAssign):
+        for model_name, model_assign in post.model_assign.items():
+            if model_assign.n_ctx is None:
+                model_assign.n_ctx = self._model_assigner.models_db.get(model_name, {}).get("T")
         self._model_assigner.models_to_watchdog_configs(post.dict())
         return JSONResponse("OK")
