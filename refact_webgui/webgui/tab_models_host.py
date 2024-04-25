@@ -30,6 +30,7 @@ class ModifyLorasPost(BaseModel):
 class TabHostModelRec(BaseModel):
     gpus_shard: int = Query(default=1, ge=1, le=4)
     share_gpu: bool = False
+    n_ctx: int = Query(default=1, ge=1, le=4)  # TODO: validate if one of 2048 and 4096 or so
 
 
 class TabHostModelsAssign(BaseModel):

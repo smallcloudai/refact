@@ -203,46 +203,37 @@ function render_models_assigned(models) {
         let btn_group = document.createElement("div");
         btn_group.classList.add('btn-group');
         btn_group.role = 'group';
-        let context_size = [2048,4096];
-        context_size.forEach(element => {
-            let context_input = document.createElement("input");
-            context_input.setAttribute('type','radio');
-            context_input.classList.add('btn-check');
-            context_input.setAttribute('name','context-radio' + models_index);
-            context_input.setAttribute('value',element);
-            context_input.id = `context-${models_index}-${element}`;
-            if (element === 4096) {
-                context_input.checked = true;
-            }
-            let context_label = document.createElement("label");
-            context_label.classList.add('btn','btn-outline-primary','btn-sm');
-            context_label.innerHTML = element;
-            context_label.setAttribute('for', `context-${models_index}-${element}`);
-            context_input.setAttribute('data-model',element);
-            context_input.addEventListener('change', function() {
-                models_data.model_assign[index].code_completion_n_ctx = Number(this.value);
-                save_model_assigned();
-            });
-            btn_group.appendChild(context_input);
-            btn_group.appendChild(context_label);
-        });
-        context.appendChild(btn_group);
 
-        // if (models_info[index].hasOwnProperty('has_completion') && models_info[index].has_completion) {
-        //     const completion_input = document.createElement("input");
-        //     completion_input.setAttribute('type','radio');
-        //     completion_input.setAttribute('name','completion-radio-button');
-        //     completion_input.setAttribute('value',index);
-        //     if (models_data.completion === index) {
-        //         completion_input.checked = true;
-        //     }
-        //     completion_input.setAttribute('model',index);
-        //     completion_input.addEventListener('change', function() {
-        //         models_data.completion = this.value;
-        //         save_model_assigned();
-        //     });
-        //     completion.appendChild(completion_input);
-        // }
+        const context_size = [2048, 4096];
+        const model_n_ctx = models_data.model_assign[index].n_ctx
+        if (!context_size.includes(model_n_ctx)) {
+            console.log(index, "doesn't support context switch");
+        } else {
+            context_size.forEach(element => {
+                const context_input = document.createElement("input");
+                context_input.setAttribute('type','radio');
+                context_input.classList.add('btn-check');
+                context_input.setAttribute('name','context-radio' + models_index);
+                context_input.setAttribute('value',element);
+                context_input.id = `context-${models_index}-${element}`;
+                if (element === model_n_ctx) {
+                    context_input.checked = true;
+                }
+                const context_label = document.createElement("label");
+                context_label.classList.add('btn','btn-outline-primary','btn-sm');
+                context_label.innerHTML = element;
+                context_label.setAttribute('for', `context-${models_index}-${element}`);
+                context_input.setAttribute('data-model',element);
+                context_input.addEventListener('change', function() {
+                    models_data.model_assign[index].n_ctx = Number(this.value);
+                    save_model_assigned();
+                });
+                btn_group.appendChild(context_input);
+                btn_group.appendChild(context_label);
+            });
+            context.appendChild(btn_group);
+       }
+
         let finetune_runs = [];
         if (finetune_configs_and_runs) {
             finetune_runs = finetune_configs_and_runs.finetune_runs.filter(
