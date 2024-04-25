@@ -409,9 +409,12 @@ def main_loop_body():
 def shutdown_all():
     while len(tracked):
         for fn, job in tracked.items():
-            job.please_shutdown = True
-            job.maybe_send_usr1(sigkill_timeout=1)
-            dead = job._poll_logs()
+            try:
+                job.please_shutdown = True
+                job.maybe_send_usr1(sigkill_timeout=1)
+                dead = job._poll_logs()
+            except Exception:
+                dead = job.p is not None
             if dead:
                 log("%s cleanup %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
                 del tracked[fn]
@@ -422,6 +425,7 @@ def shutdown_all():
 
 
 def factory_reset():
+    global _inform_about_gpu_status
     for todel in [
         env.DIR_LOGS,
         env.DIR_CONFIG,
@@ -435,6 +439,7 @@ def factory_reset():
         except Exception as e:
             # not log, because no logs dir
             print("didn't delete %s: %s" % (todel, e))
+    _inform_about_gpu_status = ""
 
 
 def first_run():
