@@ -21,7 +21,8 @@ RUN echo "export PATH=/usr/local/cuda/bin:\$PATH" > /etc/profile.d/50-smc.sh
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # auto-gptq
-RUN pip install auto-gptq==0.6.0 --extra-index-url https://huggingface.github.io/autogptq-index/whl/cu118/
+ENV BUILD_CUDA_EXT=1
+RUN pip install -vvv --no-build-isolation git+https://github.com/PanQiWei/AutoGPTQ.git@v0.7.1
 
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packaging
 
