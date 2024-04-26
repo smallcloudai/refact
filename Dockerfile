@@ -22,7 +22,7 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # auto-gptq
 ENV BUILD_CUDA_EXT=1
-RUN pip install -vvv --no-build-isolation git+https://github.com/PanQiWei/AutoGPTQ.git@v0.7.1
+RUN pip install -v --no-build-isolation git+https://github.com/PanQiWei/AutoGPTQ.git@v0.7.1
 
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packaging
 
