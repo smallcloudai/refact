@@ -541,6 +541,13 @@ impl AstSymbolInstance for ClassFieldDeclaration {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum ImportType {
+    System,
+    Library,
+    UserModule,
+    Unknown,
+}
 
 /*
 ImportDeclaration
@@ -550,7 +557,7 @@ pub struct ImportDeclaration {
     pub ast_fields: AstSymbolFields,
     pub path_components: Vec<String>,
     pub alias: Option<String>,
-    pub is_stl: bool,
+    pub import_type: ImportType,
 }
 
 impl Default for ImportDeclaration {
@@ -559,7 +566,7 @@ impl Default for ImportDeclaration {
             ast_fields: AstSymbolFields::default(),
             path_components: vec![],
             alias: None,
-            is_stl: false,
+            import_type: ImportType::Unknown
         }
     }
 }
