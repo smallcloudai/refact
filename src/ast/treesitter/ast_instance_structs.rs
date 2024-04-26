@@ -548,6 +548,7 @@ ImportDeclaration
 #[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct ImportDeclaration {
     pub ast_fields: AstSymbolFields,
+    pub alias: Option<String>,
     pub is_stl: bool,
 }
 
@@ -555,6 +556,7 @@ impl Default for ImportDeclaration {
     fn default() -> Self {
         Self {
             ast_fields: AstSymbolFields::default(),
+            alias: None,
             is_stl: false,
         }
     }
