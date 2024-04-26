@@ -233,7 +233,7 @@ class ModelAssigner:
                 "has_sharding": rec["backend"] in ["transformers"],
                 "default_n_ctx": default_n_ctx,
                 "available_n_ctx": available_n_ctx,
-                "is_deprecated": bool(rec["deprecated"]),
+                "is_deprecated": bool(rec.get("deprecated", False)),
             })
         return {"models": info}
 
