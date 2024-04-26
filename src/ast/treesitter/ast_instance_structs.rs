@@ -558,6 +558,7 @@ pub struct ImportDeclaration {
     pub path_components: Vec<String>,
     pub alias: Option<String>,
     pub import_type: ImportType,
+    pub filepath_ref: Option<PathBuf>
 }
 
 impl Default for ImportDeclaration {
@@ -566,7 +567,8 @@ impl Default for ImportDeclaration {
             ast_fields: AstSymbolFields::default(),
             path_components: vec![],
             alias: None,
-            import_type: ImportType::Unknown
+            import_type: ImportType::Unknown,
+            filepath_ref: None
         }
     }
 }
