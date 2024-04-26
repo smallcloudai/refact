@@ -16,7 +16,7 @@ from typing import List, Dict, Set, Any
 __all__ = ["ModelAssigner"]
 
 
-ALLOWED_N_CTX = [p for p in range(10, 20)]
+ALLOWED_N_CTX = [2 ** p for p in range(10, 20)]
 
 
 def has_context_switch(filter_caps: List[str]) -> bool:
