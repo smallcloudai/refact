@@ -30,7 +30,7 @@ class ModifyLorasPost(BaseModel):
 class TabHostModelRec(BaseModel):
     gpus_shard: int = Query(default=1, ge=1, le=4)
     share_gpu: bool = False
-    n_ctx: Optional[int] = Query(default=None)
+    n_ctx: int = Query(default=None)
 
 
 class TabHostModelsAssign(BaseModel):
@@ -86,6 +86,9 @@ class TabHostRouter(APIRouter):
     async def _tab_host_models_assign(self, post: TabHostModelsAssign):
         for model_name, model_assign in post.model_assign.items():
             if model_assign.n_ctx is None:
-                model_assign.n_ctx = self._model_assigner.models_db.get(model_name, {}).get("T")
+                raise HTTPException(status_code=400, detail=f"n_ctx must be set for {model_name}")
+            max_n_ctx = self._model_assigner.models_db.get(model_name, {}).get("T")
+            if model_assign.n_ctx > max_n_ctx:
+                raise HTTPException(status_code=400, detail=f"n_ctx must be less or equal to {max_n_ctx} for {model_name}")
         self._model_assigner.models_to_watchdog_configs(post.dict())
         return JSONResponse("OK")

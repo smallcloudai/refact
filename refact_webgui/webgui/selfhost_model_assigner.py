@@ -16,6 +16,9 @@ from typing import List, Dict, Set, Any
 __all__ = ["ModelAssigner"]
 
 
+ALLOWED_N_CTX = [p for p in range(10, 20)]
+
+
 def has_context_switch(filter_caps: List[str]) -> bool:
     return "chat" in filter_caps or "completion" in filter_caps
 
@@ -211,6 +214,12 @@ class ModelAssigner:
                 ]
             has_finetune = bool("finetune" in rec["filter_caps"])
             finetune_model = rec.get("finetune_model", k if has_finetune else None)
+            default_n_ctx = rec["T"]
+            available_n_ctx = []
+            if has_context_switch(rec["filter_caps"]):
+                available_n_ctx = list(filter(lambda n_ctx: n_ctx <= default_n_ctx, ALLOWED_N_CTX))
+                assert default_n_ctx in available_n_ctx, \
+                    f"default n_ctx {default_n_ctx} not in {available_n_ctx}"
             info.append({
                 "name": k,
                 "backend": rec["backend"],
@@ -222,7 +231,9 @@ class ModelAssigner:
                 "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
                 "has_sharding": rec["backend"] in ["transformers"],
-                "has_context_switch": has_context_switch(rec["filter_caps"]),
+                "default_n_ctx": default_n_ctx,
+                "available_n_ctx": available_n_ctx,
+                "is_deprecated": bool(rec["deprecated"]),
             })
         return {"models": info}
 
@@ -237,10 +248,9 @@ class ModelAssigner:
             if not has_context_switch(self.models_db[model].get("filter_caps", [])):
                 record["n_ctx"] = self.models_db[model].get("T")
                 return record
-            _allowed_n_ctx = [2048, 4096]
             n_ctx = record.get("n_ctx", self.models_db[model].get("T"))
-            if n_ctx not in _allowed_n_ctx:
-                n_ctx = _allowed_n_ctx[0]
+            if n_ctx not in ALLOWED_N_CTX:
+                n_ctx = ALLOWED_N_CTX[0]
             record["n_ctx"] = n_ctx
             return record
 
