@@ -1,14 +1,14 @@
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
-use parking_lot::RwLock;
 
+use parking_lot::RwLock;
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
 use tree_sitter_java::language;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
 use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid};
@@ -23,6 +23,10 @@ static JAVA_KEYWORDS: [&str; 50] = [
     "for", "if", "goto", "implements", "import", "instanceof", "int", "interface", "long", "native",
     "new", "package", "private", "protected", "public", "return", "short", "static", "strictfp", "super",
     "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while"
+];
+
+static SYSTEM_MODULES: [&str; 2] = [
+    "java", "jdk",
 ];
 
 pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
@@ -475,6 +479,28 @@ impl JavaParser {
                 def.ast_fields.parent_guid = Some(parent_guid.clone());
                 def.ast_fields.guid = get_guid();
                 def.ast_fields.is_error = is_error;
+                symbols.push(Arc::new(RwLock::new(def)));
+            }
+            "import_declaration" => {
+                let mut def = ImportDeclaration::default();
+                def.ast_fields.language = LanguageId::Java;
+                def.ast_fields.full_range = parent.range();
+                def.ast_fields.file_path = path.clone();
+                for i in 0..parent.child_count() {
+                    let child = parent.child(i).unwrap();
+                    if ["scoped_identifier", "identifier"].contains(&child.kind()) {
+                        let path = code.slice(child.byte_range()).to_string();
+                        def.path_components = path.split(".").map(|x| x.to_string()).collect();
+                        if let Some(first) = def.path_components.first() {
+                            if SYSTEM_MODULES.contains(&first.as_str()) {
+                                def.import_type = ImportType::System;
+                            }
+                        }
+                    }
+                }
+                def.ast_fields.full_range = parent.range();
+                def.ast_fields.parent_guid = Some(parent_guid.clone());
+                def.ast_fields.guid = get_guid();
                 symbols.push(Arc::new(RwLock::new(def)));
             }
             "ERROR" => {

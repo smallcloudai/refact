@@ -8,10 +8,11 @@ use tree_sitter::{Node, Parser, Point, Range};
 use tree_sitter_rust::language;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
 use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid};
+
 
 pub(crate) struct RustParser {
     pub parser: Parser,
@@ -697,7 +698,214 @@ impl RustParser {
 
         symbols
     }
+    
+    fn parse_use_declaration(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
+        let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
+        let argument_node = parent.child_by_field_name("argument").unwrap();
+        match argument_node.kind() {
+            "use_as_clause" => {
+                let path_node = argument_node.child_by_field_name("path").unwrap();
+                let alias_node = argument_node.child_by_field_name("alias").unwrap();
+                if path_node.kind() == "scoped_identifier" {
+                    let mut def = ImportDeclaration::default();
+                    def.ast_fields.language = LanguageId::Rust;
+                    def.ast_fields.full_range = parent.range();
+                    def.ast_fields.file_path = path.clone();
+                    def.ast_fields.parent_guid = Some(parent_guid.clone());
+                    def.ast_fields.guid = get_guid();
+                    def.path_components = code.slice(argument_node.byte_range())
+                        .split("::")
+                        .map(|s| s.to_string())
+                        .collect();
+                    if let Some(first) = def.path_components.first() {
+                        if first == "std" {
+                            def.import_type = ImportType::System;
+                        } else if ["self", "crate"].contains(&first.as_str()) {
+                            def.import_type = ImportType::UserModule;
+                        }
+                    }
+                    def.alias = Some(code.slice(alias_node.byte_range()).to_string());
+                    symbols.push(Arc::new(RwLock::new(def)));
+                } else {
+                    let mut type_alias = TypeAlias::default();
+                    type_alias.ast_fields.name = code.slice(alias_node.byte_range()).to_string();
+                    type_alias.ast_fields.language = LanguageId::Rust;
+                    type_alias.ast_fields.full_range = parent.range();
+                    type_alias.ast_fields.file_path = path.clone();
+                    type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
+                    type_alias.ast_fields.guid = get_guid();
+                    type_alias.ast_fields.is_error = is_error;
 
+                    if let Some(dtype) = RustParser::parse_type(&path_node, code) {
+                        type_alias.types.push(dtype);
+                    }
+                    symbols.push(Arc::new(RwLock::new(type_alias)));
+                }
+            }
+            "scoped_identifier" => {
+                let mut def = ImportDeclaration::default();
+                def.ast_fields.language = LanguageId::Rust;
+                def.ast_fields.full_range = parent.range();
+                def.ast_fields.file_path = path.clone();
+                def.ast_fields.parent_guid = Some(parent_guid.clone());
+                def.ast_fields.guid = get_guid();
+                def.path_components = code.slice(argument_node.byte_range())
+                    .split("::")
+                    .map(|s| s.to_string())
+                    .collect();
+                if let Some(first) = def.path_components.first() {
+                    if first == "std" {
+                        def.import_type = ImportType::System;
+                    } else if ["self", "crate"].contains(&first.as_str()) {
+                        def.import_type = ImportType::UserModule;
+                    }
+                }
+                symbols.push(Arc::new(RwLock::new(def)));
+            }
+            "scoped_use_list" => {
+                let base_path = {
+                    if let Some(path) = argument_node.child_by_field_name("path") {
+                        code.slice(path.byte_range()).split("::")
+                            .map(|s| s.to_string())
+                            .collect()
+                    } else {
+                        vec![]
+                    }
+                };
+                if let Some(list_node) = argument_node.child_by_field_name("list") {
+                    for i in 0..list_node.child_count() {
+                        let child = list_node.child(i).unwrap();
+                        if !["use_as_clause", "identifier", "scoped_identifier"].contains(&child.kind()) {
+                            continue;
+                        }
+                        let mut def = ImportDeclaration::default();
+                        def.ast_fields.language = LanguageId::Rust;
+                        def.ast_fields.full_range = child.range();
+                        def.ast_fields.file_path = path.clone();
+                        def.ast_fields.parent_guid = Some(parent_guid.clone());
+                        def.ast_fields.guid = get_guid();
+                        def.path_components = base_path.clone();
+                        match child.kind() {
+                            "use_as_clause" => {
+                                if let Some(path) = child.child_by_field_name("path") {
+                                    def.path_components.extend(code.slice(path.byte_range()).split("::").map(|s| s.to_string()).collect::<Vec<_>>());
+                                }
+                                if let Some(alias) = child.child_by_field_name("alias") {
+                                    def.alias = Some(code.slice(alias.byte_range()).to_string());
+                                }
+                            }
+                            "identifier" => {
+                                def.path_components.push(code.slice(child.byte_range()).to_string());
+                            }
+                            "scoped_identifier" => {
+                                def.path_components.extend(code.slice(child.byte_range()).split("::").map(|s| s.to_string()).collect::<Vec<_>>());
+                            }
+                            _ => {}
+                        }
+                        if let Some(first) = def.path_components.first() {
+                            if first == "std" {
+                                def.import_type = ImportType::System;
+                            } else if ["self", "crate"].contains(&first.as_str()) {
+                                def.import_type = ImportType::UserModule;
+                            }
+                        }
+                        symbols.push(Arc::new(RwLock::new(def)));
+                    }
+                }
+            }
+            "use_list" => {
+                for i in 0..argument_node.child_count() {
+                    let child = argument_node.child(i).unwrap();
+                    match child.kind() {
+                        "use_as_clause" => {
+                            let alias_node = child.child_by_field_name("alias").unwrap();
+                            let alias: Option<String> = Some(code.slice(alias_node.byte_range()).to_string());
+                            if let Some(path_node) = child.child_by_field_name("path") {
+                                match path_node.kind() {
+                                    "scoped_identifier" => {
+                                        let mut def = ImportDeclaration::default();
+                                        def.ast_fields.language = LanguageId::Rust;
+                                        def.ast_fields.full_range = child.range();
+                                        def.ast_fields.file_path = path.clone();
+                                        def.ast_fields.parent_guid = Some(parent_guid.clone());
+                                        def.ast_fields.guid = get_guid();
+                                        def.path_components = code.slice(path_node.byte_range()).split("::").map(|s| s.to_string()).collect();
+                                        if let Some(first) = def.path_components.first() {
+                                            if first == "std" {
+                                                def.import_type = ImportType::System;
+                                            } else if ["self", "crate"].contains(&first.as_str()) {
+                                                def.import_type = ImportType::UserModule;
+                                            }
+                                        }
+                                        def.alias = alias;
+                                        symbols.push(Arc::new(RwLock::new(def)));
+                                    }
+                                    _ => {
+                                        let mut type_alias = TypeAlias::default();
+                                        type_alias.ast_fields.name = code.slice(alias_node.byte_range()).to_string();
+                                        type_alias.ast_fields.language = LanguageId::Rust;
+                                        type_alias.ast_fields.full_range = parent.range();
+                                        type_alias.ast_fields.file_path = path.clone();
+                                        type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
+                                        type_alias.ast_fields.guid = get_guid();
+                                        type_alias.ast_fields.is_error = is_error;
+
+                                        if let Some(dtype) = RustParser::parse_type(&path_node, code) {
+                                            type_alias.types.push(dtype);
+                                        }
+                                        symbols.push(Arc::new(RwLock::new(type_alias)));
+                                    }
+                                }
+                            }
+                        }
+                        "identifier" => {
+                            let mut type_alias = TypeAlias::default();
+                            type_alias.ast_fields.name = code.slice(child.byte_range()).to_string();
+                            type_alias.ast_fields.language = LanguageId::Rust;
+                            type_alias.ast_fields.full_range = parent.range();
+                            type_alias.ast_fields.file_path = path.clone();
+                            type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
+                            type_alias.ast_fields.guid = get_guid();
+                            type_alias.ast_fields.is_error = is_error;
+                            symbols.push(Arc::new(RwLock::new(type_alias)));
+                        }
+                        "scoped_identifier" => {
+                            let mut def = ImportDeclaration::default();
+                            def.ast_fields.language = LanguageId::Rust;
+                            def.ast_fields.full_range = child.range();
+                            def.ast_fields.file_path = path.clone();
+                            def.ast_fields.parent_guid = Some(parent_guid.clone());
+                            def.ast_fields.guid = get_guid();
+                            def.path_components = code.slice(child.byte_range()).split("::").map(|s| s.to_string()).collect();
+                            if let Some(first) = def.path_components.first() {
+                                if first == "std" {
+                                    def.import_type = ImportType::System;
+                                } else if ["self", "crate"].contains(&first.as_str()) {
+                                    def.import_type = ImportType::UserModule;
+                                }
+                            }
+                            symbols.push(Arc::new(RwLock::new(def)));
+                        }
+                        &_ => {}
+                    }
+                }
+            }
+            "identifier" => {
+                let mut type_alias = TypeAlias::default();
+                type_alias.ast_fields.name = code.slice(argument_node.byte_range()).to_string();
+                type_alias.ast_fields.language = LanguageId::Rust;
+                type_alias.ast_fields.full_range = parent.range();
+                type_alias.ast_fields.file_path = path.clone();
+                type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
+                type_alias.ast_fields.guid = get_guid();
+                type_alias.ast_fields.is_error = is_error;
+                symbols.push(Arc::new(RwLock::new(type_alias)));
+            }
+            _ => {}
+        }
+        symbols
+    }
+    
     pub fn parse_block(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         for i in 0..parent.child_count() {
@@ -706,24 +914,7 @@ impl RustParser {
             let _text = code.slice(child.byte_range()).to_string();
             match kind {
                 "use_declaration" => {
-                    let argument_node = child.child_by_field_name("argument").unwrap();
-                    if argument_node.kind() == "use_as_clause" {
-                        let alias_node = argument_node.child_by_field_name("alias").unwrap();
-                        let mut type_alias = TypeAlias::default();
-                        type_alias.ast_fields.name = code.slice(alias_node.byte_range()).to_string();
-                        type_alias.ast_fields.language = LanguageId::Rust;
-                        type_alias.ast_fields.full_range = child.range();
-                        type_alias.ast_fields.file_path = path.clone();
-                        type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
-                        type_alias.ast_fields.guid = get_guid();
-                        type_alias.ast_fields.is_error = is_error;
-
-                        let path_node = argument_node.child_by_field_name("path").unwrap();
-                        if let Some(dtype) = RustParser::parse_type(&path_node, code) {
-                            type_alias.types.push(dtype);
-                        }
-                        symbols.push(Arc::new(RwLock::new(type_alias)));
-                    }
+                    symbols.extend(self.parse_use_declaration(&child, code, path, parent_guid, is_error));
                 }
                 "type_item" => {
                     let name_node = child.child_by_field_name("name").unwrap();

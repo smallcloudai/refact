@@ -1,3 +1,6 @@
+import { foo as ds, bar } from './module.js';
+import * as moduleName from './module.js';
+
 // Variables
 var name = "John Doe";
 let age = 30;

@@ -2,17 +2,44 @@ use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
-use parking_lot::RwLock;
 
+use parking_lot::RwLock;
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Point, Range};
 use tree_sitter_python::language;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage, CommentDefinition};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
 use crate::ast::treesitter::parsers::utils::{get_children_guids, get_guid};
+
+static PYTHON_MODULES: [&str; 203] = [
+    "abc", "aifc", "argparse","array", "asynchat", "asyncio", "asyncore", "atexit", "audioop",
+    "base64", "bdb", "binascii", "binhex", "bisect", "builtins", "bz2", "calendar", "cgi", "cgitb",
+    "chunk", "cmath", "cmd", "code", "codecs", "codeop", "collections", "colorsys", "compileall",
+    "concurrent", "configparser", "contextlib", "contextvars", "copy", "copyreg", "crypt", "csv",
+    "ctypes", "curses", "datetime", "dbm", "decimal", "difflib", "dis", "distutils", "doctest",
+    "email", "encodings", "ensurepip", "enum", "errno", "faulthandler", "fcntl", "filecmp",
+    "fileinput", "fnmatch", "formatter", "fractions", "ftplib", "functools", "gc", "getopt",
+    "getpass", "gettext", "glob", "grp", "gzip", "hashlib", "heapq", "hmac", "html", "http",
+    "idlelib", "imaplib", "imghdr", "imp", "importlib", "inspect", "io", "ipaddress", "itertools",
+    "json", "keyword", "lib2to3","linecache", "locale", "logging", "lzma", "macpath","mailbox",
+    "mailcap", "marshal", "math", "mimetypes","mmap", "modulefinder", "msilib", "msvcrt",
+    "multiprocessing", "netrc", "nntplib", "numbers", "operator", "optparse", "os", "ossaudiodev",
+    "parser", "pathlib", "pdb", "pickle", "pickletools", "pipes", "pkgutil", "platform", "plistlib",
+    "poplib", "posix", "pprint", "profile", "pstats", "pty", "pwd", "py_compile", "pyclbr", "pydoc",
+    "queue", "quopri", "random", "re", "readline", "reprlib", "resource", "rlcompleter", "runpy",
+    "sched", "secrets", "select", "selectors", "shelve", "shlex", "shutil", "signal", "site", "smtpd",
+    "smtplib", "sndhdr", "socket", "socketserver", "spwd", "sqlite3", "ssl", "stat", "statistics",
+    "string", "stringprep", "struct", "subprocess", "sunau", "symbol", "symtable", "sys", "sysconfig",
+    "syslog", "tabnanny", "tarfile", "telnetlib", "tempfile", "termios", "test", "textwrap",
+    "threading", "time", "timeit", "tkinter", "token", "tokenize", "trace", "traceback",
+    "tracemalloc", "tty", "turtle", "turtledemo", "types", "typing", "unicodedata", "unittest",
+    "urllib", "uu", "uuid", "venv", "warnings", "wave", "weakref", "webbrowser", "winreg", "winsound",
+    "wsgiref", "xdrlib", "xml", "xmlrpc", "zipapp", "zipfile", "zipimport", "zoneinfo"
+];
+
 
 pub(crate) struct PythonParser {
     pub parser: Parser,
@@ -355,9 +382,6 @@ impl PythonParser {
                     symbols.extend(self.parse_usages(&child, code, path, parent_guid, is_error));
                 }
             }
-            "import_statement" => {
-                // TODO
-            }
             "with_item" => {
                 let value = parent.child_by_field_name("value").unwrap();
                 symbols.extend(self.parse_usages(&value, code, path, parent_guid, is_error));
@@ -498,6 +522,83 @@ impl PythonParser {
                 def.ast_fields.guid = get_guid();
                 def.ast_fields.is_error = false;
                 symbols.push(Arc::new(RwLock::new(def)));
+            }
+            "import_from_statement" | "import_statement" => {
+                let mut def = ImportDeclaration::default();
+                def.ast_fields.language = LanguageId::Python;
+                def.ast_fields.full_range = parent.range();
+                def.ast_fields.file_path = path.clone();
+                def.ast_fields.full_range = parent.range();
+                def.ast_fields.parent_guid = Some(parent_guid.clone());
+                
+                let mut base_path_component: Vec<String> = Default::default();
+                if let Some(module_name) = parent.child_by_field_name("module_name") {
+                    if module_name.kind() == "relative_import" {
+                        let base_path = code.slice(module_name.byte_range()).to_string();
+                        if base_path.starts_with("..") {
+                            base_path_component.push("..".to_string());
+                            base_path_component.extend(base_path.slice(2..base_path.len()).split(".")
+                                .map(|x| x.to_string())
+                                .filter(|x| !x.is_empty())
+                                .collect::<Vec<String>>());
+                        } else if base_path.starts_with(".") {
+                            base_path_component.push(".".to_string());
+                            base_path_component.extend(base_path.slice(1..base_path.len()).split(".")
+                                .map(|x| x.to_string())
+                                .filter(|x| !x.is_empty())
+                                .collect::<Vec<String>>());
+                        } else {
+                            base_path_component = base_path.split(".")
+                                .map(|x| x.to_string())
+                                .filter(|x| !x.is_empty())
+                                .collect();
+                        }
+                    } else {
+                        base_path_component = code.slice(module_name.byte_range()).to_string().split(".")
+                            .map(|x| x.to_string())
+                            .filter(|x| !x.is_empty())
+                            .collect();
+                    }
+                }
+                def.path_components = base_path_component.clone();
+                if parent.child_by_field_name("name").is_some() {
+                    let mut cursor = parent.walk();
+                    for child in parent.children_by_field_name("name", &mut cursor) {
+                        let mut def_local = def.clone();
+                        def_local.ast_fields.guid = get_guid();
+
+                        let mut path_components: Vec<String> = Default::default();
+                        let mut alias: Option<String> = None;
+                        match child.kind() {
+                            "dotted_name" => {
+                                path_components = code.slice(child.byte_range()).to_string().split(".").map(|x| x.to_string()).collect();
+                            }
+                            "aliased_import" => {
+                                if let Some(name) = child.child_by_field_name("name") {
+                                    path_components = code.slice(name.byte_range()).to_string().split(".").map(|x| x.to_string()).collect();
+                                }
+                                if let Some(alias_node) = child.child_by_field_name("alias") {
+                                    alias = Some(code.slice(alias_node.byte_range()).to_string());
+                                }
+                            }
+                            _ => {}
+                        }
+                        def_local.path_components.extend(path_components);
+                        if let Some(first) = def_local.path_components.first() {
+                            if PYTHON_MODULES.contains(&first.as_str()) {
+                                def_local.import_type = ImportType::System;
+                            } else if first == "." || first == ".." {
+                                def_local.import_type = ImportType::UserModule;
+                            }
+                        }
+                        def_local.alias = alias;
+
+                        symbols.push(Arc::new(RwLock::new(def_local)));
+                    }
+                } else {
+                    def.ast_fields.guid = get_guid();
+                    symbols.push(Arc::new(RwLock::new(def)));
+                }
             }
             "ERROR" => {
                 symbols.extend(self.parse_error_usages(&parent, code, path, parent_guid));
