@@ -541,7 +541,7 @@ impl AstSymbolInstance for ClassFieldDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum ImportType {
     System,
     Library,

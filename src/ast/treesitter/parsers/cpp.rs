@@ -10,7 +10,7 @@ use tree_sitter::{Node, Parser, Range};
 use tree_sitter_cpp::language;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
 use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid};
@@ -33,6 +33,20 @@ static CPP_KEYWORDS: [&str; 92] = [
     "template", "this", "thread_local", "throw", "true", "try", "typedef", "typeid", "typename",
     "union", "unsigned", "using", "virtual", "void", "volatile", "wchar_t", "while", "xor", "xor_eq"
 ];
+
+static SYSTEM_HEADERS: [&str; 79] = [
+    "algorithm", "bitset", "cassert", "cctype", "cerrno", "cfenv", "cfloat", "chrono", "cinttypes",
+    "climits", "clocale", "cmath", "codecvt", "complex", "condition_variable", "csetjmp",
+    "csignal", "cstdarg", "cstdbool", "cstddef", "cstdint", "cstdio", "cstdlib", "cstring", "ctgmath",
+    "ctime", "cuchar", "cwchar", "cwctype", "deque", "exception", "filesystem", "forward_list", "fstream",
+    "functional", "future", "initializer_list", "iomanip", "ios", "iosfwd", "iostream", "istream",
+    "iterator", "limits", "list", "locale", "map", "memory", "mutex", "new", "numeric", "optional",
+    "ostream", "queue", "random", "ratio", "regex", "scoped_allocator", "set", "shared_mutex",
+    "sstream", "stack", "stdexcept", "streambuf", "string", "string_view", "system_error", "thread",
+    "tuple", "type_traits", "unordered_map", "unordered_set", "utility", "valarray", "variant", "vector",
+    "version", "wchar.h", "wctype.h",
+];
+
 
 pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
     let kind = parent.kind();
@@ -758,8 +772,12 @@ impl CppParser {
                     match path.kind() {
                         "system_lib_string" | "string_literal" => {
                             let mut name = code.slice(path.byte_range()).to_string();
-                            def.ast_fields.name = name.slice(1..name.len()-1).to_string();
-                            def.is_stl = path.kind() == "system_lib_string";
+                            name = name.slice(1..name.len()-1).to_string();
+                            def.path_components = name.split("/").map(|x| x.to_string()).collect();
+                            if SYSTEM_HEADERS.contains(&&name.as_str()) {
+                                def.import_type = ImportType::System;
+                            }
+                            
                         }
                         &_ => {}
                     }
