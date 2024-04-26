@@ -1,3 +1,9 @@
+import { SomeExport, AnotherExport } from './SomeModule';
+import './SomeModule';
+import { SomeExport as Alias } from './SomeModule';
+import * as SomeModule from './SomeModule';
+import SomeDefaultExport from './SomeModule';
+
 // Basic Types
 let id: number = 1;
 let company: string = 'My Company';

@@ -11,7 +11,7 @@ use tree_sitter::{Node, Parser, Range};
 use tree_sitter_typescript::language_typescript as language;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
 use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid};
@@ -658,6 +658,72 @@ impl TSParser {
                         node: arguments,
                         parent_guid: info.parent_guid.clone(),
                     })
+                }
+            }
+            "import_statement" => {
+                let mut def = ImportDeclaration::default();
+                def.ast_fields = AstSymbolFields::from_fields(&info.ast_fields);
+                def.ast_fields.parent_guid = Some(info.parent_guid.clone());
+                def.ast_fields.guid = get_guid();
+                if let Some(source) = info.node.child_by_field_name("source") {
+                    let source = code.slice(source.byte_range()).to_string();
+                    def.path_components = source.slice(1..source.len()-1).split("/")
+                        .map(|x| x.to_string())
+                        .filter(|x| !x.is_empty())
+                        .collect();
+                }
+                if let Some(first) = def.path_components.first() {
+                    if vec!["@", ".", ".."].contains(&first.as_str()) {
+                        def.import_type = ImportType::UserModule;
+                    }
+                }
+                let mut imports: Vec<ImportDeclaration> = vec![];
+                for i in 0..info.node.child_count() {
+                    let import_clause = info.node.child(i).unwrap();
+                    if import_clause.kind() == "import_clause" {
+                        for i in 0..import_clause.child_count() {
+                            let child = import_clause.child(i).unwrap();
+                            match child.kind() {
+                                "identifier" => {
+                                    let mut def_local = def.clone();
+                                    def_local.path_components.push(code.slice(child.byte_range()).to_string());
+                                    imports.push(def_local);
+                                }
+                                "namespace_import" => {
+                                    for i in 0..child.child_count() {
+                                        let identifier = child.child(i).unwrap();
+                                        if identifier.kind() == "identifier" {
+                                            let mut def_local = def.clone();
+                                            def_local.alias = Some(code.slice(identifier.byte_range()).to_string());
+                                            imports.push(def_local);
+                                            break;
+                                        }
+                                    }
+                                }
+                                "named_imports" => {
+                                    for i in 0..child.child_count() {
+                                        let import_specifier = child.child(i).unwrap();
+                                        if import_specifier.kind() == "import_specifier" {
+                                            let mut def_local = def.clone();
+                                            if let Some(name) = import_specifier.child_by_field_name("name") {
+                                                def_local.path_components.push(code.slice(name.byte_range()).to_string());
+                                            }
+                                            if let Some(alias) = import_specifier.child_by_field_name("alias") {
+                                                def_local.alias = Some(code.slice(alias.byte_range()).to_string());
+                                            }
+                                            imports.push(def_local);
+                                        }
+                                    }
+                                }
+                                &_ => {}
+                            }
+                        }
+                    }
+                }
+                if imports.len() > 0 {
+                    imports.iter().for_each(|x| { symbols.push(Arc::new(RwLock::new(x.clone()))) });
+                } else {
+                    symbols.push(Arc::new(RwLock::new(def)));
                 }
             }
             "comment" => {

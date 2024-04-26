@@ -657,10 +657,15 @@ impl JSParser {
                                     imports.push(def_local);
                                 }
                                 "namespace_import" => {
-                                    let identifier = child.child(0).unwrap();
-                                    let mut def_local = def.clone();
-                                    def_local.alias = Some(code.slice(identifier.byte_range()).to_string());
-                                    imports.push(def_local);
+                                    for i in 0..child.child_count() {
+                                        let identifier = child.child(i).unwrap();
+                                        if identifier.kind() == "identifier" {
+                                            let mut def_local = def.clone();
+                                            def_local.alias = Some(code.slice(identifier.byte_range()).to_string());
+                                            imports.push(def_local);
+                                            break;
+                                        }
+                                    }
                                 }
                                 "named_imports" => {
                                     for i in 0..child.child_count() {
