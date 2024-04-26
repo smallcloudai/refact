@@ -1174,3 +1174,15 @@ h3 {
 .team-model-dropdown:active {
     border-color: transparent !important;
 }
+.deprecated-badge {
+    margin-left: 3px;
+    background-color: #ccc;
+    opacity: 0.7;
+}
+.default-context {
+    border: 1px solid #777;
+    padding: .25rem .5rem;
+    font-size: .875rem;
+    border-radius: var(--bs-border-radius-sm);
+    display: inline-flex;
+}
