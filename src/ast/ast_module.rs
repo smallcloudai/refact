@@ -253,6 +253,9 @@ impl AstModule {
                 usefulness
             }
         };
+        let bucket_imports = self.ast_index
+            .read().await
+            .decl_symbols_from_imports(&cursor_usages, 1).await;
 
         let result = AstCursorSearchResult {
             query_text: "".to_string(),
@@ -273,6 +276,18 @@ impl AstModule {
             bucket_high_overlap: bucket_high_overlap
                 .iter()
                 .map(symbol_to_search_res)
+                .collect::<Vec<SymbolsSearchResultStruct>>(),
+            bucket_imports: bucket_imports
+                .iter()
+                .map(|x: &AstSymbolInstanceArc| {
+                    let symbol_declaration = read_symbol(x).symbol_info_struct();
+                    let content = symbol_declaration.get_content_blocked().unwrap_or_default();
+                    SymbolsSearchResultStruct {
+                        symbol_declaration,
+                        content,
+                        usefulness: 20.0
+                    }
+                })
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
         };
         info!("to_buckets {:.3}s => bucket_declarations {} bucket_usage_of_same_stuff {} bucket_high_overlap {}",

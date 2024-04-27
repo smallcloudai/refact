@@ -66,6 +66,8 @@ pub fn context_to_fim_debug_page(
         .map(|x| shorter_symbol(x)).collect());
     context["bucket_high_overlap"] = serde_json::Value::Array(search_traces.bucket_high_overlap.iter()
         .map(|x| shorter_symbol(x)).collect());
+    context["bucket_imports"] = serde_json::Value::Array(search_traces.bucket_imports.iter()
+        .map(|x| shorter_symbol(x)).collect());
 
     let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
         json!({

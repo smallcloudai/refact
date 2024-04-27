@@ -25,6 +25,7 @@ pub struct AstCursorSearchResult {
     pub bucket_declarations: Vec<SymbolsSearchResultStruct>,        // types and functions around cursor, found in indexes (matched by guid and by name)
     pub bucket_usage_of_same_stuff: Vec<SymbolsSearchResultStruct>, // sum of (4) find anything that uses the same types and functions and (5) find function calls by name
     pub bucket_high_overlap: Vec<SymbolsSearchResultStruct>,        // (6) declarations with high symbols overlap
+    pub bucket_imports: Vec<SymbolsSearchResultStruct>,             // symbols from imports
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

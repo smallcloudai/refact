@@ -50,6 +50,18 @@ pub async fn results2message(result: &AstCursorSearchResult) -> Vec<ContextFile>
             usefulness: res.usefulness
         });
     }
+    for res in &result.bucket_imports {
+        let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
+        fvec.push(ContextFile {
+            file_name,
+            file_content: res.content.clone(),
+            line1: res.symbol_declaration.full_range.start_point.row + 1,
+            line2: res.symbol_declaration.full_range.end_point.row + 1,
+            symbol: res.symbol_declaration.guid.clone(),
+            gradient_type: -1,
+            usefulness: res.usefulness
+        });
+    }
     fvec
 }
 

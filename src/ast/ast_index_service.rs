@@ -232,34 +232,44 @@ async fn ast_index_rebuild_thread(
                 .values()
                 .cloned()
                 .collect::<Vec<_>>();
-            info!("Linking ast declarations");
+            info!("Resolving declaration symbols");
             let t0 = std::time::Instant::now();
             let stats = ast_index.read().await.resolve_types(&symbols).await;
             info!(
-                "Linking ast declarations finished, took {:.3}s, {} found, {} not found",
+                "Resolving declaration symbols finished, took {:.3}s, {} found, {} not found",
                 t0.elapsed().as_secs_f64(),
                 stats.found,
                 stats.non_found
             );
 
-            info!("Merging usages and declarations");
+            info!("Resolving import symbols");
+            let t0 = std::time::Instant::now();
+            let stats = ast_index.read().await.resolve_imports(&symbols).await;
+            info!(
+                "Resolving import symbols finished, took {:.3}s, {} found, {} not found",
+                t0.elapsed().as_secs_f64(),
+                stats.found,
+                stats.non_found
+            );
+
+            info!("Linking usage and declaration symbols");
             let t1 = std::time::Instant::now();
             let stats = ast_index.read().await.merge_usages_to_declarations(&symbols).await;
             info!(
-                "Merging usages and declarations finished, took {:.3}s, {} found, {} not found",
+                "Linking usage and declaration symbols finished, took {:.3}s, {} found, {} not found",
                 t1.elapsed().as_secs_f64(),
                 stats.found,
                 stats.non_found
             );
 
-            info!("Creating extra indexes");
+            info!("Creating extra ast indexes");
             let t2 = std::time::Instant::now();
             {
                 let mut ast_index_ref = ast_index.write().await;
                 ast_index_ref.create_extra_indexes(&symbols);
                 ast_index_ref.set_updated();
             }
-            info!("Creating extra indexes finished, took {:.3}s", t2.elapsed().as_secs_f64());
+            info!("Creating extra ast indexes finished, took {:.3}s", t2.elapsed().as_secs_f64());
             write!(std::io::stderr(), "AST COMPLETE\n").unwrap();
             info!("AST COMPLETE"); // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
         }
