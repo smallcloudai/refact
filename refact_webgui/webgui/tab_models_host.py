@@ -87,8 +87,13 @@ class TabHostRouter(APIRouter):
         for model_name, model_assign in post.model_assign.items():
             if model_assign.n_ctx is None:
                 raise HTTPException(status_code=400, detail=f"n_ctx must be set for {model_name}")
-            max_n_ctx = self._model_assigner.models_db.get(model_name, {}).get("T")
-            if model_assign.n_ctx > max_n_ctx:
-                raise HTTPException(status_code=400, detail=f"n_ctx must be less or equal to {max_n_ctx} for {model_name}")
+            for model_info in self._model_assigner.models_info["models"]:
+                if model_info["name"] == model_name:
+                    max_n_ctx = model_info["default_n_ctx"]
+                    if model_assign.n_ctx > max_n_ctx:
+                        raise HTTPException(status_code=400, detail=f"n_ctx must be less or equal to {max_n_ctx} for {model_name}")
+                    break
+            else:
+                raise HTTPException(status_code=400, detail=f"model {model_name} not found")
         self._model_assigner.models_to_watchdog_configs(post.dict())
         return JSONResponse("OK")
