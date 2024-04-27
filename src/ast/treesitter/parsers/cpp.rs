@@ -586,6 +586,7 @@ impl CppParser {
         symbols.extend(self.find_error_usages(&info.node, code, &info.ast_fields.file_path, &info.parent_guid));
 
         if let Some(function) = info.node.child_by_field_name("function") {
+            decl.ast_fields.name = code.slice(function.byte_range()).to_string();
             symbols.extend(self.find_error_usages(&function, code, &info.ast_fields.file_path,
                                                   &info.parent_guid));
             candidates.push_back(CandidateInfo {
