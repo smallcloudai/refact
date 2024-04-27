@@ -1181,6 +1181,7 @@ h3 {
 }
 .default-context {
     /* padding: .25rem .5rem; */
+    padding-left: .5rem;
     font-size: .875rem;
     /* border-radius: var(--bs-border-radius-sm); */
     display: inline-flex;
