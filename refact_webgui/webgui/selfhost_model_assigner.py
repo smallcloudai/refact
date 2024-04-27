@@ -23,6 +23,10 @@ def has_context_switch(filter_caps: List[str]) -> bool:
     return "chat" in filter_caps or "completion" in filter_caps
 
 
+def get_default_n_ctx(model_info: Dict[str, Any]) -> int:
+    return model_info.get("T", model_info["n_ctx"])
+
+
 @dataclass
 class ModelGroup:
     model_assign: Dict[str, Dict] = field(default_factory=dict)
@@ -214,7 +218,7 @@ class ModelAssigner:
                 ]
             has_finetune = bool("finetune" in rec["filter_caps"])
             finetune_model = rec.get("finetune_model", k if has_finetune else None)
-            default_n_ctx = rec["T"]
+            default_n_ctx = get_default_n_ctx(rec)
             available_n_ctx = []
             if has_context_switch(rec["filter_caps"]):
                 available_n_ctx = list(filter(lambda n_ctx: n_ctx <= default_n_ctx, ALLOWED_N_CTX))
@@ -245,10 +249,11 @@ class ModelAssigner:
             j = {"model_assign": {}}
 
         def _set_n_ctx(model: str, record: Dict) -> Dict:
+            default_n_ctx = get_default_n_ctx(self.models_db[model])
             if not has_context_switch(self.models_db[model].get("filter_caps", [])):
-                record["n_ctx"] = self.models_db[model].get("T")
+                record["n_ctx"] = default_n_ctx
                 return record
-            n_ctx = record.get("n_ctx", self.models_db[model].get("T"))
+            n_ctx = record.get("n_ctx", default_n_ctx)
             if n_ctx not in ALLOWED_N_CTX:
                 n_ctx = ALLOWED_N_CTX[0]
             record["n_ctx"] = n_ctx
