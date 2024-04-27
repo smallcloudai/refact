@@ -258,8 +258,8 @@ class ModelAssigner:
                 record["n_ctx"] = default_n_ctx
                 return record
             n_ctx = record.get("n_ctx", default_n_ctx)
-            if n_ctx not in ALLOWED_N_CTX:
-                n_ctx = ALLOWED_N_CTX[0]
+            if n_ctx not in ALLOWED_N_CTX or n_ctx > default_n_ctx:
+                n_ctx = default_n_ctx
             record["n_ctx"] = n_ctx
             return record
 
