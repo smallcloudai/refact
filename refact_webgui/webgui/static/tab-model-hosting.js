@@ -509,7 +509,8 @@ function render_models(models) {
             row.addEventListener('click', function(e) {
                 const model_name = this.dataset.model;
                 models_data.model_assign[model_name] = {
-                    gpus_shard: 1
+                    gpus_shard: 1,
+                    n_ctx: element.default_n_ctx,
                 };
                 save_model_assigned();
                 const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
