@@ -82,7 +82,6 @@ class NlpCompletion(NlpSamplingParams):
 
 class ChatMessage(BaseModel):
     role: str
-    # TODO: if self.kind is an image, verify it's a jpeg in base64
     content: str
     kind: str = Query(default="text", regex="^(text|image)$")
 
@@ -98,7 +97,9 @@ class ChatMessage(BaseModel):
             if self.kind == 'image':
                 return {
                     "role": self.role,
+                    # TODO: if self.kind is an image, verify it's a jpeg in base64
                     # TODO: you can actually pass few dicts inside content: first is a question, another is an image
+                    # TODO: question must be inside of content
                     "content": [
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self.content}"}}
                     ]
@@ -618,8 +619,10 @@ class BaseCompletionsRouter(APIRouter):
 
         async def openai_steamer():
             try:
+                messages = [m.dict(postprocess_style="openai") for m in post.messages]
+                # TODO: does not work :(
                 response = await AsyncOpenAI().chat.completions.create(
-                    model=model_name, messages=[m.dict(postprocess_style="openai") for m in post.messages],
+                    model=model_name, messages=messages,
                     stream=True, temperature=post.temperature, top_p=post.top_p,
                     max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
                     stop=post.stop)
