@@ -1,3 +1,4 @@
+import base64
 import time
 import json
 import copy
@@ -9,6 +10,7 @@ import re
 import litellm
 import traceback
 
+from openai import AsyncOpenAI
 from fastapi import APIRouter, Request, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
@@ -23,7 +25,7 @@ from refact_webgui.webgui.selfhost_queue import InferenceQueue
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_login import RefactSession
 
-from pydantic import BaseModel, Required
+from pydantic import BaseModel, Required, validator
 from typing import List, Dict, Union, Optional, Tuple, Any
 
 __all__ = ["BaseCompletionsRouter", "CompletionsRouter"]
@@ -80,7 +82,58 @@ class NlpCompletion(NlpSamplingParams):
 
 class ChatMessage(BaseModel):
     role: str
+    kind: str = Query(default="text", regex="^(text|image)$")
+    # must be validated after role and kind
     content: str
+
+    @validator('content')
+    def validate_content(cls, content: str, values: Dict):
+        if values.get('kind') == 'image':
+            try:
+                base64.b64decode(content, validate=True)
+            except Exception:
+                raise HTTPException(status_code=422, detail="Image invalid encoding; must be base64")
+        return content
+
+    def dict(self, *args, **kwargs):
+        return {"role": self.role, "content": self.content}
+
+
+def postprocess_chat_messages_openai(messages: List[ChatMessage]) -> List[Dict[str, Union[str, List[Dict[str, str]]]]]:
+    # supported by gpt-4-turbo
+    res = []
+    for m in messages:
+        if m.kind == 'text':
+            res.append({
+                "role": m.role,
+                "content": [
+                    {"type": "text", "text": m.content}
+                ],
+            })
+        elif m.kind == 'image':
+            res.append({
+                "role": m.role,
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{m.content}"}}
+                ]
+            })
+        else:
+            raise NotImplementedError(f'kind {m.kind} is not implemented')
+
+    # question for image must be in the same message as image_url
+    # TODO: what if there's multiple images?
+    # TODO: should we delete images after usage?
+    for i in range(len(res) - 1):
+        this_content = res[i].get('content')
+        next_content = res[i + 1].get('content')
+        if this_content and next_content and this_content[0]['type'] == 'image_url' and next_content[0]['type'] == 'text':
+            res[i]['content'] = [
+                *next_content,
+                *this_content,
+            ]
+            res[i + 1]['content'] = []
+
+    return [r for r in res if r.get('content')]
 
 
 class ChatContext(NlpSamplingParams):
@@ -576,69 +629,101 @@ class BaseCompletionsRouter(APIRouter):
 
     async def _chat_completions(self, post: ChatContext, authorization: str = Header(None)):
         account = await self._account_from_bearer(authorization)
+        self._integrations_env_setup()
+
+        async def litellm_streamer():
+            try:
+                response = await litellm.acompletion(
+                    model=model_name, messages=[m.dict() for m in post.messages], stream=True,
+                    temperature=post.temperature, top_p=post.top_p,
+                    max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
+                    stop=post.stop)
+                finish_reason = None
+                async for model_response in response:
+                    try:
+                        data = model_response.dict()
+                        finish_reason = data["choices"][0]["finish_reason"]
+                    except json.JSONDecodeError:
+                        data = {"choices": [{"finish_reason": finish_reason}]}
+                    yield prefix + json.dumps(data) + postfix
+                # NOTE: DONE needed by refact-lsp server
+                yield prefix + "[DONE]" + postfix
+            except BaseException as e:
+                err_msg = f"litellm error: {e}"
+                log(err_msg)
+                yield prefix + json.dumps({"error": err_msg}) + postfix
+
+        async def openai_steamer():
+            try:
+                client = AsyncOpenAI()
+                response = await client.chat.completions.create(
+                    model=model_name, messages=postprocess_chat_messages_openai(post.messages),
+                    stream=True,
+                    temperature=post.temperature,
+                    top_p=post.top_p,
+                    max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
+                    # stop=post.stop # stop does not work
+                )
+                finish_reason = None
+                async for model_response in response:
+                    try:
+                        data = model_response.dict()
+                        finish_reason = data["choices"][0]["finish_reason"]
+                    except json.JSONDecodeError:
+                        data = {"choices": [{"finish_reason": finish_reason}]}
+                    yield prefix + json.dumps(data) + postfix
+                yield prefix + "[DONE]" + postfix
+            except BaseException as e:
+                err_msg = f"openai_api error: {e}"
+                log(err_msg)
+                yield prefix + json.dumps({"error": err_msg}) + postfix
+
+        async def chat_completion_streamer():
+            post_url = "http://127.0.0.1:8001/v1/chat"
+            post_data = {
+                "messages": [m.dict() for m in post.messages],
+                "stream": True,
+                "model": model_name,
+                "parameters": {
+                    "temperature": post.temperature,
+                    "max_new_tokens": post.max_tokens,
+                }
+            }
+            async with aiohttp.ClientSession() as session:
+                try:
+                    async with session.post(post_url, json=post_data) as response:
+                        finish_reason = None
+                        async for data, _ in response.content.iter_chunks():
+                            try:
+                                data = data.decode("utf-8")
+                                data = json.loads(data[len(prefix):-len(postfix)])
+                                finish_reason = data["choices"][0]["finish_reason"]
+                                data["choices"][0]["finish_reason"] = None
+                            except json.JSONDecodeError:
+                                data = {"choices": [{"finish_reason": finish_reason}]}
+                            yield prefix + json.dumps(data) + postfix
+                except aiohttp.ClientConnectorError as e:
+                    err_msg = f"LSP server is not ready yet: {e}"
+                    log(err_msg)
+                    yield prefix + json.dumps({"error": err_msg}) + postfix
 
         prefix, postfix = "data: ", "\n\n"
         model_dict = self._model_assigner.models_db_with_passthrough.get(post.model, {})
 
-        if model_dict.get('backend') == 'litellm' and (model_name := model_dict.get('resolve_as', post.model)) in litellm.model_list:
-            log(f"chat/completions: model resolve {post.model} -> {model_name}")
+        model_name = model_dict.get('resolve_as', post.model)
+        log(f"chat/completions: model resolve {post.model} -> {model_name}")
 
-            async def litellm_streamer(post: ChatContext):
-                try:
-                    self._integrations_env_setup()
-                    response = await litellm.acompletion(
-                        model=model_name, messages=[m.dict() for m in post.messages], stream=True,
-                        temperature=post.temperature, top_p=post.top_p,
-                        max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
-                        stop=post.stop)
-                    finish_reason = None
-                    async for model_response in response:
-                        try:
-                            data = model_response.dict()
-                            finish_reason = data["choices"][0]["finish_reason"]
-                        except json.JSONDecodeError:
-                            data = {"choices": [{"finish_reason": finish_reason}]}
-                        yield prefix + json.dumps(data) + postfix
-                    # NOTE: DONE needed by refact-lsp server
-                    yield prefix + "[DONE]" + postfix
-                except BaseException as e:
-                    err_msg = f"litellm error: {e}"
-                    log(err_msg)
-                    yield prefix + json.dumps({"error": err_msg}) + postfix
+        if "vision" not in model_dict.get("filter_caps", []):
+            post.messages = [m for m in post.messages if m.kind != "image"]
 
-            response_streamer = litellm_streamer(post)
+        if model_dict.get('backend') == 'litellm' and model_name in litellm.model_list:
+            response_streamer = litellm_streamer()
+
+        elif model_dict.get('backend') == 'openai':
+            response_streamer = openai_steamer()
 
         else:
-            async def chat_completion_streamer(post: ChatContext):
-                post_url = "http://127.0.0.1:8001/v1/chat"
-                post_data = {
-                    "messages": [m.dict() for m in post.messages],
-                    "stream": True,
-                    "model": post.model,
-                    "parameters": {
-                        "temperature": post.temperature,
-                        "max_new_tokens": post.max_tokens,
-                    }
-                }
-                async with aiohttp.ClientSession() as session:
-                    try:
-                        async with session.post(post_url, json=post_data) as response:
-                            finish_reason = None
-                            async for data, _ in response.content.iter_chunks():
-                                try:
-                                    data = data.decode("utf-8")
-                                    data = json.loads(data[len(prefix):-len(postfix)])
-                                    finish_reason = data["choices"][0]["finish_reason"]
-                                    data["choices"][0]["finish_reason"] = None
-                                except json.JSONDecodeError:
-                                    data = {"choices": [{"finish_reason": finish_reason}]}
-                                yield prefix + json.dumps(data) + postfix
-                    except aiohttp.ClientConnectorError as e:
-                        err_msg = f"LSP server is not ready yet: {e}"
-                        log(err_msg)
-                        yield prefix + json.dumps({"error": err_msg}) + postfix
-
-            response_streamer = chat_completion_streamer(post)
+            response_streamer = chat_completion_streamer()
 
         return StreamingResponse(response_streamer, media_type="text/event-stream")
 
