@@ -722,6 +722,8 @@ impl RustParser {
                             def.import_type = ImportType::System;
                         } else if ["self", "crate"].contains(&first.as_str()) {
                             def.import_type = ImportType::UserModule;
+                        } else {
+                            def.import_type = ImportType::Library;
                         }
                     }
                     def.alias = Some(code.slice(alias_node.byte_range()).to_string());

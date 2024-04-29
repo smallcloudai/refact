@@ -586,14 +586,32 @@ impl CppParser {
         symbols.extend(self.find_error_usages(&info.node, code, &info.ast_fields.file_path, &info.parent_guid));
 
         if let Some(function) = info.node.child_by_field_name("function") {
-            decl.ast_fields.name = code.slice(function.byte_range()).to_string();
             symbols.extend(self.find_error_usages(&function, code, &info.ast_fields.file_path,
                                                   &info.parent_guid));
-            candidates.push_back(CandidateInfo {
-                ast_fields: decl.ast_fields.clone(),
-                node: function,
-                parent_guid: info.parent_guid.clone(),
-            });
+            match function.kind() {
+                "identifier" => {
+                    decl.ast_fields.name = code.slice(function.byte_range()).to_string();
+                }
+                "field_expression" => {
+                    if let Some(field) =  function.child_by_field_name("field") {
+                        decl.ast_fields.name = code.slice(field.byte_range()).to_string();
+                    }
+                    if let Some(argument) = function.child_by_field_name("argument") {
+                        candidates.push_back(CandidateInfo {
+                            ast_fields: decl.ast_fields.clone(),
+                            node: argument,
+                            parent_guid: info.parent_guid.clone(),
+                        });
+                    }
+                }
+                &_ => {
+                    candidates.push_back(CandidateInfo {
+                        ast_fields: decl.ast_fields.clone(),
+                        node: function,
+                        parent_guid: info.parent_guid.clone(),
+                    });
+                }
+            }
         }
         if let Some(arguments) = info.node.child_by_field_name("arguments") {
             symbols.extend(self.find_error_usages(&arguments, code, &info.ast_fields.file_path,
