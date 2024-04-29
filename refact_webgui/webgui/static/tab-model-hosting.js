@@ -199,37 +199,44 @@ function render_models_assigned(models) {
         finetune_info.classList.add('model-finetune-info');
         finetune_info.dataset.model = index;
 
+        if(models_info[index].hasOwnProperty('is_deprecated') && models_info[index].is_deprecated) {
+            const deprecated_notice = document.createElement('span');
+            deprecated_notice.classList.add('deprecated-badge','badge','rounded-pill','text-dark');
+            deprecated_notice.setAttribute('data-bs-toggle','tooltip');
+            deprecated_notice.setAttribute('data-bs-placement','top');
+            deprecated_notice.setAttribute('title','Deprecated: this model will be removed in future releases.');
+            deprecated_notice.textContent = 'Deprecated';
+            model_name.innerHTML = index;
+            model_name.appendChild(deprecated_notice);
+            new bootstrap.Tooltip(deprecated_notice);
+        }
+
         let btn_group = document.createElement("div");
         btn_group.classList.add('btn-group');
         btn_group.role = 'group';
-
-        const context_size = [2048, 4096];
         const model_n_ctx = models_data.model_assign[index].n_ctx
-        if (models_info[index].has_context_switch) {
+        if (models_info[index].available_n_ctx && models_info[index].available_n_ctx.length > 0) {
+            const context_size = models_info[index].available_n_ctx;
+            const context_input = document.createElement("select");
+            context_input.classList.add('form-select','form-select-sm');
             context_size.forEach(element => {
-                const context_input = document.createElement("input");
-                context_input.setAttribute('type','radio');
-                context_input.classList.add('btn-check');
-                context_input.setAttribute('name','context-radio' + models_index);
-                context_input.setAttribute('value',element);
-                context_input.id = `context-${models_index}-${element}`;
-                if (element === model_n_ctx) {
-                    context_input.checked = true;
+                const context_option = document.createElement("option");
+                context_option.setAttribute('value',element);
+                context_option.textContent = element;
+                if(element === model_n_ctx) {
+                    context_option.setAttribute('selected','selected');
                 }
-                const context_label = document.createElement("label");
-                context_label.classList.add('btn','btn-outline-primary','btn-sm');
-                context_label.innerHTML = element;
-                context_label.setAttribute('for', `context-${models_index}-${element}`);
-                context_input.setAttribute('data-model',element);
-                context_input.addEventListener('change', function() {
-                    models_data.model_assign[index].n_ctx = Number(this.value);
-                    save_model_assigned();
-                });
-                btn_group.appendChild(context_input);
-                btn_group.appendChild(context_label);
+                context_input.appendChild(context_option);
             });
-            context.appendChild(btn_group);
-       }
+            context_input.addEventListener('change', function() {
+                models_data.model_assign[index].n_ctx = Number(this.value);
+                save_model_assigned();
+            });
+            context.appendChild(context_input);
+        }
+        if (models_info[index].available_n_ctx && models_info[index].available_n_ctx.length == 0) {
+            context.innerHTML = `<span class="default-context">${models_info[index].default_n_ctx}</span>`;
+        }
 
         let finetune_runs = [];
         if (finetune_configs_and_runs) {
@@ -442,14 +449,13 @@ function render_models(models) {
         }
     }
     for (const [key, value] of Object.entries(models_tree)) {
-        console.log(value);
         const row = document.createElement('tr');
         row.setAttribute('data-model',key);
         const model_name = document.createElement("td");
         const model_span = document.createElement('span');
         const has_completion = document.createElement("td");
         const has_finetune = document.createElement("td");
-        const has_toolbox = document.createElement("td");
+        // const has_toolbox = document.createElement("td");
         const has_chat = document.createElement("td");
         model_span.textContent = key;
         model_span.classList.add('model-span');
@@ -457,7 +463,7 @@ function render_models(models) {
         row.appendChild(model_name);
         row.appendChild(has_completion);
         row.appendChild(has_finetune);
-        row.appendChild(has_toolbox);
+        // row.appendChild(has_toolbox);
         row.appendChild(has_chat);
         models_table.appendChild(row);
         value.forEach(element => {
@@ -468,31 +474,43 @@ function render_models(models) {
             const model_name = document.createElement("td");
             const has_completion = document.createElement("td");
             const has_finetune = document.createElement("td");
-            const has_toolbox = document.createElement("td");
+            // const has_toolbox = document.createElement("td");
             const has_chat = document.createElement("td");
             model_name.innerHTML = element.name;
+            if(element.hasOwnProperty('is_deprecated') && element.is_deprecated) {
+                const deprecated_notice = document.createElement('span');
+                deprecated_notice.classList.add('deprecated-badge','badge','rounded-pill','text-dark');
+                deprecated_notice.setAttribute('data-bs-toggle','tooltip');
+                deprecated_notice.setAttribute('data-bs-placement','top');
+                deprecated_notice.setAttribute('title','Deprecated: this model will be removed in future releases.');
+                deprecated_notice.textContent = 'Deprecated';
+                model_name.innerHTML = element.name;
+                model_name.appendChild(deprecated_notice);
+                new bootstrap.Tooltip(deprecated_notice);
+            }
             if(element.hasOwnProperty('has_completion')) {
                 has_completion.innerHTML = element.has_completion ? '<i class="bi bi-check"></i>' : '';
             }
             if(element.hasOwnProperty('has_finetune')) {
                 has_finetune.innerHTML = element.has_finetune ? '<i class="bi bi-check"></i>' : '';
             }
-            if(value.hasOwnProperty('has_toolbox')) {
-                has_toolbox.innerHTML = element.has_toolbox ? '<i class="bi bi-check"></i>' : '';
-            }
+            // if(value.hasOwnProperty('has_toolbox')) {
+            //     has_toolbox.innerHTML = element.has_toolbox ? '<i class="bi bi-check"></i>' : '';
+            // }
             if(element.hasOwnProperty('has_chat')) {
                 has_chat.innerHTML = element.has_chat ? '<i class="bi bi-check"></i>' : '';
             }
             row.appendChild(model_name);
             row.appendChild(has_completion);
             row.appendChild(has_finetune);
-            row.appendChild(has_toolbox);
+            // row.appendChild(has_toolbox);
             row.appendChild(has_chat);
             models_table.appendChild(row);
             row.addEventListener('click', function(e) {
                 const model_name = this.dataset.model;
                 models_data.model_assign[model_name] = {
-                    gpus_shard: 1
+                    gpus_shard: 1,
+                    n_ctx: element.default_n_ctx,
                 };
                 save_model_assigned();
                 const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));

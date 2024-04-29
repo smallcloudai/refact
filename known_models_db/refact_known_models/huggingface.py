@@ -8,6 +8,7 @@ huggingface_mini_db = {
         "required_memory_mb": 18000,
         "T": 4096,
         "filter_caps": ["completion"],
+        "deprecated": True,
     },
     "starcoder/15b/plus": {
         "backend": "autogptq",
@@ -18,6 +19,7 @@ huggingface_mini_db = {
         "required_memory_mb": 18000,
         "T": 4096,
         "filter_caps": ["completion"],
+        "deprecated": True,
     },
     "starchat/15b/beta": {
         "backend": "autogptq",
@@ -28,6 +30,7 @@ huggingface_mini_db = {
         "required_memory_mb": 18000,
         "T": 4096,
         "filter_caps": ["chat", "starchat"],
+        "deprecated": True,
     },
     "starcoder/1b/base": {
         "backend": "transformers",
