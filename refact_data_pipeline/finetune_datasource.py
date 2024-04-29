@@ -244,16 +244,32 @@ class RAGFIM(PipelineNode):
             "fim_out": 0,
         }
         for sample in self.inner_filter:
-            tokens = self.enc.encode(sample["prompt"]) + self.enc.encode(sample["middle"])
-            mask = [0 if t in self.special_tokens else 1 for t in tokens]
+            prompt_tokens = self.enc.encode(sample["prompt"])
+            context_tokens = []
+            fim_tokens = []
+            is_context_part = True
+            for t in prompt_tokens:
+                is_context_part &= (t not in self.special_tokens)
+                if is_context_part:
+                    context_tokens.append(t)
+                else:
+                    fim_tokens.append(t)
 
-            if len(tokens) + 1 > self.n_ctx:
+            assert prompt_tokens == context_tokens + fim_tokens
+
+            context_mask = [0] * len(context_tokens)
+            fim_tokens = fim_tokens + self.enc.encode(sample["middle"])
+            fim_mask = [0 if t in self.special_tokens else 1 for t in fim_tokens]
+            tokens = context_tokens + fim_tokens + [self.enc.EOT]
+            mask = context_mask + fim_mask + [1]
+
+            if len(tokens) > self.n_ctx:
                 continue
 
             stats["fim_out"] += 1
             yield {
-                "tokens": tokens + [self.enc.EOT],
-                "mask": mask + [1],
+                "tokens": tokens,
+                "mask": mask,
                 "stats": {**sample["stats"], **stats},
             }
 
