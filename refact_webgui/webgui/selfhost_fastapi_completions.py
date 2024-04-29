@@ -122,6 +122,8 @@ def postprocess_chat_messages_openai(messages: List[ChatMessage]) -> List[Dict[s
             raise NotImplementedError(f'kind {m.kind} is not implemented')
 
     # question for image must be in the same message as image_url
+    # TODO: what if there's multiple images?
+    # TODO: should we delete images after usage?
     for i in range(len(res) - 1):
         this_content = res[i].get('content')
         next_content = res[i + 1].get('content')
