@@ -1,3 +1,4 @@
+import base64
 import time
 import json
 import copy
@@ -25,7 +26,7 @@ from refact_webgui.webgui.selfhost_queue import InferenceQueue
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_login import RefactSession
 
-from pydantic import BaseModel, Required
+from pydantic import BaseModel, Required, validator
 from typing import List, Dict, Union, Optional, Tuple, Any
 
 __all__ = ["BaseCompletionsRouter", "CompletionsRouter"]
@@ -82,32 +83,56 @@ class NlpCompletion(NlpSamplingParams):
 
 class ChatMessage(BaseModel):
     role: str
-    content: str
     kind: str = Query(default="text", regex="^(text|image)$")
+    # must be validated after role and kind
+    content: str
 
-    def dict(self, postprocess_style: Optional[str], *args, **kwargs):
-        if postprocess_style == "openai":
-            if self.kind == 'text':
-                return {
-                    "role": self.role,
-                    "content": [
-                        {"type": "text", "text": self.content}
-                    ]
-                }
-            if self.kind == 'image':
-                return {
-                    "role": self.role,
-                    # TODO: if self.kind is an image, verify it's a jpeg in base64
-                    # TODO: you can actually pass few dicts inside content: first is a question, another is an image
-                    # TODO: question must be inside of content
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self.content}"}}
-                    ]
-                }
-            else:
-                raise NotImplementedError(f'kind {self.kind} is not implemented')
+    @validator('content')
+    def validate_content(cls, content: str, values: Dict):
+        if values.get('kind') == 'image':
+            try:
+                base64.b64decode(content, validate=True)
+            except Exception:
+                raise HTTPException(status_code=422, detail="Image invalid encoding; must be base64")
+        return content
+
+    def dict(self, *args, **kwargs):
+        return {"role": self.role, "content": self.content}
+
+
+def postprocess_chat_messages_openai(messages: List[ChatMessage]) -> List[Dict[str, Union[str, List[Dict[str, str]]]]]:
+    # supported by gpt-4-turbo
+    res = []
+    for m in messages:
+        if m.kind == 'text':
+            res.append({
+                "role": m.role,
+                "content": [
+                    {"type": "text", "text": m.content}
+                ],
+            })
+        elif m.kind == 'image':
+            res.append({
+                "role": m.role,
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{m.content}"}}
+                ]
+            })
         else:
-            return {"role": self.role, "content": self.content}
+            raise NotImplementedError(f'kind {m.kind} is not implemented')
+
+    # question for image must be in the same message as image_url
+    for i in range(len(res) - 1):
+        this_content = res[i].get('content')
+        next_content = res[i + 1].get('content')
+        if this_content and next_content and this_content[0]['type'] == 'image_url' and next_content[0]['type'] == 'text':
+            res[i]['content'] = [
+                *next_content,
+                *this_content,
+            ]
+            res[i + 1]['content'] = []
+
+    return [r for r in res if r.get('content')]
 
 
 class ChatContext(NlpSamplingParams):
@@ -619,13 +644,15 @@ class BaseCompletionsRouter(APIRouter):
 
         async def openai_steamer():
             try:
-                messages = [m.dict(postprocess_style="openai") for m in post.messages]
-                # TODO: does not work :(
-                response = await AsyncOpenAI().chat.completions.create(
-                    model=model_name, messages=messages,
-                    stream=True, temperature=post.temperature, top_p=post.top_p,
+                client = AsyncOpenAI()
+                response = await client.chat.completions.create(
+                    model=model_name, messages=postprocess_chat_messages_openai(post.messages),
+                    stream=True,
+                    temperature=post.temperature,
+                    top_p=post.top_p,
                     max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
-                    stop=post.stop)
+                    # stop=post.stop # stop does not work
+                )
                 finish_reason = None
                 async for model_response in response:
                     try:
