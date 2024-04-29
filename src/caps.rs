@@ -147,13 +147,13 @@ pub async fn load_caps(
     }
     let mut r1 = r1_mb.ok_or(format!("failed to parse caps: {}", r1_mb_error_text))?;
 
-    let mut r0: ModelsOnly = serde_json::from_str(&KNOWN_MODELS).map_err(|e| {
+    let r0: ModelsOnly = serde_json::from_str(&KNOWN_MODELS).map_err(|e| {
         let up_to_line = KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
         error!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e);
         format!("failed to parse KNOWN_MODELS: {}", e)
     })?;
-    apply_models_dict_patch(&mut r0, &r1.models_dict_patch);
     _inherit_r1_from_r0(&mut r1, &r0);
+    apply_models_dict_patch(&mut r1);
     r1.endpoint_template = relative_to_full_url(&caps_url, &r1.endpoint_template)?;
     r1.endpoint_chat_passthrough = relative_to_full_url(&caps_url, &r1.endpoint_chat_passthrough)?;
     r1.telemetry_basic_dest = relative_to_full_url(&caps_url, &r1.telemetry_basic_dest)?;
@@ -190,7 +190,7 @@ fn relative_to_full_url(
     }
 }
 
-fn apply_models_dict_patch(known_models: &mut ModelsOnly, patch: &HashMap<String, ModelRecord>) {
+fn apply_models_dict_patch(caps: &mut CodeAssistantCaps) {
     fn apply_model_record_patch(rec: &mut ModelRecord, rec_patched: &ModelRecord) {
         // for now applying just n_ctx
         if rec_patched.n_ctx != usize::default() {
@@ -198,11 +198,11 @@ fn apply_models_dict_patch(known_models: &mut ModelsOnly, patch: &HashMap<String
         }
     }
     
-    for (model, rec_patched) in patch.iter() {
-        if let Some(rec) = known_models.code_completion_models.get_mut(model) {
+    for (model, rec_patched) in caps.models_dict_patch.iter() {
+        if let Some(rec) = caps.code_completion_models.get_mut(model) {
             apply_model_record_patch(rec, rec_patched);
         }
-        if let Some(rec) = known_models.code_chat_models.get_mut(model) {
+        if let Some(rec) = caps.code_chat_models.get_mut(model) {
             apply_model_record_patch(rec, rec_patched);
         }
     }

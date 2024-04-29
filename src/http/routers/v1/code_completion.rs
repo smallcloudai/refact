@@ -31,7 +31,8 @@ async fn _lookup_code_completion_scratchpad(
         &code_completion_post.scratchpad,
         &recommended_model_record.default_scratchpad,
     )?;
-    let mut n_ctx = caps_locked.code_completion_n_ctx;
+    let mut n_ctx = caps_locked.code_completion_n_ctx; // Cloud still sends old format: code_completion_n_ctx
+    n_ctx = recommended_model_record.n_ctx.max(n_ctx);
     if n_ctx == 0 { n_ctx = 2048 }
     Ok((model_name, sname.clone(), patch.clone(), n_ctx))
 }
