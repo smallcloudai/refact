@@ -7,3 +7,4 @@ pub mod structs;
 pub mod file_splitter;
 pub mod comments_wrapper;
 mod usages_declarations_merger;
+mod imports_resolver;

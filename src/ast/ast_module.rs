@@ -12,9 +12,9 @@ use uuid::Uuid;
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstIndexService, AstEventType};
+use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, read_symbol};
-// use crate::files_in_jsonl::docs_in_jsonl;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
@@ -228,18 +228,29 @@ impl AstModule {
         top_n_near_cursor: usize,
         top_n_usage_for_each_decl: usize,
     ) -> Result<AstCursorSearchResult, String> {
+        let t_parse_t0 = std::time::Instant::now();
+        let file_symbols = self.ast_index
+            .read().await
+            .parse_single_file(doc, code).await;
+        let file_symbols_read = file_symbols
+            .iter()
+            .map(|s| s.read().symbol_info_struct())
+            .collect::<Vec<_>>();
+        let language = get_language_id_by_filename(&doc.path);
+        let t_parse_ms = t_parse_t0.elapsed().as_millis() as i32;
+
         let t0 = std::time::Instant::now();
         info!("to_buckets {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
         let (cursor_usages, declarations, usages, bucket_high_overlap, guid_to_usefulness) = self.ast_index
             .read().await
             .symbols_near_cursor_to_buckets(
-            doc,
-            code,
-            cursor,
-            top_n_near_cursor,
-            top_n_usage_for_each_decl,
-            3
-        ).await;
+                &file_symbols,
+                language,
+                cursor,
+                top_n_near_cursor,
+                top_n_usage_for_each_decl,
+                3,
+            ).await;
         let symbol_to_search_res = |x: &AstSymbolInstanceArc| {
             let symbol_declaration = read_symbol(x).symbol_info_struct();
             let content = symbol_declaration.get_content_blocked().unwrap_or_default();
@@ -255,7 +266,7 @@ impl AstModule {
         };
         let bucket_imports = self.ast_index
             .read().await
-            .decl_symbols_from_imports(&cursor_usages, 1).await;
+            .decl_symbols_from_imports(&file_symbols, 0).await;
 
         let result = AstCursorSearchResult {
             query_text: "".to_string(),
@@ -290,11 +301,14 @@ impl AstModule {
                 })
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
         };
-        info!("to_buckets {:.3}s => bucket_declarations {} bucket_usage_of_same_stuff {} bucket_high_overlap {}",
+        info!("to_buckets {:.3}s, t_parse={:.3}ms => bucket_declarations \
+            {} bucket_usage_of_same_stuff {} bucket_high_overlap {} bucket_imports {}",
             t0.elapsed().as_secs_f32(),
+            t_parse_ms,
             result.bucket_declarations.len(),
             result.bucket_usage_of_same_stuff.len(),
-            result.bucket_high_overlap.len()
+            result.bucket_high_overlap.len(),
+            result.bucket_imports.len()
         );
         Ok(result)
     }
