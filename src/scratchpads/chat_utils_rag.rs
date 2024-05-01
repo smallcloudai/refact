@@ -426,7 +426,7 @@ pub async fn postprocess_rag_stage_3_6(
             if omsg.line1 == 0 || omsg.line2 == 0 || omsg.line1 > omsg.line2 || omsg.line1 > linevec.len() || omsg.line2 > linevec.len() {
                 warn!("range in search results is outside of file lines that actually exist {}:{}-{}", omsg.file_name, omsg.line1, omsg.line2);
             }
-            colorize_if_more_useful(linevec, omsg.line1-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
+            colorize_if_more_useful(linevec, omsg.line1.max(1)-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
         }
         colorize_comments_up(linevec, settings);
     }
