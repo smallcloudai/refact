@@ -9,7 +9,7 @@ _fim_train_ds_pipeline = {
 _fim_test_ds_pipeline = {
     "ds_opts": "n_ctx={n_ctx},debug=0,seed=42,shuffle_depth=0,quit_on_epoch=1,"
                "fim_probability=0.9,fim_drop_residual=1,random_trim_context_prob=0.01,"
-               "pack_single=1,pack_complete=0,pack_buffer_size=50",
+               "pack_single=1,pack_complete=0,pack_buffer_size=50,samples_limit=16",
     "ds_name": "RefactRAGFIMDataset"
 }
 _bigcode_tokenizer_mapping = {
