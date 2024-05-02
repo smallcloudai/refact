@@ -28,6 +28,19 @@ type useCheckboxStateProps = {
   ast: boolean;
 };
 
+function activeFileToContextFile(
+  fileInfo: ChatState["active_file"],
+): ChatContextFile {
+  const content = fileInfo.content ?? "";
+  return {
+    file_name: fileInfo.name,
+    file_content: content,
+    line1: fileInfo.line1 ?? 1,
+    line2: fileInfo.line2 ?? (content.split("\n").length || 1),
+    usefulness: fileInfo.usefulness,
+  };
+}
+
 const useControlsState = ({
   activeFile,
   snippet,
@@ -346,6 +359,18 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [setInteracted],
   );
 
+  const previewFiles = useMemo(() => {
+    const file = activeFileToContextFile(attachFile);
+    if (
+      file.file_name &&
+      checkboxes.file_upload.checked &&
+      !filesInPreview.includes(file)
+    ) {
+      return filesInPreview.concat(file);
+    }
+    return filesInPreview;
+  }, [attachFile, checkboxes.file_upload.checked, filesInPreview]);
+
   if (error) {
     return (
       <ErrorCallout mt="2" onClick={clearError} timeout={null}>
@@ -395,7 +420,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         onSubmit={() => handleSubmit()}
       >
         <FilesPreview
-          files={filesInPreview}
+          files={previewFiles}
           onRemovePreviewFile={removePreviewFileByName}
         />
 
