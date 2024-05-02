@@ -38,6 +38,7 @@
 
 .file_name {
   display: flex;
+  line-height: 0;
 }
 
 .file_name_ellipsis_rtl {
@@ -62,6 +63,7 @@
   height: unset;
   font-size: unset;
   vertical-align: unset;
+  line-height: var(--line-height-1);
 }
 
 .checkbox_container {

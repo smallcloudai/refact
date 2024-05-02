@@ -29,7 +29,7 @@ export const FilesPreview: React.FC<{
                 variant="ghost"
                 className={styles.removeFileButton}
               >
-                📎
+                📎{" "}
               </Button>
               <TruncateLeft>
                 {file.file_name}

@@ -83,7 +83,8 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
               disabled={checkbox.disabled}
               onCheckedChange={(value) => onCheckedChange(key, value)}
             />{" "}
-            {checkbox.label} <TruncateLeft>{checkbox.fileName}</TruncateLeft>
+            {checkbox.label}
+            <TruncateLeft>{checkbox.fileName}</TruncateLeft>
           </Text>
         );
       })}
