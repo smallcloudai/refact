@@ -55,7 +55,8 @@ const useControlsState = ({
   }, [snippet.language, snippet.code]);
 
   const codeLineCount = useMemo(() => {
-    return snippet.code.split("\n").length - 1;
+    if (snippet.code.length === 0) return 0;
+    return snippet.code.split("\n").length;
   }, [snippet.code]);
 
   const defaultState = useMemo(() => {
