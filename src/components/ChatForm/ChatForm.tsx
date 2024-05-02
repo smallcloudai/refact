@@ -150,7 +150,9 @@ const useControlsState = ({
           label: `Selected ${codeLineCount} lines`,
           value: markdown,
           disabled: selectedLineDisabled,
-          checked: interacted ? prev.selected_lines.checked : !!snippet.code,
+          checked: interacted
+            ? prev.selected_lines.checked && !!snippet.code
+            : !!snippet.code,
         },
         file_upload: {
           ...prev.file_upload,
