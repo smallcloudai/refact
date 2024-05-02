@@ -216,7 +216,13 @@ async fn command_completion_options(
     context: &AtCommandsContext,
     top_n: usize,
 ) -> Vec<String> {
-    let at_commands_names = context.at_commands.iter().map(|(name, _cmd)| name.clone()).collect::<Vec<String>>();
+    let mut filtered_commands = vec![];
+    for (name, cmd) in context.at_commands.iter() {
+        if !cmd.lock().await.is_hidden_in_completion() {
+            filtered_commands.push((name.clone(), cmd.clone()));
+        }
+    }
+    let at_commands_names = filtered_commands.iter().map(|(name, _cmd)| name.clone()).collect::<Vec<String>>();
     at_commands_names
         .iter()
         .filter(|command| command.starts_with(q_cmd))
