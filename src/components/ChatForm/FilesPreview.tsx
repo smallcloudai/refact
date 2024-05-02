@@ -10,7 +10,7 @@ export const FilesPreview: React.FC<{
 }> = ({ files, onRemovePreviewFile }) => {
   if (files.length === 0) return null;
   return (
-    <Box p="2">
+    <Box p="2" pb="0">
       {files.map((file, i) => {
         const lineText =
           file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
@@ -29,7 +29,7 @@ export const FilesPreview: React.FC<{
                 variant="ghost"
                 className={styles.removeFileButton}
               >
-                📎{" "}
+                📎
               </Button>
               <TruncateLeft>
                 {file.file_name}

@@ -59,11 +59,12 @@
 .removeFileButton {
   background-color: transparent;
   padding: 0;
-  margin: 0;
   height: unset;
   font-size: unset;
   vertical-align: unset;
   line-height: var(--line-height-1);
+  margin: 0;
+  margin-right: var(--space-1);
 }
 
 .checkbox_container {
