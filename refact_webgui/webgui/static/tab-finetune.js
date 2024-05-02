@@ -126,7 +126,7 @@ const finetune_settings_inputs = [
     },
     { // column 0
         "name": "model_ctx_size",
-        "label": "N Ctx",
+        "label": "Context Size",
         "type": "select",
         "values": ['auto', 128, 256, 512, 1024, 2048, 4096],
         "info": "Min 0, Max 4096",
