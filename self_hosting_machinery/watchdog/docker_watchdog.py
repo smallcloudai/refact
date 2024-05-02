@@ -252,6 +252,12 @@ class TrackedJob:
                 pass
             try:
                 self.p.kill()
+                itself = psutil.Process(self.p.pid)
+                for child in itself.children(recursive=True):
+                    try:
+                        child.kill()
+                    except psutil.NoSuchProcess:
+                        pass
             except psutil.NoSuchProcess:
                 pass
 
