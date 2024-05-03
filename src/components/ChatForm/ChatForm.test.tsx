@@ -138,7 +138,7 @@ describe("ChatForm", () => {
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     expect(fakeOnSubmit).toHaveBeenCalledWith(
-      `foo\n@symbols-at ${activeFile.path}:${activeFile.cursor}\n`,
+      `foo\n@symbols-at ${activeFile.path}:${activeFile.cursor}\n@file ${activeFile.path}:${activeFile.line1}-${activeFile.line2}\n`,
     );
   });
 
