@@ -18,6 +18,8 @@ fn str_hash(s: &String) -> String {
     format!("{:x}", digest)
 }
 
+const DEBUG: bool = false;
+
 pub struct AstBasedFileSplitter {
     // soft_window: usize,
     // hard_window: usize,
@@ -111,11 +113,13 @@ impl AstBasedFileSplitter {
                     if content.starts_with("...\n") {
                         content = content[4..].to_string();
                     }
-                    info!("{:?} content updated {}:{}-{}:\n{}", symbol.name,
-                        path.display(),
-                        symbol.full_range.start_point.row,
-                        symbol.full_range.end_point.row,
-                        content);
+                    if DEBUG {
+                        info!("{:?} content updated {}:{}-{}:\n{}", symbol.name,
+                            path.display(),
+                            symbol.full_range.start_point.row,
+                            symbol.full_range.end_point.row,
+                            content);
+                    }
                     chunks.push(SplitResult {
                         file_path: path.clone(),
                         window_text: content.clone(),

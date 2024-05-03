@@ -20,7 +20,7 @@ use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 
 
 const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
-const DEBUG: bool = false;
+const DEBUG: i32 = 0;  // 0 nothing, 1 summary "N lines in K files => X tokens", 2 everything
 
 
 #[derive(Debug)]
@@ -205,7 +205,7 @@ impl PostprocessSettings {
 }
 
 fn colorize_if_more_useful(linevec: &mut Vec<Arc<FileLine>>, line1: usize, line2: usize, color: &String, useful: f32) {
-    if DEBUG {
+    if DEBUG >= 2 {
         info!("    colorize_if_more_useful {}..{} <= color {:?} useful {}", line1, line2, color, useful);
     }
     for i in line1 .. line2 {
@@ -246,7 +246,7 @@ pub async fn context_msgs_from_paths(
 }
 
 fn colorize_parentof(linevec: &mut Vec<Arc<FileLine>>, long_child_path: &String, bg: f32, maxuseful: f32) {
-    if DEBUG {
+    if DEBUG >= 2 {
         info!("    colorize_parentof long_child_path={} bg={} maxuseful={}", long_child_path, bg, maxuseful);
     }
     for i in 0 .. linevec.len() {
@@ -259,7 +259,7 @@ fn colorize_parentof(linevec: &mut Vec<Arc<FileLine>>, long_child_path: &String,
                 let mut u = bg + (maxuseful - bg)*(plen as f32)/(long as f32);
                 u -= (i as f32) * 0.001;
                 if (*lineref_mut).useful < u {
-                    if DEBUG {
+                    if DEBUG >= 2 {
                         info!("    colorize_parentof line{:04} {} <= {:>7.3}", i, color, u);
                     }
                     (*lineref_mut).useful = u;
@@ -291,7 +291,7 @@ fn colorize_comments_up(linevec: &mut Vec<Arc<FileLine>>, settings: &Postprocess
             let u = (*nextline).useful * settings.comments_propogate_up_coef;
             if (*thisline).color == "comment" && (*thisline).useful < u {
                 (*thisline).useful = u;
-                if DEBUG {
+                if DEBUG >= 2 {
                     info!("    comments_up_from_symbol line{:04} <= {:>7.3}", i, u);
                 }
             }
@@ -319,7 +319,7 @@ fn downgrade_lines_if_subsymbol(linevec: &mut Vec<Arc<FileLine>>, line1_base0: u
             }
         }
     }
-    if DEBUG {
+    if DEBUG >= 2 {
         info!("        {}..{} ({} affected) <= subsymbol {:?} downgrade {}", changes_cnt, line1_base0, line2_base0, subsymbol, downgrade_coef);
     }
 }
@@ -353,11 +353,11 @@ pub async fn postprocess_rag_stage_3_6(
             continue;
         }
         let fref = linevec[0].fref.clone();
-        if DEBUG {
+        if DEBUG >= 2 {
             info!("fref {:?} has {} bytes, {} symbols", fref.cpath, fref.markup.file_content.len(), fref.markup.symbols_sorted_by_path_len.len());
         }
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
-            if DEBUG {
+            if DEBUG >= 2 {
                 info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
             }
             if s.symbol_type == SymbolType::CommentDefinition {
@@ -410,7 +410,7 @@ pub async fn postprocess_rag_stage_3_6(
             }
         }
         if let Some(s) = maybe_symbol {
-            if DEBUG {
+            if DEBUG >= 1 {
                 info!("+ search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, omsg.usefulness);
             }
             colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness);
@@ -437,12 +437,12 @@ pub async fn postprocess_rag_stage_3_6(
             continue;
         }
         let fref = linevec[0].fref.clone();
-        if DEBUG {
+        if DEBUG >= 2 {
             info!("degrading body of symbols in {:?}", fref.cpath);
         }
         for s in fref.markup.symbols_sorted_by_path_len.iter() {
             if s.definition_range.end_byte != 0 {
-                if DEBUG {
+                if DEBUG >= 2 {
                     info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
                 }
                 // decl  void f() {
@@ -547,8 +547,10 @@ pub async fn postprocess_rag_stage_7_9(
             lines_take_cnt += 1;
         }
     }
-    info!("{} lines in {} files  =>  tokens {} < {} tokens limit  =>  {} lines in {} files", lines_by_useful.len(), lines_in_files.len(), tokens_count, tokens_limit, lines_take_cnt, files_mentioned_sequence.len());
-    if DEBUG {
+    if DEBUG >= 1 {
+        info!("{} lines in {} files  =>  tokens {} < {} tokens limit  =>  {} lines in {} files", lines_by_useful.len(), lines_in_files.len(), tokens_count, tokens_limit, lines_take_cnt, files_mentioned_sequence.len());
+    }
+    if DEBUG >= 2 {
         for linevec in lines_in_files.values() {
             for lineref in linevec.iter() {
                 info!("{} {}:{:04} {:>7.3} {}",
@@ -594,8 +596,10 @@ pub async fn postprocess_rag_stage_7_9(
         if last_line > prev_line + 1 {
             out.push_str("...\n");
         }
-        if DEBUG {
-            info!("file {:?}\n{}", cpath, out);
+        if DEBUG >= 2 {
+            info!("file {:?}:\n{}", cpath, out);
+        } else if DEBUG == 1 {
+            info!("file {:?}:{}-{}", cpath, first_line, last_line);
         }
         if !anything {
             continue;
