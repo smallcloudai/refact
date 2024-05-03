@@ -122,7 +122,11 @@ const useControlsState = ({
       setInteracted(true);
       setCheckboxes((prev) => {
         const checkbox: Checkbox = { ...prev[name], checked: !!value };
-        const nextValue = { ...prev, [name]: checkbox };
+        const maybeAddFile: Record<string, Checkbox> =
+          name === "lookup_symbols" && !!value
+            ? { file_upload: { ...prev.file_upload, checked: true } }
+            : { file_upload: prev.file_upload };
+        const nextValue = { ...prev, ...maybeAddFile, [name]: checkbox };
         return nextValue;
       });
     },
