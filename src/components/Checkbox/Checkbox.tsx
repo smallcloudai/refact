@@ -16,10 +16,11 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   disabled,
   onCheckedChange,
   children,
+  title,
   ...props
 }) => {
   return (
-    <Text as="label" size="2">
+    <Text as="label" size="2" title={title}>
       <Flex wrap="nowrap" gap="2">
         <RadixCheckbox
           size="1"

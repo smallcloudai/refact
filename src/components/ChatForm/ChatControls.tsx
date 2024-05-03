@@ -43,6 +43,7 @@ export type Checkbox = {
   disabled: boolean;
   fileName?: string;
   hide?: boolean;
+  info?: string;
 };
 
 export type ChatControlsProps = {
@@ -82,6 +83,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
             name={checkbox.name}
             checked={checkbox.checked}
             disabled={checkbox.disabled}
+            title={checkbox.info}
             onCheckedChange={(value) => onCheckedChange(key, value)}
           >
             {" "}

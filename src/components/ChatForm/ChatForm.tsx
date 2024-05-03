@@ -85,6 +85,7 @@ const useControlsState = ({
         label: "Search workspace",
         disabled: false,
         hide: !vecdb,
+        info: "Search workspace for definitions",
       },
       file_upload: {
         name: "file_upload",
@@ -92,7 +93,8 @@ const useControlsState = ({
         label: "Attach",
         value: filePathWithLines,
         disabled: !activeFile.name,
-        fileName: fileNameWithLines,
+        fileName: activeFile.name,
+        info: "Add the current file to the chats context",
       },
       lookup_symbols: {
         name: "lookup_symbols",
@@ -102,6 +104,7 @@ const useControlsState = ({
         disabled: !activeFile.name,
         hide: !ast,
         defaultChecked: !!snippet.code && !!activeFile.name,
+        info: "Looks up symbols in the file near the cursor.",
       },
       selected_lines: {
         name: "selected_lines",
@@ -109,6 +112,7 @@ const useControlsState = ({
         label: `Selected ${codeLineCount} lines`,
         value: markdown,
         disabled: !snippet.code,
+        info: "Append selected lines from the editor to the chat",
       },
     } as const;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,7 +183,7 @@ const useControlsState = ({
         file_upload: {
           ...prev.file_upload,
           value: filePathWithLines,
-          fileName: fileNameWithLines,
+          fileName: activeFile.name,
           disabled: fileUploadDisabled,
           checked: interacted
             ? prev.file_upload.checked
