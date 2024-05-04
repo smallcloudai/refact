@@ -20,20 +20,23 @@ async fn _lookup_code_completion_scratchpad(
     code_completion_post: &CodeCompletionPost,
 ) -> Result<(String, String, serde_json::Value, usize), String> {
     let caps_locked = caps.read().unwrap();
-    let (model_name, recommended_model_record) =
+    let (model_name, modelrec) =
         caps::which_model_to_use(
             &caps_locked.code_completion_models,
             &code_completion_post.model,
             &caps_locked.code_completion_default_model,
         )?;
     let (sname, patch) = caps::which_scratchpad_to_use(
-        &recommended_model_record.supports_scratchpads,
+        &modelrec.supports_scratchpads,
         &code_completion_post.scratchpad,
-        &recommended_model_record.default_scratchpad,
+        &modelrec.default_scratchpad,
     )?;
-    let mut n_ctx = caps_locked.code_completion_n_ctx; // Cloud still sends old format: code_completion_n_ctx
-    n_ctx = recommended_model_record.n_ctx.max(n_ctx);
-    if n_ctx == 0 { n_ctx = 2048 }
+    let caps_completion_n_ctx = caps_locked.code_completion_n_ctx;
+    let mut n_ctx = modelrec.n_ctx;
+    if caps_completion_n_ctx > 0 && n_ctx > caps_completion_n_ctx {
+        // the model might be capable of a bigger context, but server (i.e. admin) tells us to use smaller (for example because latency)
+        n_ctx = caps_completion_n_ctx;
+    }
     Ok((model_name, sname.clone(), patch.clone(), n_ctx))
 }
 
