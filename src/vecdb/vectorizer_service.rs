@@ -218,8 +218,9 @@ async fn vectorize_thread(
             info!("{}: {}", last_30_chars, err);
             continue;
         }
-        if doc.does_text_look_good() {
-            info!("embeddings {} doesn't look good: likely machine-generated", last_30_chars);
+
+        if let Err(err) = doc.does_text_look_good() {
+            info!("embeddings {} doesn't look good: {}", last_30_chars, err);
             continue;
         }
 

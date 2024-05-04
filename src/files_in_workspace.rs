@@ -73,19 +73,26 @@ impl Document {
         return Err(format!("no text loaded in {}", self.path.display()));
     }
 
-    pub fn does_text_look_good(&self) -> bool {
+    pub fn does_text_look_good(&self) -> Result<(), String> {
         // Some simple tests to find if the text is suitable to parse (not generated or compressed code)
         assert!(self.text.is_some());
         let r = self.text.as_ref().unwrap();
 
-        fn is_machine_generated(r: &Rope) -> bool {
-            let total_chars = r.chars().count();
-            let total_lines = r.lines().count();
-            let avg_line_length = total_chars / total_lines;
-            avg_line_length > 100
+        let total_chars = r.chars().count();
+        let total_lines = r.lines().count();
+        let avg_line_length = total_chars / total_lines;
+        if avg_line_length > 150 {
+            return Err("generated, avg line length > 150".to_string());
         }
 
-        is_machine_generated(r)
+        // example: hl.min.js
+        let total_spaces = r.chars().filter(|x| x.is_whitespace()).count();
+        let spaces_percentage = total_spaces as f32 / total_chars as f32;
+        if total_lines >= 5 && spaces_percentage <= 0.05 {
+            return Err(format!("generated or compressed, {:.1}% spaces < 5%", 100.0*spaces_percentage));
+        }
+
+        Ok(())
     }
 }
 
