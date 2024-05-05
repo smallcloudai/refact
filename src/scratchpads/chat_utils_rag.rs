@@ -645,7 +645,6 @@ pub async fn run_at_commands(
         let message = post.messages.get(user_msg_starts - 1).unwrap().clone();
         let role = message.role.clone();
         let content = message.content.clone();
-        info!("user_msg_starts {} {}", user_msg_starts - 1, role);
         if role == "user" {
             user_msg_starts -= 1;
             if content.contains("@") {
@@ -674,8 +673,12 @@ pub async fn run_at_commands(
         } else {
             context_limit -= user_posted_ntokens;
         }
-        info!("msg {} user_posted {:?} that's {} tokens", msg_idx, user_posted, user_posted_ntokens);
-        info!("that leaves {} tokens for context of this message", context_limit);
+        info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message",
+            msg_idx,
+            crate::nicer_logs::first_n_chars(&user_posted, 50),
+            user_posted_ntokens,
+            context_limit
+        );
 
         let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut user_posted, &context).await;
         let mut messages_for_postprocessing = vec![];

@@ -197,7 +197,7 @@ fn apply_models_dict_patch(caps: &mut CodeAssistantCaps) {
             rec.n_ctx = rec_patched.n_ctx;
         }
     }
-    
+
     for (model, rec_patched) in caps.models_dict_patch.iter() {
         if let Some(rec) = caps.code_completion_models.get_mut(model) {
             apply_model_record_patch(rec, rec_patched);
@@ -207,7 +207,7 @@ fn apply_models_dict_patch(caps: &mut CodeAssistantCaps) {
         }
     }
 }
- 
+
 fn _inherit_r1_from_r0(
     r1: &mut CodeAssistantCaps,
     r0: &ModelsOnly,
