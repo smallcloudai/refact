@@ -12,7 +12,8 @@ use tokenizers::Tokenizer;
 
 use crate::cached_tokenizers;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_commands::query::QueryLine;
+use crate::at_commands::query::{query_line_args, QueryLineArg};
+use crate::at_commands::execute::execute_at_commands_in_query;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::call_validation::ChatMessage;
@@ -39,6 +40,16 @@ struct CommandPreviewPost {
     model: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct Highlight {
+    kind: String,
+    pos1: i64,
+    pos2: i64,
+    ok: bool,
+    reason: String,
+}
+
+
 pub async fn handle_v1_command_completion(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
@@ -53,8 +64,8 @@ pub async fn handle_v1_command_completion(
 
     if let Ok((query_line_val, cursor_rel, cursor_line_start)) = get_line_with_cursor(&post.query, post.cursor) {
         let query_line_val = query_line_val.chars().take(cursor_rel as usize).collect::<String>();
-        let query_line = QueryLine::new(query_line_val, cursor_rel, cursor_line_start);
-        (completions, is_cmd_executable, pos1, pos2) = command_completion(&query_line, &context, post.cursor, post.top_n).await;
+        let args = query_line_args(&query_line_val, cursor_rel, cursor_line_start);
+        (completions, is_cmd_executable, pos1, pos2) = command_completion(args, &context, post.cursor, post.top_n).await;
     }
     let completions: Vec<_> = completions.into_iter().unique().collect();
 
@@ -102,20 +113,12 @@ pub async fn handle_v1_command_preview(
         }
     };
 
-    let mut messages_for_postprocessing = vec![];
     let top_n = 10;  // sync with top_n in chats
+    
     let at_context = AtCommandsContext::new(global_context.clone()).await;
-    let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut query, &at_context).await;
-    for cmd in valid_commands {
-        match cmd.command.lock().await.execute(&query, &cmd.args, top_n, &at_context).await {
-            Ok(msgs) => {
-                messages_for_postprocessing.extend(msgs);
-            },
-            Err(e) => {
-                tracing::warn!("can't execute command that indicated it can execute: {}", e);
-            }
-        }
-    }
+
+    let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut query, &at_context, false, top_n).await;
+    
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
     let processed = postprocess_at_results2(
         global_context.clone(),
@@ -132,10 +135,20 @@ pub async fn handle_v1_command_preview(
         };
         preview.push(message.clone());
     }
+    let mut highlights = vec![];
+    for h in vec_highlights {
+        highlights.push(Highlight {
+            kind: h.kind.clone(),
+            pos1: h.pos1 as i64,
+            pos2: h.pos2 as i64,
+            ok: h.ok,
+            reason: h.reason.unwrap_or_default(),
+        })
+    }
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(serde_json::to_string(
-            &json!({"messages": preview, "model": model_name})
+            &json!({"messages": preview, "model": model_name, "highlight": highlights})
         ).unwrap()))
         .unwrap())
 }
@@ -145,9 +158,6 @@ fn get_line_with_cursor(query: &String, cursor: i64) -> Result<(String, i64, i64
     for line in query.lines() {
         let line_length = line.len() as i64;
         if cursor_rel <= line_length {
-            if !line.starts_with("@") {
-                return Err(ScratchError::new(StatusCode::OK, "no command provided".to_string()));
-            }
             return Ok((line.to_string(), cursor_rel, cursor - cursor_rel));
         }
         cursor_rel -= line_length + 1; // +1 to account for the newline character
@@ -156,17 +166,23 @@ fn get_line_with_cursor(query: &String, cursor: i64) -> Result<(String, i64, i64
 }
 
 async fn command_completion(
-    query_line: &QueryLine,
+    args: Vec<QueryLineArg>,
     context: &AtCommandsContext,
     cursor_abs: i64,
     top_n: usize,
 ) -> (Vec<String>, bool, i64, i64) {    // returns ([possible, completions], good_as_it_is)
-    let q_cmd = match query_line.command() {
-        Some(x) => x,
-        None => { return (vec![], false, -1, -1)}
-    };
+    let mut args = args;
+    let at_command_names = context.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
 
-    let (_, cmd) = match context.at_commands.iter().find(|&(k, _v)| k == &q_cmd.value) {
+    let q_cmd_with_index = args.iter().enumerate().find_map(|(index, x)| {
+        x.value.starts_with("@").then(|| (x, index))
+    });
+    let (q_cmd, q_cmd_idx) = match q_cmd_with_index {
+        Some((x, idx)) => (x.clone(), idx),
+        None => return (vec![], false, -1, -1),
+    };
+    
+    let cmd = match at_command_names.iter().find(|x|x == &&q_cmd.value).and_then(|x|context.at_commands.get(x)) {
         Some(x) => x,
         None => {
             return if !q_cmd.focused {
@@ -176,10 +192,13 @@ async fn command_completion(
             }
         }
     };
+    args = args.iter().skip(q_cmd_idx + 1).map(|x|x.clone()).collect::<Vec<_>>();
+    let cmd_params_cnt = cmd.lock().await.params().len();
+    args.truncate(cmd_params_cnt);
 
-    let can_execute = cmd.lock().await.can_execute(&query_line.get_args().iter().map(|x|x.value.clone()).collect(), context).await;
+    let can_execute = args.len() == cmd.lock().await.params().len();
 
-    for (arg, param) in query_line.get_args().iter().zip(cmd.lock().await.params()) {
+    for (arg, param) in args.iter().zip(cmd.lock().await.params()) {
         let param_locked = param.lock().await;
         let is_valid = param_locked.is_value_valid(&arg.value, context).await;
         if !is_valid {
@@ -200,7 +219,7 @@ async fn command_completion(
 
     // if command is not focused, and the argument is empty we should make suggestions
     if !q_cmd.focused {
-        match cmd.lock().await.params().get(query_line.get_args().len()) {
+        match cmd.lock().await.params().get(args.len()) {
             Some(param) => {
                 return (param.lock().await.complete(&"".to_string(), context, top_n).await, false, cursor_abs, cursor_abs);
             },

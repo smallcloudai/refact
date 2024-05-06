@@ -54,11 +54,7 @@ impl AtCommand for AtAstReference {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String> {
-        let can_execute = self.can_execute(args, context).await;
-        if !can_execute {
-            return Err("incorrect arguments".to_string());
-        }
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
         info!("execute @references {:?}", args);
         let symbol_path = match args.get(0) {
             Some(x) => x,
@@ -78,7 +74,8 @@ impl AtCommand for AtAstReference {
                 }
             }
             None => Err("Ast module is not available".to_string())
-        }; x
+        }; 
+        x.map(|i|(i, format!("\"usages of {}\"", symbol_path)))
     }
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]

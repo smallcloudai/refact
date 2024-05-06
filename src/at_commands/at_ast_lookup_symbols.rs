@@ -77,22 +77,7 @@ impl AtCommand for AtAstLookupSymbols {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn can_execute(&self, args: &Vec<String>, context: &AtCommandsContext) -> bool {
-        let param = self.params.get(0).unwrap();
-        if let Some(arg) = args.get(0) {
-            let mut arg_clone = arg.clone();
-            colon_lines_range_from_arg(&mut arg_clone);
-            if param.lock().await.is_value_valid(&arg_clone, context).await {
-                return true;
-            }
-        }
-        false
-    }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String> {
-        let can_execute = self.can_execute(args, context).await;
-        if !can_execute {
-            return Err("incorrect arguments".to_string());
-        }
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
         info!("execute @lookup_symbols_at {:?}", args);
 
         let mut file_path = match args.get(0) {
@@ -126,7 +111,7 @@ impl AtCommand for AtAstLookupSymbols {
             }
             None => Err("Ast module is not available".to_string())
         };
-        x
+        x.map(|i|(i, "".to_string()))
     }
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]

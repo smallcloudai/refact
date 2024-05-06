@@ -39,21 +39,7 @@ impl AtCommand for AtAstFileSymbols {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn can_execute(&self, args: &Vec<String>, context: &AtCommandsContext) -> bool {
-        let param = self.params.get(0).unwrap();
-        if let Some(arg) = args.get(0) {
-            if param.lock().await.is_value_valid(arg, context).await {
-                return true;
-            }
-        }
-        false
-    }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String> {
-        let can_execute = self.can_execute(args, context).await;
-        if !can_execute {
-            return Err("incorrect arguments".to_string());
-        }
-
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
         let cpath = match args.get(0) {
             Some(x) => crate::files_correction::canonical_path(&x),
             None => return Err("no file path".to_string()),
@@ -69,7 +55,8 @@ impl AtCommand for AtAstFileSymbols {
                 }
             }
             None => Err("Ast module is not available".to_string())
-        }; x
+        }; 
+        x.map(|i|(i, "".to_string()))
     }
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]

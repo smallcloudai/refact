@@ -32,8 +32,8 @@ impl AtCommandsContext {
 pub trait AtCommand: Send + Sync {
     fn name(&self) -> &String;
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>;
-    async fn can_execute(&self, _args: &Vec<String>, _context: &AtCommandsContext) -> bool {true}
-    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String>;
+    // returns (messages_for_postprocessing, text_on_clip)
+    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String>;
     fn depends_on(&self) -> Vec<String> {vec![]}
 }
 

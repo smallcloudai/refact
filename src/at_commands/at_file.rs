@@ -172,16 +172,7 @@ impl AtCommand for AtFile {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-
-    async fn can_execute(&self, args: &Vec<String>, _context: &AtCommandsContext) -> bool {
-        args.len() == 1
-    }
-
-    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String> {
-        let can_execute = self.can_execute(args, context).await;
-        if !can_execute {
-            return Err("incorrect arguments".to_string());
-        }
+    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
         let correctable_file_path = args[0].clone();
         let candidates = parameter_repair_candidates(&correctable_file_path, context, top_n).await;
         if candidates.len() == 0 {
@@ -217,7 +208,7 @@ impl AtCommand for AtFile {
             gradient_type,
             usefulness: 100.0,
         };
-        Ok(vec![context_file])
+        Ok((vec![context_file], "".to_string()))
     }
 }
 

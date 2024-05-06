@@ -27,7 +27,6 @@ impl AtParam for AtParamSymbolPathQuery {
     async fn is_value_valid(&self, _: &String, _: &AtCommandsContext) -> bool {
         return true;
     }
-
     async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
         let ast = context.global_context.read().await.ast_module.clone();
         let names = match &ast {

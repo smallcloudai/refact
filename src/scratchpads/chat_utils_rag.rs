@@ -16,6 +16,7 @@ use crate::ast::treesitter::structs::SymbolType;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
+use crate::at_commands::execute::execute_at_commands_in_query;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 
 
@@ -680,18 +681,8 @@ pub async fn run_at_commands(
             context_limit
         );
 
-        let valid_commands = crate::at_commands::utils::find_valid_at_commands_in_query(&mut user_posted, &context).await;
-        let mut messages_for_postprocessing = vec![];
-        for cmd in valid_commands {
-            match cmd.command.lock().await.execute(&user_posted, &cmd.args, top_n, &context).await {
-                Ok(msgs) => {
-                    messages_for_postprocessing.extend(msgs);
-                },
-                Err(e) => {
-                    warn!("can't execute command that indicated it can execute: {}", e);
-                }
-            }
-        }
+        let (messages_for_postprocessing, _) = execute_at_commands_in_query(&mut user_posted, &context, true, top_n).await;
+        
         let t0 = std::time::Instant::now();
         let processed = postprocess_at_results2(
             global_context.clone(),

@@ -48,7 +48,7 @@ impl AtCommand for AtWorkspace {
     {
         &self.params
     }
-    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String> {
+    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
         match *context.global_context.read().await.vec_db.lock().await {
             Some(ref db) => {
                 let mut db_query = args.join(" ");
@@ -57,7 +57,7 @@ impl AtCommand for AtWorkspace {
                 }
                 let search_result = db.vecdb_search(db_query, top_n).await?;
                 let results = search_result.results.clone();
-                Ok(results2message(&results))
+                Ok((results2message(&results), args.join(" ")))
             }
             None => Err("vecdb is not available".to_string())
         }
