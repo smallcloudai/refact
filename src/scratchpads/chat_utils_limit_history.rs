@@ -12,7 +12,7 @@ pub fn limit_messages_history(
 ) -> Result<Vec<ChatMessage>, String>
 {
     let tokens_limit: i32 = context_size as i32 - max_new_tokens as i32;
-    tracing::info!("limit_messages_history tokens_limit={} <= context_size={} - max_new_tokens={}", tokens_limit, context_size, max_new_tokens);
+    tracing::info!("limit_messages_history tokens_limit={} because context_size={} and max_new_tokens={}", tokens_limit, context_size, max_new_tokens);
     let mut tokens_used: i32 = 0;
     let mut message_token_count: Vec<i32> = vec![0; messages.len()];
     let mut message_take: Vec<bool> = vec![false; messages.len()];
