@@ -372,7 +372,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   useEffect(() => {
     const input = addCheckboxValuesToInput(value);
     requestCommandsCompletion(input, input.length, "");
-  }, [addCheckboxValuesToInput, requestCommandsCompletion, value]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkboxes]);
 
   const previewFiles = useMemo(() => {
     const file = activeFileToContextFile(attachFile);
