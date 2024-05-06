@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, Flex } from "@radix-ui/themes";
+import { Text, Flex, HoverCard, Link } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../contexts/config-context";
 import { TruncateLeft } from "../Text";
@@ -7,6 +7,7 @@ import styles from "./ChatForm.module.css";
 import classNames from "classnames";
 import { PromptSelect, PromptSelectProps } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
+import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 
 type CapsSelectProps = {
   value: string;
@@ -35,6 +36,12 @@ const CapsSelect: React.FC<CapsSelectProps> = ({
   );
 };
 
+type CheckboxHelp = {
+  text: string;
+  link?: string;
+  linkText?: string;
+};
+
 export type Checkbox = {
   name: string;
   label: string;
@@ -43,7 +50,7 @@ export type Checkbox = {
   disabled: boolean;
   fileName?: string;
   hide?: boolean;
-  info?: string;
+  info?: CheckboxHelp;
 };
 
 export type ChatControlsProps = {
@@ -77,19 +84,43 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           return null;
         }
         return (
-          <Checkbox
-            key={key}
-            size="1"
-            name={checkbox.name}
-            checked={checkbox.checked}
-            disabled={checkbox.disabled}
-            title={checkbox.info}
-            onCheckedChange={(value) => onCheckedChange(key, value)}
-          >
-            {" "}
-            {checkbox.label}
-            <TruncateLeft>{checkbox.fileName}</TruncateLeft>
-          </Checkbox>
+          <Flex key={key} justify="between">
+            <Checkbox
+              size="1"
+              name={checkbox.name}
+              checked={checkbox.checked}
+              disabled={checkbox.disabled}
+              // title={checkbox.info}
+              onCheckedChange={(value) => onCheckedChange(key, value)}
+            >
+              {" "}
+              {checkbox.label}
+              <TruncateLeft>{checkbox.fileName}</TruncateLeft>
+            </Checkbox>
+            {checkbox.info && (
+              <HoverCard.Root>
+                <HoverCard.Trigger>
+                  <QuestionMarkCircledIcon />
+                </HoverCard.Trigger>
+                <HoverCard.Content maxWidth="240px" size="1">
+                  <Flex direction="column" gap="4">
+                    <Text as="div" size="1">
+                      {checkbox.info.text}
+                    </Text>
+
+                    {checkbox.info.link && checkbox.info.linkText && (
+                      <Text size="1">
+                        Read more on our{" "}
+                        <Link size="1" href={checkbox.info.link}>
+                          {checkbox.info.linkText}
+                        </Link>
+                      </Text>
+                    )}
+                  </Flex>
+                </HoverCard.Content>
+              </HoverCard.Root>
+            )}
+          </Flex>
         );
       })}
       <CapsSelect {...selectProps} />

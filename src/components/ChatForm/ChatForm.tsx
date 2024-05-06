@@ -86,7 +86,11 @@ const useControlsState = ({
         label: "Search workspace",
         disabled: false,
         hide: !vecdb,
-        info: "Search workspace for definitions",
+        info: {
+          text: "Equivalent to using @workspace. It uses the entered query to perform a search.",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "blog",
+        },
       },
       file_upload: {
         name: "file_upload",
@@ -95,7 +99,11 @@ const useControlsState = ({
         value: filePathWithLines,
         disabled: !activeFile.name,
         fileName: activeFile.name,
-        info: "Add the current file to the chats context",
+        info: {
+          text: " Similar to the @file command. It attaches the file at the current cursor position, useful for dealing with large files.",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "blog",
+        },
       },
       lookup_symbols: {
         name: "lookup_symbols",
@@ -105,7 +113,11 @@ const useControlsState = ({
         disabled: !activeFile.name,
         hide: !ast,
         defaultChecked: !!snippet.code && !!activeFile.name,
-        info: "Looks up symbols in the file near the cursor.",
+        info: {
+          text: "Corresponds to the @symbols-at command. It extracts symbols around the cursor position and searches them in the AST index.",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "blog",
+        },
       },
       selected_lines: {
         name: "selected_lines",
@@ -113,7 +125,9 @@ const useControlsState = ({
         label: `Selected ${codeLineCount} lines`,
         value: markdown,
         disabled: !snippet.code,
-        info: "Append selected lines from the editor to the chat",
+        info: {
+          text: "Adds the currently selected lines as a snippet for analysis or modification. This is similar to embedding code within backticks ``` in the chat",
+        },
       },
     } as const;
     // eslint-disable-next-line react-hooks/exhaustive-deps
