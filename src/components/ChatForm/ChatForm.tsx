@@ -64,6 +64,7 @@ const useControlsState = ({
 
   const filePathWithLines = useMemo(() => {
     const hasLines = activeFile.line1 !== null && activeFile.line2 !== null;
+
     if (!hasLines) return activeFile.path;
     return `${activeFile.path}:${activeFile.line1}-${activeFile.line2}`;
   }, [activeFile.path, activeFile.line1, activeFile.line2]);
@@ -368,9 +369,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [setInteracted],
   );
 
+  useEffect(() => {
+    const input = addCheckboxValuesToInput(value);
+    requestCommandsCompletion(input, input.length, "");
+  }, [addCheckboxValuesToInput, requestCommandsCompletion, value]);
+
   const previewFiles = useMemo(() => {
     const file = activeFileToContextFile(attachFile);
     if (
+      showControls &&
       file.file_name &&
       checkboxes.file_upload.checked &&
       !filesInPreview.includes(file)
@@ -378,7 +385,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       return filesInPreview.concat(file);
     }
     return filesInPreview;
-  }, [attachFile, checkboxes.file_upload.checked, filesInPreview]);
+  }, [
+    attachFile,
+    checkboxes.file_upload.checked,
+    filesInPreview,
+    showControls,
+  ]);
 
   if (error) {
     return (
