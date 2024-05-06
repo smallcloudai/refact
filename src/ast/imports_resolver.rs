@@ -2,10 +2,12 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use itertools::Itertools;
+use similar::DiffableStr;
 use tracing::info;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ImportDeclaration, read_symbol};
 use crate::ast::treesitter::language_id::LanguageId;
+
 
 pub fn combine_paths(file_path: &PathBuf, import_path: &PathBuf) -> PathBuf {
     fn find_unique_prefix(path_1: &PathBuf, path_2: &PathBuf) -> PathBuf {
@@ -124,66 +126,138 @@ pub fn top_n_prefixes(paths: &Vec<PathBuf>, n: usize) -> Vec<(PathBuf, usize)> {
         .collect()
 }
 
+
+pub struct SearchItem {
+    pub path: PathBuf,
+    pub nameless_path: Option<PathBuf>,
+    pub name: Option<String>,
+    pub do_fuzzy_search: bool,
+}
+
+pub struct SearchResult {
+    pub path: PathBuf,
+    pub name: Option<String>,
+
+}
+
 pub fn try_find_file_path(
-    possible_file_paths: &Vec<PathBuf>,
+    search_items: &Vec<SearchItem>,
     path_by_symbols: &HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
     paths_str: &Vec<String>,
-) -> Option<PathBuf> {
-    for path in possible_file_paths {
-        if path_by_symbols.contains_key(path) {
-            return Some(path.clone());
+) -> Option<SearchResult> {
+    for item in search_items {
+        if path_by_symbols.contains_key(&item.path) {
+            return Some(SearchResult {
+                path: item.path.clone(),
+                name: None,
+            });
+        } else if let Some(nameless_path) = &item.nameless_path {
+            if path_by_symbols.contains_key(nameless_path){
+                return Some(SearchResult {
+                    path: nameless_path.clone(),
+                    name: item.name.clone(),
+                });
+            }
         }
     }
 
     // no exact match, try to found by path inclusion (could be slow, O(n))
-    let possible_file_paths_str = possible_file_paths
+    // in theory, this should be happened only if we not sure about the file's extension
+    let items_to_fuzzy_search = search_items
         .iter()
-        .filter_map(|path| path.to_str())
-        .map(|s| s.to_string())
+        .filter(|item| item.do_fuzzy_search)
+        .map(|x| (
+            x.path.to_str().unwrap_or_default().to_string(),
+            x.nameless_path.clone().unwrap_or_default().to_str().unwrap_or_default().to_string(),
+            x))
         .collect::<Vec<_>>();
     for file_path in paths_str.iter() {
-        for import_path in possible_file_paths_str.iter() {
-            if file_path.contains(import_path) {
-                return Some(PathBuf::from(file_path.clone()));
+        for (path, nameless_path, item) in items_to_fuzzy_search.iter() {
+            if file_path.contains(path) {
+                return Some(SearchResult {
+                    path: item.path.clone(),
+                    name: None,
+                });
+            } else if file_path.contains(nameless_path) {
+                if let Some(nameless_path) = &item.nameless_path {
+                    return Some(SearchResult {
+                        path: nameless_path.clone(),
+                        name: item.name.clone(),
+                    });
+                }
             }
         }
     }
     None
 }
 
+
 pub fn possible_filepath_candidates(
-    path_by_symbols: &HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
     prefixes: &Vec<(PathBuf, usize)>,
     min_prefix: &Option<PathBuf>,
     file_path: &PathBuf,
     path_components: &Vec<String>,
     language: &LanguageId,
-) -> Vec<PathBuf> {
+) -> Vec<SearchItem> {
     match language {
         LanguageId::Cpp => {
+            let mut possible_file_paths = vec![];
             let import_path = path_components.iter().collect::<PathBuf>();
-            let mut path = combine_paths(&file_path, &import_path);
-            if !path_by_symbols.contains_key(&path) {
-                path = relative_combine_paths(&file_path, &import_path)
-            };
-            if !path_by_symbols.contains_key(&path) {
-                path = import_path.canonicalize().unwrap_or(import_path.clone());
-            };
-            let mut possible_file_paths = vec![path];
+            let path = combine_paths(&file_path, &import_path);
+            possible_file_paths.push(SearchItem {
+                path,
+                nameless_path: None,
+                name: None,
+                do_fuzzy_search: false
+            });
+            possible_file_paths.push(SearchItem {
+                path: relative_combine_paths(&file_path, &import_path),
+                nameless_path: None,
+                name: None,
+                do_fuzzy_search: false
+            });
+            possible_file_paths.push(SearchItem {
+                path: import_path.canonicalize().unwrap_or(import_path.clone()),
+                nameless_path: None,
+                name: None,
+                do_fuzzy_search: false
+            });
             for (prefix_p, _) in prefixes.iter() {
-                possible_file_paths.push(prefix_p.join(import_path.clone()));
+                possible_file_paths.push(SearchItem {
+                    path: prefix_p.join(import_path.clone()),
+                    nameless_path: None,
+                    name: None,
+                    do_fuzzy_search: true
+                });
             }
             possible_file_paths
         }
         LanguageId::JavaScript => {
+            let canonicalize_path = |path: &PathBuf| -> PathBuf {
+                let ext_path = path.with_extension("js");
+                ext_path.canonicalize().unwrap_or(ext_path)
+            };
+
             let import_path = path_components.iter().collect::<PathBuf>();
             let mut possible_file_paths = vec![];
             for (prefix_p, _) in prefixes.iter() {
-                possible_file_paths.push(prefix_p.join(import_path.clone()));
-                if let Some(parent_p) = import_path.parent() {
-                    possible_file_paths.push(prefix_p.join(parent_p));
-                }
+                let (name, nameless_path) = if let Some(parent_p) = import_path.parent() {
+                    (import_path.file_name()
+                         .map(|x| x.to_str())
+                         .map(|x| x.map(|xx| xx.to_string()))
+                         .flatten(),
+                     Some(prefix_p.join(parent_p)))
+                } else {
+                    (None, None)
+                };
+                possible_file_paths.push(SearchItem {
+                    path: canonicalize_path(&prefix_p.join(import_path.clone())),
+                    nameless_path: nameless_path.map(|x| canonicalize_path(&x)),
+                    name,
+                    do_fuzzy_search: false
+                });
             }
+
             let mut start_path = file_path.clone();
             loop {
                 if let Some(parent_p) = start_path.parent() {
@@ -194,28 +268,50 @@ pub fn possible_filepath_candidates(
                 } else {
                     break;
                 }
-                possible_file_paths.push(start_path.join(import_path.clone()));
-                if let Some(parent_p) = import_path.parent() {
-                    possible_file_paths.push(start_path.join(parent_p));
-                }
+                let (name, nameless_path) = if let Some(parent_p) = import_path.parent() {
+                    (import_path.file_name()
+                         .map(|x| x.to_str())
+                         .map(|x| x.map(|xx| xx.to_string()))
+                         .flatten(),
+                     Some(start_path.join(parent_p)))
+                } else {
+                    (None, None)
+                };
+                possible_file_paths.push(SearchItem {
+                    path: canonicalize_path(&start_path.join(import_path.clone())),
+                    nameless_path: nameless_path.map(|x| canonicalize_path(&x)),
+                    name,
+                    do_fuzzy_search: false
+                });
             }
-            possible_file_paths.iter().unique().map(|x| {
-                let mut x = x.clone();
-                x.set_extension("js");
-                x.canonicalize().unwrap_or(x)
-            }).collect::<Vec<_>>()
+            possible_file_paths
         }
         LanguageId::Python => {
+            let canonicalize_path = |path: &PathBuf| -> PathBuf {
+                let ext_path = path.with_extension("py");
+                ext_path.canonicalize().unwrap_or(ext_path)
+            };
+
             let import_path = path_components.iter().collect::<PathBuf>();
             let mut possible_file_paths = vec![];
             for (prefix_p, _) in prefixes.iter() {
-                possible_file_paths.push(prefix_p.join(import_path.clone()));
-                if path_components.len() > 1 {
-                    if let Some(parent_p) = import_path.parent() {
-                        possible_file_paths.push(prefix_p.join(parent_p));
-                    }
-                }
+                let (name, nameless_path) = if let Some(parent_p) = import_path.parent() {
+                    (import_path.file_name()
+                         .map(|x| x.to_str())
+                         .map(|x| x.map(|xx| xx.to_string()))
+                         .flatten(),
+                     Some(prefix_p.join(parent_p)))
+                } else {
+                    (None, None)
+                };
+                possible_file_paths.push(SearchItem {
+                    path: canonicalize_path(&prefix_p.join(import_path.clone())),
+                    nameless_path: nameless_path.map(|x| canonicalize_path(&x)),
+                    name,
+                    do_fuzzy_search: false
+                });
             }
+
             let mut start_path = file_path.clone();
             loop {
                 if let Some(parent_p) = start_path.parent() {
@@ -226,82 +322,61 @@ pub fn possible_filepath_candidates(
                 } else {
                     break;
                 }
-                possible_file_paths.push(start_path.join(import_path.clone()));
-                if path_components.len() > 1 {
-                    if let Some(parent_p) = import_path.parent() {
-                        possible_file_paths.push(start_path.join(parent_p));
-                    }
-                }
+                let (name, nameless_path) = if let Some(parent_p) = import_path.parent() {
+                    (import_path.file_name()
+                         .map(|x| x.to_str())
+                         .map(|x| x.map(|xx| xx.to_string()))
+                         .flatten(),
+                     Some(start_path.join(parent_p)))
+                } else {
+                    (None, None)
+                };
+                possible_file_paths.push(SearchItem {
+                    path: canonicalize_path(&start_path.join(import_path.clone())),
+                    nameless_path: nameless_path.map(|x| canonicalize_path(&x)),
+                    name,
+                    do_fuzzy_search: false
+                });
             }
-            possible_file_paths.iter().unique().map(|x| {
-                let mut x = x.clone();
-                x.set_extension("py");
-                x.canonicalize().unwrap_or(x)
-            }).collect::<Vec<_>>()
+            possible_file_paths
         }
         LanguageId::Rust => {
-            let import_path = path_components.iter().filter(|c| *c != "crate").collect::<PathBuf>();
-            let mut possible_file_paths = vec![];
-            for (prefix_p, _) in prefixes.iter() {
-                possible_file_paths.push(prefix_p.join(import_path.clone()));
-                if path_components.len() > 1 {
-                    if let Some(parent_p) = import_path.parent() {
-                        possible_file_paths.push(prefix_p.join(parent_p));
-                    }
-                }
-            }
-            let mut start_path = file_path.clone();
-            loop {
-                if let Some(parent_p) = start_path.parent() {
-                    start_path = parent_p.to_path_buf();
-                    if min_prefix.clone().map(|x| x == start_path).unwrap_or(false) {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-                possible_file_paths.push(start_path.join(import_path.clone()));
-                if path_components.len() > 1 {
-                    if let Some(parent_p) = import_path.parent() {
-                        possible_file_paths.push(start_path.join(parent_p));
-                    }
-                }
-            }
-            possible_file_paths.iter().unique().map(|x| {
-                let mut x = x.clone();
-                x.set_extension("rs");
-                x.canonicalize().unwrap_or(x)
-            }).collect::<Vec<_>>()
+            // let import_path = path_components.iter().filter(|c| *c != "crate").collect::<PathBuf>();
+            // let mut possible_file_paths = vec![];
+            // for (prefix_p, _) in prefixes.iter() {
+            //     possible_file_paths.push(prefix_p.join(import_path.clone()));
+            //     if path_components.len() > 1 {
+            //         if let Some(parent_p) = import_path.parent() {
+            //             possible_file_paths.push(prefix_p.join(parent_p));
+            //         }
+            //     }
+            // }
+            // let mut start_path = file_path.clone();
+            // loop {
+            //     if let Some(parent_p) = start_path.parent() {
+            //         start_path = parent_p.to_path_buf();
+            //         if min_prefix.clone().map(|x| x == start_path).unwrap_or(false) {
+            //             break;
+            //         }
+            //     } else {
+            //         break;
+            //     }
+            //     possible_file_paths.push(start_path.join(import_path.clone()));
+            //     if path_components.len() > 1 {
+            //         if let Some(parent_p) = import_path.parent() {
+            //             possible_file_paths.push(start_path.join(parent_p));
+            //         }
+            //     }
+            // }
+            // possible_file_paths.iter().unique().map(|x| {
+            //     let mut x = x.clone();
+            //     x.set_extension("rs");
+            //     x.canonicalize().unwrap_or(x)
+            // }).collect::<Vec<_>>()
+            vec![]
         }
         LanguageId::TypeScript => {
-            let import_path = path_components.iter().collect::<PathBuf>();
-            let mut possible_file_paths = vec![];
-            for (prefix_p, _) in prefixes.iter() {
-                possible_file_paths.push(prefix_p.join(import_path.clone()));
-                if let Some(parent_p) = import_path.parent() {
-                    possible_file_paths.push(prefix_p.join(parent_p));
-                }
-            }
-            let mut start_path = file_path.clone();
-            loop {
-                if let Some(parent_p) = start_path.parent() {
-                    start_path = parent_p.to_path_buf();
-                    if min_prefix.clone().map(|x| x == start_path).unwrap_or(false) {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-                possible_file_paths.push(start_path.join(import_path.clone()));
-                if let Some(parent_p) = import_path.parent() {
-                    possible_file_paths.push(start_path.join(parent_p));
-                }
-            }
-            possible_file_paths.iter().unique().map(|x| {
-                let mut x = x.clone();
-                x.set_extension("ts");
-                x.canonicalize().unwrap_or(x)
-            }).collect::<Vec<_>>()
+            vec![]
         }
         _ => {
             info!("unsupported language {} while resolving the import", language);

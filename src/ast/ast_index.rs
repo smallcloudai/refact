@@ -994,26 +994,26 @@ impl AstIndex {
             if import_type == ImportType::System || import_type == ImportType::Library {
                 continue;
             }
-            let possible_file_paths = possible_filepath_candidates(
-                &self.path_by_symbols,
+            let search_items = possible_filepath_candidates(
                 &prefixes,
                 &min_prefix,
                 &file_path,
                 &path_components,
-                &language,
+                &language
             );
 
             match try_find_file_path(
-                &possible_file_paths,
+                &search_items,
                 &self.path_by_symbols,
                 &paths_str,
             ) {
-                Some(path) => {
+                Some(search_res) => {
                     stats.found += 1;
                     let mut s_ref = symbol.write();
                     let import_decl = s_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
-                    import_decl.filepath_ref = Some(path.clone());
-                    info!("found import for {:?}: {:?} at {:?}", language, path_components, path.to_str());
+                    import_decl.filepath_ref = Some(search_res.path.clone());
+                    import_decl.ast_fields.name = search_res.name.clone().unwrap_or_default();
+                    info!("found import for {:?}: {:?} at {:?} with name {:?}", language, path_components, search_res.path.to_str(), search_res.name);
                 }
                 None => {
                     stats.non_found += 1;
