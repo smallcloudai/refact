@@ -33,7 +33,7 @@ function activeFileToContextFile(
 ): ChatContextFile {
   const content = fileInfo.content ?? "";
   return {
-    file_name: fileInfo.name,
+    file_name: fileInfo.path,
     file_content: content,
     line1: fileInfo.line1 ?? 1,
     line2: fileInfo.line2 ?? (content.split("\n").length || 1),
