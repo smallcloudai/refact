@@ -8,7 +8,7 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse, JSONResponse
-from pydantic import BaseModel, Field, Required
+from pydantic import BaseModel, Field
 
 from refact_utils.scripts import env
 from refact_utils.scripts import best_lora
@@ -54,9 +54,9 @@ async def stream_text_file(ft_path):
 
 
 class TabFinetuneTrainingSetup(BaseModel):
-    run_id: str = Query(default=Required, regex=RUN_ID_REGEX)
-    pname: str = Query(default=Required, regex=r'^[A-Za-z0-9_\-\.]{1,30}$')   # sync regexp with tab_upload.ProjectNameOnly
-    model_name: Optional[str] = Query(default=Required, regex="^[a-z/A-Z0-9_\.\-]+$")
+    run_id: str = Query(regex=RUN_ID_REGEX)
+    pname: str = Query(regex=r'^[A-Za-z0-9_\-\.]{1,30}$')   # sync regexp with tab_upload.ProjectNameOnly
+    model_name: Optional[str] = Query(regex="^[a-z/A-Z0-9_\.\-]+$")
     trainable_embeddings: Optional[bool] = Query(default=False)
     low_gpu_mem_mode: Optional[bool] = Query(default=True)
     lr: Optional[float] = Query(default=30e-5, ge=1e-5, le=300e-5)
@@ -74,8 +74,8 @@ class TabFinetuneTrainingSetup(BaseModel):
 
 
 class RenamePost(BaseModel):
-    run_id_old: str = Query(default=Required, regex=RUN_ID_REGEX)
-    run_id_new: str = Query(default=Required, regex=RUN_ID_REGEX)
+    run_id_old: str = Query(regex=RUN_ID_REGEX)
+    run_id_new: str = Query(regex=RUN_ID_REGEX)
 
 
 class TabFinetuneRouter(APIRouter):

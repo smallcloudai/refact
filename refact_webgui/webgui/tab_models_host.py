@@ -7,8 +7,8 @@ from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel, validator, Required
-from typing import Dict, Optional
+from pydantic import BaseModel, validator
+from typing import Dict
 
 
 __all__ = ["TabHostRouter"]

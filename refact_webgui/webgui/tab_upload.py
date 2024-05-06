@@ -9,7 +9,7 @@ from typing import Dict, Optional
 
 import aiohttp
 
-from pydantic import BaseModel, Required
+from pydantic import BaseModel
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 
@@ -71,7 +71,7 @@ class CloneRepo(BaseModel):
 
 
 class TabSingleFileConfig(BaseModel):
-    which_set: str = Query(default=Required, regex="auto|train|test")
+    which_set: str = Query(regex="auto|train|test")
     to_db: bool = Query(default=False)
 
 
@@ -87,11 +87,11 @@ class FileTypesSetup(BaseModel):
 
 
 class TabFilesDeleteEntry(BaseModel):
-    delete_this: str = Query(default=Required, regex=r'^(?!.*\/)(?!.*\.\.)[\s\S]+$')
+    delete_this: str = Query(regex=r'^(?!.*\/)(?!.*\.\.)[\s\S]+$')
 
 
 class ProjectNameOnly(BaseModel):
-    pname: str = Query(default=Required, regex=r'^[A-Za-z0-9_\-\.]{1,30}$')
+    pname: str = Query(regex=r'^[A-Za-z0-9_\-\.]{1,30}$')
 
 
 class TabUploadRouter(APIRouter):
