@@ -12,3 +12,9 @@
 .text_ltr {
   direction: ltr;
 }
+
+.text_small {
+  font-size: calc(10px * var(--scaling));
+  --line-height: calc(12px * var(--scaling));
+  --letter-spacing: 0.005em;
+}
