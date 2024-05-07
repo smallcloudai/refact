@@ -374,7 +374,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             info!("response_n_choices\n{:?}", json_choices);
         }
 
-        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
+        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
         return Ok(json!(
             {
                 "choices": json_choices,
@@ -421,7 +421,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             self.data4cache.completion0_finish_reason = "length".to_string();
             finished = true;
         }
-        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache);
+        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
         let ans = json!({
             "choices": json_choices,
             "snippet_telemetry_id": self.data4cache.completion0_snippet_telemetry_id,

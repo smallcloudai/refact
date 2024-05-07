@@ -1,3 +1,4 @@
+use std::fmt::format;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use serde::{Serialize, Deserialize};
@@ -44,12 +45,17 @@ impl SaveSnippet {
 fn snippet_register(
     ss: &SaveSnippet,
     grey_text: String,
+    context_used: bool,
 ) -> u64 {
     let mut storage_locked = ss.storage_arc.write().unwrap();
     let snippet_telemetry_id = storage_locked.tele_snippet_next_id;
-    let snip = telemetry_structs::SnippetTracker {
+    let mut model = ss.post.model.clone();
+    if context_used {
+        model = format!("{}+ast", model);
+    }
+    let snip = SnippetTracker {
         snippet_telemetry_id,
-        model: ss.post.model.clone(),
+        model,
         inputs: ss.post.inputs.clone(),
         grey_text: grey_text.clone(),
         corrected_by_user: "".to_string(),
@@ -66,13 +72,14 @@ fn snippet_register(
 pub fn snippet_register_from_data4cache(
     ss: &SaveSnippet,
     data4cache: &mut completion_cache::CompletionSaveToCache,
+    context_used: bool,
 ) {
     // Convenience function: snippet_telemetry_id should be returned inside a cached answer as well, so there's
     // typically a combination of the two
     if data4cache.completion0_finish_reason.is_empty() {
         return;
     }
-    data4cache.completion0_snippet_telemetry_id = Some(snippet_register(&ss, data4cache.completion0_text.clone()));
+    data4cache.completion0_snippet_telemetry_id = Some(snippet_register(&ss, data4cache.completion0_text.clone(), context_used));
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -101,8 +108,8 @@ pub async fn sources_changed(
     uri: &String,
     text: &String,
 ) {
-    let tele_storage = gcx.read().await.telemetry.clone();
-    let mut storage_locked = tele_storage.write().unwrap();
+    let tele_storage_arc = gcx.read().await.telemetry.clone();
+    let mut storage_locked = tele_storage_arc.write().unwrap();
 
     storage_locked.last_seen_file_texts.insert(uri.clone(), text.clone());
     basic_robot_human::create_robot_human_record_if_not_exists(&mut storage_locked.tele_robot_human, uri, text);
