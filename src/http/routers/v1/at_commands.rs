@@ -56,9 +56,10 @@ pub async fn handle_v1_command_completion(
         let query_line = QueryLine::new(query_line_val, cursor_rel, cursor_line_start);
         (completions, is_cmd_executable, pos1, pos2) = command_completion(&query_line, &context, post.cursor, post.top_n).await;
     }
+    let completions: Vec<_> = completions.into_iter().unique().collect();
 
     let response = CommandCompletionResponse {
-        completions: completions.clone(),
+        completions,
         replace: (pos1, pos2),
         is_cmd_executable,
     };
