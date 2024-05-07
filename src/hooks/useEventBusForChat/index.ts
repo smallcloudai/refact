@@ -53,6 +53,7 @@ import {
   isSetSelectedSystemPrompt,
   type SetSelectedSystemPrompt,
   type SystemPrompts,
+  RequestPreviewFiles,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -759,6 +760,17 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
+  const requestPreviewFiles = useCallback(
+    (input: string) => {
+      const message: RequestPreviewFiles = {
+        type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES,
+        payload: { id: state.chat.id, query: input },
+      };
+      postMessage(message);
+    },
+    [postMessage, state.chat.id],
+  );
+
   const setSelectedCommand = useCallback(
     (command: string) => {
       const action: SetSelectedAtCommand = {
@@ -852,5 +864,6 @@ export const useEventBusForChat = () => {
     maybeRequestCaps,
     startNewChat,
     setSelectedSystemPrompt,
+    requestPreviewFiles,
   };
 };

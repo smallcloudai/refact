@@ -20,6 +20,7 @@ import { FilesPreview } from "./FilesPreview";
 import { useConfig } from "../../contexts/config-context";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { useEffectOnce } from "../../hooks";
+import { addCheckboxValuesToInput, activeFileToContextFile } from "./utils";
 
 type useCheckboxStateProps = {
   activeFile: ChatState["active_file"];
@@ -27,19 +28,6 @@ type useCheckboxStateProps = {
   vecdb: boolean;
   ast: boolean;
 };
-
-function activeFileToContextFile(
-  fileInfo: ChatState["active_file"],
-): ChatContextFile {
-  const content = fileInfo.content ?? "";
-  return {
-    file_name: fileInfo.path,
-    file_content: content,
-    line1: fileInfo.line1 ?? 1,
-    line2: fileInfo.line2 ?? (content.split("\n").length || 1),
-    usefulness: fileInfo.usefulness,
-  };
-}
 
 const useControlsState = ({
   activeFile,
@@ -245,6 +233,7 @@ export type ChatFormProps = {
   attachFile: ChatState["active_file"];
   hasContextFile: boolean;
   requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
+  requestPreviewFiles: (input: string) => void;
   setSelectedCommand: (command: string) => void;
   filesInPreview: ChatContextFile[];
   selectedSnippet: ChatState["selected_snippet"];
@@ -271,6 +260,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   commands,
   attachFile,
   requestCommandsCompletion,
+  requestPreviewFiles,
   setSelectedCommand,
   filesInPreview,
   selectedSnippet,
@@ -308,48 +298,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     value,
   ]);
 
-  const addCheckboxValuesToInput = useCallback(
-    (input: string) => {
-      if (!showControls) {
-        return input;
-      }
-
-      let result = input;
-      if (!result.endsWith("\n")) {
-        result += "\n";
-      }
-      if (
-        checkboxes.search_workspace.checked &&
-        checkboxes.search_workspace.hide !== true
-      ) {
-        result += `@workspace\n`;
-      }
-
-      if (
-        checkboxes.lookup_symbols.checked &&
-        checkboxes.lookup_symbols.hide !== true
-      ) {
-        result += `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n`;
-      }
-
-      if (
-        checkboxes.selected_lines.checked &&
-        checkboxes.selected_lines.hide !== true
-      ) {
-        result += `${checkboxes.selected_lines.value ?? ""}\n`;
-      }
-
-      if (
-        checkboxes.file_upload.checked &&
-        checkboxes.file_upload.hide !== true
-      ) {
-        result += `@file ${checkboxes.file_upload.value ?? ""}\n`;
-      }
-      return result;
-    },
-    [showControls, checkboxes],
-  );
-
   useEffectOnce(() => {
     if (selectedSnippet.code) {
       setValue(markdown + value);
@@ -367,11 +315,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
     if (trimmedValue.length > 0 && !isStreaming && isOnline) {
-      const valueIncludingChecks = addCheckboxValuesToInput(trimmedValue);
+      const valueIncludingChecks = addCheckboxValuesToInput(
+        trimmedValue,
+        checkboxes,
+        showControls,
+      );
       onSubmit(valueIncludingChecks);
       setValue(() => "");
     }
-  }, [value, onSubmit, isStreaming, isOnline, addCheckboxValuesToInput]);
+  }, [value, isStreaming, isOnline, checkboxes, showControls, onSubmit]);
 
   const handleEnter = useOnPressedEnter(handleSubmit);
 
@@ -383,12 +335,29 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [setInteracted],
   );
 
-  // This may have created a regression.
-  // useEffect(() => {
-  //   const input = addCheckboxValuesToInput(value);
-  //   requestCommandsCompletion(input, input.length, "");
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [checkboxes]);
+  useEffect(() => {
+    const input = addCheckboxValuesToInput(value, checkboxes, showControls);
+    requestPreviewFiles(input);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkboxes]);
+
+  const handleAtCommandsRequest: ComboBoxProps["requestCommandsCompletion"] =
+    useCallback(
+      (
+        query: string,
+        cursor: number,
+        trigger: string | null,
+        number?: number | undefined,
+      ) => {
+        const inputWithCheckboxes = addCheckboxValuesToInput(
+          query,
+          checkboxes,
+          showControls,
+        );
+        requestCommandsCompletion(inputWithCheckboxes, cursor, trigger, number);
+      },
+      [checkboxes, requestCommandsCompletion, showControls],
+    );
 
   const previewFiles = useMemo(() => {
     const file = activeFileToContextFile(attachFile);
@@ -443,7 +412,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
         <ComboBox
           commands={commands.available_commands}
-          requestCommandsCompletion={requestCommandsCompletion}
+          requestCommandsCompletion={handleAtCommandsRequest}
           commandArguments={commands.arguments}
           value={value}
           onChange={handleChange}

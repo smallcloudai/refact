@@ -33,6 +33,7 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
       is_cmd_executable: false,
     },
     requestCommandsCompletion: noop,
+    requestPreviewFiles: noop,
     attachFile: {
       name: "",
       line1: null,

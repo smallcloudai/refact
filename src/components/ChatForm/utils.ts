@@ -1,0 +1,56 @@
+import { ChatContextFile } from "../../events";
+import { ChatState } from "../../hooks";
+import { Checkbox } from "./ChatControls";
+
+export function addCheckboxValuesToInput(
+  input: string,
+  checkboxes: Record<string, Checkbox>,
+  showControls: boolean,
+) {
+  if (!showControls) {
+    return input;
+  }
+
+  let result = input;
+  if (!result.endsWith("\n")) {
+    result += "\n";
+  }
+  if (
+    checkboxes.search_workspace.checked &&
+    checkboxes.search_workspace.hide !== true
+  ) {
+    result += `@workspace\n`;
+  }
+
+  if (
+    checkboxes.lookup_symbols.checked &&
+    checkboxes.lookup_symbols.hide !== true
+  ) {
+    result += `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n`;
+  }
+
+  if (
+    checkboxes.selected_lines.checked &&
+    checkboxes.selected_lines.hide !== true
+  ) {
+    result += `${checkboxes.selected_lines.value ?? ""}\n`;
+  }
+
+  if (checkboxes.file_upload.checked && checkboxes.file_upload.hide !== true) {
+    result += `@file ${checkboxes.file_upload.value ?? ""}\n`;
+  }
+  return result;
+}
+
+export function activeFileToContextFile(
+  fileInfo: ChatState["active_file"],
+): ChatContextFile {
+  const content = fileInfo.content ?? "";
+  return {
+    file_name: fileInfo.path,
+    file_content: content,
+    line1: fileInfo.line1 ?? 1,
+    line2: fileInfo.line2 ?? (content.split("\n").length || 1),
+    usefulness: fileInfo.usefulness,
+  };
+}

@@ -25,6 +25,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = () => {
     handlePasteDiffClick,
     hasContextFile,
     requestCommandsCompletion,
+    requestPreviewFiles,
     setSelectedCommand,
     removePreviewFileByName,
     retryQuestion,
@@ -113,6 +114,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = () => {
         prompts={state.system_prompts.prompts}
         onSetSystemPrompt={setSelectedSystemPrompt}
         selectedSystemPrompt={state.selected_system_prompt}
+        requestPreviewFiles={requestPreviewFiles}
       />
 
       <Flex justify="between" pl="1" pr="1" pt="1">
