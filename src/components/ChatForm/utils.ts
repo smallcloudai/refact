@@ -11,34 +11,38 @@ export function addCheckboxValuesToInput(
     return input;
   }
 
+  // prompts go to start
   let result = input;
-  if (!result.endsWith("\n")) {
-    result += "\n";
+
+  if (
+    checkboxes.selected_lines.checked &&
+    checkboxes.selected_lines.hide !== true
+  ) {
+    result = `${checkboxes.selected_lines.value ?? ""}\n` + result;
   }
+
   if (
     checkboxes.search_workspace.checked &&
     checkboxes.search_workspace.hide !== true
   ) {
-    result += `@workspace\n`;
+    result = `@workspace\n` + result;
   }
 
   if (
     checkboxes.lookup_symbols.checked &&
     checkboxes.lookup_symbols.hide !== true
   ) {
-    result += `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n`;
-  }
-
-  if (
-    checkboxes.selected_lines.checked &&
-    checkboxes.selected_lines.hide !== true
-  ) {
-    result += `${checkboxes.selected_lines.value ?? ""}\n`;
+    result = `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n` + result;
   }
 
   if (checkboxes.file_upload.checked && checkboxes.file_upload.hide !== true) {
-    result += `@file ${checkboxes.file_upload.value ?? ""}\n`;
+    result = `@file ${checkboxes.file_upload.value ?? ""}\n` + result;
   }
+
+  if (!result.endsWith("\n")) {
+    result += "\n";
+  }
+
   return result;
 }
 
