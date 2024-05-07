@@ -383,11 +383,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [setInteracted],
   );
 
-  useEffect(() => {
-    const input = addCheckboxValuesToInput(value);
-    requestCommandsCompletion(input, input.length, "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkboxes]);
+  // This may have created a regression.
+  // useEffect(() => {
+  //   const input = addCheckboxValuesToInput(value);
+  //   requestCommandsCompletion(input, input.length, "");
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [checkboxes]);
 
   const previewFiles = useMemo(() => {
     const file = activeFileToContextFile(attachFile);
