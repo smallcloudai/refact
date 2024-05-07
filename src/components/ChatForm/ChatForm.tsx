@@ -431,26 +431,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         </Button>
       )}
 
-      {showControls && (
-        <ChatControls
-          host={config.host}
-          checkboxes={checkboxes}
-          onCheckedChange={toggleCheckbox}
-          selectProps={{
-            value: model || caps.default_cap,
-            onChange: onSetChatModel,
-            options: caps.available_caps,
-          }}
-          promptsProps={{
-            value: selectedSystemPrompt ?? "",
-            prompts: prompts,
-            onChange: onSetSystemPrompt,
-          }}
-        />
-      )}
-
-      {/** TODO: handle being offline */}
-
       <Form
         disabled={isStreaming || !isOnline}
         className={className}
@@ -503,6 +483,24 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           />
         </Flex>
       </Form>
+
+      {showControls && (
+        <ChatControls
+          host={config.host}
+          checkboxes={checkboxes}
+          onCheckedChange={toggleCheckbox}
+          selectProps={{
+            value: model || caps.default_cap,
+            onChange: onSetChatModel,
+            options: caps.available_caps,
+          }}
+          promptsProps={{
+            value: selectedSystemPrompt ?? "",
+            prompts: prompts,
+            onChange: onSetSystemPrompt,
+          }}
+        />
+      )}
     </Card>
   );
 };
