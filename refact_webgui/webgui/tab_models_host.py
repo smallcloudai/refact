@@ -7,8 +7,9 @@ from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel, validator, ConfigDict
-from typing import Dict
+from pydantic import BaseModel, ConfigDict
+from pydantic import field_validator
+from typing import Dict, Optional
 
 
 __all__ = ["TabHostRouter"]
@@ -20,7 +21,7 @@ class ModifyLorasPost(BaseModel):
     run_id: str
     checkpoint: str
 
-    @validator('mode')
+    @field_validator('mode')
     def validate_mode(cls, v: str):
         if v not in ['add', 'remove']:
             raise HTTPException(status_code=400, detail="mode must be 'add' or 'remove'")
@@ -30,7 +31,7 @@ class ModifyLorasPost(BaseModel):
 class TabHostModelRec(BaseModel):
     gpus_shard: int = Query(default=1, ge=1, le=4)
     share_gpu: bool = False
-    n_ctx: int = Query(default=None)
+    n_ctx: Optional[int] = None
 
 
 class TabHostModelsAssign(BaseModel):

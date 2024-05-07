@@ -76,8 +76,8 @@ class TabFinetuneTrainingSetup(BaseModel):
 
 
 class RenamePost(BaseModel):
-    run_id_old: str = Query(regex=RUN_ID_REGEX)
-    run_id_new: str = Query(regex=RUN_ID_REGEX)
+    run_id_old: str = Query(pattern=RUN_ID_REGEX)
+    run_id_new: str = Query(pattern=RUN_ID_REGEX)
 
 
 class TabFinetuneRouter(APIRouter):
