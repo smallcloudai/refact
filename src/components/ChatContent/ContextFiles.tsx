@@ -27,12 +27,13 @@ export const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({
   if (files.length === 0) return null;
   return (
     <pre>
-      <Flex gap="4" wrap="nowrap" direction="column" px="2">
+      <Flex gap="1" wrap="nowrap" direction="column" px="2">
         {files.map((file, index) => {
           const lineText =
             file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
+          const key = file.file_name + lineText + index;
           return (
-            <ContextFile key={index} name={file.file_name + lineText}>
+            <ContextFile key={key} name={file.file_name + lineText}>
               {file.file_content}
             </ContextFile>
           );
