@@ -20,7 +20,7 @@ import { FilesPreview } from "./FilesPreview";
 import { useConfig } from "../../contexts/config-context";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { useEffectOnce } from "../../hooks";
-import { addCheckboxValuesToInput, activeFileToContextFile } from "./utils";
+import { addCheckboxValuesToInput } from "./utils";
 
 type useCheckboxStateProps = {
   activeFile: ChatState["active_file"];
@@ -359,24 +359,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       [checkboxes, requestCommandsCompletion, showControls],
     );
 
-  const previewFiles = useMemo(() => {
-    const file = activeFileToContextFile(attachFile);
-    if (
-      showControls &&
-      file.file_name &&
-      checkboxes.file_upload.checked &&
-      !filesInPreview.includes(file)
-    ) {
-      return filesInPreview.concat(file);
-    }
-    return filesInPreview;
-  }, [
-    attachFile,
-    checkboxes.file_upload.checked,
-    filesInPreview,
-    showControls,
-  ]);
-
   if (error) {
     return (
       <ErrorCallout mt="2" onClick={clearError} timeout={null}>
@@ -406,7 +388,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         onSubmit={() => handleSubmit()}
       >
         <FilesPreview
-          files={previewFiles}
+          files={filesInPreview}
           onRemovePreviewFile={removePreviewFileByName}
         />
 
