@@ -10,6 +10,7 @@ from typing import Dict, Optional
 import aiohttp
 
 from pydantic import BaseModel
+from pydantic import field_validator
 from fastapi import APIRouter, Request, Query, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 
@@ -87,9 +88,14 @@ class FileTypesSetup(BaseModel):
 
 
 class TabFilesDeleteEntry(BaseModel):
-    # TODO: invalid regexp, needs to fix
-    # delete_this: str = Query(pattern=r'^(?!.*\/)(?!.*\.\.)[\s\S]+$')
     delete_this: str
+
+    @field_validator("delete_this")
+    def regex_match(cls, p: str) -> str:
+        re_for_pw: re.Pattern[str] = re.compile(r'^(?!.*\/)(?!.*\.\.)[\s\S]+$')
+        if not re_for_pw.match(p):
+            raise HTTPException(status_code=400, detail=f"invalid entry name {p}")
+        return p
 
 
 class ProjectNameOnly(BaseModel):
