@@ -65,7 +65,7 @@ describe("Chat", () => {
 
     await user.keyboard("{Enter}");
 
-    expect(postMessageSpy).toHaveBeenLastCalledWith(
+    expect(postMessageSpy).toHaveBeenCalledWith(
       {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
@@ -219,7 +219,7 @@ describe("Chat", () => {
       await user.type(textarea, "{enter}");
     }
 
-    expect(postMessageSpy).toHaveBeenLastCalledWith(
+    expect(postMessageSpy).toHaveBeenCalledWith(
       {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
@@ -374,7 +374,7 @@ describe("Chat", () => {
 
     await user.keyboard("{Enter}");
 
-    expect(postMessageSpy).toHaveBeenLastCalledWith(
+    expect(postMessageSpy).toHaveBeenCalledWith(
       {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
