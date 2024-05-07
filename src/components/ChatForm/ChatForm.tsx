@@ -75,9 +75,9 @@ const useControlsState = ({
         disabled: false,
         hide: !vecdb,
         info: {
-          text: "Equivalent to using @workspace. It uses the entered query to perform a search.",
+          text: "Searches all files in your workspace using vector database, uses the whole text in the input box as a search query. Setting this checkbox is equivalent to @workspace command in the text.",
           link: "https://docs.refact.ai/features/ai-chat/",
-          linkText: "blog",
+          linkText: "documentation",
         },
       },
       file_upload: {
@@ -88,9 +88,9 @@ const useControlsState = ({
         disabled: !activeFile.name,
         fileName: activeFile.name,
         info: {
-          text: " Similar to the @file command. It attaches the file at the current cursor position, useful for dealing with large files.",
+          text: "Attaches the current file as context. If the file is large, it prefers the code near the current cursor position. Equivalent to @file name.ext:CURSOR_LINE in the text.",
           link: "https://docs.refact.ai/features/ai-chat/",
-          linkText: "blog",
+          linkText: "documentation",
         },
       },
       lookup_symbols: {
@@ -102,9 +102,9 @@ const useControlsState = ({
         hide: !ast,
         defaultChecked: !!snippet.code && !!activeFile.name,
         info: {
-          text: "Corresponds to the @symbols-at command. It extracts symbols around the cursor position and searches them in the AST index.",
+          text: "Extracts symbols around the cursor position and searches for them in the AST index. Equivalent to @symbols-at file_name.ext:CURSOR_LINE in the text",
           link: "https://docs.refact.ai/features/ai-chat/",
-          linkText: "blog",
+          linkText: "documentation",
         },
       },
       selected_lines: {
@@ -114,7 +114,7 @@ const useControlsState = ({
         value: markdown,
         disabled: !snippet.code,
         info: {
-          text: "Adds the currently selected lines as a snippet for analysis or modification. This is similar to embedding code within backticks ``` in the chat",
+          text: "Adds the currently selected lines as a snippet for analysis or modification. Equivalent to code in triple backticks ``` in the text.",
         },
       },
     } as const;
