@@ -7,7 +7,7 @@ from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, ConfigDict
 from typing import Dict
 
 
@@ -39,6 +39,8 @@ class TabHostModelsAssign(BaseModel):
     # integrations
     openai_api_enable: bool = False
     anthropic_api_enable: bool = False
+
+    model_config = ConfigDict(protected_namespaces=())  # avoiding model_ namespace protection
 
 
 class TabHostRouter(APIRouter):

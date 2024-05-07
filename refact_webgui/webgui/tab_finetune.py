@@ -8,7 +8,7 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse, JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from refact_utils.scripts import env
 from refact_utils.scripts import best_lora
@@ -54,9 +54,9 @@ async def stream_text_file(ft_path):
 
 
 class TabFinetuneTrainingSetup(BaseModel):
-    run_id: str = Query(regex=RUN_ID_REGEX)
-    pname: str = Query(regex=r'^[A-Za-z0-9_\-\.]{1,30}$')   # sync regexp with tab_upload.ProjectNameOnly
-    model_name: Optional[str] = Query(regex="^[a-z/A-Z0-9_\.\-]+$")
+    run_id: str = Query(pattern=RUN_ID_REGEX)
+    pname: str = Query(pattern=r'^[A-Za-z0-9_\-\.]{1,30}$')   # sync regexp with tab_upload.ProjectNameOnly
+    model_name: Optional[str] = Query(pattern="^[a-z/A-Z0-9_\.\-]+$")
     trainable_embeddings: Optional[bool] = Query(default=False)
     low_gpu_mem_mode: Optional[bool] = Query(default=True)
     lr: Optional[float] = Query(default=30e-5, ge=1e-5, le=300e-5)
@@ -70,7 +70,9 @@ class TabFinetuneTrainingSetup(BaseModel):
     lora_dropout: Optional[float] = Query(default=0.01, ge=0.0, le=0.5)
     model_ctx_size: Optional[int] = Query(default=0, ge=0, le=4096)  # in case of 0 we use default model's ctx_size
     filter_loss_threshold: Optional[float] = Query(default=3.0, ge=1.0, le=10.0)
-    gpus: List[int] = Field(..., example=[0], ge=0, le=8)
+    gpus: List[int] = Field(..., example=[0])
+
+    model_config = ConfigDict(protected_namespaces=())  # avoiding model_ namespace protection
 
 
 class RenamePost(BaseModel):

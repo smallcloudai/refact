@@ -71,7 +71,7 @@ class CloneRepo(BaseModel):
 
 
 class TabSingleFileConfig(BaseModel):
-    which_set: str = Query(regex="auto|train|test")
+    which_set: str = Query(pattern="auto|train|test")
     to_db: bool = Query(default=False)
 
 
@@ -87,11 +87,13 @@ class FileTypesSetup(BaseModel):
 
 
 class TabFilesDeleteEntry(BaseModel):
-    delete_this: str = Query(regex=r'^(?!.*\/)(?!.*\.\.)[\s\S]+$')
+    # TODO: invalid regexp, needs to fix
+    # delete_this: str = Query(pattern=r'^(?!.*\/)(?!.*\.\.)[\s\S]+$')
+    delete_this: str
 
 
 class ProjectNameOnly(BaseModel):
-    pname: str = Query(regex=r'^[A-Za-z0-9_\-\.]{1,30}$')
+    pname: str = Query(pattern=r'^[A-Za-z0-9_\-\.]{1,30}$')
 
 
 class TabUploadRouter(APIRouter):
