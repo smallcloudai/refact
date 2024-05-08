@@ -229,16 +229,8 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
             s = " ".join([str(a) for a in args])
             logging.getLogger("MODEL").info(s)
 
-        object_type = request["object"]
-        assert object_type in ["diff_completion_req", "text_completion_req", "chat_completion_req"]
-        if object_type == "diff_completion_req":
-            Scratchpad = modload(self._model_dict["diff_scratchpad_class"])
-        elif object_type == "chat_completion_req":
-            Scratchpad = modload(self._model_dict["chat_scratchpad_class"])
-        else:
-            Scratchpad = ScratchpadHuggingfaceCompletion
-
-        scratchpad = Scratchpad(tokenizer=self._tokenizer, logger=logger, **request)
+        assert request["object"] in ["text_completion_req"]
+        scratchpad = ScratchpadHuggingfaceCompletion(tokenizer=self._tokenizer, logger=logger, **request)
         T = self._tokenizer.max_len_single_sentence
         if not isinstance(T, int) or T <= 0 or T > 4096:
             T = 2048
