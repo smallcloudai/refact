@@ -1,6 +1,5 @@
 import json
 import os
-import copy
 
 from dataclasses import dataclass, field
 
@@ -8,9 +7,8 @@ from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_webutils import log
 from known_models_db.refact_known_models import models_mini_db, passthrough_mini_db
-from known_models_db.refact_toolbox_db import modelcap_records
 
-from typing import List, Dict, Set, Any
+from typing import List, Dict, Any
 
 
 __all__ = ["ModelAssigner"]
@@ -60,10 +58,6 @@ class ModelAssigner:
     @property
     def models_db_with_passthrough(self) -> Dict[str, Any]:
         return {**self.models_db, **self.passthrough_mini_db}
-
-    @property
-    def models_caps_db(self) -> List:
-        return modelcap_records.db
 
     def _model_assign_to_groups(self, model_assign: Dict[str, Dict]) -> List[ModelGroup]:
         model_groups: List[ModelGroup] = []
@@ -199,15 +193,6 @@ class ModelAssigner:
     def models_info(self):
         info = []
 
-        def _capabilities(func_type: str) -> Set:
-            return {
-                capability
-                for func in self.models_caps_db
-                for capability in func.model
-                if func.type == func_type
-            }
-
-        toolbox_caps = _capabilities("toolbox")
         active_loras = get_active_loras(self.models_db)
         for k, rec in self.models_db.items():
             if rec.get("hidden", False):
@@ -235,7 +220,6 @@ class ModelAssigner:
                 "finetune_model": finetune_model,
                 "has_completion": bool("completion" in rec["filter_caps"]),
                 "has_finetune": has_finetune,
-                "has_toolbox": bool(toolbox_caps.intersection(rec["filter_caps"])),
                 "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
                 "has_sharding": rec["backend"] in ["transformers"],

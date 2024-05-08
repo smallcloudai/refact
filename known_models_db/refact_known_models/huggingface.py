@@ -23,7 +23,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 18000,
         "T": 4096,
-        "filter_caps": ["chat", "starchat"],
+        "filter_caps": ["chat"],
         "deprecated": True,
     },
     "starcoder/1b/base": {
@@ -64,7 +64,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 8000,
         "T": 2048,
-        "filter_caps": ["chat", "wizardlm"],
+        "filter_caps": ["chat"],
     },
     "wizardlm/13b": {
         "backend": "autogptq",
@@ -72,7 +72,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 14000,
         "T": 2048,
-        "filter_caps": ["chat", "wizardlm"],
+        "filter_caps": ["chat"],
     },
     "llama2/7b": {
         "backend": "autogptq",
@@ -80,7 +80,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 8000,
         "T": 2048,
-        "filter_caps": ["chat", "llama2"],
+        "filter_caps": ["chat"],
     },
     "llama2/13b": {
         "backend": "autogptq",
@@ -88,7 +88,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 14000,
         "T": 2048,
-        "filter_caps": ["chat", "llama2"],
+        "filter_caps": ["chat"],
     },
     "codellama/7b": {
         "backend": "transformers",
@@ -105,7 +105,7 @@ huggingface_mini_db = {
             "load_in_4bit": True,
         },
         "T": 2048,
-        "filter_caps": ["chat", "wizardlm"],
+        "filter_caps": ["chat"],
     },
     "deepseek-coder/1.3b/base": {
         "backend": "transformers",
