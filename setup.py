@@ -21,18 +21,12 @@ class PyPackage:
 
 all_refact_packages = {
     "code_contrast": PyPackage(
-        requires=["cdifflib", "termcolor", "numpy", "dataclasses"],
-        requires_packages=["refact_encoding"]),
-    "known_models_db": PyPackage(
-        requires=["dataclasses", "dataclasses_json"],
-        data=["refact_toolbox_db/htmls/*.html"]),
+        requires=["cdifflib", "termcolor", "numpy", "dataclasses"]),
+    "known_models_db": PyPackage(),
     "refact_utils": PyPackage(),
-    "refact_encoding": PyPackage(
-        requires=["tiktoken", "tokenizers>=0.15.0", "sentencepiece", "termcolor", "protobuf"],
-        data=["*.json"]),
     "refact_scratchpads": PyPackage(
         requires=["termcolor", "torch"],
-        requires_packages=["refact_encoding", "code_contrast", "refact_scratchpads_no_gpu"]),
+        requires_packages=["code_contrast", "refact_scratchpads_no_gpu"]),
     "refact_scratchpads_no_gpu": PyPackage(
         requires=["termcolor", "aiohttp", "tiktoken", "openai>=1.0.0", "ujson", "setproctitle"]),
     "refact_data_pipeline": PyPackage(
@@ -40,7 +34,7 @@ all_refact_packages = {
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools', "cdifflib",
                   "ujson", "zstandard", "scipy", "einops", "matplotlib", "giturlparse",
                   "jsonlines", "binpacking", "filelock", "tables==3.8.0", "pygments", "kshingle"],
-        requires_packages=["refact_encoding", "code_contrast", "self_hosting_machinery", "refact_utils"],
+        requires_packages=["code_contrast", "self_hosting_machinery", "refact_utils"],
         data=["git_command.exp"],
     ),
     "refact_webgui": PyPackage(
