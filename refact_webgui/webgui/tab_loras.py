@@ -12,7 +12,6 @@ from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import Required
 
 from refact_utils.scripts import env
 from refact_utils.scripts.best_lora import find_best_checkpoint
@@ -118,9 +117,7 @@ class TabLorasRouter(APIRouter):
             return resp
         return JSONResponse("OK", status_code=200)
 
-    async def _download_lora(self,
-                             run_id: str = Query(default=Required),
-                             checkpoint_id: str = Query(default="")):
+    async def _download_lora(self, run_id: str, checkpoint_id: str = Query(default="")):
 
         async def _archived_content(run_id: str, checkpoint_id: str):
             tempdir = Path(env.TMPDIR) / f"lora-download-{uuid.uuid4()}"
@@ -179,7 +176,7 @@ class TabLorasRouter(APIRouter):
                 "Content-Disposition": f'attachment; filename={download_filename}',
             })
 
-    async def _download_lora_merge(self, run_id: str = Query(default=Required), checkpoint_id: str = Query(default="")):
+    async def _download_lora_merge(self, run_id: str, checkpoint_id: str = Query(default="")):
 
         async def _archived_content(model_path: str, checkpoint_path: Path):
             try:
