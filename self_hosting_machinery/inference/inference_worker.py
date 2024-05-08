@@ -132,7 +132,7 @@ def catch_sigkill(signum, frame):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-    from known_models_db.refact_known_models import models_mini_db
+    from refact_known_models import models_mini_db
     from self_hosting_machinery.finetune.configuration import supported_models
 
     parser = ArgumentParser()
