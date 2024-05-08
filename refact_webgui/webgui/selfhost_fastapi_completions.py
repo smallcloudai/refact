@@ -183,17 +183,16 @@ class BaseCompletionsRouter(APIRouter):
         super().__init__(*args, **kwargs)
 
         # deprecated APIs
-        self.add_api_route("/v1/login", self._login, methods=["GET"])
-        self.add_api_route("/v1/secret-key-activate", self._secret_key_activate, methods=["GET"])
         self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
+        self.add_api_route("/v1/login", self._login, methods=["GET"])
 
         # API for LSP server
         self.add_api_route("/refact-caps", self._caps, methods=["GET"])
         self.add_api_route("/v1/completions", self._completions, methods=["POST"])
         self.add_api_route("/v1/embeddings", self._embeddings_style_openai, methods=["POST"])
+        self.add_api_route("/v1/chat/completions", self._chat_completions, methods=["POST"])
 
         self.add_api_route("/v1/models", self._models, methods=["GET"])
-        self.add_api_route("/v1/chat/completions", self._chat_completions, methods=["POST"])
 
         self._inference_queue = inference_queue
         self._id2ticket = id2ticket
@@ -294,59 +293,12 @@ class BaseCompletionsRouter(APIRouter):
 
         return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
-    async def _login(self, authorization: str = Header(None)):
-        await self._account_from_bearer(authorization)
-
-        longthink_functions = dict()
-        longthink_filters = set()
-        models_mini_db_extended = {
-            "longthink/stable": {
-                "filter_caps": ["gpt3.5", "gpt4"],
-            },
-            **self._model_assigner.models_db,
-        }
-        filter_caps = set([
-            capability
-            for model in self._inference_queue.models_available(force_read=True)
-            for capability in models_mini_db_extended.get(model, {}).get("filter_caps", [])
-        ])
-        for rec in self._model_assigner.models_caps_db:
-            rec_modelcaps = rec.model if isinstance(rec.model, list) else [rec.model]
-            rec_third_parties = rec.third_party if isinstance(rec.third_party, list) else [rec.third_party]
-            for rec_modelcap, rec_third_party in zip(rec_modelcaps, rec_third_parties):
-                if rec_modelcap not in filter_caps:
-                    continue
-                rec_modelcap = rec_modelcap.replace("/", "-")
-                if rec_third_party:
-                    rec_model = rec_modelcap
-                else:
-                    rec_model, err_msg = static_resolve_model(rec_modelcap, self._inference_queue)
-                    assert err_msg == "", err_msg
-                rec_function_name = f"{rec.function_name}-{rec_modelcap}"
-                longthink_functions[rec_function_name] = {
-                    **rec.to_dict(),
-                    "function_name": rec_function_name,
-                    "is_liked": False,
-                    "likes": 0,
-                    "third_party": rec_third_party,
-                    "model": rec_model,
-                }
-                if "/" not in rec_model:
-                    longthink_filters.add(rec_model)
+    async def _login(self, authorization: str = Header(None)) -> Dict:
+        account = await self._account_from_bearer(authorization)
         return {
-            "account": "self-hosted",
+            "account": account,
             "retcode": "OK",
-            "longthink-functions-today": 1,
-            "longthink-functions-today-v2": longthink_functions,
-            "longthink-filters": list(longthink_filters),
             "chat-v1-style": 1,
-        }
-
-    async def _secret_key_activate(self, authorization: str = Header(None)):
-        await self._account_from_bearer(authorization)
-        return {
-            "retcode": "OK",
-            "human_readable_message": "API key verified",
         }
 
     async def _resolve_model_lora(self, model_name: str) -> Tuple[str, Optional[Dict[str, str]]]:
