@@ -251,6 +251,7 @@ class ModelAssigner:
                 "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
                 "has_sharding": rec["backend"] in ["transformers"],
+                "has_share_gpu": rec["backend"] in SHARE_GPU_BACKENDS,
                 "default_n_ctx": default_n_ctx,
                 "available_n_ctx": available_n_ctx,
                 "is_deprecated": bool(rec.get("deprecated", False)),
