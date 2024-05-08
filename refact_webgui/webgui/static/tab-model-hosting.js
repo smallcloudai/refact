@@ -286,23 +286,25 @@ function render_models_assigned(models) {
             select_gpus.appendChild(select_gpus_div);
         }
 
-        const gpus_checkbox = document.createElement("input");
-        gpus_checkbox.setAttribute('type','checkbox');
-        gpus_checkbox.setAttribute('value',index);
-        gpus_checkbox.setAttribute('name',`share-${index}`);
-        gpus_checkbox.classList.add('form-check-input');
-        if(models_data.model_assign[index].share_gpu) {
-            gpus_checkbox.checked = true;
-        } 
-        gpus_checkbox.addEventListener('change', function() {
-            if(this.checked) {
-                models_data.model_assign[index].share_gpu = true;
-            } else {
-                models_data.model_assign[index].share_gpu = false;
-            }
-            save_model_assigned();
-        });
-        gpus_share.appendChild(gpus_checkbox);
+        if(models_info[index].has_share_gpu) {
+            const gpus_checkbox = document.createElement("input");
+            gpus_checkbox.setAttribute('type','checkbox');
+            gpus_checkbox.setAttribute('value',index);
+            gpus_checkbox.setAttribute('name',`share-${index}`);
+            gpus_checkbox.classList.add('form-check-input');
+            if(models_data.model_assign[index].share_gpu) {
+                gpus_checkbox.checked = true;
+            } 
+            gpus_checkbox.addEventListener('change', function() {
+                if(this.checked) {
+                    models_data.model_assign[index].share_gpu = true;
+                } else {
+                    models_data.model_assign[index].share_gpu = false;
+                }
+                save_model_assigned();
+            });
+            gpus_share.appendChild(gpus_checkbox);
+        }
 
         const del_button = document.createElement("button");
         del_button.innerHTML = `<i class="bi bi-trash3-fill"></i>`;
@@ -457,6 +459,7 @@ function render_models(models) {
         const has_finetune = document.createElement("td");
         // const has_toolbox = document.createElement("td");
         const has_chat = document.createElement("td");
+        const has_share_gpu = document.createElement("td");
         model_span.textContent = key;
         model_span.classList.add('model-span');
         model_name.appendChild(model_span);
@@ -465,6 +468,7 @@ function render_models(models) {
         row.appendChild(has_finetune);
         // row.appendChild(has_toolbox);
         row.appendChild(has_chat);
+        row.appendChild(has_share_gpu);
         models_table.appendChild(row);
         value.forEach(element => {
             const row = document.createElement('tr');
@@ -474,6 +478,7 @@ function render_models(models) {
             const model_name = document.createElement("td");
             const has_completion = document.createElement("td");
             const has_finetune = document.createElement("td");
+            const has_share_gpu = document.createElement("td");
             // const has_toolbox = document.createElement("td");
             const has_chat = document.createElement("td");
             model_name.innerHTML = element.name;
@@ -494,6 +499,9 @@ function render_models(models) {
             if(element.hasOwnProperty('has_finetune')) {
                 has_finetune.innerHTML = element.has_finetune ? '<i class="bi bi-check"></i>' : '';
             }
+            if(element.hasOwnProperty('has_share_gpu')) {
+                has_share_gpu.innerHTML = element.has_share_gpu ? '<i class="bi bi-check"></i>' : '';
+            }
             // if(value.hasOwnProperty('has_toolbox')) {
             //     has_toolbox.innerHTML = element.has_toolbox ? '<i class="bi bi-check"></i>' : '';
             // }
@@ -505,6 +513,7 @@ function render_models(models) {
             row.appendChild(has_finetune);
             // row.appendChild(has_toolbox);
             row.appendChild(has_chat);
+            row.appendChild(has_share_gpu);
             models_table.appendChild(row);
             row.addEventListener('click', function(e) {
                 const model_name = this.dataset.model;
