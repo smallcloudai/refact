@@ -24,9 +24,6 @@ all_refact_packages = {
         requires=["cdifflib", "termcolor", "numpy", "dataclasses"]),
     "refact_known_models": PyPackage(),
     "refact_utils": PyPackage(),
-    "refact_scratchpads": PyPackage(
-        requires=["termcolor", "torch"],
-        requires_packages=["code_contrast", "refact_scratchpads_no_gpu"]),
     "refact_scratchpads_no_gpu": PyPackage(
         requires=["termcolor", "aiohttp", "tiktoken", "openai>=1.0.0", "ujson", "setproctitle"]),
     "refact_data_pipeline": PyPackage(
@@ -51,7 +48,7 @@ all_refact_packages = {
                   "torchinfo", "mpi4py", "deepspeed==0.14.2",
                   "sentence-transformers", "huggingface-hub>=0.19.3"],
         optional=["ninja", "flash-attn"],
-        requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
+        requires_packages=["refact_scratchpads_no_gpu",
                            "refact_known_models", "refact_data_pipeline",
                            "refact_webgui", "refact_utils"],
         data=["watchdog/watchdog.d/*"]),
