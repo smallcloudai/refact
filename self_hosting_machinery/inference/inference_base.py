@@ -1,7 +1,7 @@
 import torch
 import importlib
 
-from refact_scratchpads_no_gpu.stream_results import UploadProxy
+from self_hosting_machinery.inference.stream_results import UploadProxy
 
 from typing import Dict, Any
 
