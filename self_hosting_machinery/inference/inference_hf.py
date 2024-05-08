@@ -17,7 +17,7 @@ from transformers.generation.streamers import TextStreamer
 from self_hosting_machinery.inference.scratchpad_hf import ScratchpadHuggingfaceBase
 from self_hosting_machinery.inference.scratchpad_hf import ScratchpadHuggingfaceCompletion
 from self_hosting_machinery.inference import InferenceBase
-from refact_scratchpads_no_gpu.stream_results import UploadProxy
+from self_hosting_machinery.inference.stream_results import UploadProxy
 
 from refact_utils.scripts import env
 

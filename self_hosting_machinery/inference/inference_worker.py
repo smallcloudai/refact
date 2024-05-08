@@ -5,10 +5,10 @@ import signal
 import socket
 import traceback
 
-from refact_scratchpads_no_gpu.stream_results import infserver_session
-from refact_scratchpads_no_gpu.stream_results import validate_description_dict
-from refact_scratchpads_no_gpu.stream_results import UploadProxy
-from refact_scratchpads_no_gpu.stream_results import completions_wait_batch
+from self_hosting_machinery.inference.stream_results import infserver_session
+from self_hosting_machinery.inference.stream_results import validate_description_dict
+from self_hosting_machinery.inference.stream_results import UploadProxy
+from self_hosting_machinery.inference.stream_results import completions_wait_batch
 
 from self_hosting_machinery.inference import InferenceHF, InferenceEmbeddings
 
