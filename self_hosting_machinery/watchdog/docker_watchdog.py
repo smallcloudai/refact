@@ -241,15 +241,18 @@ class TrackedJob:
         if self.please_shutdown and self.sent_sigusr1_ts + sigkill_timeout < time.time():
             log("%s SIGUSR1 timed out, sending kill %s" % (time.strftime("%Y%m%d %H:%M:%S"), self.p.pid))
             try:
+                itself = psutil.Process(self.p.pid)
+                for child in itself.children(recursive=True):
+                    try:
+                        child.kill()
+                    except psutil.NoSuchProcess:
+                        pass
+            except psutil.NoSuchProcess:
+                pass
+            try:
                 self.p.kill()
             except psutil.NoSuchProcess:
                 pass
-            itself = psutil.Process(self.p.pid)
-            for child in itself.children(recursive=True):
-                try:
-                    child.kill()
-                except psutil.NoSuchProcess:
-                    pass
 
     def maybe_can_start(self):
         if self.p is not None:
