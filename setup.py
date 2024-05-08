@@ -22,7 +22,7 @@ class PyPackage:
 all_refact_packages = {
     "code_contrast": PyPackage(
         requires=["cdifflib", "termcolor", "numpy", "dataclasses"]),
-    "known_models_db": PyPackage(),
+    "refact_known_models": PyPackage(),
     "refact_utils": PyPackage(),
     "refact_scratchpads": PyPackage(
         requires=["termcolor", "torch"],
@@ -41,7 +41,7 @@ all_refact_packages = {
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic>=2",
                   "starlette==0.27.0", "uvicorn", "uvloop", "termcolor", "python-multipart", "more_itertools",
                   "scyllapy==1.3.0", "pandas>=2.0.3", "litellm>=1.35.8"],
-        requires_packages=["known_models_db", "refact_utils"],
+        requires_packages=["refact_known_models", "refact_utils"],
         data=["webgui/static/*", "webgui/static/components/modals/*",
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",]),
     "self_hosting_machinery": PyPackage(
@@ -52,7 +52,7 @@ all_refact_packages = {
                   "sentence-transformers", "huggingface-hub>=0.19.3"],
         optional=["ninja", "flash-attn"],
         requires_packages=["refact_scratchpads", "refact_scratchpads_no_gpu",
-                           "known_models_db", "refact_data_pipeline",
+                           "refact_known_models", "refact_data_pipeline",
                            "refact_webgui", "refact_utils"],
         data=["watchdog/watchdog.d/*"]),
 }

@@ -430,7 +430,7 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    from known_models_db.refact_known_models import models_mini_db
+    from refact_known_models import models_mini_db
     from self_hosting_machinery.finetune.configuration import supported_models
 
     main(supported_models=supported_models.config, models_db=models_mini_db)
