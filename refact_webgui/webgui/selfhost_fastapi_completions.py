@@ -9,7 +9,7 @@ import re
 import litellm
 import traceback
 
-from fastapi import APIRouter, Request, HTTPException, Query, Header
+from fastapi import APIRouter, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
@@ -35,16 +35,6 @@ def clamp(lower, upper, x):
 
 def red_time(base_ts):
     return termcolor.colored("%0.1fms" % (1000*(time.time() - base_ts)), "red")
-
-
-def chat_limit_messages(messages: List[Dict[str, str]]):
-    if len(messages) == 0:
-        raise HTTPException(status_code=400, detail="No messages")
-    while len(messages) > 10:
-        del messages[0:2]  # user, assistant
-    while sum([len(m["content"] + m["role"]) for m in messages]) > 8000:
-        del messages[0:2]  # user, assistant
-    return messages
 
 
 class NlpSamplingParams(BaseModel):
@@ -84,10 +74,9 @@ class ChatMessage(BaseModel):
 
 
 class ChatContext(NlpSamplingParams):
+    model: str = Query(pattern="^[a-z/A-Z0-9_\.\-]+$")
     messages: List[ChatMessage]
     n: int = 1
-    model: str = Query(pattern="^[a-z/A-Z0-9_\.\-]+$")
-    function: str = Query(default="chat", pattern="^[a-zA-Z0-9_\.\-]+$")
 
 
 class EmbeddingsStyleOpenAI(BaseModel):
@@ -156,40 +145,6 @@ async def _completion_streamer(ticket: Ticket, post: NlpCompletion, timeout, see
         ticket.cancelled = True
 
 
-async def chat_streamer(ticket: Ticket, timeout, created_ts):
-    seen: Dict[int, str] = dict()
-    try:
-        while 1:
-            try:
-                msg: Dict = await asyncio.wait_for(ticket.streaming_queue.get(), timeout)
-            except asyncio.TimeoutError:
-                log("TIMEOUT %s" % ticket.id())
-                msg = {"status": "error", "human_readable_message": "timeout"}
-            if "choices" in msg:
-                for ch in msg["choices"]:
-                    idx = ch["index"]
-                    seen_here = seen.get(idx, "")
-                    content = ch.get("content", "")
-                    ch["delta"] = content[len(seen_here):]
-                    seen[idx] = content
-                    if "content" in ch:
-                        del ch["content"]
-            tmp = json.dumps(msg)
-            yield "data: " + tmp + "\n\n"
-            log("  " + red_time(created_ts) + " stream %s <- %i bytes" % (ticket.id(), len(tmp)))
-            if msg.get("status", "") != "in_progress":
-                break
-        await asyncio.sleep(0.5)   # a workaround for VS Code plugin bug, remove July 20, 2023 when plugin should be fixed
-        yield "data: [DONE]" + "\n\n"
-        log(red_time(created_ts) + " /finished call %s" % ticket.id())
-        ticket.done()
-    finally:
-        if ticket.id() is not None:
-            log("   ***  CANCEL  ***  cancelling %s" % ticket.id() + red_time(created_ts))
-        ticket.cancelled = True
-        ticket.done()
-
-
 async def embeddings_streamer(ticket: Ticket, timeout, created_ts):
     try:
         while 1:
@@ -217,13 +172,6 @@ async def embeddings_streamer(ticket: Ticket, timeout, created_ts):
         ticket.done()
 
 
-async def error_string_streamer(ticket_id, static_message, account, created_ts):
-    yield "data: " + json.dumps(
-        {"object": "smc.chat.chunk", "role": "assistant", "delta": static_message, "finish_reason": "END"}) + "\n\n"
-    yield "data: [ERROR]" + "\n\n"
-    log("  " + red_time(created_ts) + "%s chat static message to %s: %s" % (ticket_id, account, static_message))
-
-
 class BaseCompletionsRouter(APIRouter):
 
     def __init__(self,
@@ -237,7 +185,6 @@ class BaseCompletionsRouter(APIRouter):
         # deprecated APIs
         self.add_api_route("/v1/login", self._login, methods=["GET"])
         self.add_api_route("/v1/secret-key-activate", self._secret_key_activate, methods=["GET"])
-        self.add_api_route("/v1/chat", self._chat, methods=["POST"])
         self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
 
         # API for LSP server
@@ -421,7 +368,7 @@ class BaseCompletionsRouter(APIRouter):
 
         ticket = Ticket("comp-")
         req = post.clamp()
-        caps_version = self._caps_version      # use mtime as a version, if that changes the client will know to refresh caps
+        caps_version = self._caps_version  # use mtime as a version, if that changes the client will know to refresh caps
 
         model_name, lora_config = await self._resolve_model_lora(post.model)
         model_name, err_msg = static_resolve_model(model_name, self._inference_queue)
@@ -453,41 +400,6 @@ class BaseCompletionsRouter(APIRouter):
             _completion_streamer(ticket, post, self._timeout, seen, req["created"], caps_version=caps_version),
             media_type=("text/event-stream" if post.stream else "application/json"),
         )
-
-    # deprecated, no loras
-    async def _chat(self, post: ChatContext, request: Request, authorization: str = Header(None)):
-        account = await self._account_from_bearer(authorization)
-
-        ticket = Ticket("comp-")
-
-        model_name, err_msg = static_resolve_model(post.model, self._inference_queue)
-        if err_msg:
-            log("%s model resolve \"%s\" -> error \"%s\" from %s" % (ticket.id(), post.model, err_msg, account))
-            raise HTTPException(status_code=400, detail=err_msg)
-        log("%s chat model resolve \"%s\" -> \"%s\" from %s" % (ticket.id(), post.model, model_name, account))
-
-        req = post.clamp()
-        post_raw = await request.json()
-        messages = chat_limit_messages(post_raw["messages"])
-        if len(messages) == 0:
-            return StreamingResponse(
-                error_string_streamer(
-                    ticket.id(), "Your messsage is too large, the limit is 4k characters", account, req["created"]))
-        req.update({
-            "id": ticket.id(),
-            "object": "chat_completion_req",
-            "account": account,
-            "model": model_name,
-            "function": post.function,
-            "messages": messages,
-            "stream": True,
-        })
-
-        ticket.call.update(req)
-        q = self._inference_queue.model_name_to_queue(ticket, model_name)
-        self._id2ticket[ticket.id()] = ticket
-        await q.put(ticket)
-        return StreamingResponse(chat_streamer(ticket, self._timeout, req["created"]))
 
     async def _generate_embeddings(self, account: str, inputs: Union[str, List[str]], model_name: str):
         if model_name not in self._inference_queue.models_available():
