@@ -1,2 +1,0 @@
-from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceBase
-from refact_scratchpads.scratchpad_hf import ScratchpadHuggingfaceCompletion
