@@ -100,7 +100,7 @@ class ScratchpadHuggingfaceBase:
     def eos_token(self):
         return self._eos_token
 
-    def prompt(self, T: int):
+    def prompt(self):
         raise NotImplementedError()
 
     def completion(self, final: bool):
@@ -117,7 +117,7 @@ class ScratchpadHuggingfaceCompletion(ScratchpadHuggingfaceBase):
         super().__init__(**kwargs)
         self._prompt = prompt
 
-    def prompt(self, T: int):
+    def prompt(self):
         return self._tokenizer.encode(self._prompt)
 
     def completion(self, final: bool):

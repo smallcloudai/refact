@@ -230,10 +230,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
 
         assert request["object"] in ["text_completion_req"]
         scratchpad = ScratchpadHuggingfaceCompletion(tokenizer=self._tokenizer, logger=logger, **request)
-        T = self._tokenizer.max_len_single_sentence
-        if not isinstance(T, int) or T <= 0 or T > 4096:
-            T = 2048
-        p = scratchpad.prompt(T)
+        p = scratchpad.prompt()
         logger("prompt %i tokens, max_new_tokens %i" % (len(p), request["max_tokens"]))
         if len(p) == 0:
             raise RuntimeError("empty tokens prompt")
