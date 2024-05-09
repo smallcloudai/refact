@@ -149,9 +149,9 @@ def setup_logger():
     class CustomHandler(logging.Handler):
         def emit(self, record):
             log_entry = self.format(record)
-            if boring1.match(log_entry):
+            if boring1.search(log_entry):
                 return
-            if boring2.match(log_entry):
+            if boring2.search(log_entry):
                 return
             sys.stderr.write(log_entry)
             sys.stderr.write("\n")
