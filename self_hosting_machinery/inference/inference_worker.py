@@ -73,7 +73,7 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], supported_models: Di
             return set()
 
     log("STATUS test batch")
-    for _ in range(10):
+    for _ in range(2):
         inference_model.infer(dummy_call, DummyUploadProxy, {})
     if compile:
         return
