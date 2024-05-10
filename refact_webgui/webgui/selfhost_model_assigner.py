@@ -17,6 +17,7 @@ __all__ = ["ModelAssigner"]
 
 
 ALLOWED_N_CTX = [2 ** p for p in range(10, 20)]
+SHARE_GPU_BACKENDS = ["transformers", "autogptq"]
 
 
 def has_context_switch(filter_caps: List[str]) -> bool:
@@ -78,7 +79,7 @@ class ModelAssigner:
             if self.models_db[model_name]["backend"] not in ["transformers"] and assignment["gpus_shard"] > 1:
                 log(f"sharding not supported for '{self.models_db['backend']}' backend, skipping '{model_name}'")
                 continue
-            if assignment.get("share_gpu", False):
+            if assignment.get("share_gpu", False) and self.models_db[model_name]["backend"] in SHARE_GPU_BACKENDS:
                 if not shared_group.model_assign:
                     model_groups.append(shared_group)
                 shared_group.model_assign[model_name] = assignment
@@ -90,20 +91,31 @@ class ModelAssigner:
         if inference_config is None:
             inference_config = self.model_assignment
 
-        inference_config = self._model_assign_filter(inference_config)
+        inference_config["model_assign"] = self._model_assign_filter(inference_config["model_assign"])
+        inference_config["model_assign"] = self._share_gpu_filter(inference_config["model_assign"])
         inference_config = self._model_inference_setup(inference_config)
 
         with open(env.CONFIG_INFERENCE + ".tmp", "w") as f:
             json.dump(inference_config, f, indent=4)
         os.rename(env.CONFIG_INFERENCE + ".tmp", env.CONFIG_INFERENCE)
 
-    def _model_assign_filter(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
-        inference_config["model_assign"] = {
+    def _model_assign_filter(self, model_assign: Dict[str, Any]) -> Dict[str, Any]:
+        return {
             model_name: model_cfg
-            for model_name, model_cfg in inference_config["model_assign"].items()
+            for model_name, model_cfg in model_assign.items()
             if model_name in self.models_db and not self.models_db[model_name].get("hidden")
         }
-        return inference_config
+
+    def _share_gpu_filter(self, model_assign: Dict[str, Any]) -> Dict[str, Any]:
+        def _update_share_gpu(model: str, record: Dict) -> Dict:
+            allow_share_gpu = self.models_db[model]["backend"] in SHARE_GPU_BACKENDS
+            record["share_gpu"] = record.get("share_gpu", False) and allow_share_gpu
+            return record
+
+        return {
+            model_name: _update_share_gpu(model_name, model_cfg)
+            for model_name, model_cfg in model_assign.items()
+        }
 
     def _model_cfg_template(self) -> Dict:
         return json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model.cfg")))
@@ -239,6 +251,7 @@ class ModelAssigner:
                 "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
                 "has_sharding": rec["backend"] in ["transformers"],
+                "has_share_gpu": rec["backend"] in SHARE_GPU_BACKENDS,
                 "default_n_ctx": default_n_ctx,
                 "available_n_ctx": available_n_ctx,
                 "is_deprecated": bool(rec.get("deprecated", False)),
@@ -263,10 +276,12 @@ class ModelAssigner:
             record["n_ctx"] = n_ctx
             return record
 
-        j["model_assign"] = {
-            model: _set_n_ctx(model, v) for model, v in j["model_assign"].items()
+        j["model_assign"] = self._share_gpu_filter({
+            model: _set_n_ctx(model, v)
+            for model, v in j["model_assign"].items()
             if model in self.models_db
-        }
+        })
+
         return j
 
     def config_inference_mtime(self) -> int:
