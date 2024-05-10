@@ -37,10 +37,10 @@ html[data-bs-theme='dark'] body {
 .nav-sun {
     display: none;
 }
-html[data-bs-theme='dark'] .nav-moon {
+html[data-bs-theme='dark'] .nav-sun {
     display: block;
 }
-html[data-bs-theme='light'] .nav-sun {
+html[data-bs-theme='light'] .nav-moon {
     display: block;
 }
 html[data-bs-theme='dark'] .nav-mode svg path {
