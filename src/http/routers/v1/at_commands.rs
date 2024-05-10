@@ -67,7 +67,7 @@ pub async fn handle_v1_command_completion(
         let args = query_line_args(&query_line_val, cursor_rel, cursor_line_start);
         (completions, is_cmd_executable, pos1, pos2) = command_completion(args, &context, post.cursor, post.top_n).await;
     }
-    let completions: Vec<_> = completions.into_iter().unique().collect();
+    let completions: Vec<_> = completions.into_iter().unique().map(|x|format!("{} ", x)).collect();
 
     let response = CommandCompletionResponse {
         completions,
