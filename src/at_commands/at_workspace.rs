@@ -62,4 +62,7 @@ impl AtCommand for AtWorkspace {
             None => Err("vecdb is not available".to_string())
         }
     }
+    fn depends_on(&self) -> Vec<String> {
+        vec!["vecdb".to_string()]
+    }
 }

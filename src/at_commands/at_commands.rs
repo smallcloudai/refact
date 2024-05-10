@@ -34,7 +34,7 @@ pub trait AtCommand: Send + Sync {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>;
     async fn can_execute(&self, _args: &Vec<String>, _context: &AtCommandsContext) -> bool {true}
     async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<Vec<ContextFile>, String>;
-    fn is_hidden_in_completion(&self) -> bool {false}
+    fn depends_on(&self) -> Vec<String> {vec![]}
 }
 
 #[async_trait]

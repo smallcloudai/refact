@@ -211,15 +211,22 @@ async fn command_completion(
     (vec![], false, -1, -1)
 }
 
-
 async fn command_completion_options(
     q_cmd: &String,
     context: &AtCommandsContext,
     top_n: usize,
 ) -> Vec<String> {
+    let (ast_on, vecdb_on) = {
+        let gcx = context.global_context.read().await;
+        let vecdb = gcx.vec_db.lock().await;
+        (gcx.ast_module.is_some(), vecdb.is_some())
+    };
     let mut filtered_commands = vec![];
     for (name, cmd) in context.at_commands.iter() {
-        if !cmd.lock().await.is_hidden_in_completion() {
+        let satisfied = cmd.lock().await.depends_on().iter().all(|d| {
+            d == "ast" && ast_on || d == "vecdb" && vecdb_on
+        });
+        if satisfied {
             filtered_commands.push((name.clone(), cmd.clone()));
         }
     }

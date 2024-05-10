@@ -71,4 +71,7 @@ impl AtCommand for AtAstFileSymbols {
             None => Err("Ast module is not available".to_string())
         }; x
     }
+    fn depends_on(&self) -> Vec<String> {
+        vec!["ast".to_string()]
+    }
 }

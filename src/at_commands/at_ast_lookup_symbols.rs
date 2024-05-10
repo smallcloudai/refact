@@ -128,4 +128,7 @@ impl AtCommand for AtAstLookupSymbols {
         };
         x
     }
+    fn depends_on(&self) -> Vec<String> {
+        vec!["ast".to_string()]
+    }
 }
