@@ -15,5 +15,16 @@ const config: StorybookConfig = {
   docs: {
     autodocs: "tag",
   },
+  viteFinal: (config, options) => {
+    console.log({ config, options });
+    const server = {
+      ...config.server,
+      proxy: {
+        "/v1": process.env.REFACT_LSP_URL ?? "http://127.0.0.1:8001",
+      },
+    };
+
+    return { ...config, server };
+  },
 };
 export default config;
