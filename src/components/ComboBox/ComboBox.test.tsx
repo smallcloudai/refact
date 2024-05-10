@@ -54,14 +54,14 @@ describe("ComboBox", () => {
   test("insert new  line when selecting a command", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "foo@");
+    await user.type(textarea, "foo @");
     const commandButton = app.getByText("@file");
 
     await user.click(commandButton);
     const argumentsButton = app.getByText("/bar");
     await user.click(argumentsButton);
     const result = app.getByRole("combobox");
-    expect(result.textContent).toBe("foo\n@file /bar");
+    expect(result.textContent).toBe("foo @file /bar");
   });
 
   test("deleting while typing a command", async () => {

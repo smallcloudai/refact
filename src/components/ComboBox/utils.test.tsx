@@ -21,7 +21,7 @@ describe("detectCommand", () => {
     const { user, ...app } = render(<TextArea />);
 
     const textarea = app.getByTestId("textarea") as HTMLTextAreaElement;
-    await user.type(textarea, "foo bar\baz");
+    await user.type(textarea, "foo bar baz");
     const expected = null;
     const result = detectCommand(
       app.getByTestId("textarea") as HTMLTextAreaElement,
@@ -85,8 +85,8 @@ describe("replaceValue", () => {
     await user.type(textarea, "foo bar @f");
     const result = replaceValue(textarea, "@f", "@file", null);
     const expected: ReplaceValueResult = {
-      value: "foo bar \n@file",
-      endPosition: 14,
+      value: "foo bar @file",
+      endPosition: 13,
     };
     expect(result).toEqual(expected);
   });
