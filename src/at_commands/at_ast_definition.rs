@@ -1,3 +1,5 @@
+use std::ffi::OsStr;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -46,6 +48,21 @@ impl AtAstDefinition {
     }
 }
 
+fn text_on_clip(symbol_path: &String, results: &Vec<ContextFile>) -> String {
+    let file_paths = results.iter().map(|x| x.file_name.clone()).collect::<Vec<_>>();
+    if let Some(path0) = file_paths.get(0) {
+        let path = PathBuf::from(path0);
+        let file_name = path.file_name().unwrap_or(OsStr::new(path0)).to_string_lossy();
+        if file_paths.len() > 1 {
+            format!("{} (defined in {} and other files)", symbol_path, file_name)
+        } else {
+            format!("{} (defined in {})", symbol_path, file_name)
+        }
+    } else {
+        symbol_path.clone()
+    }
+}
+
 #[async_trait]
 impl AtCommand for AtAstDefinition {
     fn name(&self) -> &String {
@@ -77,7 +94,7 @@ impl AtCommand for AtAstDefinition {
             }
             None => Err("Ast module is not available".to_string())
         };
-        x.map(|x| (x, format!("\"definition of {}\"", symbol_path)))
+        x.map(|x| (x.clone(), text_on_clip(symbol_path, &x)))
     }
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
