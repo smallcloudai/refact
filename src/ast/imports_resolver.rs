@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use itertools::Itertools;
 use similar::DiffableStr;
-use tracing::info;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ImportDeclaration, read_symbol};
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::ast::treesitter::language_id::LanguageId;
 
 pub fn combine_paths(file_path: &PathBuf, import_path: &PathBuf) -> PathBuf {
