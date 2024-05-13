@@ -982,16 +982,26 @@ impl AstIndex {
         let paths = self.path_by_symbols.keys().cloned().collect::<Vec<_>>();
         let prefixes = top_n_prefixes(&paths, 3);
         let min_prefix = prefixes.iter().next().map(|x| x.0.clone());
-        for (idx, symbol) in symbols
+        let mut notfound_import_components_index: HashMap<String, Vec<AstSymbolInstanceArc>> = HashMap::new();
+        let mut import_components_succ_solution_index: HashMap<String, ImportDeclaration> = HashMap::new();
+        for symbol in symbols
             .iter()
-            .filter(|s| read_symbol(s).as_any().downcast_ref::<ImportDeclaration>().is_some())
-            .enumerate() {
+            .filter(|s| read_symbol(s).as_any().downcast_ref::<ImportDeclaration>().is_some()) {
             let (import_type, file_path, path_components, language) = {
                 let s_ref = read_symbol(symbol);
                 let import_decl = s_ref.as_any().downcast_ref::<ImportDeclaration>().expect("wrong type");
                 (import_decl.import_type.clone(), import_decl.file_path().clone(), import_decl.path_components.clone(), import_decl.language().clone())
             };
             if import_type == ImportType::System || import_type == ImportType::Library {
+                continue;
+            }
+            let import_components_path = path_components.iter().join("/");
+            if import_components_succ_solution_index.contains_key(&import_components_path) {
+                let prepared_imp = import_components_succ_solution_index.get(&import_components_path).expect("assert");
+                let mut imp = symbol.write();
+                let imp_decl = imp.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
+                imp_decl.filepath_ref = prepared_imp.filepath_ref.clone();
+                imp_decl.ast_fields.name = prepared_imp.ast_fields.name.clone();
                 continue;
             }
             let search_items = possible_filepath_candidates(
@@ -1001,7 +1011,6 @@ impl AstIndex {
                 &path_components,
                 &language
             );
-
             match try_find_file_path(
                 &search_items,
                 &self.path_by_symbols,
@@ -1013,13 +1022,25 @@ impl AstIndex {
                     let import_decl = s_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
                     import_decl.filepath_ref = Some(search_res.path.clone());
                     import_decl.ast_fields.name = search_res.name.clone().unwrap_or_default();
-                    info!("found import for {:?}: {:?} at {:?} with name {:?}", language, path_components, search_res.path.to_str(), search_res.name);
+                    import_components_succ_solution_index.insert(import_components_path, import_decl.clone());
                 }
                 None => {
+                    notfound_import_components_index.entry(import_components_path).or_default().push(symbol.clone());
                     stats.non_found += 1;
-                    info!("no file found for {:?}: import components {:?}", language, path_components);
                 }
             };
+        }
+        for (import_components_path, symbols) in notfound_import_components_index.iter() {
+            if let Some(succ_import_decl) = import_components_succ_solution_index.get(import_components_path) {
+                for symbol in symbols {
+                    let mut symbol_ref = symbol.write();
+                    let symbol_decl = symbol_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
+                    symbol_decl.filepath_ref = succ_import_decl.filepath_ref.clone();
+                    symbol_decl.ast_fields.name = succ_import_decl.ast_fields.name.clone();
+                    stats.found += 1;
+                    stats.non_found -= 1;
+                }
+            }
         }
         stats
     }
