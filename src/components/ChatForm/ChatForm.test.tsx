@@ -27,9 +27,8 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     showControls: true,
     hasContextFile: false,
     commands: {
-      available_commands: [],
-      selected_command: "",
-      arguments: [],
+      completions: [],
+      replace: [-1, -1],
       is_cmd_executable: false,
     },
     requestCommandsCompletion: noop,

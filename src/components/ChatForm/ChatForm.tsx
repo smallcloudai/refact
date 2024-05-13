@@ -229,7 +229,7 @@ export type ChatFormProps = {
   onSetChatModel: (model: string) => void;
   isStreaming: boolean;
   onStopStreaming: () => void;
-  commands: ChatState["rag_commands"];
+  commands: ComboBoxProps["commands"];
   attachFile: ChatState["active_file"];
   hasContextFile: boolean;
   requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
@@ -261,7 +261,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   attachFile,
   requestCommandsCompletion,
   requestPreviewFiles,
-  setSelectedCommand,
   filesInPreview,
   selectedSnippet,
   removePreviewFileByName,
@@ -343,18 +342,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const handleAtCommandsRequest: ComboBoxProps["requestCommandsCompletion"] =
     useCallback(
-      (
-        query: string,
-        cursor: number,
-        trigger: string | null,
-        number?: number | undefined,
-      ) => {
+      (query: string, cursor: number) => {
+        //TODO: only add checkboxes on submit and preview do this for preview
         const inputWithCheckboxes = addCheckboxValuesToInput(
           query,
           checkboxes,
           showControls,
         );
-        requestCommandsCompletion(inputWithCheckboxes, cursor, trigger, number);
+        requestCommandsCompletion(inputWithCheckboxes, cursor);
       },
       [checkboxes, requestCommandsCompletion, showControls],
     );
@@ -393,16 +388,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         />
 
         <ComboBox
-          commands={commands.available_commands}
+          commands={commands}
           requestCommandsCompletion={handleAtCommandsRequest}
-          commandArguments={commands.arguments}
           value={value}
           onChange={handleChange}
           onSubmit={(event) => {
             handleEnter(event);
           }}
           placeholder={
-            commands.available_commands.length > 0 ? "Type @ for commands" : ""
+            commands.completions.length > 0 ? "Type @ for commands" : ""
           }
           render={(props) => (
             <TextArea
@@ -414,8 +408,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               autoFocus={true}
             />
           )}
-          selectedCommand={commands.selected_command}
-          setSelectedCommand={setSelectedCommand}
         />
         <Flex gap="2" className={styles.buttonGroup}>
           {onClose && (

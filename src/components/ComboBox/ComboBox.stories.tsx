@@ -4,24 +4,48 @@ import { ComboBox, type ComboBoxProps } from "./ComboBox";
 import { TextArea } from "../TextArea";
 import { Card } from "@radix-ui/themes";
 
+async function getCommands(query: string, cursor: number) {
+  return fetch("/v1/at-command-completion", {
+    method: "POST",
+    body: JSON.stringify({ query, cursor, top_n: 5 }),
+  })
+    .then((res) => res.json())
+    .then((json) => json as ComboBoxProps["commands"])
+    .catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error(err);
+    });
+}
+
 const App: React.FC<ComboBoxProps> = (props) => {
   const [value, setValue] = React.useState<string>("");
-  const [selectedCommand, setSelectedCommand] = React.useState<string>("");
+  const [commands, setCommands] = React.useState<ComboBoxProps["commands"]>({
+    completions: [],
+    replace: [0, 0],
+    is_cmd_executable: false,
+  });
+
+  const handleCommandCompletion = React.useCallback(
+    (query: string, cursor: number) => {
+      void getCommands(query, cursor).then((res) => res && setCommands(res));
+    },
+    [],
+  );
   return (
     <Card size="5" m="8">
       <ComboBox
         {...props}
+        commands={commands}
         value={value}
         onChange={setValue}
-        selectedCommand={selectedCommand}
-        setSelectedCommand={setSelectedCommand}
+        requestCommandsCompletion={handleCommandCompletion}
       />
     </Card>
   );
 };
 
 const meta = {
-  title: "ComboBox",
+  title: "ComboBox V2",
   component: App,
 } satisfies Meta<typeof ComboBox>;
 
@@ -29,9 +53,6 @@ export default meta;
 
 export const Default: StoryObj<typeof ComboBox> = {
   args: {
-    commands: ["@file"],
-    requestCommandsCompletion: () => ({}),
-    commandArguments: ["/foo", "/bar"],
     onSubmit: () => ({}),
     placeholder: "Type @ for commands",
     render: (props) => <TextArea {...props} />,

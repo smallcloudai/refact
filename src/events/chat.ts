@@ -110,7 +110,6 @@ export interface RequestAtCommandCompletion extends ActionFromChat {
     id: string;
     query: string;
     cursor: number;
-    trigger: string | null;
     number: number;
   };
 }

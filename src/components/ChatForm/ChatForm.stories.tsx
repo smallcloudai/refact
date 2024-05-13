@@ -72,9 +72,8 @@ const meta: Meta<typeof ChatForm> = {
     showControls: true,
     hasContextFile: false,
     commands: {
-      available_commands: testCommands,
-      selected_command: "",
-      arguments: [],
+      completions: testCommands,
+      replace: [-1, -1],
       is_cmd_executable: false,
     },
     attachFile: {

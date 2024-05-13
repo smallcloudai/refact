@@ -91,7 +91,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = () => {
         onSetChatModel={setChatModel}
         caps={state.caps}
         onStopStreaming={stopStreaming}
-        commands={state.rag_commands}
+        commands={state.commands}
         hasContextFile={hasContextFile}
         requestCommandsCompletion={requestCommandsCompletion}
         setSelectedCommand={setSelectedCommand}
