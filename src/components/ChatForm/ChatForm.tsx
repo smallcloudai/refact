@@ -343,15 +343,21 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const handleAtCommandsRequest: ComboBoxProps["requestCommandsCompletion"] =
     useCallback(
       (query: string, cursor: number) => {
-        //TODO: only add checkboxes on submit and preview do this for preview
         const inputWithCheckboxes = addCheckboxValuesToInput(
           query,
           checkboxes,
           showControls,
         );
-        requestCommandsCompletion(inputWithCheckboxes, cursor);
+        requestCommandsCompletion(query, cursor);
+
+        requestPreviewFiles(inputWithCheckboxes);
       },
-      [checkboxes, requestCommandsCompletion, showControls],
+      [
+        checkboxes,
+        requestCommandsCompletion,
+        requestPreviewFiles,
+        showControls,
+      ],
     );
 
   if (error) {
