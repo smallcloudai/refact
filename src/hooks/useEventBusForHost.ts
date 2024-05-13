@@ -23,6 +23,7 @@ import {
   isRequestPrompts,
   ReceivePrompts,
   ReceivePromptsError,
+  isRequestPreviewFiles,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
@@ -90,11 +91,9 @@ export function useEventBusForHost() {
       }
 
       if (isRequestAtCommandCompletion(event.data)) {
-        const { id, query, cursor, number, trigger } = event.data.payload;
-        // getAtCommandCompletion(query, cursor, number, lspUrl)
-        const triggerOrQuery = trigger ?? query;
-        const position = trigger ? trigger.length : cursor;
-        getAtCommandCompletion(triggerOrQuery, position, number, lspUrl)
+        const { id, query, cursor, number } = event.data.payload;
+
+        getAtCommandCompletion(query, cursor, number, lspUrl)
           .then((res) => {
             if (isDetailMessage(res)) return;
             const message: ReceiveAtCommandCompletion = {
@@ -108,6 +107,10 @@ export function useEventBusForHost() {
             // eslint-disable-next-line no-console
             console.error(error);
           });
+      }
+
+      if (isRequestPreviewFiles(event.data)) {
+        const { query, id } = event.data.payload;
 
         getAtCommandPreview(query, lspUrl)
           .then((res) => {

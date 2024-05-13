@@ -110,7 +110,6 @@ export interface RequestAtCommandCompletion extends ActionFromChat {
     id: string;
     query: string;
     cursor: number;
-    trigger: string | null;
     number: number;
   };
 }
@@ -130,7 +129,9 @@ export interface RequestPreviewFiles extends ActionFromChat {
   };
 }
 
-export function isRequestPreviewFiles(action: unknown) {
+export function isRequestPreviewFiles(
+  action: unknown,
+): action is RequestPreviewFiles {
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES;
 }

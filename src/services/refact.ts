@@ -259,15 +259,10 @@ export type CapsResponse = {
   tokenizer_rewrite_path: Record<string, unknown>;
 };
 
-interface Replace {
-  0: number;
-  1: number;
-}
-
 export type CommandCompletionResponse = {
   completions: string[];
-  replace: Replace;
-  is_cmd_executable: false;
+  replace: [number, number];
+  is_cmd_executable: boolean;
 };
 
 export function isCommandCompletionResponse(
