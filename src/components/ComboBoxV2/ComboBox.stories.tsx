@@ -31,10 +31,13 @@ const App: React.FC<ComboBoxProps> = (props) => {
     is_cmd_executable: false,
   });
 
-  const handleCommandCompletion = (query: string, cursor: number) => {
-    // void getCommands(query, cursor).then((res) => setCommands(res));
-    void getCommands(query, cursor).then((res) => res && setCommands(res));
-  };
+  const handleCommandCompletion = React.useCallback(
+    (query: string, cursor: number) => {
+      // void getCommands(query, cursor).then((res) => setCommands(res));
+      void getCommands(query, cursor).then((res) => res && setCommands(res));
+    },
+    [],
+  );
   return (
     <Card size="5" m="8">
       <ComboBox

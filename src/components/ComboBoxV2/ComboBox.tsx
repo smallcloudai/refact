@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { useComboboxStore, Combobox } from "@ariakit/react";
-import { getAnchorRect } from "./utils";
+import { getAnchorRect, replaceRange } from "./utils";
 import type { TextAreaProps } from "../TextArea/TextArea";
 import { Item } from "./Item";
 import { Portal } from "../Portal";
@@ -13,35 +13,6 @@ export type Commands = {
   replace: [number, number];
   is_cmd_executable: boolean;
 };
-
-function replaceRange(
-  str: string,
-  range: [number, number],
-  replacement: string,
-) {
-  const sortedRange = [
-    Math.min(range[0], range[1]),
-    Math.max(range[0], range[1]),
-  ];
-  return str.slice(0, sortedRange[0]) + replacement + str.slice(sortedRange[1]);
-}
-
-function modifyValueAndDispatchChange(
-  textarea: HTMLTextAreaElement,
-  commands: Commands,
-  command: string,
-) {
-  const nextValue = replaceRange(textarea.value, commands.replace, command);
-  Object.getOwnPropertyDescriptor(
-    window.HTMLTextAreaElement.prototype,
-    "value",
-  )?.set?.call(textarea, nextValue);
-  textarea.dispatchEvent(
-    new Event("change", {
-      bubbles: true,
-    }),
-  );
-}
 
 export type ComboBoxProps = {
   commands: Commands;
@@ -64,6 +35,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   requestCommandsCompletion,
 }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
+  const [moveCursorTo, setMoveCursorTo] = React.useState<number | null>(null);
 
   const combobox = useComboboxStore({
     defaultOpen: false,
@@ -77,15 +49,31 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     return matches.length > 0;
   }, [matches]);
 
+  React.useEffect(() => {
+    if (moveCursorTo === null) return;
+    if (ref.current) {
+      ref.current.setSelectionRange(moveCursorTo, moveCursorTo);
+    }
+    setMoveCursorTo(null);
+    return () => setMoveCursorTo(null);
+  }, [moveCursorTo]);
+
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
-    // const first = combobox.first();
-    // combobox.setActiveId(first);
   }, [combobox, hasMatches]);
 
   React.useEffect(() => {
     combobox.render();
   }, [combobox, value]);
+
+  React.useEffect(() => {
+    if (!ref.current) return;
+    const cursor = Math.min(
+      ref.current.selectionStart,
+      ref.current.selectionEnd,
+    );
+    requestCommandsCompletion(value, cursor);
+  }, [requestCommandsCompletion, value]);
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -107,7 +95,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       if (event.key === "Enter" && !event.shiftKey && !hasMatches) {
         event.stopPropagation();
         onSubmit(event);
-        // combobox.hide();
+        setMoveCursorTo(null);
         return;
       }
 
@@ -133,26 +121,27 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       if (state.open && tabOrEnterOrSpace && command) {
         event.preventDefault();
         event.stopPropagation();
-        modifyValueAndDispatchChange(ref.current, commands, command);
+        const nextValue = replaceRange(
+          ref.current.value,
+          commands.replace,
+          command,
+        );
+        onChange(nextValue);
+        setMoveCursorTo(commands.replace[0] + command.length);
       }
 
       if (event.key === "Escape") {
         combobox.hide();
       }
     },
-    [combobox, commands, hasMatches, onSubmit],
+    [combobox, commands.replace, hasMatches, onChange, onSubmit],
   );
 
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
       onChange(event.target.value);
-      const cursor = Math.min(
-        event.target.selectionStart,
-        event.target.selectionEnd,
-      );
-      requestCommandsCompletion(event.target.value, cursor);
     },
-    [onChange, requestCommandsCompletion],
+    [onChange],
   );
 
   const onItemClick = useCallback(
@@ -161,9 +150,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       event.preventDefault();
       const textarea = ref.current;
       if (!textarea) return;
-      modifyValueAndDispatchChange(textarea, commands, item);
+      const nextValue = replaceRange(textarea.value, commands.replace, item);
+      onChange(nextValue);
+      setMoveCursorTo(commands.replace[0] + item.length);
     },
-    [commands],
+    [commands.replace, onChange],
   );
 
   const popoverWidth = ref.current
