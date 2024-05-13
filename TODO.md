@@ -112,7 +112,7 @@
 [x] use repeat to find flaky tests
 [x] combobox undo / redo
 [x] list display in response has a large margin/padding
-[ ] tidy up combobox
+[x] tidy up combobox
 [x] bug @ast_definition blocks sending requests
 [ ] TBD: response cache for undo / redo, use a hashmap
 [x] limit the size of undo / redo history
