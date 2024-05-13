@@ -23,6 +23,7 @@ import {
   isRequestPrompts,
   ReceivePrompts,
   ReceivePromptsError,
+  isRequestPreviewFiles,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
@@ -106,6 +107,10 @@ export function useEventBusForHost() {
             // eslint-disable-next-line no-console
             console.error(error);
           });
+      }
+
+      if (isRequestPreviewFiles(event.data)) {
+        const { query, id } = event.data.payload;
 
         getAtCommandPreview(query, lspUrl)
           .then((res) => {
