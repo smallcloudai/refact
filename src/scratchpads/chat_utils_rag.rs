@@ -148,6 +148,9 @@ pub async fn postprocess_rag_load_ast_markup(
     let ast_module = global_context.read().await.ast_module.clone();
     for message in messages {
         let file_name = message.file_name.clone();
+        if files_markup.contains_key(&file_name) {
+            continue;
+        }
         let path = crate::files_correction::canonical_path(&file_name.clone());
         let cpath_symmetry_breaker: f32 = (calculate_hash(&path) as f32) / (u64::MAX as f32) / 100.0;
         let mut doc = Document::new(&path);
