@@ -9,7 +9,7 @@ use tree_sitter::{Node, Parser, Range};
 use tree_sitter_javascript::language;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
 use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid};
@@ -654,6 +654,8 @@ impl JSParser {
                             match child.kind() {
                                 "identifier" => {
                                     let mut def_local = def.clone();
+                                    def_local.ast_fields.guid = get_guid();
+                                    def_local.ast_fields.name = code.slice(child.byte_range()).to_string();
                                     def_local.path_components.push(code.slice(child.byte_range()).to_string());
                                     imports.push(def_local);
                                 }
@@ -662,6 +664,8 @@ impl JSParser {
                                         let identifier = child.child(i).unwrap();
                                         if identifier.kind() == "identifier" {
                                             let mut def_local = def.clone();
+                                            def_local.ast_fields.guid = get_guid();
+                                            def_local.ast_fields.name = code.slice(identifier.byte_range()).to_string();
                                             def_local.alias = Some(code.slice(identifier.byte_range()).to_string());
                                             imports.push(def_local);
                                             break;
@@ -673,7 +677,9 @@ impl JSParser {
                                         let import_specifier = child.child(i).unwrap();
                                         if import_specifier.kind() == "import_specifier" {
                                             let mut def_local = def.clone();
+                                            def_local.ast_fields.guid = get_guid();
                                             if let Some(name) = import_specifier.child_by_field_name("name") {
+                                                def_local.ast_fields.name = code.slice(name.byte_range()).to_string();
                                                 def_local.path_components.push(code.slice(name.byte_range()).to_string());
                                             }
                                             if let Some(alias) = import_specifier.child_by_field_name("alias") {
