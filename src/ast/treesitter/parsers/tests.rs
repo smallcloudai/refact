@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
+use std::fs;
 use std::path::PathBuf;
 
 use itertools::Itertools;
@@ -97,10 +98,12 @@ fn compare_symbols(symbols: &Vec<AstSymbolInstanceArc>,
     let mut checked_guids: HashSet<Uuid> = Default::default();
     for sym in symbols {
         let sym_l = sym.read();
+        let _f = sym_l.fields();
         if checked_guids.contains(&sym_l.guid()) {
             continue;
         }
         let closest_sym = ref_symbols.iter().filter(|s| sym_l.full_range() == s.full_range())
+            .filter(|x| eq_symbols(&sym, x))
             .collect::<Vec<_>>();
         assert_eq!(closest_sym.len(), 1);
         let closest_sym = closest_sym.first().unwrap();
@@ -158,6 +161,7 @@ fn check_duplicates(symbols: &Vec<AstSymbolInstanceArc>) {
     let mut checked_guids: HashSet<Uuid> = Default::default();
     for sym in symbols {
         let sym = sym.read();
+        let _f = sym.fields();
         assert!(!checked_guids.contains(&sym.guid()));
         checked_guids.insert(sym.guid().clone());
     }
@@ -166,6 +170,7 @@ fn check_duplicates(symbols: &Vec<AstSymbolInstanceArc>) {
 fn check_duplicates_with_ref(symbols: &Vec<Box<dyn AstSymbolInstance>>) {
     let mut checked_guids: HashSet<Uuid> = Default::default();
     for sym in symbols {
+        let _f = sym.fields();
         assert!(!checked_guids.contains(&sym.guid()));
         checked_guids.insert(sym.guid().clone());
     }
@@ -175,12 +180,12 @@ pub(crate) fn base_test(parser: &mut Box<dyn AstLanguageParser>,
                         path: &PathBuf,
                         code: &str, symbols_str: &str) {
     let symbols = parser.parse(code, &path);
-    check_duplicates(&symbols);
     // let symbols_str = serde_json::to_string_pretty(&symbols).unwrap();
     // fs::write("output.json", symbols_str).expect("Unable to write file");
+    check_duplicates(&symbols);
     print(&symbols, code);
     let ref_symbols: Vec<Box<dyn AstSymbolInstance>> = serde_json::from_str(&symbols_str).unwrap();
     check_duplicates_with_ref(&ref_symbols);
-
+    
     compare_symbols(&symbols, &ref_symbols);
 }

@@ -464,6 +464,7 @@ impl JavaParser {
                 usage.ast_fields.language = LanguageId::Java;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
+                usage.ast_fields.guid = get_guid();
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 if let Some(last) = usages.last() {
                     usage.ast_fields.caller_guid = last.borrow().fields().parent_guid.clone();
@@ -555,6 +556,7 @@ impl JavaParser {
                 usage.ast_fields.language = LanguageId::Java;
                 usage.ast_fields.full_range = parent.range();
                 usage.ast_fields.file_path = path.clone();
+                usage.ast_fields.guid = get_guid();
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 if let Some(last) = usages.last() {
                     usage.ast_fields.caller_guid = last.borrow().fields().parent_guid.clone();

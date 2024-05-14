@@ -4,33 +4,15 @@ mod tests {
 
     use crate::ast::treesitter::parsers::AstLanguageParser;
     use crate::ast::treesitter::parsers::java::JavaParser;
-    use crate::ast::treesitter::parsers::tests::print;
+    use crate::ast::treesitter::parsers::tests::{base_test, print};
 
-    const MAIN_RS_CODE: &str = include_str!("cases/java/main.java");
-    // const MAIN_RS_INDEXES: &str = include_str!("cases/rust/main.rs.indexes.json");
-    // const MAIN_RS_USAGES: &str = include_str!("cases/rust/main.rs.usages.json");
+    const MAIN_JAVA_CODE: &str = include_str!("cases/java/main.java");
+    const MAIN_JAVA_SYMBOLS: &str = include_str!("cases/java/main.java.json");
 
     #[test]
     fn test_query_rust_function() {
-        let mut parser = Box::new(JavaParser::new().expect("JavaParser::new"));
+        let mut parser: Box<dyn AstLanguageParser> = Box::new(JavaParser::new().expect("JavaParser::new"));
         let path = PathBuf::from("file:///main.java");
-        let symbols = parser.parse(MAIN_RS_CODE, &path);
-        print(&symbols, MAIN_RS_CODE);
-        // let indexes_json: HashMap<String, SymbolDeclarationStruct> = serde_json::from_str(MAIN_RS_INDEXES).unwrap();
-
-        // test_query_function(parser, &path, MAIN_RS_CODE,
-        //                     serde_json::from_str(MAIN_RS_INDEXES).unwrap(),
-        //                     serde_json::from_str(MAIN_RS_USAGES).unwrap());
-        // let usages_json = serde_json::to_string_pretty(&usages).unwrap();
-
-        // // Open a file and write the JSON string to it
-        // let mut file = File::create("cases/rust/main.rs.usages.json").unwrap();
-        // file.write_all(usages_json.as_bytes()).unwrap();
-        //
-        // let indexes_json = serde_json::to_string_pretty(&indexes).unwrap();
-        //
-        // // Open a file and write the JSON string to it
-        // let mut file = File::create("cases/rust/main.rs.indexes.json").unwrap();
-        // file.write_all(indexes_json.as_bytes()).unwrap();
+        base_test(&mut parser, &path, MAIN_JAVA_CODE, MAIN_JAVA_SYMBOLS);
     }
 }
