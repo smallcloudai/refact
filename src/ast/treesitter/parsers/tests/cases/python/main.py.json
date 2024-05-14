@@ -1,0 +1,4046 @@
+[
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "bfb44db8-2bab-42f1-8770-09310f25253e",
+        "name": "math",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 0,
+          "end_byte": 16,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 16
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "math"
+      ],
+      "alias": null,
+      "import_type": "System",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "62f87dcd-1bee-4b4f-9dea-892164d51fc8",
+        "name": "sos",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 0,
+          "end_byte": 16,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 16
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "sos"
+      ],
+      "alias": null,
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "b6cf2c61-3b5a-4ef2-976b-7863f1960c71",
+        "name": "sqrt",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 17,
+          "end_byte": 38,
+          "start_point": {
+            "row": 1,
+            "column": 0
+          },
+          "end_point": {
+            "row": 1,
+            "column": 21
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "math",
+        "sqrt"
+      ],
+      "alias": null,
+      "import_type": "System",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "3f604dfb-98fd-4df9-a2a8-1b915a46c03e",
+        "name": "numpy",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 39,
+          "end_byte": 57,
+          "start_point": {
+            "row": 2,
+            "column": 0
+          },
+          "end_point": {
+            "row": 2,
+            "column": 18
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "numpy"
+      ],
+      "alias": "np",
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "73fad6dc-9e3d-4943-86bf-a4dbdf354973",
+        "name": "",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 58,
+          "end_byte": 76,
+          "start_point": {
+            "row": 3,
+            "column": 0
+          },
+          "end_point": {
+            "row": 3,
+            "column": 18
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "math"
+      ],
+      "alias": null,
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "b9ddd7f3-0278-4e1c-bde5-f7833f0cc112",
+        "name": "nn",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 77,
+          "end_byte": 121,
+          "start_point": {
+            "row": 4,
+            "column": 0
+          },
+          "end_point": {
+            "row": 4,
+            "column": 44
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "torch",
+        "asd",
+        "nn"
+      ],
+      "alias": "NN",
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "385126e0-e571-4e3c-8da6-b9ed839ed413",
+        "name": "cuda",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 77,
+          "end_byte": 121,
+          "start_point": {
+            "row": 4,
+            "column": 0
+          },
+          "end_point": {
+            "row": 4,
+            "column": 44
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "torch",
+        "asd",
+        "cuda"
+      ],
+      "alias": "CUDA",
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "2f80ac50-e10f-43f8-bc6c-07163b817d8e",
+        "name": "asd",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 122,
+          "end_byte": 143,
+          "start_point": {
+            "row": 5,
+            "column": 0
+          },
+          "end_point": {
+            "row": 5,
+            "column": 21
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "..",
+        "sad",
+        "asd"
+      ],
+      "alias": null,
+      "import_type": "UserModule",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "79b3e083-17dd-486d-b816-cc633ed2811d",
+        "name": "s",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 144,
+          "end_byte": 169,
+          "start_point": {
+            "row": 6,
+            "column": 0
+          },
+          "end_point": {
+            "row": 6,
+            "column": 25
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        ".",
+        "asd",
+        "g",
+        "s"
+      ],
+      "alias": "G",
+      "import_type": "UserModule",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "c11a7770-305e-4771-97a6-a9cb347c1bc5",
+        "name": "addr",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "98accbfb-9788-473b-9763-f2d6b4486ded",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 211,
+          "end_byte": 234,
+          "start_point": {
+            "row": 10,
+            "column": 4
+          },
+          "end_point": {
+            "row": 10,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "str",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "cfbce401-4aeb-4d41-93f2-12bbf026f1a1",
+        "name": "port",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "98accbfb-9788-473b-9763-f2d6b4486ded",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 239,
+          "end_byte": 255,
+          "start_point": {
+            "row": 11,
+            "column": 4
+          },
+          "end_point": {
+            "row": 11,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "int",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "cd4f44bd-015f-44c8-b599-03191103908c",
+        "name": "root_uri",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "98accbfb-9788-473b-9763-f2d6b4486ded",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 260,
+          "end_byte": 290,
+          "start_point": {
+            "row": 12,
+            "column": 4
+          },
+          "end_point": {
+            "row": 12,
+            "column": 34
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "98accbfb-9788-473b-9763-f2d6b4486ded",
+        "name": "LSPConnectOptions",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [
+          "c11a7770-305e-4771-97a6-a9cb347c1bc5",
+          "cfbce401-4aeb-4d41-93f2-12bbf026f1a1",
+          "cd4f44bd-015f-44c8-b599-03191103908c"
+        ],
+        "full_range": {
+          "start_byte": 171,
+          "end_byte": 290,
+          "start_point": {
+            "row": 8,
+            "column": 0
+          },
+          "end_point": {
+            "row": 12,
+            "column": 34
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "913aea1d-8ebf-4142-a3b8-705d22857385",
+        "name": "numpy",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 293,
+          "end_byte": 311,
+          "start_point": {
+            "row": 15,
+            "column": 0
+          },
+          "end_point": {
+            "row": 15,
+            "column": 18
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "numpy"
+      ],
+      "alias": "np",
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "fb1d05e2-fdf5-4ed6-9f04-22c156f9cd25",
+        "name": "global_var",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 313,
+          "end_byte": 331,
+          "start_point": {
+            "row": 17,
+            "column": 0
+          },
+          "end_point": {
+            "row": 17,
+            "column": 18
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "\"pip\"",
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "05aa1d60-661a-49ec-99a3-622312c2b238",
+        "name": "true",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 338,
+          "end_byte": 342,
+          "start_point": {
+            "row": 18,
+            "column": 6
+          },
+          "end_point": {
+            "row": 18,
+            "column": 10
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "47d73ccd-0af8-4f82-be7e-600c6572a7f8",
+        "name": "bar",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 332,
+          "end_byte": 342,
+          "start_point": {
+            "row": 18,
+            "column": 0
+          },
+          "end_point": {
+            "row": 18,
+            "column": 10
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "true",
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "50583dfc-d5c9-4d08-a3a6-5f83791f4472",
+        "name": "Enum",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 345,
+          "end_byte": 370,
+          "start_point": {
+            "row": 21,
+            "column": 0
+          },
+          "end_point": {
+            "row": 21,
+            "column": 25
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "enum",
+        "asd",
+        "Enum"
+      ],
+      "alias": null,
+      "import_type": "System",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "d45e9065-ced2-4b32-9736-1b25287109aa",
+        "name": "SPRING",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f7b4cc36-6c54-4fb0-b17f-f99c6e35916a",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 395,
+          "end_byte": 405,
+          "start_point": {
+            "row": 23,
+            "column": 4
+          },
+          "end_point": {
+            "row": 23,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "f1c814c1-b57c-4cdf-b671-2d745d2bdf9a",
+        "name": "SUMMER",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f7b4cc36-6c54-4fb0-b17f-f99c6e35916a",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 410,
+          "end_byte": 420,
+          "start_point": {
+            "row": 24,
+            "column": 4
+          },
+          "end_point": {
+            "row": 24,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "31d09649-9885-46cf-8bf4-8fbc9c0a2d42",
+        "name": "AUTUMN",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f7b4cc36-6c54-4fb0-b17f-f99c6e35916a",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 425,
+          "end_byte": 435,
+          "start_point": {
+            "row": 25,
+            "column": 4
+          },
+          "end_point": {
+            "row": 25,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "92cf3361-2f0c-4145-a08b-ca1b971ffcdd",
+        "name": "WINTER",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f7b4cc36-6c54-4fb0-b17f-f99c6e35916a",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 440,
+          "end_byte": 450,
+          "start_point": {
+            "row": 26,
+            "column": 4
+          },
+          "end_point": {
+            "row": 26,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "f7b4cc36-6c54-4fb0-b17f-f99c6e35916a",
+        "name": "Season",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [
+          "d45e9065-ced2-4b32-9736-1b25287109aa",
+          "f1c814c1-b57c-4cdf-b671-2d745d2bdf9a",
+          "31d09649-9885-46cf-8bf4-8fbc9c0a2d42",
+          "92cf3361-2f0c-4145-a08b-ca1b971ffcdd"
+        ],
+        "full_range": {
+          "start_byte": 371,
+          "end_byte": 450,
+          "start_point": {
+            "row": 22,
+            "column": 0
+          },
+          "end_point": {
+            "row": 26,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "inherited_types": [
+        {
+          "name": "Enum",
+          "inference_info": null,
+          "is_pod": false,
+          "namespace": "",
+          "guid": null,
+          "nested_types": []
+        }
+      ]
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "acc59985-64c3-410d-b086-941757a63e33",
+        "name": "a",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "6edd2f31-735c-40e4-981b-c32fa62b267c",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 476,
+          "end_byte": 482,
+          "start_point": {
+            "row": 30,
+            "column": 4
+          },
+          "end_point": {
+            "row": 30,
+            "column": 10
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "int",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "2bc8106b-bd22-4672-8e4e-01b1847cbf61",
+        "name": "",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "6edd2f31-735c-40e4-981b-c32fa62b267c",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 489,
+          "end_byte": 515,
+          "start_point": {
+            "row": 30,
+            "column": 17
+          },
+          "end_point": {
+            "row": 30,
+            "column": 43
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "704cd44c-f88e-4dab-aceb-43678abfb68e",
+        "name": "b",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "6edd2f31-735c-40e4-981b-c32fa62b267c",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 520,
+          "end_byte": 530,
+          "start_point": {
+            "row": 31,
+            "column": 4
+          },
+          "end_point": {
+            "row": 31,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "int",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "3295374a-aa24-4419-a96d-80505567516c",
+        "name": "",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "6edd2f31-735c-40e4-981b-c32fa62b267c",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 533,
+          "end_byte": 565,
+          "start_point": {
+            "row": 31,
+            "column": 17
+          },
+          "end_point": {
+            "row": 31,
+            "column": 49
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "938f5506-96ce-485d-a181-a23b62df3bac",
+        "name": "self",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "7c53b281-0524-44b2-b666-d353c379b882",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 598,
+          "end_byte": 602,
+          "start_point": {
+            "row": 33,
+            "column": 8
+          },
+          "end_point": {
+            "row": 33,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "a0e527c5-a830-4bfe-ae97-022be03034d1",
+        "name": "a",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "7c53b281-0524-44b2-b666-d353c379b882",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 598,
+          "end_byte": 604,
+          "start_point": {
+            "row": 33,
+            "column": 8
+          },
+          "end_point": {
+            "row": 33,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "7c53b281-0524-44b2-b666-d353c379b882",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "7c53b281-0524-44b2-b666-d353c379b882",
+        "name": "__init__",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "6edd2f31-735c-40e4-981b-c32fa62b267c",
+        "childs_guid": [
+          "938f5506-96ce-485d-a181-a23b62df3bac",
+          "a0e527c5-a830-4bfe-ae97-022be03034d1"
+        ],
+        "full_range": {
+          "start_byte": 570,
+          "end_byte": 609,
+          "start_point": {
+            "row": 32,
+            "column": 4
+          },
+          "end_point": {
+            "row": 33,
+            "column": 19
+          }
+        },
+        "declaration_range": {
+          "start_byte": 570,
+          "end_byte": 588,
+          "start_point": {
+            "row": 32,
+            "column": 4
+          },
+          "end_point": {
+            "row": 32,
+            "column": 22
+          }
+        },
+        "definition_range": {
+          "start_byte": 598,
+          "end_byte": 609,
+          "start_point": {
+            "row": 33,
+            "column": 8
+          },
+          "end_point": {
+            "row": 33,
+            "column": 19
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "self",
+          "type_": null
+        }
+      ],
+      "return_type": null
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "6edd2f31-735c-40e4-981b-c32fa62b267c",
+        "name": "C",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [
+          "acc59985-64c3-410d-b086-941757a63e33",
+          "2bc8106b-bd22-4672-8e4e-01b1847cbf61",
+          "704cd44c-f88e-4dab-aceb-43678abfb68e",
+          "3295374a-aa24-4419-a96d-80505567516c",
+          "7c53b281-0524-44b2-b666-d353c379b882"
+        ],
+        "full_range": {
+          "start_byte": 452,
+          "end_byte": 609,
+          "start_point": {
+            "row": 28,
+            "column": 0
+          },
+          "end_point": {
+            "row": 33,
+            "column": 19
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "776d2306-e4e4-49ec-996c-29bcf47fe979",
+        "name": "self",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "48b90463-810c-4780-b50c-541811a388eb",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 660,
+          "end_byte": 664,
+          "start_point": {
+            "row": 37,
+            "column": 8
+          },
+          "end_point": {
+            "row": 37,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "ca32214f-b918-45e0-b2d7-4cd56e572dae",
+        "name": "xyi",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "48b90463-810c-4780-b50c-541811a388eb",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 660,
+          "end_byte": 668,
+          "start_point": {
+            "row": 37,
+            "column": 8
+          },
+          "end_point": {
+            "row": 37,
+            "column": 16
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "48b90463-810c-4780-b50c-541811a388eb",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "48b90463-810c-4780-b50c-541811a388eb",
+        "name": "__init__",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "99551cbd-e67d-41a5-80ab-05c0e74b2067",
+        "childs_guid": [
+          "776d2306-e4e4-49ec-996c-29bcf47fe979",
+          "ca32214f-b918-45e0-b2d7-4cd56e572dae"
+        ],
+        "full_range": {
+          "start_byte": 632,
+          "end_byte": 672,
+          "start_point": {
+            "row": 36,
+            "column": 4
+          },
+          "end_point": {
+            "row": 37,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 632,
+          "end_byte": 650,
+          "start_point": {
+            "row": 36,
+            "column": 4
+          },
+          "end_point": {
+            "row": 36,
+            "column": 22
+          }
+        },
+        "definition_range": {
+          "start_byte": 660,
+          "end_byte": 672,
+          "start_point": {
+            "row": 37,
+            "column": 8
+          },
+          "end_point": {
+            "row": 37,
+            "column": 20
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "self",
+          "type_": null
+        }
+      ],
+      "return_type": null
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "99551cbd-e67d-41a5-80ab-05c0e74b2067",
+        "name": "BabyClass",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [
+          "48b90463-810c-4780-b50c-541811a388eb"
+        ],
+        "full_range": {
+          "start_byte": 611,
+          "end_byte": 672,
+          "start_point": {
+            "row": 35,
+            "column": 0
+          },
+          "end_point": {
+            "row": 37,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "c89da0ad-b53d-4597-bb41-77ff9cad3abd",
+        "name": "self",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 723,
+          "end_byte": 727,
+          "start_point": {
+            "row": 40,
+            "column": 8
+          },
+          "end_point": {
+            "row": 40,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "6d848c30-e69f-4b0e-a64b-860bba384ca2",
+        "name": "xyi",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 723,
+          "end_byte": 731,
+          "start_point": {
+            "row": 40,
+            "column": 8
+          },
+          "end_point": {
+            "row": 40,
+            "column": 16
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "e424564c-5562-42f0-9618-8ed357fd72da",
+        "name": "self",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 744,
+          "end_byte": 748,
+          "start_point": {
+            "row": 41,
+            "column": 8
+          },
+          "end_point": {
+            "row": 41,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "87e1f905-f83f-4b3d-8474-e73cc37c7924",
+        "name": "zxc",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 744,
+          "end_byte": 752,
+          "start_point": {
+            "row": 41,
+            "column": 8
+          },
+          "end_point": {
+            "row": 41,
+            "column": 16
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "b236a0a3-309a-4324-a6eb-517457a11ee8",
+        "name": "self",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 769,
+          "end_byte": 773,
+          "start_point": {
+            "row": 42,
+            "column": 8
+          },
+          "end_point": {
+            "row": 42,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "924f4067-ce8b-44d7-b968-318364626b61",
+        "name": "zxcq",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 769,
+          "end_byte": 778,
+          "start_point": {
+            "row": 42,
+            "column": 8
+          },
+          "end_point": {
+            "row": 42,
+            "column": 17
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "4369ad40-3963-43ab-b51e-03027c2c72fa",
+        "name": "self",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 795,
+          "end_byte": 799,
+          "start_point": {
+            "row": 43,
+            "column": 8
+          },
+          "end_point": {
+            "row": 43,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "2601d8a7-3a27-40d3-aa0c-9c3b59126e3a",
+        "name": "zxcw",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 795,
+          "end_byte": 804,
+          "start_point": {
+            "row": 43,
+            "column": 8
+          },
+          "end_point": {
+            "row": 43,
+            "column": 17
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "fcb839ce-aede-4914-9a8e-c04e2726d1e6",
+        "name": "BabyClass",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 830,
+          "end_byte": 841,
+          "start_point": {
+            "row": 44,
+            "column": 19
+          },
+          "end_point": {
+            "row": 44,
+            "column": 30
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "25db2ad3-1364-4fb7-825b-4d0b86be53e0",
+        "name": "self",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 819,
+          "end_byte": 823,
+          "start_point": {
+            "row": 44,
+            "column": 8
+          },
+          "end_point": {
+            "row": 44,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "af31bdb5-5a00-4b01-8d65-b6ed6b685344",
+        "name": "qwe",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 819,
+          "end_byte": 827,
+          "start_point": {
+            "row": 44,
+            "column": 8
+          },
+          "end_point": {
+            "row": 44,
+            "column": 16
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+        "name": "__init__",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "e94044ea-eb93-4dc0-8e1f-b4c5e495adf7",
+        "childs_guid": [
+          "c89da0ad-b53d-4597-bb41-77ff9cad3abd",
+          "6d848c30-e69f-4b0e-a64b-860bba384ca2",
+          "e424564c-5562-42f0-9618-8ed357fd72da",
+          "87e1f905-f83f-4b3d-8474-e73cc37c7924",
+          "b236a0a3-309a-4324-a6eb-517457a11ee8",
+          "924f4067-ce8b-44d7-b968-318364626b61",
+          "4369ad40-3963-43ab-b51e-03027c2c72fa",
+          "2601d8a7-3a27-40d3-aa0c-9c3b59126e3a",
+          "fcb839ce-aede-4914-9a8e-c04e2726d1e6",
+          "25db2ad3-1364-4fb7-825b-4d0b86be53e0",
+          "af31bdb5-5a00-4b01-8d65-b6ed6b685344"
+        ],
+        "full_range": {
+          "start_byte": 695,
+          "end_byte": 841,
+          "start_point": {
+            "row": 39,
+            "column": 4
+          },
+          "end_point": {
+            "row": 44,
+            "column": 30
+          }
+        },
+        "declaration_range": {
+          "start_byte": 695,
+          "end_byte": 713,
+          "start_point": {
+            "row": 39,
+            "column": 4
+          },
+          "end_point": {
+            "row": 39,
+            "column": 22
+          }
+        },
+        "definition_range": {
+          "start_byte": 723,
+          "end_byte": 841,
+          "start_point": {
+            "row": 40,
+            "column": 8
+          },
+          "end_point": {
+            "row": 44,
+            "column": 30
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "self",
+          "type_": null
+        }
+      ],
+      "return_type": null
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "bc6ff736-df78-4bf0-8f34-0670af679a5f",
+        "name": "self",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "7cb41944-f421-4d47-898c-17d0523fa998",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 906,
+          "end_byte": 910,
+          "start_point": {
+            "row": 48,
+            "column": 12
+          },
+          "end_point": {
+            "row": 48,
+            "column": 16
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "aa0e7901-692c-481e-90a1-4afd093265b5",
+        "name": "c",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "7cb41944-f421-4d47-898c-17d0523fa998",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 906,
+          "end_byte": 912,
+          "start_point": {
+            "row": 48,
+            "column": 12
+          },
+          "end_point": {
+            "row": 48,
+            "column": 18
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "7cb41944-f421-4d47-898c-17d0523fa998",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "7cb41944-f421-4d47-898c-17d0523fa998",
+        "name": "__init__",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "9b729798-221b-4206-870e-adc9877a3e5f",
+        "childs_guid": [
+          "bc6ff736-df78-4bf0-8f34-0670af679a5f",
+          "aa0e7901-692c-481e-90a1-4afd093265b5"
+        ],
+        "full_range": {
+          "start_byte": 874,
+          "end_byte": 916,
+          "start_point": {
+            "row": 47,
+            "column": 8
+          },
+          "end_point": {
+            "row": 48,
+            "column": 22
+          }
+        },
+        "declaration_range": {
+          "start_byte": 874,
+          "end_byte": 892,
+          "start_point": {
+            "row": 47,
+            "column": 8
+          },
+          "end_point": {
+            "row": 47,
+            "column": 26
+          }
+        },
+        "definition_range": {
+          "start_byte": 906,
+          "end_byte": 916,
+          "start_point": {
+            "row": 48,
+            "column": 12
+          },
+          "end_point": {
+            "row": 48,
+            "column": 22
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "self",
+          "type_": null
+        }
+      ],
+      "return_type": null
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "9b729798-221b-4206-870e-adc9877a3e5f",
+        "name": "NestedClass",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "e94044ea-eb93-4dc0-8e1f-b4c5e495adf7",
+        "childs_guid": [
+          "7cb41944-f421-4d47-898c-17d0523fa998"
+        ],
+        "full_range": {
+          "start_byte": 847,
+          "end_byte": 916,
+          "start_point": {
+            "row": 46,
+            "column": 4
+          },
+          "end_point": {
+            "row": 48,
+            "column": 22
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "e94044ea-eb93-4dc0-8e1f-b4c5e495adf7",
+        "name": "AdultClass",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [
+          "f25df26a-bfb3-4d71-9981-e32f3c6e7a90",
+          "9b729798-221b-4206-870e-adc9877a3e5f"
+        ],
+        "full_range": {
+          "start_byte": 673,
+          "end_byte": 916,
+          "start_point": {
+            "row": 38,
+            "column": 0
+          },
+          "end_point": {
+            "row": 48,
+            "column": 22
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "5a0dc421-ee77-4ff3-964e-d6ec0bc06dfb",
+        "name": "BabyClass",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 929,
+          "end_byte": 940,
+          "start_point": {
+            "row": 50,
+            "column": 11
+          },
+          "end_point": {
+            "row": 50,
+            "column": 22
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "19c035ae-218d-4878-be75-309c8965c771",
+        "name": "zxc",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 918,
+          "end_byte": 940,
+          "start_point": {
+            "row": 50,
+            "column": 0
+          },
+          "end_point": {
+            "row": 50,
+            "column": 22
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "BabyClass",
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "eace1334-7d7c-4d14-91b2-54bd081c134d",
+        "name": "asd",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 918,
+          "end_byte": 940,
+          "start_point": {
+            "row": 50,
+            "column": 0
+          },
+          "end_point": {
+            "row": 50,
+            "column": 22
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "()",
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "33149e84-d0b1-4254-831b-2cdd6012968f",
+        "name": "baz",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 943,
+          "end_byte": 1017,
+          "start_point": {
+            "row": 53,
+            "column": 0
+          },
+          "end_point": {
+            "row": 54,
+            "column": 8
+          }
+        },
+        "declaration_range": {
+          "start_byte": 943,
+          "end_byte": 1007,
+          "start_point": {
+            "row": 53,
+            "column": 0
+          },
+          "end_point": {
+            "row": 53,
+            "column": 64
+          }
+        },
+        "definition_range": {
+          "start_byte": 1013,
+          "end_byte": 1017,
+          "start_point": {
+            "row": 54,
+            "column": 4
+          },
+          "end_point": {
+            "row": 54,
+            "column": 8
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "asd",
+          "type_": {
+            "name": null,
+            "inference_info": "(1, (not asd))",
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        },
+        {
+          "name": "qwe",
+          "type_": {
+            "name": null,
+            "inference_info": "(1, (not asd))",
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        },
+        {
+          "name": "zxc",
+          "type_": {
+            "name": "int",
+            "inference_info": "1",
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        }
+      ],
+      "return_type": {
+        "name": "dict",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "33dc9032-e4e9-4ce4-83a9-34729a8c0fd8",
+        "name": "bar",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "4b36ffbb-bf49-4f2c-940b-191c369821eb",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1043,
+          "end_byte": 1046,
+          "start_point": {
+            "row": 58,
+            "column": 7
+          },
+          "end_point": {
+            "row": 58,
+            "column": 10
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "f7136026-0c26-4498-b61a-b3a4176ae1c1",
+        "name": "asd",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "14d356d0-cc82-460a-bac9-092acc904117",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1066,
+          "end_byte": 1069,
+          "start_point": {
+            "row": 59,
+            "column": 18
+          },
+          "end_point": {
+            "row": 59,
+            "column": 21
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "72509348-7c86-4d3c-a27b-99db05ed9dde",
+        "name": "zxc",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "14d356d0-cc82-460a-bac9-092acc904117",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1071,
+          "end_byte": 1074,
+          "start_point": {
+            "row": 59,
+            "column": 23
+          },
+          "end_point": {
+            "row": 59,
+            "column": 26
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "14d356d0-cc82-460a-bac9-092acc904117",
+        "name": "baz",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "4b36ffbb-bf49-4f2c-940b-191c369821eb",
+        "childs_guid": [
+          "f7136026-0c26-4498-b61a-b3a4176ae1c1",
+          "72509348-7c86-4d3c-a27b-99db05ed9dde"
+        ],
+        "full_range": {
+          "start_byte": 1062,
+          "end_byte": 1075,
+          "start_point": {
+            "row": 59,
+            "column": 14
+          },
+          "end_point": {
+            "row": 59,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "4b36ffbb-bf49-4f2c-940b-191c369821eb",
+        "name": "foo",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [
+          "33dc9032-e4e9-4ce4-83a9-34729a8c0fd8",
+          "14d356d0-cc82-460a-bac9-092acc904117"
+        ],
+        "full_range": {
+          "start_byte": 1019,
+          "end_byte": 1075,
+          "start_point": {
+            "row": 56,
+            "column": 0
+          },
+          "end_point": {
+            "row": 59,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1019,
+          "end_byte": 1034,
+          "start_point": {
+            "row": 56,
+            "column": 0
+          },
+          "end_point": {
+            "row": 57,
+            "column": 9
+          }
+        },
+        "definition_range": {
+          "start_byte": 1040,
+          "end_byte": 1075,
+          "start_point": {
+            "row": 58,
+            "column": 4
+          },
+          "end_point": {
+            "row": 59,
+            "column": 27
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [],
+      "return_type": null
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "a4089361-c2e3-4dcb-9fe7-a254355efc73",
+        "name": "asd",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "0e01f0ad-b40e-46d4-aadf-5921120a91be",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1109,
+          "end_byte": 1112,
+          "start_point": {
+            "row": 62,
+            "column": 20
+          },
+          "end_point": {
+            "row": 62,
+            "column": 23
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "49b405dc-1562-4742-9869-361053181d66",
+        "name": "zxc",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "0e01f0ad-b40e-46d4-aadf-5921120a91be",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1090,
+          "end_byte": 1093,
+          "start_point": {
+            "row": 62,
+            "column": 1
+          },
+          "end_point": {
+            "row": 62,
+            "column": 4
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "0a776b03-c6d1-41ca-b261-90c0cf890b2b",
+        "name": "b",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "0e01f0ad-b40e-46d4-aadf-5921120a91be",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1090,
+          "end_byte": 1097,
+          "start_point": {
+            "row": 62,
+            "column": 1
+          },
+          "end_point": {
+            "row": 62,
+            "column": 8
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "0e01f0ad-b40e-46d4-aadf-5921120a91be",
+        "is_error": false
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "caab0b7b-70d1-430b-ae50-6f24434f4211",
+        "name": "xyi",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "0e01f0ad-b40e-46d4-aadf-5921120a91be",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1090,
+          "end_byte": 1101,
+          "start_point": {
+            "row": 62,
+            "column": 1
+          },
+          "end_point": {
+            "row": 62,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "0e01f0ad-b40e-46d4-aadf-5921120a91be",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "0e01f0ad-b40e-46d4-aadf-5921120a91be",
+        "name": "main",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [
+          "a4089361-c2e3-4dcb-9fe7-a254355efc73",
+          "49b405dc-1562-4742-9869-361053181d66",
+          "0a776b03-c6d1-41ca-b261-90c0cf890b2b",
+          "caab0b7b-70d1-430b-ae50-6f24434f4211"
+        ],
+        "full_range": {
+          "start_byte": 1077,
+          "end_byte": 1127,
+          "start_point": {
+            "row": 61,
+            "column": 0
+          },
+          "end_point": {
+            "row": 62,
+            "column": 38
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1077,
+          "end_byte": 1087,
+          "start_point": {
+            "row": 61,
+            "column": 0
+          },
+          "end_point": {
+            "row": 61,
+            "column": 10
+          }
+        },
+        "definition_range": {
+          "start_byte": 1090,
+          "end_byte": 1127,
+          "start_point": {
+            "row": 62,
+            "column": 1
+          },
+          "end_point": {
+            "row": 62,
+            "column": 38
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [],
+      "return_type": null
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "440de2e6-ca83-45d1-ab31-632d153ecb20",
+        "name": "i",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1161,
+          "end_byte": 1162,
+          "start_point": {
+            "row": 64,
+            "column": 9
+          },
+          "end_point": {
+            "row": 64,
+            "column": 10
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "f671267a-e6f7-47f3-b7f9-7d3d19dd7a84",
+        "name": "asd",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1177,
+          "end_byte": 1180,
+          "start_point": {
+            "row": 65,
+            "column": 9
+          },
+          "end_point": {
+            "row": 65,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "0b4a7adc-bfcb-4079-99ae-9ef69fe0e96a",
+        "name": "i",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1132,
+          "end_byte": 1180,
+          "start_point": {
+            "row": 63,
+            "column": 4
+          },
+          "end_point": {
+            "row": 65,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "[1, 2, 3]",
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "76fd643e-b160-498d-9004-4c77244d3a58",
+        "name": "__name__",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1185,
+          "end_byte": 1193,
+          "start_point": {
+            "row": 67,
+            "column": 3
+          },
+          "end_point": {
+            "row": 67,
+            "column": 11
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "04efbdc0-0207-48f9-83df-0df78aeee6a9",
+        "name": "main",
+        "language": "Python",
+        "file_path": "file:///main.py",
+        "namespace": "",
+        "parent_guid": "06c40c31-9855-4d50-9c1a-3da69333bc98",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1210,
+          "end_byte": 1216,
+          "start_point": {
+            "row": 68,
+            "column": 1
+          },
+          "end_point": {
+            "row": 68,
+            "column": 7
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": []
+    }
+  }
+]

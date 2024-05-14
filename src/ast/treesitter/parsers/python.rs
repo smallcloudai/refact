@@ -591,6 +591,7 @@ impl PythonParser {
                                 def_local.import_type = ImportType::UserModule;
                             }
                         }
+                        def_local.ast_fields.name = def_local.path_components.last().unwrap().to_string();
                         def_local.alias = alias;
 
                         symbols.push(Rc::new(RefCell::new(def_local)));
