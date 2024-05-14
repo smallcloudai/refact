@@ -22,7 +22,10 @@ async def tail(file_path: str, last_n_lines: int, stream: bool) -> AsyncIterator
         stderr=asyncio.subprocess.PIPE,
     )
     while True:
-        output = await process.stdout.readline()
+        try:
+            output = await asyncio.wait_for(process.stdout.readline(), timeout=0.1)
+        except asyncio.TimeoutError:
+            output = None
         if not output:
             if not stream:
                 break
