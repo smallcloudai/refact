@@ -4,7 +4,7 @@ mod tests {
 
     use crate::ast::treesitter::parsers::AstLanguageParser;
     use crate::ast::treesitter::parsers::rust::RustParser;
-    use crate::ast::treesitter::parsers::tests::{base_test, print};
+    use crate::ast::treesitter::parsers::tests::base_test;
 
     const MAIN_RS_CODE: &str = include_str!("cases/rust/main.rs");
     const MAIN_RS_SYMBOLS: &str = include_str!("cases/rust/main.rs.json");

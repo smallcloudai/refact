@@ -8,7 +8,7 @@ use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
 use tree_sitter_typescript::language_typescript as language;
 use uuid::Uuid;
-
+use itertools::Itertools;
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
