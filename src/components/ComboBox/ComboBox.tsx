@@ -56,6 +56,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
+    const first = combobox.first();
+    combobox.setActiveId(first);
   }, [combobox, hasMatches]);
 
   React.useEffect(() => {
