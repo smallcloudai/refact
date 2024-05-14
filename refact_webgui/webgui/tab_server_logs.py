@@ -21,20 +21,14 @@ async def tail(file_path: str, last_n_lines: int, stream: bool) -> AsyncIterator
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout, stderr = await process.communicate()
-
-    if process.returncode == 0:
-        while True:
-            output = await process.stdout.readline()
-            if not output:
-                if not stream:
-                    break
-                await asyncio.sleep(0.1)
-                continue
-            yield output.decode()
-
-    else:
-        raise Exception(f"{' '.join(cmd)} failed: {stderr.decode()}")
+    while True:
+        output = await process.stdout.readline()
+        if not output:
+            if not stream:
+                break
+            await asyncio.sleep(0.1)
+            continue
+        yield output.decode()
 
 
 class TabServerLogRouter(APIRouter):
@@ -64,7 +58,7 @@ class TabServerLogRouter(APIRouter):
             list_of_files = list_of_files[-1:]
         else:
             list_of_files = [f for f in list_of_files if f.endswith(log_name)]
-        if len(list_of_files) == 0:
+        if not list_of_files:
             return Response("File \"%s\" not found\n" % log_name, media_type="text/plain")
         right_file = list_of_files[-1]
 
