@@ -8,7 +8,7 @@ use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
 use tree_sitter_typescript::language_typescript as language;
 use uuid::Uuid;
-use itertools::Itertools;
+
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
@@ -794,12 +794,15 @@ impl TSParser {
         }
 
         #[cfg(test)]
-        for symbol in symbols.iter_mut() {
-            let mut sym = symbol.borrow_mut();
-            sym.fields_mut().childs_guid = sym.fields_mut().childs_guid.iter()
-                .sorted_by_key(|x| {
-                    guid_to_symbol_map.get(*x).unwrap().borrow().full_range().start_byte
-                }).map(|x| x.clone()).collect();
+        {
+            use itertools::Itertools;
+            for symbol in symbols.iter_mut() {
+                let mut sym = symbol.borrow_mut();
+                sym.fields_mut().childs_guid = sym.fields_mut().childs_guid.iter()
+                    .sorted_by_key(|x| {
+                        guid_to_symbol_map.get(*x).unwrap().borrow().full_range().start_byte
+                    }).map(|x| x.clone()).collect();
+            }
         }
 
         symbols
