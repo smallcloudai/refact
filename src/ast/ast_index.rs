@@ -65,7 +65,7 @@ impl AstIndex {
         }
     }
 
-    pub(crate) fn parse(doc: &Document) -> Result<Vec<AstSymbolInstanceArc>, String> {
+    fn parse(doc: &Document) -> Result<Vec<AstSymbolInstanceArc>, String> {
         let mut parser = match get_ast_parser_by_filename(&doc.path) {
             Ok(parser) => parser,
             Err(err) => {
@@ -95,20 +95,21 @@ impl AstIndex {
         Ok(symbol_instances)
     }
 
-    pub fn add_or_update_symbols_index(
+    fn add_or_update_symbols_index(
         &mut self,
         doc: &Document,
         symbols: Vec<AstSymbolInstanceArc>,
         make_dirty: bool,
     ) -> Result<(), String> {
         let mut symbols_cloned = symbols.clone();
+        let has_changes_before = self.has_changes;
         let has_removed = self.remove(&doc);
         if has_removed {
             self.resolve_declaration_symbols(&mut symbols_cloned);
             self.resolve_imports(&mut symbols_cloned);
             self.merge_usages_to_declarations(&mut symbols_cloned);
             self.create_extra_indexes(&mut symbols_cloned);
-            self.has_changes = false;
+            self.has_changes = has_changes_before;
         } else {
             // TODO: we don't want to update the whole index for a single file
             // even if we might miss some new cross-references
@@ -800,7 +801,7 @@ impl AstIndex {
         &self.symbols_by_guid
     }
 
-    pub(crate) fn need_update(&self) -> bool {
+    pub(crate) fn needs_update(&self) -> bool {
         self.has_changes
     }
 

@@ -466,7 +466,18 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         None => {}
     }
     match &ast_module {
-        Some(ast) => ast.write().await.ast_remove_file(path).await,
+        Some(ast) => {
+            match ast.write().await.ast_remove_file(path).await {
+                Ok(_) => {}
+                Err(err) => {
+                    info!(
+                        "cannot remove file {}, {}",
+                        crate::nicer_logs::last_n_chars(&path.to_string_lossy().to_string(), 30),
+                        err
+                    );
+                }
+            }
+        },
         None => {}
     };
 }

@@ -374,17 +374,25 @@ pub async fn handle_v1_ast_force_reindex(
     let ast_module = global_context.read().await.ast_module.clone();
     match &ast_module {
         Some(ast) => {
-            ast.write().await.ast_force_reindex().await
+            match ast.write().await.ast_force_reindex().await {
+                Ok(_) => {
+                    Ok(Response::builder().status(StatusCode::OK)
+                        .body(Body::from("{}"))
+                        .unwrap())
+                }
+                Err(err) => {
+                    Err(ScratchError::new(
+                        StatusCode::INTERNAL_SERVER_ERROR, err,
+                    ))
+                }
+            }
         }
         None => {
-            return Err(ScratchError::new(
+            Err(ScratchError::new(
                 StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
-            ));
+            ))
         }
-    };
-    Ok(Response::builder().status(StatusCode::OK)
-        .body(Body::from("{}"))
-        .unwrap())
+    }
 }
 
 pub async fn handle_v1_ast_clear_index(
@@ -394,10 +402,18 @@ pub async fn handle_v1_ast_clear_index(
     let ast_module = global_context.read().await.ast_module.clone();
     let x = match &ast_module {
         Some(ast) => {
-            ast.write().await.clear_index().await;
-            Ok(Response::builder().status(StatusCode::OK)
-                .body(Body::from("{}"))
-                .unwrap())
+            match ast.write().await.clear_index().await {
+                Ok(_) => {
+                    Ok(Response::builder().status(StatusCode::OK)
+                        .body(Body::from("{}"))
+                        .unwrap())
+                }
+                Err(err) => {
+                    return Err(ScratchError::new(
+                        StatusCode::INTERNAL_SERVER_ERROR, err,
+                    ));
+                }
+            }
         }
         None => {
             return Err(ScratchError::new(

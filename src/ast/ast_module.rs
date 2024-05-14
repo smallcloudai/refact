@@ -1,11 +1,14 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde::Serialize;
 use strsim::jaro_winkler;
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{Mutex as AMutex, RwLockReadGuard, RwLockWriteGuard};
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
+use tokio::time::error::Elapsed;
+use tokio::time::timeout;
 use tracing::info;
 use tree_sitter::Point;
 use uuid::Uuid;
@@ -53,11 +56,24 @@ impl AstModule {
     }
 
     pub async fn ast_add_file_no_queue(&mut self, document: &Document, make_dirty: bool) -> Result<usize, String> {
-        self.ast_index.write().await.add_or_update(&document, make_dirty)
+        let mut ast_ref = match self.write_ast(Duration::from_secs(3)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        ast_ref.add_or_update(&document, make_dirty)
     }
 
-    pub async fn ast_force_reindex(&mut self) {
-        self.ast_index.write().await.reindex()
+    pub async fn ast_force_reindex(&mut self) -> Result<(), String> {
+        let mut ast_ref = match self.write_ast(Duration::from_secs(3)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        ast_ref.reindex();
+        Ok(())
     }
 
     pub async fn ast_reset_index(&self, force: bool) {
@@ -67,13 +83,35 @@ impl AstModule {
         ).await;
     }
 
-    pub async fn ast_remove_file(&mut self, path: &PathBuf) {
+    pub async fn ast_remove_file(&mut self, path: &PathBuf) -> Result<(), String> {
         // TODO: will not work if the same file is in the indexer queue
-        let _ = self.ast_index.write().await.remove(&Document::new(path));
+        let mut ast_ref = match self.write_ast(Duration::from_secs(3)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        let _ = ast_ref.remove(&Document::new(path));
+        Ok(())
     }
 
-    pub async fn clear_index(&mut self) {
-        self.ast_index.write().await.clear_index();
+    pub async fn clear_index(&mut self) -> Result<(), String> {
+        let mut ast_ref = match self.write_ast(Duration::from_secs(3)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        ast_ref.clear_index();
+        Ok(())
+    }
+
+    async fn read_ast(&self, duration: Duration) -> Result<RwLockReadGuard<AstIndex>, Elapsed> {
+        timeout(duration, self.ast_index.read()).await
+    }
+
+    async fn write_ast(&self, duration: Duration) -> Result<RwLockWriteGuard<AstIndex>, Elapsed> {
+        timeout(duration, self.ast_index.write()).await
     }
 
     pub async fn search_by_name(
@@ -84,7 +122,13 @@ impl AstModule {
         top_n: usize,
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
-        match self.ast_index.read().await.search_by_name(query.as_str(), request_symbol_type, None, None, try_fuzzy_if_not_found, true) {
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        match ast_ref.search_by_name(query.as_str(), request_symbol_type, None, None, try_fuzzy_if_not_found, true) {
             Ok(results) => {
                 let symbol_structs = results
                     .iter()
@@ -123,7 +167,13 @@ impl AstModule {
         top_n: usize,
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
-        match self.ast_index.read().await.search_by_content(query.as_str(), request_symbol_type, None, None) {
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        match ast_ref.search_by_content(query.as_str(), request_symbol_type, None, None) {
             Ok(results) => {
                 let symbol_structs = results
                     .iter()
@@ -156,7 +206,13 @@ impl AstModule {
 
     pub async fn search_related_declarations(&self, guid: &Uuid) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
-        match self.ast_index.read().await.search_related_declarations(guid) {
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        match ast_ref.search_related_declarations(guid) {
             Ok(results) => {
                 let symbol_structs = results
                     .iter()
@@ -188,7 +244,13 @@ impl AstModule {
 
     pub async fn search_usages_by_declarations(&self, declaration_guid: &Uuid) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
-        match self.ast_index.read().await.search_usages_with_this_declaration(declaration_guid, None) {
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        match ast_ref.search_usages_with_this_declaration(declaration_guid, None) {
             Ok(results) => {
                 let symbol_structs = results
                     .iter()
@@ -227,10 +289,16 @@ impl AstModule {
         top_n_usage_for_each_decl: usize,
     ) -> Result<AstCursorSearchResult, String> {
         let t0 = std::time::Instant::now();
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+
         info!("to_buckets {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
-        let (cursor_usages, declarations, usages, bucket_high_overlap, bucket_imports, guid_to_usefulness) = self.ast_index
-            .read().await
-            .symbols_near_cursor_to_buckets(
+        let (cursor_usages, declarations, usages, bucket_high_overlap, bucket_imports, guid_to_usefulness) =
+            ast_ref.symbols_near_cursor_to_buckets(
                 &doc,
                 code,
                 cursor,
@@ -292,7 +360,13 @@ impl AstModule {
         &self,
         doc: &Document,
     ) -> Result<FileASTMarkup, String> {
-        match self.ast_index.read().await.file_markup(doc) {
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        match ast_ref.file_markup(doc) {
             Ok(markup) => {
                 Ok(markup)
             }
@@ -301,7 +375,13 @@ impl AstModule {
     }
 
     pub async fn get_file_symbols(&self, request_symbol_type: RequestSymbolType, doc: &Document) -> Result<FileReferencesResult, String> {
-        let symbols = match self.ast_index.read().await.get_by_file_path(request_symbol_type, &doc) {
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        let symbols = match ast_ref.get_by_file_path(request_symbol_type, &doc) {
             Ok(s) => s,
             Err(err) => { return Err(format!("Error: {}", err)); }
         };
@@ -312,6 +392,12 @@ impl AstModule {
     }
 
     pub async fn get_symbols_names(&self, request_symbol_type: RequestSymbolType) -> Result<Vec<String>, String> {
-        Ok(self.ast_index.read().await.get_symbols_names(request_symbol_type))
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        Ok(ast_ref.get_symbols_names(request_symbol_type))
     }
 }

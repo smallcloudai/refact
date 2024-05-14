@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque, HashSet};
 use std::sync::{Arc, Weak};
 use std::time::{SystemTime, Duration};
 
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{Mutex as AMutex, Notify};
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::info;
@@ -34,7 +34,7 @@ impl AstEvent {
 pub struct AstIndexService {
     ast_delayed_requests_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
-    ast_hold_off_indexes_rebuild: Arc<AMutex<bool>>,  // TODO: replace with tokio::sync::Condvar or remove ast_index_rebuild_thread()
+    ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
     ast_index: Arc<ARwLock<AstIndex>>,
 }
 
@@ -102,7 +102,7 @@ async fn ast_indexer_thread(
     gcx_weak: Weak<ARwLock<GlobalContext>>,
     ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_index: Arc<ARwLock<AstIndex>>,
-    ast_hold_off_indexes_rebuild: Arc<AMutex<bool>>,
+    ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
 ) {
     let mut reported_stats = false;
     let mut stats_parsed_cnt = 0;    // by language?
@@ -117,7 +117,7 @@ async fn ast_indexer_thread(
             events
         };
 
-        if events.len() == 0 {
+        if events.is_empty() {
             if hold_on_after_reset {
                 // hold on, don't report anything, don't say this thread isn't busy.
                 // after reset, real data will follow, now sleep and do nothing.
@@ -130,15 +130,12 @@ async fn ast_indexer_thread(
                 stats_parsed_cnt = 0;
                 stats_symbols_cnt = 0;
                 reported_stats = true;
-            }
-            if !hold_on_after_reset {
-                *ast_hold_off_indexes_rebuild.lock().await = false;
+                ast_hold_off_indexes_rebuild_notify.notify_one();
             }
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             continue;
         } else {
             hold_on_after_reset = false;
-            *ast_hold_off_indexes_rebuild.lock().await = true;
             reported_stats = false;
             if stats_parsed_cnt == 0 {
                 stats_t0 = std::time::Instant::now();
@@ -196,21 +193,22 @@ async fn ast_indexer_thread(
 }
 
 async fn ast_index_rebuild_thread(
-    ast_hold_off_indexes_rebuild: Arc<AMutex<bool>>,
+    ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
     ast_index: Arc<ARwLock<AstIndex>>,
 ) {
     loop {
-        if *ast_hold_off_indexes_rebuild.lock().await {
-            tokio::time::sleep(Duration::from_millis(100)).await;
-            continue;
-        }
+        ast_hold_off_indexes_rebuild_notify.notified().await;
 
-        if !ast_index.read().await.need_update() {
+        if !ast_index.read().await.needs_update() {
             tokio::time::sleep(Duration::from_secs(5)).await;
             continue;
         }
 
-        ast_index.write().await.reindex();
+        let ast_index_clone = Arc::clone(&ast_index);
+        tokio::task::spawn_blocking(move || {
+            let mut ast = ast_index_clone.blocking_write();
+            ast.reindex();
+        }).await.expect("cannot reindex")
     }
 }
 
@@ -225,7 +223,7 @@ impl AstIndexService {
         AstIndexService {
             ast_delayed_requests_q: ast_delayed_requests_q.clone(),
             ast_immediate_q: ast_immediate_q.clone(),
-            ast_hold_off_indexes_rebuild: Arc::new(AMutex::new(false)),
+            ast_hold_off_indexes_rebuild_notify: Arc::new(Notify::new()),
             ast_index: ast_index.clone(),
         }
     }
@@ -246,12 +244,12 @@ impl AstIndexService {
                 Arc::downgrade(&gcx),
                 self.ast_immediate_q.clone(),
                 self.ast_index.clone(),
-                self.ast_hold_off_indexes_rebuild.clone(),
+                self.ast_hold_off_indexes_rebuild_notify.clone(),
             )
         );
         let rebuild_index_handle = tokio::spawn(
             ast_index_rebuild_thread(
-                self.ast_hold_off_indexes_rebuild.clone(),
+                self.ast_hold_off_indexes_rebuild_notify.clone(),
                 self.ast_index.clone(),
             )
         );
