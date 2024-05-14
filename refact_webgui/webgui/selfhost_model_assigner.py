@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_active_loras
+from refact_utils.huggingface.utils import has_access_to_repo
 from refact_webgui.webgui.selfhost_webutils import log
 from refact_known_models import models_mini_db, passthrough_mini_db
 
@@ -239,6 +240,7 @@ class ModelAssigner:
                 "default_n_ctx": default_n_ctx,
                 "available_n_ctx": available_n_ctx,
                 "is_deprecated": bool(rec.get("deprecated", False)),
+                "has_access": bool(has_access_to_repo(rec["model_path"])),
             })
         return {"models": info}
 
