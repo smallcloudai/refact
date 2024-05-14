@@ -663,6 +663,7 @@ impl TSParser {
                 def.ast_fields = AstSymbolFields::from_fields(&info.ast_fields);
                 def.ast_fields.parent_guid = Some(info.parent_guid.clone());
                 def.ast_fields.guid = get_guid();
+                def.ast_fields.full_range = info.node.range();
                 if let Some(source) = info.node.child_by_field_name("source") {
                     let source = code.slice(source.byte_range()).to_string();
                     def.path_components = source.slice(1..source.len()-1).split("/")
