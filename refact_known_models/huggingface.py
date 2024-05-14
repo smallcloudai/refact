@@ -96,7 +96,8 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "required_memory_mb": 14000,
         "T": 2048,
-        "filter_caps": ["completion", "finetune"],
+        "filter_caps": ["completion"],
+        "deprecated": True,
     },
     "wizardlm/30b": {
         "backend": "transformers",
