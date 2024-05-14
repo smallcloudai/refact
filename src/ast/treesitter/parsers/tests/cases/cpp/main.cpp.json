@@ -1,0 +1,4007 @@
+[
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "894233c1-73e3-4af7-8f6a-bd5d015976e3",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 0,
+          "end_byte": 43,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 1,
+            "column": 0
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "iostream"
+      ],
+      "alias": null,
+      "import_type": "System",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "1a9c5698-a7be-4e61-be2c-523056e1a097",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 43,
+          "end_byte": 99,
+          "start_point": {
+            "row": 1,
+            "column": 0
+          },
+          "end_point": {
+            "row": 2,
+            "column": 0
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "internal",
+        "myheader.h"
+      ],
+      "alias": null,
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "38fbeb2d-a37a-43c9-9f79-28824cd15a88",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 99,
+          "end_byte": 117,
+          "start_point": {
+            "row": 2,
+            "column": 0
+          },
+          "end_point": {
+            "row": 3,
+            "column": 0
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "vector"
+      ],
+      "alias": null,
+      "import_type": "System",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "df85f575-1610-4108-9d55-bb1a7e0c0847",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 117,
+          "end_byte": 138,
+          "start_point": {
+            "row": 3,
+            "column": 0
+          },
+          "end_point": {
+            "row": 4,
+            "column": 0
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "path_components": [
+        "algorithm"
+      ],
+      "alias": null,
+      "import_type": "System",
+      "filepath_ref": null
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "fd80b1a5-f295-44bc-9491-6a116989571d",
+        "name": "func",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 139,
+          "end_byte": 159,
+          "start_point": {
+            "row": 5,
+            "column": 0
+          },
+          "end_point": {
+            "row": 5,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 139,
+          "end_byte": 156,
+          "start_point": {
+            "row": 5,
+            "column": 0
+          },
+          "end_point": {
+            "row": 5,
+            "column": 17
+          }
+        },
+        "definition_range": {
+          "start_byte": 156,
+          "end_byte": 159,
+          "start_point": {
+            "row": 5,
+            "column": 17
+          },
+          "end_point": {
+            "row": 5,
+            "column": 20
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "a",
+          "type_": {
+            "name": "int",
+            "inference_info": null,
+            "is_pod": true,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        }
+      ],
+      "return_type": {
+        "name": "void",
+        "inference_info": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "a2d0d4d5-eac3-48d0-9b2a-a811bad87d93",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 208,
+          "end_byte": 241,
+          "start_point": {
+            "row": 7,
+            "column": 11
+          },
+          "end_point": {
+            "row": 7,
+            "column": 44
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "f245fe28-a7f2-43d7-9d41-474b30b93602",
+        "name": "object",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 243,
+          "end_byte": 308,
+          "start_point": {
+            "row": 9,
+            "column": 0
+          },
+          "end_point": {
+            "row": 12,
+            "column": 4
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "30f197b1-f0a6-4665-a12a-1fb726e1f8c6",
+        "name": "lambda",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 356,
+          "end_byte": 405,
+          "start_point": {
+            "row": 17,
+            "column": 0
+          },
+          "end_point": {
+            "row": 17,
+            "column": 49
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": null,
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "fdde0aa0-2fa4-4fdb-9161-e22b17fc6ac3",
+        "name": "sum",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 406,
+          "end_byte": 430,
+          "start_point": {
+            "row": 18,
+            "column": 0
+          },
+          "end_point": {
+            "row": 18,
+            "column": 24
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "int",
+        "inference_info": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "55106559-257f-47ea-b5c8-46684a9a52cc",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 432,
+          "end_byte": 449,
+          "start_point": {
+            "row": 18,
+            "column": 26
+          },
+          "end_point": {
+            "row": 18,
+            "column": 43
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "5b075775-2532-47f4-a919-9ceff0ef2e55",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 451,
+          "end_byte": 463,
+          "start_point": {
+            "row": 20,
+            "column": 0
+          },
+          "end_point": {
+            "row": 20,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "9159a369-453b-41c5-a96e-574cde9be856",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 486,
+          "end_byte": 505,
+          "start_point": {
+            "row": 23,
+            "column": 0
+          },
+          "end_point": {
+            "row": 23,
+            "column": 19
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "939a3a75-5a56-48e7-8a6a-70524076a9f8",
+        "name": "Animal",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [
+          "5eedfd8d-2f48-47b4-a7e8-1fc20f5d6914",
+          "439d70b5-b4eb-47ae-a69c-4bd1cfa4dc4c",
+          "d4382bcb-dcf4-4b18-bb01-bc74f973f6e4",
+          "9585af85-c3ee-4129-9717-25f627fac8a0",
+          "46e8d6a4-fdba-4188-a125-4411d0e52281",
+          "33fb2000-4c0c-40e0-a30b-d9159de3da77",
+          "bc1f148c-ae28-4160-99c8-195cf14a3545"
+        ],
+        "full_range": {
+          "start_byte": 506,
+          "end_byte": 802,
+          "start_point": {
+            "row": 24,
+            "column": 0
+          },
+          "end_point": {
+            "row": 41,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 519,
+          "end_byte": 802,
+          "start_point": {
+            "row": 24,
+            "column": 13
+          },
+          "end_point": {
+            "row": 41,
+            "column": 1
+          }
+        },
+        "definition_range": {
+          "start_byte": 506,
+          "end_byte": 519,
+          "start_point": {
+            "row": 24,
+            "column": 0
+          },
+          "end_point": {
+            "row": 24,
+            "column": 13
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "4a4ceac5-761a-4608-8120-cfd1cc34c659",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 805,
+          "end_byte": 819,
+          "start_point": {
+            "row": 43,
+            "column": 0
+          },
+          "end_point": {
+            "row": 43,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "c6946b9e-6e5b-4044-8824-a771403f87ff",
+        "name": "Dog",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [
+          "f25ce7ed-a9f7-49ad-ae72-edef5f6e4de1",
+          "17b8d62f-3e4d-4552-9e4c-efcaeea1710b",
+          "daf0b97c-e366-4831-8807-5cd4d15db934"
+        ],
+        "full_range": {
+          "start_byte": 820,
+          "end_byte": 1003,
+          "start_point": {
+            "row": 44,
+            "column": 0
+          },
+          "end_point": {
+            "row": 52,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 846,
+          "end_byte": 1003,
+          "start_point": {
+            "row": 44,
+            "column": 26
+          },
+          "end_point": {
+            "row": 52,
+            "column": 1
+          }
+        },
+        "definition_range": {
+          "start_byte": 820,
+          "end_byte": 846,
+          "start_point": {
+            "row": 44,
+            "column": 0
+          },
+          "end_point": {
+            "row": 44,
+            "column": 26
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "inherited_types": [
+        {
+          "name": "Animal",
+          "inference_info": null,
+          "is_pod": false,
+          "namespace": "",
+          "guid": null,
+          "nested_types": []
+        }
+      ]
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "name": "main",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [
+          "fa12feaf-b70a-4b75-84cd-53850dde9d91",
+          "e192125c-215f-46fa-8e98-ef029bbf8c49",
+          "8cc5a5e9-876f-47b1-9ac4-eef0833de6ef",
+          "3b876d7a-f63e-45b4-9992-a5f694e6f8f5",
+          "2568b7a2-e169-4eec-b27a-676c1aa02ccf",
+          "9d30aacf-d0d3-43d9-9cd2-3ab651b1630b",
+          "737c8f9c-6113-4888-a810-4df342bdda38",
+          "d4254113-27da-4137-9b54-0a044ce77af8",
+          "e622faa4-a565-4628-a15f-1ab7ad8f5f9e",
+          "f9377248-1b31-4afb-b351-6abf73374fda",
+          "61afe3fe-7221-400f-9ec8-5f721b1e7ad7",
+          "5fe27b14-03f2-4c0e-a854-bfbfaf84bd45",
+          "67f4a5ee-a71e-430b-b615-1a96cce3b856",
+          "446391ff-7be1-42d0-a476-11b205353261",
+          "0f84a124-9fe2-4d6f-96ad-d70ec5e83148",
+          "588f464d-92d7-4b21-b22c-cd939710d8b0"
+        ],
+        "full_range": {
+          "start_byte": 1006,
+          "end_byte": 1347,
+          "start_point": {
+            "row": 54,
+            "column": 0
+          },
+          "end_point": {
+            "row": 73,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1006,
+          "end_byte": 1017,
+          "start_point": {
+            "row": 54,
+            "column": 0
+          },
+          "end_point": {
+            "row": 54,
+            "column": 11
+          }
+        },
+        "definition_range": {
+          "start_byte": 1017,
+          "end_byte": 1347,
+          "start_point": {
+            "row": 54,
+            "column": 11
+          },
+          "end_point": {
+            "row": 73,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [],
+      "return_type": {
+        "name": "int",
+        "inference_info": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "d2ca6e1e-dc88-4487-b278-156044920b86",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 21,
+          "end_byte": 42,
+          "start_point": {
+            "row": 0,
+            "column": 21
+          },
+          "end_point": {
+            "row": 0,
+            "column": 42
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "cb399fd8-64ec-4917-80a2-2ae409b4fff0",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 75,
+          "end_byte": 98,
+          "start_point": {
+            "row": 1,
+            "column": 32
+          },
+          "end_point": {
+            "row": 1,
+            "column": 55
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "0db0d363-19e8-4f5c-ba05-9f9d85116ad9",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 197,
+          "end_byte": 206,
+          "start_point": {
+            "row": 7,
+            "column": 0
+          },
+          "end_point": {
+            "row": 7,
+            "column": 9
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "e0dd5529-5261-419b-9ae1-da07305d9256",
+        "is_error": false
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "96ee3f6f-81a7-4317-9c9f-6ba1c1848c3e",
+        "name": "lambda",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 416,
+          "end_byte": 429,
+          "start_point": {
+            "row": 18,
+            "column": 10
+          },
+          "end_point": {
+            "row": 18,
+            "column": 23
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "0773f902-f282-47b1-9f8e-56dad868c53e",
+        "is_error": false
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "f6c461de-c1a3-41bf-917d-187840f81d6c",
+        "name": "std",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 480,
+          "end_byte": 483,
+          "start_point": {
+            "row": 21,
+            "column": 16
+          },
+          "end_point": {
+            "row": 21,
+            "column": 19
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "e02ea8df-d16f-4cec-8caa-f230c8dbca3c",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 160,
+          "end_byte": 187,
+          "start_point": {
+            "row": 6,
+            "column": 0
+          },
+          "end_point": {
+            "row": 6,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "d3a8e369-0cfc-47b5-b7d6-e2c2f65e7412",
+        "is_error": false
+      },
+      "template_types": []
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "fb093f12-dbed-4fec-83e0-3502010b0ef0",
+        "name": "anon-fb093f12-dbed-4fec-83e0-3502010b0ef0",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [
+          "6cd97ca3-293f-4a1a-8769-62d2d5c10853",
+          "cbb1c2ca-f50d-4372-bf5c-7d1d7f9d02cd"
+        ],
+        "full_range": {
+          "start_byte": 261,
+          "end_byte": 305,
+          "start_point": {
+            "row": 9,
+            "column": 18
+          },
+          "end_point": {
+            "row": 12,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 268,
+          "end_byte": 305,
+          "start_point": {
+            "row": 9,
+            "column": 25
+          },
+          "end_point": {
+            "row": 12,
+            "column": 1
+          }
+        },
+        "definition_range": {
+          "start_byte": 261,
+          "end_byte": 268,
+          "start_point": {
+            "row": 9,
+            "column": 18
+          },
+          "end_point": {
+            "row": 9,
+            "column": 25
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "bf25fdce-cc42-4e01-90e7-64c4ab323231",
+        "name": "field1",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 310,
+          "end_byte": 324,
+          "start_point": {
+            "row": 14,
+            "column": 0
+          },
+          "end_point": {
+            "row": 14,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "9c8347e9-e857-4466-aa52-7ed16533d53e",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "8d1d8d06-6a20-4263-a26c-bdf4676a9979",
+        "name": "field2",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 331,
+          "end_byte": 345,
+          "start_point": {
+            "row": 15,
+            "column": 0
+          },
+          "end_point": {
+            "row": 15,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "577df354-dc12-4d04-ad4b-d0d99a5563ec",
+        "is_error": false
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "5eedfd8d-2f48-47b4-a7e8-1fc20f5d6914",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "939a3a75-5a56-48e7-8a6a-70524076a9f8",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 533,
+          "end_byte": 547,
+          "start_point": {
+            "row": 26,
+            "column": 4
+          },
+          "end_point": {
+            "row": 26,
+            "column": 18
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "439d70b5-b4eb-47ae-a69c-4bd1cfa4dc4c",
+        "name": "Animal",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "939a3a75-5a56-48e7-8a6a-70524076a9f8",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 552,
+          "end_byte": 581,
+          "start_point": {
+            "row": 27,
+            "column": 4
+          },
+          "end_point": {
+            "row": 27,
+            "column": 33
+          }
+        },
+        "declaration_range": {
+          "start_byte": 552,
+          "end_byte": 579,
+          "start_point": {
+            "row": 27,
+            "column": 4
+          },
+          "end_point": {
+            "row": 27,
+            "column": 31
+          }
+        },
+        "definition_range": {
+          "start_byte": 579,
+          "end_byte": 581,
+          "start_point": {
+            "row": 27,
+            "column": 31
+          },
+          "end_point": {
+            "row": 27,
+            "column": 33
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "n",
+          "type_": {
+            "name": "string",
+            "inference_info": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        }
+      ],
+      "return_type": null
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "d4382bcb-dcf4-4b18-bb01-bc74f973f6e4",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "939a3a75-5a56-48e7-8a6a-70524076a9f8",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 587,
+          "end_byte": 606,
+          "start_point": {
+            "row": 29,
+            "column": 4
+          },
+          "end_point": {
+            "row": 29,
+            "column": 23
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "9585af85-c3ee-4129-9717-25f627fac8a0",
+        "name": "makeSound",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "939a3a75-5a56-48e7-8a6a-70524076a9f8",
+        "childs_guid": [
+          "9b879481-38ad-4282-8476-1b42f1e701ba",
+          "cfdd8873-82cd-4dbe-b8d1-429218f95569",
+          "d60a4d97-a98d-44d2-8227-069a5676a76b"
+        ],
+        "full_range": {
+          "start_byte": 611,
+          "end_byte": 700,
+          "start_point": {
+            "row": 30,
+            "column": 4
+          },
+          "end_point": {
+            "row": 32,
+            "column": 5
+          }
+        },
+        "declaration_range": {
+          "start_byte": 611,
+          "end_byte": 642,
+          "start_point": {
+            "row": 30,
+            "column": 4
+          },
+          "end_point": {
+            "row": 30,
+            "column": 35
+          }
+        },
+        "definition_range": {
+          "start_byte": 642,
+          "end_byte": 700,
+          "start_point": {
+            "row": 30,
+            "column": 35
+          },
+          "end_point": {
+            "row": 32,
+            "column": 5
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [],
+      "return_type": {
+        "name": "void",
+        "inference_info": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "46e8d6a4-fdba-4188-a125-4411d0e52281",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "939a3a75-5a56-48e7-8a6a-70524076a9f8",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 706,
+          "end_byte": 717,
+          "start_point": {
+            "row": 34,
+            "column": 4
+          },
+          "end_point": {
+            "row": 34,
+            "column": 15
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "33fb2000-4c0c-40e0-a30b-d9159de3da77",
+        "name": "getName",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "939a3a75-5a56-48e7-8a6a-70524076a9f8",
+        "childs_guid": [
+          "528d9799-556f-40f9-92fc-fedf4ebd00eb"
+        ],
+        "full_range": {
+          "start_byte": 722,
+          "end_byte": 773,
+          "start_point": {
+            "row": 35,
+            "column": 4
+          },
+          "end_point": {
+            "row": 37,
+            "column": 5
+          }
+        },
+        "declaration_range": {
+          "start_byte": 722,
+          "end_byte": 745,
+          "start_point": {
+            "row": 35,
+            "column": 4
+          },
+          "end_point": {
+            "row": 35,
+            "column": 27
+          }
+        },
+        "definition_range": {
+          "start_byte": 745,
+          "end_byte": 773,
+          "start_point": {
+            "row": 35,
+            "column": 27
+          },
+          "end_point": {
+            "row": 37,
+            "column": 5
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [],
+      "return_type": {
+        "name": "string",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "bc1f148c-ae28-4160-99c8-195cf14a3545",
+        "name": "name",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "939a3a75-5a56-48e7-8a6a-70524076a9f8",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 788,
+          "end_byte": 800,
+          "start_point": {
+            "row": 40,
+            "column": 4
+          },
+          "end_point": {
+            "row": 40,
+            "column": 16
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "string",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "f25ce7ed-a9f7-49ad-ae72-edef5f6e4de1",
+        "name": "Dog",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "c6946b9e-6e5b-4044-8824-a771403f87ff",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 860,
+          "end_byte": 888,
+          "start_point": {
+            "row": 46,
+            "column": 4
+          },
+          "end_point": {
+            "row": 46,
+            "column": 32
+          }
+        },
+        "declaration_range": {
+          "start_byte": 860,
+          "end_byte": 886,
+          "start_point": {
+            "row": 46,
+            "column": 4
+          },
+          "end_point": {
+            "row": 46,
+            "column": 30
+          }
+        },
+        "definition_range": {
+          "start_byte": 886,
+          "end_byte": 888,
+          "start_point": {
+            "row": 46,
+            "column": 30
+          },
+          "end_point": {
+            "row": 46,
+            "column": 32
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "n",
+          "type_": {
+            "name": "string",
+            "inference_info": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        }
+      ],
+      "return_type": null
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "17b8d62f-3e4d-4552-9e4c-efcaeea1710b",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "c6946b9e-6e5b-4044-8824-a771403f87ff",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 894,
+          "end_byte": 909,
+          "start_point": {
+            "row": 48,
+            "column": 4
+          },
+          "end_point": {
+            "row": 48,
+            "column": 19
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "daf0b97c-e366-4831-8807-5cd4d15db934",
+        "name": "makeSound",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "c6946b9e-6e5b-4044-8824-a771403f87ff",
+        "childs_guid": [
+          "27497006-2d8d-40a8-83ff-a4f41ef98da4",
+          "6a483de4-ab01-4f35-a1d8-fce2405b77e3",
+          "706d7cab-5dc7-4669-8501-240441b807a9"
+        ],
+        "full_range": {
+          "start_byte": 914,
+          "end_byte": 1001,
+          "start_point": {
+            "row": 49,
+            "column": 4
+          },
+          "end_point": {
+            "row": 51,
+            "column": 5
+          }
+        },
+        "declaration_range": {
+          "start_byte": 914,
+          "end_byte": 946,
+          "start_point": {
+            "row": 49,
+            "column": 4
+          },
+          "end_point": {
+            "row": 49,
+            "column": 36
+          }
+        },
+        "definition_range": {
+          "start_byte": 946,
+          "end_byte": 1001,
+          "start_point": {
+            "row": 49,
+            "column": 36
+          },
+          "end_point": {
+            "row": 51,
+            "column": 5
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "template_types": [],
+      "args": [],
+      "return_type": {
+        "name": "void",
+        "inference_info": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "fa12feaf-b70a-4b75-84cd-53850dde9d91",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1023,
+          "end_byte": 1040,
+          "start_point": {
+            "row": 55,
+            "column": 4
+          },
+          "end_point": {
+            "row": 55,
+            "column": 21
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "e192125c-215f-46fa-8e98-ef029bbf8c49",
+        "name": "pet1",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1045,
+          "end_byte": 1078,
+          "start_point": {
+            "row": 56,
+            "column": 4
+          },
+          "end_point": {
+            "row": 56,
+            "column": 37
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "Animal",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "8cc5a5e9-876f-47b1-9ac4-eef0833de6ef",
+        "name": "pet2",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1083,
+          "end_byte": 1110,
+          "start_point": {
+            "row": 57,
+            "column": 4
+          },
+          "end_point": {
+            "row": 57,
+            "column": 31
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "Dog",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "3b876d7a-f63e-45b4-9992-a5f694e6f8f5",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1116,
+          "end_byte": 1132,
+          "start_point": {
+            "row": 59,
+            "column": 4
+          },
+          "end_point": {
+            "row": 59,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "2568b7a2-e169-4eec-b27a-676c1aa02ccf",
+        "name": "pets",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1137,
+          "end_byte": 1173,
+          "start_point": {
+            "row": 60,
+            "column": 4
+          },
+          "end_point": {
+            "row": 60,
+            "column": 40
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "vector",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": [
+          {
+            "name": "Animal",
+            "inference_info": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "d4254113-27da-4137-9b54-0a044ce77af8",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1179,
+          "end_byte": 1186,
+          "start_point": {
+            "row": 62,
+            "column": 4
+          },
+          "end_point": {
+            "row": 62,
+            "column": 11
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "446391ff-7be1-42d0-a476-11b205353261",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1279,
+          "end_byte": 1296,
+          "start_point": {
+            "row": 68,
+            "column": 4
+          },
+          "end_point": {
+            "row": 68,
+            "column": 21
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "d3a8e369-0cfc-47b5-b7d6-e2c2f65e7412",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 160,
+          "end_byte": 171,
+          "start_point": {
+            "row": 6,
+            "column": 0
+          },
+          "end_point": {
+            "row": 6,
+            "column": 11
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "75a3b511-7de6-42c1-b846-604dec8602dc",
+        "is_error": false
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "c135a683-1bcb-436b-9eb1-0dd4e8bfdb14",
+        "name": "zxc",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 172,
+          "end_byte": 175,
+          "start_point": {
+            "row": 6,
+            "column": 12
+          },
+          "end_point": {
+            "row": 6,
+            "column": 15
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "0df3f0bc-3805-402b-a2ff-e50ba2826a7d",
+        "name": "func",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 191,
+          "end_byte": 195,
+          "start_point": {
+            "row": 6,
+            "column": 31
+          },
+          "end_point": {
+            "row": 6,
+            "column": 35
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "9c8347e9-e857-4466-aa52-7ed16533d53e",
+        "name": "object",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 310,
+          "end_byte": 316,
+          "start_point": {
+            "row": 14,
+            "column": 0
+          },
+          "end_point": {
+            "row": 14,
+            "column": 6
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "577df354-dc12-4d04-ad4b-d0d99a5563ec",
+        "name": "object",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 331,
+          "end_byte": 337,
+          "start_point": {
+            "row": 15,
+            "column": 0
+          },
+          "end_point": {
+            "row": 15,
+            "column": 6
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "f9377248-1b31-4afb-b351-6abf73374fda",
+        "name": "pets",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1210,
+          "end_byte": 1214,
+          "start_point": {
+            "row": 63,
+            "column": 23
+          },
+          "end_point": {
+            "row": 63,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "ef79d8e6-b8ff-4bcb-ac47-f7d7d87db66c",
+        "name": "sdfg",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 182,
+          "end_byte": 186,
+          "start_point": {
+            "row": 6,
+            "column": 22
+          },
+          "end_point": {
+            "row": 6,
+            "column": 26
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "e0dd5529-5261-419b-9ae1-da07305d9256",
+        "name": "ptr",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 199,
+          "end_byte": 202,
+          "start_point": {
+            "row": 7,
+            "column": 2
+          },
+          "end_point": {
+            "row": 7,
+            "column": 5
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "6cd97ca3-293f-4a1a-8769-62d2d5c10853",
+        "name": "field1",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "fb093f12-dbed-4fec-83e0-3502010b0ef0",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 274,
+          "end_byte": 285,
+          "start_point": {
+            "row": 10,
+            "column": 4
+          },
+          "end_point": {
+            "row": 10,
+            "column": 15
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "int",
+        "inference_info": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "cbb1c2ca-f50d-4372-bf5c-7d1d7f9d02cd",
+        "name": "field2",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "fb093f12-dbed-4fec-83e0-3502010b0ef0",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 290,
+          "end_byte": 303,
+          "start_point": {
+            "row": 11,
+            "column": 4
+          },
+          "end_point": {
+            "row": 11,
+            "column": 17
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      },
+      "type_": {
+        "name": "float",
+        "inference_info": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "9d30aacf-d0d3-43d9-9cd2-3ab651b1630b",
+        "name": "pet1",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1161,
+          "end_byte": 1165,
+          "start_point": {
+            "row": 60,
+            "column": 28
+          },
+          "end_point": {
+            "row": 60,
+            "column": 32
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "737c8f9c-6113-4888-a810-4df342bdda38",
+        "name": "pet2",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1167,
+          "end_byte": 1171,
+          "start_point": {
+            "row": 60,
+            "column": 34
+          },
+          "end_point": {
+            "row": 60,
+            "column": 38
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "e622faa4-a565-4628-a15f-1ab7ad8f5f9e",
+        "name": "pet",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1204,
+          "end_byte": 1207,
+          "start_point": {
+            "row": 63,
+            "column": 17
+          },
+          "end_point": {
+            "row": 63,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "61afe3fe-7221-400f-9ec8-5f721b1e7ad7",
+        "name": "",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1226,
+          "end_byte": 1241,
+          "start_point": {
+            "row": 64,
+            "column": 8
+          },
+          "end_point": {
+            "row": 64,
+            "column": 23
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "0f84a124-9fe2-4d6f-96ad-d70ec5e83148",
+        "name": "pet1",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1308,
+          "end_byte": 1312,
+          "start_point": {
+            "row": 69,
+            "column": 11
+          },
+          "end_point": {
+            "row": 69,
+            "column": 15
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "588f464d-92d7-4b21-b22c-cd939710d8b0",
+        "name": "pet2",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1325,
+          "end_byte": 1329,
+          "start_point": {
+            "row": 70,
+            "column": 11
+          },
+          "end_point": {
+            "row": 70,
+            "column": 15
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "3333d5dd-8f35-4ca7-9729-95eecacfc82e",
+        "name": "ptr",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 167,
+          "end_byte": 170,
+          "start_point": {
+            "row": 6,
+            "column": 7
+          },
+          "end_point": {
+            "row": 6,
+            "column": 10
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "db76c3b8-b828-4a4c-a9a8-9559674db3e5",
+        "name": "x",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 377,
+          "end_byte": 378,
+          "start_point": {
+            "row": 17,
+            "column": 21
+          },
+          "end_point": {
+            "row": 17,
+            "column": 22
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "8ffa6f87-e927-41b0-ae2e-c60ed62bc19d",
+        "name": "y",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 384,
+          "end_byte": 385,
+          "start_point": {
+            "row": 17,
+            "column": 28
+          },
+          "end_point": {
+            "row": 17,
+            "column": 29
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "24a8b2e4-1ba6-411a-a030-42911ea5aa9d",
+        "name": "x",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 396,
+          "end_byte": 397,
+          "start_point": {
+            "row": 17,
+            "column": 40
+          },
+          "end_point": {
+            "row": 17,
+            "column": 41
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "da860362-f5ec-470f-9198-4ed55779b1ad",
+        "name": "y",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "0a37c3b2-5294-4a8d-9987-2bd0575a734d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 400,
+          "end_byte": 401,
+          "start_point": {
+            "row": 17,
+            "column": 44
+          },
+          "end_point": {
+            "row": 17,
+            "column": 45
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "528d9799-556f-40f9-92fc-fedf4ebd00eb",
+        "name": "name",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "33fb2000-4c0c-40e0-a30b-d9159de3da77",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 762,
+          "end_byte": 766,
+          "start_point": {
+            "row": 36,
+            "column": 15
+          },
+          "end_point": {
+            "row": 36,
+            "column": 19
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "5fe27b14-03f2-4c0e-a854-bfbfaf84bd45",
+        "name": "makeSound",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1250,
+          "end_byte": 1266,
+          "start_point": {
+            "row": 65,
+            "column": 8
+          },
+          "end_point": {
+            "row": 65,
+            "column": 24
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "67f4a5ee-a71e-430b-b615-1a96cce3b856",
+        "is_error": false
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "d60a4d97-a98d-44d2-8227-069a5676a76b",
+        "name": "endl",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "9585af85-c3ee-4129-9717-25f627fac8a0",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 689,
+          "end_byte": 693,
+          "start_point": {
+            "row": 31,
+            "column": 45
+          },
+          "end_point": {
+            "row": 31,
+            "column": 49
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "706d7cab-5dc7-4669-8501-240441b807a9",
+        "name": "endl",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "daf0b97c-e366-4831-8807-5cd4d15db934",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 990,
+          "end_byte": 994,
+          "start_point": {
+            "row": 50,
+            "column": 42
+          },
+          "end_point": {
+            "row": 50,
+            "column": 46
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "67f4a5ee-a71e-430b-b615-1a96cce3b856",
+        "name": "pet",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "d7544bf6-802e-4031-a158-3a4c8062e721",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1250,
+          "end_byte": 1253,
+          "start_point": {
+            "row": 65,
+            "column": 8
+          },
+          "end_point": {
+            "row": 65,
+            "column": 11
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "9b879481-38ad-4282-8476-1b42f1e701ba",
+        "name": "cout",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "9585af85-c3ee-4129-9717-25f627fac8a0",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 652,
+          "end_byte": 656,
+          "start_point": {
+            "row": 31,
+            "column": 8
+          },
+          "end_point": {
+            "row": 31,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "cfdd8873-82cd-4dbe-b8d1-429218f95569",
+        "name": "name",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "9585af85-c3ee-4129-9717-25f627fac8a0",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 660,
+          "end_byte": 664,
+          "start_point": {
+            "row": 31,
+            "column": 16
+          },
+          "end_point": {
+            "row": 31,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "27497006-2d8d-40a8-83ff-a4f41ef98da4",
+        "name": "cout",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "daf0b97c-e366-4831-8807-5cd4d15db934",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 956,
+          "end_byte": 960,
+          "start_point": {
+            "row": 50,
+            "column": 8
+          },
+          "end_point": {
+            "row": 50,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "6a483de4-ab01-4f35-a1d8-fce2405b77e3",
+        "name": "getName",
+        "language": "Cpp",
+        "file_path": "/main.cpp",
+        "namespace": "",
+        "parent_guid": "daf0b97c-e366-4831-8807-5cd4d15db934",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 964,
+          "end_byte": 973,
+          "start_point": {
+            "row": 50,
+            "column": 16
+          },
+          "end_point": {
+            "row": 50,
+            "column": 25
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "b13974a7-8b67-47c2-9b05-2bedc37c2817",
+        "is_error": false
+      },
+      "template_types": []
+    }
+  }
+]

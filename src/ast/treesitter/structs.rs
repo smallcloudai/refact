@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
@@ -34,6 +34,12 @@ pub enum SymbolType {
     FunctionCall,
     VariableUsage,
     Unknown,
+}
+
+impl Display for SymbolType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl FromStr for SymbolType {

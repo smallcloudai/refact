@@ -1,11 +1,14 @@
+use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
+use std::path::PathBuf;
 
 use itertools::Itertools;
 use similar::DiffableStr;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc};
+use crate::ast::treesitter::parsers::AstLanguageParser;
 
 mod rust;
 mod python;
@@ -27,6 +30,7 @@ pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
         }
         let caller_guid = sym.read().get_caller_guid().clone();
         let mut name = sym.read().name().to_string();
+        let type_name = sym.read().symbol_type().to_string();
         if let Some(caller_guid) = caller_guid {
             if guid_to_symbol_map.contains_key(&caller_guid) {
                 name = format!("{} -> {}", name, caller_guid.to_string().slice(0..6));
@@ -34,7 +38,7 @@ pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
         }
         let full_range = sym.read().full_range().clone();
         let range = full_range.start_byte..full_range.end_byte;
-        println!("{0} {1} [{2}]", guid.to_string().slice(0..6), name, code.slice(range).lines().collect::<Vec<_>>().first().unwrap());
+        println!("{0} {1} [{2}] {3}", guid.to_string().slice(0..6), name, code.slice(range).lines().collect::<Vec<_>>().first().unwrap(), type_name);
         used_guids.insert(guid.clone());
         let mut candidates: VecDeque<(i32, Uuid)> = VecDeque::from_iter(sym.read().childs_guid().iter().map(|x| (4, x.clone())));
         while let Some((offest, cand)) = candidates.pop_front() {
@@ -42,6 +46,7 @@ pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
             if let Some(sym_l) = guid_to_symbol_map.get(&cand) {
                 let caller_guid = sym_l.read().get_caller_guid().clone();
                 let mut name = sym_l.read().name().to_string();
+                let type_name = sym_l.read().symbol_type().to_string();
                 if let Some(caller_guid) = caller_guid {
                     if guid_to_symbol_map.contains_key(&caller_guid) {
                         name = format!("{} -> {}", name, caller_guid.to_string().slice(0..6));
@@ -49,11 +54,125 @@ pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
                 }
                 let full_range = sym_l.read().full_range().clone();
                 let range = full_range.start_byte..full_range.end_byte;
-                println!("{0} {1} {2} [{3}]", cand.to_string().slice(0..6), str::repeat(" ", offest as usize), name, code.slice(range).lines().collect::<Vec<_>>().first().unwrap());
+                println!("{0} {1} {2} [{3}] {4}", cand.to_string().slice(0..6), str::repeat(" ", offest as usize),
+                         name, code.slice(range).lines().collect::<Vec<_>>().first().unwrap(), type_name);
                 let mut new_candidates = VecDeque::from_iter(sym_l.read().childs_guid().iter().map(|x| (offest + 2, x.clone())));
                 new_candidates.extend(candidates.clone());
                 candidates = new_candidates;
             }
         }
     }
+}
+
+fn eq_symbols(symbol: &AstSymbolInstanceArc,
+              ref_symbol: &Box<dyn AstSymbolInstance>) -> bool {
+    let symbol = symbol.read();
+    let sym_type = symbol.symbol_type() == ref_symbol.symbol_type();
+    let name = if ref_symbol.name().contains(ref_symbol.guid().to_string().as_str()) {
+        symbol.name().contains(symbol.guid().to_string().as_str())
+    } else {
+        symbol.name() == ref_symbol.name()
+    };
+
+
+    let lang = symbol.language() == ref_symbol.language();
+    let file_path = symbol.file_path() == ref_symbol.file_path();
+    let is_type = symbol.is_type() == ref_symbol.is_type();
+    let is_declaration = symbol.is_declaration() == ref_symbol.is_declaration();
+    let namespace = symbol.namespace() == ref_symbol.namespace();
+    let full_range = symbol.full_range() == ref_symbol.full_range();
+    let declaration_range = symbol.declaration_range() == ref_symbol.declaration_range();
+    let definition_range = symbol.definition_range() == ref_symbol.definition_range();
+    let is_error = symbol.is_error() == ref_symbol.is_error();
+
+
+    sym_type && name && lang && file_path && is_type && is_declaration &&
+        namespace && full_range && declaration_range && definition_range && is_error
+}
+
+fn compare_symbols(symbols: &Vec<AstSymbolInstanceArc>,
+                   ref_symbols: &Vec<Box<dyn AstSymbolInstance>>) {
+    let guid_to_sym = symbols.iter().map(|s| (s.clone().read().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
+    let ref_guid_to_sym = ref_symbols.iter().map(|s| (s.guid().clone(), s)).collect::<HashMap<_, _>>();
+    let mut checked_guids: HashSet<Uuid> = Default::default();
+    for sym in symbols {
+        let sym_l = sym.read();
+        if checked_guids.contains(&sym_l.guid()) {
+            continue;
+        }
+        let closest_sym = ref_symbols.iter().filter(|s| sym_l.full_range() == s.full_range())
+            .collect::<Vec<_>>();
+        assert_eq!(closest_sym.len(), 1);
+        let closest_sym = closest_sym.first().unwrap();
+        let mut candidates: Vec<(AstSymbolInstanceArc, &Box<dyn AstSymbolInstance>)> = vec![(sym.clone(), &closest_sym)];
+        while let Some((sym, ref_sym)) = candidates.pop() {
+            let sym_l = sym.read();
+            if checked_guids.contains(&sym_l.guid()) {
+                continue;
+            }
+            checked_guids.insert(sym_l.guid().clone());
+
+            assert!(eq_symbols(&sym, ref_sym));
+            assert!(
+                (sym_l.parent_guid().is_some() && ref_sym.parent_guid().is_some())
+                    || (sym_l.parent_guid().is_none() && ref_sym.parent_guid().is_none())
+            );
+            if sym_l.parent_guid().is_some() {
+                if let Some(parent) = guid_to_sym.get(&sym_l.parent_guid().unwrap()) {
+                    let ref_parent = ref_guid_to_sym.get(&ref_sym.parent_guid().unwrap()).unwrap();
+                    candidates.push((parent.clone(), ref_parent));
+                }
+            }
+
+            assert_eq!(sym_l.childs_guid().len(), ref_sym.childs_guid().len());
+            for (sym_l, ref_sym) in sym_l.childs_guid().iter().zip(ref_sym.childs_guid().iter()) {
+                if let Some(child) = guid_to_sym.get(&sym_l) {
+                    let ref_child = ref_guid_to_sym.get(&ref_sym).unwrap();
+                    candidates.push((child.clone(), ref_child));
+                }
+            }
+
+            assert!((sym_l.get_caller_guid().is_some() && ref_sym.get_caller_guid().is_some())
+                || (sym_l.get_caller_guid().is_none() && ref_sym.get_caller_guid().is_none())
+            );
+            if sym_l.get_caller_guid().is_some() {
+                if let Some(caller) = guid_to_sym.get(&sym_l.get_caller_guid().unwrap()) {
+                    let ref_caller = ref_guid_to_sym.get(&ref_sym.get_caller_guid().unwrap()).unwrap();
+                    candidates.push((caller.clone(), ref_caller));
+                }
+            }
+        }
+    }
+    assert_eq!(checked_guids.len(), ref_symbols.len());
+}
+
+fn check_duplicates(symbols: &Vec<AstSymbolInstanceArc>) {
+    let mut checked_guids: HashSet<Uuid> = Default::default();
+    for sym in symbols {
+        let sym = sym.read();
+        assert!(!checked_guids.contains(&sym.guid()));
+        checked_guids.insert(sym.guid().clone());
+    }
+}
+
+fn check_duplicates_with_ref(symbols: &Vec<Box<dyn AstSymbolInstance>>) {
+    let mut checked_guids: HashSet<Uuid> = Default::default();
+    for sym in symbols {
+        assert!(!checked_guids.contains(&sym.guid()));
+        checked_guids.insert(sym.guid().clone());
+    }
+}
+
+pub(crate) fn base_test(parser: &mut Box<dyn AstLanguageParser>,
+                        path: &PathBuf,
+                        code: &str, symbols_str: &str) {
+    let symbols = parser.parse(code, &path);
+    check_duplicates(&symbols);
+    // let symbols_str = serde_json::to_string_pretty(&symbols).unwrap();
+    // fs::write("output.json", symbols_str).expect("Unable to write file");
+    print(&symbols, code);
+    let ref_symbols: Vec<Box<dyn AstSymbolInstance>> = serde_json::from_str(&symbols_str).unwrap();
+    check_duplicates_with_ref(&ref_symbols);
+
+    compare_symbols(&symbols, &ref_symbols);
 }

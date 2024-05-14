@@ -616,10 +616,13 @@ impl CppParser {
         if let Some(arguments) = info.node.child_by_field_name("arguments") {
             symbols.extend(self.find_error_usages(&arguments, code, &info.ast_fields.file_path,
                                                   &info.parent_guid));
+            let mut new_ast_fields = info.ast_fields.clone();
+            new_ast_fields.caller_guid = None;
+            
             for i in 0..arguments.child_count() {
                 let child = arguments.child(i).unwrap();
                 candidates.push_back(CandidateInfo {
-                    ast_fields: info.ast_fields.clone(),
+                    ast_fields: new_ast_fields.clone(),
                     node: child,
                     parent_guid: info.parent_guid.clone(),
                 });
@@ -671,11 +674,6 @@ impl CppParser {
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 if let Some(argument) = parent.child_by_field_name("argument") {
-                    // candidates.push_back(CandidateInfo {
-                    //     ast_fields: AstSymbolFields::from_data(LanguageId::Cpp, path.clone(), is_error),
-                    //     node: value,
-                    //     parent_guid: parent_guid.clone(),
-                    // });
                     symbols.extend(self.find_error_usages(&argument, code, path, parent_guid));
                 }
                 if CPP_KEYWORDS.contains(&usage.ast_fields.name.as_str()) {
