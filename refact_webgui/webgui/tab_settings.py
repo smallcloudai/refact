@@ -22,6 +22,7 @@ class TabSettingsRouter(APIRouter):
     class Integrations(BaseModel):
         openai_api_key: Optional[str] = None
         anthropic_api_key: Optional[str] = None
+        huggingface_api_key: Optional[str] = None
 
     def __init__(self, models_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
