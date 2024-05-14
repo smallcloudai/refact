@@ -14,7 +14,6 @@ DIR_PROJECTS   = os.path.join(PERMDIR, "projects")
 DIR_SSH_KEYS   = os.path.join(PERMDIR, "ssh-keys")
 
 CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
-CONFIG_HUGGINGFACE_HUB = os.path.join(DIR_CONFIG, "huggingface_hub.cfg")
 CONFIG_ENUM_GPUS = os.path.join(DIR_CONFIG, "gpus_enum_result.out")
 CONFIG_BUSY_GPUS = os.path.join(DIR_CONFIG, "gpus_busy_result.out")
 CONFIG_INFERENCE = os.path.join(DIR_CONFIG, "inference.cfg")

@@ -10,8 +10,8 @@ from refact_utils.scripts import env
 
 def huggingface_hub_token() -> Optional[str]:
     try:
-        with open(env.CONFIG_HUGGINGFACE_HUB, "r") as f:
-            return json.load(f)["token"]
+        with open(env.CONFIG_INTEGRATIONS, "r") as f:
+            return json.load(f)["huggingface_api_key"]
     except:
         return None
 
