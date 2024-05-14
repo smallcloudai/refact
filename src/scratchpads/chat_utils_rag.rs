@@ -310,7 +310,7 @@ fn downgrade_lines_if_subsymbol(linevec: &mut Vec<Arc<FileLine>>, line1_base0: u
         unsafe {
             if subsymbol.starts_with(&(*lineref_mut).color) {
                 if i == line2_base0-1 || i == line1_base0 {
-                    if (*lineref_mut).line_content.trim().len() == 1 {
+                    if (*lineref_mut).line_content.trim().len() == 1 {  // only closing bracket -- don't degrade, for C++ void f()  { ... }  last line with "}" only
                         continue;
                     }
                 }
@@ -394,7 +394,7 @@ pub async fn postprocess_rag_stage_3_6(
 
         color_with_gradient_type(omsg, linevec);
         let fref = linevec[0].fref.clone();
-        if omsg.usefulness < 0.0 {
+        if omsg.usefulness < 0.0 {  // used in FIM to disable lines already in suffix or prefix
             colorize_minus_one(linevec, omsg.line1-1, omsg.line2);
             continue;
         }
@@ -417,6 +417,8 @@ pub async fn postprocess_rag_stage_3_6(
             colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness);
             let mut parent_path = s.symbol_path.split("::").collect::<Vec<&str>>();
             if parent_path.len() > 1 {
+                // MyClass::f  ->  MyClass
+                // make parent stand out from background as well, to make it more clear to the model where the symbol is
                 parent_path.pop();
                 let parent_path_str = parent_path.join("::");
                 colorize_parentof(linevec, &parent_path_str, settings.useful_symbol_default, omsg.usefulness*settings.degrade_parent_coef);
@@ -429,6 +431,7 @@ pub async fn postprocess_rag_stage_3_6(
             }
             colorize_if_more_useful(linevec, omsg.line1.max(1)-1, omsg.line2, &"nosymb".to_string(), omsg.usefulness);
         }
+        // example: see comment in class Toad
         colorize_comments_up(linevec, settings);
     }
 

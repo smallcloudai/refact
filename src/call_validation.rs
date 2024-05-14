@@ -198,13 +198,12 @@ pub struct ContextFile {
     pub file_content: String,
     pub line1: usize,   // starts from 1, zero means non-valid
     pub line2: usize,   // starts from 1
-    pub symbol: Uuid,
+    pub symbol: Uuid,   // TODO: disable serialization for this field
     #[serde(default = "default_gradient_type_value")]
     pub gradient_type: i32,
     #[serde(default)]
     pub usefulness: f32,  // higher is better
 }
-
 
 fn default_gradient_type_value() -> i32 {
     -1
