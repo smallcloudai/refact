@@ -23,12 +23,13 @@ async def tail(file_path: str, last_n_lines: int, stream: bool) -> AsyncIterator
     )
     while True:
         try:
-            output = await asyncio.wait_for(process.stdout.readline(), timeout=0.1)
+            output = await asyncio.wait_for(process.stdout.readline(), timeout=0.2)
+            if not output:
+                continue
             yield output.decode()
         except asyncio.TimeoutError:
             if not stream:
                 break
-            await asyncio.sleep(0.1)
 
 
 class TabServerLogRouter(APIRouter):
