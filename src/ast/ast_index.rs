@@ -118,7 +118,7 @@ impl AstIndex {
             self.import_components_succ_solution_index.extend(import_components_succ_solution_index);
             self.merge_usages_to_declarations(&mut symbols_cloned);
             self.create_extra_indexes(&mut symbols_cloned);
-            self.has_changes = has_changes_before;
+            self.has_changes = has_changes_before || make_dirty;
         } else {
             // TODO: we don't want to update the whole index for a single file
             // even if we might miss some new cross-references
