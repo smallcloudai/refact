@@ -325,11 +325,10 @@ describe("ComboBox", () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
     await user.type(textarea, "@");
-    await user.keyboard("{Enter}");
+    await user.click(app.getByText("@file"));
     expect(textarea.textContent).toEqual("@file");
     await user.keyboard("{Backspace>4}");
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{Enter}");
+    await user.click(app.getByText("@workspace"));
     expect(textarea.textContent).toEqual("@workspace");
 
     // TODO: deleting between the lines
