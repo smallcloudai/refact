@@ -1,11 +1,9 @@
-use tracing::info;
 use crate::at_commands::execute::parse_words_from_line;
 
 
 pub fn query_line_args(line: &String, cursor_rel: i64, cursor_line_start: i64, at_command_names: &Vec<String>) -> Vec<QueryLineArg> {
     let mut args: Vec<QueryLineArg> = vec![];
     for (text, pos1, pos2) in parse_words_from_line(line).iter().rev().cloned() {
-        info!("text: {:?}", text);
         if at_command_names.contains(&text) && args.iter().any(|x|(x.value.contains("@") && x.focused) || at_command_names.contains(&x.value)) {
             break;
         }
