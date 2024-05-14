@@ -264,7 +264,7 @@ describe("Chat", () => {
 
     const retryButtons = app.queryAllByText("Retry");
 
-    expect(retryButtons.length).toBe(1);
+    expect(retryButtons.length).toBe(2);
 
     await user.click(retryButtons[0]);
 
@@ -274,7 +274,7 @@ describe("Chat", () => {
     expect(textarea).not.toBeNull();
     if (textarea) {
       textarea.setSelectionRange(0, textarea.value.length);
-      await user.type(textarea, " 😃{Enter}");
+      await user.type(textarea, "{Enter}");
     }
 
     expect(postMessageSpy).toHaveBeenLastCalledWith(
@@ -282,11 +282,7 @@ describe("Chat", () => {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
           id: "bar",
-          messages: [
-            ["user", "hello"],
-            ["assistant", "hello there"],
-            ["user", "how are you? 😃"],
-          ],
+          messages: [["user", "hello"]],
           title: "hello",
           model: "gpt-3.5-turbo",
           attach_file: false,
