@@ -240,5 +240,16 @@ huggingface_mini_db = {
         "required_memory_mb": 20000,
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
-    }
+    },
+    # NOTE: this repo is gated so we need /tokenizer handler to load tokenizer from docker directly
+    "llama3/8b/instruct": {
+        "backend": "transformers",
+        "model_path": "meta-llama/Meta-Llama-3-8B-Instruct",
+        "model_class_kwargs": {
+            "torch_dtype": "bf16",
+        },
+        "required_memory_mb": 20000,
+        "T": 4096,
+        "filter_caps": ["chat"],
+    },
 }
