@@ -35,7 +35,7 @@ all_refact_packages = {
     "refact_webgui": PyPackage(
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi==0.100.0", "giturlparse", "pydantic>=2",
                   "starlette==0.27.0", "uvicorn", "uvloop", "termcolor", "python-multipart", "more_itertools",
-                  "scyllapy==1.3.0", "pandas>=2.0.3", "litellm>=1.35.8"],
+                  "scyllapy==1.3.0", "pandas>=2.0.3", "litellm>=1.37.9"],
         requires_packages=["refact_known_models", "refact_utils"],
         data=["webgui/static/*", "webgui/static/components/modals/*",
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",]),
