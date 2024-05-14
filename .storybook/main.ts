@@ -16,7 +16,6 @@ const config: StorybookConfig = {
     autodocs: "tag",
   },
   viteFinal: (config, options) => {
-    console.log({ config, options });
     const server = {
       ...config.server,
       proxy: {
