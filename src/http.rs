@@ -14,6 +14,7 @@ pub mod routers;
 mod utils;
 
 async fn handler_404(path: Uri) -> impl IntoResponse {
+    info!("404 {}", path);
     (StatusCode::NOT_FOUND, format!("no handler for {}", path))
 }
 
