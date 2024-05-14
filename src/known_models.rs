@@ -101,15 +101,29 @@ pub const KNOWN_MODELS: &str = r####"
             }
         },
         "gpt-3.5-turbo": {
-            "n_ctx": 4096,
+            "n_ctx": 16384,
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                     "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
                 }
             },
             "similar_models": [
+                "gpt-3.5-turbo-1106",
+                "gpt-3.5-turbo-0125",
                 "gpt-4",
-                "gpt-4-turbo"
+                "gpt-4-turbo",
+                "gpt-4-turbo-2024-04-09"
+            ]
+        },
+        "gpt-4o": {
+            "n_ctx": 128000,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
+                }
+            },
+            "similar_models": [
+                "gpt-4o-2024-05-13"
             ]
         },
         "claude-instant-1.2": {
@@ -242,10 +256,14 @@ pub const KNOWN_MODELS: &str = r####"
     "tokenizer_rewrite_path": {
         "Refact/1.6B": "smallcloudai/Refact-1_6B-fim",
         "starcoder2/3b": "bigcode/starcoder2-3b",
-        "gpt-3.5-turbo":      "Xenova/gpt-3.5-turbo-16k",
-        "gpt-3.5-turbo-1106": "Xenova/gpt-3.5-turbo-16k",
-        "gpt-4":              "Xenova/gpt-4",
-        "gpt-4-turbo":        "Xenova/gpt-4"
+        "gpt-3.5-turbo":          "Xenova/gpt-3.5-turbo-16k",
+        "gpt-3.5-turbo-1106":     "Xenova/gpt-3.5-turbo-16k",
+        "gpt-3.5-turbo-0125":     "Xenova/gpt-3.5-turbo-16k",
+        "gpt-4":                  "Xenova/gpt-4",
+        "gpt-4-turbo":            "Xenova/gpt-4",
+        "gpt-4-turbo-2024-04-09": "Xenova/gpt-4",
+        "gpt-4o":                 "Xenova/gpt-4o",
+        "gpt-4o-2024-05-13":      "Xenova/gpt-4o"
     }
 }
 "####;
