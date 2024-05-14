@@ -11,7 +11,7 @@ from refact_utils.scripts import env
 
 async def tail(file_path: str, last_n_lines: int, stream: bool) -> AsyncIterator[str]:
     if stream:
-        cmd = ["tail", "-f", "-n", str(last_n_lines), file_path]
+        cmd = ["tail", "-f", f"-n {last_n_lines}", file_path]
     else:
         cmd = ["tail", f"-n {last_n_lines}", file_path]
 
@@ -24,14 +24,11 @@ async def tail(file_path: str, last_n_lines: int, stream: bool) -> AsyncIterator
     while True:
         try:
             output = await asyncio.wait_for(process.stdout.readline(), timeout=0.1)
+            yield output.decode()
         except asyncio.TimeoutError:
-            output = None
-        if not output:
             if not stream:
                 break
             await asyncio.sleep(0.1)
-            continue
-        yield output.decode()
 
 
 class TabServerLogRouter(APIRouter):
