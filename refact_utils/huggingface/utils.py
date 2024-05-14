@@ -1,5 +1,6 @@
 import json
 
+from enum import Enum
 from typing import Optional
 
 from huggingface_hub import repo_info
@@ -16,20 +17,27 @@ def huggingface_hub_token() -> Optional[str]:
         return None
 
 
-def has_access_to_repo(repo_id: str) -> bool:
+class RepoStatus(Enum):
+    OPEN = "open"
+    GATED = "gated"
+    NOT_FOUND = "not_found"
+    UNKNOWN = "unknown"
+
+
+def get_repo_status(repo_id: str) -> RepoStatus:
     try:
         token = huggingface_hub_token()
-        repo_info(repo_id=repo_id, token=token)
-        return True
+        info = repo_info(repo_id=repo_id, token=token)
+        if isinstance(info.gated, str):
+            return RepoStatus.GATED
+        return RepoStatus.OPEN
     except GatedRepoError:
-        # NOTE: user has no access to this repo
-        return False
+        return RepoStatus.GATED
     except RepositoryNotFoundError:
-        # NOTE: repo does not exist, probably bug in our code
-        return False
+        return RepoStatus.NOT_FOUND
     except:
-        return False
+        return RepoStatus.UNKNOWN
 
 
 if __name__ == "__main__":
-    print(has_access_to_repo("mistralai/Mixtral-8x22B-Instruct-v0.1000"))
+    print(get_repo_status("mistralai/Mixtral-8x7B-Instruct-v0.01"))
