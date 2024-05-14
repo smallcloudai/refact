@@ -85,4 +85,4 @@ dyn_partial_eq = "=0.1.2"
 rayon = "1.8.0"
 backtrace = "0.3.71"
 rand = "0.8.5"
-
+sysinfo = "0.30.12"

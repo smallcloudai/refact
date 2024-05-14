@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use strsim::jaro_winkler;
 use tokio::sync::{Mutex as AMutex, RwLockReadGuard, RwLockWriteGuard};
 use tokio::sync::RwLock as ARwLock;
@@ -20,10 +20,19 @@ use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AstIndexStatus {
+    pub unparsed_files: usize,
+    pub ast_index_total_files: usize,
+    pub ast_index_total_symbols: usize,
+    pub state: String,
+}
+
+
 pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
     ast_index: Arc<ARwLock<AstIndex>>,
-    // cmdline -- take from command line what's needed, don't store a copy
+    status: Arc<AMutex<AstIndexStatus>>
 }
 
 #[derive(Debug, Serialize)]
@@ -31,14 +40,23 @@ pub struct VecDbCaps {
     functions: Vec<String>,
 }
 
-
 impl AstModule {
-    pub async fn ast_indexer_init() -> Result<AstModule, String> {
-        let ast_index = Arc::new(ARwLock::new(AstIndex::init()));
-        let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(ast_index.clone())));
+    pub async fn ast_indexer_init(ast_index_max_files: usize) -> Result<AstModule, String> {
+        let status = Arc::new(AMutex::new(AstIndexStatus {
+            unparsed_files: 0,
+            ast_index_total_files: 0,
+            ast_index_total_symbols: 0,
+            state: "idle".to_string(),
+        }));
+        let ast_index = Arc::new(ARwLock::new(AstIndex::init(ast_index_max_files)));
+        let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(
+            ast_index.clone(),
+            status.clone()
+        )));
         let me = AstModule {
             ast_index_service,
             ast_index,
+            status
         };
         Ok(me)
     }
@@ -398,5 +416,17 @@ impl AstModule {
             }
         };
         Ok(ast_ref.get_symbols_names(request_symbol_type))
+    }
+
+    pub async fn ast_index_status(&self) -> AstIndexStatus {
+        let mut locked_status = self.status.lock().await;
+        match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => {
+                locked_status.ast_index_total_files = ast.total_files();
+                locked_status.ast_index_total_symbols = ast.total_symbols();
+            },
+            Err(_) => {}
+        };
+        locked_status.clone()
     }
 }

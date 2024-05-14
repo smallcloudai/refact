@@ -34,6 +34,7 @@ pub struct AstIndex {
     type_guid_to_dependent_guids: HashMap<Uuid, HashSet<Uuid>>,
     declaration_guid_to_usage_names: HashMap<Uuid, HashSet<String>>,
     import_components_succ_solution_index: HashMap<String, ImportDeclaration>,
+    ast_index_max_files: usize,
     has_changes: bool,
 }
 
@@ -56,7 +57,7 @@ pub(crate) struct IndexingStats {
 }
 
 impl AstIndex {
-    pub fn init() -> AstIndex {
+    pub fn init(ast_index_max_files: usize) -> AstIndex {
         AstIndex {
             declaration_symbols_by_name: HashMap::new(),
             usage_symbols_by_name: HashMap::new(),
@@ -65,6 +66,7 @@ impl AstIndex {
             type_guid_to_dependent_guids: HashMap::new(),
             declaration_guid_to_usage_names: HashMap::new(),
             import_components_succ_solution_index: HashMap::new(),
+            ast_index_max_files,
             has_changes: false,
         }
     }
@@ -139,6 +141,16 @@ impl AstIndex {
     }
 
     pub fn add_or_update(&mut self, doc: &Document, make_dirty: bool) -> Result<usize, String> {
+        if self.path_by_symbols.len() >= self.ast_index_max_files {
+            info!(
+                "Too many files in the ast index ({} >= {}), skipping the {}",
+                self.path_by_symbols.len(),
+                self.ast_index_max_files,
+                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30)
+            );
+            return Err("ast index too many files".to_string());
+        }
+
         let symbols = AstIndex::parse(doc)?;
         let symbols_len = symbols.len();
         match self.add_or_update_symbols_index(doc, symbols, make_dirty) {
@@ -857,6 +869,14 @@ impl AstIndex {
         info!("Creating extra ast indexes finished, took {:.3}s", t2.elapsed().as_secs_f64());
         write!(std::io::stderr(), "AST COMPLETE\n").unwrap();
         info!("AST COMPLETE");  // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
+    }
+
+    pub(crate) fn total_files(&self) -> usize {
+        self.path_by_symbols.len()
+    }
+
+    pub(crate) fn total_symbols(&self) -> usize {
+        self.symbols_by_guid.len()
     }
 
     fn resolve_declaration_symbols(&self, symbols: &mut Vec<AstSymbolInstanceArc>) -> IndexingStats {

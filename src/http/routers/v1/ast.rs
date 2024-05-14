@@ -423,3 +423,28 @@ pub async fn handle_v1_ast_clear_index(
     };
     x
 }
+
+
+pub async fn handle_v1_ast_status(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    _: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let ast_module = global_context.read().await.ast_module.clone();
+    match &ast_module {
+        Some(ast) => {
+            let status = ast.write().await.ast_index_status().await;
+            let json_string = serde_json::to_string_pretty(&status).map_err(|e| {
+                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
+            })?;
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(json_string))
+                .unwrap())
+        }
+        None => {
+            Err(ScratchError::new(
+                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+            ))
+        }
+    }
+}

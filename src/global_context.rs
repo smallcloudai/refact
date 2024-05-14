@@ -59,6 +59,8 @@ pub struct CommandLine {
     pub vecdb_forced_path: String,
     #[structopt(long, short="w", default_value="", help="Workspace folder to find files for vecdb and AST. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
+    #[structopt(long, default_value="15000", help="Maximum files count for AST index")]
+    pub ast_index_max_files: usize,
 }
 impl CommandLine {
     fn create_hash(msg: String) -> String {
@@ -248,7 +250,7 @@ pub async fn create_global_context(
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {
         let ast_module = Arc::new(ARwLock::new(
-            AstModule::ast_indexer_init().await.expect("Failed to initialize ast module")
+            AstModule::ast_indexer_init(cmdline.ast_index_max_files).await.expect("Failed to initialize ast module")
         ));
         gcx.write().await.ast_module = Some(ast_module);
     }

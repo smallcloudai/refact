@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::{Arc, Weak};
 use std::time::{Duration, SystemTime};
+use sysinfo::System;
 
 use tokio::sync::{Mutex as AMutex, Notify};
 use tokio::sync::RwLock as ARwLock;
@@ -9,6 +10,7 @@ use tokio::task::JoinHandle;
 use tracing::info;
 
 use crate::ast::ast_index::AstIndex;
+use crate::ast::ast_module::AstIndexStatus;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
@@ -37,6 +39,7 @@ pub struct AstIndexService {
     ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
     ast_index: Arc<ARwLock<AstIndex>>,
+    status: Arc<AMutex<AstIndexStatus>>
 }
 
 async fn cooldown_queue_thread(
@@ -102,7 +105,9 @@ async fn ast_indexer_thread(
     ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_index: Arc<ARwLock<AstIndex>>,
     ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
+    status: Arc<AMutex<AstIndexStatus>>,
 ) {
+    let mut system = System::new_all();
     let mut reported_stats = false;
     let mut stats_parsed_cnt = 0;    // by language?
     let mut stats_symbols_cnt = 0;
@@ -111,7 +116,7 @@ async fn ast_indexer_thread(
     loop {
         let mut events = {
             let mut q = ast_immediate_q.lock().await;
-            let events: Vec<Arc<AstEvent>> = Vec::from(q.to_owned());
+            let events: VecDeque<Arc<AstEvent>> = VecDeque::from(q.to_owned());
             q.clear();
             events
         };
@@ -142,7 +147,14 @@ async fn ast_indexer_thread(
         }
 
         let mut unparsed_suffixes = HashMap::new();
-        for event in events.iter_mut() {
+        while !events.is_empty() {
+            let event = match events.pop_back() {
+                Some(event) => event,
+                None => {
+                    break;
+                }
+            };
+            let left_docs_count: usize = events.iter().map(|e| e.docs.len()).sum();
             let gcx = match gcx_weak.upgrade() {
                 Some(x) => x,
                 None => {
@@ -165,9 +177,29 @@ async fn ast_indexer_thread(
                     }
                 }
             }
+
             match event.typ {
                 AstEventType::Add => {
-                    for doc in docs_with_text.iter() {
+                    for (idx, doc) in docs_with_text.iter().enumerate() {
+                        if idx % 100 == 0 {
+                            // lower that 1Gb of available RAM+swap
+                            system.refresh_memory();
+                            if system.available_memory() < 1024*1024*1024 {
+                                info!(
+                                "There is not enough available memory to continue, skipping the {}",
+                                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30)
+                            );
+                                continue
+                            }
+                        }
+                        {
+                            let mut locked_status = status.lock().await;
+                            locked_status.unparsed_files = left_docs_count + docs_with_text.len() - idx + 1;
+                            let ast_ref = ast_index.read().await;
+                            locked_status.ast_index_total_files = ast_ref.total_files();
+                            locked_status.ast_index_total_symbols = ast_ref.total_symbols();
+                            locked_status.state = "parsing".to_string();
+                        }
                         match ast_index.write().await.add_or_update(&doc, true) {
                             Ok(len) => {
                                 stats_symbols_cnt += len;
@@ -185,6 +217,7 @@ async fn ast_indexer_thread(
                 }
             }
         }
+
         if !unparsed_suffixes.is_empty() {
             info!("AST didn't parse these files, even though they were passed in input queue:\n{:#?}", unparsed_suffixes);
         }
@@ -194,6 +227,7 @@ async fn ast_indexer_thread(
 async fn ast_index_rebuild_thread(
     ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
     ast_index: Arc<ARwLock<AstIndex>>,
+    status: Arc<AMutex<AstIndexStatus>>,
 ) {
     loop {
         ast_hold_off_indexes_rebuild_notify.notified().await;
@@ -203,11 +237,23 @@ async fn ast_index_rebuild_thread(
             continue;
         }
 
+        {
+            let mut locked_status = status.lock().await;
+            locked_status.unparsed_files = 0;
+            let ast_ref = ast_index.read().await;
+            locked_status.ast_index_total_files = ast_ref.total_files();
+            locked_status.ast_index_total_symbols = ast_ref.total_symbols();
+            locked_status.state = "indexing".to_string();
+        }
         let ast_index_clone = Arc::clone(&ast_index);
         tokio::task::spawn_blocking(move || {
             let mut ast = ast_index_clone.blocking_write();
             ast.reindex();
-        }).await.expect("cannot reindex")
+        }).await.expect("cannot reindex");
+        {
+            let mut locked_status = status.lock().await;
+            locked_status.state = "idle".to_string();
+        }
     }
 }
 
@@ -215,7 +261,8 @@ const COOLDOWN_SECS: u64 = 2;
 
 impl AstIndexService {
     pub fn init(
-        ast_index: Arc<ARwLock<AstIndex>>
+        ast_index: Arc<ARwLock<AstIndex>>,
+        status: Arc<AMutex<AstIndexStatus>>,
     ) -> Self {
         let ast_delayed_requests_q = Arc::new(AMutex::new(VecDeque::new()));
         let ast_immediate_q = Arc::new(AMutex::new(VecDeque::new()));
@@ -223,7 +270,8 @@ impl AstIndexService {
             ast_delayed_requests_q: ast_delayed_requests_q.clone(),
             ast_immediate_q: ast_immediate_q.clone(),
             ast_hold_off_indexes_rebuild_notify: Arc::new(Notify::new()),
-            ast_index: ast_index.clone(),
+            ast_index,
+            status
         }
     }
 
@@ -244,12 +292,15 @@ impl AstIndexService {
                 self.ast_immediate_q.clone(),
                 self.ast_index.clone(),
                 self.ast_hold_off_indexes_rebuild_notify.clone(),
+                self.status.clone(),
             )
         );
         let rebuild_index_handle = tokio::spawn(
             ast_index_rebuild_thread(
                 self.ast_hold_off_indexes_rebuild_notify.clone(),
                 self.ast_index.clone(),
+                self.status.clone(),
+
             )
         );
         return vec![cooldown_queue_join_handle, indexer_handle, rebuild_index_handle];
