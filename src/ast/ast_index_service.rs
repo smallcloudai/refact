@@ -178,20 +178,21 @@ async fn ast_indexer_thread(
                 }
             }
 
+            // lower that 1Gb of available RAM+swap
+            system.refresh_memory();
+            if system.available_memory() < 1024*1024*1024 {
+                for doc in docs_with_text.iter() {
+                    info!(
+                        "There is not enough available memory to continue, skipping the {}",
+                        crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30)
+                    );
+                }
+                continue
+            }
+
             match event.typ {
                 AstEventType::Add => {
                     for (idx, doc) in docs_with_text.iter().enumerate() {
-                        if idx % 100 == 0 {
-                            // lower that 1Gb of available RAM+swap
-                            system.refresh_memory();
-                            if system.available_memory() < 1024*1024*1024 {
-                                info!(
-                                "There is not enough available memory to continue, skipping the {}",
-                                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30)
-                            );
-                                continue
-                            }
-                        }
                         {
                             let mut locked_status = status.lock().await;
                             locked_status.unparsed_files = left_docs_count + docs_with_text.len() - idx + 1;
