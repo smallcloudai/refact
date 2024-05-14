@@ -1,7 +1,22 @@
 # refer to https://docs.litellm.ai/docs/providers/
 
 passthrough_mini_db = {
-    # gpt-4-turbo-2024-04-09 is already available, but no support from litellm yet.
+    "gpt-4o": {
+        "backend": "litellm",
+        "provider": "openai",
+        "tokenizer_path": "Xenova/gpt-4o",
+        "resolve_as": "gpt-4o",
+        "T": 128_000,
+        "T_out": 4096,
+    },
+    "gpt-4-turbo": {
+        "backend": "litellm",
+        "provider": "openai",
+        "tokenizer_path": "Xenova/gpt-4",
+        "resolve_as": "gpt-4-turbo",
+        "T": 128_000,
+        "T_out": 4096,
+    },
     "gpt-4": {
         "backend": "litellm",
         "provider": "openai",
@@ -10,7 +25,6 @@ passthrough_mini_db = {
         "T": 128_000,
         "T_out": 4096,
     },
-    # gpt-3.5-turbo-0125 is already available, but no support from litellm yet.
     "gpt-3.5-turbo": {
         "backend": "litellm",
         "provider": "openai",
