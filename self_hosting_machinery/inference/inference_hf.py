@@ -14,6 +14,7 @@ from transformers import StoppingCriteria
 from transformers import StoppingCriteriaList
 from transformers.generation.streamers import TextStreamer
 
+from refact_utils.huggingface.utils import huggingface_hub_token
 from self_hosting_machinery.inference.scratchpad_hf import ScratchpadHuggingfaceBase
 from self_hosting_machinery.inference.scratchpad_hf import ScratchpadHuggingfaceCompletion
 from self_hosting_machinery.inference import InferenceBase
@@ -147,12 +148,13 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         assert torch.cuda.is_available(), "model is only supported on GPU"
 
         self._device = "cuda:0"
+        token = huggingface_hub_token()
         for local_files_only in [True, False]:
             try:
                 logging.getLogger("MODEL").info("loading model local_files_only=%i" % local_files_only)
                 self._tokenizer = AutoTokenizer.from_pretrained(
                     self._model_dict["model_path"], cache_dir=self.cache_dir, trust_remote_code=True,
-                    local_files_only=local_files_only,
+                    local_files_only=local_files_only, token=token,
                     )
                 if model_dict["backend"] == "transformers":
                     torch_dtype_mapping = {
@@ -165,13 +167,13 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
                     self._model = AutoModelForCausalLM.from_pretrained(
                         self._model_dict["model_path"], cache_dir=self.cache_dir,
                         device_map="auto", torch_dtype=torch_dtype, trust_remote_code=True,
-                        local_files_only=local_files_only,
+                        local_files_only=local_files_only, token=token,
                         **self._model_dict["model_class_kwargs"])
                 elif model_dict["backend"] == "autogptq":
                     self._model = CustomAutoGPTQForCausalLM.from_quantized(
                         self._model_dict["model_path"], cache_dir=self.cache_dir, device=self._device,
                         trust_remote_code=True,
-                        local_files_only=local_files_only,
+                        local_files_only=local_files_only, token=token,
                         **self._model_dict["model_class_kwargs"])
                 else:
                     raise RuntimeError(f"unknown model backend {model_dict['backend']}")
