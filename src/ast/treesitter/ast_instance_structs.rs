@@ -103,7 +103,8 @@ pub struct AstSymbolFields {
     // extra fields for usage structs to prevent multiple downcast operations
     pub linked_decl_guid: Option<Uuid>,
     pub caller_guid: Option<Uuid>,
-    pub is_error: bool
+    pub is_error: bool,
+    pub caller_depth: Option<usize>
 }
 
 impl AstSymbolFields {
@@ -199,7 +200,8 @@ impl Default for AstSymbolFields {
             },
             linked_decl_guid: None,
             caller_guid: None,
-            is_error: false
+            is_error: false,
+            caller_depth: None
         }
     }
 }
@@ -297,6 +299,14 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
 
     fn set_linked_decl_guid(&mut self, linked_decl_guid: Option<Uuid>) {
         self.fields_mut().linked_decl_guid = linked_decl_guid;
+    }
+
+    fn get_caller_depth(&self) -> &Option<usize> {
+        &self.fields().caller_depth
+    }
+
+    fn set_caller_depth(&mut self, caller_depth: Option<usize>) {
+        self.fields_mut().caller_depth = caller_depth;
     }
 
     fn is_error(&self) -> bool {

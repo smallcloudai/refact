@@ -919,25 +919,43 @@ impl AstIndex {
     fn merge_usages_to_declarations(&self, symbols: &mut Vec<AstSymbolInstanceArc>) -> IndexingStats {
         fn get_caller_depth(
             symbol: &AstSymbolInstanceArc,
-            guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>,
-            current_depth: usize,
-        ) -> usize {
-            let caller_guid = match symbol.borrow()
-                .get_caller_guid()
-                .clone() {
-                Some(g) => g,
-                None => return current_depth,
+            guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>
+        ) -> Option<usize> {
+            match symbol.borrow().get_caller_guid() {
+                Some(_) => {},
+                None => {
+                    return None
+                }
             };
-            match guid_by_symbols.get(&caller_guid) {
-                Some(s) => get_caller_depth(
-                    s, guid_by_symbols, current_depth + 1,
-                ),
-                None => current_depth,
+
+            let mut current_symbol = symbol.clone();
+            let mut current_depth = 0;
+            loop {
+                let caller_guid = match current_symbol.borrow().get_caller_guid().clone() {
+                    Some(g) => g,
+                    None => {
+                        return Some(current_depth)
+                    }
+                };
+                match guid_by_symbols.get(&caller_guid) {
+                    Some(s) => {
+                        current_symbol = s.clone();
+                        current_depth += 1;
+                    }
+                    None => {
+                        return Some(current_depth);
+                    }
+                }
             }
         }
+        for s in symbols.iter_mut() {
+            let caller_depth = get_caller_depth(s, &self.symbols_by_guid);
+            s.borrow_mut().set_caller_depth(caller_depth);
+        }
+
 
         let mut stats = IndexingStats { found: 0, non_found: 0 };
-        let search_by_name_extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceArc> = symbols
+        let search_by_name_extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceArc> =  symbols
             .iter()
             .map(|x| {
                 let x_ref = x.borrow();
@@ -968,7 +986,10 @@ impl AstIndex {
                     } else {
                         true
                     };
-                    let valid_depth = get_caller_depth(symbol, &self.symbols_by_guid, 0) == depth;
+                    let valid_depth = match symbol.borrow().get_caller_depth() {
+                        Some(d) => *d == depth,
+                        None => false
+                    };
                     has_no_valid_linked_decl && valid_depth && (s_ref.symbol_type() == SymbolType::FunctionCall
                         || s_ref.symbol_type() == SymbolType::VariableUsage)
                 })
