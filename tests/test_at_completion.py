@@ -38,8 +38,26 @@ some text over here @|
     assert resp["replace"] == [21, 22]
 
 
+def test3():
+    query = """
+@file abc and @fi|
+    """
+    resp = at_completion_post(query)
+    assert resp["replace"] == [15, 18]
+    assert resp["completions"] == ["@file "]
+
+
+def test4():
+    query = """
+@file abc and @file |
+    """
+    resp = at_completion_post(query)
+    assert resp["replace"] == [21, 21]
+    assert len(resp["completions"]) != 0
+
+
 def main():
-    tests = [test1, test2]
+    tests = [test1, test2, test3, test4]
     for test in tests:
         test()
     print("All tests passed!")

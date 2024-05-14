@@ -9,6 +9,7 @@ use tokio::sync::RwLock as ARwLock;
 use strsim::jaro_winkler;
 use itertools::Itertools;
 use tokenizers::Tokenizer;
+use tracing::info;
 
 use crate::cached_tokenizers;
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -55,6 +56,7 @@ pub async fn handle_v1_command_completion(
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let context = AtCommandsContext::new(global_context.clone()).await;
+    let at_command_names = context.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
     let post = serde_json::from_slice::<CommandCompletionPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
@@ -64,7 +66,8 @@ pub async fn handle_v1_command_completion(
 
     if let Ok((query_line_val, cursor_rel, cursor_line_start)) = get_line_with_cursor(&post.query, post.cursor) {
         let query_line_val = query_line_val.chars().take(cursor_rel as usize).collect::<String>();
-        let args = query_line_args(&query_line_val, cursor_rel, cursor_line_start);
+        let args = query_line_args(&query_line_val, cursor_rel, cursor_line_start, &at_command_names);
+        info!("args: {:?}", args);
         (completions, is_cmd_executable, pos1, pos2) = command_completion(args, &context, post.cursor, post.top_n).await;
     }
     let completions: Vec<_> = completions.into_iter().unique().map(|x|format!("{} ", x)).collect();
