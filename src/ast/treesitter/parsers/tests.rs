@@ -125,11 +125,19 @@ fn compare_symbols(symbols: &Vec<AstSymbolInstanceArc>,
             }
 
             assert_eq!(sym_l.childs_guid().len(), ref_sym.childs_guid().len());
-            for (sym_l, ref_sym) in sym_l.childs_guid().iter().zip(ref_sym.childs_guid().iter()) {
-                if let Some(child) = guid_to_sym.get(&sym_l) {
-                    let ref_child = ref_guid_to_sym.get(&ref_sym).unwrap();
-                    candidates.push((child.clone(), ref_child));
-                }
+            
+            let childs = sym_l.childs_guid().iter().filter_map(|x| guid_to_sym.get(x))
+                .collect::<Vec<_>>();
+            let ref_childs = ref_sym.childs_guid().iter().filter_map(|x| ref_guid_to_sym.get(x))
+               .collect::<Vec<_>>();
+            
+            for child in childs {
+                let child_l = child.read();
+                let closest_sym = ref_childs.iter().filter(|s| child_l.full_range() == s.full_range())
+                    .collect::<Vec<_>>();
+                assert_eq!(closest_sym.len(), 1);
+                let closest_sym = closest_sym.first().unwrap();
+                candidates.push((child.clone(), closest_sym));
             }
 
             assert!((sym_l.get_caller_guid().is_some() && ref_sym.get_caller_guid().is_some())
