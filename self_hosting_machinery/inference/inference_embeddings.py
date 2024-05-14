@@ -11,6 +11,7 @@ from typing import Dict, Any
 from sentence_transformers import SentenceTransformer
 
 from refact_utils.scripts import env
+from refact_utils.huggingface.utils import huggingface_hub_token
 from self_hosting_machinery.inference import InferenceBase
 from self_hosting_machinery.inference.lora_loader_mixin import LoraLoaderMixin
 
@@ -46,6 +47,7 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
                         self._model_dict["model_path"],
                         device=self._device,
                         cache_folder=self.cache_dir,
+                        use_auth_token=huggingface_hub_token(),
                     )
                     self._model.save(os.path.join(self.cache_dir, self._model_dir))
             except Exception as e: # noqa
