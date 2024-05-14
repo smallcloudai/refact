@@ -1,15 +1,16 @@
-use std::collections::{HashMap, VecDeque, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::path::PathBuf;
 use std::sync::{Arc, Weak};
-use std::time::{SystemTime, Duration};
+use std::time::{Duration, SystemTime};
 
 use tokio::sync::{Mutex as AMutex, Notify};
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::info;
 
-use crate::global_context::GlobalContext;
 use crate::ast::ast_index::AstIndex;
 use crate::files_in_workspace::Document;
+use crate::global_context::GlobalContext;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum AstEventType {
@@ -37,8 +38,6 @@ pub struct AstIndexService {
     ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
     ast_index: Arc<ARwLock<AstIndex>>,
 }
-
-use std::path::PathBuf;
 
 async fn cooldown_queue_thread(
     ast_delayed_requests_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,

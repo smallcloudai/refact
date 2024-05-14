@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::io::Write;
 use std::path::PathBuf;
 
 use itertools::Itertools;
@@ -8,7 +9,6 @@ use strsim::jaro_winkler;
 use tracing::info;
 use tree_sitter::Point;
 use uuid::Uuid;
-use std::io::Write;
 
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::imports_resolver::{possible_filepath_candidates, top_n_prefixes, try_find_file_path};
@@ -390,7 +390,52 @@ impl AstIndex {
         (parents_symbols, guid_to_usefulness)
     }
 
-    pub(crate) fn symbols_near_cursor_to_buckets(
+    fn decl_symbols_from_imports(
+        &self,
+        parsed_symbols: &Vec<AstSymbolInstanceArc>,
+        imports_depth: usize,
+    ) -> Vec<AstSymbolInstanceArc> {
+        let mut paths: Vec<PathBuf> = vec![];
+        let mut current_depth_symbols = parsed_symbols.clone();
+        let mut current_depth = 0;
+        loop {
+            if current_depth > imports_depth { break; }
+            let mut current_paths = vec![];
+            for symbol in current_depth_symbols
+                .iter()
+                .filter(|s| s.borrow().symbol_type() == SymbolType::ImportDeclaration) {
+                let s_ref = symbol.borrow();
+                let import_decl = s_ref.as_any().downcast_ref::<ImportDeclaration>().expect("wrong type");
+                if let Some(import_path) = import_decl.filepath_ref.clone() {
+                    current_paths.push(import_path.clone());
+                    paths.push(import_path);
+                }
+            }
+            current_depth_symbols = current_paths
+                .iter()
+                .filter_map(|p| self.path_by_symbols.get(p))
+                .flatten()
+                .cloned()
+                .collect::<Vec<_>>();
+            current_depth += 1;
+        }
+
+        paths
+            .iter()
+            .unique()
+            .filter_map(|p| self.path_by_symbols.get(p))
+            .flatten()
+            .cloned()
+            .filter(|s| {
+                let symbol_type = s.borrow().symbol_type();
+                symbol_type == SymbolType::StructDeclaration
+                    || symbol_type == SymbolType::TypeAlias
+                    || symbol_type == SymbolType::FunctionDeclaration
+            })
+            .collect::<Vec<_>>()
+    }
+
+    pub fn symbols_near_cursor_to_buckets(
         &self,
         doc: &Document,
         code: &str,
@@ -678,51 +723,6 @@ impl AstIndex {
             bucket_imports,
             guid_to_usefulness,
         )
-    }
-
-    pub(crate) fn decl_symbols_from_imports(
-        &self,
-        parsed_symbols: &Vec<AstSymbolInstanceArc>,
-        imports_depth: usize,
-    ) -> Vec<AstSymbolInstanceArc> {
-        let mut paths: Vec<PathBuf> = vec![];
-        let mut current_depth_symbols = parsed_symbols.clone();
-        let mut current_depth = 0;
-        loop {
-            if current_depth > imports_depth { break; }
-            let mut current_paths = vec![];
-            for symbol in current_depth_symbols
-                .iter()
-                .filter(|s| s.borrow().symbol_type() == SymbolType::ImportDeclaration) {
-                let s_ref = symbol.borrow();
-                let import_decl = s_ref.as_any().downcast_ref::<ImportDeclaration>().expect("wrong type");
-                if let Some(import_path) = import_decl.filepath_ref.clone() {
-                    current_paths.push(import_path.clone());
-                    paths.push(import_path);
-                }
-            }
-            current_depth_symbols = current_paths
-                .iter()
-                .filter_map(|p| self.path_by_symbols.get(p))
-                .flatten()
-                .cloned()
-                .collect::<Vec<_>>();
-            current_depth += 1;
-        }
-
-        paths
-            .iter()
-            .unique()
-            .filter_map(|p| self.path_by_symbols.get(p))
-            .flatten()
-            .cloned()
-            .filter(|s| {
-                let symbol_type = s.borrow().symbol_type();
-                symbol_type == SymbolType::StructDeclaration
-                    || symbol_type == SymbolType::TypeAlias
-                    || symbol_type == SymbolType::FunctionDeclaration
-            })
-            .collect::<Vec<_>>()
     }
 
     pub fn file_markup(

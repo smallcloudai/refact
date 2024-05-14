@@ -14,9 +14,9 @@ use tree_sitter::Point;
 use uuid::Uuid;
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
-use crate::ast::ast_index_service::{AstEvent, AstIndexService, AstEventType};
+use crate::ast::ast_index_service::{AstEvent, AstEventType, AstIndexService};
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc};
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
@@ -33,8 +33,7 @@ pub struct VecDbCaps {
 
 
 impl AstModule {
-    pub async fn ast_indexer_init(
-    ) -> Result<AstModule, String> {
+    pub async fn ast_indexer_init() -> Result<AstModule, String> {
         let ast_index = Arc::new(ARwLock::new(AstIndex::init()));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(ast_index.clone())));
         let me = AstModule {
@@ -79,7 +78,7 @@ impl AstModule {
     pub async fn ast_reset_index(&self, force: bool) {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(
             AstEvent { docs: vec![], typ: AstEventType::AstReset, posted_ts: std::time::SystemTime::now() },
-            force
+            force,
         ).await;
     }
 
@@ -152,7 +151,7 @@ impl AstModule {
                 Ok(
                     AstQuerySearchResult {
                         query_text: query,
-                        search_results: symbol_structs
+                        search_results: symbol_structs,
                     }
                 )
             }
@@ -234,7 +233,7 @@ impl AstModule {
                 Ok(
                     AstQuerySearchResult {
                         query_text: guid.to_string(),
-                        search_results: symbol_structs
+                        search_results: symbol_structs,
                     }
                 )
             }
@@ -316,7 +315,7 @@ impl AstModule {
             SymbolsSearchResultStruct {
                 symbol_declaration,
                 content,
-                usefulness
+                usefulness,
             }
         };
 
