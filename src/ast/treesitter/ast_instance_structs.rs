@@ -3,7 +3,7 @@ use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::{fs, io};
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -334,11 +334,6 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
 pub type AstSymbolInstanceArc = Rc<RefCell<dyn AstSymbolInstance>>;
 
 
-pub fn read_symbol(
-    s: &AstSymbolInstanceArc
-) -> Ref<dyn AstSymbolInstance> {
-    s.borrow()
-}
 /*
 StructDeclaration
 */

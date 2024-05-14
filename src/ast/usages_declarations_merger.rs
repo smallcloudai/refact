@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, FunctionDeclaration, read_symbol};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, FunctionDeclaration};
 use crate::ast::treesitter::structs::SymbolType;
 
 pub struct FilePathIterator {
@@ -63,7 +63,7 @@ pub fn find_decl_by_caller_guid(
     extra_search_index: &HashMap<(String, Uuid, SymbolType), Uuid>,
 ) -> Option<Uuid> {
     let (symbol_type, name, is_error_node) = {
-        let s = read_symbol(symbol);
+        let s = symbol.borrow();
         (s.symbol_type().to_owned(), s.name().to_owned(), s.is_error())
     };
     let search_symbol_types: Vec<SymbolType> = if !is_error_node {
@@ -82,14 +82,14 @@ pub fn find_decl_by_caller_guid(
     };
 
     let (symbol_type, linked_decl_guid) = {
-        let s_ref = read_symbol(caller_symbol);
+        let s_ref = caller_symbol.borrow();
         (s_ref.symbol_type().clone(), s_ref.get_linked_decl_guid().clone())
     };
     let decl_symbol = match symbol_type {
         SymbolType::FunctionCall => {
             linked_decl_guid
                 .map(|guid| {
-                    let symbol_ref = read_symbol(guid_by_symbols.get(&guid)?);
+                    let symbol_ref = guid_by_symbols.get(&guid)?.borrow();
                     symbol_ref
                         .as_any()
                         .downcast_ref::<FunctionDeclaration>()?
@@ -108,11 +108,12 @@ pub fn find_decl_by_caller_guid(
         _ => None
     };
 
-    let decl_symbol_parent = read_symbol(decl_symbol?)
+    let decl_symbol_parent = decl_symbol?
+        .borrow()
         .parent_guid()
         .as_ref()
         .map(|guid| { guid_by_symbols.get(guid) })??;
-    let decl_symbol_parent_guid = read_symbol(decl_symbol_parent).guid().clone();
+    let decl_symbol_parent_guid = decl_symbol_parent.borrow().guid().clone();
 
     search_symbol_types
         .iter()
@@ -146,7 +147,7 @@ fn find_decl_by_name_for_single_path(
         if let Some(s) = extra_search_index
             .get(&search_q)
             .map(|s| s.clone()) {
-            let s_ref = read_symbol(&s);
+            let s_ref = s.borrow();
             let valid_type = is_error_node || (s_ref.symbol_type() == *search_symbol_type);
             if valid_type {
                 return Some(s_ref.guid().clone())
@@ -157,7 +158,7 @@ fn find_decl_by_name_for_single_path(
         } else {
             current_parent_guid = match guid_by_symbols.get(&current_parent_guid) {
                 Some(s) => {
-                    read_symbol(s).parent_guid().clone().unwrap_or(Uuid::default())
+                    s.borrow().parent_guid().clone().unwrap_or(Uuid::default())
                 }
                 None => { Uuid::default() }
             };

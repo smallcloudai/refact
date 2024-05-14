@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstIndexService, AstEventType};
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, read_symbol};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc};
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
@@ -134,7 +134,7 @@ impl AstModule {
                     .iter()
                     .take(top_n)
                     .filter_map(|s| {
-                        let info_struct = read_symbol(s).symbol_info_struct();
+                        let info_struct = s.borrow().symbol_info_struct();
                         let name = info_struct.name.clone();
                         let content = info_struct.get_content_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
@@ -179,7 +179,7 @@ impl AstModule {
                     .iter()
                     .take(top_n)
                     .filter_map(|s| {
-                        let info_struct = read_symbol(s).symbol_info_struct();
+                        let info_struct = s.borrow().symbol_info_struct();
                         let content = info_struct.get_content_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
@@ -217,7 +217,7 @@ impl AstModule {
                 let symbol_structs = results
                     .iter()
                     .filter_map(|s| {
-                        let info_struct = read_symbol(s).symbol_info_struct();
+                        let info_struct = s.borrow().symbol_info_struct();
                         let content = info_struct.get_content_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
@@ -255,7 +255,7 @@ impl AstModule {
                 let symbol_structs = results
                     .iter()
                     .filter_map(|s| {
-                        let info_struct = read_symbol(s).symbol_info_struct();
+                        let info_struct = s.borrow().symbol_info_struct();
                         let content = info_struct.get_content_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
@@ -307,7 +307,7 @@ impl AstModule {
                 3,
             );
         let symbol_to_search_res = |x: &AstSymbolInstanceArc| {
-            let symbol_declaration = read_symbol(x).symbol_info_struct();
+            let symbol_declaration = x.borrow().symbol_info_struct();
             let content = symbol_declaration.get_content_blocked().unwrap_or_default();
             let usefulness = *guid_to_usefulness
                 .get(&symbol_declaration.guid)
