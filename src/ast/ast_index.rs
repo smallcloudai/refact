@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -9,6 +10,7 @@ use strsim::jaro_winkler;
 use tracing::info;
 use tree_sitter::Point;
 use uuid::Uuid;
+use rand::Rng;
 
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::imports_resolver::{possible_filepath_candidates, top_n_prefixes, try_find_file_path};
@@ -31,6 +33,7 @@ pub struct AstIndex {
     path_by_symbols: HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
     type_guid_to_dependent_guids: HashMap<Uuid, HashSet<Uuid>>,
     declaration_guid_to_usage_names: HashMap<Uuid, HashSet<String>>,
+    import_components_succ_solution_index: HashMap<String, ImportDeclaration>,
     has_changes: bool,
 }
 
@@ -61,6 +64,7 @@ impl AstIndex {
             path_by_symbols: HashMap::new(),
             type_guid_to_dependent_guids: HashMap::new(),
             declaration_guid_to_usage_names: HashMap::new(),
+            import_components_succ_solution_index: HashMap::new(),
             has_changes: false,
         }
     }
@@ -106,7 +110,10 @@ impl AstIndex {
         let has_removed = self.remove(&doc);
         if has_removed {
             self.resolve_declaration_symbols(&mut symbols_cloned);
-            self.resolve_imports(&mut symbols_cloned);
+            let (_, import_components_succ_solution_index) = self.resolve_imports(
+                &mut symbols_cloned, &self.import_components_succ_solution_index
+            );
+            self.import_components_succ_solution_index.extend(import_components_succ_solution_index);
             self.merge_usages_to_declarations(&mut symbols_cloned);
             self.create_extra_indexes(&mut symbols_cloned);
             self.has_changes = has_changes_before;
@@ -461,7 +468,7 @@ impl AstIndex {
         let unfiltered_cursor_symbols = file_symbols
             .iter()
             .filter(|s| !s.borrow().name().is_empty())
-            .sorted_by_key(|a| a.borrow().distance_to_cursor(&cursor))
+            .sorted_unstable_by_key(|a| a.borrow().distance_to_cursor(&cursor))
             .map(|s| {
                 *guid_to_usefulness
                     .entry(s.borrow().guid().clone())
@@ -628,7 +635,7 @@ impl AstIndex {
                     .clone();
                 symbols_by_declarations
                     .iter()
-                    .sorted_by_key(|s| {
+                    .sorted_unstable_by_key(|s| {
                         match s.borrow().symbol_type() {
                             SymbolType::ClassFieldDeclaration => 1,
                             SymbolType::VariableDefinition => 1,
@@ -673,7 +680,7 @@ impl AstIndex {
             })
             .collect::<Vec<_>>()
             .iter()
-            .sorted_by_key(|a| a.1)
+            .sorted_unstable_by_key(|a| a.1)
             .filter(|&(_, a)| *a > (cursor_symbols_names.len() / 5))
             .take(top_n_near_cursor * 2)
             .filter_map(|(g, _)| self.symbols_by_guid.get(*g))
@@ -822,7 +829,10 @@ impl AstIndex {
 
         info!("Resolving import symbols");
         let t0 = std::time::Instant::now();
-        let stats = self.resolve_imports(&mut symbols);
+        let (stats, import_components_succ_solution_index) = self.resolve_imports(
+            &mut symbols, &self.import_components_succ_solution_index
+        );
+        self.import_components_succ_solution_index.extend(import_components_succ_solution_index);
         info!(
             "Resolving import symbols finished, took {:.3}s, {} found, {} not found",
             t0.elapsed().as_secs_f64(),
@@ -1055,18 +1065,44 @@ impl AstIndex {
         stats
     }
 
-    fn resolve_imports(&self, symbols: &mut Vec<AstSymbolInstanceArc>) -> IndexingStats {
+    fn resolve_imports(
+        &self,
+        symbols: &mut Vec<AstSymbolInstanceArc>,
+        import_components_succ_solution_index: &HashMap<String, ImportDeclaration>,
+    ) -> (IndexingStats, HashMap<String, ImportDeclaration>) {
+        fn random_keys<K, V>(map: &HashMap<K, V>, n: usize) -> Vec<K>
+            where
+                K: Clone + Hash + Eq,
+        {
+            let mut rng = rand::thread_rng();
+            let mut result = Vec::with_capacity(n);
+            let mut keys_iter = map.keys();
+
+            for (i, key) in keys_iter.by_ref().enumerate() {
+                if i < n {
+                    result.push(key.clone());
+                } else {
+                    let j = rng.gen_range(0..=i);
+                    if j < n {
+                        result[j] = key.clone();
+                    }
+                }
+            }
+
+            result
+        }
+
         let mut stats = IndexingStats { found: 0, non_found: 0 };
         let paths_str = self.path_by_symbols
             .keys()
             .filter_map(|path| path.to_str())
             .map(|s| s.to_string())
             .collect::<Vec<_>>();
-        let paths = self.path_by_symbols.keys().cloned().collect::<Vec<_>>();
+        let paths = random_keys(&self.path_by_symbols, 100);
         let prefixes = top_n_prefixes(&paths, 3);
         let min_prefix = prefixes.iter().next().map(|x| x.0.clone());
         let mut notfound_import_components_index: HashMap<String, Vec<AstSymbolInstanceArc>> = HashMap::new();
-        let mut import_components_succ_solution_index: HashMap<String, ImportDeclaration> = HashMap::new();
+        let mut import_components_succ_solution_index_local: HashMap<String, ImportDeclaration> = HashMap::new();
         for symbol in symbols
             .iter_mut()
             .filter(|s| s.borrow().as_any().downcast_ref::<ImportDeclaration>().is_some()) {
@@ -1081,6 +1117,14 @@ impl AstIndex {
             let import_components_path = path_components.iter().join("/");
             if import_components_succ_solution_index.contains_key(&import_components_path) {
                 let prepared_imp = import_components_succ_solution_index.get(&import_components_path).expect("assert");
+                let mut symbol_ref = symbol.borrow_mut();
+                let imp_decl = symbol_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
+                imp_decl.filepath_ref = prepared_imp.filepath_ref.clone();
+                imp_decl.ast_fields.name = prepared_imp.ast_fields.name.clone();
+                continue;
+            }
+            if import_components_succ_solution_index_local.contains_key(&import_components_path) {
+                let prepared_imp = import_components_succ_solution_index_local.get(&import_components_path).expect("assert");
                 let mut symbol_ref = symbol.borrow_mut();
                 let imp_decl = symbol_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
                 imp_decl.filepath_ref = prepared_imp.filepath_ref.clone();
@@ -1105,7 +1149,7 @@ impl AstIndex {
                     let import_decl = symbol_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
                     import_decl.filepath_ref = Some(search_res.path.clone());
                     import_decl.ast_fields.name = search_res.name.clone().unwrap_or_default();
-                    import_components_succ_solution_index.insert(import_components_path, import_decl.clone());
+                    import_components_succ_solution_index_local.insert(import_components_path, import_decl.clone());
                 }
                 None => {
                     notfound_import_components_index.entry(import_components_path).or_default().push(symbol.clone());
@@ -1114,7 +1158,7 @@ impl AstIndex {
             };
         }
         for (import_components_path, symbols) in notfound_import_components_index.iter_mut() {
-            if let Some(succ_import_decl) = import_components_succ_solution_index.get(import_components_path) {
+            if let Some(succ_import_decl) = import_components_succ_solution_index_local.get(import_components_path) {
                 for symbol in symbols.iter_mut() {
                     let mut symbol_ref = symbol.borrow_mut();
                     let symbol_decl = symbol_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
@@ -1125,7 +1169,7 @@ impl AstIndex {
                 }
             }
         }
-        stats
+        (stats, import_components_succ_solution_index_local)
     }
 
     fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceArc>) {
@@ -1191,7 +1235,7 @@ impl AstIndex {
         doc.update_text(&code.to_string());
         let mut symbols = AstIndex::parse(&doc).unwrap_or_default();
         self.resolve_declaration_symbols(&mut symbols);
-        self.resolve_imports(&mut symbols);
+        _ = self.resolve_imports(&mut symbols, &self.import_components_succ_solution_index);
         self.merge_usages_to_declarations(&mut symbols);
         // for s in symbols.iter() {
         //     let x = s.read().unwrap();
@@ -1200,7 +1244,6 @@ impl AstIndex {
         symbols
     }
 }
-
 
 pub fn read_file_from_disk_block(path: &PathBuf) -> Result<String, String> {
     std::fs::read_to_string(path).map_err(|e| format!("Failed to read file from disk: {}", e))
