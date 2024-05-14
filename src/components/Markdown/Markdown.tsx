@@ -15,6 +15,9 @@ import {
   Quote,
   Strong,
 } from "@radix-ui/themes";
+import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
+import "katex/dist/katex.min.css";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -25,7 +28,8 @@ export type MarkdownProps = Pick<
 export const Markdown: React.FC<MarkdownProps> = ({ children, ...rest }) => {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkBreaks]}
+      remarkPlugins={[remarkBreaks, remarkMath]}
+      rehypePlugins={[rehypeKatex]}
       components={{
         ol(props) {
           return (

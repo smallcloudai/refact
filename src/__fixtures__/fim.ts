@@ -1,11 +1,10 @@
 import type { FimDebugData } from "../events";
 
 export const STUB: FimDebugData = {
-  cached: true,
   choices: [
     {
       code_completion:
-        '"refact_scratchpads_no_gpu",\n        "stream_results",',
+        '    """\n    This is a comment for AmericanCommonToad class, inside the class\n    """',
       finish_reason: "stop",
       index: 0,
     },
@@ -14,62 +13,217 @@ export const STUB: FimDebugData = {
     attached_files: [
       {
         file_content:
-          '...19 lines\n__all__ = ["TabUploadRouter", "download_file_from_url", "UploadViaURL"]\n...2 lines\nasync def download_file_from_url(url: str, download_dir: str, force_filename: Optional[str] = None) -> str:\n...39 lines\nclass UploadViaURL(BaseModel):\n    url: str\n...2 lines\nclass CloneRepo(BaseModel):\n    url: str\n    branch: Optional[str] = None\n...2 lines\nclass TabSingleFileConfig(BaseModel):\n    which_set: str = Query(default=Required, regex="auto|train|test")\n    to_db: bool = Query(default=False)\n...2 lines\nclass TabFilesConfig(BaseModel):\n    uploaded_files: Dict[str, TabSingleFileConfig]\n...2 lines\nclass FileTypesSetup(BaseModel):\n    filetypes_finetune: Dict[str, bool] = Query(default={})\n    filetypes_db: Dict[str, bool] = Query(default={})\n    force_include: str = Query(default="")\n    force_exclude: str = Query(default="")\n...2 lines\nclass TabFilesDeleteEntry(BaseModel):\n    delete_this: str = Query(default=Required, regex=r\'^(?!.*\\/)(?!.*\\.\\.)[\\s\\S]+$\')\n...2 lines\nclass ProjectNameOnly(BaseModel):\n    pname: str = Query(default=Required, regex=r\'^[A-Za-z0-9_\\-\\.]{1,30}$\')\n...2 lines\nclass TabUploadRouter(APIRouter):\n\n    def __init__(self, *args, **kwargs):\n...13 lines\n\n    async def _tab_project_new(self, project: ProjectNameOnly):\n...7 lines\n\n    async def _tab_project_list(self):\n...6 lines\n\n    async def _tab_project_delete(self, project: ProjectNameOnly):\n...8 lines\n\n    async def _tab_files_get(self, pname):\n...\n',
+          "...\nclass LSPCall:\n    def __init__(\n            self,\n            connect_options: LSPConnectOptions\n    ):\n        self._connect_options = connect_options\n\n    def __enter__(self):\n        self.connect()\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        self.shutdown()\n\n    def load_document(\n            self,\n            file_name: str,\n            text: str,\n            version: int = 1,\n            language: str = 'python'\n    ):\n        if language == 'python':\n            languageId = pylspclient.lsp_structs.LANGUAGE_IDENTIFIER.PYTHON  # noqa;\n        else:\n            raise NotImplemented(f\"language {language} is not implemented for LSPCall.load_document\")\n        uri = os.path.join(self._connect_options.root_uri, file_name)\n        self._lsp_client.didOpen(pylspclient.lsp_structs.TextDocumentItem(uri, languageId, version, text=text))\n\n    def get_completions(\n            self,\n            file_name,\n            pos: Tuple[int, int],\n            params: Optional[Dict] = None,\n            multiline: bool = False\n    ):\n        if not params:\n            params = {\n                \"max_new_tokens\": 20,\n                \"temperature\": 0.1\n            }\n\n        uri = os.path.join(self._connect_options.root_uri, file_name)\n        cc = self._lsp_client.lsp_endpoint.call_method(\n            \"refact/getCompletions\",\n            textDocument=pylspclient.lsp_structs.TextDocumentIdentifier(uri),\n            position=pylspclient.lsp_structs.Position(pos[0], pos[1]),\n            parameters=params,\n            multiline=multiline,\n        )\n        return cc\n\n    def connect(self):\n        self._connect2lsp(self._connect_options)\n\n    def shutdown(self):\n        print(colored('LSPCall is shutting down...', 'magenta'))\n        try:\n            self._lsp_client.shutdown()\n            self._lsp_endpoint.join()\n        except Exception:\n            pass\n\n    def _connect2lsp(self, connect_options: LSPConnectOptions):\n        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n        s.connect(\n            (connect_options.addr, connect_options.port)\n        )\n        pipe_in, pipe_out = s.makefile(\"wb\", buffering=0), s.makefile(\"rb\", buffering=0)\n        json_rpc_endpoint = pylspclient.JsonRpcEndpoint(pipe_in, pipe_out)\n        self._lsp_endpoint = pylspclient.LspEndpoint(json_rpc_endpoint)\n        self._lsp_client = pylspclient.LspClient(self._lsp_endpoint)\n        capabilities = {}\n        workspace_folders = [{'name': 'workspace', 'uri': connect_options.root_uri}]\n...\n        )\n",
         file_name:
-          "/Users/valaises/PycharmProjects/refact-self-hosting/refact_webgui/webgui/tab_upload.py",
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/lsp_connect.py",
+        line1: 18,
+        line2: 99,
+      },
+      {
+        file_content:
+          "...\nclass Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n\n    def bounce_off_banks(self, pond_width, pond_height):\n        if self.x < 0:\n            self.vx = np.abs(self.vx)\n        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n            self.vy = np.abs(self.vy)\n        elif self.y > pond_height:\n            self.vy = -np.abs(self.vy)\n\n    def jump(self, pond_width, pond_height):\n        self.x += self.vx * DT\n        self.y += self.vy * DT\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n",
+        file_name:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/frog.py",
+        line1: 4,
+        line2: 27,
+      },
+      {
+        file_content: "...\n    f.jump(W, H)\n",
+        file_name:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/work_day.py",
+        line1: 11,
+        line2: 11,
+      },
+    ],
+    bucket_declarations: [
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/lsp_connect.py",
         line1: 20,
-        line2: 385,
+        line2: 24,
+        name: "__init__",
       },
       {
-        file_content:
-          '...37 lines\nclass WebGUI(FastAPI):\n\n    def __init__(self,\n                 model_assigner: ModelAssigner,\n                 database: RefactDatabase,\n                 stats_service: StatisticsService,\n                 session: RefactSession,\n                 *args, **kwargs):\n...19 lines\n\n    def _setup_middlewares(self):\n...15 lines\n        )\n\n    @staticmethod\n    def _routers_list(\n            id2ticket: Dict[str, Ticket],\n            inference_queue: InferenceQueue,\n            model_assigner: ModelAssigner,\n            stats_service: StatisticsService,\n            session: RefactSession):\n...31 lines\n        ]\n\n    async def _startup_event(self):\n...15 lines\ndef setup_logger():\n    # Suppress messages like this:\n    # WEBUI 127.0.0.1:55610 - "POST /infengine-v1/completions-wait-batch HTTP/1.1" 200\n    # WEBUI 127.0.0.1:41574 - "POST /infengine-v1/completion-upload-results\n...\n',
-        file_name:
-          "/Users/valaises/PycharmProjects/refact-self-hosting/refact_webgui/webgui/webgui.py",
-        line1: 38,
-        line2: 191,
-      },
-      {
-        file_content:
-          '...14 lines\nlogger = logging.getLogger("INFSERVER")\n...2 lines\nurls_to_try = [\n    "http://127.0.0.1:8008/infengine-v1/",\n]\n...2 lines\ndef override_urls(*urls):\n...4 lines\nurls_switch_n = 0\nurls_switch_ts = time.time()\n...2 lines\ndef infserver_session() -> requests.Session:\n...8 lines\ndef url_get_the_best():\n...6 lines\ndef url_complain_doesnt_work():\n...5 lines\ndef model_guid_allowed_characters(name):\n...3 lines\ndef validate_description_dict(\n    infeng_instance_guid: str,\n    account: str,\n    model: str,\n    B: int,\n    max_thinking_time: int,\n):\n...9 lines\n    }\n...2 lines\ndef completions_wait_batch(req_session: requests.Session, my_desc, verbose=False):\n...38 lines\ndef head_and_tail(base: str, modified: str):\n...20 lines\ndef test_head_and_tail():\n...7 lines\nDEBUG_UPLOAD_NOT_SEPARATE_PROCESS = False\n...2 lines\nclass UploadProxy:\n    def __init__(\n            self,\n            upload_q: Optional[multiprocessing.Queue] = None,\n            cancelled_q: Optional[multiprocessing.Queue] = None,\n    ):\n...4 lines\n\n...\n',
-        file_name:
-          "/Users/valaises/PycharmProjects/refact-self-hosting/refact_scratchpads_no_gpu/stream_results.py",
-        line1: 15,
-        line2: 363,
-      },
-      {
-        file_content:
-          '...16 lines\nFIRST_RUN_CMDLINE = [sys.executable, "-m", "self_hosting_machinery.scripts.first_run"]\n...2 lines\ndef replace_variable_names_from_env(s):\n...7 lines\nlog_prevdate = ""\n\ndef log(*args):\n...18 lines\ncompile_successful = set()\ncompile_unsuccessful = set()\ncompiling_now = ""\n...2 lines\ndef cfg_to_cmdline(cfg):\n...7 lines\ndef cfg_to_compile_key(cfg):\n...6 lines\nclass TrackedJob:\n    def __init__(self, cfg, cfg_filename: Path):\n...12 lines\n\n    def set_status(self, newstatus):\n...18 lines\n\n    def _start(self):\n...42 lines\n\n    def _poll_logs(self) -> bool:\n...\n',
-        file_name:
-          "/Users/valaises/PycharmProjects/refact-self-hosting/self_hosting_machinery/watchdog/docker_watchdog.py",
-        line1: 17,
-        line2: 462,
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/frog.py",
+        line1: 22,
+        line2: 27,
+        name: "jump",
       },
     ],
-    was_looking_for: [
+    bucket_high_overlap: [
       {
-        from: "cursor_symbols",
-        symbol: "initialization_for_scripts",
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/frog.py",
+        line1: 22,
+        line2: 27,
+        name: "jump",
       },
       {
-        from: "cursor_symbols",
-        symbol: "start_rust",
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/frog.py",
+        line1: 6,
+        line2: 10,
+        name: "__init__",
       },
       {
-        from: "declarations",
-        symbol: "start",
-      },
-      {
-        from: "usages",
-        symbol: "__name__",
-      },
-      {
-        from: "usages",
-        symbol: "start",
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/frog.py",
+        line1: 12,
+        line2: 20,
+        name: "bounce_off_banks",
       },
     ],
+    bucket_usage_of_same_stuff: [
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/work_day.py",
+        line1: 12,
+        line2: 12,
+        name: "jump",
+      },
+    ],
+    cursor_symbols: [
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 28,
+        line2: 28,
+        name: "AmericanCommonToad",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 31,
+        line2: 31,
+        name: "__name__",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 26,
+        line2: 26,
+        name: "self",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 26,
+        line2: 26,
+        name: "name",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 32,
+        line2: 32,
+        name: "EuropeanCommonToad",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 32,
+        line2: 32,
+        name: "toad",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 25,
+        line2: 25,
+        name: "x",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 25,
+        line2: 25,
+        name: "y",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 25,
+        line2: 25,
+        name: "vx",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 25,
+        line2: 25,
+        name: "vy",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 25,
+        line2: 25,
+        name: "super",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 25,
+        line2: 25,
+        name: "__init__",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 33,
+        line2: 33,
+        name: "W",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 33,
+        line2: 33,
+        name: "H",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 33,
+        line2: 33,
+        name: "jump",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 34,
+        line2: 34,
+        name: "print",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 13,
+        line2: 16,
+        name: "Toad",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 7,
+        line2: 7,
+        name: "X",
+      },
+      {
+        file_path:
+          "/Users/marc/Projects/smallcloudai/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+        line1: 7,
+        line2: 7,
+        name: "Y",
+      },
+    ],
+    fim_ms: 10,
+    n_ctx: 2048,
+    rag_ms: 24,
+    rag_tokens_limit: 1024,
   },
-  created: 1712158050.521,
-  model: "starcoder2/7b/base",
-  snippet_telemetry_id: 100,
-  elapsed: 0.08326999843120575,
+  created: 1713530045.604,
+  model: "starcoder2/7b/vllm",
+  snippet_telemetry_id: 101,
 };

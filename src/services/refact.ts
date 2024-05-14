@@ -259,15 +259,10 @@ export type CapsResponse = {
   tokenizer_rewrite_path: Record<string, unknown>;
 };
 
-interface Replace {
-  0: number;
-  1: number;
-}
-
 export type CommandCompletionResponse = {
   completions: string[];
-  replace: Replace;
-  is_cmd_executable: false;
+  replace: [number, number];
+  is_cmd_executable: boolean;
 };
 
 export function isCommandCompletionResponse(
@@ -529,14 +524,27 @@ type FimFile = {
 
 type ContextFiles = FimFile[];
 
-export type ContextQueries = {
-  from: "declarations" | "cursor_symbols" | "usages";
-  symbol: string;
-}[];
+export type ContextBucket = {
+  file_path: string;
+  line1: number;
+  line2: number;
+  name: string;
+};
+
+export type Buckets = ContextBucket[];
 
 export type FIMContext = {
   attached_files?: ContextFiles;
-  was_looking_for?: ContextQueries;
+
+  bucket_declarations?: Buckets;
+  bucket_usage_of_same_stuff?: Buckets;
+  bucket_high_overlap?: Buckets;
+  cursor_symbols?: Buckets;
+
+  fim_ms?: number;
+  n_ctx?: number;
+  rag_ms?: number;
+  rag_tokens_limit?: number;
 };
 
 export type FimDebugData = {
@@ -548,17 +556,3 @@ export type FimDebugData = {
   elapsed?: number;
   cached?: boolean;
 };
-
-// {
-//     "choices": [
-//         {
-//             "code_completion": "export type PromptSelectProps = {\n  value: string;\n  onChange: (value: string) => void;\n  options: string[];\n  disabled?: boolean;\n};",
-//             "finish_reason": "stop",
-//             "index": 0
-//         }
-//     ],
-//     "context": [],
-//     "created": 1712248098.165,
-//     "model": "starcoder2/7b/vllm",
-//     "snippet_telemetry_id": 109
-// }

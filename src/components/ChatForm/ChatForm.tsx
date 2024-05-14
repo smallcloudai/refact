@@ -20,6 +20,7 @@ import { FilesPreview } from "./FilesPreview";
 import { useConfig } from "../../contexts/config-context";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { useEffectOnce } from "../../hooks";
+import { addCheckboxValuesToInput } from "./utils";
 
 type useCheckboxStateProps = {
   activeFile: ChatState["active_file"];
@@ -36,13 +37,6 @@ const useControlsState = ({
 }: useCheckboxStateProps) => {
   const [interacted, setInteracted] = React.useState(false);
 
-  const nameWithCursor = useMemo(() => {
-    if (activeFile.cursor === null) {
-      return activeFile.name;
-    }
-    return `${activeFile.name}:${activeFile.cursor}`;
-  }, [activeFile.name, activeFile.cursor]);
-
   const fullPathWithCursor = useMemo(() => {
     if (activeFile.cursor === null) {
       return activeFile.path;
@@ -50,12 +44,26 @@ const useControlsState = ({
     return `${activeFile.path}:${activeFile.cursor}`;
   }, [activeFile.path, activeFile.cursor]);
 
+  const fileNameWithLines = useMemo(() => {
+    const hasLines = activeFile.line1 !== null && activeFile.line2 !== null;
+    if (!hasLines) return activeFile.name;
+    return `${activeFile.name}:${activeFile.line1}-${activeFile.line2}`;
+  }, [activeFile.name, activeFile.line1, activeFile.line2]);
+
+  const filePathWithLines = useMemo(() => {
+    const hasLines = activeFile.line1 !== null && activeFile.line2 !== null;
+
+    if (!hasLines) return activeFile.path;
+    return `${activeFile.path}:${activeFile.line1}-${activeFile.line2}`;
+  }, [activeFile.path, activeFile.line1, activeFile.line2]);
+
   const markdown = useMemo(() => {
     return "```" + snippet.language + "\n" + snippet.code + "\n```\n";
   }, [snippet.language, snippet.code]);
 
   const codeLineCount = useMemo(() => {
-    return snippet.code.split("\n").length - 1;
+    if (snippet.code.length === 0) return 0;
+    return snippet.code.split("\n").length;
   }, [snippet.code]);
 
   const defaultState = useMemo(() => {
@@ -66,14 +74,24 @@ const useControlsState = ({
         label: "Search workspace",
         disabled: false,
         hide: !vecdb,
+        info: {
+          text: "Searches all files in your workspace using vector database, uses the whole text in the input box as a search query. Setting this checkbox is equivalent to @workspace command in the text.",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "documentation",
+        },
       },
       file_upload: {
         name: "file_upload",
         checked: !!snippet.code && !!activeFile.name,
         label: "Attach",
-        value: fullPathWithCursor,
+        value: filePathWithLines,
         disabled: !activeFile.name,
-        fileName: nameWithCursor,
+        fileName: activeFile.name,
+        info: {
+          text: "Attaches the current file as context. If the file is large, it prefers the code near the current cursor position. Equivalent to @file name.ext:CURSOR_LINE in the text.",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "documentation",
+        },
       },
       lookup_symbols: {
         name: "lookup_symbols",
@@ -83,6 +101,11 @@ const useControlsState = ({
         disabled: !activeFile.name,
         hide: !ast,
         defaultChecked: !!snippet.code && !!activeFile.name,
+        info: {
+          text: "Extracts symbols around the cursor position and searches for them in the AST index. Equivalent to @symbols-at file_name.ext:CURSOR_LINE in the text",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "documentation",
+        },
       },
       selected_lines: {
         name: "selected_lines",
@@ -90,6 +113,9 @@ const useControlsState = ({
         label: `Selected ${codeLineCount} lines`,
         value: markdown,
         disabled: !snippet.code,
+        info: {
+          text: "Adds the currently selected lines as a snippet for analysis or modification. Equivalent to code in triple backticks ``` in the text.",
+        },
       },
     } as const;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,7 +134,11 @@ const useControlsState = ({
       setInteracted(true);
       setCheckboxes((prev) => {
         const checkbox: Checkbox = { ...prev[name], checked: !!value };
-        const nextValue = { ...prev, [name]: checkbox };
+        const maybeAddFile: Record<string, Checkbox> =
+          name === "lookup_symbols" && !!value
+            ? { file_upload: { ...prev.file_upload, checked: true } }
+            : { file_upload: prev.file_upload };
+        const nextValue = { ...prev, ...maybeAddFile, [name]: checkbox };
         return nextValue;
       });
     },
@@ -149,11 +179,13 @@ const useControlsState = ({
           label: `Selected ${codeLineCount} lines`,
           value: markdown,
           disabled: selectedLineDisabled,
-          checked: interacted ? prev.selected_lines.checked : !!snippet.code,
+          checked: interacted
+            ? prev.selected_lines.checked && !!snippet.code
+            : !!snippet.code,
         },
         file_upload: {
           ...prev.file_upload,
-          value: fullPathWithCursor,
+          value: filePathWithLines,
           fileName: activeFile.name,
           disabled: fileUploadDisabled,
           checked: interacted
@@ -165,20 +197,16 @@ const useControlsState = ({
       return nextValue;
     });
   }, [
-    markdown,
-    nameWithCursor,
     activeFile.name,
-    snippet.code,
-    fullPathWithCursor,
-    vecdb,
     ast,
     codeLineCount,
-    setCheckboxes,
+    fileNameWithLines,
+    filePathWithLines,
+    fullPathWithCursor,
     interacted,
-    checkboxes.search_workspace.checked,
-    checkboxes.lookup_symbols.checked,
-    checkboxes.selected_lines.checked,
-    checkboxes.file_upload.checked,
+    markdown,
+    snippet.code,
+    vecdb,
   ]);
 
   return {
@@ -201,10 +229,11 @@ export type ChatFormProps = {
   onSetChatModel: (model: string) => void;
   isStreaming: boolean;
   onStopStreaming: () => void;
-  commands: ChatState["rag_commands"];
+  commands: ComboBoxProps["commands"];
   attachFile: ChatState["active_file"];
   hasContextFile: boolean;
   requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
+  requestPreviewFiles: (input: string) => void;
   setSelectedCommand: (command: string) => void;
   filesInPreview: ChatContextFile[];
   selectedSnippet: ChatState["selected_snippet"];
@@ -231,7 +260,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   commands,
   attachFile,
   requestCommandsCompletion,
-  setSelectedCommand,
+  requestPreviewFiles,
   filesInPreview,
   selectedSnippet,
   removePreviewFileByName,
@@ -268,45 +297,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     value,
   ]);
 
-  const addCheckboxValuesToInput = (input: string) => {
-    if (!showControls) {
-      return input;
-    }
-
-    let result = input;
-    if (!result.endsWith("\n")) {
-      result += "\n";
-    }
-    if (
-      checkboxes.search_workspace.checked &&
-      checkboxes.search_workspace.hide !== true
-    ) {
-      result += `@workspace\n`;
-    }
-
-    if (
-      checkboxes.lookup_symbols.checked &&
-      checkboxes.lookup_symbols.hide !== true
-    ) {
-      result += `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n`;
-    }
-
-    if (
-      checkboxes.selected_lines.checked &&
-      checkboxes.selected_lines.hide !== true
-    ) {
-      result += `${checkboxes.selected_lines.value ?? ""}\n`;
-    }
-
-    if (
-      checkboxes.file_upload.checked &&
-      checkboxes.file_upload.hide !== true
-    ) {
-      result += `@file ${checkboxes.file_upload.value ?? ""}\n`;
-    }
-    return result;
-  };
-
   useEffectOnce(() => {
     if (selectedSnippet.code) {
       setValue(markdown + value);
@@ -321,21 +311,55 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const isOnline = useIsOnline();
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
     if (trimmedValue.length > 0 && !isStreaming && isOnline) {
-      const valueIncludingChecks = addCheckboxValuesToInput(trimmedValue);
+      const valueIncludingChecks = addCheckboxValuesToInput(
+        trimmedValue,
+        checkboxes,
+        showControls,
+      );
       onSubmit(valueIncludingChecks);
       setValue(() => "");
     }
-  };
+  }, [value, isStreaming, isOnline, checkboxes, showControls, onSubmit]);
 
   const handleEnter = useOnPressedEnter(handleSubmit);
 
-  const handleChange = (command: string) => {
-    setInteracted(true);
-    setValue(command);
-  };
+  const handleChange = useCallback(
+    (command: string) => {
+      setInteracted(true);
+      setValue(command);
+    },
+    [setInteracted],
+  );
+
+  useEffect(() => {
+    const input = addCheckboxValuesToInput(value, checkboxes, showControls);
+    requestPreviewFiles(input);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkboxes]);
+
+  const handleAtCommandsRequest: ComboBoxProps["requestCommandsCompletion"] =
+    useCallback(
+      (query: string, cursor: number) => {
+        const inputWithCheckboxes = addCheckboxValuesToInput(
+          query,
+          checkboxes,
+          showControls,
+        );
+        requestCommandsCompletion(query, cursor);
+
+        requestPreviewFiles(inputWithCheckboxes);
+      },
+      [
+        checkboxes,
+        requestCommandsCompletion,
+        requestPreviewFiles,
+        showControls,
+      ],
+    );
+
   if (error) {
     return (
       <ErrorCallout mt="2" onClick={clearError} timeout={null}>
@@ -359,26 +383,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         </Button>
       )}
 
-      {showControls && (
-        <ChatControls
-          host={config.host}
-          checkboxes={checkboxes}
-          onCheckedChange={toggleCheckbox}
-          selectProps={{
-            value: model || caps.default_cap,
-            onChange: onSetChatModel,
-            options: caps.available_caps,
-          }}
-          promptsProps={{
-            value: selectedSystemPrompt ?? "",
-            prompts: prompts,
-            onChange: onSetSystemPrompt,
-          }}
-        />
-      )}
-
-      {/** TODO: handle being offline */}
-
       <Form
         disabled={isStreaming || !isOnline}
         className={className}
@@ -390,16 +394,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         />
 
         <ComboBox
-          commands={commands.available_commands}
-          requestCommandsCompletion={requestCommandsCompletion}
-          commandArguments={commands.arguments}
+          commands={commands}
+          requestCommandsCompletion={handleAtCommandsRequest}
           value={value}
           onChange={handleChange}
           onSubmit={(event) => {
             handleEnter(event);
           }}
           placeholder={
-            commands.available_commands.length > 0 ? "Type @ for commands" : ""
+            commands.completions.length > 0 ? "Type @ for commands" : ""
           }
           render={(props) => (
             <TextArea
@@ -411,8 +414,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               autoFocus={true}
             />
           )}
-          selectedCommand={commands.selected_command}
-          setSelectedCommand={setSelectedCommand}
         />
         <Flex gap="2" className={styles.buttonGroup}>
           {onClose && (
@@ -431,6 +432,24 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           />
         </Flex>
       </Form>
+
+      {showControls && (
+        <ChatControls
+          host={config.host}
+          checkboxes={checkboxes}
+          onCheckedChange={toggleCheckbox}
+          selectProps={{
+            value: model || caps.default_cap,
+            onChange: onSetChatModel,
+            options: caps.available_caps,
+          }}
+          promptsProps={{
+            value: selectedSystemPrompt ?? "",
+            prompts: prompts,
+            onChange: onSetSystemPrompt,
+          }}
+        />
+      )}
     </Card>
   );
 };

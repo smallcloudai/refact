@@ -1,6 +1,6 @@
 {
   "name": "refact-chat-js",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "type": "module",
   "license": "BSD-3-Clause",
   "files": [
@@ -42,7 +42,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "types": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "alpha:version": "npm --preid alpha version prerelease",
+    "alpha:publish": "npm publish --tag alpha"
   },
   "devDependencies": {
     "@ariakit/react": "^0.3.13",
@@ -89,7 +91,9 @@
     "react-dom": "^18.2.0",
     "react-markdown": "^9.0.1",
     "react-syntax-highlighter": "^15.5.0",
+    "rehype-katex": "^7.0.0",
     "remark-breaks": "^4.0.0",
+    "remark-math": "^6.0.0",
     "storybook": "^7.6.4",
     "textarea-caret": "^3.1.0",
     "typescript": "^5.2.2",

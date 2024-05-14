@@ -5,8 +5,9 @@ import { ChatContent } from "../components/ChatContent";
 import { Flex, Button, Text } from "@radix-ui/themes";
 import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import { PageWrapper } from "../components/PageWrapper";
 
-export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
+export const Chat: React.FC<{ style?: React.CSSProperties }> = () => {
   const { host, tabbed } = useConfig();
 
   const chatContentRef = useRef<HTMLDivElement>(null);
@@ -24,6 +25,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
     handlePasteDiffClick,
     hasContextFile,
     requestCommandsCompletion,
+    requestPreviewFiles,
     setSelectedCommand,
     removePreviewFileByName,
     retryQuestion,
@@ -35,39 +37,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
 
-  const LeftRightPadding =
-    host === "web"
-      ? { initial: "8", xl: "9" }
-      : {
-          initial: "2",
-          xs: "2",
-          sm: "4",
-          md: "8",
-          lg: "8",
-          xl: "9",
-        };
-
-  const TopBottomPadding = {
-    initial: "5",
-    // xs: "1",
-    // sm: "2",
-    // md: "3",
-    // lg: "4",
-    // xl: "5",
-  };
-
   return (
-    <Flex
-      direction="column"
-      justify="between"
-      flexGrow="1"
-      px={LeftRightPadding}
-      py={TopBottomPadding}
-      style={{
-        ...props.style,
-        height: "100dvh",
-      }}
-    >
+    <PageWrapper host={host}>
       {host === "vscode" && !tabbed && (
         <Flex gap="2" pb="3" wrap="wrap">
           <Button size="1" variant="surface" onClick={backFromChat}>
@@ -101,6 +72,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         messages={state.chat.messages}
         onRetry={retryQuestion}
         isWaiting={state.waiting_for_response}
+        isStreaming={state.streaming}
         onNewFileClick={handleNewFileClick}
         onPasteClick={handlePasteDiffClick}
         canPaste={state.active_file.can_paste}
@@ -119,7 +91,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         onSetChatModel={setChatModel}
         caps={state.caps}
         onStopStreaming={stopStreaming}
-        commands={state.rag_commands}
+        commands={state.commands}
         hasContextFile={hasContextFile}
         requestCommandsCompletion={requestCommandsCompletion}
         setSelectedCommand={setSelectedCommand}
@@ -142,6 +114,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
         prompts={state.system_prompts.prompts}
         onSetSystemPrompt={setSelectedSystemPrompt}
         selectedSystemPrompt={state.selected_system_prompt}
+        requestPreviewFiles={requestPreviewFiles}
       />
 
       <Flex justify="between" pl="1" pr="1" pt="1">
@@ -151,6 +124,6 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = (props) => {
           </Text>
         )}
       </Flex>
-    </Flex>
+    </PageWrapper>
   );
 };

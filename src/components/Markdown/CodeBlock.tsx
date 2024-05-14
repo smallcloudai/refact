@@ -6,7 +6,6 @@ import { PreTag, type PreTagProps } from "./Pre";
 // import "./highlightjs.css";
 import styles from "./Markdown.module.css";
 import type { Element } from "hast";
-
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 
 export type MarkdownControls = {

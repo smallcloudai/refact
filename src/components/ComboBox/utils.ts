@@ -2,12 +2,12 @@ import getCaretCoordinates from "textarea-caret";
 
 export function getTriggerOffset(
   element: HTMLTextAreaElement,
-  trigger: string,
+  triggers: string[],
 ) {
   const { value, selectionStart } = element;
   for (let i = selectionStart; i >= 0; i--) {
     const char = value[i];
-    if (char && trigger === char) {
+    if (char && triggers.includes(char)) {
       return i;
     }
   }
@@ -22,9 +22,9 @@ export type AnchorRect = {
 
 export function getAnchorRect(
   element: HTMLTextAreaElement,
-  trigger: string,
+  triggers: string[],
 ): AnchorRect {
-  const offset = getTriggerOffset(element, trigger);
+  const offset = getTriggerOffset(element, triggers);
   const { left, top, height } = getCaretCoordinates(element, offset + 1);
   const { x, y } = element.getBoundingClientRect();
   return {
@@ -34,61 +34,14 @@ export function getAnchorRect(
   };
 }
 
-export function replaceValue(
-  element: HTMLTextAreaElement,
-  trigger: string,
-  command: string,
-  startAt: number | null,
-): { value: string; endPosition: number } {
-  const maybeExistingCommand = detectCommand(element);
-  const maybeEndOfCommand = maybeExistingCommand
-    ? maybeExistingCommand.startPosition + maybeExistingCommand.command.length
-    : null;
-
-  const startPosition =
-    maybeExistingCommand?.startPosition ?? startAt ?? element.selectionStart;
-
-  const endPosition =
-    maybeEndOfCommand ?? element.selectionStart + trigger.length;
-
-  const start =
-    maybeExistingCommand?.beforeCommand ??
-    element.value.substring(0, startPosition);
-
-  const end = element.value.substring(endPosition);
-  const maybeNewLine = start.length > 0 && !start.endsWith("\n") ? "\n" : "";
-  const result = `${
-    start === "\n" ? "" : start
-  }${maybeNewLine}${command}${end}`;
-
-  const finalEndPosition = result.length - end.length;
-
-  return {
-    value: result,
-    endPosition: finalEndPosition,
-  };
-}
-
-export function detectCommand(element: HTMLTextAreaElement): {
-  command: string;
-  startPosition: number;
-  beforeCommand: string;
-} | null {
-  if (!element.value) return null;
-
-  const start = element.value.substring(0, element.selectionStart);
-
-  if (start.length === 0) return null;
-  const maybeNewLine = Math.max(start.lastIndexOf("\n"), 0);
-  const currentLine = start.substring(maybeNewLine > 0 ? maybeNewLine + 1 : 0);
-  const maybeCommandIndex = currentLine.lastIndexOf("@");
-
-  if (maybeCommandIndex < 0) return null;
-  const maybeCommand = currentLine.substring(maybeCommandIndex);
-
-  return {
-    command: maybeCommand,
-    startPosition: start.length - maybeCommand.length,
-    beforeCommand: start.substring(0, start.length - maybeCommand.length),
-  };
+export function replaceRange(
+  str: string,
+  range: [number, number],
+  replacement: string,
+) {
+  const sortedRange = [
+    Math.min(range[0], range[1]),
+    Math.max(range[0], range[1]),
+  ];
+  return str.slice(0, sortedRange[0]) + replacement + str.slice(sortedRange[1]);
 }

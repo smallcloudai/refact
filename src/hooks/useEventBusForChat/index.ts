@@ -31,7 +31,7 @@ import {
   type RequestAtCommandCompletion,
   isReceiveAtCommandCompletion,
   type SetSelectedAtCommand,
-  isSetSelectedAtCommand,
+  // isSetSelectedAtCommand,
   isReceiveAtCommandPreview,
   isChatUserMessageResponse,
   isChatSetLastModelUsed,
@@ -53,6 +53,8 @@ import {
   isSetSelectedSystemPrompt,
   type SetSelectedSystemPrompt,
   type SystemPrompts,
+  RequestPreviewFiles,
+  type CommandCompletionResponse,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -281,31 +283,25 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isReceiveAtCommandCompletion(action)) {
-      const selectedCommand = state.rag_commands.selected_command;
-      const availableCommands = selectedCommand
-        ? state.rag_commands.available_commands
-        : action.payload.completions;
-      const args = selectedCommand ? action.payload.completions : [];
       return {
         ...state,
-        rag_commands: {
-          ...state.rag_commands,
-          available_commands: availableCommands,
-          arguments: args,
+        commands: {
+          completions: action.payload.completions,
+          replace: action.payload.replace,
           is_cmd_executable: action.payload.is_cmd_executable,
         },
       };
     }
 
-    if (isThisChat && isSetSelectedAtCommand(action)) {
-      return {
-        ...state,
-        rag_commands: {
-          ...state.rag_commands,
-          selected_command: action.payload.command,
-        },
-      };
-    }
+    // if (isThisChat && isSetSelectedAtCommand(action)) {
+    //   return {
+    //     ...state,
+    //     rag_commands: {
+    //       ...state.rag_commands,
+    //       selected_command: action.payload.command,
+    //     },
+    //   };
+    // }
 
     if (isThisChat && isReceiveAtCommandPreview(action)) {
       const filesInPreview = action.payload.preview.reduce<ChatContextFile[]>(
@@ -427,12 +423,7 @@ export type ChatState = {
   previous_message_length: number;
   error: string | null;
   caps: ChatCapsState;
-  rag_commands: {
-    available_commands: string[];
-    selected_command: string;
-    arguments: string[];
-    is_cmd_executable: boolean;
-  };
+  commands: CommandCompletionResponse;
   files_in_preview: ChatContextFile[];
   active_file: FileInfo;
   selected_snippet: Snippet;
@@ -470,13 +461,11 @@ export function createInitialState(): ChatState {
       available_caps: [],
       error: null,
     },
-    rag_commands: {
-      available_commands: [],
-      selected_command: "",
-      arguments: [],
+    commands: {
+      completions: [],
+      replace: [-1, -1],
       is_cmd_executable: false,
     },
-
     active_file: {
       name: "",
       line1: null,
@@ -743,13 +732,12 @@ export const useEventBusForChat = () => {
       function (
         query: string,
         cursor: number,
-        trigger: string | null,
         // eslint-disable-next-line @typescript-eslint/no-inferrable-types
         number: number = 5,
       ) {
         const action: RequestAtCommandCompletion = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
-          payload: { id: state.chat.id, query, cursor, trigger, number },
+          payload: { id: state.chat.id, query, cursor, number },
         };
         postMessage(action);
       },
@@ -757,6 +745,17 @@ export const useEventBusForChat = () => {
       { leading: true },
     ),
     [state.chat.id],
+  );
+
+  const requestPreviewFiles = useCallback(
+    (input: string) => {
+      const message: RequestPreviewFiles = {
+        type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES,
+        payload: { id: state.chat.id, query: input },
+      };
+      postMessage(message);
+    },
+    [postMessage, state.chat.id],
   );
 
   const setSelectedCommand = useCallback(
@@ -852,5 +851,6 @@ export const useEventBusForChat = () => {
     maybeRequestCaps,
     startNewChat,
     setSelectedSystemPrompt,
+    requestPreviewFiles,
   };
 };

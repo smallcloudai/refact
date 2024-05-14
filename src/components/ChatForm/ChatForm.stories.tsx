@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 
 import { ChatForm } from "./ChatForm";
 import { SYSTEM_PROMPTS } from "../../__fixtures__";
+import { ConfigProvider } from "../../contexts/config-context";
 
 const testCommands = [
   "@workspace",
@@ -45,7 +46,7 @@ const noop = () => ({});
 
 const long = "long".repeat(30);
 
-const meta = {
+const meta: Meta<typeof ChatForm> = {
   title: "Chat Form",
   component: ChatForm,
   args: {
@@ -71,9 +72,8 @@ const meta = {
     showControls: true,
     hasContextFile: false,
     commands: {
-      available_commands: testCommands,
-      selected_command: "",
-      arguments: [],
+      completions: testCommands,
+      replace: [-1, -1],
       is_cmd_executable: false,
     },
     attachFile: {
@@ -152,6 +152,15 @@ const meta = {
     onSetSystemPrompt: noop,
     selectedSystemPrompt: null,
   },
+  decorators: [
+    (Children) => (
+      <ConfigProvider
+        config={{ host: "vscode", features: { vecdb: true, ast: true } }}
+      >
+        <Children />
+      </ConfigProvider>
+    ),
+  ],
 } satisfies Meta<typeof ChatForm>;
 
 export default meta;

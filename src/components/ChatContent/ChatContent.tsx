@@ -19,6 +19,7 @@ export type ChatContentProps = {
   onRetry: (question: ChatMessages) => void;
   isWaiting: boolean;
   canPaste: boolean;
+  isStreaming: boolean;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
@@ -30,6 +31,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       onNewFileClick,
       onPasteClick,
       canPaste,
+      isStreaming,
     } = props;
 
     const innerRef = React.useRef<HTMLDivElement>(null);
@@ -43,7 +45,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
 
     return (
       <ScrollArea style={{ flexGrow: 1, height: "auto" }} scrollbars="vertical">
-        <Flex direction="column" className={styles.content}>
+        <Flex direction="column" className={styles.content} px="1">
           {messages.length === 0 && <PlaceHolderText />}
           {messages.map((message, index) => {
             if (isChatContextFileMessage(message)) {
@@ -61,7 +63,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                 onRetry(toSend);
               };
               return (
-                <UserInput onRetry={handleRetry} key={index}>
+                <UserInput
+                  onRetry={handleRetry}
+                  key={index}
+                  disableRetry={isStreaming || isWaiting}
+                >
                   {text}
                 </UserInput>
               );

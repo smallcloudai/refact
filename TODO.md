@@ -112,7 +112,7 @@
 [x] use repeat to find flaky tests
 [x] combobox undo / redo
 [x] list display in response has a large margin/padding
-[ ] tidy up combobox
+[x] tidy up combobox
 [x] bug @ast_definition blocks sending requests
 [ ] TBD: response cache for undo / redo, use a hashmap
 [x] limit the size of undo / redo history
@@ -153,6 +153,21 @@
 
 ## FIM
 
-[ ] remove old fim code
-[ ] improve uo for fim
-[ ] add back button for fim
+[x] remove old fim code
+[x] improve uo for fim
+[x] add back button for fim
+
+### dvh and dvw fallback for JetBrains CEF
+
+[x] src/features/Statistic.tsx:39: height: "100dvh",
+[x] src/features/FIMDebug.tsx:33: height: "100dvh",
+[x] src/features/Chat.tsx:60: height: "100dvh",
+[x] src/components/PageWrapper/PageWrapper.module.css:9: height: 100dvh;
+[x] src/components/PageWrapper/PageWrapper.module.css:18: height: 100dvh;
+[x] src/components/ScrollArea/ScrollArea.module.css:12: height: 100dvh;
+[x] src/components/TextArea/TextArea.module.css:5: max-height: 50dvh;
+[x] src/components/ChatForm/ChatForm.module.css:23: max-height: 50dvh;
+[x] src/components/ChatForm/Form.tsx:15: <ScrollArea scrollbars="vertical" style={{ maxHeight: "50dvh" }}>
+
+[x] src/components/ComboBox/ComboBox.module.css:6: max-width: 50dvw;
+[x] src/components/Select/select.module.css:9: max-width: 80dvw;

@@ -1,36 +1,46 @@
-import React from "react";
-import { Box } from "@radix-ui/themes";
+import React, { useMemo } from "react";
+import { Flex } from "@radix-ui/themes";
 import styles from "./PageWrapper.module.css";
+import classNames from "classnames";
+import type { Config } from "../../contexts/config-context";
 
-export const PageWrapper: React.FC<React.PropsWithChildren> = ({
+type PageWrapperProps = {
+  children: React.ReactNode;
+  host: Config["host"];
+  className?: string;
+};
+
+export const PageWrapper: React.FC<PageWrapperProps> = ({
   children,
+  className,
+  host,
 }) => {
-  // TODO: this causes some weird flex issues :/
-  // return (
-  //   <div className={styles.PageWrapperContainer}>
-  //     <Section
-  //       className={styles.PageWrapper}
-  //       width="100%"
-  //       px={{ initial: "5", xs: "6", sm: "7", md: "9" }}
-  //       size={{ initial: "2", md: "3" }}
-  //       style={{ maxWidth: 858, flexGrow: 1 }}
-  //     >
-  //       {children}
-  //     </Section>
-  //   </div>
-  // );
+  const xPadding = useMemo(() => {
+    if (host === "web") return { initial: "8", xl: "9" };
+    return {
+      initial: "2",
+      xs: "2",
+      sm: "4",
+      md: "8",
+      lg: "8",
+      xl: "9",
+    };
+  }, [host]);
+
+  const yPadding = useMemo(() => {
+    return host === "web" ? "5" : "2";
+  }, [host]);
+
   return (
-    <Box
-      p={{ initial: "5", xs: "6", sm: "7", md: "9" }}
-      style={{
-        overflow: "hidden",
-        flexGrow: 1,
-        width: "100%",
-        maxWidth: "100%",
-      }}
-      className={styles.PageWrapperContainer}
+    <Flex
+      direction="column"
+      justify="between"
+      flexGrow="1"
+      py={yPadding}
+      px={xPadding}
+      className={classNames(styles.PageWrapper, className)}
     >
       {children}
-    </Box>
+    </Flex>
   );
 };

@@ -5,6 +5,7 @@ import {
   InfoCircledIcon,
 } from "@radix-ui/react-icons";
 import { useTimeout } from "usehooks-ts";
+import styles from "./Callout.module.css";
 
 type RadixCalloutProps = React.ComponentProps<typeof RadixCallout.Root>;
 
@@ -23,11 +24,13 @@ export const Callout: React.FC<CalloutProps> = ({
 }) => {
   useTimeout(onClick, timeout);
   return (
-    <RadixCallout.Root onClick={onClick} {...props}>
+    <RadixCallout.Root mx="2" onClick={onClick} {...props}>
       <RadixCallout.Icon>
         {type === "error" ? <ExclamationTriangleIcon /> : <InfoCircledIcon />}
       </RadixCallout.Icon>
-      <RadixCallout.Text>{children}</RadixCallout.Text>
+      <RadixCallout.Text className={styles.callout_text} wrap="wrap">
+        {children}
+      </RadixCallout.Text>
     </RadixCallout.Root>
   );
 };

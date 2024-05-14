@@ -65,7 +65,7 @@ describe("Chat", () => {
 
     await user.keyboard("{Enter}");
 
-    expect(postMessageSpy).toHaveBeenLastCalledWith(
+    expect(postMessageSpy).toHaveBeenCalledWith(
       {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
@@ -219,7 +219,7 @@ describe("Chat", () => {
       await user.type(textarea, "{enter}");
     }
 
-    expect(postMessageSpy).toHaveBeenLastCalledWith(
+    expect(postMessageSpy).toHaveBeenCalledWith(
       {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
@@ -274,7 +274,7 @@ describe("Chat", () => {
     expect(textarea).not.toBeNull();
     if (textarea) {
       textarea.setSelectionRange(0, textarea.value.length);
-      await user.type(textarea, " there.{enter}");
+      await user.type(textarea, "{Enter}");
     }
 
     expect(postMessageSpy).toHaveBeenLastCalledWith(
@@ -282,7 +282,7 @@ describe("Chat", () => {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
           id: "bar",
-          messages: [["user", "hello there."]],
+          messages: [["user", "hello"]],
           title: "hello",
           model: "gpt-3.5-turbo",
           attach_file: false,
@@ -370,7 +370,7 @@ describe("Chat", () => {
 
     await user.keyboard("{Enter}");
 
-    expect(postMessageSpy).toHaveBeenLastCalledWith(
+    expect(postMessageSpy).toHaveBeenCalledWith(
       {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {

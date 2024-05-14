@@ -6,5 +6,7 @@
 }
 
 .content {
+  /* JB doesn't support dvw yet */
+  max-width: 50vw;
   max-width: 80dvw;
 }

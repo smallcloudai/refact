@@ -5,34 +5,14 @@ import { Callout } from "../components/Callout";
 import { Spinner, Flex, Button } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { useConfig } from "../contexts/config-context";
+import { PageWrapper } from "../components/PageWrapper";
 
 export const FIMDebug: React.FC = () => {
   const { host, tabbed } = useConfig();
-  const LeftPadding =
-    host === "web"
-      ? { initial: "8", xl: "9" }
-      : {
-          initial: "2",
-          xs: "2",
-          sm: "4",
-          md: "8",
-          lg: "8",
-          xl: "9",
-        };
-
-  // const TopBottomPadding = { initial: "5" };
   const { state, clearErrorMessage, backFromFim } = useEventBysForFIMDebug();
 
   return (
-    <Flex
-      direction="column"
-      flexGrow="1"
-      pl={LeftPadding}
-      // py={TopBottomPadding}
-      style={{
-        height: "100dvh",
-      }}
-    >
+    <PageWrapper host={host}>
       {host === "vscode" && !tabbed && (
         <Flex gap="2" p="2" wrap="wrap">
           <Button size="1" variant="surface" onClick={backFromFim}>
@@ -54,6 +34,6 @@ export const FIMDebug: React.FC = () => {
           No Fill in middle data available, try to make a completion
         </Callout>
       )}
-    </Flex>
+    </PageWrapper>
   );
 };
