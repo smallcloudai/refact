@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use similar::DiffableStr;
-
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::ast::treesitter::language_id::LanguageId;
 

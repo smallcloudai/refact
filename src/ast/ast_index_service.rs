@@ -1,10 +1,7 @@
 use std::collections::{HashMap, VecDeque, HashSet};
-use std::iter::zip;
 use std::sync::{Arc, Weak};
 use std::time::{SystemTime, Duration};
-use std::io::Write;
 
-use rayon::prelude::*;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
@@ -12,7 +9,6 @@ use tracing::info;
 
 use crate::global_context::GlobalContext;
 use crate::ast::ast_index::AstIndex;
-use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::files_in_workspace::Document;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -175,22 +171,10 @@ async fn ast_indexer_thread(
             }
             match event.typ {
                 AstEventType::Add => {
-                    let ast_index = ast_index.clone();
-                    let all_symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = docs_with_text
-                        .par_iter()
-                        .map(move |document| AstIndex::parse(&document))
-                        .collect();
-
-                    for (doc, res) in zip(docs_with_text, all_symbols) {
-                        match res {
-                            Ok(symbols) => {
-                                stats_symbols_cnt += symbols.len();
-                                match ast_index.write().await.add_or_update_symbols_index(&doc, &symbols, true).await {
-                                    Ok(_) => {}
-                                    Err(e) => {
-                                        *unparsed_suffixes.entry(e).or_insert(0) += 1;
-                                    }
-                                }
+                    for doc in docs_with_text.iter() {
+                        match ast_index.write().await.add_or_update(&doc, true) {
+                            Ok(len) => {
+                                stats_symbols_cnt += len;
                             }
                             Err(e) => {
                                 *unparsed_suffixes.entry(e).or_insert(0) += 1;
@@ -217,62 +201,16 @@ async fn ast_index_rebuild_thread(
 ) {
     loop {
         if *ast_hold_off_indexes_rebuild.lock().await {
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            tokio::time::sleep(Duration::from_millis(100)).await;
             continue;
         }
 
-        {
-            if !ast_index.read().await.need_update() {
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                continue;
-            }
-
-            let symbols = ast_index.read().await
-                .symbols_by_guid()
-                .values()
-                .cloned()
-                .collect::<Vec<_>>();
-            info!("Resolving declaration symbols");
-            let t0 = std::time::Instant::now();
-            let stats = ast_index.read().await.resolve_types(&symbols).await;
-            info!(
-                "Resolving declaration symbols finished, took {:.3}s, {} found, {} not found",
-                t0.elapsed().as_secs_f64(),
-                stats.found,
-                stats.non_found
-            );
-
-            info!("Resolving import symbols");
-            let t0 = std::time::Instant::now();
-            let stats = ast_index.read().await.resolve_imports(&symbols).await;
-            info!(
-                "Resolving import symbols finished, took {:.3}s, {} found, {} not found",
-                t0.elapsed().as_secs_f64(),
-                stats.found,
-                stats.non_found
-            );
-
-            info!("Linking usage and declaration symbols");
-            let t1 = std::time::Instant::now();
-            let stats = ast_index.read().await.merge_usages_to_declarations(&symbols).await;
-            info!(
-                "Linking usage and declaration symbols finished, took {:.3}s, {} found, {} not found",
-                t1.elapsed().as_secs_f64(),
-                stats.found,
-                stats.non_found
-            );
-
-            info!("Creating extra ast indexes");
-            let t2 = std::time::Instant::now();
-            {
-                let mut ast_index_ref = ast_index.write().await;
-                ast_index_ref.create_extra_indexes(&symbols);
-                ast_index_ref.set_updated();
-            }
-            info!("Creating extra ast indexes finished, took {:.3}s", t2.elapsed().as_secs_f64());
-            write!(std::io::stderr(), "AST COMPLETE\n").unwrap();
-            info!("AST COMPLETE"); // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
+        if !ast_index.read().await.need_update() {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            continue;
         }
+
+        ast_index.write().await.reindex();
     }
 }
 

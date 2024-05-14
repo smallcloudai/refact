@@ -356,7 +356,7 @@ pub async fn handle_v1_ast_index_file(
     };
 
     match add_res {
-        Ok(()) => {
+        Ok(_) => {
             Ok(Response::builder().status(StatusCode::OK)
                 .body(Body::from("{}"))
                 .unwrap())

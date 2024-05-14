@@ -3,12 +3,12 @@ use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::{fs, io};
+use std::cell::{Ref, RefCell};
 use std::path::PathBuf;
-use std::sync::{Arc};
+use std::rc::Rc;
 
 use async_trait::async_trait;
 use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
-use parking_lot::{RwLock, RwLockReadGuard};
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
@@ -331,13 +331,13 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
     }
 }
 
-pub type AstSymbolInstanceArc = Arc<RwLock<dyn AstSymbolInstance>>;
+pub type AstSymbolInstanceArc = Rc<RefCell<dyn AstSymbolInstance>>;
 
 
 pub fn read_symbol(
     s: &AstSymbolInstanceArc
-) -> RwLockReadGuard<'_, dyn AstSymbolInstance> {
-    s.read()
+) -> Ref<dyn AstSymbolInstance> {
+    s.borrow()
 }
 /*
 StructDeclaration

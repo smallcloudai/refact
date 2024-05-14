@@ -55,21 +55,22 @@ impl AstBasedFileSplitter {
             }
         };
 
-        let symbols = parser.parse(doc.text_as_string().unwrap().as_str(), &path);
-
-        let ast_markup: crate::ast::structs::FileASTMarkup = match crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols).await {
+        let symbols_struct = parser.parse(doc.text_as_string().unwrap().as_str(), &path)
+            .iter().map(|s| s.borrow().symbol_info_struct())
+            .collect::<Vec<_>>();
+        let ast_markup: crate::ast::structs::FileASTMarkup = match crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols_struct) {
             Ok(x) => x,
             Err(e) => {
                 info!("lowlevel_file_markup failed for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e);
                 return self.fallback_file_splitter.vectorization_split(&doc).await;
             }
         };
+
         let mut files_markup: HashMap<String, Arc<crate::scratchpads::chat_utils_rag::File>> = HashMap::new();
         files_markup.insert(path_str.to_string(), Arc::new(crate::scratchpads::chat_utils_rag::File { markup: ast_markup, cpath: path.clone(), cpath_symmetry_breaker: 0.0 }));
 
         let mut chunks: Vec<SplitResult> = Vec::new();
-        for symbol in symbols.iter().map(|s| s.read().symbol_info_struct())
-        {
+        for symbol in symbols_struct {
             let go_via_postprocessing = match symbol.symbol_type {
                 SymbolType::StructDeclaration | SymbolType::FunctionDeclaration | SymbolType::TypeAlias => true,
                 _ => false,

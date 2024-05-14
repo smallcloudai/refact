@@ -12,7 +12,6 @@ use uuid::Uuid;
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstIndexService, AstEventType};
-use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, read_symbol};
 use crate::files_in_workspace::Document;
@@ -53,16 +52,15 @@ impl AstModule {
         }
     }
 
-    pub async fn ast_add_file_no_queue(&mut self, document: &Document, make_dirty: bool) -> Result<(), String> {
-        self.ast_index.write().await.add_or_update(&document, make_dirty).await
+    pub async fn ast_add_file_no_queue(&mut self, document: &Document, make_dirty: bool) -> Result<usize, String> {
+        self.ast_index.write().await.add_or_update(&document, make_dirty)
     }
 
     pub async fn ast_force_reindex(&mut self) {
-        self.ast_index.write().await.force_reindex().await
+        self.ast_index.write().await.reindex()
     }
 
-    pub async fn ast_reset_index(&self, force: bool)
-    {
+    pub async fn ast_reset_index(&self, force: bool) {
         self.ast_index_service.lock().await.ast_indexer_enqueue_files(
             AstEvent { docs: vec![], typ: AstEventType::AstReset, posted_ts: std::time::SystemTime::now() },
             force
@@ -125,7 +123,7 @@ impl AstModule {
         top_n: usize,
     ) -> Result<AstQuerySearchResult, String> {
         let t0 = std::time::Instant::now();
-        match self.ast_index.read().await.search_by_content(query.as_str(), request_symbol_type, None, None).await {
+        match self.ast_index.read().await.search_by_content(query.as_str(), request_symbol_type, None, None) {
             Ok(results) => {
                 let symbol_structs = results
                     .iter()
@@ -228,29 +226,18 @@ impl AstModule {
         top_n_near_cursor: usize,
         top_n_usage_for_each_decl: usize,
     ) -> Result<AstCursorSearchResult, String> {
-        let t_parse_t0 = std::time::Instant::now();
-        let file_symbols = self.ast_index
-            .read().await
-            .parse_single_file(doc, code).await;
-        let file_symbols_read = file_symbols
-            .iter()
-            .map(|s| s.read().symbol_info_struct())
-            .collect::<Vec<_>>();
-        let language = get_language_id_by_filename(&doc.path);
-        let t_parse_ms = t_parse_t0.elapsed().as_millis() as i32;
-
         let t0 = std::time::Instant::now();
         info!("to_buckets {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
-        let (cursor_usages, declarations, usages, bucket_high_overlap, guid_to_usefulness) = self.ast_index
+        let (cursor_usages, declarations, usages, bucket_high_overlap, bucket_imports, guid_to_usefulness) = self.ast_index
             .read().await
             .symbols_near_cursor_to_buckets(
-                &file_symbols,
-                language,
+                &doc,
+                code,
                 cursor,
                 top_n_near_cursor,
                 top_n_usage_for_each_decl,
                 3,
-            ).await;
+            );
         let symbol_to_search_res = |x: &AstSymbolInstanceArc| {
             let symbol_declaration = read_symbol(x).symbol_info_struct();
             let content = symbol_declaration.get_content_blocked().unwrap_or_default();
@@ -264,9 +251,6 @@ impl AstModule {
                 usefulness
             }
         };
-        let bucket_imports = self.ast_index
-            .read().await
-            .decl_symbols_from_imports(&file_symbols, 0).await;
 
         let result = AstCursorSearchResult {
             query_text: "".to_string(),
@@ -290,21 +274,12 @@ impl AstModule {
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
             bucket_imports: bucket_imports
                 .iter()
-                .map(|x: &AstSymbolInstanceArc| {
-                    let symbol_declaration = read_symbol(x).symbol_info_struct();
-                    let content = symbol_declaration.get_content_blocked().unwrap_or_default();
-                    SymbolsSearchResultStruct {
-                        symbol_declaration,
-                        content,
-                        usefulness: 20.0
-                    }
-                })
+                .map(symbol_to_search_res)
                 .collect::<Vec<SymbolsSearchResultStruct>>(),
         };
-        info!("to_buckets {:.3}s, t_parse={:.3}ms => bucket_declarations \
+        info!("to_buckets {:.3}s => bucket_declarations \
             {} bucket_usage_of_same_stuff {} bucket_high_overlap {} bucket_imports {}",
             t0.elapsed().as_secs_f32(),
-            t_parse_ms,
             result.bucket_declarations.len(),
             result.bucket_usage_of_same_stuff.len(),
             result.bucket_high_overlap.len(),
@@ -317,7 +292,7 @@ impl AstModule {
         &self,
         doc: &Document,
     ) -> Result<FileASTMarkup, String> {
-        match self.ast_index.read().await.file_markup(doc).await {
+        match self.ast_index.read().await.file_markup(doc) {
             Ok(markup) => {
                 Ok(markup)
             }

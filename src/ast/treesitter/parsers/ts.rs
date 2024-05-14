@@ -1,10 +1,8 @@
+use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::string::ToString;
-use std::sync::Arc;
-#[allow(unused_imports)]
-use itertools::Itertools;
-use parking_lot::RwLock;
 
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
@@ -237,7 +235,7 @@ impl TSParser {
                 parent_guid: decl.ast_fields.guid.clone(),
             })
         }
-        symbols.push(Arc::new(RwLock::new(decl)));
+        symbols.push(Rc::new(RefCell::new(decl)));
         symbols
     }
 
@@ -270,7 +268,7 @@ impl TSParser {
             });
         }
 
-        symbols.push(Arc::new(RwLock::new(decl)));
+        symbols.push(Rc::new(RefCell::new(decl)));
         symbols
     }
 
@@ -292,7 +290,7 @@ impl TSParser {
                 decl.type_ = type_;
             }
         }
-        symbols.push(Arc::new(RwLock::new(decl)));
+        symbols.push(Rc::new(RefCell::new(decl)));
         symbols
     }
 
@@ -327,7 +325,7 @@ impl TSParser {
                         if let Some(value) = child.child_by_field_name("value") {
                             field.type_.inference_info = Some(code.slice(value.byte_range()).to_string());
                         }
-                        symbols.push(Arc::new(RwLock::new(field)));
+                        symbols.push(Rc::new(RefCell::new(field)));
                     }
                     "property_identifier" => {
                         let mut field = ClassFieldDeclaration::default();
@@ -337,7 +335,7 @@ impl TSParser {
                         field.ast_fields.parent_guid = Some(decl.ast_fields.guid.clone());
                         field.ast_fields.guid = get_guid();
                         field.ast_fields.name = code.slice(child.byte_range()).to_string();
-                        symbols.push(Arc::new(RwLock::new(field)));
+                        symbols.push(Rc::new(RefCell::new(field)));
                     }
                     &_ => {
                         candidates.push_back(CandidateInfo {
@@ -349,7 +347,7 @@ impl TSParser {
                 }
             }
         }
-        symbols.push(Arc::new(RwLock::new(decl)));
+        symbols.push(Rc::new(RefCell::new(decl)));
         symbols
     }
 
@@ -445,7 +443,7 @@ impl TSParser {
                 parent_guid: decl.ast_fields.guid.clone(),
             });
         }
-        symbols.push(Arc::new(RwLock::new(decl)));
+        symbols.push(Rc::new(RefCell::new(decl)));
         symbols
     }
 
@@ -521,7 +519,7 @@ impl TSParser {
                 });
             }
         }
-        symbols.push(Arc::new(RwLock::new(decl)));
+        symbols.push(Rc::new(RefCell::new(decl)));
         symbols
     }
 
@@ -551,7 +549,7 @@ impl TSParser {
                 // if let Some(caller_guid) = info.ast_fields.caller_guid.clone() {
                 //     usage.ast_fields.guid = caller_guid;
                 // }
-                symbols.push(Arc::new(RwLock::new(usage)));
+                symbols.push(Rc::new(RefCell::new(usage)));
             }
             "member_expression" => {
                 let mut usage = VariableUsage::default();
@@ -571,7 +569,7 @@ impl TSParser {
                 if let Some(object) = parent.child_by_field_name("object") {
                     symbols.extend(self.find_error_usages(&object, code, path, parent_guid));
                 }
-                symbols.push(Arc::new(RwLock::new(usage)));
+                symbols.push(Rc::new(RefCell::new(usage)));
             }
             &_ => {
                 for i in 0..parent.child_count() {
@@ -620,7 +618,7 @@ impl TSParser {
                 if let Some(caller_guid) = info.ast_fields.caller_guid.clone() {
                     usage.ast_fields.guid = caller_guid;
                 }
-                symbols.push(Arc::new(RwLock::new(usage)));
+                symbols.push(Rc::new(RefCell::new(usage)));
             }
             "member_expression" => {
                 let mut usage = VariableUsage::default();
@@ -642,7 +640,7 @@ impl TSParser {
                         parent_guid: info.parent_guid.clone(),
                     });
                 }
-                symbols.push(Arc::new(RwLock::new(usage)));
+                symbols.push(Rc::new(RefCell::new(usage)));
             }
             "new_expression" => {
                 if let Some(constructor) = info.node.child_by_field_name("constructor") {
@@ -721,9 +719,9 @@ impl TSParser {
                     }
                 }
                 if imports.len() > 0 {
-                    imports.iter().for_each(|x| { symbols.push(Arc::new(RwLock::new(x.clone()))) });
+                    imports.iter().for_each(|x| { symbols.push(Rc::new(RefCell::new(x.clone()))) });
                 } else {
-                    symbols.push(Arc::new(RwLock::new(def)));
+                    symbols.push(Rc::new(RefCell::new(def)));
                 }
             }
             "comment" => {
@@ -732,7 +730,7 @@ impl TSParser {
                 def.ast_fields.full_range = info.node.range();
                 def.ast_fields.parent_guid = Some(info.parent_guid.clone());
                 def.ast_fields.guid = get_guid();
-                symbols.push(Arc::new(RwLock::new(def)));
+                symbols.push(Rc::new(RefCell::new(def)));
             }
             "ERROR" => {
                 let mut ast = info.ast_fields.clone();
@@ -778,22 +776,22 @@ impl TSParser {
             symbols.extend(symbols_l);
         }
         let guid_to_symbol_map = symbols.iter()
-            .map(|s| (s.clone().read().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
+            .map(|s| (s.clone().borrow().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
         for symbol in symbols.iter_mut() {
-            let guid = symbol.read().guid().clone();
-            if let Some(parent_guid) = symbol.read().parent_guid() {
+            let guid = symbol.borrow().guid().clone();
+            if let Some(parent_guid) = symbol.borrow().parent_guid() {
                 if let Some(parent) = guid_to_symbol_map.get(parent_guid) {
-                    parent.write().fields_mut().childs_guid.push(guid);
+                    parent.borrow_mut().fields_mut().childs_guid.push(guid);
                 }
             }
         }
 
         #[cfg(test)]
         for symbol in symbols.iter_mut() {
-            let mut sym = symbol.write();
+            let mut sym = symbol.borrow_mut();
             sym.fields_mut().childs_guid = sym.fields_mut().childs_guid.iter()
                 .sorted_by_key(|x| {
-                    guid_to_symbol_map.get(*x).unwrap().read().full_range().start_byte
+                    guid_to_symbol_map.get(*x).unwrap().borrow().full_range().start_byte
                 }).map(|x| x.clone()).collect();
         }
 

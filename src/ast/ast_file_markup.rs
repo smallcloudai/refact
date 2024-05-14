@@ -3,20 +3,18 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 use uuid::Uuid;
 use crate::ast::structs::FileASTMarkup;
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, read_symbol, SymbolInformation};
+use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::files_in_workspace::Document;
 
 
-pub async fn lowlevel_file_markup(
+pub fn lowlevel_file_markup(
     doc: &Document,
-    symbols: &Vec<AstSymbolInstanceArc>,
+    symbols: &Vec<SymbolInformation>,
 ) -> Result<FileASTMarkup, String> {
     let t0 = std::time::Instant::now();
     assert!(doc.text.is_some());
     let mut symbols4export: Vec<Arc<RefCell<SymbolInformation>>> = symbols.iter().map(|s| {
-        let s_ref = read_symbol(s);
-        // filter is_declaration?
-        Arc::new(RefCell::new(s_ref.symbol_info_struct()))
+        Arc::new(RefCell::new(s.clone()))
     }).collect();
     let guid_to_symbol: HashMap<Uuid, Arc<RefCell<SymbolInformation>>> = symbols4export.iter().map(
         |s| (s.borrow().guid.clone(), s.clone())

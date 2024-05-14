@@ -8,18 +8,17 @@ use strsim::jaro_winkler;
 use tracing::info;
 use tree_sitter::Point;
 use uuid::Uuid;
+use std::io::Write;
 
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::imports_resolver::{possible_filepath_candidates, top_n_prefixes, try_find_file_path};
 use crate::ast::structs::FileASTMarkup;
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ImportDeclaration, ImportType, read_symbol, SymbolInformation};
-
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::usages_declarations_merger::{FilePathIterator, find_decl_by_name, find_decl_by_caller_guid};
+use crate::ast::usages_declarations_merger::{FilePathIterator, find_decl_by_caller_guid, find_decl_by_name};
 use crate::files_in_workspace::Document;
-
 
 const TOO_MANY_SYMBOLS_IN_FILE: usize = 10000;
 
@@ -34,6 +33,10 @@ pub struct AstIndex {
     declaration_guid_to_usage_names: HashMap<Uuid, HashSet<String>>,
     has_changes: bool,
 }
+
+unsafe impl Send for AstIndex {}
+
+unsafe impl Sync for AstIndex {}
 
 
 #[derive(Debug, Clone, Copy)]
@@ -92,18 +95,19 @@ impl AstIndex {
         Ok(symbol_instances)
     }
 
-    pub async fn add_or_update_symbols_index(
+    pub fn add_or_update_symbols_index(
         &mut self,
         doc: &Document,
-        symbols: &Vec<AstSymbolInstanceArc>,
+        symbols: Vec<AstSymbolInstanceArc>,
         make_dirty: bool,
     ) -> Result<(), String> {
+        let mut symbols_cloned = symbols.clone();
         let has_removed = self.remove(&doc);
         if has_removed {
-            self.resolve_types(symbols).await;
-            self.resolve_imports(symbols).await;
-            self.merge_usages_to_declarations(symbols).await;
-            self.create_extra_indexes(symbols);
+            self.resolve_declaration_symbols(&mut symbols_cloned);
+            self.resolve_imports(&mut symbols_cloned);
+            self.merge_usages_to_declarations(&mut symbols_cloned);
+            self.create_extra_indexes(&mut symbols_cloned);
             self.has_changes = false;
         } else {
             // TODO: we don't want to update the whole index for a single file
@@ -112,7 +116,7 @@ impl AstIndex {
             self.has_changes = make_dirty;
         }
 
-        for symbol in symbols.iter() {
+        for symbol in symbols_cloned.iter() {
             let symbol_ref = read_symbol(symbol);
             if symbol_ref.is_declaration() {
                 self.declaration_symbols_by_name.entry(symbol_ref.name().to_string()).or_insert_with(Vec::new).push(symbol.clone());
@@ -126,9 +130,13 @@ impl AstIndex {
         Ok(())
     }
 
-    pub async fn add_or_update(&mut self, doc: &Document, make_dirty: bool) -> Result<(), String> {
+    pub fn add_or_update(&mut self, doc: &Document, make_dirty: bool) -> Result<usize, String> {
         let symbols = AstIndex::parse(doc)?;
-        self.add_or_update_symbols_index(doc, &symbols, make_dirty).await
+        let symbols_len = symbols.len();
+        match self.add_or_update_symbols_index(doc, symbols, make_dirty) {
+            Ok(_) => Ok(symbols_len),
+            Err(e) => Err(e)
+        }
     }
 
     pub fn remove(&mut self, doc: &Document) -> bool {
@@ -192,7 +200,7 @@ impl AstIndex {
         ) -> Vec<AstSymbolInstanceArc> {
             let lower_query = query.to_lowercase();
             symbols_by_name
-                .par_iter()
+                .iter()
                 .filter(|(name, _)| {
                     let lower_name = name.to_lowercase();
                     lower_name.contains(&lower_query)
@@ -257,7 +265,7 @@ impl AstIndex {
         }
     }
 
-    pub async fn search_by_content(
+    pub fn search_by_content(
         &self,
         query: &str,
         request_symbol_type: RequestSymbolType,
@@ -265,7 +273,7 @@ impl AstIndex {
         language: Option<LanguageId>,
     ) -> Result<Vec<AstSymbolInstanceArc>, String> {
         Ok(self.path_by_symbols
-            .par_iter()
+            .iter()
             .filter(|(path, _symbols)| {
                 let language_id = match get_language_id_by_filename(path) {
                     Some(lid) => lid,
@@ -380,10 +388,10 @@ impl AstIndex {
         (parents_symbols, guid_to_usefulness)
     }
 
-    pub async fn symbols_near_cursor_to_buckets(
+    pub(crate) fn symbols_near_cursor_to_buckets(
         &self,
-        file_symbols: &Vec<AstSymbolInstanceArc>,
-        language: Option<LanguageId>,
+        doc: &Document,
+        code: &str,
         cursor: Point,
         top_n_near_cursor: usize,
         top_n_usage_for_each_decl: usize,
@@ -393,8 +401,14 @@ impl AstIndex {
         Vec<AstSymbolInstanceArc>,
         Vec<AstSymbolInstanceArc>,
         Vec<AstSymbolInstanceArc>,
+        Vec<AstSymbolInstanceArc>,
         HashMap<Uuid, f32>
     ) {
+        let t_parse_t0 = std::time::Instant::now();
+        let file_symbols = self.parse_single_file(doc, code);
+        let language = get_language_id_by_filename(&doc.path);
+        let t_parse_ms = t_parse_t0.elapsed().as_millis() as i32;
+
         let mut guid_to_usefulness: HashMap<Uuid, f32> = HashMap::new();
         let t_cursor_t0 = std::time::Instant::now();
         let unfiltered_cursor_symbols = file_symbols
@@ -412,7 +426,7 @@ impl AstIndex {
         let scope_symbols = if let Some(parent_guid) = unfiltered_cursor_symbols
             .iter()
             .next()
-            .map(|s| s.read().parent_guid().clone())
+            .map(|s| s.borrow_mut().parent_guid().clone())
             .flatten() {
             unfiltered_cursor_symbols
                 .iter()
@@ -627,12 +641,28 @@ impl AstIndex {
             })
             .cloned()
             .collect::<Vec<_>>();
+
+        // (7) declarations from imported files
+        let t_stage7_t0 = std::time::Instant::now();
+        let bucket_imports = self
+            .decl_symbols_from_imports(&file_symbols, 0)
+            .into_iter()
+            .map(|s| {
+                *guid_to_usefulness
+                    .entry(read_symbol(&s).guid().clone())
+                    .or_default() += 15.0;
+                s
+            })
+            .collect::<Vec<_>>();
+        let t_stage7_ms = t_stage7_t0.elapsed().as_millis() as i32;
+
+
         let t_stage6_ms = t_stage6_t0.elapsed().as_millis() as i32;
         info!(
-            "\tsymbols_near_cursor_to_buckets -> t_cursor={t_cursor_ms}ms \
+            "\t_parse={t_parse_ms}ms symbols_near_cursor_to_buckets -> t_cursor={t_cursor_ms}ms \
             t_decl={t_decl_ms}ms ({decl_fuzzy_count} fuzzy_req) \
             t_stage3={t_stage3_ms}ms t_stage5={t_stage5_ms}ms ({stage5_fuzzy_count} fuzzy_req) \
-            t_stage4={t_stage4_ms}ms t_stage6={t_stage6_ms}ms"
+            t_stage4={t_stage4_ms}ms t_stage6={t_stage6_ms}ms t_stage7={t_stage7_ms}ms"
         );
 
         (
@@ -644,11 +674,12 @@ impl AstIndex {
             declarations,
             usages,
             high_overlap_declarations,
-            guid_to_usefulness
+            bucket_imports,
+            guid_to_usefulness,
         )
     }
 
-    pub(crate) async fn decl_symbols_from_imports(
+    pub(crate) fn decl_symbols_from_imports(
         &self,
         parsed_symbols: &Vec<AstSymbolInstanceArc>,
         imports_depth: usize,
@@ -693,13 +724,13 @@ impl AstIndex {
             .collect::<Vec<_>>()
     }
 
-    pub async fn file_markup(
+    pub fn file_markup(
         &self,
         doc: &Document,
     ) -> Result<FileASTMarkup, String> {
         assert!(doc.text.is_some());
         let symbols = match self.path_by_symbols.get(&doc.path) {
-            Some(x) => x.clone(),
+            Some(x) => x.iter().map(|s| s.borrow().symbol_info_struct()).collect::<Vec<_>>(),
             None => {
                 info!("no symbols in index for {:?}, assuming it's a new file of some sort and parsing it", doc.path);
                 let mut parser = match get_ast_parser_by_filename(&doc.path) {
@@ -711,10 +742,10 @@ impl AstIndex {
                 let t0 = std::time::Instant::now();
                 let symbols = parser.parse(doc.text.as_ref().unwrap().to_string().as_str(), &doc.path);
                 info!("/parse {}ms", t0.elapsed().as_millis());
-                symbols
+                symbols.iter().map(|s| s.borrow().symbol_info_struct()).collect::<Vec<_>>()
             }
         };
-        crate::ast::ast_file_markup::lowlevel_file_markup(doc, &symbols).await
+        crate::ast::ast_file_markup::lowlevel_file_markup(doc, &symbols)
     }
 
     pub fn get_by_file_path(
@@ -777,12 +808,54 @@ impl AstIndex {
         self.has_changes = false;
     }
 
-    pub(crate) async fn resolve_types(&self, symbols: &Vec<AstSymbolInstanceArc>) -> IndexingStats {
+    pub(crate) fn reindex(&mut self) {
+        let mut symbols = self
+            .symbols_by_guid()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        info!("Resolving declaration symbols");
+        let t0 = std::time::Instant::now();
+        let stats = self.resolve_declaration_symbols(&mut symbols);
+        info!(
+            "Resolving declaration symbols finished, took {:.3}s, {} found, {} not found",
+            t0.elapsed().as_secs_f64(),
+            stats.found,
+            stats.non_found
+        );
+
+        info!("Resolving import symbols");
+        let t0 = std::time::Instant::now();
+        let stats = self.resolve_imports(&mut symbols);
+        info!(
+            "Resolving import symbols finished, took {:.3}s, {} found, {} not found",
+            t0.elapsed().as_secs_f64(),
+            stats.found,
+            stats.non_found
+        );
+
+        info!("Linking usage and declaration symbols");
+        let t1 = std::time::Instant::now();
+        let stats = self.merge_usages_to_declarations(&mut symbols);
+        info!(
+            "Linking usage and declaration symbols finished, took {:.3}s, {} found, {} not found",
+            t1.elapsed().as_secs_f64(),
+            stats.found,
+            stats.non_found
+        );
+
+        info!("Creating extra ast indexes");
+        let t2 = std::time::Instant::now();
+        self.create_extra_indexes(&symbols);
+        self.set_updated();
+        info!("Creating extra ast indexes finished, took {:.3}s", t2.elapsed().as_secs_f64());
+        write!(std::io::stderr(), "AST COMPLETE\n").unwrap();
+        info!("AST COMPLETE");  // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
+    }
+
+    pub(crate) fn resolve_declaration_symbols(&self, symbols: &mut Vec<AstSymbolInstanceArc>) -> IndexingStats {
         let mut stats = IndexingStats { found: 0, non_found: 0 };
-        for (idx, symbol) in symbols.iter().enumerate() {
-            if idx % 100 == 0 {
-                tokio::task::yield_now().await;
-            }
+        for symbol in symbols.iter_mut() {
             let (type_names, symb_type, symb_path) = {
                 let s_ref = read_symbol(symbol);
                 (s_ref.types(), s_ref.symbol_type(), s_ref.file_path().clone())
@@ -842,13 +915,12 @@ impl AstIndex {
                 }
             }
             assert_eq!(new_guids.len(), type_names.len());
-            symbol.write()
-                .set_guids_to_types(&new_guids);
+            symbol.borrow_mut().set_guids_to_types(&new_guids);
         }
         stats
     }
 
-    pub(crate) async fn merge_usages_to_declarations(&self, symbols: &Vec<AstSymbolInstanceArc>) -> IndexingStats {
+    pub(crate) fn merge_usages_to_declarations(&self, symbols: &mut Vec<AstSymbolInstanceArc>) -> IndexingStats {
         fn get_caller_depth(
             symbol: &AstSymbolInstanceArc,
             guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>,
@@ -891,7 +963,7 @@ impl AstIndex {
             .collect();
         let mut depth: usize = 0; // depth means "a.b.c" it's 2 for c
         loop {
-            let symbols_to_process = symbols
+            let mut symbols_to_process = symbols
                 .iter()
                 .filter(|symbol| {
                     let s_ref = read_symbol(symbol);
@@ -911,12 +983,7 @@ impl AstIndex {
             }
 
             let mut symbols_cache: HashMap<(Uuid, String), Option<Uuid>> = HashMap::new();
-            for (idx, usage_symbol) in symbols_to_process
-                .iter()
-                .enumerate() {
-                if idx % 100 == 0 {
-                    tokio::task::yield_now().await;
-                }
+            for usage_symbol in symbols_to_process.iter_mut() {
                 let (name, parent_guid, caller_guid) = {
                     let s_ref = read_symbol(usage_symbol);
                     (s_ref.name().to_string(), s_ref.parent_guid().clone().unwrap_or_default(), s_ref.get_caller_guid().clone())
@@ -957,8 +1024,7 @@ impl AstIndex {
                 match decl_guid {
                     Some(guid) => {
                         {
-                            usage_symbol.write()
-                                .set_linked_decl_guid(Some(guid))
+                            usage_symbol.borrow_mut().set_linked_decl_guid(Some(guid))
                         }
                         stats.found += 1;
                     }
@@ -972,7 +1038,7 @@ impl AstIndex {
         stats
     }
 
-    pub(crate) async fn resolve_imports(&self, symbols: &Vec<AstSymbolInstanceArc>) -> IndexingStats {
+    pub(crate) fn resolve_imports(&self, symbols: &mut Vec<AstSymbolInstanceArc>) -> IndexingStats {
         let mut stats = IndexingStats { found: 0, non_found: 0 };
         let paths_str = self.path_by_symbols
             .keys()
@@ -985,7 +1051,7 @@ impl AstIndex {
         let mut notfound_import_components_index: HashMap<String, Vec<AstSymbolInstanceArc>> = HashMap::new();
         let mut import_components_succ_solution_index: HashMap<String, ImportDeclaration> = HashMap::new();
         for symbol in symbols
-            .iter()
+            .iter_mut()
             .filter(|s| read_symbol(s).as_any().downcast_ref::<ImportDeclaration>().is_some()) {
             let (import_type, file_path, path_components, language) = {
                 let s_ref = read_symbol(symbol);
@@ -998,8 +1064,8 @@ impl AstIndex {
             let import_components_path = path_components.iter().join("/");
             if import_components_succ_solution_index.contains_key(&import_components_path) {
                 let prepared_imp = import_components_succ_solution_index.get(&import_components_path).expect("assert");
-                let mut imp = symbol.write();
-                let imp_decl = imp.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
+                let mut symbol_ref = symbol.borrow_mut();
+                let imp_decl = symbol_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
                 imp_decl.filepath_ref = prepared_imp.filepath_ref.clone();
                 imp_decl.ast_fields.name = prepared_imp.ast_fields.name.clone();
                 continue;
@@ -1009,7 +1075,7 @@ impl AstIndex {
                 &min_prefix,
                 &file_path,
                 &path_components,
-                &language
+                &language,
             );
             match try_find_file_path(
                 &search_items,
@@ -1018,8 +1084,8 @@ impl AstIndex {
             ) {
                 Some(search_res) => {
                     stats.found += 1;
-                    let mut s_ref = symbol.write();
-                    let import_decl = s_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
+                    let mut symbol_ref = symbol.borrow_mut();
+                    let import_decl = symbol_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
                     import_decl.filepath_ref = Some(search_res.path.clone());
                     import_decl.ast_fields.name = search_res.name.clone().unwrap_or_default();
                     import_components_succ_solution_index.insert(import_components_path, import_decl.clone());
@@ -1030,10 +1096,10 @@ impl AstIndex {
                 }
             };
         }
-        for (import_components_path, symbols) in notfound_import_components_index.iter() {
+        for (import_components_path, symbols) in notfound_import_components_index.iter_mut() {
             if let Some(succ_import_decl) = import_components_succ_solution_index.get(import_components_path) {
-                for symbol in symbols {
-                    let mut symbol_ref = symbol.write();
+                for symbol in symbols.iter_mut() {
+                    let mut symbol_ref = symbol.borrow_mut();
                     let symbol_decl = symbol_ref.as_any_mut().downcast_mut::<ImportDeclaration>().expect("wrong type");
                     symbol_decl.filepath_ref = succ_import_decl.filepath_ref.clone();
                     symbol_decl.ast_fields.name = succ_import_decl.ast_fields.name.clone();
@@ -1098,20 +1164,7 @@ impl AstIndex {
         }
     }
 
-    pub(crate) async fn force_reindex(&mut self) {
-        let symbols = self
-            .symbols_by_guid()
-            .values()
-            .cloned()
-            .collect::<Vec<_>>();
-        self.resolve_types(&symbols).await;
-        self.resolve_imports(&symbols).await;
-        self.merge_usages_to_declarations(&symbols).await;
-        self.create_extra_indexes(&symbols);
-        self.has_changes = false;
-    }
-
-    pub(crate) async fn parse_single_file(
+    pub(crate) fn parse_single_file(
         &self,
         doc: &Document,
         code: &str,
@@ -1119,10 +1172,10 @@ impl AstIndex {
         // This function runs to find symbols near cursor
         let mut doc = doc.clone();
         doc.update_text(&code.to_string());
-        let symbols = AstIndex::parse(&doc).unwrap_or_default();
-        self.resolve_types(&symbols).await;
-        self.resolve_imports(&symbols).await;
-        self.merge_usages_to_declarations(&symbols).await;
+        let mut symbols = AstIndex::parse(&doc).unwrap_or_default();
+        self.resolve_declaration_symbols(&mut symbols);
+        self.resolve_imports(&mut symbols);
+        self.merge_usages_to_declarations(&mut symbols);
         // for s in symbols.iter() {
         //     let x = s.read().unwrap();
         //     info!("symbol {:?} {:?}", x.name(), x.symbol_type());

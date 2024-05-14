@@ -175,7 +175,7 @@ pub fn find_decl_by_name(
     top_n_files: usize,
 ) -> Option<Uuid> {
     let (file_path, parent_guid, name, is_function, is_error_node) =  {
-        let s_ref = symbol.read();
+        let s_ref = symbol.borrow();
         (s_ref.file_path().clone(),
          s_ref.parent_guid().clone().unwrap_or_default(),
          s_ref.name().to_string(),

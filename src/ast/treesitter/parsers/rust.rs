@@ -1,7 +1,7 @@
+use std::cell::RefCell;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::string::ToString;
-use std::sync::Arc;
-use parking_lot::RwLock;
 
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Point, Range};
@@ -190,7 +190,7 @@ impl RustParser {
             decl.ast_fields.declaration_range = decl.ast_fields.full_range.clone();
         }
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Arc::new(RwLock::new(decl)));
+        symbols.push(Rc::new(RefCell::new(decl)));
         symbols
     }
 
@@ -251,7 +251,7 @@ impl RustParser {
                                 if let Some(type_) = RustParser::parse_type(&type_node, code) {
                                     decl_.type_ = type_;
                                 }
-                                symbols.push(Arc::new(RwLock::new(decl_)));
+                                symbols.push(Rc::new(RefCell::new(decl_)));
                             }
                             &_ => {}
                         }
@@ -264,7 +264,7 @@ impl RustParser {
             }
         }
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Arc::new(RwLock::new(decl)));
+        symbols.push(Rc::new(RefCell::new(decl)));
         symbols
     }
 
@@ -293,7 +293,7 @@ impl RustParser {
                         if !usages.is_empty() {
                             if let Some(last) = usages.last() {
                                 // dirty hack: last element is first element in the tree
-                                decl.set_caller_guid(last.read().fields().guid.clone());
+                                decl.set_caller_guid(last.borrow().fields().guid.clone());
                             }
                         }
                         symbols.extend(usages);
@@ -335,7 +335,7 @@ impl RustParser {
             }
         }
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Arc::new(RwLock::new(decl)));
+        symbols.push(Rc::new(RefCell::new(decl)));
         symbols
     }
 
@@ -417,7 +417,7 @@ impl RustParser {
                             let val = value_node.child(i).unwrap();
                             decl_.type_ = parse_type_in_value(&val, code);
                         }
-                        symbols.push(Arc::new(RwLock::new(decl_)));
+                        symbols.push(Rc::new(RefCell::new(decl_)));
                     }
                 }
             }
@@ -427,7 +427,7 @@ impl RustParser {
             }
             &_ => {}
         }
-        symbols.push(Arc::new(RwLock::new(decl)));
+        symbols.push(Rc::new(RefCell::new(decl)));
         symbols
     }
 
@@ -482,10 +482,10 @@ impl RustParser {
                 let value_node = parent.child_by_field_name("value").unwrap();
                 let usages = self.parse_usages(&value_node, code, path, parent_guid, is_error);
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = Some(last.read().guid().clone());
+                    usage.ast_fields.caller_guid = Some(last.borrow().guid().clone());
                 }
                 symbols.extend(usages);
-                symbols.push(Arc::new(RwLock::new(usage)));
+                symbols.push(Rc::new(RefCell::new(usage)));
             }
             "identifier" => {
                 let mut usage = VariableUsage::default();
@@ -496,7 +496,7 @@ impl RustParser {
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 // usage.var_decl_guid = Some(RustParser::get_guid(Some(usage.ast_fields.name.clone()), parent, code, path));
-                symbols.push(Arc::new(RwLock::new(usage)));
+                symbols.push(Rc::new(RefCell::new(usage)));
             }
             "scoped_identifier" => {
                 let mut usage = VariableUsage::default();
@@ -516,7 +516,7 @@ impl RustParser {
                 usage.ast_fields.file_path = path.clone();
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
-                symbols.push(Arc::new(RwLock::new(usage)));
+                symbols.push(Rc::new(RefCell::new(usage)));
             }
             "tuple_expression" => {
                 for idx in 0..parent.child_count() {
@@ -612,11 +612,11 @@ impl RustParser {
                 let value_node = parent.child_by_field_name("value").unwrap();
                 let usages = self.parse_error_usages(&value_node, code, path, parent_guid);
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = Some(last.read().guid().clone());
+                    usage.ast_fields.caller_guid = Some(last.borrow().guid().clone());
                 }
                 symbols.extend(usages);
                 if !RUST_KEYWORDS.contains(&name.as_str()) {
-                    symbols.push(Arc::new(RwLock::new(usage)));
+                    symbols.push(Rc::new(RefCell::new(usage)));
                 }
             }
             "identifier" => {
@@ -632,7 +632,7 @@ impl RustParser {
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = true;
-                symbols.push(Arc::new(RwLock::new(usage)));
+                symbols.push(Rc::new(RefCell::new(usage)));
             }
             "scoped_identifier" => {
                 let mut usage = VariableUsage::default();
@@ -656,7 +656,7 @@ impl RustParser {
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = true;
-                symbols.push(Arc::new(RwLock::new(usage)));
+                symbols.push(Rc::new(RefCell::new(usage)));
             }
             &_ => {
                 for i in 0..parent.child_count() {
@@ -727,7 +727,7 @@ impl RustParser {
                         }
                     }
                     def.alias = Some(code.slice(alias_node.byte_range()).to_string());
-                    symbols.push(Arc::new(RwLock::new(def)));
+                    symbols.push(Rc::new(RefCell::new(def)));
                 } else {
                     let mut type_alias = TypeAlias::default();
                     type_alias.ast_fields.name = code.slice(alias_node.byte_range()).to_string();
@@ -741,7 +741,7 @@ impl RustParser {
                     if let Some(dtype) = RustParser::parse_type(&path_node, code) {
                         type_alias.types.push(dtype);
                     }
-                    symbols.push(Arc::new(RwLock::new(type_alias)));
+                    symbols.push(Rc::new(RefCell::new(type_alias)));
                 }
             }
             "scoped_identifier" => {
@@ -762,7 +762,7 @@ impl RustParser {
                         def.import_type = ImportType::UserModule;
                     }
                 }
-                symbols.push(Arc::new(RwLock::new(def)));
+                symbols.push(Rc::new(RefCell::new(def)));
             }
             "scoped_use_list" => {
                 let base_path = {
@@ -811,7 +811,7 @@ impl RustParser {
                                 def.import_type = ImportType::UserModule;
                             }
                         }
-                        symbols.push(Arc::new(RwLock::new(def)));
+                        symbols.push(Rc::new(RefCell::new(def)));
                     }
                 }
             }
@@ -840,7 +840,7 @@ impl RustParser {
                                             }
                                         }
                                         def.alias = alias;
-                                        symbols.push(Arc::new(RwLock::new(def)));
+                                        symbols.push(Rc::new(RefCell::new(def)));
                                     }
                                     _ => {
                                         let mut type_alias = TypeAlias::default();
@@ -855,7 +855,7 @@ impl RustParser {
                                         if let Some(dtype) = RustParser::parse_type(&path_node, code) {
                                             type_alias.types.push(dtype);
                                         }
-                                        symbols.push(Arc::new(RwLock::new(type_alias)));
+                                        symbols.push(Rc::new(RefCell::new(type_alias)));
                                     }
                                 }
                             }
@@ -869,7 +869,7 @@ impl RustParser {
                             type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
                             type_alias.ast_fields.guid = get_guid();
                             type_alias.ast_fields.is_error = is_error;
-                            symbols.push(Arc::new(RwLock::new(type_alias)));
+                            symbols.push(Rc::new(RefCell::new(type_alias)));
                         }
                         "scoped_identifier" => {
                             let mut def = ImportDeclaration::default();
@@ -886,7 +886,7 @@ impl RustParser {
                                     def.import_type = ImportType::UserModule;
                                 }
                             }
-                            symbols.push(Arc::new(RwLock::new(def)));
+                            symbols.push(Rc::new(RefCell::new(def)));
                         }
                         &_ => {}
                     }
@@ -901,7 +901,7 @@ impl RustParser {
                 type_alias.ast_fields.parent_guid = Some(parent_guid.clone());
                 type_alias.ast_fields.guid = get_guid();
                 type_alias.ast_fields.is_error = is_error;
-                symbols.push(Arc::new(RwLock::new(type_alias)));
+                symbols.push(Rc::new(RefCell::new(type_alias)));
             }
             _ => {}
         }
@@ -933,7 +933,7 @@ impl RustParser {
                     if let Some(dtype) = RustParser::parse_type(&type_node, code) {
                         type_alias.types.push(dtype);
                     }
-                    symbols.push(Arc::new(RwLock::new(type_alias)));
+                    symbols.push(Rc::new(RefCell::new(type_alias)));
                 }
                 "block" => {
                     let v = self.parse_block(&child, code, path, parent_guid, is_error);
@@ -971,7 +971,7 @@ impl RustParser {
                     def.ast_fields.guid = get_guid();
                     def.ast_fields.parent_guid = Some(parent_guid.clone());
                     def.ast_fields.is_error = is_error;
-                    symbols.push(Arc::new(RwLock::new(def)));
+                    symbols.push(Rc::new(RefCell::new(def)));
                 }
 
                 &_ => {
