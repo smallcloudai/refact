@@ -685,6 +685,8 @@ impl TSParser {
                             match child.kind() {
                                 "identifier" => {
                                     let mut def_local = def.clone();
+                                    def_local.ast_fields.guid = get_guid();
+                                    def_local.ast_fields.name = code.slice(child.byte_range()).to_string();
                                     def_local.path_components.push(code.slice(child.byte_range()).to_string());
                                     imports.push(def_local);
                                 }
@@ -693,6 +695,8 @@ impl TSParser {
                                         let identifier = child.child(i).unwrap();
                                         if identifier.kind() == "identifier" {
                                             let mut def_local = def.clone();
+                                            def_local.ast_fields.guid = get_guid();
+                                            def_local.ast_fields.name = code.slice(identifier.byte_range()).to_string();
                                             def_local.alias = Some(code.slice(identifier.byte_range()).to_string());
                                             imports.push(def_local);
                                             break;
@@ -704,7 +708,9 @@ impl TSParser {
                                         let import_specifier = child.child(i).unwrap();
                                         if import_specifier.kind() == "import_specifier" {
                                             let mut def_local = def.clone();
+                                            def_local.ast_fields.guid = get_guid();
                                             if let Some(name) = import_specifier.child_by_field_name("name") {
+                                                def_local.ast_fields.name = code.slice(name.byte_range()).to_string();
                                                 def_local.path_components.push(code.slice(name.byte_range()).to_string());
                                             }
                                             if let Some(alias) = import_specifier.child_by_field_name("alias") {

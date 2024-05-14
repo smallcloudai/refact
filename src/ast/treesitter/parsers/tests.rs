@@ -180,8 +180,8 @@ pub(crate) fn base_test(parser: &mut Box<dyn AstLanguageParser>,
                         path: &PathBuf,
                         code: &str, symbols_str: &str) {
     let symbols = parser.parse(code, &path);
-    // let symbols_str = serde_json::to_string_pretty(&symbols).unwrap();
-    // fs::write("output.json", symbols_str).expect("Unable to write file");
+    // let symbols_str_ = serde_json::to_string_pretty(&symbols).unwrap();
+    // fs::write("output.json", symbols_str_).expect("Unable to write file");
     check_duplicates(&symbols);
     print(&symbols, code);
     let ref_symbols: Vec<Box<dyn AstSymbolInstance>> = serde_json::from_str(&symbols_str).unwrap();
