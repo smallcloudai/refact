@@ -42,6 +42,7 @@ pub struct CodeAssistantCaps {
     pub endpoint_chat_passthrough: String,
     pub tokenizer_path_template: String,
     pub tokenizer_rewrite_path: HashMap<String, String>,
+    #[serde(default)]
     pub telemetry_basic_dest: String,
     #[serde(default)]
     pub telemetry_basic_retrieve_my_own: String,
@@ -113,7 +114,6 @@ pub async fn load_caps(
         headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
         headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(format!("refact-lsp {}", crate::version::build_info::PKG_VERSION).as_str()).unwrap());
     }
-    let mut r1_mb: Option<CodeAssistantCaps> = None;
     let mut r1_mb_error_text = "".to_string();
 
     if is_remote_address {
@@ -128,23 +128,22 @@ pub async fn load_caps(
             };
 
             if status != 200 {
+                warn!("status={}; server responded with:\n{}", status, buffer);
                 continue;
-            }
-            r1_mb = match serde_json::from_str(&buffer) {
-                Ok(v) => v,
-                Err(e) => {
-                    r1_mb_error_text = format!("{}: {}", url, e);
-                    continue;
-                }
-            };
-            if r1_mb.is_some() {
-                break
             }
         }
         if status != 200 {
-            r1_mb_error_text = format!("status={}; server responded with: {}", status, buffer);
+            return Err(format!("cannot fetch caps, status={}", status));
         }
     }
+
+    let r1_mb: Option<CodeAssistantCaps> = match serde_json::from_str(&buffer) {
+        Ok(v) => v,
+        Err(e) => {
+            r1_mb_error_text = format!("{}", e);
+            None
+        }
+    };
     let mut r1 = r1_mb.ok_or(format!("failed to parse caps: {}", r1_mb_error_text))?;
 
     let r0: ModelsOnly = serde_json::from_str(&KNOWN_MODELS).map_err(|e| {
