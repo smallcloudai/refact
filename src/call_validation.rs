@@ -203,6 +203,7 @@ pub struct ContextFile {
     pub gradient_type: i32,
     #[serde(default)]
     pub usefulness: f32,  // higher is better
+    pub is_body_important: bool
 }
 
 fn default_gradient_type_value() -> i32 {

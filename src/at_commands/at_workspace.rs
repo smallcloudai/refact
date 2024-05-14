@@ -33,6 +33,7 @@ fn results2message(results: &Vec<Record>) -> Vec<ContextFile> {
             symbol: Uuid::default(),
             gradient_type: -1,
             usefulness: r.usefulness,
+            is_body_important: false
         });
     }
     vector_of_context_file

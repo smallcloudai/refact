@@ -303,6 +303,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                     symbol: Uuid::default(),
                     gradient_type: -1,
                     usefulness: -1.0,
+                    is_body_important: false
                 };
                 ast_messages.push(fim_ban);
             }

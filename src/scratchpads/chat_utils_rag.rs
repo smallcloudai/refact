@@ -246,6 +246,7 @@ pub async fn context_msgs_from_paths(
             symbol: Uuid::default(),
             gradient_type: -1,
             usefulness: 0.,
+            is_body_important: false
         });
     }
     messages
@@ -415,18 +416,20 @@ pub async fn postprocess_rag_stage_3_6(
                 warn!("- cannot find symbol {} in file {}:{}-{}", omsg.symbol, omsg.file_name, omsg.line1, omsg.line2);
             }
         }
-        if let Some(s) = maybe_symbol {
-            if DEBUG >= 1 {
-                info!("+ search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, omsg.usefulness);
-            }
-            colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness);
-            let mut parent_path = s.symbol_path.split("::").collect::<Vec<&str>>();
-            if parent_path.len() > 1 {
-                // MyClass::f  ->  MyClass
-                // make parent stand out from background as well, to make it more clear to the model where the symbol is
-                parent_path.pop();
-                let parent_path_str = parent_path.join("::");
-                colorize_parentof(linevec, &parent_path_str, settings.useful_symbol_default, omsg.usefulness*settings.degrade_parent_coef);
+        if !omsg.is_body_important && maybe_symbol.is_some() {
+            if let Some(s) = maybe_symbol {
+                if DEBUG >= 1 {
+                    info!("+ search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, omsg.usefulness);
+                }
+                colorize_if_more_useful(linevec, s.full_range.start_point.row, s.full_range.end_point.row+1, &format!("{}", s.symbol_path), omsg.usefulness);
+                let mut parent_path = s.symbol_path.split("::").collect::<Vec<&str>>();
+                if parent_path.len() > 1 {
+                    // MyClass::f  ->  MyClass
+                    // make parent stand out from background as well, to make it more clear to the model where the symbol is
+                    parent_path.pop();
+                    let parent_path_str = parent_path.join("::");
+                    colorize_parentof(linevec, &parent_path_str, settings.useful_symbol_default, omsg.usefulness*settings.degrade_parent_coef);
+                }
             }
         } else {
             // no symbol set in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
@@ -621,6 +624,7 @@ pub async fn postprocess_rag_stage_7_9(
             symbol: Uuid::default(),
             gradient_type: -1,
             usefulness: 0.0,
+            is_body_important: false
         });
     }
     merged

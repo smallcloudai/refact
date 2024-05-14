@@ -85,6 +85,7 @@ impl AstBasedFileSplitter {
                     symbol: symbol.guid.clone(),
                     gradient_type: -1,
                     usefulness: 100.0,
+                    is_body_important: false
                 }];
                 let single_file_mode = true;
 

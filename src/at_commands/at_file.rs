@@ -207,6 +207,7 @@ impl AtCommand for AtFile {
             symbol: Uuid::default(),
             gradient_type,
             usefulness: 100.0,
+            is_body_important: false
         };
         Ok((vec![context_file], "".to_string()))
     }
