@@ -202,10 +202,17 @@ async fn ast_indexer_thread(
                 }
             }
 
+            let is_ast_full = ast_index.read().await.is_overflowed();
             if !docs_with_text.is_empty() {
                 let symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = docs_with_text
                     .par_iter()
-                    .map(move |doc| AstIndex::parse(&doc))
+                    .map(move |doc| {
+                        if !is_ast_full {
+                            AstIndex::parse(&doc)
+                        } else {
+                            Ok(vec![])
+                        }
+                    })
                     .collect();
 
                 for (doc, res) in zip(docs_with_text, symbols) {

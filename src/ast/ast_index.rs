@@ -110,6 +110,15 @@ impl AstIndex {
         symbols: Vec<AstSymbolInstanceArc>,
         make_dirty: bool,
     ) -> Result<(), String> {
+        if self.is_overflowed() {
+            info!(
+                "Too many files in the ast index ({} >= {}), skipping the {}",
+                self.path_by_symbols.len(),
+                self.ast_index_max_files,
+                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30)
+            );
+            return Err("ast index too many files".to_string());
+        }
         let mut symbols_cloned = symbols
             .iter()
             .map(|sym| {
@@ -149,16 +158,6 @@ impl AstIndex {
     }
 
     pub fn add_or_update(&mut self, doc: &Document, make_dirty: bool) -> Result<usize, String> {
-        if self.path_by_symbols.len() >= self.ast_index_max_files {
-            info!(
-                "Too many files in the ast index ({} >= {}), skipping the {}",
-                self.path_by_symbols.len(),
-                self.ast_index_max_files,
-                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30)
-            );
-            return Err("ast index too many files".to_string());
-        }
-
         let symbols = AstIndex::parse(doc)?;
         let symbols_len = symbols.len();
         match self.add_or_update_symbols_index(doc, symbols, make_dirty) {
@@ -885,6 +884,10 @@ impl AstIndex {
 
     pub(crate) fn total_symbols(&self) -> usize {
         self.symbols_by_guid.len()
+    }
+
+    pub(crate) fn is_overflowed(&self) -> bool {
+        self.path_by_symbols.len() >= self.ast_index_max_files
     }
     
     fn resolve_declaration_symbols(&self, symbols: &mut Vec<AstSymbolInstanceRc>) -> IndexingStats {
