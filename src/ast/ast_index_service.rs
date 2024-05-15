@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::iter::zip;
 use std::path::PathBuf;
 use std::sync::{Arc, Weak};
 use std::time::{Duration, SystemTime};
+use rayon::prelude::*;
 
 use tokio::sync::{Mutex as AMutex, Notify};
 use tokio::sync::RwLock as ARwLock;
@@ -10,6 +12,7 @@ use tracing::info;
 
 use crate::ast::ast_index::AstIndex;
 use crate::ast::ast_module::AstIndexStatus;
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
@@ -98,6 +101,21 @@ async fn cooldown_queue_thread(
     }
 }
 
+fn pop_back_n<T>(data: &mut VecDeque<T>, n: usize) -> Vec<T> {
+    let mut output = Vec::with_capacity(n);
+    for _ in 0..n {
+        match data.pop_back() {
+            Some(item) => {
+                output.push(item)
+            }
+            None => {
+                break;
+            }
+        }
+    }
+    output
+}
+
 
 async fn ast_indexer_thread(
     gcx_weak: Weak<ARwLock<GlobalContext>>,
@@ -147,13 +165,20 @@ async fn ast_indexer_thread(
         let files_total = events.iter().map(|e| e.docs.len()).sum();
         let mut unparsed_suffixes = HashMap::new();
         while !events.is_empty() {
-            let event = match events.pop_back() {
-                Some(event) => event,
-                None => {
-                    break;
-                }
+            let processing_events = pop_back_n(&mut events, 8);
+            if processing_events.is_empty() {
+                break;
             };
             let left_docs_count: usize = events.iter().map(|e| e.docs.len()).sum();
+            {
+                let mut locked_status = status.lock().await;
+                locked_status.files_unparsed = left_docs_count;
+                locked_status.files_total = files_total;
+                let ast_ref = ast_index.read().await;
+                locked_status.ast_index_files_total = ast_ref.total_files();
+                locked_status.ast_index_symbols_total = ast_ref.total_symbols();
+                locked_status.state = "parsing".to_string();
+            }
             let gcx = match gcx_weak.upgrade() {
                 Some(x) => x,
                 None => {
@@ -162,7 +187,7 @@ async fn ast_indexer_thread(
                 }
             };
             let mut docs_with_text: Vec<Document> = Vec::new();
-            for doc in event.docs.iter() {
+            for doc in processing_events.iter().flat_map(|x| x.docs.iter()) {
                 match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.path).await {
                     Ok(file_text) => {
                         stats_parsed_cnt += 1;
@@ -177,32 +202,39 @@ async fn ast_indexer_thread(
                 }
             }
 
-            match event.typ {
-                AstEventType::Add => {
-                    for (idx, doc) in docs_with_text.iter().enumerate() {
-                        {
-                            let mut locked_status = status.lock().await;
-                            locked_status.files_unparsed = left_docs_count + docs_with_text.len() - idx + 1;
-                            locked_status.files_total = files_total;
-                            let ast_ref = ast_index.read().await;
-                            locked_status.ast_index_files_total = ast_ref.total_files();
-                            locked_status.ast_index_symbols_total = ast_ref.total_symbols();
-                            locked_status.state = "parsing".to_string();
+            if !docs_with_text.is_empty() {
+                let symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = docs_with_text
+                    .par_iter()
+                    .map(move |doc| AstIndex::parse(&doc))
+                    .collect();
+
+                for (doc, res) in zip(docs_with_text, symbols) {
+                    match res {
+                        Ok(symbols) => {
+                            stats_symbols_cnt += symbols.len();
+                            match ast_index.write().await.add_or_update_symbols_index(&doc, symbols, true) {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    *unparsed_suffixes.entry(e).or_insert(0) += 1;
+                                }
+                            }
                         }
-                        match ast_index.write().await.add_or_update(&doc, true) {
-                            Ok(len) => {
-                                stats_symbols_cnt += len;
-                            }
-                            Err(e) => {
-                                *unparsed_suffixes.entry(e).or_insert(0) += 1;
-                            }
+                        Err(e) => {
+                            *unparsed_suffixes.entry(e).or_insert(0) += 1;
                         }
                     }
                 }
-                AstEventType::AstReset => {
-                    info!("Reset AST Index");
-                    ast_index.write().await.clear_index();
-                    hold_on_after_reset = true;
+            }
+            for event in processing_events
+                .iter()
+                .filter(|x| x.typ != AstEventType::Add) {
+                match event.typ {
+                    AstEventType::AstReset => {
+                        info!("Reset AST Index");
+                        ast_index.write().await.clear_index();
+                        hold_on_after_reset = true;
+                    }
+                    _ => {}
                 }
             }
         }

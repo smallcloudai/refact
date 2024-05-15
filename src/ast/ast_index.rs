@@ -5,7 +5,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use arrow_array::Array;
 use itertools::Itertools;
 use rand::Rng;
 use rayon::prelude::*;
@@ -18,7 +17,7 @@ use uuid::Uuid;
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::imports_resolver::{possible_filepath_candidates, top_n_prefixes, try_find_file_path};
 use crate::ast::structs::FileASTMarkup;
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceRc, ImportDeclaration, ImportType, read_symbol, SymbolInformation};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, AstSymbolInstanceRc, ImportDeclaration, ImportType, read_symbol, SymbolInformation};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
@@ -75,7 +74,7 @@ impl AstIndex {
     }
 
 
-    fn parse(doc: &Document) -> Result<Vec<AstSymbolInstanceRc>, String> {
+    pub fn parse(doc: &Document) -> Result<Vec<AstSymbolInstanceArc>, String> {
         let mut parser = match get_ast_parser_by_filename(&doc.path) {
             Ok(parser) => parser,
             Err(err) => {
@@ -84,11 +83,7 @@ impl AstIndex {
         };
         let text = doc.text.clone().unwrap().to_string();
         let t_ = std::time::Instant::now();
-        let symbol_instances = parser.parse(&text, &doc.path).iter()
-            .map(|sym| {
-                let mut write_lock = sym.write();
-                Rc::new(RefCell::new(std::mem::replace(&mut *write_lock, Box::new(ImportDeclaration::default()))))
-            }).collect::<Vec<_>>();
+        let symbol_instances = parser.parse(&text, &doc.path);
         let t_elapsed = t_.elapsed();
         if symbol_instances.len() > TOO_MANY_SYMBOLS_IN_FILE {
             info!(
@@ -109,13 +104,18 @@ impl AstIndex {
         Ok(symbol_instances)
     }
 
-    fn add_or_update_symbols_index(
+    pub fn add_or_update_symbols_index(
         &mut self,
         doc: &Document,
-        symbols: Vec<AstSymbolInstanceRc>,
+        symbols: Vec<AstSymbolInstanceArc>,
         make_dirty: bool,
     ) -> Result<(), String> {
-        let mut symbols_cloned = symbols.clone();
+        let mut symbols_cloned = symbols
+            .iter()
+            .map(|sym| {
+                let mut write_lock = sym.write();
+                Rc::new(RefCell::new(std::mem::replace(&mut *write_lock, Box::new(ImportDeclaration::default()))))
+            }).collect::<Vec<_>>();
         let has_changes_before = self.has_changes;
         let has_removed = self.remove(&doc);
         if has_removed {
@@ -126,7 +126,7 @@ impl AstIndex {
             self.import_components_succ_solution_index.extend(import_components_succ_solution_index);
             self.merge_usages_to_declarations(&mut symbols_cloned);
             self.create_extra_indexes(&mut symbols_cloned);
-            self.has_changes = has_changes_before || make_dirty;
+            self.has_changes = has_changes_before;
         } else {
             // TODO: we don't want to update the whole index for a single file
             // even if we might miss some new cross-references
@@ -1260,7 +1260,13 @@ impl AstIndex {
         // This function runs to find symbols near cursor
         let mut doc = doc.clone();
         doc.update_text(&code.to_string());
-        let mut symbols = AstIndex::parse(&doc).unwrap_or_default();
+        let mut symbols = AstIndex::parse(&doc)
+            .unwrap_or_default()
+            .iter()
+            .map(|sym| {
+                let mut write_lock = sym.write();
+                Rc::new(RefCell::new(std::mem::replace(&mut *write_lock, Box::new(ImportDeclaration::default()))))
+            }).collect::<Vec<_>>();
         self.resolve_declaration_symbols(&mut symbols);
         _ = self.resolve_imports(&mut symbols, &self.import_components_succ_solution_index);
         self.merge_usages_to_declarations(&mut symbols);
