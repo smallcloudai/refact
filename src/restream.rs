@@ -26,6 +26,7 @@ pub async fn scratchpad_interaction_not_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: &SamplingParameters,
+    tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<Response<Body>, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage, slowdown_arc) = {
@@ -56,6 +57,7 @@ pub async fn scratchpad_interaction_not_stream(
             &endpoint_template,
             &endpoint_chat_passthrough,
             &parameters,
+            tools_mb,
         ).await
     }.map_err(|e| {
         tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
@@ -85,15 +87,28 @@ pub async fn scratchpad_interaction_not_stream(
         scratchpad_result = scratchpad.response_n_choices(choices, stopped);
 
     } else if let Some(oai_choices) = model_says.get("choices") {
-        let choices = oai_choices.as_array().unwrap().iter()
-            .map(|x| {
-                x.get("text").unwrap().as_str().unwrap().to_string()
-            }).collect::<Vec<_>>();
-        let stopped = oai_choices.as_array().unwrap().iter()
-            .map(|x| {
-                x.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap().to_string().starts_with("stop")
-            }).collect::<Vec<_>>();
-        scratchpad_result = scratchpad.response_n_choices(choices, stopped);
+        info!("oai_choices: {:?}", oai_choices);
+        let choice0 = oai_choices.as_array().unwrap().get(0).unwrap();
+        if let Some(_msg) = choice0.get("message") {
+            // new style openai response
+            // Array [Object {"finish_reason": String("stop"), "index": Number(0), "logprobs": Null, "message": Object {"content": String("Hello! How can I assist you today?"), "role": String("assistant")}}]
+            // Choice(finish_reason='tool_calls', index=0, logprobs=None, message=ChatCompletionMessage(content=None, role='assistant', function_call=None, tool_calls=[ChatCompletionMessageToolCall(id='call_ROtitDL5RdLqxLmcyFYRS8H1', function=Function(arguments='{"symbol":"frog.Frog"}', name='definition'), type='function')]))
+            scratchpad_result = Ok(model_says.clone());
+        } else {
+            // TODO: restore order using 'index'
+            // for oai_choice in oai_choices.as_array().unwrap() {
+            //     let index = oai_choice.get("index").unwrap().as_u64().unwrap() as usize;
+            // }
+            let choices = oai_choices.as_array().unwrap().iter()
+                .map(|x| {
+                    x.get("text").unwrap().as_str().unwrap().to_string()
+                }).collect::<Vec<_>>();
+            let stopped = oai_choices.as_array().unwrap().iter()
+                .map(|x| {
+                    x.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap().to_string().starts_with("stop")
+                }).collect::<Vec<_>>();
+                scratchpad_result = scratchpad.response_n_choices(choices, stopped);
+        }
 
     } else if let Some(err) = model_says.get("error") {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
@@ -116,14 +131,13 @@ pub async fn scratchpad_interaction_not_stream(
         );
     }
 
-    if let Err(scratchpad_result_str) = scratchpad_result {
+    if let Err(problem) = scratchpad_result {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
-            format!("scratchpad: {}", scratchpad_result_str))
+            format!("scratchpad: {}", problem))
         );
     }
     let mut scratchpad_response_json = scratchpad_result.unwrap();
     scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
-
     let txt = serde_json::to_string_pretty(&scratchpad_response_json).unwrap();
     // info!("handle_v1_code_completion return {}", txt);
     let response = Response::builder()
@@ -142,6 +156,7 @@ pub async fn scratchpad_interaction_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: SamplingParameters,
+    tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<Response<Body>, ScratchError> {
     let t1 = std::time::SystemTime::now();
     let evstream = stream! {
@@ -155,7 +170,7 @@ pub async fn scratchpad_interaction_stream(
         let mut save_url: String = String::new();
         let _ = slowdown_arc.acquire().await;
         loop {
-            {
+            if scratch.response_style().unwrap_or_default() != "openai".to_string() {
                 let value_maybe = scratch.response_spontaneous();
                 if let Ok(value) = value_maybe {
                     for el in value {
@@ -191,6 +206,7 @@ pub async fn scratchpad_interaction_stream(
                     &endpoint_template,
                     &endpoint_chat_passthrough,
                     &parameters,
+                    tools_mb,
                 ).await
             };
             let mut event_source = match event_source_maybe {
@@ -292,8 +308,10 @@ pub async fn scratchpad_interaction_stream(
             }
             break;
         }
-        info!("yield: [DONE]");
-        yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
+        if scratch.response_style().unwrap_or_default() != "openai".to_string() {
+            info!("yield: [DONE]");
+            yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
+        }
         tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
             save_url.clone(),
             scope.clone(),
@@ -329,7 +347,12 @@ fn _push_streaming_json_into_scratchpad(
         let finish_reason = choice0.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
         let stop_toks = !finish_reason.is_empty() && finish_reason.starts_with("stop");
         let stop_length = !finish_reason.is_empty() && !finish_reason.starts_with("stop");
-        if let Some(delta) = choice0.get("delta") {
+        info!("choice0: {:?}", choice0);
+        if let Some(tool_calls) = choice0.get("message").and_then(|x| x.get("tool_calls")) {
+            value = json!({"tool_calls": tool_calls.clone()});
+            *finished = true;
+        }
+        else if let Some(delta) = choice0.get("delta") {
             // passthrough messages case
             let _role = delta.get("role").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
             let content = delta.get("content").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();

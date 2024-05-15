@@ -15,7 +15,7 @@ use crate::http::routers::v1::ast::{handle_v1_ast_clear_index, handle_v1_ast_fil
 use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
-use crate::http::routers::v1::chat::handle_v1_chat;
+use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions};
 use crate::http::routers::v1::code_completion::{handle_v1_code_completion_web, handle_v1_code_completion_prompt};
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
@@ -46,6 +46,7 @@ pub fn make_v1_router() -> Router {
 
         .route("/code-completion", telemetry_post!(handle_v1_code_completion_web))
         .route("/chat", telemetry_post!(handle_v1_chat))
+        .route("/chat/completions", telemetry_post!(handle_v1_chat_completions))  // standard
         .route("/telemetry-network", telemetry_post!(handle_v1_telemetry_network))
         .route("/snippet-accepted", telemetry_post!(handle_v1_snippet_accepted))
 

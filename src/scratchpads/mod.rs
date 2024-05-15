@@ -57,6 +57,7 @@ pub async fn create_chat_scratchpad(
     post: ChatPost,
     scratchpad_name: &str,
     scratchpad_patch: &serde_json::Value,
+    response_style: Option<String>,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
     if scratchpad_name == "CHAT-GENERIC" {
@@ -67,7 +68,7 @@ pub async fn create_chat_scratchpad(
         result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post, global_context.clone()));
     } else if scratchpad_name == "PASSTHROUGH" {
         let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
-        result = Box::new(chat_passthrough::ChatPassthrough::new(tokenizer_arc, post, global_context.clone()));
+        result = Box::new(chat_passthrough::ChatPassthrough::new(tokenizer_arc, post, global_context.clone(), response_style));
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }

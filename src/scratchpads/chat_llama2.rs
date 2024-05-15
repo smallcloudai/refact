@@ -14,7 +14,7 @@ use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_generic::default_system_message_from_patch;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
-use crate::scratchpads::chat_utils_rag::{run_at_commands, HasVecdbResults};
+use crate::scratchpads::chat_utils_rag::{run_at_commands, HasRagResults};
 
 const DEBUG: bool = true;
 
@@ -27,7 +27,7 @@ pub struct ChatLlama2 {
     pub keyword_s: String, // "SYSTEM:" keyword means it's not one token
     pub keyword_slash_s: String,
     pub default_system_message: String,
-    pub has_vecdb_results: HasVecdbResults,
+    pub has_rag_results: HasRagResults,
     pub global_context: Arc<ARwLock<GlobalContext>>,
 }
 
@@ -45,7 +45,7 @@ impl ChatLlama2 {
             keyword_s: "<s>".to_string(),
             keyword_slash_s: "</s>".to_string(),
             default_system_message: "".to_string(),
-            has_vecdb_results: HasVecdbResults::new(),
+            has_rag_results: HasRagResults::new(),
             global_context,
         }
     }
@@ -75,7 +75,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         let top_n = 10;
-        let last_user_msg_starts = run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_vecdb_results).await;
+        let last_user_msg_starts = run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_rag_results).await;
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
         // loosely adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
@@ -141,7 +141,7 @@ impl ScratchpadAbstract for ChatLlama2 {
     }
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
-        return self.has_vecdb_results.response_streaming();
+        return self.has_rag_results.response_streaming();
     }
 }
 

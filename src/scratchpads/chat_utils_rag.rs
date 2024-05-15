@@ -640,6 +640,19 @@ pub fn count_tokens(
     }
 }
 
+async fn embed_tool_calls_in_msg(msg: &mut ChatMessage) -> Result<(), String>{
+    if let Some(ref tool_calls) = msg.tool_calls {
+        let mut cmds = "".to_string();
+        for call in tool_calls {
+            let args: HashMap<String, String> = serde_json::from_str(&call.function.arguments).map_err(|e| format!("couldn't parse args: {:?}", e))?;
+            let args_values_str = args.iter().map(|(_, v)|v.clone()).collect::<Vec<_>>().join(" ");
+            cmds += &format!("@{} {}\n", call.function.name, args_values_str);
+        }
+        msg.content = format!("{}\n{}", cmds, msg.content);
+    }
+    Ok(())
+}
+
 pub async fn run_at_commands(
     global_context: Arc<ARwLock<GlobalContext>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
@@ -647,7 +660,7 @@ pub async fn run_at_commands(
     n_ctx: usize,
     post: &mut ChatPost,
     top_n: usize,
-    stream_back_to_user: &mut HasVecdbResults,
+    stream_back_to_user: &mut HasRagResults,
 ) -> usize {
     // TODO: don't operate on `post`, return a copy of the messages
     let context = AtCommandsContext::new(global_context.clone()).await;
@@ -678,6 +691,11 @@ pub async fn run_at_commands(
 
     let mut rebuilt_messages: Vec<ChatMessage> = post.messages.iter().take(user_msg_starts).map(|m| m.clone()).collect();
     for msg_idx in user_msg_starts..post.messages.len() {
+
+        embed_tool_calls_in_msg(&mut post.messages[msg_idx]).await.unwrap_or_else(|e| {
+            warn!("couldn't embed tool calls in message {:?}: {}", msg_idx, e);
+        });
+        
         let mut user_posted = post.messages[msg_idx].content.clone();
         let user_posted_ntokens = count_tokens(&tokenizer.read().unwrap(), &user_posted);
         let mut context_limit = reserve_for_context / user_messages_with_at;
@@ -694,7 +712,7 @@ pub async fn run_at_commands(
         );
 
         let (messages_for_postprocessing, _) = execute_at_commands_in_query(&mut user_posted, &context, true, top_n).await;
-        
+
         let t0 = std::time::Instant::now();
         let processed = postprocess_at_results2(
             global_context.clone(),
@@ -705,18 +723,13 @@ pub async fn run_at_commands(
         ).await;
         info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
         if processed.len() > 0 {
-            let message = ChatMessage {
-                role: "context_file".to_string(),
-                content: serde_json::to_string(&processed).unwrap(),
-            };
+            let message = ChatMessage::new("context_file".to_string(), serde_json::to_string(&processed).unwrap());
             rebuilt_messages.push(message.clone());
             stream_back_to_user.push_in_json(json!(message));
         }
         if user_posted.trim().len() > 0 {
-            let msg = ChatMessage {
-                role: "user".to_string(),
-                content: user_posted,  // stream back to the user, without commands
-            };
+            // stream back to the user, without command
+            let msg = ChatMessage::new("user".to_string(), user_posted);
             rebuilt_messages.push(msg.clone());
             stream_back_to_user.push_in_json(json!(msg));
         }
@@ -726,21 +739,21 @@ pub async fn run_at_commands(
 }
 
 
-pub struct HasVecdbResults {
+pub struct HasRagResults {
     pub was_sent: bool,
     pub in_json: Vec<Value>,
 }
 
-impl HasVecdbResults {
+impl HasRagResults {
     pub fn new() -> Self {
-        HasVecdbResults {
+        HasRagResults {
             was_sent: false,
             in_json: vec![],
         }
     }
 }
 
-impl HasVecdbResults {
+impl HasRagResults {
     pub fn push_in_json(&mut self, value: Value) {
         self.in_json.push(value);
     }

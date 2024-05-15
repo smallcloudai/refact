@@ -211,9 +211,33 @@ fn default_gradient_type_value() -> i32 {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ToolFunctionChat {
+    pub arguments: String,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ToolCallChat {
+    pub id: String,
+    pub function: ToolFunctionChat,
+    #[serde(rename = "type")]
+    pub tool_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
+    #[serde(default)]
+    pub tool_calls: Option<Vec<ToolCallChat>>,
+    #[serde(default)]
+    pub tool_call_id: String,
+}
+
+impl ChatMessage {
+    pub fn new(role: String, content: String) -> Self {
+        ChatMessage { role, content, tool_calls: None, tool_call_id: "".to_string() }
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -226,4 +250,7 @@ pub struct ChatPost {
     #[serde(default)]
     pub scratchpad: String,
     pub stream: Option<bool>,
+    pub temperature: Option<f32>,
+    #[serde(default)]
+    pub tool_use: bool,
 }

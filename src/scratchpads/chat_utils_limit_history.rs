@@ -52,10 +52,7 @@ pub fn limit_messages_history(
     }
     let mut messages_out: Vec<ChatMessage> = messages.iter().enumerate().filter(|(i, _)| message_take[*i]).map(|(_, x)| x.clone()).collect();
     if need_default_system_msg {
-        messages_out.insert(0, ChatMessage {
-            role: "system".to_string(),
-            content: default_system_message.clone(),
-        });
+        messages_out.insert(0, ChatMessage::new("system".to_string(), default_system_message.clone()));
     }
     Ok(messages_out)
 }

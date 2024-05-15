@@ -8,3 +8,4 @@ pub mod at_workspace;
 pub mod at_params;
 pub mod query;
 pub mod execute;
+pub mod at_commands_dict;

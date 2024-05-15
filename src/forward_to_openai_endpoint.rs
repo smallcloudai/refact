@@ -22,6 +22,7 @@ pub async fn forward_to_openai_style_endpoint(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
+    tools_mb: Option<Vec<serde_json::Value>>
 ) -> Result<serde_json::Value, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
@@ -31,18 +32,22 @@ pub async fn forward_to_openai_style_endpoint(
     if !bearer.is_empty() {
         headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
     }
+    info!("TEMP {}", sampling_parameters.temperature.unwrap());
     let mut data = json!({
         "model": model_name,
-        "echo": false,
         "stream": false,
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
         "stop": sampling_parameters.stop,
     });
+    if let Some(tools) = tools_mb {
+        data["tools"] = serde_json::Value::Array(tools);
+    }
     if is_passthrough {
-        _passthrough_messages_to_json(&mut data, prompt);
+        passthrough_messages_to_json(&mut data, prompt);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
+        data["echo"] = serde_json::Value::Bool(false);
     }
     // When cancelling requests, coroutine ususally gets aborted here on the following line.
     let req = client.post(&url)
@@ -75,6 +80,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
+    tools_mb: Option<Vec<serde_json::Value>>
 ) -> Result<EventSource, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
@@ -90,8 +96,12 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
     });
+    if let Some(tools) = tools_mb {
+        info!("I have tools! {:?}", tools);
+        data["tools"] = serde_json::Value::Array(tools);
+    }
     if is_passthrough {
-        _passthrough_messages_to_json(&mut data, prompt);
+        passthrough_messages_to_json(&mut data, prompt);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
     }
@@ -104,7 +114,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     Ok(event_source)
 }
 
-fn _passthrough_messages_to_json(
+fn passthrough_messages_to_json(
     data: &mut serde_json::Value,
     prompt: &str,
 ) {
@@ -113,7 +123,6 @@ fn _passthrough_messages_to_json(
     let messages: Vec<call_validation::ChatMessage> = serde_json::from_str(&messages_str).unwrap();
     data["messages"] = serde_json::json!(messages);
 }
-
 
 #[derive(Serialize)]
 struct EmbeddingsPayloadOpenAI {

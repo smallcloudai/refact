@@ -132,10 +132,7 @@ pub async fn handle_v1_command_preview(
     ).await;
     let mut preview: Vec<ChatMessage> = vec![];
     if processed.len() > 0 {
-        let message = ChatMessage {
-            role: "context_file".to_string(),
-            content: serde_json::to_string(&processed).unwrap(),
-        };
+        let message = ChatMessage::new("context_file".to_string(), serde_json::to_string(&processed).unwrap());
         preview.push(message.clone());
     }
     let mut highlights = vec![];
