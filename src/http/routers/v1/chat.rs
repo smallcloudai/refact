@@ -5,6 +5,7 @@ use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde_json::Value;
+use tracing::info;
 use crate::at_commands::at_commands_dict::at_commands_dicts;
 
 use crate::call_validation::ChatPost;
@@ -34,23 +35,25 @@ async fn _lookup_chat_scratchpad(
 }
 
 pub async fn handle_v1_chat_completions(
+    // standard openai-style handler
     Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    chat(global_context, body_bytes, Some("openai".to_string())).await
+    chat(global_context, body_bytes, false).await
 }
 
 pub async fn handle_v1_chat(
+    // less-standard openai-style handler that sends role="context_*" messages first, rewrites the user message
     Extension(global_context): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    chat(global_context, body_bytes, None).await
+    chat(global_context, body_bytes, true).await
 }
 
 async fn chat(
     global_context: SharedGlobalContext,
     body_bytes: hyper::body::Bytes,
-    response_style: Option<String>,
+    allow_at: bool,
 ) -> Result<Response<Body>, ScratchError> {
     let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
@@ -78,7 +81,7 @@ async fn chat(
         chat_post.clone(),
         &scratchpad_name,
         &scratchpad_patch,
-        response_style,
+        allow_at,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
@@ -94,9 +97,8 @@ async fn chat(
     } else {
         None
     };
-    // info!("tools {:?}", tools_mb);
     // info!("chat prompt {:?}\n{}", t1.elapsed(), prompt);
-    // info!("chat prompt {:?}", t1.elapsed());
+    info!("chat prompt {:?}", t1.elapsed());
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {
         crate::restream::scratchpad_interaction_not_stream(
             global_context.clone(),
@@ -119,7 +121,6 @@ async fn chat(
             client1,
             api_key,
             chat_post.parameters.clone(),
-            tools_mb,
         ).await
     }
 }

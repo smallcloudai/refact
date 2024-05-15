@@ -1,4 +1,3 @@
-use std::fmt::format;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use serde::{Serialize, Deserialize};

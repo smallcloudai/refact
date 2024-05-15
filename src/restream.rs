@@ -170,20 +170,18 @@ pub async fn scratchpad_interaction_stream(
         let mut save_url: String = String::new();
         let _ = slowdown_arc.acquire().await;
         loop {
-            if scratch.response_style().unwrap_or_default() != "openai".to_string() {
-                let value_maybe = scratch.response_spontaneous();
-                if let Ok(value) = value_maybe {
-                    for el in value {
-                        let value_str = format!("data: {}\n\n", serde_json::to_string(&el).unwrap());
-                        info!("yield: {:?}", nicer_logs::first_n_chars(&value_str, 40));
-                        yield Result::<_, String>::Ok(value_str);
-                    }
-                } else {
-                    let err_str = value_maybe.unwrap_err();
-                    error!("response_spontaneous error: {}", err_str);
-                    let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
+            let value_maybe = scratch.response_spontaneous();
+            if let Ok(value) = value_maybe {
+                for el in value {
+                    let value_str = format!("data: {}\n\n", serde_json::to_string(&el).unwrap());
+                    info!("yield: {:?}", nicer_logs::first_n_chars(&value_str, 40));
                     yield Result::<_, String>::Ok(value_str);
                 }
+            } else {
+                let err_str = value_maybe.unwrap_err();
+                error!("response_spontaneous error: {}", err_str);
+                let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
+                yield Result::<_, String>::Ok(value_str);
             }
 
             let event_source_maybe = if endpoint_style == "hf" {
@@ -308,10 +306,8 @@ pub async fn scratchpad_interaction_stream(
             }
             break;
         }
-        if scratch.response_style().unwrap_or_default() != "openai".to_string() {
-            info!("yield: [DONE]");
-            yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
-        }
+        info!("yield: [DONE]");
+        yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
         tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
             save_url.clone(),
             scope.clone(),
@@ -347,8 +343,6 @@ fn _push_streaming_json_into_scratchpad(
         let finish_reason = choice0.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
         let stop_toks = !finish_reason.is_empty() && finish_reason.starts_with("stop");
         let stop_length = !finish_reason.is_empty() && !finish_reason.starts_with("stop");
-        info!("choice0: {:?}", choice0);
-        
         let tool_calls = choice0.get("message").and_then(|x| x.get("tool_calls")).map(|x|x.clone());
         if let Some(delta) = choice0.get("delta") {
             // passthrough messages case

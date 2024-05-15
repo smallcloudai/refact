@@ -52,7 +52,7 @@ pub struct ChatPassthrough {
     pub has_rag_results: HasRagResults,
     pub delta_sender: DeltaSender,
     pub global_context: Arc<ARwLock<GlobalContext>>,
-    pub response_style: Option<String>,
+    pub allow_at: bool,
 }
 
 impl ChatPassthrough {
@@ -60,7 +60,7 @@ impl ChatPassthrough {
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: ChatPost,
         global_context: Arc<ARwLock<GlobalContext>>,
-        response_style: Option<String>
+        allow_at: bool,
     ) -> Self {
         ChatPassthrough {
             t: HasTokenizerAndEot::new(tokenizer),
@@ -69,7 +69,7 @@ impl ChatPassthrough {
             has_rag_results: HasRagResults::new(),
             delta_sender: DeltaSender::new(),
             global_context,
-            response_style,
+            allow_at,
         }
     }
 }
@@ -92,7 +92,11 @@ impl ScratchpadAbstract for ChatPassthrough {
     ) -> Result<String, String> {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
         let top_n: usize = 10;
-        let last_user_msg_starts = run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_rag_results).await;
+        let last_user_msg_starts = if self.allow_at {
+            run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_rag_results).await
+        } else {
+            self.post.messages.len()
+        };
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
@@ -130,26 +134,12 @@ impl ScratchpadAbstract for ChatPassthrough {
         Ok(prompt.to_string())
     }
 
-    fn response_n_choices(  // old-school OpenAI
+    fn response_n_choices(  // result of old-school OpenAI with text (not messages) which is not possible when using passthrough (means messages)
         &mut self,
         _choices: Vec<String>,
         _stopped: Vec<bool>,
     ) -> Result<serde_json::Value, String> {
         todo!();
-        // detect if tool use or not
-        // for choice in choices.iter() {
-        //     let tool = true;
-        //     if !tool {
-        //         return serde_json::json!([choice]);
-        //     } else {
-        //         for tool_json in tools.iter() {
-        //             // look up the tool
-        //             t_real.execute(tool_json);
-        //         }
-        //         // postprocessing
-        //     }
-        // }
-        // return serde_json::json!([]);
     }
 
     fn response_streaming(
@@ -158,7 +148,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         stop_toks: bool,
         stop_length: bool,
         tool_calls: Option<Value>,
-    ) -> Result<(Value, bool), String> {
+    ) -> Result<(serde_json::Value, bool), String> {
         // ChatCompletionChunk(id='chatcmpl-9PQr82sRGEXp7YaMUfK7OZlNOPYuF', choices=[Choice(delta=ChoiceDelta(content=None, function_call=None, role='assistant', tool_calls=[ChoiceDeltaToolCall(index=0, id='call_coiieM6pksUjrvo4qfLUdEFy', function=ChoiceDeltaToolCallFunction(arguments='', name='definition'), type='function')]), finish_reason=None, index=0, logprobs=None)], created=1715848462, model='gpt-3.5-turbo-0125', object='chat.completion.chunk', system_fingerprint=None)
         // ChatCompletionChunk(id='chatcmpl-9PQr82sRGEXp7YaMUfK7OZlNOPYuF', choices=[Choice(delta=ChoiceDelta(content=None, function_call=None, role=None, tool_calls=[ChoiceDeltaToolCall(index=0, id=None, function=ChoiceDeltaToolCallFunction(arguments='{"', name=None), type=None)]), finish_reason=None, index=0, logprobs=None)], created=1715848462, model='gpt-3.5-turbo-0125', object='chat.completion.chunk', system_fingerprint=None)
         // ChatCompletionChunk(id='chatcmpl-9PQr82sRGEXp7YaMUfK7OZlNOPYuF', choices=[Choice(delta=ChoiceDelta(content=None, function_call=None, role=None, tool_calls=[ChoiceDeltaToolCall(index=0, id=None, function=ChoiceDeltaToolCallFunction(arguments='symbol', name=None), type=None)]), finish_reason=None, index=0, logprobs=None)], created=1715848462, model='gpt-3.5-turbo-0125', object='chat.completion.chunk', system_fingerprint=None)
@@ -187,9 +177,6 @@ impl ScratchpadAbstract for ChatPassthrough {
     }
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
-        return self.has_rag_results.response_streaming();
-    }
-    fn response_style(&self) -> Option<String> {
-        self.response_style.clone()
+        self.has_rag_results.response_streaming()
     }
 }

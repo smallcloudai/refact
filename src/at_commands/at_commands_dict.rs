@@ -121,10 +121,10 @@ impl AtCommandDict {
 pub fn at_commands_dicts() -> Result<Vec<AtCommandDict>, String> {
     let at_dict: AtDictDeserialize = serde_yaml::from_str(AT_DICT)
         .map_err(|e|format!("Failed to parse AT_DICT: {}", e))?;
-    
+
     let at_command_dicts = at_dict.at_commands.iter()
         .map(|x| AtCommandDict::new(x, &at_dict.at_params))
        .collect::<Vec<AtCommandDict>>();
-    
+
     Ok(at_command_dicts)
 }
