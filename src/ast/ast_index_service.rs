@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::{Arc, Weak};
 use std::time::{Duration, SystemTime};
-use sysinfo::System;
 
 use tokio::sync::{Mutex as AMutex, Notify};
 use tokio::sync::RwLock as ARwLock;
@@ -107,7 +106,6 @@ async fn ast_indexer_thread(
     ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
     status: Arc<AMutex<AstIndexStatus>>,
 ) {
-    let mut system = System::new_all();
     let mut reported_stats = false;
     let mut stats_parsed_cnt = 0;    // by language?
     let mut stats_symbols_cnt = 0;
@@ -146,6 +144,7 @@ async fn ast_indexer_thread(
             }
         }
 
+        let files_total = events.iter().map(|e| e.docs.len()).sum();
         let mut unparsed_suffixes = HashMap::new();
         while !events.is_empty() {
             let event = match events.pop_back() {
@@ -178,27 +177,16 @@ async fn ast_indexer_thread(
                 }
             }
 
-            // lower that 1Gb of available RAM+swap
-            system.refresh_memory();
-            if system.available_memory() < 1024*1024*1024 {
-                for doc in docs_with_text.iter() {
-                    info!(
-                        "There is not enough available memory to continue, skipping the {}",
-                        crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30)
-                    );
-                }
-                continue
-            }
-
             match event.typ {
                 AstEventType::Add => {
                     for (idx, doc) in docs_with_text.iter().enumerate() {
                         {
                             let mut locked_status = status.lock().await;
-                            locked_status.unparsed_files = left_docs_count + docs_with_text.len() - idx + 1;
+                            locked_status.files_unparsed = left_docs_count + docs_with_text.len() - idx + 1;
+                            locked_status.files_total = files_total;
                             let ast_ref = ast_index.read().await;
-                            locked_status.ast_index_total_files = ast_ref.total_files();
-                            locked_status.ast_index_total_symbols = ast_ref.total_symbols();
+                            locked_status.ast_index_files_total = ast_ref.total_files();
+                            locked_status.ast_index_symbols_total = ast_ref.total_symbols();
                             locked_status.state = "parsing".to_string();
                         }
                         match ast_index.write().await.add_or_update(&doc, true) {
@@ -240,10 +228,11 @@ async fn ast_index_rebuild_thread(
 
         {
             let mut locked_status = status.lock().await;
-            locked_status.unparsed_files = 0;
+            locked_status.files_unparsed = 0;
+            locked_status.files_total = 0;
             let ast_ref = ast_index.read().await;
-            locked_status.ast_index_total_files = ast_ref.total_files();
-            locked_status.ast_index_total_symbols = ast_ref.total_symbols();
+            locked_status.ast_index_files_total = ast_ref.total_files();
+            locked_status.ast_index_symbols_total = ast_ref.total_symbols();
             locked_status.state = "indexing".to_string();
         }
         let ast_index_clone = Arc::clone(&ast_index);

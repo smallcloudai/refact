@@ -22,9 +22,10 @@ use crate::global_context::GlobalContext;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AstIndexStatus {
-    pub unparsed_files: usize,
-    pub ast_index_total_files: usize,
-    pub ast_index_total_symbols: usize,
+    pub files_unparsed: usize,
+    pub files_total: usize,
+    pub ast_index_files_total: usize,
+    pub ast_index_symbols_total: usize,
     pub state: String,
 }
 
@@ -43,9 +44,10 @@ pub struct VecDbCaps {
 impl AstModule {
     pub async fn ast_indexer_init(ast_index_max_files: usize) -> Result<AstModule, String> {
         let status = Arc::new(AMutex::new(AstIndexStatus {
-            unparsed_files: 0,
-            ast_index_total_files: 0,
-            ast_index_total_symbols: 0,
+            files_unparsed: 0,
+            files_total: 0,
+            ast_index_files_total: 0,
+            ast_index_symbols_total: 0,
             state: "idle".to_string(),
         }));
         let ast_index = Arc::new(ARwLock::new(AstIndex::init(ast_index_max_files)));
@@ -422,8 +424,8 @@ impl AstModule {
         let mut locked_status = self.status.lock().await;
         match self.read_ast(Duration::from_millis(25)).await {
             Ok(ast) => {
-                locked_status.ast_index_total_files = ast.total_files();
-                locked_status.ast_index_total_symbols = ast.total_symbols();
+                locked_status.ast_index_files_total = ast.total_files();
+                locked_status.ast_index_symbols_total = ast.total_symbols();
             },
             Err(_) => {}
         };
