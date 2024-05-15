@@ -3,6 +3,7 @@ import json
 import copy
 import asyncio
 import aiohttp
+import aiofiles
 import termcolor
 import os
 import re
@@ -15,7 +16,6 @@ from fastapi.responses import Response, StreamingResponse
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
 from refact_webgui.webgui.selfhost_model_resolve import resolve_model_context_size
-from refact_webgui.webgui.selfhost_model_resolve import resolve_tokenizer_name_for_model
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log
@@ -23,6 +23,7 @@ from refact_webgui.webgui.selfhost_queue import InferenceQueue
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_login import RefactSession
 
+from pathlib import Path
 from pydantic import BaseModel
 from typing import List, Dict, Union, Optional, Tuple, Any
 
@@ -193,6 +194,7 @@ class BaseCompletionsRouter(APIRouter):
         self.add_api_route("/v1/chat/completions", self._chat_completions, methods=["POST"])
 
         self.add_api_route("/v1/models", self._models, methods=["GET"])
+        self.add_api_route("/tokenizer/{model_name}", self._tokenizer, methods=["GET"])
 
         self._inference_queue = inference_queue
         self._id2ticket = id2ticket
@@ -263,8 +265,8 @@ class BaseCompletionsRouter(APIRouter):
             "endpoint_embeddings_style": "openai",
             "size_embeddings": 768,
 
-            "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
-            "tokenizer_rewrite_path": {model: t for model in models_available if (t := resolve_tokenizer_name_for_model(model, self._model_assigner))},
+            "tokenizer_path_template": "/tokenizer/$MODEL",
+            "tokenizer_rewrite_path": {model: model.replace("/", "--") for model in models_available},
             "caps_version": self._caps_version,
         }
 
@@ -292,6 +294,44 @@ class BaseCompletionsRouter(APIRouter):
         )
 
         return Response(content=json.dumps(data, indent=4), media_type="application/json")
+
+    async def _local_tokenizer(self, model_path: str) -> str:
+        model_dir = Path(env.DIR_WEIGHTS) / f"models--{model_path.replace('/', '--')}"
+        tokenizer_paths = list(model_dir.rglob("tokenizer.json"))
+        if not tokenizer_paths:
+            raise HTTPException(404, detail=f"tokenizer.json for {model_path} does not exist")
+        if len(tokenizer_paths) > 1:
+            raise HTTPException(404, detail=f"multiple tokenizer.json for {model_path}")
+
+        data = ""
+        async with aiofiles.open(tokenizer_paths[0], mode='r') as f:
+            while True:
+                if not (chunk := await f.read(1024 * 1024)):
+                    break
+                data += chunk
+
+        return data
+
+    async def _passthrough_tokenizer(self, model_path: str) -> str:
+        try:
+            async with aiohttp.ClientSession() as session:
+                tokenizer_url = f"https://huggingface.co/{model_path}/resolve/main/tokenizer.json"
+                async with session.get(tokenizer_url) as resp:
+                    return await resp.text()
+        except:
+            raise HTTPException(404, detail=f"can't load tokenizer.json for passthrough {model_path}")
+
+    async def _tokenizer(self, model_name: str):
+        model_name = model_name.replace("--", "/")
+        if model_name in self._model_assigner.models_db:
+            model_path = self._model_assigner.models_db[model_name]["model_path"]
+            data = await self._local_tokenizer(model_path)
+        elif model_name in self._model_assigner.passthrough_mini_db:
+            model_path = self._model_assigner.passthrough_mini_db[model_name]["tokenizer_path"]
+            data = await self._passthrough_tokenizer(model_path)
+        else:
+            raise HTTPException(404, detail=f"model '{model_name}' does not exists in db")
+        return Response(content=data, media_type='application/json')
 
     async def _login(self, authorization: str = Header(None)) -> Dict:
         account = await self._account_from_bearer(authorization)
