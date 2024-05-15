@@ -1,8 +1,8 @@
-use std::cell::RefCell;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::string::ToString;
+use std::sync::Arc;
 
+use parking_lot::RwLock;
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
 use tree_sitter_java::language;
@@ -275,7 +275,7 @@ impl JavaParser {
         }
 
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Rc::new(RefCell::new(decl)));
+        symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
 
@@ -327,7 +327,7 @@ impl JavaParser {
                     } else {
                         decl.type_ = local_dtype;
                     }
-                    symbols.push(Rc::new(RefCell::new(decl)));
+                    symbols.push(Arc::new(RwLock::new(Box::new(decl))));
                 }
                 &_ => {}
             }
@@ -382,7 +382,7 @@ impl JavaParser {
                     } else {
                         decl.type_ = local_dtype;
                     }
-                    symbols.push(Rc::new(RefCell::new(decl)));
+                    symbols.push(Arc::new(RwLock::new(Box::new(decl))));
                 }
                 _ => {}
             }
@@ -415,7 +415,7 @@ impl JavaParser {
                 }
             }
         }
-        symbols.push(Rc::new(RefCell::new(decl)));
+        symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
 
@@ -453,7 +453,7 @@ impl JavaParser {
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = is_error;
-                symbols.push(Rc::new(RefCell::new(usage)));
+                symbols.push(Arc::new(RwLock::new(Box::new(usage))));
             }
             "field_access" => {
                 let object = parent.child_by_field_name("object").unwrap();
@@ -467,10 +467,10 @@ impl JavaParser {
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = last.borrow().fields().parent_guid.clone();
+                    usage.ast_fields.caller_guid = last.read().fields().parent_guid.clone();
                 }
                 symbols.extend(usages);
-                symbols.push(Rc::new(RefCell::new(usage)));
+                symbols.push(Arc::new(RwLock::new(Box::new(usage))));
             }
             "block_comment" | "line_comment" => {
                 let mut def = CommentDefinition::default();
@@ -480,7 +480,7 @@ impl JavaParser {
                 def.ast_fields.parent_guid = Some(parent_guid.clone());
                 def.ast_fields.guid = get_guid();
                 def.ast_fields.is_error = is_error;
-                symbols.push(Rc::new(RefCell::new(def)));
+                symbols.push(Arc::new(RwLock::new(Box::new(def))));
             }
             "import_declaration" => {
                 let mut def = ImportDeclaration::default();
@@ -502,7 +502,7 @@ impl JavaParser {
                 def.ast_fields.full_range = parent.range();
                 def.ast_fields.parent_guid = Some(parent_guid.clone());
                 def.ast_fields.guid = get_guid();
-                symbols.push(Rc::new(RefCell::new(def)));
+                symbols.push(Arc::new(RwLock::new(Box::new(def))));
             }
             "ERROR" => {
                 symbols.extend(self.parse_error_usages(&parent, code, path, parent_guid));
@@ -545,7 +545,7 @@ impl JavaParser {
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = true;
-                symbols.push(Rc::new(RefCell::new(usage)));
+                symbols.push(Arc::new(RwLock::new(Box::new(usage))));
             }
             "field_access" => {
                 let object = parent.child_by_field_name("object").unwrap();
@@ -559,11 +559,11 @@ impl JavaParser {
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = last.borrow().fields().parent_guid.clone();
+                    usage.ast_fields.caller_guid = last.read().fields().parent_guid.clone();
                 }
                 symbols.extend(usages);
                 if !JAVA_KEYWORDS.contains(&usage.ast_fields.name.as_str()) {
-                    symbols.push(Rc::new(RefCell::new(usage)));
+                    symbols.push(Arc::new(RwLock::new(Box::new(usage))));
                 }
             }
             &_ => {
@@ -632,7 +632,7 @@ impl JavaParser {
         }
 
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Rc::new(RefCell::new(decl)));
+        symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
 
@@ -664,13 +664,13 @@ impl JavaParser {
         if let Some(object) = parent.child_by_field_name("object") {
             let usages = self.parse_usages(&object, code, path, parent_guid, is_error);
             if let Some(last) = usages.last() {
-                decl.ast_fields.caller_guid = last.borrow().fields().parent_guid.clone();
+                decl.ast_fields.caller_guid = last.read().fields().parent_guid.clone();
             }
             symbols.extend(usages);
         }
 
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Rc::new(RefCell::new(decl)));
+        symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
 }

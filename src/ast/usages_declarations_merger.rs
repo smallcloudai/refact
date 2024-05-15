@@ -1,9 +1,10 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
+
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, FunctionDeclaration};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceRc, FunctionDeclaration};
 use crate::ast::treesitter::structs::SymbolType;
 
 pub struct FilePathIterator {
@@ -57,9 +58,9 @@ impl Iterator for FilePathIterator {
 }
 
 pub fn find_decl_by_caller_guid(
-    symbol: &AstSymbolInstanceArc,
+    symbol: &AstSymbolInstanceRc,
     caller_guid: &Uuid,
-    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>,
+    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceRc>,
     extra_search_index: &HashMap<(String, Uuid, SymbolType), Uuid>,
 ) -> Option<Uuid> {
     let (symbol_type, name, is_error_node) = {
@@ -134,8 +135,8 @@ fn find_decl_by_name_for_single_path(
     search_symbol_type: &SymbolType,
     is_error_node: bool,
     file_path: &PathBuf,
-    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>,
-    extra_search_index: &HashMap<(String, Uuid, String), AstSymbolInstanceArc>,
+    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceRc>,
+    extra_search_index: &HashMap<(String, Uuid, String), AstSymbolInstanceRc>,
 ) -> Option<Uuid> {
     let mut current_parent_guid = parent_guid.clone();
     loop {
@@ -169,10 +170,10 @@ fn find_decl_by_name_for_single_path(
 }
 
 pub fn find_decl_by_name(
-    symbol: &AstSymbolInstanceArc,
-    path_by_symbols: &HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
-    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>,
-    extra_search_index: &HashMap<(String, Uuid, String), AstSymbolInstanceArc>,
+    symbol: &AstSymbolInstanceRc,
+    path_by_symbols: &HashMap<PathBuf, Vec<AstSymbolInstanceRc>>,
+    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceRc>,
+    extra_search_index: &HashMap<(String, Uuid, String), AstSymbolInstanceRc>,
     top_n_files: usize,
 ) -> Option<Uuid> {
     let (file_path, parent_guid, name, is_function, is_error_node) =  {

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceRc;
 use crate::ast::treesitter::language_id::LanguageId;
 
 pub fn combine_paths(file_path: &PathBuf, import_path: &PathBuf) -> PathBuf {
@@ -137,7 +137,7 @@ pub struct SearchResult {
 
 pub fn try_find_file_path(
     search_items: &Vec<SearchItem>,
-    path_by_symbols: &HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
+    path_by_symbols: &HashMap<PathBuf, Vec<AstSymbolInstanceRc>>,
     paths_str: &Vec<String>,
 ) -> Option<SearchResult> {
     for item in search_items {

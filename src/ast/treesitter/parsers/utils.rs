@@ -10,7 +10,7 @@ pub(crate) fn get_guid() -> Uuid {
 pub(crate) fn get_children_guids(parent_guid: &Uuid, children: &Vec<AstSymbolInstanceArc>) -> Vec<Uuid> {
     let mut result = Vec::new();
     for child in children {
-        let child_ref = child.borrow();
+        let child_ref = child.read();
         if let Some(child_guid) = child_ref.parent_guid() {
             if child_guid == parent_guid {
                 result.push(child_ref.guid().clone());
@@ -24,5 +24,5 @@ pub(crate) fn get_children_guids(parent_guid: &Uuid, children: &Vec<AstSymbolIns
 pub(crate) struct CandidateInfo<'a> {
     pub ast_fields: AstSymbolFields,
     pub node: Node<'a>,
-    pub parent_guid: Uuid
+    pub parent_guid: Uuid,
 } 

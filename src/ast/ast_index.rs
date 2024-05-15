@@ -1,21 +1,24 @@
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::io::Write;
 use std::path::PathBuf;
+use std::rc::Rc;
 
+use arrow_array::Array;
 use itertools::Itertools;
+use rand::Rng;
 use rayon::prelude::*;
 use ropey::Rope;
 use strsim::jaro_winkler;
 use tracing::info;
 use tree_sitter::Point;
 use uuid::Uuid;
-use rand::Rng;
 
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::imports_resolver::{possible_filepath_candidates, top_n_prefixes, try_find_file_path};
 use crate::ast::structs::FileASTMarkup;
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ImportDeclaration, ImportType, SymbolInformation};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceRc, ImportDeclaration, ImportType, read_symbol, SymbolInformation};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
@@ -27,10 +30,10 @@ const TOO_MANY_SYMBOLS_IN_FILE: usize = 10000;
 
 #[derive(Debug)]
 pub struct AstIndex {
-    declaration_symbols_by_name: HashMap<String, Vec<AstSymbolInstanceArc>>,
-    usage_symbols_by_name: HashMap<String, Vec<AstSymbolInstanceArc>>,
-    symbols_by_guid: HashMap<Uuid, AstSymbolInstanceArc>,
-    path_by_symbols: HashMap<PathBuf, Vec<AstSymbolInstanceArc>>,
+    declaration_symbols_by_name: HashMap<String, Vec<AstSymbolInstanceRc>>,
+    usage_symbols_by_name: HashMap<String, Vec<AstSymbolInstanceRc>>,
+    symbols_by_guid: HashMap<Uuid, AstSymbolInstanceRc>,
+    path_by_symbols: HashMap<PathBuf, Vec<AstSymbolInstanceRc>>,
     type_guid_to_dependent_guids: HashMap<Uuid, HashSet<Uuid>>,
     declaration_guid_to_usage_names: HashMap<Uuid, HashSet<String>>,
     import_components_succ_solution_index: HashMap<String, ImportDeclaration>,
@@ -71,7 +74,8 @@ impl AstIndex {
         }
     }
 
-    fn parse(doc: &Document) -> Result<Vec<AstSymbolInstanceArc>, String> {
+
+    fn parse(doc: &Document) -> Result<Vec<AstSymbolInstanceRc>, String> {
         let mut parser = match get_ast_parser_by_filename(&doc.path) {
             Ok(parser) => parser,
             Err(err) => {
@@ -80,7 +84,11 @@ impl AstIndex {
         };
         let text = doc.text.clone().unwrap().to_string();
         let t_ = std::time::Instant::now();
-        let symbol_instances = parser.parse(&text, &doc.path);
+        let symbol_instances = parser.parse(&text, &doc.path).iter()
+            .map(|sym| {
+                let mut write_lock = sym.write();
+                Rc::new(RefCell::new(std::mem::replace(&mut *write_lock, Box::new(ImportDeclaration::default()))))
+            }).collect::<Vec<_>>();
         let t_elapsed = t_.elapsed();
         if symbol_instances.len() > TOO_MANY_SYMBOLS_IN_FILE {
             info!(
@@ -104,7 +112,7 @@ impl AstIndex {
     fn add_or_update_symbols_index(
         &mut self,
         doc: &Document,
-        symbols: Vec<AstSymbolInstanceArc>,
+        symbols: Vec<AstSymbolInstanceRc>,
         make_dirty: bool,
     ) -> Result<(), String> {
         let mut symbols_cloned = symbols.clone();
@@ -204,20 +212,20 @@ impl AstIndex {
         language: Option<LanguageId>,
         try_fuzzy_if_not_found: bool,
         sort_results: bool,
-    ) -> Result<Vec<AstSymbolInstanceArc>, String> {
+    ) -> Result<Vec<AstSymbolInstanceRc>, String> {
         fn exact_search(
-            symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceArc>>,
+            symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceRc>>,
             query: &str,
-        ) -> Vec<AstSymbolInstanceArc> {
+        ) -> Vec<AstSymbolInstanceRc> {
             let binding = vec![];
             let symbols = symbols_by_name.get(query).unwrap_or(&binding);
             symbols.clone()
         }
 
         fn fuzzy_search(
-            symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceArc>>,
+            symbols_by_name: &HashMap<String, Vec<AstSymbolInstanceRc>>,
             query: &str,
-        ) -> Vec<AstSymbolInstanceArc> {
+        ) -> Vec<AstSymbolInstanceRc> {
             let lower_query = query.to_lowercase();
             symbols_by_name
                 .iter()
@@ -291,7 +299,7 @@ impl AstIndex {
         request_symbol_type: RequestSymbolType,
         exception_doc: Option<Document>,
         language: Option<LanguageId>,
-    ) -> Result<Vec<AstSymbolInstanceArc>, String> {
+    ) -> Result<Vec<AstSymbolInstanceRc>, String> {
         Ok(self.path_by_symbols
             .iter()
             .filter(|(path, _symbols)| {
@@ -338,7 +346,7 @@ impl AstIndex {
             .collect::<Vec<_>>())
     }
 
-    pub fn search_related_declarations(&self, guid: &Uuid) -> Result<Vec<AstSymbolInstanceArc>, String> {
+    pub fn search_related_declarations(&self, guid: &Uuid) -> Result<Vec<AstSymbolInstanceRc>, String> {
         match self.symbols_by_guid.get(guid) {
             Some(symbol) => {
                 Ok(symbol.borrow()
@@ -357,7 +365,7 @@ impl AstIndex {
         &self,
         declaration_guid: &Uuid,
         exception_doc: Option<Document>,
-    ) -> Result<Vec<AstSymbolInstanceArc>, String> {
+    ) -> Result<Vec<AstSymbolInstanceRc>, String> {
         Ok(self.type_guid_to_dependent_guids
             .get(declaration_guid)
             .map(|x| x.clone())
@@ -374,11 +382,11 @@ impl AstIndex {
 
     fn get_declarations_by_parent(
         &self,
-        symbol: &AstSymbolInstanceArc,
+        symbol: &AstSymbolInstanceRc,
         base_usefulness: f32,
-    ) -> (Vec<AstSymbolInstanceArc>, HashMap<Uuid, f32>) {
+    ) -> (Vec<AstSymbolInstanceRc>, HashMap<Uuid, f32>) {
         let mut current_symbol = symbol.clone();
-        let mut parents_symbols: Vec<AstSymbolInstanceArc> = vec![];
+        let mut parents_symbols: Vec<AstSymbolInstanceRc> = vec![];
         let mut guid_to_usefulness: HashMap<Uuid, f32> = HashMap::new();
         let mut level: u64 = 0;
         loop {
@@ -409,51 +417,6 @@ impl AstIndex {
         (parents_symbols, guid_to_usefulness)
     }
 
-    fn decl_symbols_from_imports(
-        &self,
-        parsed_symbols: &Vec<AstSymbolInstanceArc>,
-        imports_depth: usize,
-    ) -> Vec<AstSymbolInstanceArc> {
-        let mut paths: Vec<PathBuf> = vec![];
-        let mut current_depth_symbols = parsed_symbols.clone();
-        let mut current_depth = 0;
-        loop {
-            if current_depth > imports_depth { break; }
-            let mut current_paths = vec![];
-            for symbol in current_depth_symbols
-                .iter()
-                .filter(|s| s.borrow().symbol_type() == SymbolType::ImportDeclaration) {
-                let s_ref = symbol.borrow();
-                let import_decl = s_ref.as_any().downcast_ref::<ImportDeclaration>().expect("wrong type");
-                if let Some(import_path) = import_decl.filepath_ref.clone() {
-                    current_paths.push(import_path.clone());
-                    paths.push(import_path);
-                }
-            }
-            current_depth_symbols = current_paths
-                .iter()
-                .filter_map(|p| self.path_by_symbols.get(p))
-                .flatten()
-                .cloned()
-                .collect::<Vec<_>>();
-            current_depth += 1;
-        }
-
-        paths
-            .iter()
-            .unique()
-            .filter_map(|p| self.path_by_symbols.get(p))
-            .flatten()
-            .cloned()
-            .filter(|s| {
-                let symbol_type = s.borrow().symbol_type();
-                symbol_type == SymbolType::StructDeclaration
-                    || symbol_type == SymbolType::TypeAlias
-                    || symbol_type == SymbolType::FunctionDeclaration
-            })
-            .collect::<Vec<_>>()
-    }
-
     pub fn symbols_near_cursor_to_buckets(
         &self,
         doc: &Document,
@@ -463,11 +426,11 @@ impl AstIndex {
         top_n_usage_for_each_decl: usize,
         fuzzy_search_limit: usize,
     ) -> (
-        Vec<AstSymbolInstanceArc>,
-        Vec<AstSymbolInstanceArc>,
-        Vec<AstSymbolInstanceArc>,
-        Vec<AstSymbolInstanceArc>,
-        Vec<AstSymbolInstanceArc>,
+        Vec<AstSymbolInstanceRc>,
+        Vec<AstSymbolInstanceRc>,
+        Vec<AstSymbolInstanceRc>,
+        Vec<AstSymbolInstanceRc>,
+        Vec<AstSymbolInstanceRc>,
         HashMap<Uuid, f32>
     ) {
         let t_parse_t0 = std::time::Instant::now();
@@ -744,6 +707,51 @@ impl AstIndex {
         )
     }
 
+    pub(crate) fn decl_symbols_from_imports(
+        &self,
+        parsed_symbols: &Vec<AstSymbolInstanceRc>,
+        imports_depth: usize,
+    ) -> Vec<AstSymbolInstanceRc> {
+        let mut paths: Vec<PathBuf> = vec![];
+        let mut current_depth_symbols = parsed_symbols.clone();
+        let mut current_depth = 0;
+        loop {
+            if current_depth > imports_depth { break; }
+            let mut current_paths = vec![];
+            for symbol in current_depth_symbols
+                .iter()
+                .filter(|s| read_symbol(s).symbol_type() == SymbolType::ImportDeclaration) {
+                let s_ref = read_symbol(symbol);
+                let import_decl = s_ref.as_any().downcast_ref::<ImportDeclaration>().expect("wrong type");
+                if let Some(import_path) = import_decl.filepath_ref.clone() {
+                    current_paths.push(import_path.clone());
+                    paths.push(import_path);
+                }
+            }
+            current_depth_symbols = current_paths
+                .iter()
+                .filter_map(|p| self.path_by_symbols.get(p))
+                .flatten()
+                .cloned()
+                .collect::<Vec<_>>();
+            current_depth += 1;
+        }
+
+        paths
+            .iter()
+            .unique()
+            .filter_map(|p| self.path_by_symbols.get(p))
+            .flatten()
+            .cloned()
+            .filter(|s| {
+                let symbol_type = read_symbol(s).symbol_type();
+                symbol_type == SymbolType::StructDeclaration
+                    || symbol_type == SymbolType::TypeAlias
+                    || symbol_type == SymbolType::FunctionDeclaration
+            })
+            .collect::<Vec<_>>()
+    }
+
     pub fn file_markup(
         &self,
         doc: &Document,
@@ -762,7 +770,7 @@ impl AstIndex {
                 let t0 = std::time::Instant::now();
                 let symbols = parser.parse(doc.text.as_ref().unwrap().to_string().as_str(), &doc.path);
                 info!("/parse {}ms", t0.elapsed().as_millis());
-                symbols.iter().map(|s| s.borrow().symbol_info_struct()).collect::<Vec<_>>()
+                symbols.iter().map(|s| s.read().symbol_info_struct()).collect::<Vec<_>>()
             }
         };
         crate::ast::ast_file_markup::lowlevel_file_markup(doc, &symbols)
@@ -811,7 +819,7 @@ impl AstIndex {
             .collect()
     }
 
-    pub(crate) fn symbols_by_guid(&self) -> &HashMap<Uuid, AstSymbolInstanceArc> {
+    pub(crate) fn symbols_by_guid(&self) -> &HashMap<Uuid, AstSymbolInstanceRc> {
         &self.symbols_by_guid
     }
 
@@ -878,8 +886,8 @@ impl AstIndex {
     pub(crate) fn total_symbols(&self) -> usize {
         self.symbols_by_guid.len()
     }
-
-    fn resolve_declaration_symbols(&self, symbols: &mut Vec<AstSymbolInstanceArc>) -> IndexingStats {
+    
+    fn resolve_declaration_symbols(&self, symbols: &mut Vec<AstSymbolInstanceRc>) -> IndexingStats {
         let mut stats = IndexingStats { found: 0, non_found: 0 };
         for symbol in symbols.iter_mut() {
             let (type_names, symb_type, symb_path) = {
@@ -946,10 +954,10 @@ impl AstIndex {
         stats
     }
 
-    fn merge_usages_to_declarations(&self, symbols: &mut Vec<AstSymbolInstanceArc>) -> IndexingStats {
+    fn merge_usages_to_declarations(&self, symbols: &mut Vec<AstSymbolInstanceRc>) -> IndexingStats {
         fn get_caller_depth(
-            symbol: &AstSymbolInstanceArc,
-            guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceArc>
+            symbol: &AstSymbolInstanceRc,
+            guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceRc>
         ) -> Option<usize> {
             match symbol.borrow().get_caller_guid() {
                 Some(_) => {},
@@ -983,9 +991,8 @@ impl AstIndex {
             s.borrow_mut().set_caller_depth(caller_depth);
         }
 
-
         let mut stats = IndexingStats { found: 0, non_found: 0 };
-        let search_by_name_extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceArc> =  symbols
+        let search_by_name_extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceRc> =  symbols
             .iter()
             .map(|x| {
                 let x_ref = x.borrow();
@@ -1084,10 +1091,10 @@ impl AstIndex {
         }
         stats
     }
-
+    
     fn resolve_imports(
         &self,
-        symbols: &mut Vec<AstSymbolInstanceArc>,
+        symbols: &mut Vec<AstSymbolInstanceRc>,
         import_components_succ_solution_index: &HashMap<String, ImportDeclaration>,
     ) -> (IndexingStats, HashMap<String, ImportDeclaration>) {
         fn random_keys<K, V>(map: &HashMap<K, V>, n: usize) -> Vec<K>
@@ -1121,7 +1128,7 @@ impl AstIndex {
         let paths = random_keys(&self.path_by_symbols, 100);
         let prefixes = top_n_prefixes(&paths, 3);
         let min_prefix = prefixes.iter().next().map(|x| x.0.clone());
-        let mut notfound_import_components_index: HashMap<String, Vec<AstSymbolInstanceArc>> = HashMap::new();
+        let mut notfound_import_components_index: HashMap<String, Vec<AstSymbolInstanceRc>> = HashMap::new();
         let mut import_components_succ_solution_index_local: HashMap<String, ImportDeclaration> = HashMap::new();
         for symbol in symbols
             .iter_mut()
@@ -1192,7 +1199,7 @@ impl AstIndex {
         (stats, import_components_succ_solution_index_local)
     }
 
-    fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceArc>) {
+    pub(crate) fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceRc>) {
         for symbol in symbols
             .iter()
             .filter(|s| !s.borrow().is_type())
@@ -1249,7 +1256,7 @@ impl AstIndex {
         &self,
         doc: &Document,
         code: &str,
-    ) -> Vec<AstSymbolInstanceArc> {
+    ) -> Vec<AstSymbolInstanceRc> {
         // This function runs to find symbols near cursor
         let mut doc = doc.clone();
         doc.update_text(&code.to_string());

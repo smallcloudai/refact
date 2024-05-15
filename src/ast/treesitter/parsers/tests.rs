@@ -20,44 +20,44 @@ mod js;
 
 pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
     let guid_to_symbol_map = symbols.iter()
-        .map(|s| (s.borrow().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
-    let sorted = symbols.iter().sorted_by_key(|x| x.borrow().full_range().start_byte).collect::<Vec<_>>();
+        .map(|s| (s.read().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
+    let sorted = symbols.iter().sorted_by_key(|x| x.read().full_range().start_byte).collect::<Vec<_>>();
     let mut used_guids: HashSet<Uuid> = Default::default();
 
     for sym in sorted {
-        let guid = sym.borrow().guid().clone();
+        let guid = sym.read().guid().clone();
         if used_guids.contains(&guid) {
             continue;
         }
-        let caller_guid = sym.borrow().get_caller_guid().clone();
-        let mut name = sym.borrow().name().to_string();
-        let type_name = sym.borrow().symbol_type().to_string();
+        let caller_guid = sym.read().get_caller_guid().clone();
+        let mut name = sym.read().name().to_string();
+        let type_name = sym.read().symbol_type().to_string();
         if let Some(caller_guid) = caller_guid {
             if guid_to_symbol_map.contains_key(&caller_guid) {
                 name = format!("{} -> {}", name, caller_guid.to_string().slice(0..6));
             }
         }
-        let full_range = sym.borrow().full_range().clone();
+        let full_range = sym.read().full_range().clone();
         let range = full_range.start_byte..full_range.end_byte;
         println!("{0} {1} [{2}] {3}", guid.to_string().slice(0..6), name, code.slice(range).lines().collect::<Vec<_>>().first().unwrap(), type_name);
         used_guids.insert(guid.clone());
-        let mut candidates: VecDeque<(i32, Uuid)> = VecDeque::from_iter(sym.borrow().childs_guid().iter().map(|x| (4, x.clone())));
+        let mut candidates: VecDeque<(i32, Uuid)> = VecDeque::from_iter(sym.read().childs_guid().iter().map(|x| (4, x.clone())));
         while let Some((offest, cand)) = candidates.pop_front() {
             used_guids.insert(cand.clone());
             if let Some(sym_l) = guid_to_symbol_map.get(&cand) {
-                let caller_guid = sym_l.borrow().get_caller_guid().clone();
-                let mut name = sym_l.borrow().name().to_string();
-                let type_name = sym_l.borrow().symbol_type().to_string();
+                let caller_guid = sym_l.read().get_caller_guid().clone();
+                let mut name = sym_l.read().name().to_string();
+                let type_name = sym_l.read().symbol_type().to_string();
                 if let Some(caller_guid) = caller_guid {
                     if guid_to_symbol_map.contains_key(&caller_guid) {
                         name = format!("{} -> {}", name, caller_guid.to_string().slice(0..6));
                     }
                 }
-                let full_range = sym_l.borrow().full_range().clone();
+                let full_range = sym_l.read().full_range().clone();
                 let range = full_range.start_byte..full_range.end_byte;
                 println!("{0} {1} {2} [{3}] {4}", cand.to_string().slice(0..6), str::repeat(" ", offest as usize),
                          name, code.slice(range).lines().collect::<Vec<_>>().first().unwrap(), type_name);
-                let mut new_candidates = VecDeque::from_iter(sym_l.borrow().childs_guid().iter().map(|x| (offest + 2, x.clone())));
+                let mut new_candidates = VecDeque::from_iter(sym_l.read().childs_guid().iter().map(|x| (offest + 2, x.clone())));
                 new_candidates.extend(candidates.clone());
                 candidates = new_candidates;
             }
@@ -67,7 +67,7 @@ pub(crate) fn print(symbols: &Vec<AstSymbolInstanceArc>, code: &str) {
 
 fn eq_symbols(symbol: &AstSymbolInstanceArc,
               ref_symbol: &Box<dyn AstSymbolInstance>) -> bool {
-    let symbol = symbol.borrow();
+    let symbol = symbol.read();
     let sym_type = symbol.symbol_type() == ref_symbol.symbol_type();
     let name = if ref_symbol.name().contains(ref_symbol.guid().to_string().as_str()) {
         symbol.name().contains(symbol.guid().to_string().as_str())
@@ -93,11 +93,11 @@ fn eq_symbols(symbol: &AstSymbolInstanceArc,
 
 fn compare_symbols(symbols: &Vec<AstSymbolInstanceArc>,
                    ref_symbols: &Vec<Box<dyn AstSymbolInstance>>) {
-    let guid_to_sym = symbols.iter().map(|s| (s.clone().borrow().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
+    let guid_to_sym = symbols.iter().map(|s| (s.clone().read().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
     let ref_guid_to_sym = ref_symbols.iter().map(|s| (s.guid().clone(), s)).collect::<HashMap<_, _>>();
     let mut checked_guids: HashSet<Uuid> = Default::default();
     for sym in symbols {
-        let sym_l = sym.borrow();
+        let sym_l = sym.read();
         let _f = sym_l.fields();
         if checked_guids.contains(&sym_l.guid()) {
             continue;
@@ -109,7 +109,7 @@ fn compare_symbols(symbols: &Vec<AstSymbolInstanceArc>,
         let closest_sym = closest_sym.first().unwrap();
         let mut candidates: Vec<(AstSymbolInstanceArc, &Box<dyn AstSymbolInstance>)> = vec![(sym.clone(), &closest_sym)];
         while let Some((sym, ref_sym)) = candidates.pop() {
-            let sym_l = sym.borrow();
+            let sym_l = sym.read();
             if checked_guids.contains(&sym_l.guid()) {
                 continue;
             }
@@ -135,7 +135,7 @@ fn compare_symbols(symbols: &Vec<AstSymbolInstanceArc>,
                .collect::<Vec<_>>();
             
             for child in childs {
-                let child_l = child.borrow();
+                let child_l = child.read();
                 let closest_sym = ref_childs.iter().filter(|s| child_l.full_range() == s.full_range())
                     .collect::<Vec<_>>();
                 assert_eq!(closest_sym.len(), 1);
@@ -160,7 +160,7 @@ fn compare_symbols(symbols: &Vec<AstSymbolInstanceArc>,
 fn check_duplicates(symbols: &Vec<AstSymbolInstanceArc>) {
     let mut checked_guids: HashSet<Uuid> = Default::default();
     for sym in symbols {
-        let sym = sym.borrow();
+        let sym = sym.read();
         let _f = sym.fields();
         assert!(!checked_guids.contains(&sym.guid()));
         checked_guids.insert(sym.guid().clone());

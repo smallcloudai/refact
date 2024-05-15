@@ -1,9 +1,9 @@
-use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::string::ToString;
+use std::sync::Arc;
 
+use parking_lot::RwLock;
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Point, Range};
 use tree_sitter_python::language;
@@ -243,7 +243,7 @@ impl PythonParser {
         }
 
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Rc::new(RefCell::new(decl)));
+        symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
 
@@ -308,7 +308,7 @@ impl PythonParser {
                                     decl.type_ = type_;
                                 }
                             }
-                            symbols.push(Rc::new(RefCell::new(decl)));
+                            symbols.push(Arc::new(RwLock::new(Box::new(decl))));
                         } else {
                             let mut decl = VariableDefinition::default();
                             decl.ast_fields = fields;
@@ -322,7 +322,7 @@ impl PythonParser {
                                 decl.type_.is_pod = vec!["integer", "string", "float", "false", "true"]
                                     .contains(&right.kind());
                             }
-                            symbols.push(Rc::new(RefCell::new(decl)));
+                            symbols.push(Arc::new(RwLock::new(Box::new(decl))));
                         }
                     }
                     "attribute" => {
@@ -426,7 +426,7 @@ impl PythonParser {
                                 decl.ast_fields.name = text.to_string();
                                 decl.type_.inference_info = Some(code.slice(value.byte_range()).to_string());
                                 decl.ast_fields.is_error = is_error;
-                                symbols.push(Rc::new(RefCell::new(decl)));
+                                symbols.push(Arc::new(RwLock::new(Box::new(decl))));
                             }
                             "list" | "set" | "tuple" => {
                                 for i in 0..child.child_count() {
@@ -465,7 +465,7 @@ impl PythonParser {
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = is_error;
-                symbols.push(Rc::new(RefCell::new(usage)));
+                symbols.push(Arc::new(RwLock::new(Box::new(usage))));
             }
             "attribute" => {
                 let attribute = parent.child_by_field_name("attribute").unwrap();
@@ -482,10 +482,10 @@ impl PythonParser {
                 let object_node = parent.child_by_field_name("object").unwrap();
                 let usages = self.parse_usages(&object_node, code, path, parent_guid, is_error);
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = last.borrow().fields().parent_guid.clone();
+                    usage.ast_fields.caller_guid = last.read().fields().parent_guid.clone();
                 }
                 symbols.extend(usages);
-                symbols.push(Rc::new(RefCell::new(usage)));
+                symbols.push(Arc::new(RwLock::new(Box::new(usage))));
             }
             "assignment" | "for_statement" => {
                 symbols.extend(self.parse_assignment(&parent, code, path, parent_guid, is_error));
@@ -521,7 +521,7 @@ impl PythonParser {
                 def.ast_fields.parent_guid = Some(parent_guid.clone());
                 def.ast_fields.guid = get_guid();
                 def.ast_fields.is_error = false;
-                symbols.push(Rc::new(RefCell::new(def)));
+                symbols.push(Arc::new(RwLock::new(Box::new(def))));
             }
             "import_from_statement" | "import_statement" => {
                 let mut def = ImportDeclaration::default();
@@ -594,11 +594,11 @@ impl PythonParser {
                         def_local.ast_fields.name = def_local.path_components.last().unwrap().to_string();
                         def_local.alias = alias;
 
-                        symbols.push(Rc::new(RefCell::new(def_local)));
+                        symbols.push(Arc::new(RwLock::new(Box::new(def_local))));
                     }
                 } else {
                     def.ast_fields.guid = get_guid();
-                    symbols.push(Rc::new(RefCell::new(def)));
+                    symbols.push(Arc::new(RwLock::new(Box::new(def))));
                 }
             }
             "ERROR" => {
@@ -671,7 +671,7 @@ impl PythonParser {
         }
 
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Rc::new(RefCell::new(decl)));
+        symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
 
@@ -702,7 +702,7 @@ impl PythonParser {
                 usage.ast_fields.parent_guid = Some(parent_guid.clone());
                 usage.ast_fields.guid = get_guid();
                 usage.ast_fields.is_error = true;
-                symbols.push(Rc::new(RefCell::new(usage)));
+                symbols.push(Arc::new(RwLock::new(Box::new(usage))));
             }
             "attribute" => {
                 let attribute = parent.child_by_field_name("attribute").unwrap();
@@ -719,10 +719,10 @@ impl PythonParser {
                 let object_node = parent.child_by_field_name("object").unwrap();
                 let usages = self.parse_error_usages(&object_node, code, path, parent_guid);
                 if let Some(last) = usages.last() {
-                    usage.ast_fields.caller_guid = last.borrow().fields().parent_guid.clone();
+                    usage.ast_fields.caller_guid = last.read().fields().parent_guid.clone();
                 }
                 symbols.extend(usages);
-                symbols.push(Rc::new(RefCell::new(usage)));
+                symbols.push(Arc::new(RwLock::new(Box::new(usage))));
             }
             &_ => {
                 for i in 0..parent.child_count() {
@@ -767,7 +767,7 @@ impl PythonParser {
                 let object = function_node.child_by_field_name("object").unwrap();
                 let usages = self.parse_usages(&object, code, path, parent_guid, is_error);
                 if let Some(last) = usages.last() {
-                    decl.ast_fields.caller_guid = last.borrow().fields().parent_guid.clone();
+                    decl.ast_fields.caller_guid = last.read().fields().parent_guid.clone();
                 }
                 symbols.extend(usages);
                 let attribute = function_node.child_by_field_name("attribute").unwrap();
@@ -776,14 +776,14 @@ impl PythonParser {
             _ => {
                 let usages = self.parse_usages(&function_node, code, path, parent_guid, is_error);
                 if let Some(last) = usages.last() {
-                    decl.ast_fields.caller_guid = last.borrow().fields().parent_guid.clone();
+                    decl.ast_fields.caller_guid = last.read().fields().parent_guid.clone();
                 }
                 symbols.extend(usages);
             }
         }
 
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
-        symbols.push(Rc::new(RefCell::new(decl)));
+        symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
 }

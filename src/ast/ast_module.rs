@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstEventType, AstIndexService};
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceRc, read_symbol};
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
@@ -323,8 +323,8 @@ impl AstModule {
                 top_n_usage_for_each_decl,
                 3,
             );
-        let symbol_to_search_res = |x: &AstSymbolInstanceArc| {
-            let symbol_declaration = x.borrow().symbol_info_struct();
+        let symbol_to_search_res = |x: &AstSymbolInstanceRc| {
+            let symbol_declaration = read_symbol(x).symbol_info_struct();
             let content = symbol_declaration.get_content_blocked().unwrap_or_default();
             let usefulness = *guid_to_usefulness
                 .get(&symbol_declaration.guid)

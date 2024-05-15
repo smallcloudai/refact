@@ -56,7 +56,7 @@ impl AstBasedFileSplitter {
         };
 
         let symbols_struct = parser.parse(doc.text_as_string().unwrap().as_str(), &path)
-            .iter().map(|s| s.borrow().symbol_info_struct())
+            .iter().map(|s| s.read().symbol_info_struct())
             .collect::<Vec<_>>();
         let ast_markup: crate::ast::structs::FileASTMarkup = match crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols_struct) {
             Ok(x) => x,
