@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useComboboxStore, Combobox } from "@ariakit/react";
 import { getAnchorRect, replaceRange } from "./utils";
 import type { TextAreaProps } from "../TextArea/TextArea";
@@ -8,11 +8,8 @@ import { Popover } from "./Popover";
 import { TruncateLeft } from "../Text";
 import type { CommandCompletionResponse } from "../../events";
 
-// TODO: move this or replace it with the  expected response from the server
-
 export type ComboBoxProps = {
   commands: CommandCompletionResponse;
-  // maybeMove request commands to onchange ?
   onChange: (value: string) => void;
   value: string;
   onSubmit: React.KeyboardEventHandler<HTMLTextAreaElement>;
@@ -39,6 +36,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     defaultActiveId: undefined,
   });
 
+  const state = combobox.useState();
+
   const matches = useMemo(() => commands.completions, [commands.completions]);
 
   const hasMatches = useMemo(() => {
@@ -56,13 +55,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
-    const first = combobox.first();
-    combobox.setActiveId(first);
-  }, [combobox, hasMatches]);
+  }, [combobox, hasMatches, matches]);
 
   React.useEffect(() => {
     combobox.render();
-  }, [combobox, value]);
+  }, [combobox, value, matches]);
 
   React.useEffect(() => {
     if (!ref.current) return;
@@ -88,8 +85,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (!ref.current) return;
 
-      const state = combobox.getState();
-
       if (event.key === "Enter" && !event.shiftKey && !hasMatches) {
         event.stopPropagation();
         onSubmit(event);
@@ -114,7 +109,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       const tabOrEnterOrSpace =
         event.key === "Tab" || event.key === "Enter" || event.key === "Space";
 
-      const command = state.activeValue;
+      const command = state.activeValue ?? combobox.item(state.activeId)?.value;
 
       if (state.open && tabOrEnterOrSpace && command) {
         event.preventDefault();
@@ -124,6 +119,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
           commands.replace,
           command,
         );
+        combobox.hide();
         onChange(nextValue);
         setMoveCursorTo(commands.replace[0] + command.length);
       }
@@ -132,7 +128,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         combobox.hide();
       }
     },
-    [combobox, commands.replace, hasMatches, onChange, onSubmit],
+    [combobox, commands.replace, hasMatches, onChange, onSubmit, state],
   );
 
   const handleChange = useCallback(
@@ -148,16 +144,26 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       event.preventDefault();
       const textarea = ref.current;
       if (!textarea) return;
+
+      combobox.hide();
       const nextValue = replaceRange(textarea.value, commands.replace, item);
       onChange(nextValue);
       setMoveCursorTo(commands.replace[0] + item.length);
     },
-    [commands.replace, onChange],
+    [combobox, commands.replace, onChange],
   );
 
   const popoverWidth = ref.current
     ? ref.current.getBoundingClientRect().width - 8
     : null;
+
+  useEffect(() => {
+    const maybeItem = combobox.item(state.activeId);
+    if (state.open && maybeItem === null) {
+      const first = combobox.first();
+      combobox.setActiveId(first);
+    }
+  }, [combobox, state]);
 
   return (
     <>
@@ -193,6 +199,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         >
           {matches.map((item, index) => (
             <Item
+              store={combobox}
               key={item + "-" + index}
               value={item}
               onClick={(e) => onItemClick(item, e)}

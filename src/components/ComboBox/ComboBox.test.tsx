@@ -4,8 +4,8 @@ import { render, cleanup } from "../../utils/test-utils";
 import { ComboBox, type ComboBoxProps } from "./ComboBox";
 import { TextArea, type TextAreaProps } from "../TextArea";
 
-const defaultCommands = ["@file", "@workspace"];
-const defaultArgs = ["/foo", "/bar"];
+const defaultCommands = ["@file ", "@workspace "];
+const defaultArgs = ["/foo ", "/bar "];
 
 // replace fakeRequestCommands with this to run with the lsp
 // async function getCommands(query: string, cursor: number) {
@@ -14,7 +14,7 @@ const defaultArgs = ["/foo", "/bar"];
 //     body: JSON.stringify({ query, cursor, top_n: 5 }),
 //   })
 //     .then((res) => res.json())
-//     .then((json) => json as Commands)
+//     .then((json) => json as ComboBoxProps["commands"])
 //     .catch((err) => {
 //       // eslint-disable-next-line no-console
 //       console.error(err);
@@ -42,7 +42,7 @@ const App = (props: Partial<ComboBoxProps>) => {
 
       if (query === "@file " && cursor === 6) {
         setCommands({
-          completions: ["/foo", "/bar"],
+          completions: defaultArgs,
           replace: [6, 6],
           is_cmd_executable: false,
         });
@@ -67,10 +67,13 @@ const App = (props: Partial<ComboBoxProps>) => {
         return;
       }
 
-      if (query === "@file \nhello" && cursor === 6) {
+      if (
+        (query === "@file \nhello" && cursor === 6) ||
+        (query === "@file f\nhello" && cursor === 7)
+      ) {
         setCommands({
           completions: defaultArgs,
-          replace: [6, 6],
+          replace: [6, cursor],
           is_cmd_executable: false,
         });
         return;
@@ -84,7 +87,7 @@ const App = (props: Partial<ComboBoxProps>) => {
         (query === "@fi" && cursor === 3)
       ) {
         setCommands({
-          completions: ["@file"],
+          completions: ["@file "],
           replace: [0, query.length],
           is_cmd_executable: true,
         });
@@ -101,16 +104,7 @@ const App = (props: Partial<ComboBoxProps>) => {
         return;
       }
 
-      if (query === "@file" && cursor === 5) {
-        setCommands({
-          completions: [],
-          replace: [-1, -1],
-          is_cmd_executable: false,
-        });
-        return;
-      }
-
-      if (query === "@file /foo" && cursor === 10) {
+      if (query === "@file /foo " && cursor === 11) {
         setCommands({
           completions: [],
           replace: [-1, -1],
@@ -132,10 +126,10 @@ const App = (props: Partial<ComboBoxProps>) => {
         return;
       }
 
-      if (query === "@file /foo\n@" && cursor === 12) {
+      if (query === "@file /foo \n@" && cursor === 13) {
         setCommands({
           completions: defaultCommands,
-          replace: [11, cursor],
+          replace: [12, cursor],
           is_cmd_executable: false,
         });
         return;
@@ -149,7 +143,7 @@ const App = (props: Partial<ComboBoxProps>) => {
       //     setCommands(commands);
       //   }
       // });
-      // return
+      // return;
 
       setCommands({
         completions: [],
@@ -184,19 +178,18 @@ describe("ComboBox", () => {
 
     await user.click(commandButton);
 
-    await user.type(textarea, " ");
-
     const argumentsButton = app.getByText("/bar");
     await user.click(argumentsButton);
     const result = app.getByRole("combobox");
-    expect(result.textContent).toBe("@file /bar");
+    expect(result.textContent).toBe("@file /bar ");
   });
 
   test("deleting while typing a command", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@f{Tab} f{Tab}");
-    expect(textarea.textContent).toEqual("@file /foo");
+    await user.type(textarea, "@f{Tab}f{Tab}");
+    expect(textarea.textContent).toEqual("@file /foo ");
+    await user.keyboard("{Backspace}");
     await user.keyboard("{Backspace}");
     expect(app.queryByText("/foo")).not.toBeNull();
     await user.keyboard("{Backspace}");
@@ -209,35 +202,31 @@ describe("ComboBox", () => {
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@f");
     await user.keyboard("{Tab}");
-    expect(textarea.textContent).toEqual("@file");
-    await user.keyboard("{Backspace}{BackSpace}");
+    expect(textarea.textContent).toEqual("@file ");
+    await user.keyboard("{Backspace}{Backspace}{Backspace}");
     await user.keyboard("{Tab}");
-    expect(textarea.textContent).toEqual("@file");
+    expect(textarea.textContent).toEqual("@file ");
   });
 
   test("completes when pressing tab", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@f{Tab} f{Tab}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
+    await user.type(textarea, "@f{Tab}f{Tab}");
+    expect(app.getByRole("combobox").textContent).toEqual("@file /foo ");
   });
 
   test("completes when pressing enter", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@f");
-    await user.keyboard("{Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file");
-    await user.type(textarea, " ");
-    await user.keyboard("{Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
+    await user.type(textarea, "@f{Enter}f{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo ");
   });
 
   test("type part of the command, then press ender", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@fi{Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file");
+    expect(app.getByRole("combobox").textContent).toEqual("@file ");
   });
 
   test("multiple commands", async () => {
@@ -245,35 +234,31 @@ describe("ComboBox", () => {
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@f");
     await user.keyboard("{Enter}");
-    await user.type(textarea, " ");
-    await user.keyboard("{Enter}");
-    expect(textarea.textContent).toEqual("@file /foo");
+    await user.keyboard("f{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo ");
     await user.type(textarea, "{Shift>}{Enter}{/Shift}");
     await user.type(textarea, "@");
-
     await user.keyboard("{ArrowDown}{Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual(
-      "@file /foo\n@workspace",
-    );
+
+    expect(textarea.textContent).toEqual("@file /foo \n@workspace ");
   });
 
   test("typing @ and tab space then tab it should complete the command and argument", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@f{Tab} f{Tab}");
+    await user.type(textarea, "@f{Tab}f{Tab}");
     const result = app.getByRole("combobox").textContent;
-    const expected = "@file /foo";
+    const expected = "@file /foo ";
     expect(result).toEqual(expected);
   });
 
-  test("typing @ and enter space then enter, should complete the command and argument", async () => {
+  test("typing @ and enter then enter again, should complete the command and argument", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@f");
     await user.keyboard("{Enter}");
-    await user.type(textarea, " ");
     await user.keyboard("f{Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file /foo");
+    expect(app.getByRole("combobox").textContent).toEqual("@file /foo ");
   });
 
   test("submit when pressing enter", async () => {
@@ -289,17 +274,11 @@ describe("ComboBox", () => {
     const onSubmitSpy = vi.fn();
     const { user, ...app } = render(<App onSubmit={onSubmitSpy} />);
     const textarea = app.getByRole("combobox");
-    await user.type(textarea, "@");
-    await user.keyboard("{Enter}");
-    await user.type(textarea, " ");
-    await user.keyboard("{Enter}");
-    expect(textarea.textContent).toEqual("@file /foo");
+    await user.type(textarea, "@f{Enter}f{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo ");
     await user.type(textarea, "{Shift>}{Enter}{/Shift}");
     await user.type(textarea, "what's this?");
     await user.keyboard("{Enter}");
-    if (onSubmitSpy.mock.calls.length === 0) {
-      app.debug();
-    }
     expect(onSubmitSpy).toHaveBeenCalled();
   });
 
@@ -307,8 +286,7 @@ describe("ComboBox", () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@fi{Enter}");
-    expect(textarea.textContent).toEqual("@file");
-    await user.type(textarea, " ");
+    expect(textarea.textContent).toEqual("@file ");
     expect(app.queryByText("/foo")).not.toBeNull();
     expect(app.queryByText("/bar")).not.toBeNull();
     await user.keyboard("{Backspace}");
@@ -326,10 +304,10 @@ describe("ComboBox", () => {
     const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
     await user.type(textarea, "@");
     await user.click(app.getByText("@file"));
-    expect(textarea.textContent).toEqual("@file");
-    await user.keyboard("{Backspace>4}");
+    expect(textarea.textContent).toEqual("@file ");
+    await user.keyboard("{Backspace>5}");
     await user.click(app.getByText("@workspace"));
-    expect(textarea.textContent).toEqual("@workspace");
+    expect(textarea.textContent).toEqual("@workspace ");
 
     // TODO: deleting between the lines
     // await user.keyboard("{Shift>}{Enter}{/Shift}");
@@ -343,13 +321,11 @@ describe("ComboBox", () => {
   test("undo/redo mac command key", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
-    await user.type(textarea, "@");
-    await user.keyboard("{Enter}");
-    await user.type(textarea, " ");
-    await user.keyboard("{Enter}");
-    expect(textarea.textContent).toEqual("@file /foo");
+    await user.type(textarea, "@f{Enter}f{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo ");
     await user.keyboard("{Meta>}{z}");
-    expect(textarea.textContent).toEqual("@file ");
+    expect(textarea.textContent).toEqual("@file f");
+    await user.keyboard("{z}");
     await user.keyboard("{z}");
     await user.keyboard("{z}");
     expect(textarea.textContent).toEqual("@");
@@ -361,50 +337,46 @@ describe("ComboBox", () => {
 
     await user.keyboard("{z}");
     await user.keyboard("{z}");
-    expect(textarea.textContent).toEqual("@file ");
+    await user.keyboard("{z}");
+    expect(textarea.textContent).toEqual("@file f");
 
     await user.keyboard("{z}{/Meta}{/Shift}");
-    expect(textarea.textContent).toEqual("@file /foo");
+    expect(textarea.textContent).toEqual("@file /foo ");
   });
 
   test("undo/redo windows ctrl key", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
-    await user.type(textarea, "@");
-    await user.keyboard("{Enter}");
-    await user.type(textarea, " ");
-    await user.keyboard("{Enter}");
-    expect(textarea.textContent).toEqual("@file /foo");
+    await user.type(textarea, "@f{Enter}f{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo ");
     await user.keyboard("{Control>}{z}");
-    expect(textarea.textContent).toEqual("@file ");
+    expect(textarea.textContent).toEqual("@file f");
     await user.keyboard("{z}");
     await user.keyboard("{z}");
-    expect(textarea.textContent).toEqual("@");
+    expect(textarea.textContent).toEqual("@f");
     await user.keyboard("{z}{/Control}");
-    expect(textarea.textContent).toEqual("");
+    expect(textarea.textContent).toEqual("@");
 
     await user.keyboard("{Shift>}{Control>}{z}");
-    expect(textarea.textContent).toEqual("@");
-    await user.keyboard("{z}");
+    expect(textarea.textContent).toEqual("@f");
     await user.keyboard("{z}");
     expect(textarea.textContent).toEqual("@file ");
 
+    await user.keyboard("{z}");
+    await user.keyboard("{z}");
     await user.keyboard("{z}{/Control}{/Shift}");
-    expect(textarea.textContent).toEqual("@file /foo");
+    expect(textarea.textContent).toEqual("@file /foo ");
   });
 
   test("@, enter, space, enter, ctrl+z, enter", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox") as HTMLTextAreaElement;
-    await user.type(textarea, "@");
-    await user.keyboard("{Enter}");
-    await user.type(textarea, " ");
-    await user.keyboard("{Enter}");
-    expect(textarea.textContent).toEqual("@file /foo");
-    await user.keyboard("{Control>}{z}{/Control}");
+    await user.type(textarea, "@f{Enter}f{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo ");
+    await user.keyboard("{Control>}{z}{z}{/Control}");
     expect(textarea.textContent).toEqual("@file ");
     await user.keyboard("{Enter}");
-    expect(textarea.textContent).toEqual("@file /foo");
+    expect(textarea.textContent).toEqual("@file /foo ");
   });
 
   test("insert command before text", async () => {
@@ -416,14 +388,9 @@ describe("ComboBox", () => {
       initialSelectionStart: 0,
     });
     await user.keyboard("{Enter}");
-    expect(textarea.textContent).toEqual("@file\nhello");
-
-    await user.type(textarea, " ", {
-      initialSelectionStart: 5,
-      initialSelectionEnd: 5,
-    });
-    await user.keyboard("{Enter}");
-    expect(textarea.textContent).toEqual("@file /foo\nhello");
+    expect(textarea.textContent).toEqual("@file \nhello");
+    await user.keyboard("f{Enter}");
+    expect(textarea.textContent).toEqual("@file /foo \nhello");
   });
 
   test("it should close when pressing escape", async () => {
