@@ -452,6 +452,7 @@ function render_models(models) {
     }
     for (const [key, value] of Object.entries(models_tree)) {
         const row = document.createElement('tr');
+        row.classList.add('model-row');
         row.setAttribute('data-model',key);
         const model_name = document.createElement("td");
         const model_span = document.createElement('span');
@@ -476,14 +477,26 @@ function render_models(models) {
             const has_finetune = document.createElement("td");
             const has_chat = document.createElement("td");
             model_name.innerHTML = element.name;
-            if(element.hasOwnProperty('is_deprecated') && element.is_deprecated) {
+            if(element.hasOwnProperty('repo_status') && element.repo_status == 'gated') {
+                model_name.innerHTML = '';
+                const model_name_div = document.createElement('div');
+                model_name_div.classList.add('modelsub-name');
+                const model_holder_div = document.createElement('div');
+                model_holder_div.innerHTML = element.name;
+                const model_span_div = document.createElement('span');
+                model_span_div.classList.add('modelsub-span');
+                model_span_div.innerHTML = `Set authentication to use this model`;
+                model_name_div.appendChild(model_holder_div);
+                model_name_div.appendChild(model_span_div);
+                model_name.appendChild(model_name_div);
+            }
+            if(element.hasOwnProperty('is_deprecated') && !element.is_deprecated) {
                 const deprecated_notice = document.createElement('span');
                 deprecated_notice.classList.add('deprecated-badge','badge','rounded-pill','text-dark');
                 deprecated_notice.setAttribute('data-bs-toggle','tooltip');
                 deprecated_notice.setAttribute('data-bs-placement','top');
                 deprecated_notice.setAttribute('title','Deprecated: this model will be removed in future releases.');
                 deprecated_notice.textContent = 'Deprecated';
-                model_name.innerHTML = element.name;
                 model_name.appendChild(deprecated_notice);
                 new bootstrap.Tooltip(deprecated_notice);
             }
@@ -502,12 +515,17 @@ function render_models(models) {
             row.appendChild(has_chat);
             models_table.appendChild(row);
             row.addEventListener('click', function(e) {
-                const model_name = this.dataset.model;
-                models_data.model_assign[model_name] = {
-                    gpus_shard: 1,
-                    n_ctx: element.default_n_ctx,
-                };
-                save_model_assigned();
+                if(e.target.classList.contains('modelsub-span')) {
+                    document.querySelector('button[data-tab="settings"]').click();
+                    
+                } else {
+                    const model_name = this.dataset.model;
+                    models_data.model_assign[model_name] = {
+                        gpus_shard: 1,
+                        n_ctx: element.default_n_ctx,
+                    };
+                    save_model_assigned();
+                }
                 const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
                 add_model_modal.hide();
             });
