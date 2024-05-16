@@ -199,7 +199,7 @@ function render_models_assigned(models) {
         finetune_info.classList.add('model-finetune-info');
         finetune_info.dataset.model = index;
 
-        if(models_info[index].hasOwnProperty('is_deprecated') && models_info[index].is_deprecated) {
+        if(models_info[index].is_deprecated) {
             const deprecated_notice = document.createElement('span');
             deprecated_notice.classList.add('deprecated-badge','badge','rounded-pill','text-dark');
             deprecated_notice.setAttribute('data-bs-toggle','tooltip');
@@ -494,7 +494,7 @@ function render_models(models) {
                 model_name_div.appendChild(model_info_div);
                 model_name.appendChild(model_name_div);
             }
-            if(element.hasOwnProperty('is_deprecated') && !element.is_deprecated) {
+            if(element.is_deprecated) {
                 const deprecated_notice = document.createElement('span');
                 deprecated_notice.classList.add('deprecated-badge','badge','rounded-pill','text-dark');
                 deprecated_notice.setAttribute('data-bs-toggle','tooltip');
