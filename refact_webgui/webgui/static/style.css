@@ -922,6 +922,9 @@ h3 {
 .modelsub-row {
     display: none;
 }
+.modelsub-row td {
+    vertical-align: top;
+}
 .modelsub-name {
     display: inline-flex;
     flex-direction: column;
@@ -929,9 +932,13 @@ h3 {
 .modelsub-name div {
     display: block;
 }
-.modelsub-name span {
+.modelsub-info {
+    opacity: 0.7;
     display: block;
-    font-size: 12px;
+    font-size: 11px;
+    margin-top: 3px;
+}
+.modelsub-info span {
     color: rgb(13, 110, 253);
     cursor: pointer;
 }
@@ -1190,8 +1197,11 @@ h3 {
 }
 .deprecated-badge {
     margin-left: 3px;
-    background-color: #ccc;
+    background-color: #999 !important;
+    color: #fff !important;
     opacity: 0.7;
+    font-size: 8px;
+    text-transform: uppercase;
 }
 .default-context {
     /* padding: .25rem .5rem; */
