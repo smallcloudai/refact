@@ -477,17 +477,21 @@ function render_models(models) {
             const has_finetune = document.createElement("td");
             const has_chat = document.createElement("td");
             model_name.innerHTML = element.name;
-            if(element.hasOwnProperty('repo_status') && element.repo_status == 'gated') {
+            if(element.repo_status == 'gated') {
                 model_name.innerHTML = '';
                 const model_name_div = document.createElement('div');
                 model_name_div.classList.add('modelsub-name');
                 const model_holder_div = document.createElement('div');
                 model_holder_div.innerHTML = element.name;
-                const model_span_div = document.createElement('span');
-                model_span_div.classList.add('modelsub-span');
-                model_span_div.innerHTML = `Set authentication to use this model`;
+                const model_info_div = document.createElement('div');
+                model_info_div.classList.add('modelsub-info');
+                model_info_div.innerHTML = `<b>Gated models downloading requires:</b><br />
+                1. Huggingface Hub token in <span class="modelinfo-settings">settings.</span><br />
+                2. Accept conditions at <a target="_blank" href="${element.repo_url}">model's page.</a><br />
+                Make sure that you have access to this model.<br />
+                More info about gated model <a target="_blank" href="https://huggingface.co/docs/hub/en/models-gated">here</a>.`;
                 model_name_div.appendChild(model_holder_div);
-                model_name_div.appendChild(model_span_div);
+                model_name_div.appendChild(model_info_div);
                 model_name.appendChild(model_name_div);
             }
             if(element.hasOwnProperty('is_deprecated') && !element.is_deprecated) {
@@ -515,19 +519,25 @@ function render_models(models) {
             row.appendChild(has_chat);
             models_table.appendChild(row);
             row.addEventListener('click', function(e) {
-                if(e.target.classList.contains('modelsub-span')) {
+                if(e.target.classList.contains('modelinfo-settings')) {
                     document.querySelector('button[data-tab="settings"]').click();
-                    
-                } else {
+                    const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
+                    add_model_modal.hide();
+                } else if (e.target.tagName.toLowerCase() === 'a') {
+                    e.preventDefault();
+                    const href = e.target.getAttribute('href');
+                    window.open(href, '_blank');
+                }
+                else {
                     const model_name = this.dataset.model;
                     models_data.model_assign[model_name] = {
                         gpus_shard: 1,
                         n_ctx: element.default_n_ctx,
                     };
                     save_model_assigned();
+                    const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
+                    add_model_modal.hide();
                 }
-                const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
-                add_model_modal.hide();
             });
         });
         row.addEventListener('click', function(e) {
