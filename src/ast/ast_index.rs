@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::imports_resolver::{possible_filepath_candidates, top_n_prefixes, try_find_file_path};
 use crate::ast::structs::FileASTMarkup;
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, AstSymbolInstanceRc, ImportDeclaration, ImportType, read_symbol, SymbolInformation};
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, AstSymbolInstanceRc, ImportDeclaration, ImportType, SymbolInformation};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
@@ -72,7 +72,6 @@ impl AstIndex {
             has_changes: false,
         }
     }
-
 
     pub fn parse(doc: &Document) -> Result<Vec<AstSymbolInstanceArc>, String> {
         let mut parser = match get_ast_parser_by_filename(&doc.path) {
@@ -203,7 +202,7 @@ impl AstIndex {
         self.has_changes = true;
     }
 
-    pub fn search_by_name(
+    pub(crate) fn search_by_name(
         &self,
         query: &str,
         request_symbol_type: RequestSymbolType,
@@ -292,7 +291,7 @@ impl AstIndex {
         }
     }
 
-    pub fn search_by_content(
+    pub(crate) fn search_by_content(
         &self,
         query: &str,
         request_symbol_type: RequestSymbolType,
@@ -345,7 +344,7 @@ impl AstIndex {
             .collect::<Vec<_>>())
     }
 
-    pub fn search_related_declarations(&self, guid: &Uuid) -> Result<Vec<AstSymbolInstanceRc>, String> {
+    pub(crate) fn search_related_declarations(&self, guid: &Uuid) -> Result<Vec<AstSymbolInstanceRc>, String> {
         match self.symbols_by_guid.get(guid) {
             Some(symbol) => {
                 Ok(symbol.borrow()
@@ -360,7 +359,7 @@ impl AstIndex {
         }
     }
 
-    pub fn search_usages_with_this_declaration(
+    pub(crate) fn search_usages_with_this_declaration(
         &self,
         declaration_guid: &Uuid,
         exception_doc: Option<Document>,
@@ -416,7 +415,7 @@ impl AstIndex {
         (parents_symbols, guid_to_usefulness)
     }
 
-    pub fn symbols_near_cursor_to_buckets(
+    pub(crate) fn symbols_near_cursor_to_buckets(
         &self,
         doc: &Document,
         code: &str,
@@ -719,8 +718,8 @@ impl AstIndex {
             let mut current_paths = vec![];
             for symbol in current_depth_symbols
                 .iter()
-                .filter(|s| read_symbol(s).symbol_type() == SymbolType::ImportDeclaration) {
-                let s_ref = read_symbol(symbol);
+                .filter(|s| s.borrow().symbol_type() == SymbolType::ImportDeclaration) {
+                let s_ref = symbol.borrow();
                 let import_decl = s_ref.as_any().downcast_ref::<ImportDeclaration>().expect("wrong type");
                 if let Some(import_path) = import_decl.filepath_ref.clone() {
                     current_paths.push(import_path.clone());
@@ -743,7 +742,7 @@ impl AstIndex {
             .flatten()
             .cloned()
             .filter(|s| {
-                let symbol_type = read_symbol(s).symbol_type();
+                let symbol_type = s.borrow().symbol_type();
                 symbol_type == SymbolType::StructDeclaration
                     || symbol_type == SymbolType::TypeAlias
                     || symbol_type == SymbolType::FunctionDeclaration
@@ -1206,7 +1205,7 @@ impl AstIndex {
         (stats, import_components_succ_solution_index_local)
     }
 
-    pub(crate) fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceRc>) {
+    fn create_extra_indexes(&mut self, symbols: &Vec<AstSymbolInstanceRc>) {
         for symbol in symbols
             .iter()
             .filter(|s| !s.borrow().is_type())

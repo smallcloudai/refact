@@ -150,13 +150,16 @@ async fn ast_indexer_thread(
                 stats_parsed_cnt = 0;
                 stats_symbols_cnt = 0;
                 reported_stats = true;
+                let (ast_index_files_total, ast_index_symbols_total) = {
+                    let ast_ref = ast_index.read().await;
+                    (ast_ref.total_files(), ast_ref.total_symbols())
+                };
                 {
                     let mut locked_status = status.lock().await;
                     locked_status.files_unparsed = 0;
                     locked_status.files_total = 0;
-                    let ast_ref = ast_index.read().await;
-                    locked_status.ast_index_files_total = ast_ref.total_files();
-                    locked_status.ast_index_symbols_total = ast_ref.total_symbols();
+                    locked_status.ast_index_files_total = ast_index_files_total;
+                    locked_status.ast_index_symbols_total = ast_index_symbols_total;
                     locked_status.state = "idle".to_string();
                 }
                 ast_hold_off_indexes_rebuild_notify.notify_one();
@@ -179,13 +182,16 @@ async fn ast_indexer_thread(
                 break;
             };
             let left_docs_count: usize = events.iter().map(|e| e.docs.len()).sum();
+            let (ast_index_files_total, ast_index_symbols_total) = {
+                let ast_ref = ast_index.read().await;
+                (ast_ref.total_files(), ast_ref.total_symbols())
+            };
             {
                 let mut locked_status = status.lock().await;
                 locked_status.files_unparsed = left_docs_count;
                 locked_status.files_total = files_total;
-                let ast_ref = ast_index.read().await;
-                locked_status.ast_index_files_total = ast_ref.total_files();
-                locked_status.ast_index_symbols_total = ast_ref.total_symbols();
+                locked_status.ast_index_files_total = ast_index_files_total;
+                locked_status.ast_index_symbols_total = ast_index_symbols_total;
                 locked_status.state = "parsing".to_string();
             }
             let gcx = match gcx_weak.upgrade() {
@@ -278,13 +284,16 @@ async fn ast_index_rebuild_thread(
             continue;
         }
 
+        let (ast_index_files_total, ast_index_symbols_total) = {
+            let ast_ref = ast_index.read().await;
+            (ast_ref.total_files(), ast_ref.total_symbols())
+        };
         {
             let mut locked_status = status.lock().await;
             locked_status.files_unparsed = 0;
             locked_status.files_total = 0;
-            let ast_ref = ast_index.read().await;
-            locked_status.ast_index_files_total = ast_ref.total_files();
-            locked_status.ast_index_symbols_total = ast_ref.total_symbols();
+            locked_status.ast_index_files_total = ast_index_files_total;
+            locked_status.ast_index_symbols_total = ast_index_symbols_total;
             locked_status.state = "indexing".to_string();
         }
         let ast_index_clone = Arc::clone(&ast_index);
