@@ -303,6 +303,8 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         self.fields_mut().linked_decl_guid = linked_decl_guid;
     }
 
+    fn temporary_types_cleanup(&mut self);
+
     fn get_caller_depth(&self) -> &Option<usize> {
         &self.fields().caller_depth
     }
@@ -319,7 +321,7 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
         let mut new_guids = vec![];
         for t in self
             .types()
-            .iter_mut() {
+            .iter() {
             if guids.contains(&t.guid.unwrap_or_default()) {
                 new_guids.push(None);
             } else {
@@ -419,6 +421,19 @@ impl AstSymbolInstance for StructDeclaration {
         }
     }
 
+    fn temporary_types_cleanup(&mut self) {
+        for t in self.inherited_types.iter_mut() {
+            t.mutate_nested_types(|t| {
+                t.inference_info = None
+            })
+        }
+        for t in self.template_types.iter_mut() {
+            t.mutate_nested_types(|t| {
+                t.inference_info = None
+            })
+        }
+    }
+
     fn is_type(&self) -> bool {
         true
     }
@@ -483,6 +498,14 @@ impl AstSymbolInstance for TypeAlias {
         }
     }
 
+    fn temporary_types_cleanup(&mut self) {
+        for t in self.types.iter_mut() {
+            t.mutate_nested_types(|t| {
+                t.inference_info = None
+            })
+        }
+    }
+
     fn is_type(&self) -> bool {
         true
     }
@@ -540,6 +563,12 @@ impl AstSymbolInstance for ClassFieldDeclaration {
         self.type_.mutate_nested_types(|t| {
             t.guid = guids[idx].clone();
             idx += 1;
+        })
+    }
+
+    fn temporary_types_cleanup(&mut self) {
+        self.type_.mutate_nested_types(|t| {
+            t.inference_info = None
         })
     }
 
@@ -605,6 +634,8 @@ impl AstSymbolInstance for ImportDeclaration {
 
     fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
 
+    fn temporary_types_cleanup(&mut self) { }
+
     fn is_type(&self) -> bool {
         false
     }
@@ -662,6 +693,12 @@ impl AstSymbolInstance for VariableDefinition {
         self.type_.mutate_nested_types(|t| {
             t.guid = guids[idx].clone();
             idx += 1;
+        })
+    }
+
+    fn temporary_types_cleanup(&mut self) {
+        self.type_.mutate_nested_types(|t| {
+            t.inference_info = None
         })
     }
 
@@ -774,6 +811,21 @@ impl AstSymbolInstance for FunctionDeclaration {
         }
     }
 
+    fn temporary_types_cleanup(&mut self) {
+        if let Some(t) = &mut self.return_type {
+            t.mutate_nested_types(|t| {
+                t.inference_info = None
+            });
+        }
+        for t in self.args.iter_mut() {
+            if let Some(t) = &mut t.type_ {
+                t.mutate_nested_types(|t| {
+                    t.inference_info = None
+                });
+            }
+        }
+    }
+
     fn is_declaration(&self) -> bool { true }
 
     fn symbol_type(&self) -> SymbolType {
@@ -820,6 +872,8 @@ impl AstSymbolInstance for CommentDefinition {
     }
 
     fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
+
+    fn temporary_types_cleanup(&mut self) { }
 
     fn is_declaration(&self) -> bool { true }
 
@@ -870,6 +924,8 @@ impl AstSymbolInstance for FunctionCall {
 
     fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
 
+    fn temporary_types_cleanup(&mut self) { }
+
     fn is_declaration(&self) -> bool { false }
 
     fn symbol_type(&self) -> SymbolType {
@@ -916,6 +972,8 @@ impl AstSymbolInstance for VariableUsage {
     }
 
     fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
+
+    fn temporary_types_cleanup(&mut self) { }
 
     fn is_declaration(&self) -> bool { false }
 

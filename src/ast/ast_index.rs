@@ -952,7 +952,11 @@ impl AstIndex {
                 }
             }
             assert_eq!(new_guids.len(), type_names.len());
-            symbol.borrow_mut().set_guids_to_types(&new_guids);
+            {
+                let mut symbol_ref = symbol.borrow_mut();
+                symbol_ref.set_guids_to_types(&new_guids);
+                symbol_ref.temporary_types_cleanup();
+            }
         }
         stats
     }
