@@ -48,7 +48,7 @@ impl AstModule {
             files_total: 0,
             ast_index_files_total: 0,
             ast_index_symbols_total: 0,
-            state: "idle".to_string(),
+            state: "starting".to_string(),
         }));
         let ast_index = Arc::new(ARwLock::new(AstIndex::init(ast_index_max_files)));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(

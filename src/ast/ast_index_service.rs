@@ -303,7 +303,7 @@ async fn ast_index_rebuild_thread(
         }).await.expect("cannot reindex");
         {
             let mut locked_status = status.lock().await;
-            locked_status.state = "idle".to_string();
+            locked_status.state = "done".to_string();
         }
     }
 }
