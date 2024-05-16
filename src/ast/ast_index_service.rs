@@ -3,8 +3,8 @@ use std::iter::zip;
 use std::path::PathBuf;
 use std::sync::{Arc, Weak};
 use std::time::{Duration, SystemTime};
-use rayon::prelude::*;
 
+use rayon::prelude::*;
 use tokio::sync::{Mutex as AMutex, Notify};
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
@@ -150,6 +150,15 @@ async fn ast_indexer_thread(
                 stats_parsed_cnt = 0;
                 stats_symbols_cnt = 0;
                 reported_stats = true;
+                {
+                    let mut locked_status = status.lock().await;
+                    locked_status.files_unparsed = 0;
+                    locked_status.files_total = 0;
+                    let ast_ref = ast_index.read().await;
+                    locked_status.ast_index_files_total = ast_ref.total_files();
+                    locked_status.ast_index_symbols_total = ast_ref.total_symbols();
+                    locked_status.state = "idle".to_string();
+                }
                 ast_hold_off_indexes_rebuild_notify.notify_one();
             }
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -186,23 +195,27 @@ async fn ast_indexer_thread(
                     break;
                 }
             };
+
+
+            let is_ast_full = ast_index.read().await.is_overflowed();
             let mut docs_with_text: Vec<Document> = Vec::new();
             for doc in processing_events.iter().flat_map(|x| x.docs.iter()) {
-                match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.path).await {
-                    Ok(file_text) => {
-                        stats_parsed_cnt += 1;
-                        let mut doc_copy = doc.clone();
-                        doc_copy.update_text(&file_text);
-                        docs_with_text.push(doc_copy);
-                    }
-                    Err(e) => {
-                        tracing::warn!("cannot read file {}: {}", crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30), e);
-                        continue;
+                if !is_ast_full {
+                    match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.path).await {
+                        Ok(file_text) => {
+                            stats_parsed_cnt += 1;
+                            let mut doc_copy = doc.clone();
+                            doc_copy.update_text(&file_text);
+                            docs_with_text.push(doc_copy);
+                        }
+                        Err(e) => {
+                            tracing::warn!("cannot read file {}: {}", crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30), e);
+                            continue;
+                        }
                     }
                 }
             }
 
-            let is_ast_full = ast_index.read().await.is_overflowed();
             if !docs_with_text.is_empty() {
                 let symbols: Vec<Result<Vec<AstSymbolInstanceArc>, String>> = docs_with_text
                     .par_iter()
