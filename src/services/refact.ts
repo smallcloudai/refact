@@ -62,11 +62,11 @@ export function isChatContextFileMessage(
 }
 
 interface BaseDelta {
-  role: ChatRole;
+  role: ChatRole | null;
 }
 
 interface AssistantDelta extends BaseDelta {
-  role: "assistant";
+  role: "assistant" | null;
   content: string;
 }
 interface ChatContextFileDelta extends BaseDelta {
