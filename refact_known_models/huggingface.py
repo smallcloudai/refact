@@ -57,6 +57,7 @@ huggingface_mini_db = {
         "required_memory_mb": 18000,
         "T": 4096,
         "filter_caps": ["completion"],
+        "deprecated": True,
     },
     "wizardlm/7b": {
         "backend": "autogptq",
