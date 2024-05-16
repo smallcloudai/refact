@@ -247,6 +247,7 @@ class ModelAssigner:
                 "available_n_ctx": available_n_ctx,
                 "is_deprecated": bool(rec.get("deprecated", False)),
                 "repo_status": self._models_repo_status[k],
+                "repo_url": f"https://huggingface.co/{rec['model_path']}",
             })
         return {"models": info}
 
