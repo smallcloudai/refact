@@ -159,6 +159,22 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             }
         },
+        "llama3/8b/instruct": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {
+                    "token_esc": "",
+                    "keyword_system": "<|start_header_id|>system<|end_header_id|>\n\n",
+                    "keyword_user": "<|start_header_id|>user<|end_header_id|>\n\n",
+                    "keyword_assistant": "<|start_header_id|>assistant<|end_header_id|>\n\n",
+                    "eot": "<|eot_id|>",
+                    "stop_list": [
+                        "<|eot_id|>"
+                    ],
+                    "default_system_message": "You are a programming assistant."
+                }
+            }
+        },
         "llama2/7b": {
             "n_ctx": 4096,
             "supports_scratchpads": {
