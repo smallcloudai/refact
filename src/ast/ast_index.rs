@@ -454,7 +454,7 @@ impl AstIndex {
         let scope_symbols = if let Some(parent_guid) = unfiltered_cursor_symbols
             .iter()
             .next()
-            .map(|s| s.borrow_mut().parent_guid().clone())
+            .map(|s| s.borrow().parent_guid().clone())
             .flatten() {
             unfiltered_cursor_symbols
                 .iter()
