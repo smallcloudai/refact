@@ -743,6 +743,7 @@ h3 {
     background-color: #EEEEEEFF; /* or #f7f7f9 */
     border-radius: 5px;
     padding: 5px;
+    overflow: hidden;
 }
 
 .model-finetune-item-inner {
@@ -920,6 +921,19 @@ h3 {
 }
 .modelsub-row {
     display: none;
+}
+.modelsub-name {
+    display: inline-flex;
+    flex-direction: column;
+}
+.modelsub-name div {
+    display: block;
+}
+.modelsub-name span {
+    display: block;
+    font-size: 12px;
+    color: rgb(13, 110, 253);
+    cursor: pointer;
 }
 
 .modelsub-row td:first-child {
