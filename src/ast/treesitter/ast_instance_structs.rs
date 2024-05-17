@@ -418,11 +418,13 @@ impl AstSymbolInstance for StructDeclaration {
 
     fn temporary_types_cleanup(&mut self) {
         for t in self.inherited_types.iter_mut() {
+            t.inference_info = None;
             t.mutate_nested_types(|t| {
                 t.inference_info = None
             })
         }
         for t in self.template_types.iter_mut() {
+            t.inference_info = None;
             t.mutate_nested_types(|t| {
                 t.inference_info = None
             })
@@ -495,6 +497,7 @@ impl AstSymbolInstance for TypeAlias {
 
     fn temporary_types_cleanup(&mut self) {
         for t in self.types.iter_mut() {
+            t.inference_info = None;
             t.mutate_nested_types(|t| {
                 t.inference_info = None
             })
@@ -562,6 +565,7 @@ impl AstSymbolInstance for ClassFieldDeclaration {
     }
 
     fn temporary_types_cleanup(&mut self) {
+        self.type_.inference_info = None;
         self.type_.mutate_nested_types(|t| {
             t.inference_info = None
         })
@@ -692,6 +696,7 @@ impl AstSymbolInstance for VariableDefinition {
     }
 
     fn temporary_types_cleanup(&mut self) {
+        self.type_.inference_info = None;
         self.type_.mutate_nested_types(|t| {
             t.inference_info = None
         })
@@ -808,12 +813,14 @@ impl AstSymbolInstance for FunctionDeclaration {
 
     fn temporary_types_cleanup(&mut self) {
         if let Some(t) = &mut self.return_type {
+            t.inference_info = None;
             t.mutate_nested_types(|t| {
                 t.inference_info = None
             });
         }
         for t in self.args.iter_mut() {
             if let Some(t) = &mut t.type_ {
+                t.inference_info = None;
                 t.mutate_nested_types(|t| {
                     t.inference_info = None
                 });
