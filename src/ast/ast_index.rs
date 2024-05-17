@@ -4,6 +4,8 @@ use std::hash::Hash;
 use std::io::Write;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use itertools::Itertools;
 use rand::Rng;
@@ -29,6 +31,7 @@ const TOO_MANY_SYMBOLS_IN_FILE: usize = 10000;
 
 #[derive(Debug)]
 pub struct AstIndex {
+    shutdown_flag: Arc<AtomicBool>,
     declaration_symbols_by_name: HashMap<String, Vec<AstSymbolInstanceRc>>,
     usage_symbols_by_name: HashMap<String, Vec<AstSymbolInstanceRc>>,
     symbols_by_guid: HashMap<Uuid, AstSymbolInstanceRc>,
@@ -59,8 +62,12 @@ pub(crate) struct IndexingStats {
 }
 
 impl AstIndex {
-    pub fn init(ast_index_max_files: usize) -> AstIndex {
+    pub fn init(
+        ast_index_max_files: usize,
+        shutdown_flag: Arc<AtomicBool>
+    ) -> AstIndex {
         AstIndex {
+            shutdown_flag,
             declaration_symbols_by_name: HashMap::new(),
             usage_symbols_by_name: HashMap::new(),
             symbols_by_guid: HashMap::new(),
@@ -844,12 +851,20 @@ impl AstIndex {
             stats.found,
             stats.non_found
         );
+        if self.shutdown_flag.load(Ordering::SeqCst) {
+            info!("Aborting ast indexing, shutdown signal received");
+            return;
+        }
 
         info!("Resolving import symbols");
         let t0 = std::time::Instant::now();
         let (stats, import_components_succ_solution_index) = self.resolve_imports(
             &mut symbols, &self.import_components_succ_solution_index
         );
+        if self.shutdown_flag.load(Ordering::SeqCst) {
+            info!("Aborting ast indexing, shutdown signal received");
+            return;
+        }
         self.import_components_succ_solution_index.extend(import_components_succ_solution_index);
         info!(
             "Resolving import symbols finished, took {:.3}s, {} found, {} not found",
@@ -861,6 +876,10 @@ impl AstIndex {
         info!("Linking usage and declaration symbols");
         let t1 = std::time::Instant::now();
         let stats = self.merge_usages_to_declarations(&mut symbols);
+        if self.shutdown_flag.load(Ordering::SeqCst) {
+            info!("Aborting ast indexing, shutdown signal received");
+            return;
+        }
         info!(
             "Linking usage and declaration symbols finished, took {:.3}s, {} found, {} not found",
             t1.elapsed().as_secs_f64(),
@@ -892,6 +911,9 @@ impl AstIndex {
     fn resolve_declaration_symbols(&self, symbols: &mut Vec<AstSymbolInstanceRc>) -> IndexingStats {
         let mut stats = IndexingStats { found: 0, non_found: 0 };
         for symbol in symbols.iter_mut() {
+            if self.shutdown_flag.load(Ordering::SeqCst) {
+                return stats;
+            }
             let (type_names, symb_type, symb_path) = {
                 let s_ref = symbol.borrow();
                 (s_ref.types(), s_ref.symbol_type(), s_ref.file_path().clone())
@@ -1044,6 +1066,10 @@ impl AstIndex {
 
             let mut symbols_cache: HashMap<(Uuid, String), Option<Uuid>> = HashMap::new();
             for usage_symbol in symbols_to_process.iter_mut() {
+                if self.shutdown_flag.load(Ordering::SeqCst) {
+                    return stats;
+                }
+
                 let (name, parent_guid, caller_guid) = {
                     let s_ref = usage_symbol.borrow();
                     (s_ref.name().to_string(), s_ref.parent_guid().clone().unwrap_or_default(), s_ref.get_caller_guid().clone())
@@ -1139,6 +1165,10 @@ impl AstIndex {
         for symbol in symbols
             .iter_mut()
             .filter(|s| s.borrow().as_any().downcast_ref::<ImportDeclaration>().is_some()) {
+            if self.shutdown_flag.load(Ordering::SeqCst) {
+                return (stats, import_components_succ_solution_index_local);
+            }
+
             let (import_type, file_path, path_components, language) = {
                 let s_ref = symbol.borrow();
                 let import_decl = s_ref.as_any().downcast_ref::<ImportDeclaration>().expect("wrong type");
@@ -1210,6 +1240,10 @@ impl AstIndex {
             .iter()
             .filter(|s| !s.borrow().is_type())
             .cloned() {
+            if self.shutdown_flag.load(Ordering::SeqCst) {
+                return;
+            }
+
             let guid = symbol.borrow().guid().clone();
             if self.type_guid_to_dependent_guids.contains_key(&guid) {
                 self.type_guid_to_dependent_guids.remove(&guid);
@@ -1223,6 +1257,10 @@ impl AstIndex {
             .iter()
             .filter(|s| !s.borrow().is_type())
             .cloned() {
+            if self.shutdown_flag.load(Ordering::SeqCst) {
+                return;
+            }
+
             let (name, s_guid, mut types, is_declaration, symbol_type, parent_guid) = {
                 let s_ref = symbol.borrow();
                 (s_ref.name().to_string(), s_ref.guid().clone(), s_ref.types(), s_ref.is_declaration(),

@@ -1,5 +1,6 @@
 use std::io::Write;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use axum::{Extension, http::{StatusCode, Uri}, response::IntoResponse};
 use hyper::Server;
@@ -22,6 +23,7 @@ async fn handler_404(path: Uri) -> impl IntoResponse {
 pub async fn start_server(
     global_context: Arc<ARwLock<GlobalContext>>,
     ask_shutdown_receiver: std::sync::mpsc::Receiver<String>,
+    shutdown_flag: Arc<AtomicBool>
 ) -> Option<JoinHandle<()>> {
     let port = global_context.read().await.cmdline.http_port;
     if port == 0 {
@@ -40,7 +42,7 @@ pub async fn start_server(
                 let router = make_refact_http_server().layer(Extension(global_context.clone()));
                 let server = builder
                     .serve(router.into_make_service())
-                    .with_graceful_shutdown(crate::global_context::block_until_signal(ask_shutdown_receiver));
+                    .with_graceful_shutdown(crate::global_context::block_until_signal(ask_shutdown_receiver, shutdown_flag));
                 let resp = server.await.map_err(|e| format!("HTTP server error: {}", e));
                 if let Err(e) = resp {
                     error!("server error: {}", e);

@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -42,7 +43,10 @@ pub struct VecDbCaps {
 }
 
 impl AstModule {
-    pub async fn ast_indexer_init(ast_index_max_files: usize) -> Result<AstModule, String> {
+    pub async fn ast_indexer_init(
+        ast_index_max_files: usize,
+        shutdown_flag: Arc<AtomicBool>
+    ) -> Result<AstModule, String> {
         let status = Arc::new(AMutex::new(AstIndexStatus {
             files_unparsed: 0,
             files_total: 0,
@@ -50,7 +54,9 @@ impl AstModule {
             ast_index_symbols_total: 0,
             state: "starting".to_string(),
         }));
-        let ast_index = Arc::new(ARwLock::new(AstIndex::init(ast_index_max_files)));
+        let ast_index = Arc::new(ARwLock::new(AstIndex::init(
+            ast_index_max_files, shutdown_flag
+        )));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(
             ast_index.clone(),
             status.clone()
@@ -63,7 +69,9 @@ impl AstModule {
         Ok(me)
     }
 
-    pub async fn ast_start_background_tasks(&self, gcx: Arc<ARwLock<GlobalContext>>) -> Vec<JoinHandle<()>> {
+    pub async fn ast_start_background_tasks(
+        &self, gcx: Arc<ARwLock<GlobalContext>>
+    ) -> Vec<JoinHandle<()>> {
         return self.ast_index_service.lock().await.ast_start_background_tasks(gcx).await;
     }
 

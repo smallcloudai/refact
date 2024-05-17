@@ -45,7 +45,7 @@ async fn main() {
     rayon::ThreadPoolBuilder::new().num_threads(cpu_num / 2).build_global().unwrap();
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
     let cache_dir = home_dir.join(".cache/refact");
-    let (gcx, ask_shutdown_receiver, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
+    let (gcx, ask_shutdown_receiver, shutdown_flag, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
     let (logs_writer, _guard) = if cmdline.logs_stderr {
         tracing_appender::non_blocking(std::io::stderr())
     } else {
@@ -93,7 +93,7 @@ async fn main() {
 
     let mut main_handle: Option<JoinHandle<()>> = None;
     if should_start_http {
-        main_handle = http::start_server(gcx.clone(), ask_shutdown_receiver).await;
+        main_handle = http::start_server(gcx.clone(), ask_shutdown_receiver, shutdown_flag).await;
     }
     if should_start_lsp {
         if main_handle.is_none() {

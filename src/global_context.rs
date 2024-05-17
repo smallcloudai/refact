@@ -4,6 +4,7 @@ use std::hash::Hasher;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
 
@@ -170,7 +171,10 @@ pub async fn look_for_piggyback_fields(
     }
 }
 
-pub async fn block_until_signal(ask_shutdown_receiver: std::sync::mpsc::Receiver<String>) {
+pub async fn block_until_signal(
+    ask_shutdown_receiver: std::sync::mpsc::Receiver<String>,
+    shutdown_flag: Arc<AtomicBool>
+) {
     let ctrl_c = async {
         signal::ctrl_c()
             .await
@@ -197,17 +201,23 @@ pub async fn block_until_signal(ask_shutdown_receiver: std::sync::mpsc::Receiver
     #[cfg(not(unix))]
     let sigusr1 = std::future::pending::<()>();
 
+    let shutdown_flag_clone = shutdown_flag.clone();
     tokio::select! {
         _ = ctrl_c => {
             info!("SIGINT signal received");
+            shutdown_flag_clone.store(true, Ordering::SeqCst);
         },
         _ = sigterm => {
             info!("SIGTERM signal received");
+            shutdown_flag_clone.store(true, Ordering::SeqCst);
         },
         _ = sigusr1 => {
             info!("SIGUSR1 signal received");
         },
-        _ = tokio::task::spawn_blocking(move || ask_shutdown_receiver.recv()) => {
+        _ = tokio::task::spawn_blocking(move || {
+            let _ = ask_shutdown_receiver.recv();
+            shutdown_flag.store(true, Ordering::SeqCst);
+        }) => {
             info!("graceful shutdown to store telemetry");
         }
     }
@@ -215,9 +225,10 @@ pub async fn block_until_signal(ask_shutdown_receiver: std::sync::mpsc::Receiver
 
 pub async fn create_global_context(
     cache_dir: PathBuf,
-) -> (Arc<ARwLock<GlobalContext>>, std::sync::mpsc::Receiver<String>, CommandLine) {
+) -> (Arc<ARwLock<GlobalContext>>, std::sync::mpsc::Receiver<String>, Arc<AtomicBool>, CommandLine) {
     let cmdline = CommandLine::from_args();
     let (ask_shutdown_sender, ask_shutdown_receiver) = std::sync::mpsc::channel::<String>();
+    let shutdown_flag = Arc::new(AtomicBool::new(false));
     let mut http_client_builder = reqwest::Client::builder();
     if cmdline.insecure {
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
@@ -250,7 +261,7 @@ pub async fn create_global_context(
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {
         let ast_module = Arc::new(ARwLock::new(
-            AstModule::ast_indexer_init(cmdline.ast_index_max_files).await.expect("Failed to initialize ast module")
+            AstModule::ast_indexer_init(cmdline.ast_index_max_files, shutdown_flag.clone()).await.expect("Failed to initialize ast module")
         ));
         gcx.write().await.ast_module = Some(ast_module);
     }
@@ -258,5 +269,5 @@ pub async fn create_global_context(
         let gcx_weak = Arc::downgrade(&gcx);
         gcx.write().await.documents_state.init_watcher(gcx_weak, tokio::runtime::Handle::current());
     }
-    (gcx, ask_shutdown_receiver, cmdline)
+    (gcx, ask_shutdown_receiver, shutdown_flag, cmdline)
 }
