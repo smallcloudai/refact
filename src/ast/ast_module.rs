@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use strsim::jaro_winkler;
-use tokio::sync::{Mutex as AMutex, MutexGuard, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::{Mutex as AMutex, MutexGuard};
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tokio::time::error::Elapsed;

@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::path::PathBuf;
+use hashbrown::HashMap;
 
 use uuid::Uuid;
 

@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use hashbrown::HashMap;
 
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceRc;
 use crate::ast::treesitter::language_id::LanguageId;

@@ -1,5 +1,6 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap as StdHashMap};
+use hashbrown::{HashMap, HashSet};
 use std::hash::Hash;
 use std::io::Write;
 use std::path::PathBuf;
@@ -37,7 +38,7 @@ pub struct AstIndex {
     symbols_by_guid: HashMap<Uuid, AstSymbolInstanceRc>,
     path_by_symbols: HashMap<PathBuf, Vec<AstSymbolInstanceRc>>,
     type_guid_to_dependent_guids: HashMap<Uuid, HashSet<Uuid>>,
-    declaration_guid_to_usage_names: HashMap<Uuid, HashSet<String>>,
+    declaration_guid_to_usage_names: StdHashMap<Uuid, HashSet<String>>,
     import_components_succ_solution_index: HashMap<String, ImportDeclaration>,
     ast_index_max_files: usize,
     has_changes: bool,
@@ -73,7 +74,7 @@ impl AstIndex {
             symbols_by_guid: HashMap::new(),
             path_by_symbols: HashMap::new(),
             type_guid_to_dependent_guids: HashMap::new(),
-            declaration_guid_to_usage_names: HashMap::new(),
+            declaration_guid_to_usage_names: StdHashMap::new(),
             import_components_succ_solution_index: HashMap::new(),
             ast_index_max_files,
             has_changes: false,
