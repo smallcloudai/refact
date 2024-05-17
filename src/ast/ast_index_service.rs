@@ -40,7 +40,7 @@ pub struct AstIndexService {
     ast_delayed_requests_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
-    ast_index: Arc<ARwLock<AstIndex>>,
+    ast_index: Arc<AMutex<AstIndex>>,
     status: Arc<AMutex<AstIndexStatus>>
 }
 
@@ -120,7 +120,7 @@ fn pop_back_n<T>(data: &mut VecDeque<T>, n: usize) -> Vec<T> {
 async fn ast_indexer_thread(
     gcx_weak: Weak<ARwLock<GlobalContext>>,
     ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
-    ast_index: Arc<ARwLock<AstIndex>>,
+    ast_index: Arc<AMutex<AstIndex>>,
     ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
     status: Arc<AMutex<AstIndexStatus>>,
 ) {
@@ -151,7 +151,7 @@ async fn ast_indexer_thread(
                 stats_symbols_cnt = 0;
                 reported_stats = true;
                 let (ast_index_files_total, ast_index_symbols_total) = {
-                    let ast_ref = ast_index.read().await;
+                    let ast_ref = ast_index.lock().await;
                     (ast_ref.total_files(), ast_ref.total_symbols())
                 };
                 {
@@ -183,7 +183,7 @@ async fn ast_indexer_thread(
             };
             let left_docs_count: usize = events.iter().map(|e| e.docs.len()).sum();
             let (ast_index_files_total, ast_index_symbols_total) = {
-                let ast_ref = ast_index.read().await;
+                let ast_ref = ast_index.lock().await;
                 (ast_ref.total_files(), ast_ref.total_symbols())
             };
             {
@@ -203,7 +203,7 @@ async fn ast_indexer_thread(
             };
 
 
-            let is_ast_full = ast_index.read().await.is_overflowed();
+            let is_ast_full = ast_index.lock().await.is_overflowed();
             let mut docs_with_text: Vec<Document> = Vec::new();
             for doc in processing_events.iter().flat_map(|x| x.docs.iter()) {
                 if !is_ast_full {
@@ -238,7 +238,7 @@ async fn ast_indexer_thread(
                     match res {
                         Ok(symbols) => {
                             stats_symbols_cnt += symbols.len();
-                            match ast_index.write().await.add_or_update_symbols_index(&doc, symbols, true) {
+                            match ast_index.lock().await.add_or_update_symbols_index(&doc, symbols, true) {
                                 Ok(_) => {}
                                 Err(e) => {
                                     *unparsed_suffixes.entry(e).or_insert(0) += 1;
@@ -257,7 +257,7 @@ async fn ast_indexer_thread(
                 match event.typ {
                     AstEventType::AstReset => {
                         info!("Reset AST Index");
-                        ast_index.write().await.clear_index();
+                        ast_index.lock().await.clear_index();
                         hold_on_after_reset = true;
                     }
                     _ => {}
@@ -273,19 +273,19 @@ async fn ast_indexer_thread(
 
 async fn ast_index_rebuild_thread(
     ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
-    ast_index: Arc<ARwLock<AstIndex>>,
+    ast_index: Arc<AMutex<AstIndex>>,
     status: Arc<AMutex<AstIndexStatus>>,
 ) {
     loop {
         ast_hold_off_indexes_rebuild_notify.notified().await;
 
-        if !ast_index.read().await.needs_update() {
+        if !ast_index.lock().await.needs_update() {
             tokio::time::sleep(Duration::from_secs(5)).await;
             continue;
         }
 
         let (ast_index_files_total, ast_index_symbols_total) = {
-            let ast_ref = ast_index.read().await;
+            let ast_ref = ast_index.lock().await;
             (ast_ref.total_files(), ast_ref.total_symbols())
         };
         {
@@ -298,7 +298,7 @@ async fn ast_index_rebuild_thread(
         }
         let ast_index_clone = Arc::clone(&ast_index);
         tokio::task::spawn_blocking(move || {
-            let mut ast = ast_index_clone.blocking_write();
+            let mut ast = ast_index_clone.blocking_lock();
             ast.reindex();
         }).await.expect("cannot reindex");
         {
@@ -312,7 +312,7 @@ const COOLDOWN_SECS: u64 = 2;
 
 impl AstIndexService {
     pub fn init(
-        ast_index: Arc<ARwLock<AstIndex>>,
+        ast_index: Arc<AMutex<AstIndex>>,
         status: Arc<AMutex<AstIndexStatus>>,
     ) -> Self {
         let ast_delayed_requests_q = Arc::new(AMutex::new(VecDeque::new()));

@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use strsim::jaro_winkler;
-use tokio::sync::{Mutex as AMutex, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::{Mutex as AMutex, MutexGuard, RwLockReadGuard, RwLockWriteGuard};
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tokio::time::error::Elapsed;
@@ -33,7 +33,7 @@ pub struct AstIndexStatus {
 
 pub struct AstModule {
     ast_index_service: Arc<AMutex<AstIndexService>>,
-    ast_index: Arc<ARwLock<AstIndex>>,
+    ast_index: Arc<AMutex<AstIndex>>,
     status: Arc<AMutex<AstIndexStatus>>
 }
 
@@ -54,7 +54,7 @@ impl AstModule {
             ast_index_symbols_total: 0,
             state: "starting".to_string(),
         }));
-        let ast_index = Arc::new(ARwLock::new(AstIndex::init(
+        let ast_index = Arc::new(AMutex::new(AstIndex::init(
             ast_index_max_files, shutdown_flag
         )));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(
@@ -133,12 +133,12 @@ impl AstModule {
         Ok(())
     }
 
-    async fn read_ast(&self, duration: Duration) -> Result<RwLockReadGuard<AstIndex>, Elapsed> {
-        timeout(duration, self.ast_index.read()).await
+    async fn read_ast(&self, duration: Duration) -> Result<MutexGuard<'_, AstIndex>, Elapsed> {
+        timeout(duration, self.ast_index.lock()).await
     }
 
-    async fn write_ast(&self, duration: Duration) -> Result<RwLockWriteGuard<AstIndex>, Elapsed> {
-        timeout(duration, self.ast_index.write()).await
+    async fn write_ast(&self, duration: Duration) -> Result<MutexGuard<'_, AstIndex>, Elapsed> {
+        timeout(duration, self.ast_index.lock()).await
     }
 
     pub async fn search_by_name(
