@@ -70,6 +70,7 @@ class AdminSession(RefactSession):
             "/admin",
             "/coding_assistant_caps.json",
             "/refact-caps",
+            "/tokenizer",
             "/customization",
             "/v1",
             "/infengine-v1",
@@ -78,7 +79,7 @@ class AdminSession(RefactSession):
             "/chat",
             "/assets",  # TODO: this static dir should be renamed soon
             "/favicon.png",
-            "/lsp",  # TODO: this route should pass user's key to work with /v1 endpoints
+            "/lsp",
         ]
 
     @staticmethod
