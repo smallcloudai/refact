@@ -53,7 +53,7 @@ def url_complain_doesnt_work():
 
 
 def model_guid_allowed_characters(name):
-    return re.sub(r"[^a-zA-Z0-9_]", "_", name)
+    return re.sub(r"[^a-zA-Z0-9_\.]", "_", name)
 
 
 def validate_description_dict(
@@ -242,7 +242,7 @@ class UploadProxy:
             progress[original_batch[b]["id"]] = tmp
         upload_dict["progress"] = progress
         upload_dict["check_cancelled"] = [call["id"] for call in original_batch]
-        upload_dict["model_name"] = description_dict["model"]
+        upload_dict["model_name"] = description_dict["model"].replace("/vllm", "")
         self.upload_q.put(copy.deepcopy(upload_dict))
         if DEBUG_UPLOAD_NOT_SEPARATE_PROCESS:
             _upload_results_loop(self.upload_q, self.cancelled_q)
