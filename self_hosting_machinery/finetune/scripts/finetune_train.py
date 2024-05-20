@@ -18,8 +18,8 @@ import torch as th
 import torch.distributed as dist
 
 from refact_utils.scripts import env
+from refact_utils.scripts.env import safe_paths_join
 from refact_utils.finetune.utils import finetune_train_defaults
-from refact_webgui.webgui.selfhost_static import safe_paths_join
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config, ConfigBuilder
 from self_hosting_machinery.finetune.scripts.auxiliary.dataset import (
     create_train_dataloader, create_test_dataloader, get_ds_len_per_epoch, to_cuda, count_file_types
@@ -169,7 +169,6 @@ def gpu_filter_and_build_config(
 
 def _copy_source_files(jsonl_src, jsonl_dst, pname, run_id):
     for d in jsonlines.open(jsonl_src):
-        print(d["path"])
         try:
             src_path = safe_paths_join(env.PP_DIR_UNPACKED(pname), d["path"])
             dst_path = safe_paths_join(env.PERRUN_DIR_UNPACKED(run_id), d["path"])

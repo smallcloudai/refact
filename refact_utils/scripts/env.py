@@ -1,6 +1,14 @@
 import os
 import logging
 
+
+def safe_paths_join(p1: str, p2: str) -> str:
+    p_joined = os.path.abspath(os.path.join(p1, p2))
+    if p_joined.startswith(os.path.abspath(p1)):
+        return p_joined
+    raise ValueError(f"Paths {p1} and {p2} are not safe to join")
+
+
 PERMDIR = os.environ.get("REFACT_PERM_DIR", "") or os.path.expanduser("~/.refact/perm-storage")
 TMPDIR = os.environ.get("REFACT_TMP_DIR", "") or os.path.expanduser("~/.refact/tmp")
 FLAG_FACTORY_RESET = os.path.join(PERMDIR, "_factory_reset.flag")
@@ -19,19 +27,24 @@ CONFIG_BUSY_GPUS = os.path.join(DIR_CONFIG, "gpus_busy_result.out")
 CONFIG_INFERENCE = os.path.join(DIR_CONFIG, "inference.cfg")
 CONFIG_ACTIVE_LORA = os.path.join(DIR_CONFIG, "inference_active_lora.cfg")
 
-# Per project:
-PP_DIR_UPLOADS             = lambda pname: os.path.join(DIR_PROJECTS, pname, "uploaded-files")
-PP_CONFIG_HOW_TO_UNZIP     = lambda pname: os.path.join(DIR_PROJECTS, pname, "sources_scan.cfg")
-PP_CONFIG_HOW_TO_FILETYPES = lambda pname: os.path.join(DIR_PROJECTS, pname, "sources_filetypes.cfg")
-PP_CONFIG_PROCESSING_STATS = lambda pname: os.path.join(DIR_PROJECTS, pname, "sources_stats.out")
-PP_LOG_FILES_ACCEPTED_SCAN = lambda pname: os.path.join(DIR_PROJECTS, pname, "files_accepted_scan.log")
-PP_LOG_FILES_REJECTED_SCAN = lambda pname: os.path.join(DIR_PROJECTS, pname, "files_rejected_scan.log")
-PP_LOG_FILES_ACCEPTED_FTF  = lambda pname: os.path.join(DIR_PROJECTS, pname, "files_accepted_ftf.log")
-PP_LOG_FILES_REJECTED_FTF  = lambda pname: os.path.join(DIR_PROJECTS, pname, "files_rejected_ftf.log")
-PP_SCAN_STATUS             = lambda pname: os.path.join(DIR_PROJECTS, pname, "scan_status.out")
-PP_CONFIG_FINETUNE_FILTER_STAT = lambda pname: os.path.join(DIR_PROJECTS, pname, "finetune_filter_stats.out")
 
-PP_DIR_UNPACKED = lambda pname: os.path.join(DIR_PROJECTS, pname, "unpacked")
+def project_dir(pname: str):
+    return safe_paths_join(DIR_PROJECTS, pname)
+
+
+# Per project:
+PP_DIR_UPLOADS             = lambda pname: os.path.join(project_dir(pname), "uploaded-files")
+PP_CONFIG_HOW_TO_UNZIP     = lambda pname: os.path.join(project_dir(pname), "sources_scan.cfg")
+PP_CONFIG_HOW_TO_FILETYPES = lambda pname: os.path.join(project_dir(pname), "sources_filetypes.cfg")
+PP_CONFIG_PROCESSING_STATS = lambda pname: os.path.join(project_dir(pname), "sources_stats.out")
+PP_LOG_FILES_ACCEPTED_SCAN = lambda pname: os.path.join(project_dir(pname), "files_accepted_scan.log")
+PP_LOG_FILES_REJECTED_SCAN = lambda pname: os.path.join(project_dir(pname), "files_rejected_scan.log")
+PP_LOG_FILES_ACCEPTED_FTF  = lambda pname: os.path.join(project_dir(pname), "files_accepted_ftf.log")
+PP_LOG_FILES_REJECTED_FTF  = lambda pname: os.path.join(project_dir(pname), "files_rejected_ftf.log")
+PP_SCAN_STATUS             = lambda pname: os.path.join(project_dir(pname), "scan_status.out")
+PP_CONFIG_FINETUNE_FILTER_STAT = lambda pname: os.path.join(project_dir(pname), "finetune_filter_stats.out")
+
+PP_DIR_UNPACKED = lambda pname: os.path.join(project_dir(pname), "unpacked")
 PP_TRAIN_UNFILTERED_FILEPATH = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "train_set.jsonl")
 PP_TRAIN_FILTERED_FILEPATH   = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "train_set_filtered.jsonl")
 PP_TEST_UNFILTERED_FILEPATH  = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "test_set.jsonl")
@@ -39,7 +52,7 @@ PP_TEST_FILTERED_FILEPATH    = lambda pname: os.path.join(PP_DIR_UNPACKED(pname)
 PP_LOSS_PER_HASH_DB_FILEPATH = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "loss_per_hash_db.json")
 PP_PROJECT_LOCK              = lambda pname: os.path.join(PP_DIR_UNPACKED(pname), "project.lock")
 
-PERRUN_DIR_UNPACKED             = lambda run_id: os.path.join(DIR_LORAS, run_id, "unpacked")
+PERRUN_DIR_UNPACKED             = lambda run_id: os.path.join(safe_paths_join(DIR_LORAS, run_id), "unpacked")
 PERRUN_TRAIN_FILTERED_FILEPATH  = lambda run_id: os.path.join(PERRUN_DIR_UNPACKED(run_id), "train_set_filtered.jsonl")
 PERRUN_TEST_FILTERED_FILEPATH   = lambda run_id: os.path.join(PERRUN_DIR_UNPACKED(run_id), "test_set_filtered.jsonl")
 
@@ -72,6 +85,7 @@ fingerprint_ext = 'fingerprint'
 def get_all_ssh_keys():
     import glob
     return glob.glob(f'{DIR_SSH_KEYS}/*.{private_key_ext}')
+
 
 def report_status(program, status):
     assert program in ["linguist", "filter", "ftune"]

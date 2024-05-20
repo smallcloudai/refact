@@ -1,16 +1,12 @@
 import os
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
+from refact_utils.scripts.env import safe_paths_join
+
 
 __all__ = ["StaticRouter"]
-
-
-def safe_paths_join(p1: str, p2: str) -> str:
-    p_joined = os.path.abspath(os.path.join(p1, p2))
-    if p_joined.startswith(os.path.abspath(p1)):
-        return p_joined
-    raise ValueError(f"Paths {p1} and {p2} are not safe to join")
 
 
 class StaticRouter(APIRouter):
