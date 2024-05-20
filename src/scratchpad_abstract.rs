@@ -11,7 +11,8 @@ use serde_json::Value;
 pub trait ScratchpadAbstract: Send {
     async fn apply_model_adaptation_patch(
         &mut self,
-        patch: &serde_json::Value,
+        patch: &Value,
+        tool_use: bool,
     ) -> Result<(), String>;
 
     async fn prompt(

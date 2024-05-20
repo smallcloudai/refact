@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
-use tracing::{info, error};
+use tracing::{info, error, warn};
 
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
@@ -14,7 +14,7 @@ use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::chat_utils_rag::{run_at_commands, HasRagResults};
-use crate::toolbox::toolbox_config::get_default_system_prompt;
+use crate::toolbox::toolbox_config::{get_default_system_prompt, get_tconfig};
 
 const DEBUG: bool = true;
 
@@ -60,12 +60,13 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
+        tool_use: bool,
     ) -> Result<(), String> {
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.keyword_syst = patch.get("keyword_system").and_then(|x| x.as_str()).unwrap_or("SYSTEM:").to_string();
         self.keyword_user = patch.get("keyword_user").and_then(|x| x.as_str()).unwrap_or("USER:").to_string();
         self.keyword_asst = patch.get("keyword_assistant").and_then(|x| x.as_str()).unwrap_or("ASSISTANT:").to_string();
-        self.default_system_message = default_system_message_from_patch(patch, self.global_context.clone()).await;
+        self.default_system_message = default_system_message_from_patch(patch, tool_use, self.global_context.clone()).await;
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
 
         self.dd.stop_list.clear();
@@ -92,7 +93,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     ) -> Result<String, String> {
         let top_n = 10;
         let last_user_msg_starts = run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_rag_results).await;
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, self.post.parameters.max_new_tokens, context_size, &self.default_system_message)?;
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, self.post.parameters.max_new_tokens, context_size, &self.default_system_message, self.post.tool_use)?;
         sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
         // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();
@@ -158,7 +159,20 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     }
 }
 
-pub async fn default_system_message_from_patch(patch: &Value, global_context: Arc<ARwLock<GlobalContext>>) -> String {
+pub async fn default_system_message_from_patch(
+    patch: &Value,
+    tool_use: bool,
+    global_context: Arc<ARwLock<GlobalContext>>
+) -> String {
+    if tool_use {
+        if let Ok(tconfig) = get_tconfig(global_context.clone()).await {
+            if let Some(x) = tconfig.system_prompts.get("default_tool") {
+                return x.text.clone();
+            } else {
+                warn!("no default_tool system_prompt found in tconfig; fallback to default_system_message");
+            }
+        }
+    }
     let default_system_message_mb = patch.get("default_system_message")
         .and_then(|x| x.as_str())
         .map(|x| x.to_string());

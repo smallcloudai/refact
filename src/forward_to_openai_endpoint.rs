@@ -97,7 +97,6 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "max_tokens": sampling_parameters.max_new_tokens,
     });
     if let Some(tools) = tools_mb {
-        info!("I have tools! {:?}", tools);
         data["tools"] = serde_json::Value::Array(tools);
     }
     if is_passthrough {

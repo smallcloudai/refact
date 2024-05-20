@@ -79,8 +79,9 @@ impl ScratchpadAbstract for ChatPassthrough {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
+        tool_use: bool,
     ) -> Result<(), String> {
-        self.default_system_message = default_system_message_from_patch(&patch, self.global_context.clone()).await;
+        self.default_system_message = default_system_message_from_patch(&patch, tool_use, self.global_context.clone()).await;
         Ok(())
     }
 
@@ -92,7 +93,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
         let top_n: usize = 10;
         let last_user_msg_starts = run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_rag_results).await;
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message).unwrap_or_else(|e| {
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message, self.post.tool_use).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
         });

@@ -5,7 +5,6 @@ use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde_json::Value;
-use tracing::info;
 use crate::at_commands::at_commands_dict::at_commands_dicts;
 
 use crate::call_validation::ChatPost;
@@ -95,9 +94,9 @@ async fn chat(
     } else {
         None
     };
-    info!("tools {:?}", tools_mb);
+    // info!("tools {:?}", tools_mb);
     // info!("chat prompt {:?}\n{}", t1.elapsed(), prompt);
-    info!("chat prompt {:?}", t1.elapsed());
+    // info!("chat prompt {:?}", t1.elapsed());
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {
         crate::restream::scratchpad_interaction_not_stream(
             global_context.clone(),
