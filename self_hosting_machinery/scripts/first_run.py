@@ -25,3 +25,4 @@ if __name__ == '__main__':
     convert_old_configs()
     model_assigner = ModelAssigner()
     assign_gpus_if_first_run_detected(model_assigner)
+    model_assigner.models_to_watchdog_configs()   # removes deprecated models
