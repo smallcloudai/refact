@@ -19,7 +19,7 @@ export const FileList: React.FC<FileListProps> = ({ files }) => {
             title={file.file_content}
             className={styles.file}
           >
-            📎 <TruncateLeft>{name}</TruncateLeft>
+            📎&nbsp;<TruncateLeft>{name}</TruncateLeft>
           </Text>
         );
       })}
