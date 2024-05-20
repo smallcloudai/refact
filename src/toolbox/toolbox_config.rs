@@ -2,8 +2,11 @@ use serde_yaml::Value;
 use serde_yaml;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use tokio::sync::RwLock as ARwLock;
 use crate::call_validation::ChatMessage;
 use std::io::Write;
+use std::sync::Arc;
+use crate::global_context::GlobalContext;
 
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -112,6 +115,19 @@ pub fn load_customization_high_level(cache_dir: std::path::PathBuf) -> Result<To
 
     let user_config_text = std::fs::read_to_string(&user_config_path).map_err(|e| format!("Failed to read file: {}", e))?;
     _load_and_mix_with_users_config(&user_config_text).map_err(|e| e.to_string())
+}
+
+pub async fn get_tconfig(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolboxConfig, String>{
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    load_customization_high_level(cache_dir)
+}
+
+pub async fn get_default_system_prompt(global_context: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
+    let tconfig = get_tconfig(global_context.clone()).await?;
+    match tconfig.system_prompts.get("default").and_then(|x|Some(x.text.clone())) {
+        Some(x) => Ok(x),
+        None => Err("no default system prompt found".to_string()),
+    }
 }
 
 #[cfg(test)]

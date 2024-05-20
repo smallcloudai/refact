@@ -103,9 +103,7 @@ pub const KNOWN_MODELS: &str = r####"
         "gpt-3.5-turbo": {
             "n_ctx": 16384,
             "supports_scratchpads": {
-                "PASSTHROUGH": {
-                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
-                }
+                "PASSTHROUGH": {}
             },
             "similar_models": [
                 "gpt-3.5-turbo-1106",
@@ -129,9 +127,7 @@ pub const KNOWN_MODELS: &str = r####"
         "claude-instant-1.2": {
             "n_ctx": 4096,
             "supports_scratchpads": {
-                "PASSTHROUGH": {
-                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
-                }
+                "PASSTHROUGH": {}
             },
             "similar_models": [
                 "claude-2.1",

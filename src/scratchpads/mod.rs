@@ -45,7 +45,7 @@ pub async fn create_code_completion_scratchpad(
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }
-    result.apply_model_adaptation_patch(scratchpad_patch)?;
+    result.apply_model_adaptation_patch(scratchpad_patch).await?;
     verify_has_send(&result);
     Ok(result)
 }
@@ -71,7 +71,7 @@ pub async fn create_chat_scratchpad(
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }
-    result.apply_model_adaptation_patch(scratchpad_patch)?;
+    result.apply_model_adaptation_patch(scratchpad_patch).await?;
     verify_has_send(&result);
     Ok(result)
 }

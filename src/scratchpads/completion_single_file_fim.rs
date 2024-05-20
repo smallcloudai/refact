@@ -118,7 +118,7 @@ fn add_context_to_prompt(context_format: &String, prompt: &String, fim_prefix: &
 
 #[async_trait]
 impl ScratchpadAbstract for SingleFileFIM {
-    fn apply_model_adaptation_patch(
+    async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
     ) -> Result<(), String> {

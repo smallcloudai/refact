@@ -9,7 +9,7 @@ use serde_json::Value;
 
 #[async_trait]
 pub trait ScratchpadAbstract: Send {
-    fn apply_model_adaptation_patch(
+    async fn apply_model_adaptation_patch(
         &mut self,
         patch: &serde_json::Value,
     ) -> Result<(), String>;

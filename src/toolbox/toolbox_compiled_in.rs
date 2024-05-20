@@ -14,6 +14,7 @@ pub const COMPILED_IN_CUSTOMIZATION_YAML : &str = r#"# Customization will merge 
 DEFAULT_PROMPT: |
   Use backquotes for code blocks.
   Pay close attention to indent when editing code blocks: indent must be exactly the same as in the original code block.
+  Write math expressions in a markdown style: $x^2$ when inside line; $$x^2$$ when in a new line;
 
 system_prompts:
   default:

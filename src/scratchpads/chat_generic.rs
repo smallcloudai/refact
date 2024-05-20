@@ -14,6 +14,7 @@ use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::chat_utils_rag::{run_at_commands, HasVecdbResults};
+use crate::toolbox::toolbox_config::get_default_system_prompt;
 
 const DEBUG: bool = true;
 
@@ -56,15 +57,15 @@ impl GenericChatScratchpad {
 
 #[async_trait]
 impl ScratchpadAbstract for GenericChatScratchpad {
-    fn apply_model_adaptation_patch(
+    async fn apply_model_adaptation_patch(
         &mut self,
-        patch: &serde_json::Value,
+        patch: &Value,
     ) -> Result<(), String> {
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.keyword_syst = patch.get("keyword_system").and_then(|x| x.as_str()).unwrap_or("SYSTEM:").to_string();
         self.keyword_user = patch.get("keyword_user").and_then(|x| x.as_str()).unwrap_or("USER:").to_string();
         self.keyword_asst = patch.get("keyword_assistant").and_then(|x| x.as_str()).unwrap_or("ASSISTANT:").to_string();
-        self.default_system_message = patch.get("default_system_message").and_then(|x| x.as_str()).unwrap_or("").to_string();
+        self.default_system_message = default_system_message_from_patch(patch, self.global_context.clone()).await;
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
 
         self.dd.stop_list.clear();
@@ -157,3 +158,13 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     }
 }
 
+pub async fn default_system_message_from_patch(patch: &Value, global_context: Arc<ARwLock<GlobalContext>>) -> String {
+    let default_system_message_mb = patch.get("default_system_message")
+        .and_then(|x| x.as_str())
+        .map(|x| x.to_string());
+    if let Some(msg) = default_system_message_mb {
+        msg
+    } else {
+        get_default_system_prompt(global_context).await.unwrap_or_else(|_| "".to_string())
+    }
+}
