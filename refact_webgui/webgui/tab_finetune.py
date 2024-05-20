@@ -12,12 +12,12 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from refact_utils.scripts import env
 from refact_utils.scripts import best_lora
+from refact_utils.scripts.env import safe_paths_join
 from refact_utils.finetune.utils import running_models_and_loras
 from refact_utils.finetune.utils import get_finetune_config
 from refact_utils.finetune.utils import get_finetune_runs
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
-from refact_webgui.webgui.selfhost_static import safe_paths_join
 from refact_webgui.webgui.selfhost_webutils import log
 
 from typing import Optional, List, Dict
