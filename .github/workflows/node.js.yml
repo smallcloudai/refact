@@ -27,9 +27,11 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+      - run: |
+          ARTIFACT_NAME=$(echo ${{ matrix.node-version }} | tr -cd '[:alnum:]')
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist-${{ matrix.node-version }}
+          name: dist-${ARTIFACT_NAME}
           if-no-files-found: ignore
           path: ./dist
