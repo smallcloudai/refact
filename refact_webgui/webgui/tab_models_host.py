@@ -75,6 +75,8 @@ class TabHostRouter(APIRouter):
         with open(env.CONFIG_ACTIVE_LORA, "w") as f:
             json.dump(active_loras, f, indent=4)
 
+        self._model_assigner.models_to_watchdog_configs()
+
         return JSONResponse("OK")
 
     async def _tab_host_have_gpus(self):
