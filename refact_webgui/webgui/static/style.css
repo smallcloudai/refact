@@ -1200,8 +1200,30 @@ h3 {
     background-color: #999 !important;
     color: #fff !important;
     opacity: 0.7;
-    font-size: 8px;
+    font-size: 9px;
+    font-family: monospace;
     text-transform: uppercase;
+    line-height: 9px;
+    font-weight: 400;
+    padding: 4px 5px 3px 5px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.repo-badge {
+    margin-left: 3px;
+    background-color: #7877a8 !important;
+    color: #fff !important;
+    opacity: 0.7;
+    font-size: 9px;
+    font-family: monospace;
+    text-transform: uppercase;
+    line-height: 9px;
+    font-weight: 400;
+    padding: 4px 5px 3px 5px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 .default-context {
     /* padding: .25rem .5rem; */
