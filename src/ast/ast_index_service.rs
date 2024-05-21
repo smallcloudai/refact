@@ -124,7 +124,7 @@ async fn ast_indexer_thread(
     ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
     status: Arc<AMutex<AstIndexStatus>>,
 ) {
-    let mut reported_stats = false;
+    let mut reported_stats = true;
     let mut stats_parsed_cnt = 0;    // by language?
     let mut stats_symbols_cnt = 0;
     let mut stats_t0 = std::time::Instant::now();
