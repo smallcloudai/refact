@@ -504,6 +504,12 @@ function render_models(models) {
                 model_name.appendChild(deprecated_notice);
                 new bootstrap.Tooltip(deprecated_notice);
             }
+            if(element.repo_url) {
+                const repo_badge = document.createElement('span');
+                repo_badge.classList.add('repo-badge','badge','rounded-pill','text-dark');
+                repo_badge.textContent = new URL(element.repo_url).hostname.split('.').slice(-2, -1)[0];
+                model_name.appendChild(repo_badge);
+            }
             if(element.hasOwnProperty('has_completion')) {
                 has_completion.innerHTML = element.has_completion ? '<i class="bi bi-check"></i>' : '';
             }
