@@ -90,7 +90,7 @@ class TabHostRouter(APIRouter):
             **self._model_assigner.model_assignment,
         }, indent=4) + "\n")
 
-    async def _has_available_weights(self, model_name: str) -> bool:
+    def _has_available_weights(self, model_name: str) -> bool:
         model_path = self._model_assigner.models_db[model_name]["model_path"]
         return Path(f"models--{model_path.replace('/', '--')}").exists() or has_repo_access(model_path)
 
