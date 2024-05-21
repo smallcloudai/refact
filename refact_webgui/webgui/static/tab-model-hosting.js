@@ -511,9 +511,11 @@ function render_models(models) {
                 new bootstrap.Tooltip(deprecated_notice);
             }
             if(element.repo_url) {
-                const repo_badge = document.createElement('span');
+                const repo_badge = document.createElement('a');
                 repo_badge.classList.add('repo-badge','badge','rounded-pill','text-dark');
-                repo_badge.textContent = new URL(element.repo_url).hostname.split('.').slice(-2, -1)[0];
+                repo_badge.setAttribute('href',element.repo_url);
+                repo_badge.setAttribute('target','_blank');
+                repo_badge.textContent = new URL(element.repo_url).hostname;
                 model_name.appendChild(repo_badge);
             }
             if(element.hasOwnProperty('has_completion')) {
