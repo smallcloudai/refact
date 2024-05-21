@@ -24,6 +24,15 @@ class RepoStatus(Enum):
     UNKNOWN = "unknown"
 
 
+def has_repo_access(repo_id: str) -> bool:
+    try:
+        token = huggingface_hub_token()
+        repo_info(repo_id=repo_id, token=token)
+        return True
+    except:
+        return False
+
+
 def get_repo_status(repo_id: str) -> RepoStatus:
     try:
         token = huggingface_hub_token()

@@ -4,9 +4,11 @@ from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response, JSONResponse
 
 from refact_utils.scripts import env
+from refact_utils.huggingface.utils import has_repo_access
 from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
+from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 from pydantic import field_validator
 from typing import Dict, Optional
@@ -88,17 +90,24 @@ class TabHostRouter(APIRouter):
             **self._model_assigner.model_assignment,
         }, indent=4) + "\n")
 
+    async def _has_available_weights(self, model_name: str) -> bool:
+        model_path = self._model_assigner.models_db[model_name]["model_path"]
+        return Path(f"models--{model_path.replace('/', '--')}").exists() or has_repo_access(model_path)
+
     async def _tab_host_models_assign(self, post: TabHostModelsAssign):
-        for model_name, model_assign in post.model_assign.items():
-            if model_assign.n_ctx is None:
+        model_assign = self._model_assigner.model_assignment
+        for model_name, model_cfg in post.model_assign.items():
+            if model_cfg.n_ctx is None:
                 raise HTTPException(status_code=400, detail=f"n_ctx must be set for {model_name}")
             for model_info in self._model_assigner.models_info["models"]:
                 if model_info["name"] == model_name:
                     max_n_ctx = model_info["default_n_ctx"]
-                    if model_assign.n_ctx > max_n_ctx:
+                    if model_cfg.n_ctx > max_n_ctx:
                         raise HTTPException(status_code=400, detail=f"n_ctx must be less or equal to {max_n_ctx} for {model_name}")
                     break
             else:
                 raise HTTPException(status_code=400, detail=f"model {model_name} not found")
+            if model_name not in model_assign and not self._has_available_weights(model_name):
+                raise HTTPException(status_code=400, detail=f"no access to load weights for model {model_name}")
         self._model_assigner.models_to_watchdog_configs(post.dict())
         return JSONResponse("OK")
