@@ -167,6 +167,7 @@ function save_model_assigned() {
     .catch(function (error) {
         console.log('tab-host-models-assign', error.detail);
         general_error(error.detail);
+        get_models();
     });
 }
 
