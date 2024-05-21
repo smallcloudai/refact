@@ -25,7 +25,8 @@ const SymbolText: React.FC<{
       >
         {withIcon ? (
           <>
-            🔎 <TruncateLeft className={styles.symbol}>{children}</TruncateLeft>
+            🔎&nbsp;
+            <TruncateLeft className={styles.symbol}>{children}</TruncateLeft>
           </>
         ) : (
           children
