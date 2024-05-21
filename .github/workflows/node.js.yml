@@ -28,8 +28,8 @@ jobs:
       - run: npm run build
 
       - run: |
-        name=$(echo -n "${{ matrix.node-version }}" | tr -cd '[[:alnum:]]')
-        echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
+          name=$(echo -n "${{ matrix.node-version }}" | tr -cd '[[:alnum:]]')
+          echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -37,5 +37,4 @@ jobs:
         with:
           name: refact-chat-js-${{ env.ARTIFACT_NAME }}
           if-no-files-found: ignore
-          overwite: true
           path: ./dist
