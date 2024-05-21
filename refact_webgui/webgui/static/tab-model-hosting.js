@@ -156,11 +156,17 @@ function save_model_assigned() {
         body: JSON.stringify(data)
     })
     .then(function (response) {
+        if (!response.ok) {
+            return response.json().then(error => { throw error });
+        }
+        return response.json();
+    })
+    .then(function (data) {
         get_models();
     })
-   .catch(function (error) {
-        console.log('tab-host-models-assign',error);
-        general_error(error);
+    .catch(function (error) {
+        console.log('tab-host-models-assign', error.detail);
+        general_error(error.detail);
     });
 }
 
