@@ -92,7 +92,8 @@ class TabHostRouter(APIRouter):
 
     def _has_available_weights(self, model_name: str) -> bool:
         model_path = self._model_assigner.models_db[model_name]["model_path"]
-        return Path(f"models--{model_path.replace('/', '--')}").exists() or has_repo_access(model_path)
+        weights_dir = Path(env.DIR_WEIGHTS) / f"models--{model_path.replace('/', '--')}"
+        return weights_dir.exists() or has_repo_access(model_path)
 
     async def _tab_host_models_assign(self, post: TabHostModelsAssign):
         model_assign = self._model_assigner.model_assignment
