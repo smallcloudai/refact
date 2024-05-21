@@ -15,7 +15,6 @@ if __name__ == "__main__":
 
 
 messages = [
-    ["system", "You are a coding assistant. Use your sense of humor"],
     ["user", "Explain what that code does\n```%s```" % code_in_question],
 ]
 
@@ -61,14 +60,22 @@ def answer_plain_text(text: str) -> str:
     return "".join(resp)
 
 
+def response_into_message(resp):
+    messages.append(
+        [
+            resp["choices"][0]["delta"]["role"], 
+            resp['choices'][0]['delta']['content'], 
+            resp.get("tool_calls")
+        ]
+    )
+
+
 def ask():
     r1 = ask_chat(messages, True)
     r1_parsed = parse(r1)
     print(r1_parsed)
-    messages[-1] = [*messages[-1], r1_parsed.get('tool_calls')]
-    print(messages[-1][1])
+    response_into_message(r1_parsed)
     r2 = ask_chat(messages, False)
-    # print(r2)
     print(answer_plain_text(r2))
 
 

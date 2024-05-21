@@ -392,6 +392,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         delta: String,
         stop_toks: bool,
         stop_length: bool,
+        _tool_calls: Option<Value>,
     ) -> Result<(Value, bool), String> {
         let mut finished;
         let json_choices;

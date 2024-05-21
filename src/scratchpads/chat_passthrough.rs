@@ -93,7 +93,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
         let top_n: usize = 10;
         let last_user_msg_starts = run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_rag_results).await;
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message, self.post.tool_use).unwrap_or_else(|e| {
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
         });
@@ -157,7 +157,8 @@ impl ScratchpadAbstract for ChatPassthrough {
         delta: String,
         stop_toks: bool,
         stop_length: bool,
-    ) -> Result<(serde_json::Value, bool), String> {
+        tool_calls: Option<Value>,
+    ) -> Result<(Value, bool), String> {
         // ChatCompletionChunk(id='chatcmpl-9PQr82sRGEXp7YaMUfK7OZlNOPYuF', choices=[Choice(delta=ChoiceDelta(content=None, function_call=None, role='assistant', tool_calls=[ChoiceDeltaToolCall(index=0, id='call_coiieM6pksUjrvo4qfLUdEFy', function=ChoiceDeltaToolCallFunction(arguments='', name='definition'), type='function')]), finish_reason=None, index=0, logprobs=None)], created=1715848462, model='gpt-3.5-turbo-0125', object='chat.completion.chunk', system_fingerprint=None)
         // ChatCompletionChunk(id='chatcmpl-9PQr82sRGEXp7YaMUfK7OZlNOPYuF', choices=[Choice(delta=ChoiceDelta(content=None, function_call=None, role=None, tool_calls=[ChoiceDeltaToolCall(index=0, id=None, function=ChoiceDeltaToolCallFunction(arguments='{"', name=None), type=None)]), finish_reason=None, index=0, logprobs=None)], created=1715848462, model='gpt-3.5-turbo-0125', object='chat.completion.chunk', system_fingerprint=None)
         // ChatCompletionChunk(id='chatcmpl-9PQr82sRGEXp7YaMUfK7OZlNOPYuF', choices=[Choice(delta=ChoiceDelta(content=None, function_call=None, role=None, tool_calls=[ChoiceDeltaToolCall(index=0, id=None, function=ChoiceDeltaToolCallFunction(arguments='symbol', name=None), type=None)]), finish_reason=None, index=0, logprobs=None)], created=1715848462, model='gpt-3.5-turbo-0125', object='chat.completion.chunk', system_fingerprint=None)
@@ -175,9 +176,12 @@ impl ScratchpadAbstract for ChatPassthrough {
             "".to_string()
         };
         let json_choices = self.delta_sender.feed_delta("assistant", &delta, &finish_reason);
+        let tool_calls = tool_calls.unwrap_or(Value::Null);
+
         let ans = serde_json::json!({
             "choices": json_choices,
             "object": "chat.completion.chunk",
+            "tool_calls": tool_calls,
         });
         Ok((ans, finished))
     }

@@ -16,7 +16,7 @@ use crate::ast::treesitter::structs::SymbolType;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
-use crate::at_commands::execute::execute_at_commands_in_query;
+use crate::at_commands::execute::{execute_at_commands_from_msg, execute_at_commands_in_query};
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 
 
@@ -640,19 +640,6 @@ pub fn count_tokens(
     }
 }
 
-async fn embed_tool_calls_in_msg(msg: &mut ChatMessage) -> Result<(), String>{
-    if let Some(ref tool_calls) = msg.tool_calls {
-        let mut cmds = "".to_string();
-        for call in tool_calls {
-            let args: HashMap<String, String> = serde_json::from_str(&call.function.arguments).map_err(|e| format!("couldn't parse args: {:?}", e))?;
-            let args_values_str = args.iter().map(|(_, v)|v.clone()).collect::<Vec<_>>().join(" ");
-            cmds += &format!("@{} {}\n", call.function.name, args_values_str);
-        }
-        msg.content = format!("{}\n{}", cmds, msg.content);
-    }
-    Ok(())
-}
-
 pub async fn run_at_commands(
     global_context: Arc<ARwLock<GlobalContext>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
@@ -662,27 +649,28 @@ pub async fn run_at_commands(
     top_n: usize,
     stream_back_to_user: &mut HasRagResults,
 ) -> usize {
+    let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
+    info!("reserve_for_context {} tokens", reserve_for_context);
+
     // TODO: don't operate on `post`, return a copy of the messages
     let context = AtCommandsContext::new(global_context.clone()).await;
 
     let mut user_msg_starts = post.messages.len();
-    let mut user_messages_with_at: usize = 0;
+    let mut messages_with_at: usize = 0;
     while user_msg_starts > 0 {
         let message = post.messages.get(user_msg_starts - 1).unwrap().clone();
-        let role = message.role.clone();
-        let content = message.content.clone();
-        if role == "user" {
+        if message.role == "user" {
             user_msg_starts -= 1;
-            if content.contains("@") {
-                user_messages_with_at += 1;
+            if message.content.contains("@") {
+                messages_with_at += 1;
             }
+        } else if message.tool_calls.is_some() && user_msg_starts == post.messages.len() {
+            user_msg_starts -= 1;
+            messages_with_at += 1;
         } else {
             break;
         }
     }
-    user_messages_with_at = user_messages_with_at.max(1);
-    let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
-    info!("reserve_for_context {} tokens", reserve_for_context);
 
     // Token limit works like this:
     // - if there's only 1 user message at the bottom, it receives ntokens_minus_maxgen tokens for context
@@ -691,27 +679,28 @@ pub async fn run_at_commands(
 
     let mut rebuilt_messages: Vec<ChatMessage> = post.messages.iter().take(user_msg_starts).map(|m| m.clone()).collect();
     for msg_idx in user_msg_starts..post.messages.len() {
-
-        embed_tool_calls_in_msg(&mut post.messages[msg_idx]).await.unwrap_or_else(|e| {
-            warn!("couldn't embed tool calls in message {:?}: {}", msg_idx, e);
-        });
+        let role = post.messages[msg_idx].role.clone();
         
-        let mut user_posted = post.messages[msg_idx].content.clone();
-        let user_posted_ntokens = count_tokens(&tokenizer.read().unwrap(), &user_posted);
-        let mut context_limit = reserve_for_context / user_messages_with_at;
-        if context_limit <= user_posted_ntokens {
+        let mut content = post.messages[msg_idx].content.clone();
+        let content_n_tokens = count_tokens(&tokenizer.read().unwrap(), &content);
+        let mut context_limit = reserve_for_context / messages_with_at.max(1);
+        if context_limit <= content_n_tokens {
             context_limit = 0;
         } else {
-            context_limit -= user_posted_ntokens;
+            context_limit -= content_n_tokens;
         }
-        info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message",
-            msg_idx,
-            crate::nicer_logs::first_n_chars(&user_posted, 50),
-            user_posted_ntokens,
-            context_limit
-        );
-
-        let (messages_for_postprocessing, _) = execute_at_commands_in_query(&mut user_posted, &context, true, top_n).await;
+        info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", msg_idx, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens,context_limit);
+        
+        let mut messages_for_postprocessing = vec![];
+        if post.messages[msg_idx].tool_calls.is_some() {
+            if let Ok(res) = execute_at_commands_from_msg(&post.messages[msg_idx], &context, top_n).await {
+                messages_for_postprocessing.extend(res);
+            }
+        }
+        if content.contains("@") {
+            let (res, _) = execute_at_commands_in_query(&mut content, &context, true, top_n).await;
+            messages_for_postprocessing.extend(res);
+        }
 
         let t0 = std::time::Instant::now();
         let processed = postprocess_at_results2(
@@ -722,16 +711,21 @@ pub async fn run_at_commands(
             false,
         ).await;
         info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
-        if processed.len() > 0 {
+        
+        if !processed.is_empty() {
+            // TODO: must be a new format, not a context_file
             let message = ChatMessage::new("context_file".to_string(), serde_json::to_string(&processed).unwrap());
             rebuilt_messages.push(message.clone());
             stream_back_to_user.push_in_json(json!(message));
         }
-        if user_posted.trim().len() > 0 {
-            // stream back to the user, without command
-            let msg = ChatMessage::new("user".to_string(), user_posted);
+        
+        if content.trim().len() > 0 {
+            // stream back to the user, with at-commands clipped
+            let msg = ChatMessage::new(role.clone(), content);
             rebuilt_messages.push(msg.clone());
-            stream_back_to_user.push_in_json(json!(msg));
+            if role == "user" {
+                stream_back_to_user.push_in_json(json!(msg));
+            }
         }
     }
     post.messages = rebuilt_messages;

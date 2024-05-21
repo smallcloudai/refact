@@ -77,7 +77,7 @@ impl ScratchpadAbstract for ChatLlama2 {
     ) -> Result<String, String> {
         let top_n = 10;
         let last_user_msg_starts = run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_rag_results).await;
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message, self.post.tool_use)?;
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
         // loosely adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();
@@ -137,6 +137,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         delta: String,
         stop_toks: bool,
         _stop_length: bool,
+        _tool_calls: Option<Value>,
     ) -> Result<(serde_json::Value, bool), String> {
         self.dd.response_streaming(delta, stop_toks)
     }
