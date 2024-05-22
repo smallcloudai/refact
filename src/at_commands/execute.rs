@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use regex::Regex;
 
 use crate::at_commands::at_commands::{AtCommandCall, AtCommandsContext};
-use crate::call_validation::{ChatMessage, ContextFile};
+use crate::call_validation::{ChatMessage, ContextFile, ContextTool};
 
 
 async fn correct_call_if_needed(
@@ -138,7 +138,7 @@ pub async fn execute_at_commands_in_query(
     context: &AtCommandsContext,
     remove_valid_from_query: bool,
     top_n: usize,
-) -> (Vec<ContextFile>, Vec<AtCommandHighlight>) {
+) -> (Vec<ContextTool>, Vec<AtCommandHighlight>) {
     let mut msgs = vec![];
     let mut highlights = vec![];
     let mut new_lines = vec![];
@@ -156,14 +156,14 @@ pub async fn execute_at_commands_in_query(
         }
     }
     *query = new_lines.join("\n");
-    (msgs, highlights)
+    (msgs.into_iter().map(|x|ContextTool::ContextFile(x)).collect::<Vec<_>>(), highlights)
 }
 
 pub async fn execute_at_commands_from_msg(
     msg: &ChatMessage,
     context: &AtCommandsContext,
     top_n: usize,
-) -> Result<Vec<ContextFile>, String> {
+) -> Result<Vec<ContextTool>, String> {
     let at_command_names = context.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
     let mut msgs = vec![];
     if let Some(ref tool_calls) = msg.tool_calls {
@@ -193,7 +193,7 @@ pub async fn execute_at_commands_from_msg(
             }
         }
     }
-    Ok(msgs)
+    Ok(msgs.into_iter().map(|x|ContextTool::ContextFile(x)).collect())
 }
 
 #[derive(Debug)]

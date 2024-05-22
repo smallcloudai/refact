@@ -206,6 +206,11 @@ pub struct ContextFile {
     pub is_body_important: bool
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum ContextTool {
+    ContextFile(ContextFile),
+}
+
 fn default_gradient_type_value() -> i32 {
     -1
 }

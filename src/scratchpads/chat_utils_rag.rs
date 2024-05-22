@@ -13,7 +13,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
 
-use crate::call_validation::{ChatMessage, ChatPost, ContextFile};
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, ContextTool};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
 use crate::at_commands::execute::{execute_at_commands_from_msg, execute_at_commands_in_query};
@@ -497,21 +497,31 @@ pub async fn postprocess_rag_stage_3_6(
 
 pub async fn postprocess_at_results2(
     global_context: Arc<ARwLock<GlobalContext>>,
-    messages: Vec<ContextFile>,
+    messages: Vec<ContextTool>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
-) -> Vec<ContextFile> {
-    let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), &messages).await;
+) -> Vec<ContextTool> {
+    let context_file_messages = messages.iter()
+        .filter_map(|x| {
+            if let ContextTool::ContextFile(data) = x {
+                Some(data.clone())
+            } else {
+                None
+            }
+        }).collect::<Vec<ContextFile>>();    
+    
+    let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), &context_file_messages).await;
 
     let settings = PostprocessSettings::new();
     let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage_3_6(
         global_context.clone(),
-        messages,
+        context_file_messages,
         &files_markup,
         &settings,
     ).await;
-    postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode, &settings).await
+    let new_context_file_messages = postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode, &settings).await;
+    new_context_file_messages.into_iter().map(|x|ContextTool::ContextFile(x)).collect::<Vec<_>>()
 }
 
 pub async fn postprocess_rag_stage_7_9(
@@ -716,10 +726,10 @@ pub async fn run_at_commands(
         let ids: Vec<String> = msg.tool_calls.iter()
             .flat_map(|tool_call| tool_call.iter().map(|item| item.id.clone()))
             .collect();
-        
+
         if !processed.is_empty() {
             for i in 0..processed.len() {
-                
+
                 let message = ChatMessage {
                     role: "tool".to_string(),
                     content: serde_json::to_string(&processed[i]).unwrap(),
