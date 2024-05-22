@@ -42,7 +42,9 @@ export type ToolResult = {
 // tool call mesage
 
 interface BaseMessage
-  extends Array<string | ChatContextFile[] | ToolCall[] | ToolResult> {
+  extends Array<
+    string | ChatContextFile[] | ToolCall[] | ToolResult | undefined
+  > {
   0: ChatRole;
   1: string | ChatContextFile[] | ToolCall[] | ToolResult;
 }
@@ -60,6 +62,7 @@ export interface UserMessage extends BaseMessage {
 export interface AssistantMessage extends BaseMessage {
   0: "assistant";
   1: string;
+  2?: ToolCall[];
 }
 
 export interface SystemMessage extends BaseMessage {

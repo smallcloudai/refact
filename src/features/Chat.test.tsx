@@ -18,6 +18,8 @@ import {
   ChatErrorStreaming,
   ChatReceiveCapsError,
   ResponseToChat,
+  ToolCall,
+  ToolResult,
 } from "../events";
 import {
   MARS_ROVER_CHAT,
@@ -447,5 +449,77 @@ describe("Chat", () => {
     expect(messages.length).toBe(1);
 
     expect(() => app.queryByText("hello there")).not.toBeNull();
+  });
+
+  test("Chat with functions", async () => {
+    vi.mock("uuid", () => ({ v4: () => "foo" }));
+    const postMessageSpy = vi.spyOn(window, "postMessage");
+
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.hasPointerCapture = vi.fn();
+    window.HTMLElement.prototype.releasePointerCapture = vi.fn();
+
+    const { user, ...app } = render(<Chat />);
+
+    const toolCalls: ToolCall[] = [
+      {
+        id: "a",
+        function: { name: "cat", arguments: { file: "meow.txt" } },
+        type: "function",
+      },
+    ];
+
+    const toolResult: ToolResult = {
+      tool_call_id: "a",
+      finish_reason: "call_worked",
+      content: "meow\nmeow\n🐈\n",
+    };
+
+    const restoreChatAction: RestoreChat = {
+      type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
+      payload: {
+        id: "foo",
+        chat: {
+          id: "bar",
+          messages: [
+            ["user", "hello"],
+            ["assistant", "hello there"],
+            ["tool_calls", toolCalls],
+            ["tool", toolResult],
+          ],
+          title: "hello",
+          model: "gpt-3.5-turbo",
+        },
+      },
+    };
+
+    postMessage(restoreChatAction);
+
+    const textarea = app.getByTestId("chat-form-textarea");
+
+    expect(textarea).not.toBeNull();
+
+    await user.type(textarea, "hello");
+
+    await user.keyboard("{Enter}");
+
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      {
+        type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
+        payload: {
+          id: "bar",
+          title: "hello",
+          model: "gpt-3.5-turbo",
+          attach_file: false,
+          messages: [
+            ["user", "hello"],
+            ["assistant", "hello there", toolCalls],
+            ["tool", toolResult],
+            ["user", "hello"],
+          ],
+        },
+      },
+      "*",
+    );
   });
 });

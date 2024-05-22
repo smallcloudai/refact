@@ -58,6 +58,7 @@ import {
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
+import { appendToolCallsToAssistantMessage } from "./appendToolCallsToAssistantMessage";
 
 function formatChatResponse(
   messages: ChatMessages,
@@ -534,9 +535,12 @@ export const useEventBusForChat = () => {
         type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES,
         payload,
       });
+
+      const formatedMessages = appendToolCallsToAssistantMessage(messages);
+
       postMessage({
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-        payload,
+        payload: { ...payload, messages: formatedMessages },
       });
 
       const snippetMessage: ChatSetSelectedSnippet = {
