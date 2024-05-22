@@ -82,7 +82,6 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                   {text}
                 </AssistantInput>
               );
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             } else {
               return null;
               // return <SystemInput key={index}>{text}</SystemInput>;
