@@ -121,6 +121,7 @@ async fn chat(
             client1,
             api_key,
             chat_post.parameters.clone(),
+            tools_mb,
         ).await
     }
 }
