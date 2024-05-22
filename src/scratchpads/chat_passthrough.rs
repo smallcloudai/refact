@@ -29,12 +29,13 @@ impl DeltaSender {
         }
     }
 
-    pub fn feed_delta(&mut self, role: &str, delta: &str, finish_reason: &str) -> serde_json::Value {
+    pub fn feed_delta(&mut self, role: &str, delta: &str, finish_reason: &str, tool_calls: Option<Value>) -> Value {
         let x = serde_json::json!([{
             "index": 0,
             "delta": {
                 "role": if role != self.role_sent.as_str() { serde_json::Value::String(role.to_string()) } else { serde_json::Value::Null },
-                "content": delta
+                "content": delta,
+                "tool_calls": tool_calls.unwrap_or(serde_json::Value::Null),
             },
             "finish_reason": if finish_reason == "" { serde_json::Value::Null } else { serde_json::Value::String(finish_reason.to_string()) }
         }]);
@@ -79,9 +80,9 @@ impl ScratchpadAbstract for ChatPassthrough {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        tool_use: bool,
+        tool_choice: String,
     ) -> Result<(), String> {
-        self.default_system_message = default_system_message_from_patch(&patch, tool_use, self.global_context.clone()).await;
+        self.default_system_message = default_system_message_from_patch(&patch, tool_choice, self.global_context.clone()).await;
         Ok(())
     }
 
@@ -165,13 +166,11 @@ impl ScratchpadAbstract for ChatPassthrough {
         } else {
             "".to_string()
         };
-        let json_choices = self.delta_sender.feed_delta("assistant", &delta, &finish_reason);
-        let tool_calls = tool_calls.unwrap_or(Value::Null);
+        let json_choices = self.delta_sender.feed_delta("assistant", &delta, &finish_reason, tool_calls);
 
         let ans = serde_json::json!({
             "choices": json_choices,
             "object": "chat.completion.chunk",
-            "tool_calls": tool_calls,
         });
         Ok((ans, finished))
     }

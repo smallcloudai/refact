@@ -34,14 +34,14 @@ def deserialize(value: str):
         return None
 
 
-def ask_chat(msgs, tool_use, endpoint: str = "http://127.0.0.1:8001/v1/chat"):
+def ask_chat(msgs, tool_choice, endpoint: str = "http://127.0.0.1:8001/v1/chat"):
     j = {
         "messages": msgs,
         "temperature": 0.6,
         "max_tokens": 512,
         "model": "gpt-4o",
         "stream": True,
-        "tool_use": True if tool_use else False,
+        "tool_choice": tool_choice,
     }
 
     print(f"Tool use: {j.get('tool_use', False)}")
@@ -71,12 +71,13 @@ def response_into_message(resp):
 
 
 def ask():
-    r1 = ask_chat(messages, True)
-    r1_parsed = [p for l in r1.split("\n") if (p := parse(l))]
-    # import IPython; IPython.embed(); quit()
-    response_into_message(r1_parsed[1])
-    r2 = ask_chat(messages, False)
-    print(answer_plain_text(r2))
+    r1 = ask_chat(messages, "required")
+    print(r1)
+    # r1_parsed = [p for l in r1.split("\n") if (p := parse(l))]
+    # # import IPython; IPython.embed(); quit()
+    # response_into_message(r1_parsed[1])
+    # r2 = ask_chat(messages, "none")
+    # print(answer_plain_text(r2))
 
 
 if __name__ == "__main__":

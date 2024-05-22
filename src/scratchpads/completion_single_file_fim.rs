@@ -136,7 +136,7 @@ impl ScratchpadAbstract for SingleFileFIM {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        tool_use: bool,
+        _tool_choice: String,
     ) -> Result<(), String> {
         // That will work for some models (starcoder) without patching
         self.fim_prefix = patch.get("fim_prefix").and_then(|x| x.as_str()).unwrap_or("<fim_prefix>").to_string();

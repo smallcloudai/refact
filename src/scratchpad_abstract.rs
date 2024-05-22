@@ -12,7 +12,7 @@ pub trait ScratchpadAbstract: Send {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        tool_use: bool,
+        tool_choice: String,
     ) -> Result<(), String>;
 
     async fn prompt(

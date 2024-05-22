@@ -245,6 +245,10 @@ impl ChatMessage {
     }
 }
 
+fn default_tool_choice() -> String {
+    "none".to_string()
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct ChatPost {
     pub messages: Vec<ChatMessage>,
@@ -256,6 +260,6 @@ pub struct ChatPost {
     pub scratchpad: String,
     pub stream: Option<bool>,
     pub temperature: Option<f32>,
-    #[serde(default)]
-    pub tool_use: bool,
+    #[serde(default = "default_tool_choice")]
+    pub tool_choice: String,
 }

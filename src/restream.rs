@@ -26,6 +26,7 @@ pub async fn scratchpad_interaction_not_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: &SamplingParameters,
+    tool_choice_mb: Option<String>,
     tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<Response<Body>, ScratchError> {
     let t2 = std::time::SystemTime::now();
@@ -57,6 +58,7 @@ pub async fn scratchpad_interaction_not_stream(
             &endpoint_template,
             &endpoint_chat_passthrough,
             &parameters,
+            tool_choice_mb,
             tools_mb,
         ).await
     }.map_err(|e| {
@@ -156,6 +158,7 @@ pub async fn scratchpad_interaction_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: SamplingParameters,
+    tool_choice_mb: Option<String>,
     tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<Response<Body>, ScratchError> {
     let t1 = std::time::SystemTime::now();
@@ -204,6 +207,7 @@ pub async fn scratchpad_interaction_stream(
                     &endpoint_template,
                     &endpoint_chat_passthrough,
                     &parameters,
+                    tool_choice_mb,
                     tools_mb,
                 ).await
             };
@@ -343,16 +347,16 @@ fn _push_streaming_json_into_scratchpad(
         let finish_reason = choice0.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
         let stop_toks = !finish_reason.is_empty() && finish_reason.starts_with("stop");
         let stop_length = !finish_reason.is_empty() && !finish_reason.starts_with("stop");
-        let tool_calls = choice0.get("message").and_then(|x| x.get("tool_calls")).map(|x|x.clone());
         if let Some(delta) = choice0.get("delta") {
             // passthrough messages case
             let _role = delta.get("role").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
             let content = delta.get("content").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
+            let tool_calls = delta.get("tool_calls").map(|x|x.clone());
             (value, *finished) = scratch.response_streaming(content, stop_toks, stop_length, tool_calls)?;
         } else {
             // normal case
             let text = choice0.get("text").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
-            (value, *finished) = scratch.response_streaming(text, stop_toks, stop_length, tool_calls)?;
+            (value, *finished) = scratch.response_streaming(text, stop_toks, stop_length, None)?;
         }
         if let Some(model_value) = choice0.get("model") {
             model_name.clone_from(&model_value.as_str().unwrap_or("").to_string());

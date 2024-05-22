@@ -63,13 +63,13 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        tool_use: bool,
+        tool_choice: String,
     ) -> Result<(), String> {
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.keyword_syst = patch.get("keyword_system").and_then(|x| x.as_str()).unwrap_or("SYSTEM:").to_string();
         self.keyword_user = patch.get("keyword_user").and_then(|x| x.as_str()).unwrap_or("USER:").to_string();
         self.keyword_asst = patch.get("keyword_assistant").and_then(|x| x.as_str()).unwrap_or("ASSISTANT:").to_string();
-        self.default_system_message = default_system_message_from_patch(patch, tool_use, self.global_context.clone()).await;
+        self.default_system_message = default_system_message_from_patch(patch, tool_choice, self.global_context.clone()).await;
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
 
         self.dd.stop_list.clear();
@@ -169,10 +169,10 @@ impl ScratchpadAbstract for GenericChatScratchpad {
 
 pub async fn default_system_message_from_patch(
     patch: &Value,
-    tool_use: bool,
+    tool_choice: String,
     global_context: Arc<ARwLock<GlobalContext>>
 ) -> String {
-    if tool_use {
+    if tool_choice == "auto" || tool_choice == "required" {
         if let Ok(tconfig) = get_tconfig(global_context.clone()).await {
             if let Some(x) = tconfig.system_prompts.get("default_tool") {
                 return x.text.clone();

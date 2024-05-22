@@ -22,6 +22,7 @@ pub async fn forward_to_openai_style_endpoint(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
+    tool_choice_mb: Option<String>,
     tools_mb: Option<Vec<serde_json::Value>>
 ) -> Result<serde_json::Value, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
@@ -42,6 +43,9 @@ pub async fn forward_to_openai_style_endpoint(
     });
     if let Some(tools) = tools_mb {
         data["tools"] = serde_json::Value::Array(tools);
+        if let Some(tool_choice) = tool_choice_mb {
+            data["tool_choice"] = serde_json::Value::String(tool_choice);
+        }
     }
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt);
@@ -80,6 +84,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
+    tool_choice_mb: Option<String>,
     tools_mb: Option<Vec<serde_json::Value>>
 ) -> Result<EventSource, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
@@ -98,6 +103,9 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     });
     if let Some(tools) = tools_mb {
         data["tools"] = serde_json::Value::Array(tools);
+        if let Some(tool_choice) = tool_choice_mb {
+            data["tool_choice"] = serde_json::Value::String(tool_choice);
+        }
     }
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt);

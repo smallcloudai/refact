@@ -56,11 +56,11 @@ impl ScratchpadAbstract for ChatLlama2 {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        tool_use: bool,
+        tool_choice: String,
     ) -> Result<(), String> {
         self.keyword_s = patch.get("s").and_then(|x| x.as_str()).unwrap_or("<s>").to_string();
         self.keyword_slash_s = patch.get("slash_s").and_then(|x| x.as_str()).unwrap_or("</s>").to_string();
-        self.default_system_message = default_system_message_from_patch(&patch, tool_use, self.global_context.clone()).await;
+        self.default_system_message = default_system_message_from_patch(&patch, tool_choice, self.global_context.clone()).await;
         self.t.eot = self.keyword_s.clone();
         info!("llama2 chat model adaptation patch applied {:?}", self.keyword_s);
         self.t.assert_one_token(&self.t.eot.as_str())?;

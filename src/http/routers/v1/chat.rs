@@ -92,7 +92,7 @@ async fn chat(
     ).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
-    let tools_mb: Option<Vec<Value>> = if chat_post.tool_use {
+    let tools_mb: Option<Vec<Value>> = if chat_post.tool_choice == "required" || chat_post.tool_choice == "auto" {
         Some(at_commands_dicts().unwrap_or_default().iter().map(|x| x.clone().into_openai_style()).collect())
     } else {
         None
@@ -109,6 +109,7 @@ async fn chat(
             client1,
             api_key,
             &chat_post.parameters,
+            Some(chat_post.tool_choice),
             tools_mb,
         ).await
     } else {
@@ -121,6 +122,7 @@ async fn chat(
             client1,
             api_key,
             chat_post.parameters.clone(),
+            Some(chat_post.tool_choice),
             tools_mb,
         ).await
     }
