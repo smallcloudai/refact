@@ -10,7 +10,7 @@ export type CollapsibleProps = Pick<
   React.PropsWithChildren<{
     className?: string;
     disabled?: boolean;
-    title?: string;
+    title?: React.ReactNode;
   }>;
 
 export const Collapsible: React.FC<CollapsibleProps> = ({

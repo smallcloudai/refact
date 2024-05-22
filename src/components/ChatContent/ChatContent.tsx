@@ -12,7 +12,7 @@ import { Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
-// import { SystemInput } from "./SystemInput";
+import { CommandLine } from "../CommandLine";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
@@ -49,19 +49,22 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
 
     const toolCallsMap = React.useMemo(
       () =>
-        messages.reduce<Record<string, ToolCall>>((acc, message) => {
-          if (message[0] === "tool_calls") {
-            const toolCals = message[1].reduce<Record<string, ToolCall>>(
-              (calls, toolCall) => {
-                calls[toolCall.id] = toolCall;
-                return calls;
-              },
-              {},
-            );
-            return { ...acc, ...toolCals };
-          }
-          return acc;
-        }, {}),
+        messages.reduce<Record<string, ToolCall | undefined>>(
+          (acc, message) => {
+            if (message[0] === "tool_calls") {
+              const toolCals = message[1].reduce<Record<string, ToolCall>>(
+                (calls, toolCall) => {
+                  calls[toolCall.id] = toolCall;
+                  return calls;
+                },
+                {},
+              );
+              return { ...acc, ...toolCals };
+            }
+            return acc;
+          },
+          {},
+        ),
       [messages],
     );
 
@@ -105,25 +108,17 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                   {text}
                 </AssistantInput>
               );
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            } else if (role === "tool" && toolCallsMap[text.tool_call_id]) {
-              // get tool_calls data
-              // render somthing nice
+            } else if (role === "tool") {
               const toolCallData = toolCallsMap[text.tool_call_id];
-              const toolArgs = Object.entries(
-                toolCallData.function.arguments,
-              ).map(([key, value]) => `${key}=${value}`);
-
+              if (toolCallData === undefined) return null;
               return (
-                <div key={`tool-${index}-${text.tool_call_id}`}>
-                  <div>Tool</div>
-                  <div>
-                    Command: {toolCallData.function.name}, Args: {toolArgs}
-                  </div>
-                  <div>Finish reason: {text.finish_reason}</div>
-                  <div>Result: {text.content}</div>
-                  <div>{text.content}</div>
-                </div>
+                <CommandLine
+                  key={`tool-${index}-${text.tool_call_id}`}
+                  command={toolCallData.function.name}
+                  args={toolCallData.function.arguments}
+                  result={text.content}
+                  error={text.finish_reason === "call_failed"}
+                />
               );
             } else {
               return null;

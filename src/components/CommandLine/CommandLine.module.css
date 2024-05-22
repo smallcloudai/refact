@@ -1,0 +1,35 @@
+.markdown {
+}
+
+.markdown pre {
+  /* all: unset; */
+}
+
+.pre {
+  /* all: unset; */
+}
+
+.code {
+  color: inherit;
+  background: none;
+}
+
+.command {
+  padding: 0;
+  width: 100%;
+}
+
+.button {
+  width: 100%;
+  display: flex;
+  text-align: unset;
+  position: relative;
+}
+
+.command pre {
+  all: unset;
+}
+
+.content pre {
+  all: unset;
+}
