@@ -6,7 +6,13 @@ const AT_COMMAND_COMPLETION = "/v1/at-command-completion";
 const AT_COMMAND_PREVIEW = "/v1/at-command-preview";
 const CUSTOM_PROMPTS_URL = "/v1/customization";
 
-export type ChatRole = "user" | "assistant" | "context_file" | "system";
+export type ChatRole =
+  | "user"
+  | "assistant"
+  | "context_file"
+  | "system"
+  | "tool_calls"
+  | "tool";
 
 export type ChatContextFile = {
   file_name: string;
@@ -18,9 +24,27 @@ export type ChatContextFile = {
   usefullness?: number;
 };
 
-interface BaseMessage extends Array<string | ChatContextFile[]> {
+export type ToolCall = {
+  id: string;
+  function: {
+    arguments: Record<string, string>;
+    name: string;
+  };
+  type: string;
+};
+
+export type ToolResult = {
+  tool_call_id: string;
+  finish_reason: string; // "call_failed" | "call_worked";
+  content: string;
+};
+
+// tool call mesage
+
+interface BaseMessage
+  extends Array<string | ChatContextFile[] | ToolCall[] | ToolResult> {
   0: ChatRole;
-  1: string | ChatContextFile[];
+  1: string | ChatContextFile[] | ToolCall[] | ToolResult;
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
@@ -43,6 +67,16 @@ export interface SystemMessage extends BaseMessage {
   1: string;
 }
 
+export interface ToolCallsMessage extends BaseMessage {
+  0: "tool_calls";
+  1: ToolCall[];
+}
+
+export interface ToolMessage extends BaseMessage {
+  0: "tool";
+  1: ToolResult;
+}
+
 export function isUserMessage(message: ChatMessage): message is UserMessage {
   return message[0] === "user";
 }
@@ -51,7 +85,9 @@ export type ChatMessage =
   | UserMessage
   | AssistantMessage
   | ChatContextFileMessage
-  | SystemMessage;
+  | SystemMessage
+  | ToolCallsMessage
+  | ToolMessage;
 
 export type ChatMessages = ChatMessage[];
 
@@ -93,6 +129,10 @@ export type ChatUserMessageResponse = {
   content: string;
 };
 
+export type ToolResponse = {
+  role: "tool";
+} & ToolResult;
+
 export function isChatUserMessageResponse(
   json: unknown,
 ): json is ChatUserMessageResponse {
@@ -102,6 +142,15 @@ export function isChatUserMessageResponse(
   if (!("content" in json)) return false;
   if (!("role" in json)) return false;
   return json.role === "user" || json.role === "context_file";
+}
+
+export function isToolMessage(json: unknown): json is ToolResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("id" in json)) return false;
+  if (!("content" in json)) return false;
+  if (!("role" in json)) return false;
+  return json.role === "tool";
 }
 
 export type ChatResponse =
