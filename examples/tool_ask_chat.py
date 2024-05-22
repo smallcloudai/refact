@@ -34,7 +34,7 @@ def deserialize(value: str):
         return None
 
 
-def ask_chat(msgs, tool_use, endpoint: str = "http://127.0.0.1:8001/v1/chat/completions"):
+def ask_chat(msgs, tool_use, endpoint: str = "http://127.0.0.1:8001/v1/chat"):
     j = {
         "messages": msgs,
         "temperature": 0.6,
@@ -72,9 +72,9 @@ def response_into_message(resp):
 
 def ask():
     r1 = ask_chat(messages, True)
-    r1_parsed = parse(r1)
-    print(r1_parsed)
-    response_into_message(r1_parsed)
+    r1_parsed = [p for l in r1.split("\n") if (p := parse(l))]
+    # import IPython; IPython.embed(); quit()
+    response_into_message(r1_parsed[1])
     r2 = ask_chat(messages, False)
     print(answer_plain_text(r2))
 

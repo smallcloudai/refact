@@ -679,9 +679,10 @@ pub async fn run_at_commands(
 
     let mut rebuilt_messages: Vec<ChatMessage> = post.messages.iter().take(user_msg_starts).map(|m| m.clone()).collect();
     for msg_idx in user_msg_starts..post.messages.len() {
-        let role = post.messages[msg_idx].role.clone();
+        let msg = post.messages[msg_idx].clone();
+        let role = msg.role.clone();
 
-        let mut content = post.messages[msg_idx].content.clone();
+        let mut content = msg.content.clone();
         let content_n_tokens = count_tokens(&tokenizer.read().unwrap(), &content);
         let mut context_limit = reserve_for_context / messages_with_at.max(1);
         if context_limit <= content_n_tokens {
@@ -692,7 +693,7 @@ pub async fn run_at_commands(
         info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", msg_idx, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens,context_limit);
 
         let mut messages_for_postprocessing = vec![];
-        if post.messages[msg_idx].tool_calls.is_some() {
+        if msg.tool_calls.is_some() {
             if let Ok(res) = execute_at_commands_from_msg(&post.messages[msg_idx], &context, top_n).await {
                 messages_for_postprocessing.extend(res);
             }
@@ -712,11 +713,23 @@ pub async fn run_at_commands(
         ).await;
         info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
 
+        let ids: Vec<String> = msg.tool_calls.iter()
+            .flat_map(|tool_call| tool_call.iter().map(|item| item.id.clone()))
+            .collect();
+        
         if !processed.is_empty() {
-            // TODO: must be a new format, not a context_file
-            let message = ChatMessage::new("context_file".to_string(), serde_json::to_string(&processed).unwrap());
-            rebuilt_messages.push(message.clone());
-            stream_back_to_user.push_in_json(json!(message));
+            for i in 0..processed.len() {
+                
+                let message = ChatMessage {
+                    role: "tool".to_string(),
+                    content: serde_json::to_string(&processed[i]).unwrap(),
+                    tool_calls: None,
+                    tool_call_id: ids.get(i).map(|x|x.clone()).unwrap_or_else(|| "".to_string()),
+                };
+
+                rebuilt_messages.push(message.clone());
+                stream_back_to_user.push_in_json(json!(message));
+            }
         }
 
         if content.trim().len() > 0 {
@@ -728,7 +741,8 @@ pub async fn run_at_commands(
             }
         }
     }
-    post.messages = rebuilt_messages;
+    post.messages = rebuilt_messages.clone();
+    info!("{:?}", post.messages);
     user_msg_starts
 }
 

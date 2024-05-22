@@ -211,15 +211,15 @@ fn default_gradient_type_value() -> i32 {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ToolFunctionChat {
+pub struct ChatToolFunction {
     pub arguments: String,
     pub name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ToolCallChat {
+pub struct ChatToolCall {
     pub id: String,
-    pub function: ToolFunctionChat,
+    pub function: ChatToolFunction,
     #[serde(rename = "type")]
     pub tool_type: String,
 }
@@ -229,7 +229,7 @@ pub struct ChatMessage {
     pub role: String,
     pub content: String,
     #[serde(default)]
-    pub tool_calls: Option<Vec<ToolCallChat>>,
+    pub tool_calls: Option<Vec<ChatToolCall>>,
     #[serde(default)]
     pub tool_call_id: String,
 }

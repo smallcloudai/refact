@@ -121,22 +121,6 @@ fn passthrough_messages_to_json(
     let messages_str = &prompt[12..];
     let messages: Vec<call_validation::ChatMessage> = serde_json::from_str(&messages_str).unwrap();
     data["messages"] = serde_json::json!(messages);
-    data["tools"] = serde_json::json!([
-        {
-            "type": "function",
-            "function": {
-                "name": "definition",
-                "description": "Use abstract syntax tree to fetch the definition of a symbol, especially function, method, class, type alias.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "symbol": { "type": "string", "description": "Name to search, for example \"MyClass\", \"my_func\", \"MyClass::my_func\", use :: as a separator for paths"},
-                    },
-                    "required": ["symbol"],
-                },
-            },
-        },
-    ]);
 }
 
 #[derive(Serialize)]

@@ -132,8 +132,13 @@ pub async fn handle_v1_command_preview(
     ).await;
     let mut preview: Vec<ChatMessage> = vec![];
     if processed.len() > 0 {
-        let message = ChatMessage::new("context_file".to_string(), serde_json::to_string(&processed).unwrap());
-        preview.push(message.clone());
+        for p in processed {
+            let message = ChatMessage::new(
+                "tool".to_string(),
+                serde_json::to_string(&p).unwrap()
+            );
+            preview.push(message.clone());
+        }
     }
     let mut highlights = vec![];
     for h in vec_highlights {
