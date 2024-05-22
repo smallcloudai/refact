@@ -46,9 +46,18 @@ pub fn max_tokens_for_rag_chat(n_ctx: usize, maxgen: usize) -> usize {
 }
 
 pub fn context_to_fim_debug_page(
-    postprocessed_messages: &[ContextFile],
+    postprocessed_messages: &[ContextTool],
     search_traces: &crate::ast::structs::AstCursorSearchResult,
 ) -> Value {
+    let context_file_messages = postprocessed_messages.iter()
+        .filter_map(|x| {
+            if let ContextTool::ContextFile(data) = x {
+                Some(data.clone())
+            } else {
+                None
+            }
+        }).collect::<Vec<ContextFile>>();
+
     let mut context = serde_json::json!({});
     fn shorter_symbol(x: &SymbolsSearchResultStruct) -> serde_json::Value {
         let mut t: serde_json::Value = serde_json::json!({});
@@ -69,7 +78,7 @@ pub fn context_to_fim_debug_page(
     context["bucket_imports"] = serde_json::Value::Array(search_traces.bucket_imports.iter()
         .map(|x| shorter_symbol(x)).collect());
 
-    let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
+    let attached_files: Vec<_> = context_file_messages.iter().map(|x| {
         json!({
             "file_name": x.file_name,
             "file_content": x.file_content,

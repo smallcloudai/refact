@@ -17,7 +17,7 @@ use crate::ast::ast_module::AstModule;
 use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::at_commands::at_ast_lookup_symbols::results2message;
-use crate::call_validation::{CodeCompletionPost, ContextFile, SamplingParameters};
+use crate::call_validation::{CodeCompletionPost, ContextFile, ContextTool, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::completion_cache;
 use crate::files_in_workspace::Document;
@@ -75,10 +75,25 @@ impl SingleFileFIM {
     }
 }
 
-fn add_context_to_prompt(context_format: &String, prompt: &String, fim_prefix: &String, postprocessed_messages: &Vec<ContextFile>, language_id: &LanguageId) -> String {
+fn add_context_to_prompt(
+    context_format: &String, 
+    prompt: &String, 
+    fim_prefix: &String, 
+    postprocessed_messages: &Vec<ContextTool>, 
+    language_id: &LanguageId
+) -> String {
+    let context_file_messages = postprocessed_messages.iter()
+        .filter_map(|x| {
+            if let ContextTool::ContextFile(data) = x {
+                Some(data.clone())
+            } else {
+                None
+            }
+        }).collect::<Vec<ContextFile>>();
+    
     let mut context_files = vec![];
     if context_format == "starcoder" {
-        for m in postprocessed_messages {
+        for m in context_file_messages {
             let s = format!(
                 "{}{}{}{}",
                 "<file_sep>",
@@ -98,7 +113,7 @@ fn add_context_to_prompt(context_format: &String, prompt: &String, fim_prefix: &
             prompt,
         )
     } else if context_format == "default" {
-        for m in postprocessed_messages {
+        for m in context_file_messages {
             context_files.push(wrap_comments(&format!(
                 "{}\n{}\n",
                 m.file_name,
@@ -313,7 +328,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             let post_t0 = Instant::now();
             let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
                 self.global_context.clone(),
-                ast_messages,
+                ast_messages.into_iter().map(|x|ContextTool::ContextFile(x)).collect::<Vec<_>>(),
                 self.t.tokenizer.clone(),
                 rag_tokens_n,
                 false,
