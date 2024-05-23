@@ -8,7 +8,7 @@ initial_messages = [
     "@definition DeltaDeltaChatStreamer\n" +
     # "@definition response_n_choices\n" +
     #"@definition x\n" +
-    "@at-local-notes-to-self \n" +
+    "@local-notes-to-self\n" +
     "hello world"
 },
 ]

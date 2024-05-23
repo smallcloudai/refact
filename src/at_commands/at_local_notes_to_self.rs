@@ -65,6 +65,12 @@ impl AtCommand for AtLocalNotesToSelf {
             usefulness: 100.0,
             is_body_important: false
         };
+        // let chat_message = ChatMessage {
+        //     role: "assistant".to_string(),
+        //     content: "Notes to self:".to_string() + "\n" + &all_notes,
+        //     tool_calls: None,
+        //     tool_call_id: "".to_string()
+        // };
         Ok((vec![context_file], "".to_string()))
     }
 }
