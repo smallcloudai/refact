@@ -1,6 +1,6 @@
 import React, { useEffect, useImperativeHandle } from "react";
 import { ChatMessages, isChatContextFileMessage } from "../../services/refact";
-import { Markdown, MarkdownProps } from "../Markdown";
+import { MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
@@ -82,12 +82,9 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                   {text}
                 </AssistantInput>
               );
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            } else if (role === "system") {
+            } else {
               return null;
               // return <SystemInput key={index}>{text}</SystemInput>;
-            } else {
-              return <Markdown key={index}>{text}</Markdown>;
             }
           })}
           {isWaiting && <Spinner />}
