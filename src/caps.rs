@@ -127,10 +127,11 @@ pub async fn load_caps(
                 Err(_) => continue
             };
 
-            if status != 200 {
-                warn!("status={}; server responded with:\n{}", status, buffer);
-                continue;
+            if status == 200 {
+                break;
             }
+
+            warn!("status={}; server responded with:\n{}", status, buffer);
         }
         if status != 200 {
             return Err(format!("cannot fetch caps, status={}", status));
