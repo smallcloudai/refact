@@ -66,12 +66,13 @@ async fn execute_at_commands_from_query_line(
         }
         pos1_start
     };
-    
+
     let at_command_names = context.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
+    tracing::info!("at-commands running {:?} commands available {:?}", query, at_command_names);
     let line_words = parse_words_from_line(line);
     let mut line_words_cloned = line_words.iter().map(|(x, _, _)|x.clone()).collect::<Vec<_>>();
     let mut another_pass_needed = false;
-    
+
     for (w_idx, (word, pos1, pos2)) in line_words.iter().enumerate() {
         if let Some(cmd) = context.at_commands.get(word) {
             let mut call = AtCommandCall::new(cmd.clone(), vec![]);
@@ -83,11 +84,11 @@ async fn execute_at_commands_from_query_line(
             call.args = q_cmd_args.iter().map(|(text, _, _)|text.clone()).collect();
 
             highlights_local.push(AtCommandHighlight::new("cmd".to_string(), line_n, w_idx, pos1_start + *pos1, pos1_start + *pos2));
-            
+
             for (i, (_, pos1, pos2)) in q_cmd_args.iter().enumerate().map(|(i, arg)| (i + 1, arg)) {
                 highlights_local.push(AtCommandHighlight::new("arg".to_string(), line_n, w_idx + i, pos1_start + *pos1, pos1_start + *pos2));
             }
-            
+
             correct_call_if_needed(&mut call, &mut highlights_local, context, &at_command_names).await;
 
             let mut executed = false;
@@ -95,10 +96,10 @@ async fn execute_at_commands_from_query_line(
             if highlights_local.iter().all(|x|x.ok) {
                 match call.command.lock().await.execute(query, &call.args, top_n, context).await {
                     Ok((m_res, m_text_on_clip)) =>
-                        { 
-                            executed = true; 
+                        {
+                            executed = true;
                             text_on_clip = m_text_on_clip;
-                            msgs.extend(m_res) 
+                            msgs.extend(m_res)
                         },
                     Err(e) => {
                         tracing::warn!("can't execute command that indicated it can execute: {}", e);
@@ -142,7 +143,7 @@ pub async fn execute_at_commands_in_query(
     let mut msgs = vec![];
     let mut highlights = vec![];
     let mut new_lines = vec![];
-    
+
     for (idx, mut line) in query.lines().map(|x|x.to_string()).enumerate() {
         loop {
             let another_pass_needed = execute_at_commands_from_query_line(
@@ -170,10 +171,14 @@ pub async fn execute_at_commands_from_msg(
         for t_call in tool_calls {
             if let Some(cmd) = context.at_commands.get(&format!("@{}", t_call.function.name)) {
                 let mut call = AtCommandCall::new(cmd.clone(), vec![]);
+                {
+                    let cmd_locked = cmd.lock().await;
+                    tracing::info!("tool use: trying to run {:?}", cmd_locked.name());
+                }
                 let args: HashMap<String, String> = serde_json::from_str(&t_call.function.arguments).map_err(|e| format!("couldn't parse args: {:?}", e))?;
                 let args_values = args.iter().map(|(_, v)|v.clone()).collect::<Vec<_>>();
                 call.args = args_values;
-                
+
                 let mut highlights = vec![];
                 highlights.push(AtCommandHighlight::new("cmd".to_string(), 0, 0, 0, 0));
                 for _ in call.args.iter(){

@@ -5,10 +5,11 @@ initial_messages = [
 {"role": "user", "content":
     # "@workspace definition of DeltaDeltaChatStreamer\n" +
     #"@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\n" +
-    #"@definition DeltaDeltaChatStreamer\n" +
-    "@definition response_n_choices\n" +
+    "@definition DeltaDeltaChatStreamer\n" +
+    # "@definition response_n_choices\n" +
     #"@definition x\n" +
-    "summarize the code in one paragraph"
+    "@at-local-notes-to-self \n" +
+    "hello world"
 },
 ]
 
@@ -37,13 +38,15 @@ def ask_chat(messages):
             print(x)
             print("ERROR: unexpected response format")
             continue
+        print(x)
         if x[6:].startswith("[DONE]"):
             break
         j = json.loads(x[6:])
         if "choices" in j:
             # streaming
             choice0 = j["choices"][0]
-            accum_role = choice0["delta"]["role"]
+            if choice0["delta"]["role"] is not None:
+                accum_role = choice0["delta"]["role"]
             accum_content += choice0["delta"]["content"]
         else:
             # content/role without streaming, replacing the last user message

@@ -10,6 +10,7 @@ use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
 use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_workspace::AtWorkspace;
+use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
 use crate::call_validation::ContextFile;
 use crate::global_context::GlobalContext;
 
@@ -66,5 +67,6 @@ pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand 
         ("@definition".to_string(), Arc::new(AMutex::new(Box::new(AtAstDefinition::new()) as Box<dyn AtCommand + Send>))),
         ("@references".to_string(), Arc::new(AMutex::new(Box::new(AtAstReference::new()) as Box<dyn AtCommand + Send>))),
         ("@symbols-at".to_string(), Arc::new(AMutex::new(Box::new(AtAstLookupSymbols::new()) as Box<dyn AtCommand + Send>))),
+        ("@local-notes-to-self".to_string(), Arc::new(AMutex::new(Box::new(AtLocalNotesToSelf::new()) as Box<dyn AtCommand + Send>))),
     ]);
 }
