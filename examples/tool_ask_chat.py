@@ -43,8 +43,6 @@ def ask_chat(msgs, tool_choice, endpoint: str = "http://127.0.0.1:8001/v1/chat")
         "stream": True,
         "tool_choice": tool_choice,
     }
-
-    print(f"Tool use: {j.get('tool_use', False)}")
     response = requests.post(
         endpoint,
         json=j,
@@ -60,24 +58,30 @@ def answer_plain_text(text: str) -> str:
     return "".join(resp)
 
 
-def response_into_message(resp):
-    messages.append(
-        [
-            resp["choices"][0]["delta"]["role"], 
-            resp['choices'][0]['delta']['content'], 
-            resp.get("tool_calls")
-        ]
-    )
+def collect_tools(resp: str):
+    tools = {}
+    for l in [p for l in resp.split("\n") if (p := parse(l))]:
+        ch0 = l.get("choices")[0]
+        if not (tool_calls := ch0.get('delta').get("tool_calls")):
+            continue
+        f0 = tool_calls[0]
+        if not tools.get(f0["index"]):
+            tools[f0["index"]] = f0
+        else:
+            tools[f0["index"]]['function']["arguments"] += f0['function']["arguments"]
+
+    return list(tools.values())
 
 
 def ask():
     r1 = ask_chat(messages, "required")
-    print(r1)
-    # r1_parsed = [p for l in r1.split("\n") if (p := parse(l))]
-    # # import IPython; IPython.embed(); quit()
-    # response_into_message(r1_parsed[1])
-    # r2 = ask_chat(messages, "none")
-    # print(answer_plain_text(r2))
+    tools = collect_tools(r1)
+    messages.append(
+        ["assistant", "", tools]
+    )
+    r2 = ask_chat(messages, "none")
+    print(r2)
+    print(answer_plain_text(r2))
 
 
 if __name__ == "__main__":

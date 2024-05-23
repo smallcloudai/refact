@@ -767,7 +767,7 @@ pub async fn run_at_commands(
             stream_back_to_user.push_in_json(json!(message));
         }
         
-        if content.trim().len() > 0 {
+        if content.trim().len() > 0 && allow_at {
             // stream back to the user, with at-commands clipped
             let msg = ChatMessage::new(role.clone(), content);
             rebuilt_messages.push(msg.clone());
@@ -777,7 +777,6 @@ pub async fn run_at_commands(
         }
     }
     post.messages = rebuilt_messages.clone();
-    info!("{:?}", post.messages);
     user_msg_starts
 }
 
