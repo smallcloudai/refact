@@ -74,3 +74,30 @@ impl AtCommand for AtLocalNotesToSelf {
         Ok((vec![context_file], "".to_string()))
     }
 }
+
+
+
+// [
+// {
+//     role: "assistant",
+//     content: "Let's look up Frog and Toad",
+//     tool_calls: [{"Frog", "defintion", id="xxx"}, {"Toad", "references", id="yyyy"}]
+// },
+// {
+//     role: "tool",
+//     content: "`Frog` defined in frog.py and other files",
+//     call_id: "xxx",
+// },
+// {
+//     role: "tool",
+//     content: "`Toad` referenced in 1.py:1337 2.py:1338 and 25 other places",
+//     call_id: "yyyy",
+// },
+// {
+//     role: "context_file",
+//     content: "[{frog.py\n```xxxxxxx```}, {toad.py\n```yyyyyyyy```}]",
+//     call_id
+// },
+// ]
+
+
