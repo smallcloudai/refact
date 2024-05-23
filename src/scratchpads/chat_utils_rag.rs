@@ -9,7 +9,7 @@ use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 use crate::ast::structs::SymbolsSearchResultStruct;
-use crate::at_commands::at_commands::AtCommandsContext;
+use crate::at_commands::at_commands::{AtCommandsContext, filter_chat_msg_from_tools, filter_context_file_from_tools, vec_chat_msg_into_tools, vec_context_file_into_tools};
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
 
@@ -49,33 +49,26 @@ pub fn context_to_fim_debug_page(
     postprocessed_messages: &[ContextTool],
     search_traces: &crate::ast::structs::AstCursorSearchResult,
 ) -> Value {
-    let context_file_messages = postprocessed_messages.iter()
-        .filter_map(|x| {
-            if let ContextTool::ContextFile(data) = x {
-                Some(data.clone())
-            } else {
-                None
-            }
-        }).collect::<Vec<ContextFile>>();
+    let context_file_messages = filter_context_file_from_tools(&postprocessed_messages.iter().cloned().collect::<Vec<_>>());
 
-    let mut context = serde_json::json!({});
-    fn shorter_symbol(x: &SymbolsSearchResultStruct) -> serde_json::Value {
-        let mut t: serde_json::Value = serde_json::json!({});
-        t["name"] = serde_json::Value::String(x.symbol_declaration.name.clone());
-        t["file_path"] = serde_json::Value::String(x.symbol_declaration.file_path.display().to_string());
-        t["line1"] = serde_json::json!(x.symbol_declaration.full_range.start_point.row + 1);
-        t["line2"] = serde_json::json!(x.symbol_declaration.full_range.end_point.row + 1);
+    let mut context = json!({});
+    fn shorter_symbol(x: &SymbolsSearchResultStruct) -> Value {
+        let mut t: Value = json!({});
+        t["name"] = Value::String(x.symbol_declaration.name.clone());
+        t["file_path"] = Value::String(x.symbol_declaration.file_path.display().to_string());
+        t["line1"] = json!(x.symbol_declaration.full_range.start_point.row + 1);
+        t["line2"] = json!(x.symbol_declaration.full_range.end_point.row + 1);
         t
     }
-    context["cursor_symbols"] = serde_json::Value::Array(search_traces.cursor_symbols.iter()
+    context["cursor_symbols"] = Value::Array(search_traces.cursor_symbols.iter()
         .map(|x| shorter_symbol(x)).collect());
-    context["bucket_declarations"] = serde_json::Value::Array(search_traces.bucket_declarations.iter()
+    context["bucket_declarations"] = Value::Array(search_traces.bucket_declarations.iter()
         .map(|x| shorter_symbol(x)).collect());
-    context["bucket_usage_of_same_stuff"] = serde_json::Value::Array(search_traces.bucket_usage_of_same_stuff.iter()
+    context["bucket_usage_of_same_stuff"] = Value::Array(search_traces.bucket_usage_of_same_stuff.iter()
         .map(|x| shorter_symbol(x)).collect());
-    context["bucket_high_overlap"] = serde_json::Value::Array(search_traces.bucket_high_overlap.iter()
+    context["bucket_high_overlap"] = Value::Array(search_traces.bucket_high_overlap.iter()
         .map(|x| shorter_symbol(x)).collect());
-    context["bucket_imports"] = serde_json::Value::Array(search_traces.bucket_imports.iter()
+    context["bucket_imports"] = Value::Array(search_traces.bucket_imports.iter()
         .map(|x| shorter_symbol(x)).collect());
 
     let attached_files: Vec<_> = context_file_messages.iter().map(|x| {
@@ -86,7 +79,7 @@ pub fn context_to_fim_debug_page(
             "line2": x.line2,
         })
     }).collect();
-    context["attached_files"] = serde_json::Value::Array(attached_files);
+    context["attached_files"] = Value::Array(attached_files);
     context
 }
 
@@ -511,26 +504,33 @@ pub async fn postprocess_at_results2(
     tokens_limit: usize,
     single_file_mode: bool,
 ) -> Vec<ContextTool> {
-    let context_file_messages = messages.iter()
-        .filter_map(|x| {
-            if let ContextTool::ContextFile(data) = x {
-                Some(data.clone())
-            } else {
-                None
-            }
-        }).collect::<Vec<ContextFile>>();    
+    let context_file_messages = filter_context_file_from_tools(&messages);
+    let chat_msgs = filter_chat_msg_from_tools(&messages);
+
+    let context_file_messages = postprocess_context_files(global_context.clone(), context_file_messages, tokenizer, tokens_limit, single_file_mode).await;
     
-    let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), &context_file_messages).await;
+    vec_context_file_into_tools(context_file_messages).into_iter().chain(
+        vec_chat_msg_into_tools(chat_msgs).into_iter()
+    ).collect::<Vec<ContextTool>>()
+}
+
+pub async fn postprocess_context_files(
+    global_context: Arc<ARwLock<GlobalContext>>, 
+    messages: Vec<ContextFile>, 
+    tokenizer: Arc<RwLock<Tokenizer>>, 
+    tokens_limit: usize,
+    single_file_mode: bool,
+) -> Vec<ContextFile> {
+    let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), &messages).await;
 
     let settings = PostprocessSettings::new();
     let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage_3_6(
         global_context.clone(),
-        context_file_messages,
+        messages,
         &files_markup,
         &settings,
     ).await;
-    let new_context_file_messages = postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode, &settings).await;
-    new_context_file_messages.into_iter().map(|x|ContextTool::ContextFile(x)).collect::<Vec<_>>()
+    postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode, &settings).await
 }
 
 pub async fn postprocess_rag_stage_7_9(
@@ -667,6 +667,7 @@ pub async fn run_at_commands(
     post: &mut ChatPost,
     top_n: usize,
     stream_back_to_user: &mut HasRagResults,
+    allow_at: bool,
 ) -> usize {
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     info!("reserve_for_context {} tokens", reserve_for_context);
@@ -712,9 +713,12 @@ pub async fn run_at_commands(
         info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", msg_idx, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens,context_limit);
 
         let mut messages_for_postprocessing = vec![];
+        let mut texts_on_clip: Vec<(String, String)> = vec![];
+        
         if msg.tool_calls.is_some() {
-            if let Ok(res) = execute_at_commands_from_msg(&post.messages[msg_idx], &context, top_n).await {
+            if let Ok((res, texts)) = execute_at_commands_from_msg(&post.messages[msg_idx], &context, top_n).await {
                 messages_for_postprocessing.extend(res);
+                texts_on_clip.extend(texts);
             }
         }
         if content.contains("@") {
@@ -732,25 +736,37 @@ pub async fn run_at_commands(
         ).await;
         info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
 
-        let ids: Vec<String> = msg.tool_calls.iter()
-            .flat_map(|tool_call| tool_call.iter().map(|item| item.id.clone()))
-            .collect();
-
-        if !processed.is_empty() {
-            for i in 0..processed.len() {
-
-                let message = ChatMessage {
-                    role: "tool".to_string(),
-                    content: serde_json::to_string(&processed[i]).unwrap(),
-                    tool_calls: None,
-                    tool_call_id: ids.get(i).map(|x|x.clone()).unwrap_or_else(|| "".to_string()),
-                };
-
-                rebuilt_messages.push(message.clone());
-                stream_back_to_user.push_in_json(json!(message));
-            }
+        for (id, text) in texts_on_clip {
+            let message = ChatMessage {
+                role: "tool".to_string(),
+                content: text,
+                tool_calls: None,
+                tool_call_id: id,
+            };
+            rebuilt_messages.push(message.clone());
+            stream_back_to_user.push_in_json(json!(message));
         }
-
+        
+        for p in processed.iter() {
+            let message_role = {
+                if let ContextTool::ContextFile(_) = p {
+                    if allow_at {
+                        "context_file".to_string()
+                    } else {
+                        "user".to_string()
+                    }
+                } else {
+                    "user".to_string()
+                }
+            };
+            let message = ChatMessage::new(
+                message_role,
+                serde_json::to_string(&p).unwrap_or("".to_string()),
+            );
+            rebuilt_messages.push(message.clone());
+            stream_back_to_user.push_in_json(json!(message));
+        }
+        
         if content.trim().len() > 0 {
             // stream back to the user, with at-commands clipped
             let msg = ChatMessage::new(role.clone(), content);

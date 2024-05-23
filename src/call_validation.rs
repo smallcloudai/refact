@@ -206,9 +206,11 @@ pub struct ContextFile {
     pub is_body_important: bool
 }
 
+// make sure it's supported in postprocess_at_results2
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ContextTool {
     ContextFile(ContextFile),
+    ChatMessage(ChatMessage),
 }
 
 fn default_gradient_type_value() -> i32 {

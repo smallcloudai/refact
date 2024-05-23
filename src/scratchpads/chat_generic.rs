@@ -96,7 +96,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     ) -> Result<String, String> {
         let top_n = 10;
         let last_user_msg_starts = if self.allow_at {
-            run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_rag_results).await
+            run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_rag_results, self.allow_at).await
         } else {
             self.post.messages.len()
         };

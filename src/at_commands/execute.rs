@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use regex::Regex;
 
 use crate::at_commands::at_commands::{AtCommandCall, AtCommandsContext};
-use crate::call_validation::{ChatMessage, ContextFile, ContextTool};
+use crate::call_validation::{ChatMessage, ContextTool};
 
 
 async fn correct_call_if_needed(
@@ -52,7 +52,7 @@ async fn execute_at_commands_from_query_line(
     query: &String,
     context: &AtCommandsContext,
     remove_valid_from_query: bool,
-    msgs: &mut Vec<ContextFile>,
+    msgs: &mut Vec<ContextTool>,
     highlights: &mut Vec<AtCommandHighlight>,
     top_n: usize,
 ) -> bool {
@@ -94,7 +94,7 @@ async fn execute_at_commands_from_query_line(
             let mut executed = false;
             let mut text_on_clip = String::new();
             if highlights_local.iter().all(|x|x.ok) {
-                match call.command.lock().await.execute(query, &call.args, top_n, context).await {
+                match call.command.lock().await.execute(query, &call.args, top_n, context, false).await {
                     Ok((m_res, m_text_on_clip)) =>
                         {
                             executed = true;
@@ -157,16 +157,17 @@ pub async fn execute_at_commands_in_query(
         }
     }
     *query = new_lines.join("\n");
-    (msgs.into_iter().map(|x|ContextTool::ContextFile(x)).collect::<Vec<_>>(), highlights)
+    (msgs, highlights)
 }
 
 pub async fn execute_at_commands_from_msg(
     msg: &ChatMessage,
     context: &AtCommandsContext,
     top_n: usize,
-) -> Result<Vec<ContextTool>, String> {
+) -> Result<(Vec<ContextTool>, Vec<(String, String)>), String> {
     let at_command_names = context.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
     let mut msgs = vec![];
+    let mut texts_on_clip = vec![];
     if let Some(ref tool_calls) = msg.tool_calls {
         for t_call in tool_calls {
             if let Some(cmd) = context.at_commands.get(&format!("@{}", t_call.function.name)) {
@@ -188,8 +189,10 @@ pub async fn execute_at_commands_from_msg(
                 correct_call_if_needed(&mut call, &mut highlights, context, &at_command_names).await;
 
                 if highlights.iter().all(|x|x.ok) {
-                    match call.command.lock().await.execute(&msg.content, &call.args, top_n, context).await {
-                        Ok((m_res, _)) => msgs.extend(m_res),
+                    match call.command.lock().await.execute(&msg.content, &call.args, top_n, context, true).await {
+                        Ok((m_res, text_on_clip)) => {
+                            msgs.extend(m_res); texts_on_clip.push((t_call.id.clone(), text_on_clip))
+                        },
                         Err(e) => {
                             tracing::warn!("can't execute command that indicated it can execute: {}", e);
                         }
@@ -198,7 +201,7 @@ pub async fn execute_at_commands_from_msg(
             }
         }
     }
-    Ok(msgs.into_iter().map(|x|ContextTool::ContextFile(x)).collect())
+    Ok((msgs, texts_on_clip))
 }
 
 #[derive(Debug)]

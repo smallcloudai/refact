@@ -1,10 +1,18 @@
 use std::sync::Arc;
 use async_trait::async_trait;
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_into_tools};
 use tokio::sync::Mutex as AMutex;
 use uuid::Uuid;
-use crate::call_validation::ContextFile;
+use crate::call_validation::{ContextFile, ContextTool};
 use crate::vecdb::structs::{Record, VecdbSearch};
+
+
+fn text_on_clip(query: String, from_tool_call: bool) -> String {
+    if !from_tool_call {
+        return query;
+    }
+    return format!("performed vecdb search for query: {}", query);
+}
 
 
 pub struct AtWorkspace {
@@ -21,7 +29,7 @@ impl AtWorkspace {
     }
 }
 
-fn results2message(results: &Vec<Record>) -> Vec<ContextFile> {
+fn results2message(results: &Vec<Record>) -> Vec<ContextTool> {
     let mut vector_of_context_file: Vec<ContextFile> = vec![];
     for i in 0..results.len() {
         let r = &results[i];
@@ -36,7 +44,7 @@ fn results2message(results: &Vec<Record>) -> Vec<ContextFile> {
             is_body_important: false
         });
     }
-    vector_of_context_file
+    vec_context_file_into_tools(vector_of_context_file)
 }
 
 #[async_trait]
@@ -49,7 +57,7 @@ impl AtCommand for AtWorkspace {
     {
         &self.params
     }
-    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
+    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextTool>, String), String> {
         match *context.global_context.read().await.vec_db.lock().await {
             Some(ref db) => {
                 let mut db_query = args.join(" ");
@@ -58,7 +66,8 @@ impl AtCommand for AtWorkspace {
                 }
                 let search_result = db.vecdb_search(db_query, top_n).await?;
                 let results = search_result.results.clone();
-                Ok((results2message(&results), args.join(" ")))
+                let text = text_on_clip(args.join(" "), from_tool_call);
+                Ok((results2message(&results), text))
             }
             None => Err("vecdb is not available".to_string())
         }

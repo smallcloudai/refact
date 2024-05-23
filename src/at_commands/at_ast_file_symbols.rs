@@ -6,8 +6,8 @@ use uuid::Uuid;
 use crate::ast::ast_index::RequestSymbolType;
 
 use crate::ast::structs::FileReferencesResult;
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::call_validation::ContextFile;
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_into_tools};
+use crate::call_validation::{ContextFile, ContextTool};
 
 
 fn results2message(result: &FileReferencesResult) -> Vec<ContextFile> {
@@ -27,6 +27,21 @@ fn results2message(result: &FileReferencesResult) -> Vec<ContextFile> {
     simplified_symbols
 }
 
+fn text_on_clip(results: &Vec<ContextFile>, from_tool_call: bool) -> String {
+    if !from_tool_call {
+        return "".to_string();
+    }
+    let paths = results.iter().map(|x| x.file_name.clone()).collect::<Vec<_>>();
+    if paths.is_empty() {
+        return "".to_string();
+    }
+    return if paths.len() == 1 {
+        format!("symbols defined in {}", paths[0])
+    } else {
+        format!("symbols defined in {} and other", paths[0])
+    }
+}
+
 pub struct AtAstFileSymbols {
     pub name: String,
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
@@ -40,7 +55,7 @@ impl AtCommand for AtAstFileSymbols {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextTool>, String), String> {
         let cpath = match args.get(0) {
             Some(x) => crate::files_correction::canonical_path(&x),
             None => return Err("no file path".to_string()),
@@ -56,8 +71,10 @@ impl AtCommand for AtAstFileSymbols {
                 }
             }
             None => Err("Ast module is not available".to_string())
-        }; 
-        x.map(|i|(i, "".to_string()))
+        };
+        let text = x.clone().map(|x| text_on_clip(&x, from_tool_call)).unwrap_or("".to_string());
+        let context_tools_mb = x.map(|j|vec_context_file_into_tools(j));
+        context_tools_mb.map(|i|(i, text))
     }
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]

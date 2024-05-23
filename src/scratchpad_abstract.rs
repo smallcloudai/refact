@@ -36,7 +36,6 @@ pub trait ScratchpadAbstract: Send {
     ) -> Result<(Value, bool), String>;
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>;
-    fn response_style(&self) -> Option<String> { None }
 }
 
 

@@ -66,7 +66,7 @@ pub async fn create_chat_scratchpad(
         result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc, post, global_context.clone(), allow_at));
     } else if scratchpad_name == "CHAT-LLAMA2" {
         let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
-        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post, global_context.clone()));
+        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post, global_context.clone(), allow_at));
     } else if scratchpad_name == "PASSTHROUGH" {
         let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
         result = Box::new(chat_passthrough::ChatPassthrough::new(tokenizer_arc, post, global_context.clone(), allow_at));

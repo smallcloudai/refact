@@ -1,13 +1,17 @@
 use std::path::PathBuf;
 use async_trait::async_trait;
-use uuid::Uuid;
 use tokio::sync::Mutex as AMutex;
-use tracing::info;
 use std::sync::Arc;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::call_validation::ContextFile;
+use crate::call_validation::{ChatMessage, ContextFile, ContextTool};
 
+fn text_on_clip(from_tool_call: bool) -> String {
+    if !from_tool_call {
+        return "".to_string();
+    }
+    return "attached note to self".to_string();
+}
 
 pub struct AtLocalNotesToSelf {
     pub name: String,
@@ -33,7 +37,7 @@ impl AtCommand for AtLocalNotesToSelf {
         &self.params
     }
 
-    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
+    async fn execute(&self, _query: &String, _args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextTool>, String), String> {
         let cache_dir = {
             let gcx_locked = context.global_context.read().await;
             gcx_locked.cache_dir.clone()
@@ -54,24 +58,12 @@ impl AtCommand for AtLocalNotesToSelf {
             let file_nameonly = file_path.file_name().unwrap().to_str().unwrap().to_string();
             all_notes.push_str(format!("{}\n```\n{}```", file_nameonly, file_text).as_str());
         }
-        // 2024-05-22T17:03:51.366102Z  INFO refact_lsp::files_correction:99: not found Notes in cache_correction
-        let context_file = ContextFile {
-            file_name: "Notes".to_string(),
-            file_content: all_notes.clone(),
-            line1: 1,
-            line2: all_notes.split("\n").collect::<Vec<&str>>().len(),
-            symbol: Uuid::default(),
-            gradient_type: -1,
-            usefulness: 100.0,
-            is_body_important: false
-        };
-        // let chat_message = ChatMessage {
-        //     role: "assistant".to_string(),
-        //     content: "Notes to self:".to_string() + "\n" + &all_notes,
-        //     tool_calls: None,
-        //     tool_call_id: "".to_string()
-        // };
-        Ok((vec![context_file], "".to_string()))
+        let chat_message = ChatMessage::new(
+            "assistant".to_string(),
+            "Notes to self:".to_string() + "\n" + &all_notes,
+        );
+        let text = text_on_clip(from_tool_call);
+        Ok((vec![ContextTool::ChatMessage(chat_message)], text))
     }
 }
 

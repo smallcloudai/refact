@@ -6,9 +6,9 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
 use crate::ast::structs::AstQuerySearchResult;
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_into_tools};
 use crate::at_commands::at_params::AtParamSymbolPathQuery;
-use crate::call_validation::ContextFile;
+use crate::call_validation::{ContextFile, ContextTool};
 use tracing::info;
 use crate::ast::ast_index::RequestSymbolType;
 
@@ -72,7 +72,7 @@ impl AtCommand for AtAstDefinition {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, _from_tool_call: bool) -> Result<(Vec<ContextTool>, String), String> {
         info!("execute @definition {:?}", args);
         let symbol_path = match args.get(0) {
             Some(x) => x,
@@ -95,7 +95,9 @@ impl AtCommand for AtAstDefinition {
             }
             None => Err("Ast module is not available".to_string())
         };
-        x.map(|x| (x.clone(), text_on_clip(symbol_path, &x)))
+        let text = x.clone().map(|x| text_on_clip(symbol_path, &x)).unwrap_or("".to_string());
+        let x = x.map(|j|vec_context_file_into_tools(j));
+        x.map(|x| (x.clone(), text))
     }
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]

@@ -5,9 +5,9 @@ use tracing::info;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_into_tools};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
-use crate::call_validation::ContextFile;
+use crate::call_validation::{ContextFile, ContextTool};
 
 
 pub struct AtFile {
@@ -126,6 +126,13 @@ async fn parameter_repair_candidates(
     }).collect();
 }
 
+fn text_on_clip(result: &ContextFile, from_tool_call: bool) -> String {
+    if !from_tool_call {
+        return "".to_string();
+    }
+    return format!("attached file: {}", result.file_name.clone());
+}
+
 #[derive(Debug)]
 pub struct AtParamFilePath {
     pub name: String,
@@ -172,7 +179,7 @@ impl AtCommand for AtFile {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextTool>, String), String> {
         let correctable_file_path = args[0].clone();
         let candidates = parameter_repair_candidates(&correctable_file_path, context, top_n).await;
         if candidates.len() == 0 {
@@ -209,7 +216,8 @@ impl AtCommand for AtFile {
             usefulness: 100.0,
             is_body_important: false
         };
-        Ok((vec![context_file], "".to_string()))
+        let text = text_on_clip(&context_file, from_tool_call);
+        Ok((vec_context_file_into_tools(vec![context_file]), text))
     }
 }
 
