@@ -95,6 +95,7 @@ pub async fn scratchpad_interaction_not_stream(
             // new style openai response
             // Array [Object {"finish_reason": String("stop"), "index": Number(0), "logprobs": Null, "message": Object {"content": String("Hello! How can I assist you today?"), "role": String("assistant")}}]
             // Choice(finish_reason='tool_calls', index=0, logprobs=None, message=ChatCompletionMessage(content=None, role='assistant', function_call=None, tool_calls=[ChatCompletionMessageToolCall(id='call_ROtitDL5RdLqxLmcyFYRS8H1', function=Function(arguments='{"symbol":"frog.Frog"}', name='definition'), type='function')]))
+            // TODO: deterministic messages (no choice)
             scratchpad_result = Ok(model_says.clone());
         } else {
             // TODO: restore order using 'index'
