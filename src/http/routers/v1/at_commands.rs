@@ -19,6 +19,7 @@ use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::call_validation::ChatMessage;
 use crate::scratchpads::chat_utils_rag::{max_tokens_for_rag_chat, postprocess_at_results2};
+use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -125,7 +126,7 @@ pub async fn handle_v1_command_preview(
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
     let processed = postprocess_at_results2(
         global_context.clone(),
-        &messages_for_postprocessing,
+        &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
         tokenizer_arc.clone(),
         rag_n_ctx,
         false,

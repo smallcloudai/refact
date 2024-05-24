@@ -9,7 +9,7 @@ use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 use crate::ast::structs::SymbolsSearchResultStruct;
-use crate::at_commands::at_commands::{AtCommandsContext, filter_chat_msg_from_tools, filter_only_context_file_from_context_tool, vec_chat_msg_into_tools, vec_context_file_to_context_tools};
+use crate::at_commands::at_commands::{AtCommandsContext, filter_only_context_file_from_context_tool};
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
 
@@ -46,11 +46,9 @@ pub fn max_tokens_for_rag_chat(n_ctx: usize, maxgen: usize) -> usize {
 }
 
 pub fn context_to_fim_debug_page(
-    postprocessed_messages: &[ContextTool],
+    postprocessed_messages: &[ContextFile],
     search_traces: &crate::ast::structs::AstCursorSearchResult,
 ) -> Value {
-    let context_file_messages = filter_only_context_file_from_context_tool(&postprocessed_messages.iter().cloned().collect::<Vec<_>>());
-
     let mut context = json!({});
     fn shorter_symbol(x: &SymbolsSearchResultStruct) -> Value {
         let mut t: Value = json!({});
@@ -71,7 +69,7 @@ pub fn context_to_fim_debug_page(
     context["bucket_imports"] = Value::Array(search_traces.bucket_imports.iter()
         .map(|x| shorter_symbol(x)).collect());
 
-    let attached_files: Vec<_> = context_file_messages.iter().map(|x| {
+    let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
         json!({
             "file_name": x.file_name,
             "file_content": x.file_content,
@@ -335,7 +333,7 @@ fn downgrade_lines_if_subsymbol(linevec: &mut Vec<Arc<FileLine>>, line1_base0: u
 
 pub async fn postprocess_rag_stage_3_6(
     global_context: Arc<ARwLock<GlobalContext>>,
-    origmsgs: Vec<ContextFile>,
+    origmsgs: &Vec<ContextFile>,
     files: &HashMap<String, Arc<File>>,
     settings: &PostprocessSettings,
 ) -> (HashMap<PathBuf,Vec<Arc<FileLine>>>, Vec<Arc<FileLine>>) {
@@ -499,21 +497,7 @@ pub async fn postprocess_rag_stage_3_6(
 
 pub async fn postprocess_at_results2(
     global_context: Arc<ARwLock<GlobalContext>>,
-    messages: &Vec<ContextTool>,
-    tokenizer: Arc<RwLock<Tokenizer>>,
-    tokens_limit: usize,
-    single_file_mode: bool,
-) -> Vec<ContextTool> {
-    let only_context_file_messages = filter_only_context_file_from_context_tool(&messages);
-
-    let only_context_file_messages = postprocess_context_files(global_context.clone(), only_context_file_messages, tokenizer, tokens_limit, single_file_mode).await;
-
-    vec_context_file_to_context_tools(only_context_file_messages)
-}
-
-pub async fn postprocess_context_files(
-    global_context: Arc<ARwLock<GlobalContext>>,
-    messages: Vec<ContextFile>,
+    messages: &Vec<ContextFile>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
@@ -523,7 +507,7 @@ pub async fn postprocess_context_files(
     let settings = PostprocessSettings::new();
     let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage_3_6(
         global_context.clone(),
-        messages,
+        &messages,
         &files_markup,
         &settings,
     ).await;
@@ -724,9 +708,9 @@ pub async fn run_at_commands(
         }
 
         let t0 = std::time::Instant::now();
-        let processed = postprocess_at_results2(
+        let processed: Vec<ContextFile> = postprocess_at_results2(
             global_context.clone(),
-            &messages_for_postprocessing,
+            &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
             tokenizer.clone(),
             context_limit,
             false,
@@ -752,12 +736,8 @@ pub async fn run_at_commands(
         }
 
         if allow_at {
-            let json_vec = processed.iter().map(|p: &ContextTool| {
-                if let ContextTool::ContextFile(context_file) = p {
-                    json!(context_file)
-                } else {
-                    json!(null)
-                }
+            let json_vec = processed.iter().map(|p| {
+                json!(p)
             }).collect::<Vec<Value>>();
             let message = ChatMessage::new(
                 "context_file".to_string(),

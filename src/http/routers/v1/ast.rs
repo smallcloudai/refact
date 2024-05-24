@@ -270,7 +270,7 @@ pub async fn handle_v1_ast_file_dump(
     settings.close_small_gaps = false;
     let (lines_in_files, _) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage_3_6(
             global_context.clone(),
-            vec![],
+            &vec![],
             &files_markup,
             &settings,
         ).await;

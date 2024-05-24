@@ -1,13 +1,10 @@
 import requests, json, termcolor
 
+# "@workspace definition of DeltaDeltaChatStreamer\n" +
 
 initial_messages = [
 {"role": "user", "content":
-    # "@workspace definition of DeltaDeltaChatStreamer\n" +
-    #"@file /home/user/.refact/tmp/unpacked-files/refact-lsp/src/scratchpads/chat_utils_deltadelta.rs\n" +
     "@definition DeltaDeltaChatStreamer\n" +
-    # "@definition response_n_choices\n" +
-    #"@definition x\n" +
     "@local-notes-to-self\n" +
     "hello world"
 },

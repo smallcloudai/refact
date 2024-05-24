@@ -96,7 +96,7 @@ impl AstBasedFileSplitter {
                 settings.close_small_gaps = false;
                 let (mut lines_in_files, mut lines_by_useful) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage_3_6(
                     global_context.upgrade().unwrap(),
-                    messages,
+                    &messages,
                     &files_markup,
                     &settings,
                 ).await;

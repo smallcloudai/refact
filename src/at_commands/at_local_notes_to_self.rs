@@ -4,7 +4,7 @@ use tokio::sync::Mutex as AMutex;
 use std::sync::Arc;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::call_validation::{ChatMessage, ContextFile, ContextTool};
+use crate::call_validation::{ChatMessage, ContextTool};
 
 fn text_on_clip(from_tool_call: bool) -> String {
     if !from_tool_call {

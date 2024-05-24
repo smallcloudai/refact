@@ -140,6 +140,7 @@ pub async fn execute_at_commands_in_query(
     remove_valid_from_query: bool,
     top_n: usize,
 ) -> (Vec<ContextTool>, Vec<AtCommandHighlight>) {
+    // called from preview and chat
     let mut msgs = vec![];
     let mut highlights = vec![];
     let mut new_lines = vec![];
