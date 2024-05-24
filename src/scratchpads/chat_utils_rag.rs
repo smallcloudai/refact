@@ -9,7 +9,7 @@ use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 use crate::ast::structs::SymbolsSearchResultStruct;
-use crate::at_commands::at_commands::{AtCommandsContext, filter_chat_msg_from_tools, filter_context_file_from_tools, vec_chat_msg_into_tools, vec_context_file_into_tools};
+use crate::at_commands::at_commands::{AtCommandsContext, filter_chat_msg_from_tools, filter_only_context_file_from_context_tool, vec_chat_msg_into_tools, vec_context_file_to_context_tools};
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
 
@@ -49,7 +49,7 @@ pub fn context_to_fim_debug_page(
     postprocessed_messages: &[ContextTool],
     search_traces: &crate::ast::structs::AstCursorSearchResult,
 ) -> Value {
-    let context_file_messages = filter_context_file_from_tools(&postprocessed_messages.iter().cloned().collect::<Vec<_>>());
+    let context_file_messages = filter_only_context_file_from_context_tool(&postprocessed_messages.iter().cloned().collect::<Vec<_>>());
 
     let mut context = json!({});
     fn shorter_symbol(x: &SymbolsSearchResultStruct) -> Value {
@@ -499,25 +499,22 @@ pub async fn postprocess_rag_stage_3_6(
 
 pub async fn postprocess_at_results2(
     global_context: Arc<ARwLock<GlobalContext>>,
-    messages: Vec<ContextTool>,
+    messages: &Vec<ContextTool>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
 ) -> Vec<ContextTool> {
-    let context_file_messages = filter_context_file_from_tools(&messages);
-    let chat_msgs = filter_chat_msg_from_tools(&messages);
+    let only_context_file_messages = filter_only_context_file_from_context_tool(&messages);
 
-    let context_file_messages = postprocess_context_files(global_context.clone(), context_file_messages, tokenizer, tokens_limit, single_file_mode).await;
-    
-    vec_context_file_into_tools(context_file_messages).into_iter().chain(
-        vec_chat_msg_into_tools(chat_msgs).into_iter()
-    ).collect::<Vec<ContextTool>>()
+    let only_context_file_messages = postprocess_context_files(global_context.clone(), only_context_file_messages, tokenizer, tokens_limit, single_file_mode).await;
+
+    vec_context_file_to_context_tools(only_context_file_messages)
 }
 
 pub async fn postprocess_context_files(
-    global_context: Arc<ARwLock<GlobalContext>>, 
-    messages: Vec<ContextFile>, 
-    tokenizer: Arc<RwLock<Tokenizer>>, 
+    global_context: Arc<ARwLock<GlobalContext>>,
+    messages: Vec<ContextFile>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
 ) -> Vec<ContextFile> {
@@ -714,7 +711,7 @@ pub async fn run_at_commands(
 
         let mut messages_for_postprocessing = vec![];
         let mut texts_on_clip: Vec<(String, String)> = vec![];
-        
+
         if msg.tool_calls.is_some() {
             if let Ok((res, texts)) = execute_at_commands_from_msg(&post.messages[msg_idx], &context, top_n).await {
                 messages_for_postprocessing.extend(res);
@@ -729,7 +726,7 @@ pub async fn run_at_commands(
         let t0 = std::time::Instant::now();
         let processed = postprocess_at_results2(
             global_context.clone(),
-            messages_for_postprocessing,
+            &messages_for_postprocessing,
             tokenizer.clone(),
             context_limit,
             false,
@@ -746,27 +743,30 @@ pub async fn run_at_commands(
             rebuilt_messages.push(message.clone());
             stream_back_to_user.push_in_json(json!(message));
         }
-        
-        for p in processed.iter() {
-            let message_role = {
-                if let ContextTool::ContextFile(_) = p {
-                    if allow_at {
-                        "context_file".to_string()
-                    } else {
-                        "user".to_string()
-                    }
+
+        for exec_result in messages_for_postprocessing.iter() {
+            if let ContextTool::ChatMessage(raw_msg) = exec_result {
+                rebuilt_messages.push(raw_msg.clone());
+                stream_back_to_user.push_in_json(json!(raw_msg));
+            }
+        }
+
+        if allow_at {
+            let json_vec = processed.iter().map(|p: &ContextTool| {
+                if let ContextTool::ContextFile(context_file) = p {
+                    json!(context_file)
                 } else {
-                    "user".to_string()
+                    json!(null)
                 }
-            };
+            }).collect::<Vec<Value>>();
             let message = ChatMessage::new(
-                message_role,
-                serde_json::to_string(&p).unwrap_or("".to_string()),
+                "context_file".to_string(),
+                serde_json::to_string(&json_vec).unwrap_or("".to_string()),
             );
             rebuilt_messages.push(message.clone());
             stream_back_to_user.push_in_json(json!(message));
         }
-        
+
         if content.trim().len() > 0 && allow_at {
             // stream back to the user, with at-commands clipped
             let msg = ChatMessage::new(role.clone(), content);

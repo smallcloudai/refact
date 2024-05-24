@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
 use crate::ast::structs::AstQuerySearchResult;
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_into_tools};
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::at_params::AtParamSymbolReferencePathQuery;
 use crate::call_validation::{ContextFile, ContextTool};
 use tracing::info;
@@ -76,7 +76,7 @@ impl AtCommand for AtAstReference {
             }
             None => Err("Ast module is not available".to_string())
         };
-        let x = x.map(|j|vec_context_file_into_tools(j));
+        let x = x.map(|j|vec_context_file_to_context_tools(j));
         x.map(|i|(i, format!("\"usages of {}\"", symbol_path)))
     }
     fn depends_on(&self) -> Vec<String> {

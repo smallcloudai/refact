@@ -38,7 +38,7 @@ def ask_chat(messages):
             print(x)
             print("ERROR: unexpected response format")
             continue
-        print(x)
+        # print(x)
         if x[6:].startswith("[DONE]"):
             break
         j = json.loads(x[6:])
@@ -57,6 +57,8 @@ def ask_chat(messages):
 
 
 def example_single_response():
+    for msgdict in initial_messages:
+        msg_pretty_print(msgdict, normal_color="white")
     messages_back = ask_chat(initial_messages)
     for msgdict in messages_back:
         msg_pretty_print(msgdict, normal_color="white")

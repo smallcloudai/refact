@@ -17,7 +17,7 @@ use crate::ast::ast_module::AstModule;
 use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::at_commands::at_ast_lookup_symbols::results2message;
-use crate::at_commands::at_commands::{filter_context_file_from_tools, vec_context_file_into_tools};
+use crate::at_commands::at_commands::{filter_only_context_file_from_context_tool, vec_context_file_to_context_tools};
 use crate::call_validation::{CodeCompletionPost, ContextFile, ContextTool, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::completion_cache;
@@ -77,14 +77,14 @@ impl SingleFileFIM {
 }
 
 fn add_context_to_prompt(
-    context_format: &String, 
-    prompt: &String, 
-    fim_prefix: &String, 
-    postprocessed_messages: &Vec<ContextTool>, 
+    context_format: &String,
+    prompt: &String,
+    fim_prefix: &String,
+    postprocessed_messages: &Vec<ContextTool>,
     language_id: &LanguageId
 ) -> String {
-    let context_file_messages = filter_context_file_from_tools(postprocessed_messages);
-    
+    let context_file_messages = filter_only_context_file_from_context_tool(postprocessed_messages);
+
     let mut context_files = vec![];
     if context_format == "starcoder" {
         for m in context_file_messages {
@@ -322,7 +322,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             let post_t0 = Instant::now();
             let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
                 self.global_context.clone(),
-                vec_context_file_into_tools(ast_messages),
+                &vec_context_file_to_context_tools(ast_messages),
                 self.t.tokenizer.clone(),
                 rag_tokens_n,
                 false,

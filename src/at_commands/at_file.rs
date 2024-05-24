@@ -5,7 +5,7 @@ use tracing::info;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_into_tools};
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ContextFile, ContextTool};
 
@@ -217,7 +217,7 @@ impl AtCommand for AtFile {
             is_body_important: false
         };
         let text = text_on_clip(&context_file, from_tool_call);
-        Ok((vec_context_file_into_tools(vec![context_file]), text))
+        Ok((vec_context_file_to_context_tools(vec![context_file]), text))
     }
 }
 

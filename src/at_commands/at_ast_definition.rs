@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
 use crate::ast::structs::AstQuerySearchResult;
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_into_tools};
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::at_params::AtParamSymbolPathQuery;
 use crate::call_validation::{ContextFile, ContextTool};
 use tracing::info;
@@ -96,7 +96,7 @@ impl AtCommand for AtAstDefinition {
             None => Err("Ast module is not available".to_string())
         };
         let text = x.clone().map(|x| text_on_clip(symbol_path, &x)).unwrap_or("".to_string());
-        let x = x.map(|j|vec_context_file_into_tools(j));
+        let x = x.map(|j|vec_context_file_to_context_tools(j));
         x.map(|x| (x.clone(), text))
     }
     fn depends_on(&self) -> Vec<String> {

@@ -6,7 +6,7 @@ use tracing::info;
 use tree_sitter::Point;
 
 use crate::ast::structs::AstCursorSearchResult;
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_into_tools};
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::at_file::{AtParamFilePath, RangeKind, colon_lines_range_from_arg};
 use crate::call_validation::{ContextFile, ContextTool};
 
@@ -143,7 +143,7 @@ impl AtCommand for AtAstLookupSymbols {
             None => Err("Ast module is not available".to_string())
         };
         let text = x.clone().map(|x| text_on_clip(&x, from_tool_call)).unwrap_or("".to_string());
-        let x = x.map(|j|vec_context_file_into_tools(j));
+        let x = x.map(|j|vec_context_file_to_context_tools(j));
         x.map(|i|(i, text))
     }
     fn depends_on(&self) -> Vec<String> {

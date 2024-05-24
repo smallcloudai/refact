@@ -71,7 +71,7 @@ pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand 
     ]);
 }
 
-pub fn vec_context_file_into_tools(x: Vec<ContextFile>) -> Vec<ContextTool> {
+pub fn vec_context_file_to_context_tools(x: Vec<ContextFile>) -> Vec<ContextTool> {
     x.into_iter().map(|i|ContextTool::ContextFile(i)).collect::<Vec<ContextTool>>()
 }
 
@@ -79,7 +79,7 @@ pub fn vec_chat_msg_into_tools(x: Vec<ChatMessage>) -> Vec<ContextTool> {
     x.into_iter().map(|i|ContextTool::ChatMessage(i)).collect::<Vec<ContextTool>>()
 }
 
-pub fn filter_context_file_from_tools(tools: &Vec<ContextTool>) -> Vec<ContextFile> {
+pub fn filter_only_context_file_from_context_tool(tools: &Vec<ContextTool>) -> Vec<ContextFile> {
     tools.iter()
         .filter_map(|x| {
             if let ContextTool::ContextFile(data) = x { Some(data.clone()) } else { None }

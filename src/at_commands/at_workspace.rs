@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use async_trait::async_trait;
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_into_tools};
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use tokio::sync::Mutex as AMutex;
 use uuid::Uuid;
 use crate::call_validation::{ContextFile, ContextTool};
@@ -44,7 +44,7 @@ fn results2message(results: &Vec<Record>) -> Vec<ContextTool> {
             is_body_important: false
         });
     }
-    vec_context_file_into_tools(vector_of_context_file)
+    vec_context_file_to_context_tools(vector_of_context_file)
 }
 
 #[async_trait]
