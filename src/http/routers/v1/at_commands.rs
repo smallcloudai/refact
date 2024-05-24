@@ -20,6 +20,7 @@ use crate::global_context::GlobalContext;
 use crate::call_validation::ChatMessage;
 use crate::scratchpads::chat_utils_rag::{max_tokens_for_rag_chat, postprocess_at_results2};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
+use crate::at_commands::at_commands_dict::at_commands_dicts;
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -51,6 +52,23 @@ struct Highlight {
     reason: String,
 }
 
+pub async fn handle_v1_tools_available(
+    Extension(_global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    _: hyper::body::Bytes,
+)  -> Result<Response<Body>, ScratchError> {
+    let at_dict = at_commands_dicts().map_err(|e| {
+            tracing::warn!("can't load at_commands_dicts: {}", e);
+            return ScratchError::new(StatusCode::NOT_FOUND, format!("can't load at_commands_dicts: {}", e));
+        })?;
+    let body = serde_json::to_string_pretty(
+        &at_dict.iter().map(|x|x.clone().into_openai_style()).collect::<Vec<_>>()
+    ).map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from(body))
+        .unwrap()
+    )
+}
 
 pub async fn handle_v1_command_completion(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,

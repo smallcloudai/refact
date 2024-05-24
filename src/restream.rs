@@ -38,7 +38,7 @@ pub async fn scratchpad_interaction_not_stream(
     };
     let mut save_url: String = String::new();
     let _ = slowdown_arc.acquire().await;
-    let model_says = if endpoint_style == "hf" {
+    let mut model_says = if endpoint_style == "hf" {
         forward_to_hf_endpoint::forward_to_hf_style_endpoint(
             &mut save_url,
             bearer.clone(),
@@ -92,6 +92,9 @@ pub async fn scratchpad_interaction_not_stream(
         info!("oai_choices: {:?}", oai_choices);
         let choice0 = oai_choices.as_array().unwrap().get(0).unwrap();
         if let Some(_msg) = choice0.get("message") {
+            if let Ok(det_msgs) = scratchpad.response_spontaneous() {
+                model_says["det_messages"] = json!(det_msgs);
+            }
             // new style openai response
             // Array [Object {"finish_reason": String("stop"), "index": Number(0), "logprobs": Null, "message": Object {"content": String("Hello! How can I assist you today?"), "role": String("assistant")}}]
             // Choice(finish_reason='tool_calls', index=0, logprobs=None, message=ChatCompletionMessage(content=None, role='assistant', function_call=None, tool_calls=[ChatCompletionMessageToolCall(id='call_ROtitDL5RdLqxLmcyFYRS8H1', function=Function(arguments='{"symbol":"frog.Frog"}', name='definition'), type='function')]))
@@ -240,14 +243,6 @@ pub async fn scratchpad_interaction_stream(
                         if message.data.starts_with("[DONE]") {
                             break;
                         }
-                        // test_countdown -= 1;
-                        // if test_countdown == 0 {
-                        //     error!("test_countdown!");
-                        //     let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": "test_countdown happened"})).unwrap());
-                        //     yield Result::<_, String>::Ok(value_str);
-                        //     problem_reported = true;
-                        //     break;
-                        // }
                         let json = serde_json::from_str::<serde_json::Value>(&message.data).unwrap();
                         crate::global_context::look_for_piggyback_fields(global_context.clone(), &json).await;
                         let value_maybe = _push_streaming_json_into_scratchpad(

@@ -23,7 +23,7 @@ pub async fn forward_to_openai_style_endpoint(
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
     tool_choice_mb: Option<String>,
-    tools_mb: Option<Vec<serde_json::Value>>
+    tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<serde_json::Value, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
@@ -85,7 +85,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
     tool_choice_mb: Option<String>,
-    tools_mb: Option<Vec<serde_json::Value>>
+    tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<EventSource, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };

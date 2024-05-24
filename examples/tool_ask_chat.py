@@ -34,17 +34,24 @@ def deserialize(value: str):
         return None
 
 
-def ask_chat(msgs, tool_choice, endpoint: str = "http://127.0.0.1:8001/v1/chat"):
+def get_tools():
+    response = requests.get("http://127.0.0.1:8001/v1/at-tools-available")
+    assert response.status_code == 200
+    return response.json()
+
+
+def ask_chat(msgs, tools, tool_choice, stream: bool = True):
     j = {
         "messages": msgs,
         "temperature": 0.6,
         "max_tokens": 512,
         "model": "gpt-4o",
-        "stream": True,
-        "tool_choice": tool_choice,
+        "stream": stream,
+        # "tools": tools,
+        # "tool_choice": tool_choice,
     }
     response = requests.post(
-        endpoint,
+        "http://127.0.0.1:8001/v1/chat",
         json=j,
         timeout=60,
     )
@@ -74,14 +81,16 @@ def collect_tools(resp: str):
 
 
 def ask():
-    r1 = ask_chat(messages, "required")
-    tools = collect_tools(r1)
-    messages.append(
-        ["assistant", "", tools]
-    )
-    r2 = ask_chat(messages, "none")
+    # tools_available = get_tools()
+    # r1 = ask_chat(messages, tools_available, "required")
+    # tools = collect_tools(r1)
+    # print(tools)
+    # messages.append(
+    #     ["assistant", "", tools]
+    # )
+    r2 = ask_chat(messages, None, None, False)
     print(r2)
-    print(answer_plain_text(r2))
+    # print(answer_plain_text(r2))
 
 
 if __name__ == "__main__":
