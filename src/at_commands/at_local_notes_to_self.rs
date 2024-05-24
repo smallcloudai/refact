@@ -47,26 +47,24 @@ impl AtCommand for AtLocalNotesToSelf {
         // this all files
         let files = notes_dir_path.read_dir().map_err(|e| e.to_string())?;
         let mut files_vec: Vec<PathBuf> = vec![];
-        let mut all_notes = String::new();
         for file_mb in files {
             if let Ok(file) = file_mb {
                 files_vec.push(file.path());
             }
         }
+        let mut context_tools = vec![];
         for file_path in files_vec {
             let file_text = std::fs::read_to_string(file_path.clone()).map_err(|e| e.to_string())?;
-            let file_nameonly = file_path.file_name().unwrap().to_str().unwrap().to_string();
-            all_notes.push_str(format!("{}\n```\n{}```", file_nameonly, file_text).as_str());
+            let chat_message = ChatMessage::new(
+                "assistant".to_string(),
+                format!("Note to self: {}", file_text),
+            );
+            context_tools.push(ContextTool::ChatMessage(chat_message));
         }
-        let chat_message = ChatMessage::new(
-            "assistant".to_string(),
-            "Notes to self:".to_string() + "\n" + &all_notes,
-        );
         let text = text_on_clip(from_tool_call);
-        Ok((vec![ContextTool::ChatMessage(chat_message)], text))
+        Ok((context_tools, text))
     }
 }
-
 
 
 // [

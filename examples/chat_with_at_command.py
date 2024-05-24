@@ -57,8 +57,8 @@ def ask_chat(messages):
 
 
 def example_single_response():
-    for msgdict in initial_messages:
-        msg_pretty_print(msgdict, normal_color="white")
+    # for msgdict in initial_messages:
+    #     msg_pretty_print(msgdict, normal_color="white")
     messages_back = ask_chat(initial_messages)
     for msgdict in messages_back:
         msg_pretty_print(msgdict, normal_color="white")
