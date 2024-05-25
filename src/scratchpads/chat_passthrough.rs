@@ -80,9 +80,8 @@ impl ScratchpadAbstract for ChatPassthrough {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        tool_choice: String,
     ) -> Result<(), String> {
-        self.default_system_message = default_system_message_from_patch(&patch, tool_choice, self.global_context.clone()).await;
+        self.default_system_message = default_system_message_from_patch(&patch, self.global_context.clone()).await;
         Ok(())
     }
 
@@ -105,7 +104,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", &self.post.messages.len(), &limited_msgs.len());
         let mut filtered_msgs: Vec<ChatMessage> = Vec::<ChatMessage>::new();
         for msg in &limited_msgs {
-            if msg.role == "assistant" || msg.role == "system" || msg.role == "user" {
+            if msg.role == "assistant" || msg.role == "system" || msg.role == "user" || msg.role == "tool" {
                 filtered_msgs.push(msg.clone());
             } else if msg.role == "context_file" {
                 match serde_json::from_str(&msg.content) {

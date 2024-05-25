@@ -12,7 +12,6 @@ pub trait ScratchpadAbstract: Send {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        tool_choice: String,
     ) -> Result<(), String>;
 
     async fn prompt(
@@ -31,7 +30,7 @@ pub trait ScratchpadAbstract: Send {
         &mut self,
         delta: String,       // if delta is empty, there is no more input, add final fields if needed
         stop_toks: bool,
-        stop_length: bool, 
+        stop_length: bool,
         tool_calls: Option<Value>,
     ) -> Result<(Value, bool), String>;
 

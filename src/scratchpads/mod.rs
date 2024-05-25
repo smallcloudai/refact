@@ -45,7 +45,7 @@ pub async fn create_code_completion_scratchpad(
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }
-    result.apply_model_adaptation_patch(scratchpad_patch, "none".to_string()).await?;
+    result.apply_model_adaptation_patch(scratchpad_patch).await?;
     verify_has_send(&result);
     Ok(result)
 }
@@ -60,7 +60,6 @@ pub async fn create_chat_scratchpad(
     allow_at: bool,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
-    let tool_choice = post.tool_choice.clone();
     if scratchpad_name == "CHAT-GENERIC" {
         let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
         result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc, post, global_context.clone(), allow_at));
@@ -73,7 +72,7 @@ pub async fn create_chat_scratchpad(
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }
-    result.apply_model_adaptation_patch(scratchpad_patch, tool_choice).await?;
+    result.apply_model_adaptation_patch(scratchpad_patch).await?;
     verify_has_send(&result);
     Ok(result)
 }

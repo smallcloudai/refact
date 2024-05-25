@@ -22,7 +22,6 @@ pub async fn forward_to_openai_style_endpoint(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
-    tool_choice_mb: Option<String>,
     tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<serde_json::Value, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
@@ -33,7 +32,6 @@ pub async fn forward_to_openai_style_endpoint(
     if !bearer.is_empty() {
         headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
     }
-    info!("TEMP {}", sampling_parameters.temperature.unwrap());
     let mut data = json!({
         "model": model_name,
         "stream": false,
@@ -41,12 +39,12 @@ pub async fn forward_to_openai_style_endpoint(
         "max_tokens": sampling_parameters.max_new_tokens,
         "stop": sampling_parameters.stop,
     });
+    let mut tools_counter = 0;
     if let Some(tools) = tools_mb {
+        tools_counter = tools.len();
         data["tools"] = serde_json::Value::Array(tools);
-        if let Some(tool_choice) = tool_choice_mb {
-            data["tool_choice"] = serde_json::Value::String(tool_choice);
-        }
     }
+    info!("NOT STREAMING TEMP {} TOOLS {}", sampling_parameters.temperature.unwrap(), tools_counter);
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt);
     } else {
@@ -84,7 +82,6 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
-    tool_choice_mb: Option<String>,
     tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<EventSource, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
@@ -101,12 +98,12 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
     });
+    let mut tools_counter = 0;
     if let Some(tools) = tools_mb {
+        tools_counter = tools.len();
         data["tools"] = serde_json::Value::Array(tools);
-        if let Some(tool_choice) = tool_choice_mb {
-            data["tool_choice"] = serde_json::Value::String(tool_choice);
-        }
     }
+    info!("STREAMING TEMP {} TOOLS {}", sampling_parameters.temperature.unwrap(), tools_counter);
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt);
     } else {
@@ -127,6 +124,7 @@ fn passthrough_messages_to_json(
 ) {
     assert!(prompt.starts_with("PASSTHROUGH "));
     let messages_str = &prompt[12..];
+    // info!("PASSTHROUGH: {}", messages_str);
     let messages: Vec<call_validation::ChatMessage> = serde_json::from_str(&messages_str).unwrap();
     data["messages"] = serde_json::json!(messages);
 }

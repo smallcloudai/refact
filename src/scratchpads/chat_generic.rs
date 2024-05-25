@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
-use tracing::{info, error, warn};
+use tracing::{info, error};
 
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
@@ -14,7 +14,7 @@ use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::chat_utils_rag::{run_at_commands, HasRagResults};
-use crate::toolbox::toolbox_config::{get_default_system_prompt, get_tconfig};
+use crate::toolbox::toolbox_config::get_default_system_prompt;
 
 const DEBUG: bool = true;
 
@@ -63,13 +63,12 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        tool_choice: String,
     ) -> Result<(), String> {
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.keyword_syst = patch.get("keyword_system").and_then(|x| x.as_str()).unwrap_or("SYSTEM:").to_string();
         self.keyword_user = patch.get("keyword_user").and_then(|x| x.as_str()).unwrap_or("USER:").to_string();
         self.keyword_asst = patch.get("keyword_assistant").and_then(|x| x.as_str()).unwrap_or("ASSISTANT:").to_string();
-        self.default_system_message = default_system_message_from_patch(patch, tool_choice, self.global_context.clone()).await;
+        self.default_system_message = default_system_message_from_patch(patch, self.global_context.clone()).await;
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
 
         self.dd.stop_list.clear();
@@ -169,18 +168,8 @@ impl ScratchpadAbstract for GenericChatScratchpad {
 
 pub async fn default_system_message_from_patch(
     patch: &Value,
-    tool_choice: String,
     global_context: Arc<ARwLock<GlobalContext>>
 ) -> String {
-    if tool_choice == "auto" || tool_choice == "required" {
-        if let Ok(tconfig) = get_tconfig(global_context.clone()).await {
-            if let Some(x) = tconfig.system_prompts.get("default_tool") {
-                return x.text.clone();
-            } else {
-                warn!("no default_tool system_prompt found in tconfig; fallback to default_system_message");
-            }
-        }
-    }
     let default_system_message_mb = patch.get("default_system_message")
         .and_then(|x| x.as_str())
         .map(|x| x.to_string());

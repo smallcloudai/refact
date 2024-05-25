@@ -4,9 +4,7 @@ use std::sync::RwLock as StdRwLock;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use serde_json::Value;
 use tracing::info;
-use crate::at_commands::at_commands_dict::at_commands_dicts;
 
 use crate::call_validation::ChatPost;
 use crate::caps;
@@ -55,9 +53,10 @@ async fn chat(
     body_bytes: hyper::body::Bytes,
     allow_at: bool,
 ) -> Result<Response<Body>, ScratchError> {
-    let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e|
+    let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
+        info!("{:?}", body_bytes);
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    )?;
+    })?;
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
     let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = _lookup_chat_scratchpad(
         caps.clone(),
@@ -103,7 +102,6 @@ async fn chat(
             client1,
             api_key,
             &chat_post.parameters,
-            Some(chat_post.tool_choice),
             chat_post.tools,
         ).await
     } else {
@@ -116,7 +114,6 @@ async fn chat(
             client1,
             api_key,
             chat_post.parameters.clone(),
-            Some(chat_post.tool_choice),
             chat_post.tools,
         ).await
     }

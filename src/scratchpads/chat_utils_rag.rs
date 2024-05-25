@@ -735,16 +735,20 @@ pub async fn run_at_commands(
             }
         }
 
+        // info!("AAAA1 {:?}", messages_for_postprocessing);
+
         if allow_at {
             let json_vec = processed.iter().map(|p| {
                 json!(p)
             }).collect::<Vec<Value>>();
-            let message = ChatMessage::new(
-                "context_file".to_string(),
-                serde_json::to_string(&json_vec).unwrap_or("".to_string()),
-            );
-            rebuilt_messages.push(message.clone());
-            stream_back_to_user.push_in_json(json!(message));
+            if json_vec.len() > 0 {
+                let message = ChatMessage::new(
+                    "context_file".to_string(),
+                    serde_json::to_string(&json_vec).unwrap_or("".to_string()),
+                );
+                rebuilt_messages.push(message.clone());
+                stream_back_to_user.push_in_json(json!(message));
+            }
         }
 
         if content.trim().len() > 0 && allow_at {

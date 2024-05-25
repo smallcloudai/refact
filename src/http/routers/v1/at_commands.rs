@@ -65,6 +65,7 @@ pub async fn handle_v1_tools_available(
     ).map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     Ok(Response::builder()
         .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
         .body(Body::from(body))
         .unwrap()
     )

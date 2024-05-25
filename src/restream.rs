@@ -26,7 +26,6 @@ pub async fn scratchpad_interaction_not_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: &SamplingParameters,
-    tool_choice_mb: Option<String>,
     tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<Response<Body>, ScratchError> {
     let t2 = std::time::SystemTime::now();
@@ -58,7 +57,6 @@ pub async fn scratchpad_interaction_not_stream(
             &endpoint_template,
             &endpoint_chat_passthrough,
             &parameters,
-            tool_choice_mb,
             tools_mb,
         ).await
     }.map_err(|e| {
@@ -162,7 +160,6 @@ pub async fn scratchpad_interaction_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: SamplingParameters,
-    tool_choice_mb: Option<String>,
     tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<Response<Body>, ScratchError> {
     let t1 = std::time::SystemTime::now();
@@ -211,7 +208,6 @@ pub async fn scratchpad_interaction_stream(
                     &endpoint_template,
                     &endpoint_chat_passthrough,
                     &parameters,
-                    tool_choice_mb,
                     tools_mb,
                 ).await
             };

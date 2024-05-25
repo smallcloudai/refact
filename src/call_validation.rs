@@ -3,7 +3,6 @@ use serde::Serialize;
 use std::collections::HashMap;
 use axum::http::StatusCode;
 use ropey::Rope;
-use tracing::Value;
 use uuid::Uuid;
 use crate::custom_error::ScratchError;
 
@@ -248,10 +247,6 @@ impl ChatMessage {
     }
 }
 
-fn default_tool_choice() -> String {
-    "none".to_string()
-}
-
 #[derive(Debug, Deserialize, Clone)]
 pub struct ChatPost {
     pub messages: Vec<ChatMessage>,
@@ -265,6 +260,5 @@ pub struct ChatPost {
     pub temperature: Option<f32>,
     #[serde(default)]
     pub tools: Option<Vec<serde_json::Value>>,
-    #[serde(default="default_tool_choice")]
-    pub tool_choice: String,
+    // pub tool_choice: Option<String>,
 }
