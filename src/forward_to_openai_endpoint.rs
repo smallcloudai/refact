@@ -124,8 +124,10 @@ fn passthrough_messages_to_json(
 ) {
     assert!(prompt.starts_with("PASSTHROUGH "));
     let messages_str = &prompt[12..];
-    // info!("PASSTHROUGH: {}", messages_str);
     let messages: Vec<call_validation::ChatMessage> = serde_json::from_str(&messages_str).unwrap();
+    for msg in messages.iter() {
+        info!("PASSTHROUGH: {:?}", msg);
+    }
     data["messages"] = serde_json::json!(messages);
 }
 

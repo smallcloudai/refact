@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use tokio::sync::Mutex as AMutex;
 use uuid::Uuid;
-use crate::call_validation::{ContextFile, ContextTool};
+use crate::call_validation::{ContextFile, ContextEnum};
 use crate::vecdb::structs::{Record, VecdbSearch};
 
 
@@ -29,7 +29,7 @@ impl AtWorkspace {
     }
 }
 
-fn results2message(results: &Vec<Record>) -> Vec<ContextTool> {
+fn results2message(results: &Vec<Record>) -> Vec<ContextEnum> {
     let mut vector_of_context_file: Vec<ContextFile> = vec![];
     for i in 0..results.len() {
         let r = &results[i];
@@ -57,7 +57,7 @@ impl AtCommand for AtWorkspace {
     {
         &self.params
     }
-    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextTool>, String), String> {
+    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
         match *context.global_context.read().await.vec_db.lock().await {
             Some(ref db) => {
                 let mut db_query = args.join(" ");

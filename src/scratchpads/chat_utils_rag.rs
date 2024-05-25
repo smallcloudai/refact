@@ -13,7 +13,7 @@ use crate::at_commands::at_commands::{AtCommandsContext, filter_only_context_fil
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
 
-use crate::call_validation::{ChatMessage, ChatPost, ContextFile, ContextTool};
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
 use crate::at_commands::execute::{execute_at_commands_from_msg, execute_at_commands_in_query};
@@ -640,47 +640,106 @@ pub fn count_tokens(
     }
 }
 
+pub async fn run_tools(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+    maxgen: usize,
+    n_ctx: usize,
+    original_messages: &Vec<ChatMessage>,
+    top_n: usize,
+    stream_back_to_user: &mut HasRagResults,
+) -> (Vec<ChatMessage>, bool)
+{
+    let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
+    let context_limit = reserve_for_context;
+
+    info!("run_tools: reserve_for_context {} tokens", reserve_for_context);
+    if original_messages.len() == 0 {
+        return (original_messages.clone(), false);
+    }
+    let ass_n = original_messages.len() - 1;
+    let ass_msg = original_messages.get(ass_n).unwrap();
+    if ass_msg.role != "assistant" {
+        return (original_messages.clone(), false);
+    }
+    if ass_msg.tool_calls.is_none() || ass_msg.tool_calls.as_ref().unwrap().len() == 0 {
+        return (original_messages.clone(), false);
+    }
+
+    let ccx = AtCommandsContext::new(global_context.clone()).await;
+    let mut context_messages: Vec<ChatMessage> = original_messages.iter().map(|m| m.clone()).collect();
+    let mut messages_for_postprocessing = vec![];
+    // let res: Vec<ContextEnum>;
+    if let Ok((res, texts)) = execute_at_commands_from_msg(&ass_msg, &ccx, top_n).await {
+        messages_for_postprocessing.extend(res);
+        let message = ChatMessage {
+            role: "tool".to_string(),
+            content: "".to_string(),
+            tool_calls: None,
+            tool_call_id: "".to_string(),
+        };
+        context_messages.push(message.clone());
+        stream_back_to_user.push_in_json(json!(message));
+    }
+
+    let context_file: Vec<ContextFile> = postprocess_at_results2(
+        global_context.clone(),
+        &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
+        tokenizer.clone(),
+        context_limit,
+        false,
+    ).await;
+
+    if context_file.len() > 0 {
+        let json_vec = context_file.iter().map(|p| {
+            json!(p)
+        }).collect::<Vec<Value>>();
+        let message = ChatMessage::new(
+            "context_file".to_string(),
+            serde_json::to_string(&json_vec).unwrap_or("".to_string()),
+        );
+        context_messages.push(message.clone());
+        stream_back_to_user.push_in_json(json!(message));
+    }
+
+    (context_messages, true)
+}
+
 pub async fn run_at_commands(
     global_context: Arc<ARwLock<GlobalContext>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
     n_ctx: usize,
-    post: &mut ChatPost,
+    original_messages: &Vec<ChatMessage>,
     top_n: usize,
     stream_back_to_user: &mut HasRagResults,
-    allow_at: bool,
-) -> usize {
+) -> (Vec<ChatMessage>, usize) {
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     info!("reserve_for_context {} tokens", reserve_for_context);
 
-    // TODO: don't operate on `post`, return a copy of the messages
-    let context = AtCommandsContext::new(global_context.clone()).await;
+    let ccx = AtCommandsContext::new(global_context.clone()).await;
 
-    let mut user_msg_starts = post.messages.len();
+    let mut user_msg_starts = original_messages.len();
     let mut messages_with_at: usize = 0;
     while user_msg_starts > 0 {
-        let message = post.messages.get(user_msg_starts - 1).unwrap().clone();
+        let message = original_messages.get(user_msg_starts - 1).unwrap().clone();
         if message.role == "user" {
             user_msg_starts -= 1;
             if message.content.contains("@") {
                 messages_with_at += 1;
             }
-        } else if message.tool_calls.is_some() && user_msg_starts == post.messages.len() {
-            user_msg_starts -= 1;
-            messages_with_at += 1;
         } else {
             break;
         }
     }
 
     // Token limit works like this:
-    // - if there's only 1 user message at the bottom, it receives ntokens_minus_maxgen tokens for context
-    // - if there are N user messages, they receive ntokens_minus_maxgen/N tokens each (and there's no taking from one to give to the other)
+    // - if there's only 1 user message at the bottom, it receives reserve_for_context tokens for context
+    // - if there are N user messages, they receive reserve_for_context/N tokens each (and there's no taking from one to give to the other)
     // This is useful to give prefix and suffix of the same file precisely the position necessary for FIM-like operation of a chat model
-
-    let mut rebuilt_messages: Vec<ChatMessage> = post.messages.iter().take(user_msg_starts).map(|m| m.clone()).collect();
-    for msg_idx in user_msg_starts..post.messages.len() {
-        let msg = post.messages[msg_idx].clone();
+    let mut rebuilt_messages: Vec<ChatMessage> = original_messages.iter().take(user_msg_starts).map(|m| m.clone()).collect();
+    for msg_idx in user_msg_starts..original_messages.len() {
+        let msg = original_messages[msg_idx].clone();
         let role = msg.role.clone();
 
         let mut content = msg.content.clone();
@@ -693,52 +752,32 @@ pub async fn run_at_commands(
         }
         info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", msg_idx, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens,context_limit);
 
-        let mut messages_for_postprocessing = vec![];
-        let mut texts_on_clip: Vec<(String, String)> = vec![];
-
-        if msg.tool_calls.is_some() {
-            if let Ok((res, texts)) = execute_at_commands_from_msg(&post.messages[msg_idx], &context, top_n).await {
-                messages_for_postprocessing.extend(res);
-                texts_on_clip.extend(texts);
-            }
-        }
+        let mut messages_exec_output = vec![];
         if content.contains("@") {
-            let (res, _) = execute_at_commands_in_query(&mut content, &context, true, top_n).await;
-            messages_for_postprocessing.extend(res);
+            let (res, _) = execute_at_commands_in_query(&mut content, &ccx, true, top_n).await;
+            messages_exec_output.extend(res);
         }
 
-        let t0 = std::time::Instant::now();
-        let processed: Vec<ContextFile> = postprocess_at_results2(
-            global_context.clone(),
-            &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
-            tokenizer.clone(),
-            context_limit,
-            false,
-        ).await;
-        info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
-
-        for (id, text) in texts_on_clip {
-            let message = ChatMessage {
-                role: "tool".to_string(),
-                content: text,
-                tool_calls: None,
-                tool_call_id: id,
-            };
-            rebuilt_messages.push(message.clone());
-            stream_back_to_user.push_in_json(json!(message));
-        }
-
-        for exec_result in messages_for_postprocessing.iter() {
-            if let ContextTool::ChatMessage(raw_msg) = exec_result {
+        for exec_result in messages_exec_output.iter() {
+            // at commands exec() can produce both role="user" and role="assistant" messages
+            if let ContextEnum::ChatMessage(raw_msg) = exec_result {
                 rebuilt_messages.push(raw_msg.clone());
                 stream_back_to_user.push_in_json(json!(raw_msg));
             }
         }
 
-        // info!("AAAA1 {:?}", messages_for_postprocessing);
-
-        if allow_at {
-            let json_vec = processed.iter().map(|p| {
+        // TODO: reduce context_limit by tokens(messages_exec_output)
+        let t0 = std::time::Instant::now();
+        let post_processed: Vec<ContextFile> = postprocess_at_results2(
+            global_context.clone(),
+            &filter_only_context_file_from_context_tool(&messages_exec_output),
+            tokenizer.clone(),
+            context_limit,
+            false,
+        ).await;
+        if post_processed.len() > 0 {
+            // post-processed files after all custom messages
+            let json_vec = post_processed.iter().map(|p| {
                 json!(p)
             }).collect::<Vec<Value>>();
             if json_vec.len() > 0 {
@@ -750,9 +789,10 @@ pub async fn run_at_commands(
                 stream_back_to_user.push_in_json(json!(message));
             }
         }
+        info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
 
-        if content.trim().len() > 0 && allow_at {
-            // stream back to the user, with at-commands clipped
+        if content.trim().len() > 0 {
+            // stream back to the user, with at-commands replaced
             let msg = ChatMessage::new(role.clone(), content);
             rebuilt_messages.push(msg.clone());
             if role == "user" {
@@ -760,8 +800,7 @@ pub async fn run_at_commands(
             }
         }
     }
-    post.messages = rebuilt_messages.clone();
-    user_msg_starts
+    return (rebuilt_messages.clone(), user_msg_starts)
 }
 
 

@@ -7,7 +7,7 @@ use crate::ast::ast_index::RequestSymbolType;
 
 use crate::ast::structs::FileReferencesResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
-use crate::call_validation::{ContextFile, ContextTool};
+use crate::call_validation::{ContextFile, ContextEnum};
 
 
 fn results2message(result: &FileReferencesResult) -> Vec<ContextFile> {
@@ -55,7 +55,7 @@ impl AtCommand for AtAstFileSymbols {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextTool>, String), String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
         let cpath = match args.get(0) {
             Some(x) => crate::files_correction::canonical_path(&x),
             None => return Err("no file path".to_string()),

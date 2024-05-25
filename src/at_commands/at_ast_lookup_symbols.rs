@@ -8,7 +8,7 @@ use tree_sitter::Point;
 use crate::ast::structs::AstCursorSearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::at_file::{AtParamFilePath, RangeKind, colon_lines_range_from_arg};
-use crate::call_validation::{ContextFile, ContextTool};
+use crate::call_validation::{ContextFile, ContextEnum};
 
 
 pub async fn results2message(result: &AstCursorSearchResult) -> Vec<ContextFile> {
@@ -108,7 +108,7 @@ impl AtCommand for AtAstLookupSymbols {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextTool>, String), String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @lookup_symbols_at {:?}", args);
 
         let mut file_path = match args.get(0) {

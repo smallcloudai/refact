@@ -91,7 +91,7 @@ pub async fn scratchpad_interaction_not_stream(
         let choice0 = oai_choices.as_array().unwrap().get(0).unwrap();
         if let Some(_msg) = choice0.get("message") {
             if let Ok(det_msgs) = scratchpad.response_spontaneous() {
-                model_says["det_messages"] = json!(det_msgs);
+                model_says["deterministic_messages"] = json!(det_msgs);
             }
             // new style openai response
             // Array [Object {"finish_reason": String("stop"), "index": Number(0), "logprobs": Null, "message": Object {"content": String("Hello! How can I assist you today?"), "role": String("assistant")}}]

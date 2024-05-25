@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
-use crate::call_validation::{ContextFile, ContextTool};
+use crate::call_validation::{ContextFile, ContextEnum};
 
 
 pub struct AtFile {
@@ -179,7 +179,7 @@ impl AtCommand for AtFile {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextTool>, String), String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
         let correctable_file_path = args[0].clone();
         let candidates = parameter_repair_candidates(&correctable_file_path, context, top_n).await;
         if candidates.len() == 0 {

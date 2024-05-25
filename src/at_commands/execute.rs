@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use regex::Regex;
 
 use crate::at_commands::at_commands::{AtCommandCall, AtCommandsContext};
-use crate::call_validation::{ChatMessage, ContextTool};
+use crate::call_validation::{ChatMessage, ContextEnum};
 
 
 async fn correct_call_if_needed(
@@ -52,7 +52,7 @@ async fn execute_at_commands_from_query_line(
     query: &String,
     context: &AtCommandsContext,
     remove_valid_from_query: bool,
-    msgs: &mut Vec<ContextTool>,
+    msgs: &mut Vec<ContextEnum>,
     highlights: &mut Vec<AtCommandHighlight>,
     top_n: usize,
 ) -> bool {
@@ -139,7 +139,7 @@ pub async fn execute_at_commands_in_query(
     context: &AtCommandsContext,
     remove_valid_from_query: bool,
     top_n: usize,
-) -> (Vec<ContextTool>, Vec<AtCommandHighlight>) {
+) -> (Vec<ContextEnum>, Vec<AtCommandHighlight>) {
     // called from preview and chat
     let mut msgs = vec![];
     let mut highlights = vec![];
@@ -165,7 +165,7 @@ pub async fn execute_at_commands_from_msg(
     msg: &ChatMessage,
     context: &AtCommandsContext,
     top_n: usize,
-) -> Result<(Vec<ContextTool>, Vec<(String, String)>), String> {
+) -> Result<(Vec<ContextEnum>, Vec<(String, String)>), String> {
     let at_command_names = context.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
     let mut msgs = vec![];
     let mut texts_on_clip = vec![];

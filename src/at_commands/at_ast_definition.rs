@@ -8,7 +8,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::ast::structs::AstQuerySearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::at_params::AtParamSymbolPathQuery;
-use crate::call_validation::{ContextFile, ContextTool};
+use crate::call_validation::{ContextFile, ContextEnum};
 use tracing::info;
 use crate::ast::ast_index::RequestSymbolType;
 
@@ -72,7 +72,7 @@ impl AtCommand for AtAstDefinition {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, _from_tool_call: bool) -> Result<(Vec<ContextTool>, String), String> {
+    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, _from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @definition {:?}", args);
         let symbol_path = match args.get(0) {
             Some(x) => x,
