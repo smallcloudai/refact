@@ -1,5 +1,4 @@
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use axum::http::StatusCode;
 use ropey::Rope;
@@ -234,11 +233,20 @@ pub struct ChatToolCall {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatMessage {
     pub role: String,
+    #[serde(default, deserialize_with="deserialize_content")]
     pub content: String,
     #[serde(default)]
     pub tool_calls: Option<Vec<ChatToolCall>>,
     #[serde(default)]
     pub tool_call_id: String,
+}
+
+// this converts null to empty string
+fn deserialize_content<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer).map(|opt| opt.unwrap_or_default())
 }
 
 impl ChatMessage {
