@@ -13,10 +13,10 @@ use crate::at_commands::at_commands::{AtCommandsContext, filter_only_context_fil
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
 
-use crate::call_validation::{ChatMessage, ChatPost, ContextFile, ContextEnum};
+use crate::call_validation::{ChatMessage, ContextFile, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
-use crate::at_commands::execute::{execute_at_commands_from_msg, execute_at_commands_in_query};
+use crate::at_commands::execute::execute_at_commands_in_query;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 
 
@@ -666,25 +666,64 @@ pub async fn run_tools(
         return (original_messages.clone(), false);
     }
 
-    let ccx = AtCommandsContext::new(global_context.clone()).await;
+    let mut ccx = AtCommandsContext::new(global_context.clone()).await;
+    let at_commands = ccx.at_commands.clone();
+
     let mut context_messages: Vec<ChatMessage> = original_messages.iter().map(|m| m.clone()).collect();
-    let mut messages_for_postprocessing = vec![];
-    // let res: Vec<ContextEnum>;
-    if let Ok((res, texts)) = execute_at_commands_from_msg(&ass_msg, &ccx, top_n).await {
-        messages_for_postprocessing.extend(res);
-        let message = ChatMessage {
-            role: "tool".to_string(),
-            content: "".to_string(),
-            tool_calls: None,
-            tool_call_id: "".to_string(),
-        };
-        context_messages.push(message.clone());
-        stream_back_to_user.push_in_json(json!(message));
+    let mut for_postprocessing: Vec<ContextFile> = vec![];
+
+    for t_call in ass_msg.tool_calls.as_ref().unwrap_or(&vec![]).iter() {
+        if let Some(cmd) = at_commands.get(&format!("@{}", t_call.function.name)) {
+            {
+                let cmd_locked = cmd.lock().await;
+                tracing::info!("tool use: trying to run {:?}", cmd_locked.name());
+            }
+            let args_maybe = serde_json::from_str::<HashMap<String, serde_json::Value>>(&t_call.function.arguments);
+            if let Err(e) = args_maybe {
+                let tool_failed_message = ChatMessage {
+                    role: "tool".to_string(),
+                    content: e.to_string(),
+                    tool_calls: None,
+                    tool_call_id: t_call.id.to_string(),
+                };
+                context_messages.push(tool_failed_message.clone());
+                stream_back_to_user.push_in_json(json!(tool_failed_message));
+                continue;
+            }
+            let args = args_maybe.unwrap();
+            info!("tool use: args={:?}", args);
+            let tool_msg_and_maybe_more_mb = cmd.lock().await.execute_as_tool(&mut ccx, &t_call.id.to_string(), &args).await;
+            if let Err(e) = tool_msg_and_maybe_more_mb {
+                let tool_failed_message = ChatMessage {
+                    role: "tool".to_string(),
+                    content: e.to_string(),
+                    tool_calls: None,
+                    tool_call_id: t_call.id.to_string(),
+                };
+                context_messages.push(tool_failed_message.clone());
+                stream_back_to_user.push_in_json(json!(tool_failed_message));
+                continue;
+            }
+            let tool_msg_and_maybe_more = tool_msg_and_maybe_more_mb.unwrap();
+            let mut have_answer = false;
+            for msg in tool_msg_and_maybe_more {
+                if let ContextEnum::ChatMessage(ref raw_msg) = msg {
+                    context_messages.push(raw_msg.clone());
+                    if raw_msg.role == "tool" && raw_msg.tool_call_id == t_call.id {
+                        have_answer = true;
+                    }
+                }
+                if let ContextEnum::ContextFile(ref cf) = msg {
+                    for_postprocessing.push(cf.clone());
+                }
+            }
+            assert!(have_answer);
+        }
     }
 
     let context_file: Vec<ContextFile> = postprocess_at_results2(
         global_context.clone(),
-        &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
+        &for_postprocessing,
         tokenizer.clone(),
         context_limit,
         false,

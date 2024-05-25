@@ -1,16 +1,19 @@
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::collections::HashMap;
 
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 
 use crate::ast::structs::AstQuerySearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::at_params::AtParamSymbolPathQuery;
-use crate::call_validation::{ContextFile, ContextEnum};
+use crate::call_validation::{ChatMessage, ContextFile, ContextEnum};
 use tracing::info;
 use crate::ast::ast_index::RequestSymbolType;
+use crate::ast::ast_module::AstModule;
 
 
 async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
@@ -32,6 +35,31 @@ async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
     }
     symbols
 }
+
+async fn run_at_definition(ast: &Option<Arc<ARwLock<AstModule>>>, the_arg: &String) -> Result<Vec<ContextFile>, String>
+{
+    match &ast {
+        Some(ast) => {
+            match ast.read().await.search_by_name(
+                the_arg.clone(),
+                RequestSymbolType::Declaration,
+                true,
+                10
+            ).await {
+                Ok(res) => {
+                    return Ok(results2message(&res).await);
+                },
+                Err(err) => {
+                    return Err(err);
+                }
+            }
+        }
+        None => {
+            return Err("Ast module is not available".to_string());
+        }
+    };
+}
+
 
 pub struct AtAstDefinition {
     pub name: String,
@@ -55,9 +83,9 @@ fn text_on_clip(symbol_path: &String, results: &Vec<ContextFile>) -> String {
         let path = PathBuf::from(path0);
         let file_name = path.file_name().unwrap_or(OsStr::new(path0)).to_string_lossy();
         if file_paths.len() > 1 {
-            format!("{} (defined in {} and other files)", symbol_path, file_name)
+            format!("`{}` (defined in {} and other files)", symbol_path, file_name)
         } else {
-            format!("{} (defined in {})", symbol_path, file_name)
+            format!("`{}` (defined in {})", symbol_path, file_name)
         }
     } else {
         symbol_path.clone()
@@ -69,37 +97,47 @@ impl AtCommand for AtAstDefinition {
     fn name(&self) -> &String {
         &self.name
     }
+
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
+
     async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, _from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @definition {:?}", args);
-        let symbol_path = match args.get(0) {
-            Some(x) => x,
+        let the_arg = match args.get(0) {
+            Some(x) => x.clone(),
             None => return Err("no symbol path".to_string()),
         };
         let ast = context.global_context.read().await.ast_module.clone();
-        let x = match &ast {
-            Some(ast) => {
-                match ast.read().await.search_by_name(
-                    symbol_path.clone(),
-                    RequestSymbolType::Declaration,
-                    true,
-                    10
-                ).await {
-                    Ok(res) => {
-                        Ok(results2message(&res).await)
-                    },
-                    Err(err) => Err(err)
-                }
-            }
-            None => Err("Ast module is not available".to_string())
-        };
-        let text = x.clone().map(|x| text_on_clip(symbol_path, &x)).unwrap_or("".to_string());
-        let x = x.map(|j|vec_context_file_to_context_tools(j));
-        x.map(|x| (x.clone(), text))
+        let results = run_at_definition(&ast, &the_arg).await?;
+        let text = text_on_clip(&the_arg, &results);
+        Ok((vec_context_file_to_context_tools(results), text))
     }
+
+    async fn execute_as_tool(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, serde_json::Value>) -> Result<Vec<ContextEnum>, String> {
+        let the_arg_js = match args.get("symbol") {
+            Some(x) => x,
+            None => return Err("argument `symbol` is missing".to_string()),
+        };
+        let the_arg = match the_arg_js.as_str() {
+            Some(x) => x.to_string(),
+            None => return Err("argument `symbol` is not a string".to_string()),
+        };
+        let ast = ccx.global_context.read().await.ast_module.clone();
+        let results_context_file = run_at_definition(&ast, &the_arg).await?;
+        let text = text_on_clip(&the_arg, &results_context_file);
+        let mut results = vec_context_file_to_context_tools(results_context_file);
+        results.push(ContextEnum::ChatMessage(ChatMessage {
+            role: "tool".to_string(),
+            content: text,
+            tool_calls: None,
+            tool_call_id: tool_call_id.clone(),
+        }));
+        Ok(results)
+    }
+
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }
 }
+

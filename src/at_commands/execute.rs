@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 use regex::Regex;
 
 use crate::at_commands::at_commands::{AtCommandCall, AtCommandsContext};
-use crate::call_validation::{ChatMessage, ContextEnum};
+use crate::call_validation::ContextEnum;
 
 
 async fn correct_call_if_needed(
@@ -161,49 +160,6 @@ pub async fn execute_at_commands_in_query(
     (msgs, highlights)
 }
 
-pub async fn execute_at_commands_from_msg(
-    msg: &ChatMessage,
-    context: &AtCommandsContext,
-    top_n: usize,
-) -> Result<(Vec<ContextEnum>, Vec<(String, String)>), String> {
-    let at_command_names = context.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
-    let mut msgs = vec![];
-    let mut texts_on_clip = vec![];
-    if let Some(ref tool_calls) = msg.tool_calls {
-        for t_call in tool_calls {
-            if let Some(cmd) = context.at_commands.get(&format!("@{}", t_call.function.name)) {
-                let mut call = AtCommandCall::new(cmd.clone(), vec![]);
-                {
-                    let cmd_locked = cmd.lock().await;
-                    tracing::info!("tool use: trying to run {:?}", cmd_locked.name());
-                }
-                let args: HashMap<String, String> = serde_json::from_str(&t_call.function.arguments).map_err(|e| format!("couldn't parse args: {:?}", e))?;
-                let args_values = args.iter().map(|(_, v)|v.clone()).collect::<Vec<_>>();
-                call.args = args_values;
-
-                let mut highlights = vec![];
-                highlights.push(AtCommandHighlight::new("cmd".to_string(), 0, 0, 0, 0));
-                for _ in call.args.iter(){
-                    highlights.push(AtCommandHighlight::new("arg".to_string(), 0, 0, 0, 0));
-                }
-
-                correct_call_if_needed(&mut call, &mut highlights, context, &at_command_names).await;
-
-                if highlights.iter().all(|x|x.ok) {
-                    match call.command.lock().await.execute(&msg.content, &call.args, top_n, context, true).await {
-                        Ok((m_res, text_on_clip)) => {
-                            msgs.extend(m_res); texts_on_clip.push((t_call.id.clone(), text_on_clip))
-                        },
-                        Err(e) => {
-                            tracing::warn!("can't execute command that indicated it can execute: {}", e);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    Ok((msgs, texts_on_clip))
-}
 
 #[derive(Debug)]
 pub struct AtCommandHighlight {

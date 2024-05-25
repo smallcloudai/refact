@@ -11,7 +11,7 @@ use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_workspace::AtWorkspace;
 use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
-use crate::call_validation::{ChatMessage, ContextFile, ContextEnum};
+use crate::call_validation::{ContextFile, ContextEnum};
 use crate::global_context::GlobalContext;
 
 
@@ -33,9 +33,19 @@ impl AtCommandsContext {
 pub trait AtCommand: Send + Sync {
     fn name(&self) -> &String;
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>;
+
+    fn works_as_tool(&self) -> bool { false }
+    fn works_as_at_command(&self) -> bool { true }
+
     // returns (messages_for_postprocessing, text_on_clip)
+    // TODO: reorganize params
     async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String>;
-    fn depends_on(&self) -> Vec<String> {vec![]}
+
+    async fn execute_as_tool(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, serde_json::Value>) -> Result<Vec<ContextEnum>, String> {
+        unimplemented!();
+    }
+
+    fn depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
 }
 
 #[async_trait]
