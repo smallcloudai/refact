@@ -52,6 +52,7 @@ def test_completion_with_rag(fpath):
     completion = j["choices"][0]["code_completion"]
     cleared_line_str = cursor_line_str.replace(CURSOR_AT, "")
     print(cleared_line_str[:cursor_column] + termcolor.colored(completion, "green") + cleared_line_str[cursor_column:])
+    assert completion in ["W, H", "W, H)"]
 
 
 if __name__ == "__main__":

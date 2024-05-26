@@ -102,7 +102,7 @@ impl AtCommand for AtAstDefinition {
         &self.params
     }
 
-    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @definition {:?}", args);
         let the_arg = match args.get(0) {
             Some(x) => x.clone(),
