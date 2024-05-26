@@ -37,7 +37,7 @@ impl AtCommand for AtLocalNotesToSelf {
         &self.params
     }
 
-    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, _query: &String, _args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         let cache_dir = {
             let gcx_locked = ccx.global_context.read().await;
             gcx_locked.cache_dir.clone()

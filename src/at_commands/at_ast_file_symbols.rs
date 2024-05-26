@@ -57,7 +57,7 @@ impl AtCommand for AtAstFileSymbols {
         &self.params
     }
 
-    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         let cpath = match args.get(0) {
             Some(x) => crate::files_correction::canonical_path(&x),
             None => return Err("no file path".to_string()),

@@ -4,8 +4,11 @@ from pydantic import BaseModel
 
 
 # Our version of chat protocol is very similar to OpenAI API, with these changes:
-# - deterministic_messages, refact-lsp returns this before the actual answer from the model (called choices),
-#   and it also returns re-written user message to remove @-commands
+#   - `deterministic_messages`, refact-lsp returns this before the actual answer from the model (called choices),
+#     and it also returns re-written user message to remove @-commands
+# more?
+# The ask_using_openai_client() function doesn't have this extensions, usesful to verify refact-lsp still can
+# handle a client without these extensions.
 
 
 class FunctionDict(BaseModel):
@@ -53,7 +56,7 @@ def messages_to_dicts(
             continue
         if x.role == "system":
             continue
-        if x.role == "tool":
+        if x.role == "tool" and x.content is not None:
             print(termcolor.colored(x.role, "yellow"), "\n%s" % x.content.strip())
             continue
         tool_calls = ""
@@ -70,7 +73,7 @@ def join_messages_and_choices(
     deterministic_messages: List[Message],
     choices: List[Message],
     verbose: bool
-):
+) -> List[List[Message]]:
     messages = list(orig_messages)
     while len(messages) > 0 and messages[-1].role == "user":
         messages.pop()
@@ -111,7 +114,7 @@ async def tools_fetch_and_filter(base_url: str, tools_turn_on: Set[str]) -> Opti
 
 async def ask_using_http(
     base_url: str,
-    messages: List[Tuple[str, str]],
+    messages: List[Message],
     stop: List[str],
     verbose: bool,
     n_answers: int,
@@ -119,7 +122,7 @@ async def ask_using_http(
     *,
     tools: Optional[List[Dict[str, Any]]] = None,
     temperature: float = 0.6,
-) -> List[Tuple[str, str]]:
+) -> List[List[Message]]:
     async with aiohttp.ClientSession() as session:
         post_me = {
             "model": model_name,
@@ -153,7 +156,7 @@ async def ask_using_http(
 
 async def ask_using_openai_client(
     base_url: str,
-    messages: List[Tuple[str, str]],
+    messages: List[Message],
     stop: List[str],
     verbose: bool,
     n_answers: int,
@@ -161,7 +164,7 @@ async def ask_using_openai_client(
     *,
     tools: Optional[List[Dict[str, Any]]] = None,
     temperature: float = 0.6,
-) -> List[Tuple[str, str]]:
+) -> List[List[Message]]:
     import openai
     # os.environ["OPENAI_LOG"] = "debug"
     # os.environ["OPENAI_LOG_JSON"] = "true"
@@ -180,10 +183,8 @@ async def ask_using_openai_client(
         tools=tools,
     )
     assert isinstance(chat_completion, openai.types.chat.chat_completion.ChatCompletion)
-    print(chat_completion)
-    # quit()
     # TODO: chat_completion.deterministic_messages
-    deterministic = []
+    deterministic: List[Message] = []
     choices: List[Optional[Message]] = [None] * len(chat_completion.choices)
     for i, ch in enumerate(chat_completion.choices):
         index = ch.index

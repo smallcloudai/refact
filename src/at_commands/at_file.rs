@@ -180,7 +180,7 @@ impl AtCommand for AtFile {
         &self.params
     }
 
-    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         let correctable_file_path = args[0].clone();
         let candidates = parameter_repair_candidates(&correctable_file_path, ccx).await;
         if candidates.len() == 0 {
