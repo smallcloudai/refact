@@ -709,6 +709,7 @@ pub async fn run_tools(
             for msg in tool_msg_and_maybe_more {
                 if let ContextEnum::ChatMessage(ref raw_msg) = msg {
                     context_messages.push(raw_msg.clone());
+                    stream_back_to_user.push_in_json(json!(raw_msg.clone()));
                     if raw_msg.role == "tool" && raw_msg.tool_call_id == t_call.id {
                         have_answer = true;
                     }
