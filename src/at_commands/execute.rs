@@ -7,7 +7,7 @@ use crate::call_validation::ContextEnum;
 async fn correct_call_if_needed(
     call: &mut AtCommandCall,
     highlights_local: &mut Vec<AtCommandHighlight>,
-    context: &AtCommandsContext,
+    ccx: &AtCommandsContext,
     command_names: &Vec<String>,
 ) {
     let params = call.command.lock().await.params().iter().cloned().collect::<Vec<_>>();
@@ -25,18 +25,18 @@ async fn correct_call_if_needed(
             return;
         }
         let param = param.lock().await;
-        if param.is_value_valid(arg, context).await {
+        if param.is_value_valid(arg, ccx).await {
             corrected.push(arg.clone());
             continue;
         }
-        let completion = match param.complete(arg, context, 1).await.get(0) {
+        let completion = match param.complete(arg, ccx).await.get(0) {
             Some(x) => x.clone(),
             None => {
                 h.ok = false; h.reason = Some("incorrect argument; failed to complete".to_string());
                 return;
             }
         };
-        if !param.is_value_valid(&completion, context).await {
+        if !param.is_value_valid(&completion, ccx).await {
             h.ok = false; h.reason = Some("incorrect argument; completion did not help".to_string());
             return;
         }
@@ -49,11 +49,10 @@ async fn execute_at_commands_from_query_line(
     line_n: usize,
     line: &mut String,
     query: &String,
-    context: &AtCommandsContext,
+    ccx: &mut AtCommandsContext,
     remove_valid_from_query: bool,
     msgs: &mut Vec<ContextEnum>,
     highlights: &mut Vec<AtCommandHighlight>,
-    top_n: usize,
 ) -> bool {
     let pos1_start = {
         let mut lines = query.lines().collect::<Vec<_>>();
@@ -66,14 +65,14 @@ async fn execute_at_commands_from_query_line(
         pos1_start
     };
 
-    let at_command_names = context.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
+    let at_command_names = ccx.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
     tracing::info!("at-commands running {:?} commands available {:?}", query, at_command_names);
     let line_words = parse_words_from_line(line);
     let mut line_words_cloned = line_words.iter().map(|(x, _, _)|x.clone()).collect::<Vec<_>>();
     let mut another_pass_needed = false;
 
     for (w_idx, (word, pos1, pos2)) in line_words.iter().enumerate() {
-        if let Some(cmd) = context.at_commands.get(word) {
+        if let Some(cmd) = ccx.at_commands.get(word) {
             let mut call = AtCommandCall::new(cmd.clone(), vec![]);
             let mut highlights_local = vec![];
 
@@ -88,12 +87,12 @@ async fn execute_at_commands_from_query_line(
                 highlights_local.push(AtCommandHighlight::new("arg".to_string(), line_n, w_idx + i, pos1_start + *pos1, pos1_start + *pos2));
             }
 
-            correct_call_if_needed(&mut call, &mut highlights_local, context, &at_command_names).await;
+            correct_call_if_needed(&mut call, &mut highlights_local, ccx, &at_command_names).await;
 
             let mut executed = false;
             let mut text_on_clip = String::new();
             if highlights_local.iter().all(|x|x.ok) {
-                match call.command.lock().await.execute(query, &call.args, top_n, context, false).await {
+                match call.command.lock().await.execute_as_at_command(ccx, query, &call.args).await {
                     Ok((m_res, m_text_on_clip)) =>
                         {
                             executed = true;
@@ -134,10 +133,9 @@ async fn execute_at_commands_from_query_line(
 }
 
 pub async fn execute_at_commands_in_query(
+    ccx: &mut AtCommandsContext,
     query: &mut String,
-    context: &AtCommandsContext,
     remove_valid_from_query: bool,
-    top_n: usize,
 ) -> (Vec<ContextEnum>, Vec<AtCommandHighlight>) {
     // called from preview and chat
     let mut msgs = vec![];
@@ -147,7 +145,7 @@ pub async fn execute_at_commands_in_query(
     for (idx, mut line) in query.lines().map(|x|x.to_string()).enumerate() {
         loop {
             let another_pass_needed = execute_at_commands_from_query_line(
-                idx, &mut line, query, context, remove_valid_from_query, &mut msgs, &mut highlights, top_n
+                idx, &mut line, query, ccx, remove_valid_from_query, &mut msgs, &mut highlights
             ).await;
 
             if !another_pass_needed {

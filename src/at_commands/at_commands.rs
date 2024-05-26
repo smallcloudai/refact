@@ -18,13 +18,15 @@ use crate::global_context::GlobalContext;
 pub struct AtCommandsContext {
     pub global_context: Arc<ARwLock<GlobalContext>>,
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,
+    pub top_n: usize,
 }
 
 impl AtCommandsContext {
-    pub async fn new(global_context: Arc<ARwLock<GlobalContext>>) -> Self {
+    pub async fn new(global_context: Arc<ARwLock<GlobalContext>>, top_n: usize) -> Self {
         AtCommandsContext {
             global_context,
             at_commands: at_commands_dict().await,
+            top_n,
         }
     }
 }
@@ -38,10 +40,11 @@ pub trait AtCommand: Send + Sync {
     fn works_as_at_command(&self) -> bool { true }
 
     // returns (messages_for_postprocessing, text_on_clip)
-    // TODO: reorganize params
-    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String>;
+    async fn execute_as_at_command(&self, _ccx: &mut AtCommandsContext, _query: &String, _args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+        unimplemented!();
+    }
 
-    async fn execute_as_tool(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, serde_json::Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn execute_as_tool(&self, _ccx: &mut AtCommandsContext, _tool_call_id: &String, _args: &HashMap<String, serde_json::Value>) -> Result<Vec<ContextEnum>, String> {
         unimplemented!();
     }
 
@@ -51,8 +54,8 @@ pub trait AtCommand: Send + Sync {
 #[async_trait]
 pub trait AtParam: Send + Sync {
     fn name(&self) -> &String;
-    async fn is_value_valid(&self, value: &String, context: &AtCommandsContext) -> bool;
-    async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String>;
+    async fn is_value_valid(&self, value: &String, ccx: &AtCommandsContext) -> bool;
+    async fn complete(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String>;
     fn complete_if_valid(&self) -> bool {false}
 }
 

@@ -666,7 +666,7 @@ pub async fn run_tools(
         return (original_messages.clone(), false);
     }
 
-    let mut ccx = AtCommandsContext::new(global_context.clone()).await;
+    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n).await;
     let at_commands = ccx.at_commands.clone();
 
     let mut context_messages: Vec<ChatMessage> = original_messages.iter().map(|m| m.clone()).collect();
@@ -756,7 +756,7 @@ pub async fn run_at_commands(
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     info!("reserve_for_context {} tokens", reserve_for_context);
 
-    let ccx = AtCommandsContext::new(global_context.clone()).await;
+    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n).await;
 
     let mut user_msg_starts = original_messages.len();
     let mut messages_with_at: usize = 0;
@@ -793,7 +793,7 @@ pub async fn run_at_commands(
 
         let mut messages_exec_output = vec![];
         if content.contains("@") {
-            let (res, _) = execute_at_commands_in_query(&mut content, &ccx, true, top_n).await;
+            let (res, _) = execute_at_commands_in_query(&mut ccx, &mut content, true).await;
             messages_exec_output.extend(res);
         }
 

@@ -37,9 +37,9 @@ impl AtCommand for AtLocalNotesToSelf {
         &self.params
     }
 
-    async fn execute(&self, _query: &String, _args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         let cache_dir = {
-            let gcx_locked = context.global_context.read().await;
+            let gcx_locked = ccx.global_context.read().await;
             gcx_locked.cache_dir.clone()
         };
         // join path cache_dir / notes
@@ -61,7 +61,7 @@ impl AtCommand for AtLocalNotesToSelf {
             );
             context_tools.push(ContextEnum::ChatMessage(chat_message));
         }
-        let text = text_on_clip(from_tool_call);
+        let text = text_on_clip(false);
         Ok((context_tools, text))
     }
 }

@@ -52,16 +52,18 @@ impl AtCommand for AtAstFileSymbols {
     fn name(&self) -> &String {
         &self.name
     }
+
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
+
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         let cpath = match args.get(0) {
             Some(x) => crate::files_correction::canonical_path(&x),
             None => return Err("no file path".to_string()),
         };
 
-        let ast = context.global_context.read().await.ast_module.clone();
+        let ast = ccx.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
                 let doc = crate::files_in_workspace::Document { path: cpath, text: None };
@@ -72,7 +74,7 @@ impl AtCommand for AtAstFileSymbols {
             }
             None => Err("Ast module is not available".to_string())
         };
-        let text = x.clone().map(|x| text_on_clip(&x, from_tool_call)).unwrap_or("".to_string());
+        let text = x.clone().map(|x| text_on_clip(&x, false)).unwrap_or("".to_string());
         let context_tools_mb = x.map(|j|vec_context_file_to_context_tools(j));
         context_tools_mb.map(|i|(i, text))
     }

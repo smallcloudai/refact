@@ -102,13 +102,13 @@ impl AtCommand for AtAstDefinition {
         &self.params
     }
 
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, _from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @definition {:?}", args);
         let the_arg = match args.get(0) {
             Some(x) => x.clone(),
             None => return Err("no symbol path".to_string()),
         };
-        let ast = context.global_context.read().await.ast_module.clone();
+        let ast = ccx.global_context.read().await.ast_module.clone();
         let results = run_at_definition(&ast, &the_arg).await?;
         let text = text_on_clip(&the_arg, &results);
         Ok((vec_context_file_to_context_tools(results), text))

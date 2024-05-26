@@ -57,21 +57,23 @@ impl AtCommand for AtWorkspace {
     {
         &self.params
     }
-    async fn execute(&self, query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
-        match *context.global_context.read().await.vec_db.lock().await {
+
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+        match *ccx.global_context.read().await.vec_db.lock().await {
             Some(ref db) => {
                 let mut db_query = args.join(" ");
                 if db_query.is_empty() {
                     db_query = query.clone();
                 }
-                let search_result = db.vecdb_search(db_query, top_n).await?;
+                let search_result = db.vecdb_search(db_query, ccx.top_n).await?;
                 let results = search_result.results.clone();
-                let text = text_on_clip(args.join(" "), from_tool_call);
+                let text = text_on_clip(args.join(" "), false);
                 Ok((results2message(&results), text))
             }
             None => Err("vecdb is not available".to_string())
         }
     }
+
     fn depends_on(&self) -> Vec<String> {
         vec!["vecdb".to_string()]
     }

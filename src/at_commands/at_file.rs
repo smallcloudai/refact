@@ -104,8 +104,7 @@ fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
 
 async fn parameter_repair_candidates(
     value: &String,
-    context: &AtCommandsContext,
-    top_n: usize
+    ccx: &AtCommandsContext,
 ) -> Vec<String>
 {
     let mut correction_candidate = value.clone();
@@ -113,10 +112,10 @@ async fn parameter_repair_candidates(
 
     let fuzzy = true;
     let result: Vec<String> = crate::files_correction::correct_to_nearest_filename(
-        context.global_context.clone(),
+        ccx.global_context.clone(),
         &correction_candidate,
         fuzzy,
-        top_n,
+        ccx.top_n,
     ).await;
 
     return result.iter().map(|x| {
@@ -152,10 +151,10 @@ impl AtParam for AtParamFilePath {
         &self.name
     }
 
-    async fn is_value_valid(&self, value: &String, context: &AtCommandsContext) -> bool {
+    async fn is_value_valid(&self, value: &String, ccx: &AtCommandsContext) -> bool {
         let mut value = value.clone();
         colon_lines_range_from_arg(&mut value);
-        let (cache_correction_arc, _cache_fuzzy_arc) = crate::files_correction::files_cache_rebuild_as_needed(context.global_context.clone()).await;
+        let (cache_correction_arc, _cache_fuzzy_arc) = crate::files_correction::files_cache_rebuild_as_needed(ccx.global_context.clone()).await;
         // it's dangerous to use cache_correction_arc without a mutex, but should be fine as long as it's read-only
         // (another thread never writes to the map itself, it can only replace the arc with a different map)
         if (*cache_correction_arc).contains_key(&value) {
@@ -166,8 +165,8 @@ impl AtParam for AtParamFilePath {
         false
     }
 
-    async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
-        return parameter_repair_candidates(value, context, top_n).await;
+    async fn complete(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
+        return parameter_repair_candidates(value, ccx).await;
     }
 }
 
@@ -176,12 +175,14 @@ impl AtCommand for AtFile {
     fn name(&self) -> &String {
         &self.name
     }
+
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
+
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         let correctable_file_path = args[0].clone();
-        let candidates = parameter_repair_candidates(&correctable_file_path, context, top_n).await;
+        let candidates = parameter_repair_candidates(&correctable_file_path, ccx).await;
         if candidates.len() == 0 {
             info!("parameter {:?} is uncorrectable :/", &correctable_file_path);
             return Err(format!("parameter {:?} is uncorrectable :/", &correctable_file_path));
@@ -196,7 +197,7 @@ impl AtCommand for AtFile {
         let gradient_type = gradient_type_from_range_kind(&colon_kind_mb);
 
         let cpath = crate::files_correction::canonical_path(&file_path);
-        let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?;
+        let file_text = get_file_text_from_memory_or_disk(ccx.global_context.clone(), &cpath).await?;
 
         if let Some(colon) = &colon_kind_mb {
             line1 = colon.line1;
@@ -216,7 +217,7 @@ impl AtCommand for AtFile {
             usefulness: 100.0,
             is_body_important: false
         };
-        let text = text_on_clip(&context_file, from_tool_call);
+        let text = text_on_clip(&context_file, false);
         Ok((vec_context_file_to_context_tools(vec![context_file]), text))
     }
 }

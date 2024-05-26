@@ -105,10 +105,12 @@ impl AtCommand for AtAstLookupSymbols {
     fn name(&self) -> &String {
         &self.name
     }
+
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
+
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @lookup_symbols_at {:?}", args);
 
         let mut file_path = match args.get(0) {
@@ -127,11 +129,11 @@ impl AtCommand for AtAstLookupSymbols {
         };
 
         let cpath = crate::files_correction::canonical_path(&file_path);
-        let ast = context.global_context.read().await.ast_module.clone();
+        let ast = ccx.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
                 let mut doc = crate::files_in_workspace::Document { path: cpath.clone(), text: None };
-                let file_text = crate::files_in_workspace::get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?; // FIXME
+                let file_text = crate::files_in_workspace::get_file_text_from_memory_or_disk(ccx.global_context.clone(), &cpath).await?; // FIXME
                 doc.update_text(&file_text);
                 match ast.read().await.symbols_near_cursor_to_buckets(
                     &doc, &file_text, Point { row: row_idx, column: 0 }, 15,  3
@@ -142,10 +144,11 @@ impl AtCommand for AtAstLookupSymbols {
             }
             None => Err("Ast module is not available".to_string())
         };
-        let text = x.clone().map(|x| text_on_clip(&x, from_tool_call)).unwrap_or("".to_string());
+        let text = x.clone().map(|x| text_on_clip(&x, false)).unwrap_or("".to_string());
         let x = x.map(|j|vec_context_file_to_context_tools(j));
         x.map(|i|(i, text))
     }
+
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }

@@ -75,10 +75,11 @@ pub async fn handle_v1_command_completion(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let context = AtCommandsContext::new(global_context.clone()).await;
-    let at_command_names = context.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
     let post = serde_json::from_slice::<CommandCompletionPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+    let top_n = post.top_n;
+    let ccx = AtCommandsContext::new(global_context.clone(), top_n).await;
+    let at_command_names = ccx.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
 
     let mut completions: Vec<String> = vec![];
     let mut pos1 = -1; let mut pos2 = -1;
@@ -88,7 +89,7 @@ pub async fn handle_v1_command_completion(
         let query_line_val = query_line_val.chars().take(cursor_rel as usize).collect::<String>();
         let args = query_line_args(&query_line_val, cursor_rel, cursor_line_start, &at_command_names);
         info!("args: {:?}", args);
-        (completions, is_cmd_executable, pos1, pos2) = command_completion(args, &context, post.cursor, post.top_n).await;
+        (completions, is_cmd_executable, pos1, pos2) = command_completion(&ccx, args,  post.cursor).await;
     }
     let completions: Vec<_> = completions.into_iter().unique().map(|x|format!("{} ", x)).collect();
 
@@ -138,9 +139,9 @@ pub async fn handle_v1_command_preview(
 
     let top_n = 10;  // sync with top_n in chats
 
-    let at_context = AtCommandsContext::new(global_context.clone()).await;
+    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n).await;
 
-    let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut query, &at_context, false, top_n).await;
+    let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut ccx, &mut query, false).await;
 
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
     let processed = postprocess_at_results2(
@@ -191,13 +192,12 @@ fn get_line_with_cursor(query: &String, cursor: i64) -> Result<(String, i64, i64
 }
 
 async fn command_completion(
+    ccx: &AtCommandsContext,
     args: Vec<QueryLineArg>,
-    context: &AtCommandsContext,
     cursor_abs: i64,
-    top_n: usize,
 ) -> (Vec<String>, bool, i64, i64) {    // returns ([possible, completions], good_as_it_is)
     let mut args = args;
-    let at_command_names = context.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
+    let at_command_names = ccx.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
 
     let q_cmd_with_index = args.iter().enumerate().find_map(|(index, x)| {
         x.value.starts_with("@").then(|| (x, index))
@@ -207,13 +207,13 @@ async fn command_completion(
         None => return (vec![], false, -1, -1),
     };
 
-    let cmd = match at_command_names.iter().find(|x|x == &&q_cmd.value).and_then(|x|context.at_commands.get(x)) {
+    let cmd = match at_command_names.iter().find(|x|x == &&q_cmd.value).and_then(|x| ccx.at_commands.get(x)) {
         Some(x) => x,
         None => {
             return if !q_cmd.focused {
                 (vec![], false, -1, -1)
             } else {
-                (command_completion_options(&q_cmd.value, &context, top_n).await, false, q_cmd.pos1, q_cmd.pos2)
+                (command_completion_options(&q_cmd.value, &ccx).await, false, q_cmd.pos1, q_cmd.pos2)
             }
         }
     };
@@ -225,16 +225,16 @@ async fn command_completion(
 
     for (arg, param) in args.iter().zip(cmd.lock().await.params()) {
         let param_locked = param.lock().await;
-        let is_valid = param_locked.is_value_valid(&arg.value, context).await;
+        let is_valid = param_locked.is_value_valid(&arg.value, ccx).await;
         if !is_valid {
             return if arg.focused {
-                (param_locked.complete(&arg.value, context, top_n).await, can_execute, arg.pos1, arg.pos2)
+                (param_locked.complete(&arg.value, ccx).await, can_execute, arg.pos1, arg.pos2)
             } else {
                 (vec![], false, -1, -1)
             }
         }
         if is_valid && arg.focused && param_locked.complete_if_valid() {
-            return (param_locked.complete(&arg.value, context, top_n).await, can_execute, arg.pos1, arg.pos2);
+            return (param_locked.complete(&arg.value, ccx).await, can_execute, arg.pos1, arg.pos2);
         }
     }
 
@@ -246,7 +246,7 @@ async fn command_completion(
     if !q_cmd.focused {
         match cmd.lock().await.params().get(args.len()) {
             Some(param) => {
-                return (param.lock().await.complete(&"".to_string(), context, top_n).await, false, cursor_abs, cursor_abs);
+                return (param.lock().await.complete(&"".to_string(), ccx).await, false, cursor_abs, cursor_abs);
             },
             None => {}
         }
@@ -257,16 +257,15 @@ async fn command_completion(
 
 async fn command_completion_options(
     q_cmd: &String,
-    context: &AtCommandsContext,
-    top_n: usize,
+    ccx: &AtCommandsContext,
 ) -> Vec<String> {
     let (ast_on, vecdb_on) = {
-        let gcx = context.global_context.read().await;
+        let gcx = ccx.global_context.read().await;
         let vecdb = gcx.vec_db.lock().await;
         (gcx.ast_module.is_some(), vecdb.is_some())
     };
     let mut filtered_commands = vec![];
-    for (name, cmd) in context.at_commands.iter() {
+    for (name, cmd) in ccx.at_commands.iter() {
         let satisfied = cmd.lock().await.depends_on().iter().all(|d| {
             d == "ast" && ast_on || d == "vecdb" && vecdb_on
         });
@@ -283,7 +282,7 @@ async fn command_completion_options(
         })
         .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
         .rev()
-        .take(top_n)
+        .take(ccx.top_n)
         .map(|(command, _)| command.clone())
         .collect()
 }

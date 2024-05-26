@@ -52,16 +52,18 @@ impl AtCommand for AtAstReference {
     fn name(&self) -> &String {
         &self.name
     }
+
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, _top_n: usize, context: &AtCommandsContext, _from_tool_call: bool) -> Result<(Vec<ContextEnum>, String), String> {
+
+    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @references {:?}", args);
         let symbol_path = match args.get(0) {
             Some(x) => x,
             None => return Err("no symbol path".to_string()),
         };
-        let ast = context.global_context.read().await.ast_module.clone();
+        let ast = ccx.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
                 match ast.read().await.search_by_name(
@@ -79,6 +81,7 @@ impl AtCommand for AtAstReference {
         let x = x.map(|j|vec_context_file_to_context_tools(j));
         x.map(|i|(i, format!("\"usages of {}\"", symbol_path)))
     }
+
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }

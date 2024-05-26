@@ -24,14 +24,16 @@ impl AtParam for AtParamSymbolPathQuery {
     fn name(&self) -> &String {
         &self.name
     }
+
     async fn is_value_valid(&self, value: &String, _: &AtCommandsContext) -> bool {
         !value.is_empty()
     }
-    async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
+
+    async fn complete(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
         if value.is_empty() {
             return vec![];
         }
-        let ast = context.global_context.read().await.ast_module.clone();
+        let ast = ccx.global_context.read().await.ast_module.clone();
         let names = match &ast {
             Some(ast) => ast.read().await.get_symbols_names(RequestSymbolType::Declaration).await.unwrap_or_default(),
             None => vec![]
@@ -46,7 +48,7 @@ impl AtParam for AtParamSymbolPathQuery {
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
             .rev()
             .map(|(s, _)| s.clone())
-            .take(top_n)
+            .take(ccx.top_n)
             .collect::<Vec<String>>();
         return sorted_paths;
     }
@@ -75,11 +77,13 @@ impl AtParam for AtParamSymbolReferencePathQuery {
     fn name(&self) -> &String {
         &self.name
     }
+
     async fn is_value_valid(&self, _: &String, _: &AtCommandsContext) -> bool {
         return true;
     }
-    async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
-        let ast = context.global_context.read().await.ast_module.clone();
+
+    async fn complete(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
+        let ast = ccx.global_context.read().await.ast_module.clone();
         let index_paths = match &ast {
             Some(ast) => ast.read().await.get_symbols_names(RequestSymbolType::Usage).await.unwrap_or_default(),
             None => vec![]
@@ -93,7 +97,7 @@ impl AtParam for AtParamSymbolReferencePathQuery {
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
             .rev()
             .map(|(s, _)| s.clone())
-            .take(top_n)
+            .take(ccx.top_n)
             .collect::<Vec<String>>();
         return sorted_paths;
     }
