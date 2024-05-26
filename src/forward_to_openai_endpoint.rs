@@ -10,8 +10,8 @@ use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
-use crate::call_validation;
 use crate::call_validation::SamplingParameters;
+
 
 pub async fn forward_to_openai_style_endpoint(
     save_url: &mut String,
@@ -22,7 +22,6 @@ pub async fn forward_to_openai_style_endpoint(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
-    tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<serde_json::Value, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
@@ -39,12 +38,7 @@ pub async fn forward_to_openai_style_endpoint(
         "max_tokens": sampling_parameters.max_new_tokens,
         "stop": sampling_parameters.stop,
     });
-    let mut tools_counter = 0;
-    if let Some(tools) = tools_mb {
-        tools_counter = tools.len();
-        data["tools"] = serde_json::Value::Array(tools);
-    }
-    info!("NOT STREAMING TEMP {} TOOLS {}", sampling_parameters.temperature.unwrap(), tools_counter);
+    info!("NOT STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt);
     } else {
@@ -82,7 +76,6 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
-    tools_mb: Option<Vec<serde_json::Value>>,
 ) -> Result<EventSource, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
@@ -98,12 +91,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
     });
-    let mut tools_counter = 0;
-    if let Some(tools) = tools_mb {
-        tools_counter = tools.len();
-        data["tools"] = serde_json::Value::Array(tools);
-    }
-    info!("STREAMING TEMP {} TOOLS {}", sampling_parameters.temperature.unwrap(), tools_counter);
+    info!("STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt);
     } else {
@@ -124,11 +112,27 @@ fn passthrough_messages_to_json(
 ) {
     assert!(prompt.starts_with("PASSTHROUGH "));
     let messages_str = &prompt[12..];
-    let messages: Vec<call_validation::ChatMessage> = serde_json::from_str(&messages_str).unwrap();
+    let big_json: serde_json::Value = serde_json::from_str(&messages_str).unwrap();
+
+    // TODO: remove, parsed only for debug log
+    let messages: Vec<crate::call_validation::ChatMessage> = big_json["messages"].as_array().unwrap().iter().map(|x|
+        serde_json::from_value(x.clone()).unwrap()
+    ).collect();
     for msg in messages.iter() {
-        info!("PASSTHROUGH: {:?}", msg);
+        info!("PASSTHROUGH MSG: {:?}", msg);
     }
-    data["messages"] = serde_json::json!(messages);
+    let tools_mb: Option<Vec<serde_json::Value>> = match big_json["tools"].as_array() {
+        Some(x) => Some(x.iter().map(|x| x.clone()).collect()),
+        None => None,
+    };
+    if let Some(tools) = tools_mb {
+        for tool in tools.iter() {
+            info!("PASSTHROUGH TOOL: {:?}", tool);
+        }
+    }
+
+    data["messages"] = big_json["messages"].clone();
+    data["tools"] = big_json["tools"].clone();
 }
 
 #[derive(Serialize)]

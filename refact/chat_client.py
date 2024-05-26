@@ -1,4 +1,4 @@
-import aiohttp, os, termcolor, copy
+import aiohttp, os, termcolor, copy, json
 from typing import Optional, List, Any, Tuple, Dict, Literal, Set
 from pydantic import BaseModel
 
@@ -112,44 +112,110 @@ async def tools_fetch_and_filter(base_url: str, tools_turn_on: Set[str]) -> Opti
     return tools
 
 
+class ChoiceDeltaCollector:
+    def __init__(self, n_answers: int):
+        self.n_answers = n_answers
+        self.choices = [Message(role="assistant", content="") for _ in range(n_answers)]
+
+    def add_deltas(self, j_choices: List[Dict[str, Any]]):
+        assert len(j_choices) == self.n_answers
+        for j_choice in j_choices:
+            choice: Message = self.choices[j_choice["index"]]
+            delta = j_choice["delta"]
+            if (j_tool_calls := delta.get("tool_calls", None)) is not None:
+                for plus_tool in j_tool_calls:
+                    # {'function': {'arguments': '', 'name': 'definition'}, 'id': 'call_gek85Z8bjtjo2VnlrrDE89WP', 'index': 0, 'type': 'function'}
+                    # {'function': {'arguments': '{"sy'}, 'index': 0}]
+                    # {'function': {'arguments': '', 'name': 'definition'}, 'id': 'call_OVdofaKjMgWIu5z0mmuHiMou', 'index': 1, 'type': 'function'}
+                    # {'function': {'arguments': '{"sy'}, 'index': 1}
+                    tool_idx = plus_tool["index"]
+                    assert 0 <= tool_idx < 100, f"oops tool_idx is {tool_idx}"
+                    if choice.tool_calls is None:
+                        choice.tool_calls = []
+                    while len(choice.tool_calls) <= tool_idx:
+                        choice.tool_calls.append(ToolCallDict(id="", function=FunctionDict(arguments="", name=""), type=""))
+                    tool = choice.tool_calls[tool_idx]
+                    tool.id = plus_tool.get("id", tool.id)
+                    tool.type = plus_tool.get("type", tool.type)
+                    if "function" in plus_tool:
+                        function_plus = plus_tool["function"]
+                        tool.function.name += function_plus.get("name", "")
+                        tool.function.arguments += function_plus.get("arguments", "")
+            elif plus_content := delta.get("content"):
+                # print("CONTENT", plus_content)
+                choice.content += plus_content
+            elif "finish_reason" in j_choice:
+                choice.finish_reason = j_choice["finish_reason"]
+            else:
+                print("unrecognized delta", j_choice)
+
+
 async def ask_using_http(
     base_url: str,
     messages: List[Message],
-    stop: List[str],
-    verbose: bool,
     n_answers: int,
     model_name: str,
     *,
+    stop: List[str] = [],
     tools: Optional[List[Dict[str, Any]]] = None,
     temperature: float = 0.6,
+    stream: bool = False,
+    verbose: bool = True,
+    max_tokens: int = 1000,
 ) -> List[List[Message]]:
+    deterministic: List[Message] = []
+    post_me = {
+        "model": model_name,
+        "n": n_answers,
+        "messages": messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name),
+        "temperature": temperature,
+        "top_p": 0.95,
+        "stop": stop,
+        "stream": stream,
+        "tools": tools,
+        "max_tokens": max_tokens,
+    }
+    choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:
-        post_me = {
-            "model": model_name,
-            "n": n_answers,
-            "messages": messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name),
-            "temperature": temperature,
-            "top_p": 0.95,
-            "stop": stop,
-            "stream": False,
-            "tools": tools,
-        }
         async with session.post(base_url + "/chat", json=post_me) as response:
             assert response.status == 200
-            j = await response.json()
-    deterministic = [Message(**x) for x in j.get("deterministic_messages", [])]
-    j_choices = j["choices"]
-    choices: List[Optional[Message]] = [None] * len(j_choices)
-    for i, ch in enumerate(j_choices):
-        index = ch["index"]
-        tool_calls = ch["message"].get("tool_calls", None)
-        msg = Message(
-            role=ch["message"]["role"],
-            content=ch["message"]["content"],
-            tool_calls=[ToolCallDict(**x) for x in tool_calls] if tool_calls is not None else None,
-            finish_reason=ch["finish_reason"],
-        )
-        choices[index] = msg
+            if not stream:
+                j = await response.json()
+                deterministic = [Message(**x) for x in j.get("deterministic_messages", [])]
+                j_choices = j["choices"]
+                for i, ch in enumerate(j_choices):
+                    index = ch["index"]
+                    tool_calls = ch["message"].get("tool_calls", None)
+                    msg = Message(
+                        role=ch["message"]["role"],
+                        content=ch["message"]["content"],
+                        tool_calls=[ToolCallDict(**x) for x in tool_calls] if tool_calls is not None else None,
+                        finish_reason=ch["finish_reason"],
+                    )
+                    choices[index] = msg
+            else:
+                choice_collector = ChoiceDeltaCollector(n_answers)
+                async for line in response.content:
+                    line_str = line.decode('utf-8').strip()
+                    if not line_str:
+                        continue
+                    if not line_str.startswith("data: "):
+                        print("unrecognized streaming data (1):", line_str)
+                        continue
+                    line_str = line_str[6:]
+                    # print(">>>", line_str)
+                    if line_str == "[DONE]":
+                        break
+                    j = json.loads(line_str)
+                    if "choices" in j:
+                        choice_collector.add_deltas(j["choices"])
+                    elif "role" in j:
+                        deterministic.append(Message(**j))
+                    else:
+                        print("unrecognized streaming data (2):", j)
+                choices = choice_collector.choices
+    # for msg in choices:
+    #     print("CHOICE", msg)
     choices_not_none: List[Message] = [msg for msg in choices if msg is not None]
     return join_messages_and_choices(messages, deterministic, choices_not_none, verbose)
 
@@ -157,13 +223,14 @@ async def ask_using_http(
 async def ask_using_openai_client(
     base_url: str,
     messages: List[Message],
-    stop: List[str],
-    verbose: bool,
     n_answers: int,
     model_name: str,
     *,
+    stop: List[str],
     tools: Optional[List[Dict[str, Any]]] = None,
     temperature: float = 0.6,
+    verbose: bool = True,
+    max_tokens: int = 1000,
 ) -> List[List[Message]]:
     import openai
     # os.environ["OPENAI_LOG"] = "debug"
@@ -181,6 +248,7 @@ async def ask_using_openai_client(
         stop=stop,
         stream=False,
         tools=tools,
+        max_tokens=max_tokens
     )
     assert isinstance(chat_completion, openai.types.chat.chat_completion.ChatCompletion)
     # TODO: chat_completion.deterministic_messages

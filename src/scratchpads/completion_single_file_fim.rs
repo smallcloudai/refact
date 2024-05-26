@@ -150,6 +150,7 @@ impl ScratchpadAbstract for SingleFileFIM {
         &mut self,
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
+        _tools_mb: Option<Vec<serde_json::Value>>,
     ) -> Result<String, String> {
         let fim_t0 = Instant::now();
         let use_rag = !self.t.context_format.is_empty() && self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_module.is_some();
@@ -397,7 +398,6 @@ impl ScratchpadAbstract for SingleFileFIM {
         delta: String,
         stop_toks: bool,
         stop_length: bool,
-        _tool_calls: Option<Value>,
     ) -> Result<(Value, bool), String> {
         let mut finished;
         let json_choices;

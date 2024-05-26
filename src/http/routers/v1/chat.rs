@@ -65,6 +65,9 @@ async fn chat(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", e))
     })?;
     if chat_post.parameters.max_new_tokens == 0 {
+        chat_post.parameters.max_new_tokens = chat_post.max_tokens;
+    }
+    if chat_post.parameters.max_new_tokens == 0 {
         chat_post.parameters.max_new_tokens = 1024;
     }
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.2)));
@@ -88,6 +91,7 @@ async fn chat(
     let prompt = scratchpad.prompt(
         n_ctx,
         &mut chat_post.parameters,
+        chat_post.tools,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
@@ -102,7 +106,6 @@ async fn chat(
             client1,
             api_key,
             &chat_post.parameters,
-            chat_post.tools,
         ).await
     } else {
         crate::restream::scratchpad_interaction_stream(
@@ -114,7 +117,6 @@ async fn chat(
             client1,
             api_key,
             chat_post.parameters.clone(),
-            chat_post.tools,
         ).await
     }
 }

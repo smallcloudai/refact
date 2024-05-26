@@ -101,15 +101,16 @@ pub async fn handle_v1_code_completion(
     let prompt = scratchpad.prompt(
         n_ctx,
         &mut code_completion_post.parameters,
+        None,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
     // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
     info!("prompt {:?}", t1.elapsed());
     if !code_completion_post.stream {
-        crate::restream::scratchpad_interaction_not_stream(global_context.clone(), scratchpad, "completion".to_string(), &prompt, model_name, client1, api_key, &code_completion_post.parameters, None).await
+        crate::restream::scratchpad_interaction_not_stream(global_context.clone(), scratchpad, "completion".to_string(), &prompt, model_name, client1, api_key, &code_completion_post.parameters).await
     } else {
-        crate::restream::scratchpad_interaction_stream(global_context.clone(), scratchpad, "completion-stream".to_string(), prompt, model_name, client1, api_key, code_completion_post.parameters.clone(), None).await
+        crate::restream::scratchpad_interaction_stream(global_context.clone(), scratchpad, "completion-stream".to_string(), prompt, model_name, client1, api_key, code_completion_post.parameters.clone()).await
     }
 }
 
@@ -160,7 +161,7 @@ pub async fn handle_v1_code_completion_prompt(
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
 
-    let prompt = scratchpad.prompt(n_ctx, &mut post.parameters).await.map_err(|e|
+    let prompt = scratchpad.prompt(n_ctx, &mut post.parameters, None).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
 

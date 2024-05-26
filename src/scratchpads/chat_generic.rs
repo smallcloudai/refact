@@ -92,6 +92,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         &mut self,
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
+        _tools_mb: Option<Vec<serde_json::Value>>,
     ) -> Result<String, String> {
         let top_n = 10;
         let (messages, undroppable_msg_n) = if self.allow_at {
@@ -156,7 +157,6 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         delta: String,
         stop_toks: bool,
         _stop_length: bool,
-        _tool_calls: Option<Value>,
     ) -> Result<(Value, bool), String> {
         self.dd.response_streaming(delta, stop_toks)
     }

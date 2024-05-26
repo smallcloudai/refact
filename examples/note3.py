@@ -76,6 +76,7 @@ async def do_all():
     parser.add_argument('--start-with', type=str, help='Dump with initial messages')
     parser.add_argument('--user', type=str, help='User message')
     parser.add_argument('--note', action='store_true', help='Generate note')
+    parser.add_argument('--stream', action='store_true', help='Stream messages')
     args = parser.parse_args()
     if args.start_with:
         with open(f"note_logs/{args.start_with}", "r") as f:
@@ -105,12 +106,13 @@ async def do_all():
         assistant_choices = await chat_client.ask_using_http(
             "http://127.0.0.1:8001/v1",
             messages,
-            [],
-            True,
             N,
             MODEL,
             tools=tools,
+            verbose=True,
             temperature=0.6,
+            stream=args.stream,
+            max_tokens=2048,
         )
         assert(len(assistant_choices)==N)
         messages = assistant_choices[0]

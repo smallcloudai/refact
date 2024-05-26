@@ -268,6 +268,8 @@ pub struct ChatPost {
     pub stream: Option<bool>,
     pub temperature: Option<f32>,
     #[serde(default)]
+    pub max_tokens: usize,
+    #[serde(default)]
     pub tools: Option<Vec<serde_json::Value>>,
     // pub tool_choice: Option<String>,
 }

@@ -18,6 +18,7 @@ pub trait ScratchpadAbstract: Send {
         &mut self,
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
+        tools_mb: Option<Vec<serde_json::Value>>,
     ) -> Result<String, String>;
 
     fn response_n_choices(   // Not streaming, convert what model says (choices) to final result
@@ -31,7 +32,6 @@ pub trait ScratchpadAbstract: Send {
         delta: String,       // if delta is empty, there is no more input, add final fields if needed
         stop_toks: bool,
         stop_length: bool,
-        tool_calls: Option<Value>,
     ) -> Result<(Value, bool), String>;
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>;
