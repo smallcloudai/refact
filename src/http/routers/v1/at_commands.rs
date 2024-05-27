@@ -13,14 +13,12 @@ use tracing::info;
 
 use crate::cached_tokenizers;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_commands::query::{query_line_args, QueryLineArg};
-use crate::at_commands::execute::execute_at_commands_in_query;
+use crate::at_commands::execute::{execute_at_commands_in_query, parse_words_from_line};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::call_validation::ChatMessage;
 use crate::scratchpads::chat_utils_rag::{max_tokens_for_rag_chat, postprocess_at_results2};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
-use crate::at_commands::at_commands_dict::at_commands_dicts;
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -50,25 +48,6 @@ struct Highlight {
     pos2: i64,
     ok: bool,
     reason: String,
-}
-
-pub async fn handle_v1_tools_available(
-    Extension(_global_context): Extension<Arc<ARwLock<GlobalContext>>>,
-    _: hyper::body::Bytes,
-)  -> Result<Response<Body>, ScratchError> {
-    let at_dict = at_commands_dicts().map_err(|e| {
-            tracing::warn!("can't load at_commands_dicts: {}", e);
-            return ScratchError::new(StatusCode::NOT_FOUND, format!("can't load at_commands_dicts: {}", e));
-        })?;
-    let body = serde_json::to_string_pretty(
-        &at_dict.iter().map(|x|x.clone().into_openai_style()).collect::<Vec<_>>()
-    ).map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "application/json")
-        .body(Body::from(body))
-        .unwrap()
-    )
 }
 
 pub async fn handle_v1_command_completion(
@@ -285,4 +264,31 @@ async fn command_completion_options(
         .take(ccx.top_n)
         .map(|(command, _)| command.clone())
         .collect()
+}
+
+pub fn query_line_args(line: &String, cursor_rel: i64, cursor_line_start: i64, at_command_names: &Vec<String>) -> Vec<QueryLineArg> {
+    let mut args: Vec<QueryLineArg> = vec![];
+    for (text, pos1, pos2) in parse_words_from_line(line).iter().rev().cloned() {
+        if at_command_names.contains(&text) && args.iter().any(|x|(x.value.contains("@") && x.focused) || at_command_names.contains(&x.value)) {
+            break;
+        }
+        let mut x = QueryLineArg {
+            value: text.clone(),
+            pos1: pos1 as i64, pos2: pos2 as i64,
+            focused: false,
+        };
+        x.focused = cursor_rel >= x.pos1 && cursor_rel <= x.pos2;
+        x.pos1 += cursor_line_start;
+        x.pos2 += cursor_line_start;
+        args.push(x)
+    }
+    args.iter().rev().cloned().collect::<Vec<_>>()
+}
+
+#[derive(Debug, Clone)]
+pub struct QueryLineArg {
+    pub value: String,
+    pub pos1: i64,
+    pub pos2: i64,
+    pub focused: bool,
 }

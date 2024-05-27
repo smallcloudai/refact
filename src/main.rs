@@ -34,6 +34,7 @@ mod files_correction;
 mod vecdb;
 mod fetch_embedding;
 mod at_commands;
+mod at_tools;
 mod nicer_logs;
 mod toolbox;
 mod ast;

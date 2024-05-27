@@ -81,13 +81,13 @@ def collect_tools(resp: str):
 
 
 def ask():
-    # tools_available = get_tools()
-    # r1 = ask_chat(messages, tools_available, "required")
-    # tools = collect_tools(r1)
-    # print(tools)
-    # messages.append(
-    #     ["assistant", "", tools]
-    # )
+    tools_available = get_tools()
+    r1 = ask_chat(messages, tools_available, "required")
+    tools = collect_tools(r1)
+    print(tools)
+    messages.append(
+        ["assistant", "", tools]
+    )
     r2 = ask_chat(messages, None, None, False)
     print(r2)
     # print(answer_plain_text(r2))

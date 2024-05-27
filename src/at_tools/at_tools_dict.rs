@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 
 const AT_DICT: &str = r####"
-at_commands:
+at_tools:
   - name: "workspace"
     description: "Using given query, find all pieces of code in the project by vectorizing query and finding all similar pieces of code by comparing their cosien distances."
     parameters:
@@ -28,11 +28,13 @@ at_commands:
     parameters_required:
       - "symbol"
   - name: "symbols-at"
-    description: "Using a file_path in a following format: file_name.ext:line_number, find all symbols at the given line number of the file."
+    description: "Using a file_path and a line_number, find all symbols at the given line number of the file."
     parameters:
       - "file_path"
+      - "line_number"
     parameters_required:
       - "file_path"
+      - "line_number"
 
 at_params:
   - name: "query"
@@ -44,16 +46,20 @@ at_params:
   - name: "symbol"
     type: "string"
     description: "The name of the symbol (function, method, class, type alias) to find within the project."
+  - name: "line_number"
+    type: "integer"
+    description: "The line number of the file"
 "####;
+
 
 #[derive(Deserialize)]
 pub struct AtDictDeserialize {
-    pub at_commands: Vec<AtCommandDictDeserialize>,
+    pub at_tools: Vec<AtToolDictDeserialize>,
     pub at_params: Vec<AtParamDict>,
 }
 
 #[derive(Deserialize)]
-pub struct AtCommandDictDeserialize{
+pub struct AtToolDictDeserialize{
     pub name: String,
     pub description: String,
     pub parameters: Vec<String>,
@@ -61,7 +67,7 @@ pub struct AtCommandDictDeserialize{
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct AtCommandDict {
+pub struct AtToolDict {
     pub name: String,
     pub description: String,
     pub parameters: Vec<AtParamDict>,
@@ -76,9 +82,9 @@ pub struct AtParamDict {
     pub description: String,
 }
 
-impl AtCommandDict {
-    pub fn new(cmd: &AtCommandDictDeserialize, params: &Vec<AtParamDict>) -> Self {
-        AtCommandDict {
+impl AtToolDict {
+    pub fn new(cmd: &AtToolDictDeserialize, params: &Vec<AtParamDict>) -> Self {
+        AtToolDict {
             name: cmd.name.clone(),
             description: cmd.description.clone(),
             parameters: cmd.parameters.iter()
@@ -117,13 +123,13 @@ impl AtCommandDict {
     }
 }
 
-pub fn at_commands_dicts() -> Result<Vec<AtCommandDict>, String> {
+pub fn at_tools_dicts() -> Result<Vec<AtToolDict>, String> {
     let at_dict: AtDictDeserialize = serde_yaml::from_str(AT_DICT)
         .map_err(|e|format!("Failed to parse AT_DICT: {}", e))?;
 
-    let at_command_dicts = at_dict.at_commands.iter()
-        .map(|x| AtCommandDict::new(x, &at_dict.at_params))
-       .collect::<Vec<AtCommandDict>>();
+    let at_command_dicts = at_dict.at_tools.iter()
+        .map(|x| AtToolDict::new(x, &at_dict.at_params))
+        .collect::<Vec<AtToolDict>>();
 
     Ok(at_command_dicts)
 }

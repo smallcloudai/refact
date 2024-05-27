@@ -11,14 +11,12 @@ use crate::call_validation::{ContextFile, ContextEnum};
 
 
 pub struct AtFile {
-    pub name: String,
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
 }
 
 impl AtFile {
     pub fn new() -> Self {
         AtFile {
-            name: "@file".to_string(),
             params: vec![
                 Arc::new(AMutex::new(AtParamFilePath::new()))
             ],
@@ -125,7 +123,7 @@ async fn parameter_repair_candidates(
     }).collect();
 }
 
-fn text_on_clip(result: &ContextFile, from_tool_call: bool) -> String {
+pub fn text_on_clip(result: &ContextFile, from_tool_call: bool) -> String {
     if !from_tool_call {
         return "".to_string();
     }
@@ -150,7 +148,6 @@ impl AtParam for AtParamFilePath {
     fn name(&self) -> &String {
         &self.name
     }
-
     async fn is_value_valid(&self, value: &String, ccx: &AtCommandsContext) -> bool {
         let mut value = value.clone();
         colon_lines_range_from_arg(&mut value);
@@ -170,53 +167,55 @@ impl AtParam for AtParamFilePath {
     }
 }
 
-#[async_trait]
-impl AtCommand for AtFile {
-    fn name(&self) -> &String {
-        &self.name
+pub async fn execute_at_file(ccx: &mut AtCommandsContext, file_path: String) -> Result<ContextFile, String> {
+    let candidates = parameter_repair_candidates(&file_path, ccx).await;
+    if candidates.is_empty() {
+        info!("parameter {:?} is uncorrectable :/", &file_path);
+        return Err(format!("parameter {:?} is uncorrectable :/", &file_path));
+    }
+    let mut file_path = candidates.get(0).unwrap().clone();
+
+    let mut line1 = 0;
+    let mut line2 = 0;
+
+    let colon_kind_mb = colon_lines_range_from_arg(&mut file_path);
+
+    let gradient_type = gradient_type_from_range_kind(&colon_kind_mb);
+
+    let cpath = crate::files_correction::canonical_path(&file_path);
+    let file_text = get_file_text_from_memory_or_disk(ccx.global_context.clone(), &cpath).await?;
+
+    if let Some(colon) = &colon_kind_mb {
+        line1 = colon.line1;
+        line2 = colon.line2;
+    }
+    if line1 == 0 && line2 == 0 {
+        line2 = file_text.lines().count()
     }
 
+    Ok(ContextFile {
+        file_name: file_path.clone(),
+        file_content: file_text,
+        line1,
+        line2,
+        symbol: Uuid::default(),
+        gradient_type,
+        usefulness: 100.0,
+        is_body_important: false
+    })
+}
+
+#[async_trait]
+impl AtCommand for AtFile {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-
-    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
-        let correctable_file_path = args[0].clone();
-        let candidates = parameter_repair_candidates(&correctable_file_path, ccx).await;
-        if candidates.len() == 0 {
-            info!("parameter {:?} is uncorrectable :/", &correctable_file_path);
-            return Err(format!("parameter {:?} is uncorrectable :/", &correctable_file_path));
-        }
-        let mut file_path = candidates[0].clone();
-
-        let mut line1 = 0;
-        let mut line2 = 0;
-
-        let colon_kind_mb = colon_lines_range_from_arg(&mut file_path);
-
-        let gradient_type = gradient_type_from_range_kind(&colon_kind_mb);
-
-        let cpath = crate::files_correction::canonical_path(&file_path);
-        let file_text = get_file_text_from_memory_or_disk(ccx.global_context.clone(), &cpath).await?;
-
-        if let Some(colon) = &colon_kind_mb {
-            line1 = colon.line1;
-            line2 = colon.line2;
-        }
-        if line1 == 0 && line2 == 0 {
-            line2 = file_text.lines().count()
-        }
-
-        let context_file = ContextFile {
-            file_name: file_path.clone(),
-            file_content: file_text,
-            line1,
-            line2,
-            symbol: Uuid::default(),
-            gradient_type,
-            usefulness: 100.0,
-            is_body_important: false
+    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+        let file_path = match args.get(0) { 
+            Some(x) => x.clone(), 
+            None => { return Err("missing file path".to_string()); }
         };
+        let context_file = execute_at_file(ccx, file_path).await?;
         let text = text_on_clip(&context_file, false);
         Ok((vec_context_file_to_context_tools(vec![context_file]), text))
     }
@@ -252,7 +251,6 @@ mod tests {
             let mut value = String::from("invalid");
             let result = colon_lines_range_from_arg(&mut value);
             assert_eq!(result, None);
-
         }
     }
 }

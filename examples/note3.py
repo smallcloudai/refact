@@ -69,7 +69,6 @@ After describing all points, call note_to_self() in parallel for each actionable
 """
 
 
-
 async def do_all():
     global DEPTH
     parser = argparse.ArgumentParser()
@@ -117,7 +116,7 @@ async def do_all():
         assert(len(assistant_choices)==N)
         messages = assistant_choices[0]
         with open(f"note_logs/{DUMP_PREFIX}.json", "w") as f:
-            json_data = [msg.json(indent=4) for msg in messages]
+            json_data = [json.dumps(msg.json(), indent=4) for msg in messages]
             f.write("[\n" + ",\n".join(json_data) + "\n]")
             f.write("\n")
         if not messages[-1].tool_calls:

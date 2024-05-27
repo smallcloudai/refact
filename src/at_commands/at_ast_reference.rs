@@ -10,6 +10,9 @@ use crate::call_validation::{ContextFile, ContextEnum};
 use tracing::info;
 use crate::ast::ast_index::RequestSymbolType;
 
+pub fn text_on_clip(symbol_path: &String) -> String {
+    format!("\"usages of {}\"", symbol_path)
+}
 
 async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
     // info!("results2message {:?}", result);
@@ -32,14 +35,12 @@ async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
 }
 
 pub struct AtAstReference {
-    pub name: String,
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
 }
 
 impl AtAstReference {
     pub fn new() -> Self {
         AtAstReference {
-            name: "@references".to_string(),
             params: vec![
                 Arc::new(AMutex::new(AtParamSymbolReferencePathQuery::new()))
             ],
@@ -47,41 +48,40 @@ impl AtAstReference {
     }
 }
 
+pub async fn execute_at_ast_reference(ccx: &mut AtCommandsContext, symbol_path: &String) -> Result<Vec<ContextFile>, String> {
+    let ast = ccx.global_context.read().await.ast_module.clone();
+    let x = match &ast {
+        Some(ast) => {
+            match ast.read().await.search_by_name(
+                symbol_path.clone(),
+                RequestSymbolType::Usage,
+                true,
+                10
+            ).await {
+                Ok(res) => Ok(results2message(&res).await),
+                Err(err) => Err(err)
+            }
+        }
+        None => Err("Ast module is not available".to_string())
+    };
+    x
+}
+
 #[async_trait]
 impl AtCommand for AtAstReference {
-    fn name(&self) -> &String {
-        &self.name
-    }
-
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-
-    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @references {:?}", args);
         let symbol_path = match args.get(0) {
             Some(x) => x,
             None => return Err("no symbol path".to_string()),
         };
-        let ast = ccx.global_context.read().await.ast_module.clone();
-        let x = match &ast {
-            Some(ast) => {
-                match ast.read().await.search_by_name(
-                    symbol_path.clone(),
-                    RequestSymbolType::Usage,
-                    true,
-                    10
-                ).await {
-                    Ok(res) => Ok(results2message(&res).await),
-                    Err(err) => Err(err)
-                }
-            }
-            None => Err("Ast module is not available".to_string())
-        };
-        let x = x.map(|j|vec_context_file_to_context_tools(j));
-        x.map(|i|(i, format!("\"usages of {}\"", symbol_path)))
+        let results = vec_context_file_to_context_tools(execute_at_ast_reference(ccx, symbol_path).await?);
+        let text = text_on_clip(symbol_path);
+        Ok((results, text))
     }
-
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }

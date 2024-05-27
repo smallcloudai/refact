@@ -6,7 +6,5 @@ pub mod at_commands;
 pub mod at_file;
 pub mod at_workspace;
 pub mod at_params;
-pub mod query;
 pub mod execute;
-pub mod at_commands_dict;
 pub mod at_local_notes_to_self;

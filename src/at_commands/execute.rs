@@ -1,8 +1,113 @@
+use std::sync::{Arc, RwLock};
 use regex::Regex;
+use serde_json::{json, Value};
+use tokenizers::Tokenizer;
+use tracing::{info, warn};
+use tokio::sync::RwLock as ARwLock;
 
-use crate::at_commands::at_commands::{AtCommandCall, AtCommandsContext};
-use crate::call_validation::ContextEnum;
+use crate::at_commands::at_commands::{AtCommandCall, AtCommandsContext, filter_only_context_file_from_context_tool};
+use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
+use crate::global_context::GlobalContext;
+use crate::scratchpads::chat_utils_rag::{count_tokens, HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2};
 
+
+pub async fn run_at_commands(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+    maxgen: usize,
+    n_ctx: usize,
+    original_messages: &Vec<ChatMessage>,
+    top_n: usize,
+    stream_back_to_user: &mut HasRagResults,
+) -> (Vec<ChatMessage>, usize) {
+    let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
+    info!("reserve_for_context {} tokens", reserve_for_context);
+
+    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n).await;
+
+    let mut user_msg_starts = original_messages.len();
+    let mut messages_with_at: usize = 0;
+    while user_msg_starts > 0 {
+        let message = original_messages.get(user_msg_starts - 1).unwrap().clone();
+        if message.role == "user" {
+            user_msg_starts -= 1;
+            if message.content.contains("@") {
+                messages_with_at += 1;
+            }
+        } else {
+            break;
+        }
+    }
+
+    // Token limit works like this:
+    // - if there's only 1 user message at the bottom, it receives reserve_for_context tokens for context
+    // - if there are N user messages, they receive reserve_for_context/N tokens each (and there's no taking from one to give to the other)
+    // This is useful to give prefix and suffix of the same file precisely the position necessary for FIM-like operation of a chat model
+    let mut rebuilt_messages: Vec<ChatMessage> = original_messages.iter().take(user_msg_starts).map(|m| m.clone()).collect();
+    for msg_idx in user_msg_starts..original_messages.len() {
+        let msg = original_messages[msg_idx].clone();
+        let role = msg.role.clone();
+
+        let mut content = msg.content.clone();
+        let content_n_tokens = count_tokens(&tokenizer.read().unwrap(), &content);
+        let mut context_limit = reserve_for_context / messages_with_at.max(1);
+        if context_limit <= content_n_tokens {
+            context_limit = 0;
+        } else {
+            context_limit -= content_n_tokens;
+        }
+        info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", msg_idx, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens,context_limit);
+
+        let mut messages_exec_output = vec![];
+        if content.contains("@") {
+            let (res, _) = execute_at_commands_in_query(&mut ccx, &mut content, true).await;
+            messages_exec_output.extend(res);
+        }
+
+        for exec_result in messages_exec_output.iter() {
+            // at commands exec() can produce both role="user" and role="assistant" messages
+            if let ContextEnum::ChatMessage(raw_msg) = exec_result {
+                rebuilt_messages.push(raw_msg.clone());
+                stream_back_to_user.push_in_json(json!(raw_msg));
+            }
+        }
+
+        // TODO: reduce context_limit by tokens(messages_exec_output)
+        let t0 = std::time::Instant::now();
+        let post_processed: Vec<ContextFile> = postprocess_at_results2(
+            global_context.clone(),
+            &filter_only_context_file_from_context_tool(&messages_exec_output),
+            tokenizer.clone(),
+            context_limit,
+            false,
+        ).await;
+        if post_processed.len() > 0 {
+            // post-processed files after all custom messages
+            let json_vec = post_processed.iter().map(|p| {
+                json!(p)
+            }).collect::<Vec<Value>>();
+            if json_vec.len() > 0 {
+                let message = ChatMessage::new(
+                    "context_file".to_string(),
+                    serde_json::to_string(&json_vec).unwrap_or("".to_string()),
+                );
+                rebuilt_messages.push(message.clone());
+                stream_back_to_user.push_in_json(json!(message));
+            }
+        }
+        info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
+
+        if content.trim().len() > 0 {
+            // stream back to the user, with at-commands replaced
+            let msg = ChatMessage::new(role.clone(), content);
+            rebuilt_messages.push(msg.clone());
+            if role == "user" {
+                stream_back_to_user.push_in_json(json!(msg));
+            }
+        }
+    }
+    return (rebuilt_messages.clone(), user_msg_starts)
+}
 
 async fn correct_call_if_needed(
     call: &mut AtCommandCall,
@@ -66,7 +171,7 @@ async fn execute_at_commands_from_query_line(
     };
 
     let at_command_names = ccx.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
-    tracing::info!("at-commands running {:?} commands available {:?}", query, at_command_names);
+    info!("at-commands running {:?} commands available {:?}", query, at_command_names);
     let line_words = parse_words_from_line(line);
     let mut line_words_cloned = line_words.iter().map(|(x, _, _)|x.clone()).collect::<Vec<_>>();
     let mut another_pass_needed = false;
@@ -92,7 +197,7 @@ async fn execute_at_commands_from_query_line(
             let mut executed = false;
             let mut text_on_clip = String::new();
             if highlights_local.iter().all(|x|x.ok) {
-                match call.command.lock().await.execute_as_at_command(ccx, query, &call.args).await {
+                match call.command.lock().await.execute(ccx, query, &call.args).await {
                     Ok((m_res, m_text_on_clip)) =>
                         {
                             executed = true;
@@ -100,7 +205,7 @@ async fn execute_at_commands_from_query_line(
                             msgs.extend(m_res)
                         },
                     Err(e) => {
-                        tracing::warn!("can't execute command that indicated it can execute: {}", e);
+                        warn!("can't execute command that indicated it can execute: {}", e);
                     }
                 }
             }

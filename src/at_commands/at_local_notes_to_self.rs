@@ -14,14 +14,12 @@ fn text_on_clip(from_tool_call: bool) -> String {
 }
 
 pub struct AtLocalNotesToSelf {
-    pub name: String,
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
 }
 
 impl AtLocalNotesToSelf {
     pub fn new() -> Self {
         AtLocalNotesToSelf {
-            name: "@local-notes-to-self".to_string(),
             params: vec![],
         }
     }
@@ -29,15 +27,10 @@ impl AtLocalNotesToSelf {
 
 #[async_trait]
 impl AtCommand for AtLocalNotesToSelf {
-    fn name(&self) -> &String {
-        &self.name
-    }
-
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-
-    async fn execute_as_at_command(&self, ccx: &mut AtCommandsContext, _query: &String, _args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, _args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         let cache_dir = {
             let gcx_locked = ccx.global_context.read().await;
             gcx_locked.cache_dir.clone()
@@ -65,29 +58,3 @@ impl AtCommand for AtLocalNotesToSelf {
         Ok((context_tools, text))
     }
 }
-
-
-// [
-// {
-//     role: "assistant",
-//     content: "Let's look up Frog and Toad",
-//     tool_calls: [{"Frog", "defintion", id="xxx"}, {"Toad", "references", id="yyyy"}]
-// },
-// {
-//     role: "tool",
-//     content: "`Frog` defined in frog.py and other files",
-//     call_id: "xxx",
-// },
-// {
-//     role: "tool",
-//     content: "`Toad` referenced in 1.py:1337 2.py:1338 and 25 other places",
-//     call_id: "yyyy",
-// },
-// {
-//     role: "context_file",
-//     content: "[{frog.py\n```xxxxxxx```}, {toad.py\n```yyyyyyyy```}]",
-//     call_id
-// },
-// ]
-
-
