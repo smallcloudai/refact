@@ -12,7 +12,6 @@ import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 const CodeBlock: React.FC<
   React.JSX.IntrinsicElements["code"] & { node?: Element | undefined }
 > = ({ children, className, color: _color, ref: _ref, node: _node }) => {
-  const codeRef = React.useRef<HTMLElement | null>(null);
   const match = /language-(\w+)/.exec(className ?? "");
   const textWithOutTrailingNewLine = String(children).replace(/\n$/, "");
 
@@ -22,7 +21,7 @@ const CodeBlock: React.FC<
       style={hljsStyle}
       className={className}
       CodeTag={(props) => (
-        <Code {...props} className={classNames(styles.code)} ref={codeRef} />
+        <Code {...props} size="2" className={classNames(styles.code)} />
       )}
       language={language}
       // useInlineStyles={false}
@@ -38,7 +37,7 @@ export const Markdown: React.FC<{ children: string; className?: string }> = ({
 }) => {
   return (
     <ReactMarkdown
-      className={classNames(styles.markdow, className)}
+      className={classNames(styles.markdown, className)}
       components={{
         code(props) {
           return <CodeBlock {...props} />;

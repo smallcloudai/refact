@@ -29,7 +29,7 @@ export const CommandLine: React.FC<CommandLineProps> = ({
     <Box m="3">
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
-          <Button size="2" variant="ghost" className={styles.button}>
+          <Button size="2" className={styles.button}>
             <Markdown className={styles.command}>{str}</Markdown>
             <div style={{ right: "var(--space-3)", position: "absolute" }}>
               {open ? <Cross2Icon /> : <RowSpacingIcon />}

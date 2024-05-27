@@ -1,9 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { CommandLine } from ".";
+import { Box } from "@radix-ui/themes";
 
 const meta = {
   title: "Components/Command Line",
   component: CommandLine,
+  decorators: (Page) => (
+    <Box p="8">
+      <Page />
+    </Box>
+  ),
   args: {
     command: "",
     error: false,

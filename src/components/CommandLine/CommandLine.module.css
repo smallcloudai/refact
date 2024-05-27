@@ -24,6 +24,7 @@
   display: flex;
   text-align: unset;
   position: relative;
+  padding: 0;
 }
 
 .command pre {
