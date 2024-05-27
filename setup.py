@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="refact",
-    version="0.1",
+    version="0.8.2",
     packages=find_packages(),
     install_requires=[
         "aiohttp",
@@ -14,9 +14,13 @@ setup(
     description="A python client to refact-lsp server",
     url="https://github.com/smallcloudai/refact",
     classifiers=[
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: BSD 3-Clause License",
+        "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
+        "Environment :: Console",
     ],
     python_requires=">=3.6",
 )
