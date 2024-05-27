@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { CommandLine } from ".";
 import { Box } from "@radix-ui/themes";
 
-const meta = {
+const meta: Meta<typeof CommandLine> = {
   title: "Components/Command Line",
   component: CommandLine,
   decorators: (Page) => (
@@ -16,7 +16,7 @@ const meta = {
     args: {},
     result: "",
   },
-} as Meta<typeof CommandLine>;
+};
 
 export default meta;
 
