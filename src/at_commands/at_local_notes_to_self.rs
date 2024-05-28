@@ -30,7 +30,7 @@ impl AtCommand for AtLocalNotesToSelf {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, _args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, _args: &Vec<String>, _opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         let cache_dir = {
             let gcx_locked = ccx.global_context.read().await;
             gcx_locked.cache_dir.clone()

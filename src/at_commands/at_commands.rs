@@ -6,7 +6,7 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::at_tools::at_tools::{at_tools_dict, AtTool};
-use crate::call_validation::{ContextFile, ContextEnum};
+use crate::call_validation::{ContextFile, ContextEnum, ChatMessage};
 use crate::global_context::GlobalContext;
 
 use crate::at_commands::at_workspace::AtWorkspace;
@@ -15,6 +15,7 @@ use crate::at_commands::at_ast_definition::AtAstDefinition;
 use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
 use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
+use crate::at_commands::at_execute_cmd::AtExecuteCommand;
 
 
 pub struct AtCommandsContext {
@@ -39,7 +40,7 @@ impl AtCommandsContext {
 pub trait AtCommand: Send + Sync {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>;
     // returns (messages_for_postprocessing, text_on_clip)
-    async fn execute(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String>;
+    async fn execute(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>, opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String>;
     fn depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
 }
 
@@ -73,6 +74,7 @@ pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand 
         ("@references".to_string(), Arc::new(AMutex::new(Box::new(AtAstReference::new()) as Box<dyn AtCommand + Send>))),
         ("@symbols-at".to_string(), Arc::new(AMutex::new(Box::new(AtAstLookupSymbols::new()) as Box<dyn AtCommand + Send>))),
         ("@local-notes-to-self".to_string(), Arc::new(AMutex::new(Box::new(AtLocalNotesToSelf::new()) as Box<dyn AtCommand + Send>))),
+        ("@execute".to_string(), Arc::new(AMutex::new(Box::new(AtExecuteCommand::new()) as Box<dyn AtCommand + Send>))),
     ]);
 }
 
@@ -85,4 +87,11 @@ pub fn filter_only_context_file_from_context_tool(tools: &Vec<ContextEnum>) -> V
         .filter_map(|x| {
             if let ContextEnum::ContextFile(data) = x { Some(data.clone()) } else { None }
         }).collect::<Vec<ContextFile>>()
+}
+
+pub fn filter_only_chat_messages_from_context_tool(tools: &Vec<ContextEnum>) -> Vec<ChatMessage> {
+    tools.iter()
+       .filter_map(|x| {
+            if let ContextEnum::ChatMessage(data) = x { Some(data.clone()) } else { None }
+        }).collect::<Vec<ChatMessage>>()
 }

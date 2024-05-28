@@ -9,11 +9,10 @@ use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 use crate::ast::structs::SymbolsSearchResultStruct;
-use crate::at_commands::at_commands::{filter_only_context_file_from_context_tool};
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
 
-use crate::call_validation::{ContextFile, ContextEnum};
+use crate::call_validation::ContextFile;
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};

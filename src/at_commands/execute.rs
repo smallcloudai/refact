@@ -1,4 +1,5 @@
 use std::sync::{Arc, RwLock};
+use itertools::Itertools;
 use regex::Regex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -171,7 +172,7 @@ async fn execute_at_commands_from_query_line(
     };
 
     let at_command_names = ccx.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
-    info!("at-commands running {:?} commands available {:?}", query, at_command_names);
+    info!("at-commands running {:?}; commands available {:?}", query, at_command_names);
     let line_words = parse_words_from_line(line);
     let mut line_words_cloned = line_words.iter().map(|(x, _, _)|x.clone()).collect::<Vec<_>>();
     let mut another_pass_needed = false;
@@ -197,7 +198,12 @@ async fn execute_at_commands_from_query_line(
             let mut executed = false;
             let mut text_on_clip = String::new();
             if highlights_local.iter().all(|x|x.ok) {
-                match call.command.lock().await.execute(ccx, query, &call.args).await {
+                match call.command.lock().await.execute(
+                    ccx, 
+                    query, 
+                    &call.args,
+                    &line_words.iter().skip(w_idx + 1).map(|(text, _, _)|text.clone()).collect::<Vec<_>>(),
+                ).await {
                     Ok((m_res, m_text_on_clip)) =>
                         {
                             executed = true;

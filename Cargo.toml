@@ -17,7 +17,7 @@ shadow-rs = "0.25.0"
 shadow-rs = { version = "0.25.0", features = [], default-features = false }
 hyper = { version = "0.14", features = ["server", "stream"] }
 reqwest = { version = "0.11", features = ["json", "stream"] }
-tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal"] }
+tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal", "process"] }
 reqwest-eventsource = "0.4.0"
 url = "2.4.1"
 serde = { version = "1", features = ["rc", "derive"] }

@@ -210,7 +210,7 @@ impl AtCommand for AtFile {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>, _opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         let file_path = match args.get(0) { 
             Some(x) => x.clone(), 
             None => { return Err("missing file path".to_string()); }

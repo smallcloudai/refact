@@ -66,7 +66,8 @@ impl AtCommand for AtWorkspace {
     {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>, _opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+        // TODO: use opt_args instead of args
         let vector_of_context_file = execute_at_workspace(ccx, query, args).await?;
         let text = text_on_clip(query, false);
         Ok((vec_context_file_to_context_tools(vector_of_context_file), text))

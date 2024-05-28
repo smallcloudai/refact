@@ -12,7 +12,7 @@ use tokenizers::Tokenizer;
 use tracing::info;
 
 use crate::cached_tokenizers;
-use crate::at_commands::at_commands::AtCommandsContext;
+use crate::at_commands::at_commands::{AtCommandsContext, filter_only_chat_messages_from_context_tool};
 use crate::at_commands::execute::{execute_at_commands_in_query, parse_words_from_line};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
@@ -123,6 +123,7 @@ pub async fn handle_v1_command_preview(
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut ccx, &mut query, false).await;
 
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
+    
     let processed = postprocess_at_results2(
         global_context.clone(),
         &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
@@ -130,16 +131,24 @@ pub async fn handle_v1_command_preview(
         rag_n_ctx,
         false,
     ).await;
-    let mut preview: Vec<ChatMessage> = vec![];
-    if processed.len() > 0 {
-        for p in processed {
-            let message = ChatMessage::new(
-                "tool".to_string(),
-                serde_json::to_string(&p).unwrap()
-            );
-            preview.push(message.clone());
-        }
+    
+    let mut preview = vec![];
+    for p in processed {
+        let message = ChatMessage::new(
+            "tool".to_string(),
+            serde_json::to_string(&p).unwrap()
+        );
+        preview.push(message.clone());
     }
+    
+    for c in filter_only_chat_messages_from_context_tool(&messages_for_postprocessing) {
+        let message = ChatMessage::new(
+            "tool".to_string(),
+            serde_json::to_string(&c).unwrap()
+        );
+        preview.push(message);
+    }
+
     let mut highlights = vec![];
     for h in vec_highlights {
         highlights.push(Highlight {

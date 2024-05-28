@@ -51,7 +51,7 @@ impl AtCommand for AtAstFileSymbols {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>, _opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
         let cpath = match args.get(0) {
             Some(x) => crate::files_correction::canonical_path(&x),
             None => return Err("no file path".to_string()),
