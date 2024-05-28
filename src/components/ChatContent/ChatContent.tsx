@@ -54,8 +54,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
             if (message[0] === "tool_calls") {
               const toolCals = message[1].reduce<Record<string, ToolCall>>(
                 (calls, toolCall) => {
-                  calls[toolCall.id] = toolCall;
-                  return calls;
+                  if (toolCall.id === undefined) return calls;
+                  return {
+                    ...calls,
+                    [toolCall.id]: toolCall,
+                  };
                 },
                 {},
               );
@@ -114,7 +117,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
               return (
                 <CommandLine
                   key={`tool-${index}-${text.tool_call_id}`}
-                  command={toolCallData.function.name}
+                  command={toolCallData.function.name ?? ""}
                   args={toolCallData.function.arguments}
                   result={text.content}
                   error={text.finish_reason === "call_failed"}

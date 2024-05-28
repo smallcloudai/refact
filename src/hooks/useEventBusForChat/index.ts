@@ -4,6 +4,12 @@ import {
   type ChatMessages,
   type ChatResponse,
   isChatContextFileMessage,
+  isChatContextFileDelta,
+  isAssistantMessage,
+  isAssistantDelta,
+  isToolCallDelta,
+  isToolCallMessage,
+  ToolCall,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -60,6 +66,34 @@ import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
 import { appendToolCallsToAssistantMessage } from "./appendToolCallsToAssistantMessage";
 
+function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
+  const calls = prev.slice();
+
+  if (calls[add.index]) {
+    const prevCall = calls[add.index];
+    const prevArgs = prevCall.function.arguments;
+    const nextArgs = prevArgs + add.function.arguments;
+    const call: ToolCall = {
+      ...prevCall,
+      function: {
+        ...prevCall.function,
+        arguments: nextArgs,
+      },
+    };
+    calls[add.index] = call;
+  } else {
+    calls[add.index] = add;
+  }
+  return calls;
+}
+
+export function mergeToolCalls(prev: ToolCall[], add: ToolCall[]): ToolCall[] {
+  return add.reduce((acc, cur) => {
+    return mergeToolCall(acc, cur);
+  }, prev);
+  // return prev;
+}
+
 function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
@@ -72,26 +106,39 @@ function formatChatResponse(
   }
 
   return response.choices.reduce<ChatMessages>((acc, cur) => {
-    if (cur.delta.role === "context_file") {
-      return acc.concat([[cur.delta.role, cur.delta.content]]);
-    }
-
-    if (acc.length === 0 && cur.delta.role) {
+    if (isChatContextFileDelta(cur.delta)) {
       return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
 
     const lastMessage = acc[acc.length - 1];
-    if (lastMessage[0] === "assistant") {
+
+    if (isToolCallDelta(cur.delta)) {
+      if (!isToolCallMessage(lastMessage)) {
+        return acc.concat([["tool_calls", cur.delta.tool_calls]]);
+      }
+
+      const last = acc.slice(0, -1);
+      const collectedCalls = lastMessage[1];
+      const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
+      return last.concat([["tool_calls", calls]]);
+    }
+
+    if (isAssistantMessage(lastMessage) && isAssistantDelta(cur.delta)) {
       const last = acc.slice(0, -1);
       const currentMessage = lastMessage[1];
       return last.concat([["assistant", currentMessage + cur.delta.content]]);
+    } else if (isAssistantDelta(cur.delta) && cur.delta.content) {
+      return acc.concat([["assistant", cur.delta.content]]);
     }
 
-    if (cur.delta.role === null) {
+    if (cur.delta.role === null || cur.finish_reason !== null) {
       return acc;
     }
 
-    return acc.concat([[cur.delta.role, cur.delta.content]]);
+    if (cur.delta.content) {
+      return acc.concat([[cur.delta.role, cur.delta.content]]);
+    }
+    return acc;
   }, messages);
 }
 

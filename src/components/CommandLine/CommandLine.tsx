@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 
 import { Markdown } from "./Markdown";
 
@@ -9,7 +9,7 @@ import styles from "./CommandLine.module.css";
 
 export type CommandLineProps = {
   command: string;
-  args: Record<string, string>;
+  args: string;
   error?: boolean;
   result: string;
 };
@@ -20,9 +20,23 @@ export const CommandLine: React.FC<CommandLineProps> = ({
   error: _error, // TODO: style errors
   result,
 }) => {
-  const argsString = Object.values(args).join(" ");
+  const argsString = useMemo(() => {
+    try {
+      const json = JSON.parse(args) as unknown as Parameters<
+        typeof Object.entries
+      >;
+      if (Array.isArray(json)) {
+        return json.join(", ");
+      }
+      return Object.entries(json)
+        .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+        .join(", ");
+    } catch {
+      return args;
+    }
+  }, [args]);
 
-  const str = "```bash\n" + command + " " + argsString + "\n```";
+  const str = "```python\n" + command + "(" + argsString + ")\n```";
 
   const [open, setOpen] = React.useState(false);
   return (

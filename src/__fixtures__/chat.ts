@@ -94,7 +94,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"dirpath":"."}',
           name: "ls",
         },
-        type: "function",
+        type: "function" as const,
       },
     ],
     finish_reason: "tool_calls",
@@ -118,7 +118,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"filepath": "README.md"}',
           name: "cat",
         },
-        type: "function",
+        type: "function" as const,
       },
       {
         id: "call_8jTn7oj8tfctEnqgKQRBJH0w",
@@ -126,7 +126,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"filepath": "Cargo.toml"}',
           name: "cat",
         },
-        type: "function",
+        type: "function" as const,
       },
       {
         id: "call_Ql7xrkn5BqtjVSHHAnNksFis",
@@ -134,7 +134,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"filepath": "Cargo.lock"}',
           name: "cat",
         },
-        type: "function",
+        type: "function" as const,
       },
     ],
     finish_reason: "tool_calls",
@@ -189,7 +189,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"dirpath":"tests"}',
           name: "ls",
         },
-        type: "function",
+        type: "function" as const,
       },
     ],
     finish_reason: "tool_calls",
@@ -213,7 +213,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"filepath":"tests/emergency_frog_situation/"}',
           name: "cat",
         },
-        type: "function",
+        type: "function" as const,
       },
     ],
     finish_reason: "tool_calls",
@@ -237,7 +237,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"filepath":"tests/emergency_frog_situation"}',
           name: "cat",
         },
-        type: "function",
+        type: "function" as const,
       },
     ],
     finish_reason: "tool_calls",
@@ -261,7 +261,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"filepath":"tests/emergency_frog_situation/"}',
           name: "cat",
         },
-        type: "function",
+        type: "function" as const,
       },
     ],
     finish_reason: "tool_calls",
@@ -285,7 +285,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"filepath":"tests/emergency_frog_situation"}',
           name: "cat",
         },
-        type: "function",
+        type: "function" as const,
       },
     ],
     finish_reason: "tool_calls",
@@ -324,7 +324,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"dirpath":"tests/emergency_frog_situation"}',
           name: "ls",
         },
-        type: "function",
+        type: "function" as const,
       },
     ],
     finish_reason: "tool_calls",
@@ -349,7 +349,7 @@ const chatWithFunctionsRaw = [
           arguments: '{"filepath":"tests/emergency_frog_situation/frog.py"}',
           name: "cat",
         },
-        type: "function",
+        type: "function" as const,
       },
     ],
     finish_reason: "tool_calls",
@@ -379,24 +379,14 @@ export const CHAT_FUNCTIONS_MESSAGES: ChatMessages =
       const next: ChatMessages = [[message.role, message.content]];
 
       if (message.tool_calls !== null) {
-        const toolCalls: ToolCall[] = message.tool_calls.map((toolCall) => {
-          let args: ToolCall["function"]["arguments"] = {};
-          try {
-            args = JSON.parse(
-              toolCall.function.arguments,
-            ) as ToolCall["function"]["arguments"];
-          } catch (e) {
-            args = {};
-          }
-          return {
-            id: toolCall.id,
-            type: toolCall.type,
-            function: {
-              ...toolCall.function,
-              arguments: args,
-            },
-          };
-        });
+        const toolCalls: ToolCall[] = message.tool_calls.map(
+          (toolCall, index) => {
+            return {
+              ...toolCall,
+              index,
+            };
+          },
+        );
         const msg: ToolCallsMessage = ["tool_calls", toolCalls];
         next.push(msg);
       }

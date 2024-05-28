@@ -258,8 +258,8 @@ function handleSend(
             {
               type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
               payload: {
-                id: chat.id,
                 ...json,
+                id: chat.id,
               },
             },
             "*",

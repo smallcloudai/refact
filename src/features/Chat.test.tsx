@@ -464,8 +464,12 @@ describe("Chat", () => {
     const toolCalls: ToolCall[] = [
       {
         id: "a",
-        function: { name: "cat", arguments: { file: "meow.txt" } },
+        function: {
+          name: "cat",
+          arguments: JSON.stringify({ file: "meow.txt" }),
+        },
         type: "function",
+        index: 0,
       },
     ];
 

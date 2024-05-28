@@ -6,6 +6,8 @@ const AT_COMMAND_COMPLETION = "/v1/at-command-completion";
 const AT_COMMAND_PREVIEW = "/v1/at-command-preview";
 const CUSTOM_PROMPTS_URL = "/v1/customization";
 
+const AT_TOOLS_AVAILABLE_URL = "/v1/at-tools-available";
+
 export type ChatRole =
   | "user"
   | "assistant"
@@ -25,12 +27,13 @@ export type ChatContextFile = {
 };
 
 export type ToolCall = {
-  id: string;
   function: {
-    arguments: Record<string, string>;
-    name: string;
+    arguments: string; // stringed json
+    name?: string; // will be present when it's new
   };
-  type: string;
+  index: number;
+  type?: "function";
+  id?: string;
 };
 
 export type ToolResult = {
@@ -100,29 +103,59 @@ export function isChatContextFileMessage(
   return message[0] === "context_file";
 }
 
+export function isAssistantMessage(
+  message: ChatMessage,
+): message is AssistantMessage {
+  return message[0] === "assistant";
+}
+
 interface BaseDelta {
-  role: ChatRole | null;
+  role?: ChatRole | null;
 }
 
 interface AssistantDelta extends BaseDelta {
   role: "assistant" | null;
-  content: string;
+  content: string | null; // might be undefined, will be null if tool_calls
+}
+
+export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
+  if (!delta) return false;
+  if (typeof delta !== "object") return false;
+  if (!("role" in delta)) return false;
+  if (delta.role === "assistant") return true;
+  if (!("content" in delta)) return false;
+  return true;
 }
 interface ChatContextFileDelta extends BaseDelta {
   role: "context_file";
   content: ChatContextFile[];
 }
 
-// interface UserDelta extends BaseDelta {
-//   role: "user";
-//   content: string;
-// }
+export function isChatContextFileDelta(
+  delta: unknown,
+): delta is ChatContextFileDelta {
+  if (!delta) return false;
+  if (typeof delta !== "object") return false;
+  if (!("role" in delta)) return false;
+  return delta.role === "context_file";
+}
 
-type Delta = AssistantDelta | ChatContextFileDelta;
+interface ToolCallDelta extends BaseDelta {
+  tool_calls: ToolCall[];
+}
+
+export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {
+  if (!delta) return false;
+  if (typeof delta !== "object") return false;
+  if (!("tool_calls" in delta)) return false;
+  return Array.isArray(delta.tool_calls);
+}
+
+type Delta = AssistantDelta | ChatContextFileDelta | ToolCallDelta;
 
 export type ChatChoice = {
   delta: Delta;
-  finish_reason: "stop" | "abort" | null;
+  finish_reason: "stop" | "abort" | "tool_calls" | null;
   index: number;
 };
 
@@ -147,13 +180,19 @@ export function isChatUserMessageResponse(
   return json.role === "user" || json.role === "context_file";
 }
 
-export function isToolMessage(json: unknown): json is ToolResponse {
+export function isToolResponse(json: unknown): json is ToolResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
   if (!("id" in json)) return false;
   if (!("content" in json)) return false;
   if (!("role" in json)) return false;
   return json.role === "tool";
+}
+
+export function isToolCallMessage(
+  message: ChatMessage,
+): message is ToolCallsMessage {
+  return message[0] === "tool_calls";
 }
 
 export type ChatResponse =
@@ -165,17 +204,46 @@ export type ChatResponse =
     }
   | ChatUserMessageResponse;
 
-export function sendChat(
+function findLastIndexWhere<T>(arr: T[], fun: (a: T) => boolean): number {
+  for (let i = arr.length; i >= 0; i--) {
+    if (fun(arr[i])) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+export async function sendChat(
   messages: ChatMessages,
   model: string,
   abortController: AbortController,
   lspUrl?: string,
 ) {
-  const jsonMessages = messages.map(([role, textOrFile]) => {
+  const jsonMessages = messages.reduce<
+    { role: string; content: string; tool_calls?: ToolCall[] }[]
+  >((acc, [role, textOrCfile]) => {
+    if (role === "tool_calls") {
+      const lastAssistantMessageIndex = findLastIndexWhere(
+        acc,
+        (item) => item.role === "assistant",
+      );
+      if (lastAssistantMessageIndex >= 0) {
+        acc[lastAssistantMessageIndex].tool_calls = [
+          ...(acc[lastAssistantMessageIndex].tool_calls ?? []),
+          ...textOrCfile,
+        ];
+      }
+
+      return acc;
+    }
     const content =
-      typeof textOrFile === "string" ? textOrFile : JSON.stringify(textOrFile);
-    return { role, content };
-  });
+      typeof textOrCfile === "string"
+        ? textOrCfile
+        : JSON.stringify(textOrCfile);
+    return [...acc, { role, content }];
+  }, []);
+
+  const toolsResponse = await getAvailableTools();
 
   const body = JSON.stringify({
     messages: jsonMessages,
@@ -184,6 +252,7 @@ export function sendChat(
       max_new_tokens: 1000,
     },
     stream: true,
+    tools: toolsResponse,
   });
 
   const apiKey = getApiKey();
@@ -608,3 +677,50 @@ export type FimDebugData = {
   elapsed?: number;
   cached?: boolean;
 };
+
+type AtParamDict = {
+  name: string;
+  type: string;
+  description: string;
+};
+
+type AtToolFunction = {
+  name: string;
+  description: string;
+  parameters: AtParamDict[];
+  parameters_required: string[];
+};
+
+type AtToolCommand = {
+  function: AtToolFunction;
+  type: "function";
+};
+
+type AtToolResponse = AtToolCommand[];
+
+async function getAvailableTools(lspUrl?: string): Promise<AtToolResponse> {
+  const toolsUrl = lspUrl
+    ? `${lspUrl.replace(/\/*$/, "")}${AT_TOOLS_AVAILABLE_URL}`
+    : AT_TOOLS_AVAILABLE_URL;
+
+  const apiKey = getApiKey();
+
+  const response = await fetch(toolsUrl, {
+    method: "GET",
+    credentials: "same-origin",
+    redirect: "follow",
+    cache: "no-cache",
+    referrer: "no-referrer",
+    headers: {
+      accept: "application/json",
+      ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
+  // TODO: add type guards
+  return (await response.json()) as unknown as AtToolResponse;
+}

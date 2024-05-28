@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { reducer, createInitialState } from ".";
+import { reducer, createInitialState, mergeToolCalls } from ".";
 import { ChatMessages, EVENT_NAMES_TO_CHAT, ToolCall } from "../../events";
 import { appendToolCallsToAssistantMessage } from "./appendToolCallsToAssistantMessage";
 
@@ -51,10 +51,11 @@ describe("appendToolCallsToAssistantMessage", () => {
       {
         id: "a",
         function: {
-          arguments: { file: "meow.txt" },
+          arguments: JSON.stringify({ file: "meow.txt" }),
           name: "cat",
         },
         type: "function",
+        index: 0,
       },
     ];
     const messages: ChatMessages = [
@@ -73,6 +74,46 @@ describe("appendToolCallsToAssistantMessage", () => {
     ];
 
     const result = appendToolCallsToAssistantMessage(messages);
+
+    expect(result).toEqual(expected);
+  });
+});
+
+describe.only("mergeToolCalls", () => {
+  test("combines two tool calls", () => {
+    const stored: ToolCall[] = [
+      {
+        function: {
+          arguments: "",
+          name: "definition",
+        },
+        id: "call_8Btwv94t0eH60msyRQHFCxyU",
+        index: 0,
+        type: "function",
+      },
+    ];
+    const toAdd: ToolCall[] = [
+      {
+        function: {
+          arguments: '{"',
+        },
+        index: 0,
+      },
+    ];
+
+    const expected = [
+      {
+        function: {
+          arguments: '{"',
+          name: "definition",
+        },
+        id: "call_8Btwv94t0eH60msyRQHFCxyU",
+        index: 0,
+        type: "function",
+      },
+    ];
+
+    const result = mergeToolCalls(stored, toAdd);
 
     expect(result).toEqual(expected);
   });
