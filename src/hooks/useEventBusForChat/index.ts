@@ -122,8 +122,13 @@ function formatChatResponse(
     const lastMessage = acc[acc.length - 1];
 
     if (isToolCallDelta(cur.delta)) {
+      // console.log("Tool call", cur.delta);
       if (!isToolCallMessage(lastMessage)) {
-        return acc.concat([["tool_calls", cur.delta.tool_calls]]);
+        // TODO: append tool calls to the last assistant message
+        return acc.concat([
+          ["assistant", ""], // force adding an assistant message
+          ["tool_calls", cur.delta.tool_calls],
+        ]);
       }
 
       const last = acc.slice(0, -1);
@@ -145,7 +150,7 @@ function formatChatResponse(
     }
 
     if (cur.delta.content) {
-      return acc.concat([[cur.delta.role, cur.delta.content]]);
+      return acc.concat([[cur.delta.role ?? "assistant", cur.delta.content]]);
     }
     return acc;
   }, messages);

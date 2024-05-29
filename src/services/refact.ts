@@ -114,15 +114,15 @@ interface BaseDelta {
 }
 
 interface AssistantDelta extends BaseDelta {
-  role: "assistant" | null;
+  role?: "assistant" | null;
   content: string | null; // might be undefined, will be null if tool_calls
 }
 
 export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
-  if (!("role" in delta)) return false;
-  if (delta.role === "assistant") return true;
+  // if (!("role" in delta)) return false;
+  if ("role" in delta && delta.role === "assistant") return true;
   if (!("content" in delta)) return false;
   return true;
 }
@@ -204,15 +204,6 @@ export type ChatResponse =
     }
   | ChatUserMessageResponse;
 
-function findLastIndexWhere<T>(arr: T[], fun: (a: T) => boolean): number {
-  for (let i = arr.length; i >= 0; i--) {
-    if (fun(arr[i])) {
-      return i;
-    }
-  }
-  return -1;
-}
-
 export async function sendChat(
   messages: ChatMessages,
   model: string,
@@ -221,27 +212,23 @@ export async function sendChat(
 ) {
   const jsonMessages = messages.reduce<
     { role: string; content: string; tool_calls?: ToolCall[] }[]
-  >((acc, [role, textOrCfile]) => {
-    if (role === "tool_calls") {
-      const lastAssistantMessageIndex = findLastIndexWhere(
-        acc,
-        (item) => item.role === "assistant",
-      );
-      if (lastAssistantMessageIndex >= 0) {
-        acc[lastAssistantMessageIndex].tool_calls = [
-          ...(acc[lastAssistantMessageIndex].tool_calls ?? []),
-          ...textOrCfile,
-        ];
-      }
-
-      return acc;
+  >((acc, message) => {
+    if (isAssistantMessage(message)) {
+      return acc.concat([
+        {
+          role: message[0],
+          content: message[1],
+          tool_calls: message[2] ?? [],
+        },
+      ]);
     }
+
     const content =
-      typeof textOrCfile === "string"
-        ? textOrCfile
-        : JSON.stringify(textOrCfile);
-    return [...acc, { role, content }];
+      typeof message[1] === "string" ? message[1] : JSON.stringify(message[1]);
+    return [...acc, { role: message[0], content }];
   }, []);
+
+  console.log({ jsonMessages });
 
   const toolsResponse = await getAvailableTools();
 
