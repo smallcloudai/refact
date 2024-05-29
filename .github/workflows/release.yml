@@ -1,0 +1,151 @@
+name: CI build
+
+on:
+  push:
+    tags:
+      - '*'
+
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  # RUSTFLAGS: "-D warnings -W unreachable-pub"
+  RUSTUP_MAX_RETRIES: 10
+  FETCH_DEPTH: 0 # pull in the tags for the version string
+  MACOSX_DEPLOYMENT_TARGET: 10.15
+  CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+  CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            code-target: win32-x64
+          - os: windows-latest
+            target: i686-pc-windows-msvc
+            code-target: win32-ia32
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            code-target: win32-arm64
+          - os: ubuntu-20.04
+            target: x86_64-unknown-linux-gnu
+            code-target: linux-x64
+          - os: ubuntu-22.04
+            target: aarch64-unknown-linux-gnu
+            code-target: linux-arm64
+          - os: ubuntu-22.04
+            target: arm-unknown-linux-gnueabihf
+            code-target: linux-armhf
+          - os: macos-12
+            target: x86_64-apple-darwin
+            code-target: darwin-x64
+          - os: macos-14
+            target: aarch64-apple-darwin
+            code-target: darwin-arm64
+
+    env:
+      LLM_LS_TARGET: ${{ matrix.target }}
+
+    name: dist (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.FETCH_DEPTH }}
+
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup target add ${{ matrix.target }}
+          rustup component add rust-src
+
+      - name: Update apt repositories
+        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf'
+        run: sudo apt-get update
+
+      - name: Install AArch64 target toolchain
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get install gcc-aarch64-linux-gnu
+
+      - name: Install ARM target toolchain
+        if: matrix.target == 'arm-unknown-linux-gnueabihf'
+        run: sudo apt-get install gcc-arm-linux-gnueabihf
+
+      - name: Xcode Select Version
+        if: matrix.target == 'aarch64-apple-darwin'
+        run: sudo xcode-select -s '/Applications/Xcode_14.3.1.app/Contents/Developer'
+
+      - name: Install toolchain dependencies (MacOS)
+        if: startsWith(matrix.os, 'macos')
+        run: brew install protobuf
+
+      - name: Install toolchain dependencies (Windows)
+        if: startsWith(matrix.os, 'windows')
+        run: choco install protoc
+
+      - name: Build and install protobuf library
+        if: matrix.target == 'arm-unknown-linux-gnueabihf' || matrix.target == 'x86_64-unknown-linux-gnu' || matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          git clone --depth=1 --recursive -b v25.1 https://github.com/protocolbuffers/protobuf
+          cd protobuf && cmake . && cmake --build . --parallel 10 && sudo cmake --install .
+
+      - name: Restore cached cargo
+        uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os }}-${{ matrix.target }}-cargo
+          shared-key: ${{ matrix.os }}-${{ matrix.target }}-cargo
+
+      - name: Build and test artifact
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo test --release || exit 1
+          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo build --release || exit 1
+
+      - name: Build and test artifact
+        if: matrix.target != 'x86_64-unknown-linux-gnu'
+        run: |
+          cargo test --release || exit 1
+          cargo build --release || exit 1
+            
+      - name: Copy file
+        if: endsWith(matrix.target, 'msvc')
+        run: |
+          cp ./target/release/refact-lsp.exe refact-lsp.exe
+          
+      - name: Package artifact in ZIP (WIN)
+        uses: vimtor/action-zip@v1.2
+        if: endsWith(matrix.target, 'msvc')
+        with:
+          files: refact-lsp.exe
+          recursive: false
+          dest: dist-${{ matrix.target }}.zip
+          
+      - name: Copy file
+        if: ${{ !endsWith(matrix.target, 'msvc') }}
+        run: |
+          cp ./target/release/refact-lsp refact-lsp
+          
+      - name: Package artifact in ZIP (UNIX)
+        uses: vimtor/action-zip@v1.2
+        if: ${{ !endsWith(matrix.target, 'msvc') }}
+        with:
+          files: refact-lsp
+          recursive: false
+          dest: dist-${{ matrix.target }}.zip
+          
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ github.token }}
+          asset_name: dist-${{ matrix.target }}
+          file: dist-${{ matrix.target }}.zip
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
+       
