@@ -50,7 +50,7 @@ async fn main() {
     let (logs_writer, _guard) = if cmdline.logs_stderr {
         tracing_appender::non_blocking(std::io::stderr())
     } else {
-        write!(std::io::stderr(), "This rust binary keeps logs as files, rotated daily. Try\ntail -f {}/logs/\nor use --logs-stderr for debugging.\n\n", cache_dir.display()).unwrap();
+        let _ = write!(std::io::stderr(), "This rust binary keeps logs as files, rotated daily. Try\ntail -f {}/logs/\nor use --logs-stderr for debugging.\n\n", cache_dir.display());
         tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::builder()
             .rotation(tracing_appender::rolling::Rotation::DAILY)
             .filename_prefix("rustbinary")

@@ -352,8 +352,7 @@ pub async fn spawn_lsp_task(
         return Some(tokio::spawn(async move {
             let listener_maybe = TcpListener::bind(&addr).await;
             if listener_maybe.is_err() {
-                write!(std::io::stderr(), "PORT_BUSY\n{}: {}\n", addr, listener_maybe.unwrap_err()).unwrap();
-                std::io::stderr().flush().unwrap();
+                let _ = write!(std::io::stderr(), "PORT_BUSY\n{}: {}\n", addr, listener_maybe.unwrap_err());
                 gcx_t.write().await.ask_shutdown_sender.lock().unwrap().send("LSP PORT_BUSY".to_string()).unwrap();
                 return;
             }
