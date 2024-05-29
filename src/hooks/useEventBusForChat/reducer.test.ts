@@ -79,7 +79,7 @@ describe("appendToolCallsToAssistantMessage", () => {
   });
 });
 
-describe.only("mergeToolCalls", () => {
+describe("mergeToolCalls", () => {
   test("combines two tool calls", () => {
     const stored: ToolCall[] = [
       {
