@@ -138,7 +138,7 @@ pub async fn try_load_caps_quickly_if_not_present(
                     global_context_locked.caps = Some(caps.clone());
                     global_context_locked.caps_last_error = "".to_string();
                     info!("quick load caps successful");
-                    write!(std::io::stderr(), "CAPS\n").unwrap();
+                    let _ = write!(std::io::stderr(), "CAPS\n");
                     Ok(caps)
                 },
                 Err(e) => {

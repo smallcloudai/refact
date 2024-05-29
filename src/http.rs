@@ -32,8 +32,7 @@ pub async fn start_server(
     return Some(tokio::spawn(async move {
         let addr = ([127, 0, 0, 1], port).into();
         let builder = Server::try_bind(&addr).map_err(|e| {
-            write!(std::io::stderr(), "PORT_BUSY {}\n", e).unwrap();
-            std::io::stderr().flush().unwrap();
+            let _ = write!(std::io::stderr(), "PORT_BUSY {}\n", e);
             format!("port busy, address {}: {}", addr, e)
         });
         match builder {

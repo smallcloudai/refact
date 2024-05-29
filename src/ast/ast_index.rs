@@ -893,7 +893,7 @@ impl AstIndex {
         self.create_extra_indexes(&symbols);
         self.set_updated();
         info!("Creating extra ast indexes finished, took {:.3}s", t2.elapsed().as_secs_f64());
-        write!(std::io::stderr(), "AST COMPLETE\n").unwrap();
+        let _ = write!(std::io::stderr(), "AST COMPLETE\n");
         info!("AST COMPLETE");  // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
     }
 
@@ -908,7 +908,7 @@ impl AstIndex {
     pub(crate) fn is_overflowed(&self) -> bool {
         self.path_by_symbols.len() >= self.ast_index_max_files
     }
-    
+
     fn resolve_declaration_symbols(&self, symbols: &mut Vec<AstSymbolInstanceRc>) -> IndexingStats {
         let mut stats = IndexingStats { found: 0, non_found: 0 };
         for symbol in symbols.iter_mut() {
@@ -1124,7 +1124,7 @@ impl AstIndex {
         }
         stats
     }
-    
+
     fn resolve_imports(
         &self,
         symbols: &mut Vec<AstSymbolInstanceRc>,

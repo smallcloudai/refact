@@ -201,7 +201,7 @@ async fn vectorize_thread(
                         //     Ok(_) => info!("VECDB CREATED INDEX"),
                         //     Err(err) => info!("VECDB Error creating index: {}", err)
                         // }
-                        write!(std::io::stderr(), "VECDB COMPLETE\n").unwrap();
+                        let _ = write!(std::io::stderr(), "VECDB COMPLETE\n");
                         info!("VECDB COMPLETE"); // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
                         let status_locked = status.lock().await;
                         info!("vectorizer since start {} API calls, {} vectors", status_locked.requests_made_since_start, status_locked.vectors_made_since_start);
