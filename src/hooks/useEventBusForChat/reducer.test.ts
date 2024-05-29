@@ -1,12 +1,17 @@
 import { describe, expect, test } from "vitest";
 import { reducer, createInitialState, mergeToolCalls } from ".";
-import { ChatMessages, EVENT_NAMES_TO_CHAT, ToolCall } from "../../events";
+import {
+  ChatMessages,
+  EVENT_NAMES_TO_CHAT,
+  ToolCall,
+  ResponseToChat,
+} from "../../events";
 import { appendToolCallsToAssistantMessage } from "./appendToolCallsToAssistantMessage";
 
 describe("reducer", () => {
   test("handle an empty message from the assistant", () => {
     const initialState = createInitialState();
-    const action = {
+    const action: ResponseToChat = {
       type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
       payload: {
         id: initialState.chat.id,

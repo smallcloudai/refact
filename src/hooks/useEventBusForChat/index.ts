@@ -110,6 +110,15 @@ function formatChatResponse(
       return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
 
+    if (
+      messages.length === 0 &&
+      "content" in cur.delta &&
+      typeof cur.delta.content === "string" &&
+      cur.delta.role
+    ) {
+      return acc.concat([[cur.delta.role, cur.delta.content]]);
+    }
+
     const lastMessage = acc[acc.length - 1];
 
     if (isToolCallDelta(cur.delta)) {
