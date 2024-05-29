@@ -8,6 +8,7 @@ use tree_sitter::Point;
 use crate::ast::structs::AstCursorSearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::at_file::{AtParamFilePath, RangeKind, colon_lines_range_from_arg};
+use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::call_validation::{ContextFile, ContextEnum};
 
 
@@ -123,14 +124,22 @@ impl AtCommand for AtAstLookupSymbols {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>, _opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @lookup_symbols_at {:?}", args);
 
         let mut file_path = match args.get(0) {
             Some(x) => x.clone(),
-            None => return Err("no file path".to_string()),
+            None => {
+                cmd.ok = false; cmd.reason = Some("file path is missing".to_string());
+                args.clear();
+                return Err("no file path".to_string()); 
+            }
         };
-        let row_idx = match colon_lines_range_from_arg(&mut file_path) {
+        correct_at_arg(ccx, self.params[0].clone(), &mut file_path).await;
+        args.clear();
+        args.push(file_path.clone());
+
+        let row_idx = match colon_lines_range_from_arg(&mut file_path.text) {
             Some(x) => {
                 if x.kind == RangeKind::GradToCursorTwoSided {
                     x.line1
@@ -140,7 +149,7 @@ impl AtCommand for AtAstLookupSymbols {
             },
             None => return Err("line number is not a valid".to_string()),
         };
-        let results = execute_at_ast_lookup_symbols(ccx, &file_path, row_idx).await?;
+        let results = execute_at_ast_lookup_symbols(ccx, &file_path.text, row_idx).await?;
         let text = text_on_clip(&results, false);
         Ok((vec_context_file_to_context_tools(results), text))
     }

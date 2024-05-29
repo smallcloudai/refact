@@ -3,7 +3,9 @@ use async_trait::async_trait;
 use tokio::process::Command;
 use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
+use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum};
+
 
 pub struct AtExecuteCommand {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
@@ -36,8 +38,9 @@ impl AtCommand for AtExecuteCommand {
         &self.params
     }
 
-    async fn execute(&self, _ccx: &mut AtCommandsContext, _query: &String, _args: &Vec<String>, opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
-        let command = opt_args.join(" ");
+    async fn execute(&self, _ccx: &mut AtCommandsContext, _cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+        // TODO: fixme
+        let command = args.iter().map(|x|x.text.clone()).collect::<Vec<_>>().join(" ");
         if command.is_empty() {
             return Err("No args provided".to_string());
         }

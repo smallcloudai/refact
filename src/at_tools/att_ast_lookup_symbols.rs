@@ -1,37 +1,19 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use tracing::info;
 
 use async_trait::async_trait;
 use serde_json::Value;
-use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_ast_lookup_symbols::{execute_at_ast_lookup_symbols, text_on_clip};
-use crate::at_commands::at_commands::{AtCommandsContext, AtParam, vec_context_file_to_context_tools};
-use crate::at_commands::at_file::AtParamFilePath;
+use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
 use crate::at_tools::at_tools::AtTool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 
-pub struct AttAstLookupSymbols {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
-}
-
-impl AttAstLookupSymbols {
-    pub fn new() -> Self {
-        AttAstLookupSymbols {
-            params: vec![
-                Arc::new(AMutex::new(AtParamFilePath::new()))
-            ],
-        }
-    }
-}
+pub struct AttAstLookupSymbols;
 
 #[async_trait]
 impl AtTool for AttAstLookupSymbols {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
-        &self.params
-    }
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         info!("execute tool: lookup_symbols_at {:?}", args);
 

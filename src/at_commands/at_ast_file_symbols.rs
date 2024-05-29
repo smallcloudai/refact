@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -7,7 +8,9 @@ use crate::ast::ast_index::RequestSymbolType;
 
 use crate::ast::structs::FileReferencesResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
+use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::call_validation::{ContextFile, ContextEnum};
+use crate::files_correction::canonical_path;
 
 
 fn results2message(result: &FileReferencesResult) -> Vec<ContextFile> {
@@ -51,16 +54,24 @@ impl AtCommand for AtAstFileSymbols {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>, _opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
-        let cpath = match args.get(0) {
-            Some(x) => crate::files_correction::canonical_path(&x),
-            None => return Err("no file path".to_string()),
+    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+        let mut cpath = match args.get(0) {
+            Some(x) => x.clone(),
+            None => {
+                cmd.ok = false; cmd.reason = Some("no file path".to_string());
+                args.clear();
+                return Err("no file path".to_string()); 
+            },
         };
+        cpath.text = canonical_path(&cpath.text).to_string_lossy().to_string();
+        correct_at_arg(ccx, self.params[0].clone(), &mut cpath).await;
+        args.clear();
+        args.push(cpath.clone());
 
         let ast = ccx.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
-                let doc = crate::files_in_workspace::Document { path: cpath, text: None };
+                let doc = crate::files_in_workspace::Document { path: PathBuf::from(cpath.text), text: None };
                 match ast.read().await.get_file_symbols(RequestSymbolType::All, &doc).await {
                     Ok(res) => Ok(results2message(&res)),
                     Err(err) => Err(err)

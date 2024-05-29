@@ -2,7 +2,9 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use tokio::sync::Mutex as AMutex;
+use tracing::info;
 use uuid::Uuid;
+use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ContextFile, ContextEnum};
 use crate::vecdb::structs::{Record, VecdbSearch};
 
@@ -45,14 +47,10 @@ fn results2message(results: &Vec<Record>) -> Vec<ContextFile> {
     vector_of_context_file
 }
 
-pub async fn execute_at_workspace(ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>) -> Result<Vec<ContextFile>, String> {
+pub async fn execute_at_workspace(ccx: &mut AtCommandsContext, query: &String) -> Result<Vec<ContextFile>, String> {
     match *ccx.global_context.read().await.vec_db.lock().await {
         Some(ref db) => {
-            let mut db_query = args.join(" ");
-            if db_query.is_empty() {
-                db_query = query.clone();
-            }
-            let search_result = db.vecdb_search(db_query, ccx.top_n).await?;
+            let search_result = db.vecdb_search(query.clone(), ccx.top_n).await?;
             let results = search_result.results.clone();
             return Ok(results2message(&results));
         }
@@ -66,10 +64,13 @@ impl AtCommand for AtWorkspace {
     {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>, _opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
-        // TODO: use opt_args instead of args
-        let vector_of_context_file = execute_at_workspace(ccx, query, args).await?;
-        let text = text_on_clip(query, false);
+    async fn execute(&self, ccx: &mut AtCommandsContext, _cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+        let args1 = args.iter().map(|x|x.clone()).collect::<Vec<_>>();
+        info!("execute @workspace {:?}", args1);
+        let query = args.iter().map(|x|x.text.clone()).collect::<Vec<_>>().join(" ");
+
+        let vector_of_context_file = execute_at_workspace(ccx, &query).await?;
+        let text = text_on_clip(&query, false);
         Ok((vec_context_file_to_context_tools(vector_of_context_file), text))
     }
     fn depends_on(&self) -> Vec<String> {

@@ -7,8 +7,8 @@ use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use tracing::{error, info};
 
-use crate::at_commands::execute::run_at_commands;
-use crate::at_tools::execute::run_tools;
+use crate::at_commands::execute_at::run_at_commands;
+use crate::at_tools::execute_att::run_tools;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;

@@ -16,6 +16,7 @@ use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
 use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
 use crate::at_commands::at_execute_cmd::AtExecuteCommand;
+use crate::at_commands::execute_at::AtCommandMember;
 
 
 pub struct AtCommandsContext {
@@ -40,30 +41,15 @@ impl AtCommandsContext {
 pub trait AtCommand: Send + Sync {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>;
     // returns (messages_for_postprocessing, text_on_clip)
-    async fn execute(&self, ccx: &mut AtCommandsContext, query: &String, args: &Vec<String>, opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String>;
+    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String>;
     fn depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
 }
 
 #[async_trait]
 pub trait AtParam: Send + Sync {
-    fn name(&self) -> &String;
     async fn is_value_valid(&self, value: &String, ccx: &AtCommandsContext) -> bool;
     async fn complete(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String>;
     fn complete_if_valid(&self) -> bool {false}
-}
-
-pub struct AtCommandCall {
-    pub command: Arc<AMutex<Box<dyn AtCommand + Send>>>,
-    pub args: Vec<String>,
-}
-
-impl AtCommandCall {
-    pub fn new(command: Arc<AMutex<Box<dyn AtCommand + Send>>>, args: Vec<String>) -> Self {
-        AtCommandCall {
-            command,
-            args,
-        }
-    }
 }
 
 pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {

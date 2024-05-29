@@ -13,6 +13,7 @@ use crate::call_validation::{ContextFile, ContextEnum};
 use tracing::info;
 use crate::ast::ast_index::RequestSymbolType;
 use crate::ast::ast_module::AstModule;
+use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 
 
 pub async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
@@ -95,15 +96,23 @@ impl AtCommand for AtAstDefinition {
         &self.params
     }
 
-    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>, _opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @definition {:?}", args);
-        let symbol = match args.get(0) {
+        let mut symbol = match args.get(0) {
             Some(x) => x.clone(),
-            None => return Err("no symbol path".to_string()),
+            None => { 
+                cmd.ok = false; cmd.reason = Some("symbol is missing".to_string());
+                args.clear();
+                return Err("symbol is missing".to_string()); 
+            },
         };
+        correct_at_arg(ccx, self.params[0].clone(), &mut symbol).await;
+        args.clear();
+        args.push(symbol.clone());
+
         let ast = ccx.global_context.read().await.ast_module.clone();
-        let results = run_at_definition(&ast, &symbol).await?;
-        let text = text_on_clip(&symbol, &results);
+        let results = run_at_definition(&ast, &symbol.text).await?;
+        let text = text_on_clip(&symbol.text, &results);
         Ok((vec_context_file_to_context_tools(results), text))
     }
     fn depends_on(&self) -> Vec<String> {

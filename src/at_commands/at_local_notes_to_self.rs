@@ -4,7 +4,9 @@ use tokio::sync::Mutex as AMutex;
 use std::sync::Arc;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
+use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum};
+
 
 fn text_on_clip(from_tool_call: bool) -> String {
     if !from_tool_call {
@@ -30,7 +32,7 @@ impl AtCommand for AtLocalNotesToSelf {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, _args: &Vec<String>, _opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn execute(&self, ccx: &mut AtCommandsContext, _cmd: &mut AtCommandMember, _args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         let cache_dir = {
             let gcx_locked = ccx.global_context.read().await;
             gcx_locked.cache_dir.clone()

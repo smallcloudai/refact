@@ -6,6 +6,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
+use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ContextFile, ContextEnum};
 
@@ -131,23 +132,16 @@ pub fn text_on_clip(result: &ContextFile, from_tool_call: bool) -> String {
 }
 
 #[derive(Debug)]
-pub struct AtParamFilePath {
-    pub name: String,
-}
+pub struct AtParamFilePath {}
 
 impl AtParamFilePath {
     pub fn new() -> Self {
-        Self {
-            name: "file_path".to_string()
-        }
+        Self {}
     }
 }
 
 #[async_trait]
 impl AtParam for AtParamFilePath {
-    fn name(&self) -> &String {
-        &self.name
-    }
     async fn is_value_valid(&self, value: &String, ccx: &AtCommandsContext) -> bool {
         let mut value = value.clone();
         colon_lines_range_from_arg(&mut value);
@@ -210,12 +204,24 @@ impl AtCommand for AtFile {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, _query: &String, args: &Vec<String>, _opt_args: &Vec<String>) -> Result<(Vec<ContextEnum>, String), String> {
-        let file_path = match args.get(0) { 
+    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+        let mut file_path = match args.get(0) { 
             Some(x) => x.clone(), 
-            None => { return Err("missing file path".to_string()); }
+            None => { 
+                cmd.ok = false; cmd.reason = Some("missing file path".to_string());
+                args.clear();
+                return Err("missing file path".to_string()); 
+            }
         };
-        let context_file = execute_at_file(ccx, file_path).await?;
+        correct_at_arg(ccx, self.params[0].clone(), &mut file_path).await;
+        args.clear();
+        args.push(file_path.clone());
+
+        if !file_path.ok {
+            return Err(format!("file_path is incorrect: {:?}. Reason: {:?}", file_path.text, file_path.reason));
+        }
+        
+        let context_file = execute_at_file(ccx, file_path.text.clone()).await?;
         let text = text_on_clip(&context_file, false);
         Ok((vec_context_file_to_context_tools(vec![context_file]), text))
     }

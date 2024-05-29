@@ -13,7 +13,7 @@ use tracing::info;
 
 use crate::cached_tokenizers;
 use crate::at_commands::at_commands::{AtCommandsContext, filter_only_chat_messages_from_context_tool};
-use crate::at_commands::execute::{execute_at_commands_in_query, parse_words_from_line};
+use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::call_validation::ChatMessage;
@@ -120,7 +120,7 @@ pub async fn handle_v1_command_preview(
 
     let mut ccx = AtCommandsContext::new(global_context.clone(), top_n).await;
 
-    let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut ccx, &mut query, false).await;
+    let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut ccx, &mut query).await;
 
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
     

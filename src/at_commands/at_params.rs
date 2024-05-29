@@ -6,25 +6,17 @@ use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
 
 
 #[derive(Debug)]
-pub struct AtParamSymbolPathQuery {
-    pub name: String,
-}
+pub struct AtParamSymbolPathQuery;
 
 impl AtParamSymbolPathQuery {
     pub fn new() -> Self {
-        Self {
-            name: "context_file".to_string()
-        }
+        Self {}
     }
 }
 
 // TODO: move to at_lookup_symbols
 #[async_trait]
 impl AtParam for AtParamSymbolPathQuery {
-    fn name(&self) -> &String {
-        &self.name
-    }
-
     async fn is_value_valid(&self, value: &String, _: &AtCommandsContext) -> bool {
         !value.is_empty()
     }
@@ -60,24 +52,16 @@ impl AtParam for AtParamSymbolPathQuery {
 
 
 #[derive(Debug)]
-pub struct AtParamSymbolReferencePathQuery {
-    pub name: String,
-}
+pub struct AtParamSymbolReferencePathQuery;
 
 impl AtParamSymbolReferencePathQuery {
     pub fn new() -> Self {
-        Self {
-            name: "context_file".to_string()
-        }
+        Self {}
     }
 }
 
 #[async_trait]
 impl AtParam for AtParamSymbolReferencePathQuery {
-    fn name(&self) -> &String {
-        &self.name
-    }
-
     async fn is_value_valid(&self, _: &String, _: &AtCommandsContext) -> bool {
         return true;
     }
