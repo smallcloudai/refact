@@ -9,6 +9,8 @@ import {
   isAssistantDelta,
   isToolCallDelta,
   ToolCall,
+  isToolResponse,
+  isChatResponseChoice,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -59,6 +61,7 @@ import {
   type SystemPrompts,
   RequestPreviewFiles,
   type CommandCompletionResponse,
+  type ToolResult,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -101,17 +104,18 @@ function formatChatResponse(
     return [...messages, [response.role, response.content]];
   }
 
-  // TODO: handle tool role
+  if (isToolResponse(response)) {
+    const { tool_call_id, content, finish_reason } = response;
+    const toolResult: ToolResult = { tool_call_id, content, finish_reason };
+    return [...messages, [response.role, toolResult]];
+  }
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (!response.choices) {
-    // eslint-disable-next-line no-console
-    console.log("responce has no choices");
-    // eslint-disable-next-line no-console
-    console.log(response);
-
+  if (!isChatResponseChoice(response)) {
+    // console.log("Not a good response");
+    // console.log(response);
     return messages;
   }
+
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (isChatContextFileDelta(cur.delta)) {
       return acc.concat([[cur.delta.role, cur.delta.content]]);
@@ -591,7 +595,7 @@ export const useEventBusForChat = () => {
       const messagesWithSystemPrompt: ChatMessages =
         state.selected_system_prompt &&
         state.selected_system_prompt !== maybeDefaultPrompt
-          ? [["system", state.selected_system_prompt], ...state.chat.messages]
+          ? [["system", state.selected_system_prompt], ...messages]
           : state.chat.messages;
 
       const payload: ChatThread = {
@@ -609,7 +613,7 @@ export const useEventBusForChat = () => {
 
       postMessage({
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-        payload: { ...payload, messages },
+        payload,
       });
 
       const snippetMessage: ChatSetSelectedSnippet = {
@@ -621,17 +625,7 @@ export const useEventBusForChat = () => {
       };
       dispatch(snippetMessage);
     },
-    [
-      clearError,
-      maybeDefaultPrompt,
-      postMessage,
-      state.active_file.attach,
-      state.chat.id,
-      state.chat.messages,
-      state.chat.model,
-      state.chat.title,
-      state.selected_system_prompt,
-    ],
+    [clearError, maybeDefaultPrompt, postMessage, state],
   );
 
   const askQuestion = useCallback(
@@ -900,9 +894,13 @@ export const useEventBusForChat = () => {
         sendMessages(state.chat.messages);
       }
     }
-  });
+  }, [sendMessages, state.chat.messages, state.streaming]);
 
-  // console.log({ state });
+  // useEffect(() => {
+  //   window.debugChat = function () {
+  //     console.log(state.chat);
+  //   };
+  // }, [state.chat]);
 
   return {
     state,

@@ -174,20 +174,32 @@ export function isChatUserMessageResponse(
 export function isToolResponse(json: unknown): json is ToolResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
-  if (!("id" in json)) return false;
+  // if (!("id" in json)) return false;
   if (!("content" in json)) return false;
   if (!("role" in json)) return false;
+  if (!("tool_call_id" in json)) return false;
   return json.role === "tool";
 }
 
+type ChatResponseChoice = {
+  choices: ChatChoice[];
+  created: number;
+  model: string;
+  id: string;
+};
+
+export function isChatResponseChoice(
+  res: ChatResponse,
+): res is ChatResponseChoice {
+  if (!("choices" in res)) return false;
+  return true;
+}
+
 export type ChatResponse =
-  | {
-      choices: ChatChoice[];
-      created: number;
-      model: string;
-      id: string;
-    }
-  | ChatUserMessageResponse;
+  | ChatResponseChoice
+  | ChatUserMessageResponse
+  | ToolResponse
+  | Record<string, unknown>;
 
 const TOOLS = [
   {
