@@ -236,11 +236,13 @@ export async function sendChat(
   abortController: AbortController,
   lspUrl?: string,
 ) {
+  console.log({ messages });
   const jsonMessages = messages.reduce<
     {
       role: string;
       content: string | null;
       tool_calls?: Omit<ToolCall, "index">[];
+      tool_call_id?: string;
     }[]
   >((acc, message) => {
     if (isAssistantMessage(message)) {
@@ -249,13 +251,17 @@ export async function sendChat(
           role: message[0],
           content: message[1],
           tool_calls: message[2],
+          // TODO: this shouldn't need to be there
+          tool_call_id: "",
         },
       ]);
     }
 
+    // TODO: handle tool messages (they will need a tool call id)
+
     const content =
       typeof message[1] === "string" ? message[1] : JSON.stringify(message[1]);
-    return [...acc, { role: message[0], content }];
+    return [...acc, { role: message[0], content, tool_call_id: "" }];
   }, []);
 
   // const toolsResponse = await getAvailableTools();
