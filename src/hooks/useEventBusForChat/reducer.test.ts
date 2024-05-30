@@ -1,12 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { reducer, createInitialState, mergeToolCalls } from ".";
-import {
-  ChatMessages,
-  EVENT_NAMES_TO_CHAT,
-  ToolCall,
-  ResponseToChat,
-} from "../../events";
-import { appendToolCallsToAssistantMessage } from "./appendToolCallsToAssistantMessage";
+import { EVENT_NAMES_TO_CHAT, ToolCall, ResponseToChat } from "../../events";
 
 describe("reducer", () => {
   test("handle an empty message from the assistant", () => {
@@ -33,54 +27,6 @@ describe("reducer", () => {
     expect(() =>
       reducer(window.postMessage)(initialState, action),
     ).not.toThrow();
-  });
-});
-
-describe("appendToolCallsToAssistantMessage", () => {
-  test("if messages does not have tool_calls it should return the messages", () => {
-    const messages: ChatMessages = [
-      ["user", "hello"],
-      ["assistant", "hello there"],
-      ["user", "how are you?"],
-      ["assistant", "I'm good"],
-    ];
-
-    const expected = messages;
-    const result = appendToolCallsToAssistantMessage(messages);
-
-    expect(result).toEqual(expected);
-  });
-
-  test("if message does have tool_calls it should add the tool calls to the previouse assistant message", () => {
-    const toolCalls: ToolCall[] = [
-      {
-        id: "a",
-        function: {
-          arguments: JSON.stringify({ file: "meow.txt" }),
-          name: "cat",
-        },
-        type: "function",
-        index: 0,
-      },
-    ];
-    const messages: ChatMessages = [
-      ["user", "hello"],
-      ["assistant", "hello there"],
-      ["tool_calls", toolCalls],
-      ["user", "how are you?"],
-      ["assistant", "I'm good"],
-    ];
-
-    const expected = [
-      ["user", "hello"],
-      ["assistant", "hello there", toolCalls],
-      ["user", "how are you?"],
-      ["assistant", "I'm good"],
-    ];
-
-    const result = appendToolCallsToAssistantMessage(messages);
-
-    expect(result).toEqual(expected);
   });
 });
 

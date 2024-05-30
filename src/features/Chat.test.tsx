@@ -487,8 +487,7 @@ describe("Chat", () => {
           id: "bar",
           messages: [
             ["user", "hello"],
-            ["assistant", "hello there"],
-            ["tool_calls", toolCalls],
+            ["assistant", "hello there", toolCalls],
             ["tool", toolResult],
           ],
           title: "hello",

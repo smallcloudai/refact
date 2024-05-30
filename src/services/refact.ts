@@ -13,7 +13,6 @@ export type ChatRole =
   | "assistant"
   | "context_file"
   | "system"
-  | "tool_calls"
   | "tool";
 
 export type ChatContextFile = {
@@ -42,14 +41,12 @@ export type ToolResult = {
   content: string;
 };
 
-// tool call mesage
-
 interface BaseMessage
   extends Array<
-    string | ChatContextFile[] | ToolCall[] | ToolResult | undefined
+    string | ChatContextFile[] | ToolCall[] | ToolResult | undefined | null
   > {
   0: ChatRole;
-  1: string | ChatContextFile[] | ToolCall[] | ToolResult;
+  1: null | string | ChatContextFile[] | ToolResult;
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
@@ -64,18 +61,13 @@ export interface UserMessage extends BaseMessage {
 
 export interface AssistantMessage extends BaseMessage {
   0: "assistant";
-  1: string;
+  1: string | null;
   2?: ToolCall[];
 }
 
 export interface SystemMessage extends BaseMessage {
   0: "system";
   1: string;
-}
-
-export interface ToolCallsMessage extends BaseMessage {
-  0: "tool_calls";
-  1: ToolCall[];
 }
 
 export interface ToolMessage extends BaseMessage {
@@ -92,7 +84,6 @@ export type ChatMessage =
   | AssistantMessage
   | ChatContextFileMessage
   | SystemMessage
-  | ToolCallsMessage
   | ToolMessage;
 
 export type ChatMessages = ChatMessage[];
@@ -189,12 +180,6 @@ export function isToolResponse(json: unknown): json is ToolResponse {
   return json.role === "tool";
 }
 
-export function isToolCallMessage(
-  message: ChatMessage,
-): message is ToolCallsMessage {
-  return message[0] === "tool_calls";
-}
-
 export type ChatResponse =
   | {
       choices: ChatChoice[];
@@ -204,6 +189,47 @@ export type ChatResponse =
     }
   | ChatUserMessageResponse;
 
+const TOOLS = [
+  {
+    function: {
+      description:
+        "Find definition of a symbol in a project using AST. Symbol could be: function, method, class, type alias.",
+      name: "definition",
+      parameters: {
+        properties: {
+          symbol: {
+            description:
+              "The name of the symbol (function, method, class, type alias) to find within the project.",
+            type: "string",
+          },
+        },
+        required: ["symbol"],
+        type: "object",
+      },
+    },
+    type: "function",
+  },
+  {
+    function: {
+      description:
+        "Read the file located using given file_path and provide its content",
+      name: "file",
+      parameters: {
+        properties: {
+          file_path: {
+            description:
+              "absolute path to the file or filename to be found within the project.",
+            type: "string",
+          },
+        },
+        required: ["file_path"],
+        type: "object",
+      },
+    },
+    type: "function",
+  },
+];
+
 export async function sendChat(
   messages: ChatMessages,
   model: string,
@@ -211,14 +237,18 @@ export async function sendChat(
   lspUrl?: string,
 ) {
   const jsonMessages = messages.reduce<
-    { role: string; content: string; tool_calls?: ToolCall[] }[]
+    {
+      role: string;
+      content: string | null;
+      tool_calls?: Omit<ToolCall, "index">[];
+    }[]
   >((acc, message) => {
     if (isAssistantMessage(message)) {
       return acc.concat([
         {
           role: message[0],
           content: message[1],
-          tool_calls: message[2] ?? [],
+          tool_calls: message[2],
         },
       ]);
     }
@@ -228,18 +258,20 @@ export async function sendChat(
     return [...acc, { role: message[0], content }];
   }, []);
 
-  console.log({ jsonMessages });
+  // const toolsResponse = await getAvailableTools();
 
-  const toolsResponse = await getAvailableTools();
+  // console.log({ toolsResponse });
 
   const body = JSON.stringify({
     messages: jsonMessages,
     model: model,
     parameters: {
-      max_new_tokens: 1000,
+      max_new_tokens: 2048,
     },
     stream: true,
-    tools: toolsResponse,
+    // tools: toolsResponse,
+    tools: TOOLS,
+    max_tokens: 2048,
   });
 
   const apiKey = getApiKey();
@@ -685,6 +717,7 @@ type AtToolCommand = {
 
 type AtToolResponse = AtToolCommand[];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function getAvailableTools(lspUrl?: string): Promise<AtToolResponse> {
   const toolsUrl = lspUrl
     ? `${lspUrl.replace(/\/*$/, "")}${AT_TOOLS_AVAILABLE_URL}`

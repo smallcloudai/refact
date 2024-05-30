@@ -186,6 +186,7 @@ function handleSend(
   controller: AbortController,
   lspUrl?: string,
 ) {
+  // console.log({ chat });
   sendChat(chat.messages, chat.model, controller, lspUrl)
     .then((response) => {
       if (!response.ok) {

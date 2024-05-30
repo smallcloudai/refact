@@ -1,9 +1,9 @@
 import {
+  AssistantMessage,
   ChatMessage,
   ChatMessages,
   ChatThread,
   ToolCall,
-  ToolCallsMessage,
   ToolMessage,
   ToolResult,
 } from "../events";
@@ -378,7 +378,7 @@ export const CHAT_FUNCTIONS_MESSAGES: ChatMessages =
     if (message.role === "assistant" && message.content !== null) {
       const next: ChatMessages = [[message.role, message.content]];
 
-      if (message.tool_calls !== null) {
+      if (message.tool_calls) {
         const toolCalls: ToolCall[] = message.tool_calls.map(
           (toolCall, index) => {
             return {
@@ -387,7 +387,7 @@ export const CHAT_FUNCTIONS_MESSAGES: ChatMessages =
             };
           },
         );
-        const msg: ToolCallsMessage = ["tool_calls", toolCalls];
+        const msg: AssistantMessage = ["assistant", message.content, toolCalls];
         next.push(msg);
       }
 

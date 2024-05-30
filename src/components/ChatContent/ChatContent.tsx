@@ -2,6 +2,7 @@ import React, { useEffect, useImperativeHandle } from "react";
 import {
   ChatMessages,
   ToolCall,
+  isAssistantMessage,
   isChatContextFileMessage,
 } from "../../services/refact";
 import type { MarkdownProps } from "../Markdown";
@@ -51,8 +52,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       () =>
         messages.reduce<Record<string, ToolCall | undefined>>(
           (acc, message) => {
-            if (message[0] === "tool_calls") {
-              const toolCals = message[1].reduce<Record<string, ToolCall>>(
+            if (isAssistantMessage(message) && message[2] !== undefined) {
+              const toolCals = message[2].reduce<Record<string, ToolCall>>(
                 (calls, toolCall) => {
                   if (toolCall.id === undefined) return calls;
                   return {
@@ -101,6 +102,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                 </UserInput>
               );
             } else if (role === "assistant") {
+              if (text === null) return null;
               return (
                 <AssistantInput
                   onNewFileClick={onNewFileClick}

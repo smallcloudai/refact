@@ -8,7 +8,6 @@ import {
   isAssistantMessage,
   isAssistantDelta,
   isToolCallDelta,
-  isToolCallMessage,
   ToolCall,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
@@ -37,7 +36,6 @@ import {
   type RequestAtCommandCompletion,
   isReceiveAtCommandCompletion,
   type SetSelectedAtCommand,
-  // isSetSelectedAtCommand,
   isReceiveAtCommandPreview,
   isChatUserMessageResponse,
   isChatSetLastModelUsed,
@@ -64,7 +62,6 @@ import {
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
-import { appendToolCallsToAssistantMessage } from "./appendToolCallsToAssistantMessage";
 
 function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
   const calls = prev.slice();
@@ -91,7 +88,6 @@ export function mergeToolCalls(prev: ToolCall[], add: ToolCall[]): ToolCall[] {
   return add.reduce((acc, cur) => {
     return mergeToolCall(acc, cur);
   }, prev);
-  // return prev;
 }
 
 function formatChatResponse(
@@ -122,25 +118,23 @@ function formatChatResponse(
     const lastMessage = acc[acc.length - 1];
 
     if (isToolCallDelta(cur.delta)) {
-      // console.log("Tool call", cur.delta);
-      if (!isToolCallMessage(lastMessage)) {
-        // TODO: append tool calls to the last assistant message
-        return acc.concat([
-          ["assistant", ""], // force adding an assistant message
-          ["tool_calls", cur.delta.tool_calls],
-        ]);
+      if (!isAssistantMessage(lastMessage)) {
+        return acc.concat([["assistant", null, cur.delta.tool_calls]]);
       }
 
       const last = acc.slice(0, -1);
-      const collectedCalls = lastMessage[1];
+      const collectedCalls = lastMessage[2] ?? [];
       const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
-      return last.concat([["tool_calls", calls]]);
+      return last.concat([["assistant", lastMessage[1], calls]]);
     }
 
     if (isAssistantMessage(lastMessage) && isAssistantDelta(cur.delta)) {
       const last = acc.slice(0, -1);
-      const currentMessage = lastMessage[1];
-      return last.concat([["assistant", currentMessage + cur.delta.content]]);
+      const currentMessage = lastMessage[1] ?? "";
+      const toolCalls = lastMessage[2];
+      return last.concat([
+        ["assistant", currentMessage + cur.delta.content, toolCalls],
+      ]);
     } else if (isAssistantDelta(cur.delta) && cur.delta.content) {
       return acc.concat([["assistant", cur.delta.content]]);
     }
@@ -597,11 +591,9 @@ export const useEventBusForChat = () => {
         payload,
       });
 
-      const formatedMessages = appendToolCallsToAssistantMessage(messages);
-
       postMessage({
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-        payload: { ...payload, messages: formatedMessages },
+        payload: { ...payload, messages },
       });
 
       const snippetMessage: ChatSetSelectedSnippet = {
@@ -631,16 +623,13 @@ export const useEventBusForChat = () => {
 
   const askQuestion = useCallback(
     (question: string) => {
-      const maybeMessagesWithSystemPrompt: ChatMessages =
+      const messagesWithSystemPrompt: ChatMessages =
         state.selected_system_prompt &&
-        state.selected_system_prompt !== maybeDefaultPrompt &&
-        state.chat.messages.length === 0
-          ? [["system", state.selected_system_prompt]]
+        state.selected_system_prompt !== maybeDefaultPrompt
+          ? [["system", state.selected_system_prompt], ...state.chat.messages]
           : state.chat.messages;
 
-      const messages = maybeMessagesWithSystemPrompt.concat([
-        ["user", question],
-      ]);
+      const messages = messagesWithSystemPrompt.concat([["user", question]]);
 
       sendMessages(messages);
     },
