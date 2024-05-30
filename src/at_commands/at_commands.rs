@@ -15,8 +15,9 @@ use crate::at_commands::at_ast_definition::AtAstDefinition;
 use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
 use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
-use crate::at_commands::at_execute_cmd::AtExecuteCommand;
+use crate::at_commands::at_execute_cmd::{AtExecuteCommand, AtExecuteCustCommand};
 use crate::at_commands::execute_at::AtCommandMember;
+use crate::at_tools::at_custom_tools::at_custom_tools_dicts;
 
 
 pub struct AtCommandsContext {
@@ -53,7 +54,7 @@ pub trait AtParam: Send + Sync {
 }
 
 pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {
-    return HashMap::from([
+    let mut at_commands_dict = HashMap::from([
         ("@workspace".to_string(), Arc::new(AMutex::new(Box::new(AtWorkspace::new()) as Box<dyn AtCommand + Send>))),
         ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
         ("@definition".to_string(), Arc::new(AMutex::new(Box::new(AtAstDefinition::new()) as Box<dyn AtCommand + Send>))),
@@ -62,6 +63,19 @@ pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand 
         ("@local-notes-to-self".to_string(), Arc::new(AMutex::new(Box::new(AtLocalNotesToSelf::new()) as Box<dyn AtCommand + Send>))),
         ("@execute".to_string(), Arc::new(AMutex::new(Box::new(AtExecuteCommand::new()) as Box<dyn AtCommand + Send>))),
     ]);
+    
+    for cust in at_custom_tools_dicts().unwrap() {
+        at_commands_dict.insert(
+            format!("@{}", cust.name.clone()),
+            Arc::new(AMutex::new(Box::new(AtExecuteCustCommand::new(
+                cust.command.clone(),
+                cust.timeout.clone(),
+                cust.postprocess.clone(),
+            )) as Box<dyn AtCommand + Send>))
+        );
+    }
+
+    at_commands_dict
 }
 
 pub fn vec_context_file_to_context_tools(x: Vec<ContextFile>) -> Vec<ContextEnum> {

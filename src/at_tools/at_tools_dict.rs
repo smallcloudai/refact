@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 
 const AT_DICT: &str = r####"
-at_tools:
+tools:
   - name: "workspace"
     description: "Using given query, find all pieces of code in the project by vectorizing query and finding all similar pieces of code by comparing their cosien distances."
     parameters:
@@ -36,7 +36,7 @@ at_tools:
       - "file_path"
       - "line_number"
 
-at_params:
+parameters:
   - name: "query"
     type: "string"
     description: "Short text written in natural language. Single line or a paragraph. Query will be vectorized and used to find similar pieces of code in the project."
@@ -54,8 +54,8 @@ at_params:
 
 #[derive(Deserialize)]
 pub struct AtDictDeserialize {
-    pub at_tools: Vec<AtToolDictDeserialize>,
-    pub at_params: Vec<AtParamDict>,
+    pub tools: Vec<AtToolDictDeserialize>,
+    pub parameters: Vec<AtParamDict>,
 }
 
 #[derive(Deserialize)]
@@ -82,6 +82,37 @@ pub struct AtParamDict {
     pub description: String,
 }
 
+pub fn make_openai_tool_value(
+    name: String,
+    description: String,
+    parameters_required: Vec<String>,
+    parameters: Vec<AtParamDict>,
+) -> serde_json::Value {
+    let params_properties = parameters.iter().map(|param| {
+        (
+            param.name.clone(),
+            serde_json::json!({
+                "type": param.param_type,
+                "description": param.description
+            })
+        )
+    }).collect::<serde_json::Map<_, _>>();
+
+    let function_json = serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": name,
+                "description": description,
+                "parameters": {
+                    "type": "object",
+                    "properties": params_properties,
+                    "required": parameters_required
+                }
+            }
+        });
+    function_json
+}
+
 impl AtToolDict {
     pub fn new(cmd: &AtToolDictDeserialize, params: &Vec<AtParamDict>) -> Self {
         AtToolDict {
@@ -97,38 +128,21 @@ impl AtToolDict {
         }
     }
     pub fn into_openai_style(self) -> serde_json::Value {
-        let params_properties = self.parameters.iter().map(|param| {
-            (
-                param.name.clone(),
-                serde_json::json!({
-                "type": param.param_type,
-                "description": param.description
-            })
-            )
-        }).collect::<serde_json::Map<_, _>>();
-
-        let function_json = serde_json::json!({
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": {
-                    "type": "object",
-                    "properties": params_properties,
-                    "required": self.parameters_required
-                }
-            }
-        });
-        function_json
+        make_openai_tool_value(
+            self.name,
+            self.description,
+            self.parameters_required,
+            self.parameters,
+        )
     }
 }
-
+    
 pub fn at_tools_dicts() -> Result<Vec<AtToolDict>, String> {
     let at_dict: AtDictDeserialize = serde_yaml::from_str(AT_DICT)
         .map_err(|e|format!("Failed to parse AT_DICT: {}", e))?;
 
-    let at_command_dicts = at_dict.at_tools.iter()
-        .map(|x| AtToolDict::new(x, &at_dict.at_params))
+    let at_command_dicts = at_dict.tools.iter()
+        .map(|x| AtToolDict::new(x, &at_dict.parameters))
         .collect::<Vec<AtToolDict>>();
 
     Ok(at_command_dicts)

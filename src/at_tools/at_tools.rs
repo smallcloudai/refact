@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::at_tools::at_custom_tools::at_custom_tools_dicts;
 use crate::call_validation::ContextEnum;
 
 use crate::at_tools::att_workspace::AttWorkspace;
@@ -13,6 +14,7 @@ use crate::at_tools::att_file::AttFile;
 use crate::at_tools::att_ast_definition::AttAstDefinition;
 use crate::at_tools::att_ast_reference::AttAstReference;
 use crate::at_tools::att_ast_lookup_symbols::AttAstLookupSymbols;
+use crate::at_tools::att_execute_cmd::AttExecuteCommand;
 
 
 #[async_trait]
@@ -22,7 +24,7 @@ pub trait AtTool: Send + Sync {
 }
 
 pub async fn at_tools_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtTool + Send>>>> {
-    return HashMap::from([
+    let mut at_tools_dict =  HashMap::from([
         ("workspace".to_string(), Arc::new(AMutex::new(Box::new(AttWorkspace{}) as Box<dyn AtTool + Send>))),
         ("file".to_string(), Arc::new(AMutex::new(Box::new(AttFile{}) as Box<dyn AtTool + Send>))),
         ("definition".to_string(), Arc::new(AMutex::new(Box::new(AttAstDefinition{}) as Box<dyn AtTool + Send>))),
@@ -31,4 +33,16 @@ pub async fn at_tools_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtTool + Send
         // ast-file-symbols?
         // local-notes-to-self
     ]);
+    
+    for cust in at_custom_tools_dicts().unwrap() {
+        at_tools_dict.insert(
+            cust.name.clone(), 
+            Arc::new(AMutex::new(Box::new(AttExecuteCommand {
+                command: cust.command,
+                timeout: cust.timeout,
+                postprocess: cust.postprocess,
+            }) as Box<dyn AtTool + Send>)));
+    }
+    
+    at_tools_dict
 }
