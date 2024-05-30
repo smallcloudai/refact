@@ -596,7 +596,7 @@ export const useEventBusForChat = () => {
         state.selected_system_prompt &&
         state.selected_system_prompt !== maybeDefaultPrompt
           ? [["system", state.selected_system_prompt], ...messages]
-          : state.chat.messages;
+          : messages;
 
       const payload: ChatThread = {
         id: state.chat.id,
@@ -625,7 +625,16 @@ export const useEventBusForChat = () => {
       };
       dispatch(snippetMessage);
     },
-    [clearError, maybeDefaultPrompt, postMessage, state],
+    [
+      clearError,
+      maybeDefaultPrompt,
+      postMessage,
+      state.chat.id,
+      state.chat.model,
+      state.chat.title,
+      state.selected_system_prompt,
+      state.active_file.attach,
+    ],
   );
 
   const askQuestion = useCallback(
