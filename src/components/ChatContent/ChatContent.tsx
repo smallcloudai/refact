@@ -52,7 +52,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       () =>
         messages.reduce<Record<string, ToolCall | undefined>>(
           (acc, message) => {
-            if (isAssistantMessage(message) && message[2] !== undefined) {
+            if (isAssistantMessage(message) && message[2]) {
               const toolCals = message[2].reduce<Record<string, ToolCall>>(
                 (calls, toolCall) => {
                   if (toolCall.id === undefined) return calls;

@@ -101,6 +101,17 @@ function formatChatResponse(
     return [...messages, [response.role, response.content]];
   }
 
+  // TODO: handle tool role
+
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (!response.choices) {
+    // eslint-disable-next-line no-console
+    console.log("responce has no choices");
+    // eslint-disable-next-line no-console
+    console.log(response);
+
+    return messages;
+  }
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (isChatContextFileDelta(cur.delta)) {
       return acc.concat([[cur.delta.role, cur.delta.content]]);
@@ -135,7 +146,10 @@ function formatChatResponse(
       return last.concat([
         ["assistant", currentMessage + cur.delta.content, toolCalls],
       ]);
-    } else if (isAssistantDelta(cur.delta) && cur.delta.content) {
+    } else if (
+      isAssistantDelta(cur.delta) &&
+      typeof cur.delta.content === "string"
+    ) {
       return acc.concat([["assistant", cur.delta.content]]);
     }
 
@@ -143,9 +157,9 @@ function formatChatResponse(
       return acc;
     }
 
-    if (cur.delta.content) {
-      return acc.concat([[cur.delta.role ?? "assistant", cur.delta.content]]);
-    }
+    // console.log("Fall though");
+    // console.log({ cur, lastMessage });
+
     return acc;
   }, messages);
 }
@@ -350,16 +364,6 @@ export function reducer(postMessage: typeof window.postMessage) {
         },
       };
     }
-
-    // if (isThisChat && isSetSelectedAtCommand(action)) {
-    //   return {
-    //     ...state,
-    //     rag_commands: {
-    //       ...state.rag_commands,
-    //       selected_command: action.payload.command,
-    //     },
-    //   };
-    // }
 
     if (isThisChat && isReceiveAtCommandPreview(action)) {
       const filesInPreview = action.payload.preview.reduce<ChatContextFile[]>(
@@ -570,6 +574,12 @@ export const useEventBusForChat = () => {
     });
   }, [state.chat.id]);
 
+  const maybeDefaultPrompt: string | null = useMemo(() => {
+    return "default" in state.system_prompts.prompts
+      ? state.system_prompts.prompts.default.text
+      : null;
+  }, [state.system_prompts.prompts]);
+
   const sendMessages = useCallback(
     (messages: ChatMessages, attach_file = state.active_file.attach) => {
       clearError();
@@ -578,9 +588,15 @@ export const useEventBusForChat = () => {
         payload: { id: state.chat.id, disable: true },
       });
 
+      const messagesWithSystemPrompt: ChatMessages =
+        state.selected_system_prompt &&
+        state.selected_system_prompt !== maybeDefaultPrompt
+          ? [["system", state.selected_system_prompt], ...state.chat.messages]
+          : state.chat.messages;
+
       const payload: ChatThread = {
         id: state.chat.id,
-        messages: messages,
+        messages: messagesWithSystemPrompt,
         title: state.chat.title,
         model: state.chat.model,
         attach_file,
@@ -607,38 +623,24 @@ export const useEventBusForChat = () => {
     },
     [
       clearError,
+      maybeDefaultPrompt,
       postMessage,
       state.active_file.attach,
       state.chat.id,
+      state.chat.messages,
       state.chat.model,
       state.chat.title,
+      state.selected_system_prompt,
     ],
   );
 
-  const maybeDefaultPrompt: string | null = useMemo(() => {
-    return "default" in state.system_prompts.prompts
-      ? state.system_prompts.prompts.default.text
-      : null;
-  }, [state.system_prompts.prompts]);
-
   const askQuestion = useCallback(
     (question: string) => {
-      const messagesWithSystemPrompt: ChatMessages =
-        state.selected_system_prompt &&
-        state.selected_system_prompt !== maybeDefaultPrompt
-          ? [["system", state.selected_system_prompt], ...state.chat.messages]
-          : state.chat.messages;
-
-      const messages = messagesWithSystemPrompt.concat([["user", question]]);
+      const messages = state.chat.messages.concat([["user", question]]);
 
       sendMessages(messages);
     },
-    [
-      sendMessages,
-      state.chat.messages,
-      state.selected_system_prompt,
-      maybeDefaultPrompt,
-    ],
+    [sendMessages, state.chat.messages],
   );
 
   const requestCaps = useCallback(() => {
@@ -885,6 +887,20 @@ export const useEventBusForChat = () => {
   useEffect(() => {
     sendReadyMessage();
   }, [sendReadyMessage]);
+
+  useEffect(() => {
+    if (!state.streaming && state.chat.messages.length > 0) {
+      const lastMessage = state.chat.messages[state.chat.messages.length - 1];
+
+      if (
+        isAssistantMessage(lastMessage) &&
+        lastMessage[2] &&
+        lastMessage[2].length > 0
+      ) {
+        sendMessages(state.chat.messages);
+      }
+    }
+  });
 
   // console.log({ state });
 
