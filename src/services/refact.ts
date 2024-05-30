@@ -248,7 +248,6 @@ export async function sendChat(
   abortController: AbortController,
   lspUrl?: string,
 ) {
-  console.log({ messages });
   const jsonMessages = messages.reduce<
     {
       role: string;
@@ -268,8 +267,6 @@ export async function sendChat(
         },
       ]);
     }
-
-    // TODO: handle tool messages (they will need a tool call id)
 
     const content =
       typeof message[1] === "string" ? message[1] : JSON.stringify(message[1]);
@@ -735,7 +732,6 @@ type AtToolCommand = {
 
 type AtToolResponse = AtToolCommand[];
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getAvailableTools(
   lspUrl?: string,
 ): Promise<AtToolResponse> {
