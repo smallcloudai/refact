@@ -157,6 +157,7 @@ export type ChatUserMessageResponse = {
 };
 
 export type ToolResponse = {
+  id: string;
   role: "tool";
 } & ToolResult;
 
@@ -198,8 +199,7 @@ export function isChatResponseChoice(
 export type ChatResponse =
   | ChatResponseChoice
   | ChatUserMessageResponse
-  | ToolResponse
-  | Record<string, unknown>;
+  | ToolResponse;
 
 const TOOLS = [
   {
@@ -736,7 +736,9 @@ type AtToolCommand = {
 type AtToolResponse = AtToolCommand[];
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function getAvailableTools(lspUrl?: string): Promise<AtToolResponse> {
+export async function getAvailableTools(
+  lspUrl?: string,
+): Promise<AtToolResponse> {
   const toolsUrl = lspUrl
     ? `${lspUrl.replace(/\/*$/, "")}${AT_TOOLS_AVAILABLE_URL}`
     : AT_TOOLS_AVAILABLE_URL;
