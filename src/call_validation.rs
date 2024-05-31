@@ -256,7 +256,7 @@ impl ChatMessage {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatPost {
     pub messages: Vec<ChatMessage>,
     #[serde(default)]

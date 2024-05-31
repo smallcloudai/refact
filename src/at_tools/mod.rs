@@ -7,5 +7,4 @@ mod att_file;
 mod att_ast_reference;
 mod att_ast_file_symbols;
 mod att_ast_lookup_symbols;
-pub mod at_custom_tools;
 mod att_execute_cmd;

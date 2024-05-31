@@ -16,8 +16,7 @@ pub struct AttExecuteCommand {
 #[async_trait]
 impl AtTool for AttExecuteCommand {
     async fn execute(&self, _ccx: &mut AtCommandsContext, tool_call_id: &String, _args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
-        // TODO: use timeout as well
-        let (stdout, stderr) = execute_cmd(&self.command).await?;
+        let (stdout, stderr) = execute_cmd(&self.command, self.timeout).await?;
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {

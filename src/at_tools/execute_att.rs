@@ -38,7 +38,7 @@ pub async fn run_tools(
         return (original_messages.clone(), false);
     }
 
-    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n).await;
+    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, false).await;
     let at_tools = ccx.at_tools.clone();
 
     let mut context_messages: Vec<ChatMessage> = original_messages.iter().map(|m| m.clone()).collect();

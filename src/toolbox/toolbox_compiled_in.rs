@@ -173,6 +173,23 @@ toolbox_commands:
     description: "Show available commands"
     messages: []
 
+
+# CUSTOM TOOLS AND AT-COMMANDS
+# be sure that parameters used in tools are defined in tools_parameters
+
+
+tools:
+  - name: "compile"
+    description: "Compile the project"
+    parameters:
+    parameters_required:
+    command: "cd /Users/$USER/RustroverProjects/refact-lsp && cargo build"
+    timeout: 0
+    postprocess: "last_100_lines"
+
+tools_parameters:
+
+
 "#;
 
 
@@ -201,6 +218,14 @@ toolbox_commands:
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRewrite this specific code block into a very inefficient and cryptic one, but still correct. Rename variables to misleading gibberish. Add unnecessary complexity. Make O(N) worse. Don't forget about bad formatting and random spaces.\n\n```\n%CODE_SELECTION%```\n"
 
+
+# CUSTOM TOOLS AND AT-COMMANDS
+# be sure that parameters used in tools are defined in tools_parameters
+
+
+tools:
+
+tools_parameters:
 
 
 # To help you write by analogy, the default config as was compiled-in at the time of the first run of refact-lsp:

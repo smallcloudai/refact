@@ -181,7 +181,7 @@ pub async fn scratchpad_interaction_stream(
                 let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
                 yield Result::<_, String>::Ok(value_str);
             }
-
+            // info!("prompt: {:?}", prompt);
             let event_source_maybe = if endpoint_style == "hf" {
                 forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
                     &mut save_url,

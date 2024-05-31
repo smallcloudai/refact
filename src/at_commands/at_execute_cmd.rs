@@ -2,6 +2,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::process::Command;
 use tokio::sync::Mutex as AMutex;
+use tokio::time::{timeout, Duration};
+
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum};
@@ -19,12 +21,15 @@ impl AtExecuteCommand {
     }
 }
 
-pub async fn execute_cmd(command: &String) -> Result<(String, String), String> {
-    let output = Command::new("sh")
+pub async fn execute_cmd(command: &String, timeout_secs: usize) -> Result<(String, String), String> {
+    let timeout_duration = Duration::from_secs(timeout_secs as u64);
+
+    let output = timeout(timeout_duration, Command::new("sh")
         .arg("-c")
         .arg(&command)
-        .output()
+        .output())
         .await
+        .map_err(|_| "Command timed out".to_string())?
         .map_err(|e| e.to_string())?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -52,7 +57,7 @@ impl AtCommand for AtExecuteCommand {
             return Err("No args provided".to_string());
         }
 
-        let (stdout, stderr) = execute_cmd(&command).await?;
+        let (stdout, stderr) = execute_cmd(&command, 300).await?;
 
         let chat_message = ChatMessage::new(
             "assistant".to_string(),
@@ -90,15 +95,19 @@ impl AtCommand for AtExecuteCustCommand {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _ccx: &mut AtCommandsContext, _cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
-        // TODO: use timeout as well
+    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         args.clear();
-        let (stdout, stderr) = execute_cmd(&self.command).await?;
+        if ccx.is_preview {
+            cmd.reason = Some("does not run in preview".to_string());
+            return Ok((vec![], "preview".to_string()));
+        }
+        let (stdout, stderr) = execute_cmd(&self.command, self.timeout).await?;
         let chat_message = ChatMessage::new(
             "assistant".to_string(),
             format!("{}{}", stdout, stderr),
         );
         let text = format!("Executed: {}", self.command);
+        // TODO: is err, update highlight to ok=false
         Ok((vec![ContextEnum::ChatMessage(chat_message)], text))
     }
 }

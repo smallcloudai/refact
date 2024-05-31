@@ -24,7 +24,7 @@ pub async fn run_at_commands(
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     info!("reserve_for_context {} tokens", reserve_for_context);
 
-    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n).await;
+    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, false).await;
 
     let mut user_msg_starts = original_messages.len();
     let mut messages_with_at: usize = 0;

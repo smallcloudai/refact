@@ -6,18 +6,18 @@ use crate::at_tools::at_tools_dict::at_tools_dicts;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use tokio::sync::RwLock as ARwLock;
-use crate::at_tools::at_custom_tools::at_custom_tools_dicts;
+use crate::toolbox::toolbox_config::at_custom_tools_dicts;
 
 
 pub async fn handle_v1_tools_available(
-    Extension(_global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     _: hyper::body::Bytes,
 )  -> axum::response::Result<Response<Body>, ScratchError> {
     let at_dict = at_tools_dicts().map_err(|e| {
         tracing::warn!("can't load at_commands_dicts: {}", e);
         return ScratchError::new(StatusCode::NOT_FOUND, format!("can't load at_commands_dicts: {}", e));
     })?;
-    let at_cust_dict = at_custom_tools_dicts().map_err(|e| {
+    let at_cust_dict = at_custom_tools_dicts(global_context.clone()).await.map_err(|e| {
         tracing::warn!("can't load at_custom_tools_dicts: {}", e);
         return ScratchError::new(StatusCode::NOT_FOUND, format!("can't load at_custom_tools_dicts: {}", e));
     })?;

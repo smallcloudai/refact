@@ -115,21 +115,21 @@ fn passthrough_messages_to_json(
     let big_json: serde_json::Value = serde_json::from_str(&messages_str).unwrap();
 
     // TODO: remove, parsed only for debug log
-    let messages: Vec<crate::call_validation::ChatMessage> = big_json["messages"].as_array().unwrap().iter().map(|x|
-        serde_json::from_value(x.clone()).unwrap()
-    ).collect();
-    for msg in messages.iter() {
-        info!("PASSTHROUGH MSG: {:?}", msg);
-    }
-    let tools_mb: Option<Vec<serde_json::Value>> = match big_json["tools"].as_array() {
-        Some(x) => Some(x.iter().map(|x| x.clone()).collect()),
-        None => None,
-    };
-    if let Some(tools) = tools_mb {
-        for tool in tools.iter() {
-            info!("PASSTHROUGH TOOL: {:?}", tool);
-        }
-    }
+    // let messages: Vec<crate::call_validation::ChatMessage> = big_json["messages"].as_array().unwrap().iter().map(|x|
+    //     serde_json::from_value(x.clone()).unwrap()
+    // ).collect();
+    // for msg in messages.iter() {
+    //     info!("PASSTHROUGH MSG: {:?}", msg);
+    // }
+    // let tools_mb: Option<Vec<serde_json::Value>> = match big_json["tools"].as_array() {
+    //     Some(x) => Some(x.iter().map(|x| x.clone()).collect()),
+    //     None => None,
+    // };
+    // if let Some(tools) = tools_mb {
+    //     for tool in tools.iter() {
+    //         info!("PASSTHROUGH TOOL: {:?}", tool);
+    //     }
+    // }
 
     data["messages"] = big_json["messages"].clone();
     data["tools"] = big_json["tools"].clone();

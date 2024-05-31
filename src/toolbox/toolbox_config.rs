@@ -1,4 +1,3 @@
-use serde_yaml::Value;
 use serde_yaml;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
@@ -7,12 +6,74 @@ use crate::call_validation::ChatMessage;
 use std::io::Write;
 use std::sync::Arc;
 use crate::global_context::GlobalContext;
+use crate::at_tools::at_tools_dict::{AtParamDict, make_openai_tool_value};
 
+
+#[derive(Deserialize)]
+pub struct ToolboxConfigDeserialize {
+    pub system_prompts: HashMap<String, SystemPrompt>,
+    pub toolbox_commands: HashMap<String, ToolboxCommand>,
+    #[serde(default)]
+    pub tools: Vec<AtToolCustDictDeserialize>,
+    #[serde(default)]
+    pub tools_parameters: Vec<AtParamDict>, 
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ToolboxConfig {
     pub system_prompts: HashMap<String, SystemPrompt>,
     pub toolbox_commands: HashMap<String, ToolboxCommand>,
+    pub tools: Vec<AtToolCustDict>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct AtToolCustDict {
+    pub name: String,
+    pub description: String,
+    pub parameters: Vec<AtParamDict>,
+    pub parameters_required: Vec<String>,
+    pub command: String,
+    pub timeout: usize,
+    pub postprocess: String,
+}
+
+impl AtToolCustDict {
+    pub fn new(cmd: &AtToolCustDictDeserialize, params: &Vec<AtParamDict>) -> Self {
+        AtToolCustDict {
+            name: cmd.name.clone(),
+            description: cmd.description.clone(),
+            parameters: cmd.parameters.iter()
+                .map(
+                    |name| params.iter()
+                        .find(|param| &param.name == name).unwrap()
+                )
+                .cloned().collect(),
+            parameters_required: cmd.parameters_required.clone(),
+            command: cmd.command.clone(),
+            timeout: cmd.timeout,
+            postprocess: cmd.postprocess.clone(),
+        }
+    }
+
+    pub fn into_openai_style(self) -> serde_json::Value {
+        make_openai_tool_value(
+            self.name,
+            self.description,
+            self.parameters_required,
+            self.parameters,
+        )
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AtToolCustDictDeserialize{
+    pub name: String,
+    pub description: String,
+    pub parameters: Vec<String>,
+    pub parameters_required: Vec<String>,
+    pub command: String,
+    pub timeout: usize,
+    pub postprocess: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -38,7 +99,7 @@ fn _extract_mapping_values(mapping: &Option<&serde_yaml::Mapping>, variables: &m
 {
     if let Some(mapping) = mapping {
         for (k, v) in mapping.iter() {
-            if let (Value::String(key), Value::String(value)) = (k, v) {
+            if let (serde_yaml::Value::String(key), serde_yaml::Value::String(value)) = (k, v) {
                 variables.insert(key.clone(), value.clone());
             }
         }
@@ -79,11 +140,30 @@ fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, Str
     _extract_mapping_values(&default_unstructured.as_mapping(), &mut variables);
     _extract_mapping_values(&user_unstructured.as_mapping(), &mut variables);
 
-    let mut work_config: ToolboxConfig = serde_yaml::from_str(crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML)
+    let work_config_deserialize: ToolboxConfigDeserialize = serde_yaml::from_str(crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML)
         .map_err(|e| format!("Error parsing default ToolboxConfig: {}", e))?;
-    let mut user_config: ToolboxConfig = serde_yaml::from_str(user_yaml)
-        .map_err(|e| format!("Error parsing user ToolboxConfig: {}", e))?;
+    let tools = work_config_deserialize.tools.iter()
+        .map(|x|AtToolCustDict::new(x, &work_config_deserialize.tools_parameters))
+        .collect::<Vec<AtToolCustDict>>();
+    
+    let mut work_config = ToolboxConfig {
+        system_prompts: work_config_deserialize.system_prompts,
+        toolbox_commands: work_config_deserialize.toolbox_commands,
+        tools,
+    };
 
+    let user_config_deserialize: ToolboxConfigDeserialize = serde_yaml::from_str(user_yaml)
+        .map_err(|e| format!("Error parsing user ToolboxConfig: {}", e))?;
+    let user_tools = user_config_deserialize.tools.iter()
+       .map(|x|AtToolCustDict::new(x, &user_config_deserialize.tools_parameters))
+       .collect::<Vec<AtToolCustDict>>();
+    
+    let mut user_config = ToolboxConfig {
+        system_prompts: user_config_deserialize.system_prompts,
+        toolbox_commands: user_config_deserialize.toolbox_commands,
+        tools: user_tools,
+    };
+    
     _replace_variables_in_messages(&mut work_config, &variables);
     _replace_variables_in_messages(&mut user_config, &variables);
     _replace_variables_in_system_prompts(&mut work_config, &variables);
@@ -91,6 +171,8 @@ fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, Str
 
     work_config.toolbox_commands.extend(user_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.system_prompts.extend(user_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
+    // TODO: deduplicate?
+    work_config.tools.extend(user_config.tools.iter().map(|x|x.clone())); 
     Ok(work_config)
 }
 
@@ -128,6 +210,11 @@ pub async fn get_default_system_prompt(global_context: Arc<ARwLock<GlobalContext
         Some(x) => Ok(x),
         None => Err("no default system prompt found".to_string()),
     }
+}
+
+pub async fn at_custom_tools_dicts(global_context: Arc<ARwLock<GlobalContext>>) -> Result<Vec<AtToolCustDict>, String> {
+    let tconfig = get_tconfig(global_context.clone()).await?;
+    Ok(tconfig.tools)
 }
 
 #[cfg(test)]

@@ -4,6 +4,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
+use tracing::error;
 
 use crate::at_tools::at_tools::{at_tools_dict, AtTool};
 use crate::call_validation::{ContextFile, ContextEnum, ChatMessage};
@@ -17,7 +18,7 @@ use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
 use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
 use crate::at_commands::at_execute_cmd::{AtExecuteCommand, AtExecuteCustCommand};
 use crate::at_commands::execute_at::AtCommandMember;
-use crate::at_tools::at_custom_tools::at_custom_tools_dicts;
+use crate::toolbox::toolbox_config::at_custom_tools_dicts;
 
 
 pub struct AtCommandsContext {
@@ -25,15 +26,17 @@ pub struct AtCommandsContext {
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,
     pub at_tools: HashMap<String, Arc<AMutex<Box<dyn AtTool + Send>>>>,
     pub top_n: usize,
+    pub is_preview: bool,
 }
 
 impl AtCommandsContext {
-    pub async fn new(global_context: Arc<ARwLock<GlobalContext>>, top_n: usize) -> Self {
+    pub async fn new(global_context: Arc<ARwLock<GlobalContext>>, top_n: usize, is_preview: bool) -> Self {
         AtCommandsContext {
-            global_context,
-            at_commands: at_commands_dict().await,
-            at_tools: at_tools_dict().await,
+            global_context: global_context.clone(),
+            at_commands: at_commands_dict(global_context.clone()).await,
+            at_tools: at_tools_dict(global_context.clone()).await,
             top_n,
+            is_preview
         }
     }
 }
@@ -53,7 +56,7 @@ pub trait AtParam: Send + Sync {
     fn complete_if_valid(&self) -> bool {false}
 }
 
-pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {
+pub async fn at_commands_dict(global_context: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {
     let mut at_commands_dict = HashMap::from([
         ("@workspace".to_string(), Arc::new(AMutex::new(Box::new(AtWorkspace::new()) as Box<dyn AtCommand + Send>))),
         ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
@@ -64,7 +67,7 @@ pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand 
         ("@execute".to_string(), Arc::new(AMutex::new(Box::new(AtExecuteCommand::new()) as Box<dyn AtCommand + Send>))),
     ]);
     
-    for cust in at_custom_tools_dicts().unwrap() {
+    for cust in at_custom_tools_dicts(global_context).await.map_err(|x|error!(x)).unwrap() {
         at_commands_dict.insert(
             format!("@{}", cust.name.clone()),
             Arc::new(AMutex::new(Box::new(AtExecuteCustCommand::new(
@@ -74,7 +77,6 @@ pub async fn at_commands_dict() -> HashMap<String, Arc<AMutex<Box<dyn AtCommand 
             )) as Box<dyn AtCommand + Send>))
         );
     }
-
     at_commands_dict
 }
 
