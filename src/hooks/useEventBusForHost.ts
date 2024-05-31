@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   sendChat,
   getCaps,
@@ -24,6 +24,7 @@ import {
   ReceivePrompts,
   ReceivePromptsError,
   isRequestPreviewFiles,
+  isTakeNotesFromChat,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
@@ -33,6 +34,8 @@ export function useEventBusForHost() {
   const { saveChat } = useChatHistory();
   // this needs to be a ref because it is mutated in a useEffect
   const controller = useRef(new AbortController());
+
+  const [takeingNotes, setTakingNotes] = useState<boolean>(false);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -60,6 +63,16 @@ export function useEventBusForHost() {
 
         handleSend(event.data.payload, controller.current, lspUrl);
         return;
+      }
+
+      if (isTakeNotesFromChat(event.data)) {
+        setTakingNotes(true);
+        const { messages, model } = event.data.payload;
+        const controller = new AbortController();
+        sendChat(messages, model, controller, false, lspUrl)
+          .then((res) => res.json())
+          .catch((err) => console.error(err))
+          .finally(() => setTakingNotes(false));
       }
 
       if (isSaveChatFromChat(event.data)) {
@@ -179,6 +192,10 @@ export function useEventBusForHost() {
       window.removeEventListener("message", listener);
     };
   }, [saveChat, lspUrl]);
+
+  return {
+    takeingNotes,
+  };
 }
 
 function handleSend(
@@ -187,7 +204,7 @@ function handleSend(
   lspUrl?: string,
 ) {
   // console.log({ chat });
-  sendChat(chat.messages, chat.model, controller, lspUrl)
+  sendChat(chat.messages, chat.model, controller, true, lspUrl)
     .then((response) => {
       if (!response.ok) {
         return Promise.reject(new Error(response.statusText));

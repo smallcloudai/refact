@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useCallback, useMemo } from "react";
+import { useEffect, useReducer, useCallback, useMemo, useRef } from "react";
 import {
   type ChatContextFile,
   type ChatMessages,
@@ -8,7 +8,6 @@ import {
   isAssistantMessage,
   isAssistantDelta,
   isToolCallDelta,
-  ToolCall,
   isToolResponse,
   isChatResponseChoice,
 } from "../../services/refact";
@@ -62,36 +61,13 @@ import {
   RequestPreviewFiles,
   type CommandCompletionResponse,
   type ToolResult,
+  isSetTakeNotes,
+  SetTakeNotes,
+  TakeNotesFromChat,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
-
-function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
-  const calls = prev.slice();
-
-  if (calls[add.index]) {
-    const prevCall = calls[add.index];
-    const prevArgs = prevCall.function.arguments;
-    const nextArgs = prevArgs + add.function.arguments;
-    const call: ToolCall = {
-      ...prevCall,
-      function: {
-        ...prevCall.function,
-        arguments: nextArgs,
-      },
-    };
-    calls[add.index] = call;
-  } else {
-    calls[add.index] = add;
-  }
-  return calls;
-}
-
-export function mergeToolCalls(prev: ToolCall[], add: ToolCall[]): ToolCall[] {
-  return add.reduce((acc, cur) => {
-    return mergeToolCall(acc, cur);
-  }, prev);
-}
+import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
 
 function formatChatResponse(
   messages: ChatMessages,
@@ -471,6 +447,13 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
+    if (isThisChat && isSetTakeNotes(action)) {
+      return {
+        ...state,
+        take_notes: action.payload.take_notes,
+      };
+    }
+
     return state;
   };
 }
@@ -500,6 +483,7 @@ export type ChatState = {
     fetching: boolean;
   };
   selected_system_prompt: null | string;
+  take_notes: boolean;
 };
 
 export function createInitialState(): ChatState {
@@ -548,6 +532,7 @@ export function createInitialState(): ChatState {
       fetching: false,
     },
     selected_system_prompt: null,
+    take_notes: false,
   };
 }
 
@@ -578,6 +563,18 @@ export const useEventBusForChat = () => {
     });
   }, [state.chat.id]);
 
+  const setTakeNotes = useCallback(
+    (take_notes: boolean) => {
+      const action: SetTakeNotes = {
+        type: EVENT_NAMES_TO_CHAT.SET_TAKE_NOTES,
+        payload: { id: state.chat.id, take_notes },
+      };
+
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
+
   const maybeDefaultPrompt: string | null = useMemo(() => {
     return "default" in state.system_prompts.prompts
       ? state.system_prompts.prompts.default.text
@@ -587,6 +584,7 @@ export const useEventBusForChat = () => {
   const sendMessages = useCallback(
     (messages: ChatMessages, attach_file = state.active_file.attach) => {
       clearError();
+      setTakeNotes(true);
       dispatch({
         type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
         payload: { id: state.chat.id, disable: true },
@@ -626,14 +624,15 @@ export const useEventBusForChat = () => {
       dispatch(snippetMessage);
     },
     [
+      state.active_file.attach,
+      state.chat.id,
+      state.chat.title,
+      state.chat.model,
+      state.selected_system_prompt,
       clearError,
+      setTakeNotes,
       maybeDefaultPrompt,
       postMessage,
-      state.chat.id,
-      state.chat.model,
-      state.chat.title,
-      state.selected_system_prompt,
-      state.active_file.attach,
     ],
   );
 
@@ -739,11 +738,13 @@ export const useEventBusForChat = () => {
   }, [clearError, postMessage, state.chat.id]);
 
   const openChatInNewTab = useCallback(() => {
+    setTakeNotes(false);
+
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.OPEN_IN_CHAT_IN_TAB,
       payload: { id: state.chat.id },
     });
-  }, [postMessage, state.chat.id]);
+  }, [postMessage, state.chat.id, setTakeNotes]);
 
   const sendToSideBar = useCallback(() => {
     postMessage({
@@ -905,9 +906,46 @@ export const useEventBusForChat = () => {
     }
   }, [sendMessages, state.chat.messages, state.streaming]);
 
+  // TODO: Turn this into a hook
+  const noteRef = useRef<Pick<ChatState, "chat" | "take_notes">>({
+    chat: state.chat,
+    take_notes: state.take_notes,
+  });
+  useEffect(() => {
+    noteRef.current.chat = state.chat;
+    noteRef.current.take_notes = state.take_notes;
+  }, [state.chat, state.take_notes]);
+
+  useEffect(() => {
+    return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const { chat, take_notes } = noteRef.current;
+      if (!take_notes) return;
+      if (chat.messages.length === 0) return;
+
+      const messages: ChatMessages = [
+        ...chat.messages,
+        ["user", TAKE_NOTE_MESSAGE],
+      ];
+
+      const action: TakeNotesFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
+        payload: { ...chat, messages },
+      };
+
+      postMessage(action);
+    };
+  }, [postMessage, state.chat.id]);
+
   // useEffect(() => {
-  //   window.debugChat = function () {
-  //     console.log(state.chat);
+  //   window.debugChat =
+  //     window.debugChat ||
+  //     function () {
+  //       console.log(state.chat);
+  //     };
+
+  //   return () => {
+  //     window.debugChat = undefined;
   //   };
   // }, [state.chat]);
 

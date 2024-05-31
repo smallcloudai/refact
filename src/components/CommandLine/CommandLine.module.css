@@ -1,3 +1,7 @@
+.markdown {
+  /* overflow-x: scroll; */
+}
+
 .pre {
   padding: var(--space-2) !important;
   margin: 0 !important;
@@ -12,6 +16,7 @@
 .command {
   padding: 0;
   width: 100%;
+  /* overflow-x: scroll; */
 }
 
 .button {

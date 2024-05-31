@@ -100,6 +100,10 @@ export function isAssistantMessage(
   return message[0] === "assistant";
 }
 
+export function isToolMessage(message: ChatMessage): message is ToolMessage {
+  return message[0] === "tool";
+}
+
 interface BaseDelta {
   role?: ChatRole | null;
 }
@@ -258,6 +262,7 @@ export async function sendChat(
   messages: ChatMessages,
   model: string,
   abortController: AbortController,
+  stream: boolean | undefined = true,
   lspUrl?: string,
 ) {
   const jsonMessages = messages.reduce<
@@ -280,6 +285,16 @@ export async function sendChat(
       ]);
     }
 
+    if (isToolMessage(message)) {
+      return acc.concat([
+        {
+          role: "tool",
+          content: message[1].content,
+          tool_call_id: message[1].tool_call_id,
+        },
+      ]);
+    }
+
     const content =
       typeof message[1] === "string" ? message[1] : JSON.stringify(message[1]);
     return [...acc, { role: message[0], content, tool_call_id: "" }];
@@ -293,7 +308,8 @@ export async function sendChat(
     parameters: {
       max_new_tokens: 2048,
     },
-    stream: true,
+    stream,
+    // stream: false,
     tools: toolsResponse,
     // tools: TOOLS, // works
     // tools: [], // causes bugs

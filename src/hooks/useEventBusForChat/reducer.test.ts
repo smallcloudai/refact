@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { reducer, createInitialState, mergeToolCalls } from ".";
+import { reducer, createInitialState } from ".";
 import { EVENT_NAMES_TO_CHAT, ToolCall, ResponseToChat } from "../../events";
+import { mergeToolCalls } from "./utils";
 
 describe("reducer", () => {
   test("handle an empty message from the assistant", () => {
