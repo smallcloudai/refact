@@ -279,8 +279,6 @@ export async function sendChat(
           role: message[0],
           content: message[1],
           tool_calls: message[2],
-          // TODO: this shouldn't need to be there
-          tool_call_id: "",
         },
       ]);
     }
@@ -297,7 +295,7 @@ export async function sendChat(
 
     const content =
       typeof message[1] === "string" ? message[1] : JSON.stringify(message[1]);
-    return [...acc, { role: message[0], content, tool_call_id: "" }];
+    return [...acc, { role: message[0], content }];
   }, []);
 
   const toolsResponse = await getAvailableTools();
