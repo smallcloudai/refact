@@ -38,6 +38,11 @@ export const CommandLine: React.FC<CommandLineProps> = ({
 
   const str = "```python\n" + command + "(" + argsString + ")\n```";
 
+  const escapedBackticks = result.replace(/`+/g, (match) => {
+    if (match === "```") return match;
+    return "\\" + "`";
+  });
+
   const [open, setOpen] = React.useState(false);
   return (
     <Box m="3">
@@ -52,7 +57,7 @@ export const CommandLine: React.FC<CommandLineProps> = ({
         </Collapsible.Trigger>
 
         <Collapsible.Content className={styles.content}>
-          <Markdown>{result}</Markdown>
+          <Markdown>{escapedBackticks}</Markdown>
         </Collapsible.Content>
       </Collapsible.Root>
     </Box>
