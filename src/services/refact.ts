@@ -240,6 +240,18 @@ const TOOLS = [
     },
     type: "function",
   },
+  {
+    function: {
+      description: "Compile the project",
+      name: "compile",
+      parameters: {
+        properties: {},
+        required: [],
+        type: "object",
+      },
+    },
+    type: "function",
+  },
 ];
 
 export async function sendChat(
