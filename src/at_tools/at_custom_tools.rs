@@ -8,7 +8,7 @@ tools:
     description: "Compile the project"
     parameters:
     parameters_required:
-    command: "cd /Users/$USER/RustroverProjects/refact-lsp && cargo build"
+    command: "cd /Users/$USER/code/refact-lsp && cargo build"
     timeout: 300
     postprocess: "last_100_lines"
 
@@ -62,7 +62,7 @@ impl AtToolCustDict {
             postprocess: cmd.postprocess.clone(),
         }
     }
-    
+
     pub fn into_openai_style(self) -> serde_json::Value {
         make_openai_tool_value(
             self.name,
@@ -76,10 +76,10 @@ impl AtToolCustDict {
 pub fn at_custom_tools_dicts() -> Result<Vec<AtToolCustDict>, String> {
     let at_cust_dict: AtCustDictDeserialize = serde_yaml::from_str(AT_CUSTOM_TOOLS_DICT)
         .map_err(|e|format!("Failed to parse AT_CUSTOM_TOOLS_DICT: {}", e))?;
-    
+
     let at_cust_command_dicts = at_cust_dict.tools.iter()
         .map(|x|AtToolCustDict::new(x, &at_cust_dict.parameters))
        .collect::<Vec<AtToolCustDict>>();
-    
+
     Ok(at_cust_command_dicts)
 }

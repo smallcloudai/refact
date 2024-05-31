@@ -46,14 +46,14 @@ impl AtCommand for AtExecuteCommand {
         }
         args.clear();
         args.extend(new_args);
-        
+
         let command = args.iter().map(|x|x.text.clone()).collect::<Vec<_>>().join(" ");
         if command.is_empty() {
             return Err("No args provided".to_string());
         }
-        
+
         let (stdout, stderr) = execute_cmd(&command).await?;
-        
+
         let chat_message = ChatMessage::new(
             "assistant".to_string(),
             format!("{}{}", stdout, stderr),

@@ -18,14 +18,11 @@ impl AtTool for AttExecuteCommand {
     async fn execute(&self, _ccx: &mut AtCommandsContext, tool_call_id: &String, _args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         // TODO: use timeout as well
         let (stdout, stderr) = execute_cmd(&self.command).await?;
-        
-        let mut results = vec![ContextEnum::ChatMessage(ChatMessage::new(
-            "assistant".to_string(),
-            format!("{}{}", stdout, stderr),
-        ))];
+
+        let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: format!("Attached log of the executed command: {}", self.command),
+            content: format!("Running compile:\n```{}{}```", stdout, stderr),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
         }));

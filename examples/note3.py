@@ -12,8 +12,8 @@ DEPTH = 2
 # MODEL = "gpt-4-turbo"
 # MODEL = "gpt-4o"
 # MODEL = "gpt-3.5-turbo-1106"  # $1, multi call works
-# MODEL = "gpt-3.5-turbo-0125"    # $0.50
-MODEL = "gpt-3.5-turbo"    # $0.50
+MODEL = "gpt-3.5-turbo-0125"    # $0.50
+# MODEL = "gpt-3.5-turbo"    # $0.50
 
 
 SYSTEM_PROMPT = """
@@ -100,7 +100,7 @@ async def do_all():
     for step_n in range(DEPTH):
         print("-"*40 + " step %d " % step_n + "-"*40)
         N = 1
-        tools_turn_on = {"note_to_self"} if args.note else {"definition", "file"}
+        tools_turn_on = {"note_to_self"} if args.note else {"definition", "compile"}
         tools = await chat_client.tools_fetch_and_filter(base_url="http://127.0.0.1:8001/v1", tools_turn_on=tools_turn_on)
         assistant_choices = await chat_client.ask_using_http(
             "http://127.0.0.1:8001/v1",
