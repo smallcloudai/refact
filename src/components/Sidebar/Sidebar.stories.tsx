@@ -6,6 +6,7 @@ const meta = {
   component: Sidebar,
   args: {
     history: [],
+    takingNotes: false,
   },
 } satisfies Meta<typeof Sidebar>;
 

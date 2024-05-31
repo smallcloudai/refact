@@ -71,7 +71,10 @@ export function useEventBusForHost() {
         const controller = new AbortController();
         sendChat(messages, model, controller, false, lspUrl)
           .then((res) => res.json())
-          .catch((err) => console.error(err))
+          .catch((err) => {
+            // eslint-disable-next-line no-console
+            console.error(err);
+          })
           .finally(() => setTakingNotes(false));
       }
 

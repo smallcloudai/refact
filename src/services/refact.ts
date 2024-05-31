@@ -205,6 +205,7 @@ export type ChatResponse =
   | ChatUserMessageResponse
   | ToolResponse;
 
+// @ts-expect-error hardcode valueas, can be removed if unsued
 const _TOOLS = [
   {
     function: {
