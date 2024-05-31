@@ -201,7 +201,7 @@ export type ChatResponse =
   | ChatUserMessageResponse
   | ToolResponse;
 
-const TOOLS = [
+const _TOOLS = [
   {
     function: {
       description:
@@ -285,9 +285,7 @@ export async function sendChat(
     return [...acc, { role: message[0], content, tool_call_id: "" }];
   }, []);
 
-  // const toolsResponse = await getAvailableTools();
-
-  // console.log({ toolsResponse });
+  const toolsResponse = await getAvailableTools();
 
   const body = JSON.stringify({
     messages: jsonMessages,
@@ -296,8 +294,11 @@ export async function sendChat(
       max_new_tokens: 2048,
     },
     stream: true,
-    // tools: toolsResponse,
-    tools: TOOLS,
+    tools: toolsResponse,
+    // tools: TOOLS, // works
+    // tools: [], // causes bugs
+    // tools: toolsResponse.slice(0, 1), // can cause bugs
+    // tools: toolsResponse.slice(1) // can work
     max_tokens: 2048,
   });
 
