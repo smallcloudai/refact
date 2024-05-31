@@ -1,17 +1,12 @@
-.markdown {
-}
-
-.markdown pre {
-  /* all: unset; */
-}
-
 .pre {
-  /* all: unset; */
+  padding: var(--space-2) !important;
+  margin: 0 !important;
 }
 
 .code {
   color: inherit;
   background: none;
+  padding: 0;
 }
 
 .command {
@@ -27,10 +22,6 @@
   padding: 0;
 }
 
-.command pre {
-  all: unset;
-}
-
 .content pre {
-  all: unset;
+  margin: 0 !important;
 }

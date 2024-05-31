@@ -23,6 +23,7 @@ const CodeBlock: React.FC<
       CodeTag={(props) => (
         <Code {...props} size="2" className={classNames(styles.code)} />
       )}
+      PreTag={(props) => <pre {...props} className={classNames(styles.pre)} />}
       language={language}
       // useInlineStyles={false}
     >
