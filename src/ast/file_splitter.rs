@@ -39,7 +39,7 @@ impl AstBasedFileSplitter {
         &self,
         doc: &Document,
         tokenizer: Arc<StdRwLock<Tokenizer>>,
-        global_context: Weak<RwLock<GlobalContext>>,
+        gcx_weak: Weak<RwLock<GlobalContext>>,
         tokens_limit: usize
     ) -> Result<Vec<SplitResult>, String> {
         // let doc = doc.clone();
@@ -95,7 +95,7 @@ impl AstBasedFileSplitter {
                 settings.useful_symbol_default = 0.0;
                 settings.close_small_gaps = false;
                 let (mut lines_in_files, mut lines_by_useful) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage_3_6(
-                    global_context.upgrade().unwrap(),
+                    gcx_weak.upgrade().unwrap(),
                     messages,
                     &files_markup,
                     &settings,
