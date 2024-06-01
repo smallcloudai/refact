@@ -17,7 +17,7 @@ MODEL = "gpt-3.5-turbo-0125"    # $0.50
 
 
 SYSTEM_PROMPT = """
-You are a search agent. You need to actively search for the answer yourself, don't ask the user to do anything. The answer is most likely in the files and databases accessible using tool calls, not on the internet.
+You need to actively search for the answer yourself, don't ask the user to do anything. The answer is most likely in the files and databases accessible using tool calls, not on the internet.
 
 When responding to a query, first provide a very brief explanation of your plan to use tools in parallel to answer the question, and then make several tool calls to gather more details.
 
@@ -116,7 +116,7 @@ async def do_all():
         assert(len(assistant_choices)==N)
         messages = assistant_choices[0]
         with open(f"note_logs/{DUMP_PREFIX}.json", "w") as f:
-            json_data = [json.dumps(msg.json(), indent=4) for msg in messages]
+            json_data = [msg.json(indent=4) for msg in messages]
             f.write("[\n" + ",\n".join(json_data) + "\n]")
             f.write("\n")
         if not messages[-1].tool_calls:

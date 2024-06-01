@@ -11,14 +11,14 @@ use tracing::error;
 use crate::call_validation::ChatMessage;
 use crate::global_context::GlobalContext;
 use crate::custom_error::ScratchError;
-use crate::toolbox::toolbox_config::get_tconfig;
+use crate::toolbox::toolbox_config::load_customization_high_level;
 
 
 pub async fn handle_v1_customization(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-	let tconfig = match get_tconfig(global_context.clone()).await {
+	let tconfig = match load_customization_high_level(global_context.clone()).await {
 		Ok(config) => config,
 		Err(err) => {
 			error!("load_customization_high_level: {}", err);

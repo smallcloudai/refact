@@ -4,9 +4,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
-use tracing::error;
 
-use crate::at_tools::at_tools::{at_tools_dict, AtTool};
+use crate::at_tools::at_tools::AtTool;
 use crate::call_validation::{ContextFile, ContextEnum, ChatMessage};
 use crate::global_context::GlobalContext;
 
@@ -16,9 +15,8 @@ use crate::at_commands::at_ast_definition::AtAstDefinition;
 use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
 use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
-use crate::at_commands::at_execute_cmd::{AtExecuteCommand, AtExecuteCustCommand};
+use crate::at_commands::at_execute_cmd::AtExecuteCommand;
 use crate::at_commands::execute_at::AtCommandMember;
-use crate::toolbox::toolbox_config::at_custom_tools_dicts;
 
 
 pub struct AtCommandsContext {
@@ -34,7 +32,7 @@ impl AtCommandsContext {
         AtCommandsContext {
             global_context: global_context.clone(),
             at_commands: at_commands_dict(global_context.clone()).await,
-            at_tools: at_tools_dict(global_context.clone()).await,
+            at_tools: crate::at_tools::at_tools::at_tools_merged(global_context.clone()).await,
             top_n,
             is_preview
         }
@@ -56,8 +54,8 @@ pub trait AtParam: Send + Sync {
     fn complete_if_valid(&self) -> bool {false}
 }
 
-pub async fn at_commands_dict(global_context: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {
-    let mut at_commands_dict = HashMap::from([
+pub async fn at_commands_dict(_gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {
+    let at_commands_dict = HashMap::from([
         ("@workspace".to_string(), Arc::new(AMutex::new(Box::new(AtWorkspace::new()) as Box<dyn AtCommand + Send>))),
         ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
         ("@definition".to_string(), Arc::new(AMutex::new(Box::new(AtAstDefinition::new()) as Box<dyn AtCommand + Send>))),
@@ -66,17 +64,23 @@ pub async fn at_commands_dict(global_context: Arc<ARwLock<GlobalContext>>) -> Ha
         ("@local-notes-to-self".to_string(), Arc::new(AMutex::new(Box::new(AtLocalNotesToSelf::new()) as Box<dyn AtCommand + Send>))),
         ("@execute".to_string(), Arc::new(AMutex::new(Box::new(AtExecuteCommand::new()) as Box<dyn AtCommand + Send>))),
     ]);
-    
-    for cust in at_custom_tools_dicts(global_context).await.map_err(|x|error!(x)).unwrap() {
-        at_commands_dict.insert(
-            format!("@{}", cust.name.clone()),
-            Arc::new(AMutex::new(Box::new(AtExecuteCustCommand::new(
-                cust.command.clone(),
-                cust.timeout.clone(),
-                cust.postprocess.clone(),
-            )) as Box<dyn AtCommand + Send>))
-        );
-    }
+
+    // Don't need custom at-commands?
+    // let tconfig_maybe = crate::toolbox::toolbox_config::load_customization_high_level(gcx.clone()).await;
+    // if tconfig_maybe.is_err() {
+    //     error!("Error loading toolbox config: {:?}", tconfig_maybe.err().unwrap());
+    // } else {
+    //     for cust in tconfig_maybe.unwrap().tools {
+    //         at_commands_dict.insert(
+    //             format!("@{}", cust.name.clone()),
+    //             Arc::new(AMutex::new(Box::new(AtExecuteCustCommand::new(
+    //                 cust.command.clone(),
+    //                 cust.timeout.clone(),
+    //                 cust.postprocess.clone(),
+    //             )) as Box<dyn AtCommand + Send>))
+    //         );
+    //     }
+    // }
     at_commands_dict
 }
 

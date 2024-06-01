@@ -6,7 +6,7 @@ use crate::call_validation::ChatMessage;
 use std::io::Write;
 use std::sync::Arc;
 use crate::global_context::GlobalContext;
-use crate::at_tools::at_tools_dict::{AtParamDict, make_openai_tool_value};
+use crate::at_tools::at_tools::{AtParamDict, make_openai_tool_value};
 
 
 #[derive(Deserialize)]
@@ -16,7 +16,7 @@ pub struct ToolboxConfigDeserialize {
     #[serde(default)]
     pub tools: Vec<AtToolCustDictDeserialize>,
     #[serde(default)]
-    pub tools_parameters: Vec<AtParamDict>, 
+    pub tools_parameters: Vec<AtParamDict>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -145,7 +145,7 @@ fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, Str
     let tools = work_config_deserialize.tools.iter()
         .map(|x|AtToolCustDict::new(x, &work_config_deserialize.tools_parameters))
         .collect::<Vec<AtToolCustDict>>();
-    
+
     let mut work_config = ToolboxConfig {
         system_prompts: work_config_deserialize.system_prompts,
         toolbox_commands: work_config_deserialize.toolbox_commands,
@@ -157,13 +157,13 @@ fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, Str
     let user_tools = user_config_deserialize.tools.iter()
        .map(|x|AtToolCustDict::new(x, &user_config_deserialize.tools_parameters))
        .collect::<Vec<AtToolCustDict>>();
-    
+
     let mut user_config = ToolboxConfig {
         system_prompts: user_config_deserialize.system_prompts,
         toolbox_commands: user_config_deserialize.toolbox_commands,
         tools: user_tools,
     };
-    
+
     _replace_variables_in_messages(&mut work_config, &variables);
     _replace_variables_in_messages(&mut user_config, &variables);
     _replace_variables_in_system_prompts(&mut work_config, &variables);
@@ -172,11 +172,12 @@ fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, Str
     work_config.toolbox_commands.extend(user_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.system_prompts.extend(user_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     // TODO: deduplicate?
-    work_config.tools.extend(user_config.tools.iter().map(|x|x.clone())); 
+    work_config.tools.extend(user_config.tools.iter().map(|x|x.clone()));
     Ok(work_config)
 }
 
-pub fn load_customization_high_level(cache_dir: std::path::PathBuf) -> Result<ToolboxConfig, String> {
+pub async fn load_customization_high_level(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolboxConfig, String> {
+    let cache_dir = gcx.read().await.cache_dir.clone();
     let user_config_path = cache_dir.join("customization.yaml");
 
     if !user_config_path.exists() {
@@ -199,22 +200,12 @@ pub fn load_customization_high_level(cache_dir: std::path::PathBuf) -> Result<To
     _load_and_mix_with_users_config(&user_config_text).map_err(|e| e.to_string())
 }
 
-pub async fn get_tconfig(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolboxConfig, String>{
-    let cache_dir = gcx.read().await.cache_dir.clone();
-    load_customization_high_level(cache_dir)
-}
-
 pub async fn get_default_system_prompt(global_context: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
-    let tconfig = get_tconfig(global_context.clone()).await?;
+    let tconfig = load_customization_high_level(global_context.clone()).await?;
     match tconfig.system_prompts.get("default").and_then(|x|Some(x.text.clone())) {
         Some(x) => Ok(x),
         None => Err("no default system prompt found".to_string()),
     }
-}
-
-pub async fn at_custom_tools_dicts(global_context: Arc<ARwLock<GlobalContext>>) -> Result<Vec<AtToolCustDict>, String> {
-    let tconfig = get_tconfig(global_context.clone()).await?;
-    Ok(tconfig.tools)
 }
 
 #[cfg(test)]

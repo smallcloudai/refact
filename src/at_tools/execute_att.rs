@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
-use tracing::info;
+use tracing::{info, warn};
 use tokio::sync::RwLock as ARwLock;
 
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -30,7 +30,7 @@ pub async fn run_tools(
     }
     let ass_n = original_messages.len() - 1;
     let ass_msg = original_messages.get(ass_n).unwrap();
-    
+
     if ass_msg.role != "assistant" {
         return (original_messages.clone(), false);
     }
@@ -47,7 +47,7 @@ pub async fn run_tools(
     for t_call in ass_msg.tool_calls.as_ref().unwrap_or(&vec![]).iter() {
         if let Some(cmd) = at_tools.get(&t_call.function.name) {
             info!("tool use: trying to run {:?}", &t_call.function.name);
-            
+
             let args_maybe = serde_json::from_str::<HashMap<String, Value>>(&t_call.function.arguments);
             if let Err(e) = args_maybe {
                 let tool_failed_message = ChatMessage {
@@ -89,6 +89,8 @@ pub async fn run_tools(
                 }
             }
             assert!(have_answer);
+        } else {
+            warn!("tool use: function {:?} not found", &t_call.function.name);
         }
     }
 
@@ -104,12 +106,12 @@ pub async fn run_tools(
         let json_vec = context_file.iter().map(|p| {
             json!(p)
         }).collect::<Vec<Value>>();
-        
+
         let message = ChatMessage::new(
             "context_file".to_string(),
             serde_json::to_string(&json_vec).unwrap_or("".to_string()),
         );
-        
+
         context_messages.push(message.clone());
         stream_back_to_user.push_in_json(json!(message));
     }

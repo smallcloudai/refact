@@ -37,9 +37,7 @@ impl AtCommand for AtLocalNotesToSelf {
             let gcx_locked = ccx.global_context.read().await;
             gcx_locked.cache_dir.clone()
         };
-        // join path cache_dir / notes
         let notes_dir_path = cache_dir.join("notes");
-        // this all files
         let files = notes_dir_path.read_dir().map_err(|e| e.to_string())?;
         let mut files_vec: Vec<PathBuf> = vec![];
         for file_mb in files {

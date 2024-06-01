@@ -79,6 +79,7 @@ pub struct AtExecuteCustCommand {
     pub postprocess: String,
 }
 
+#[allow(dead_code)]    // not used for custom at-commands
 impl AtExecuteCustCommand {
     pub fn new(command: String, timeout: usize, postprocess: String) -> Self {
         AtExecuteCustCommand {
