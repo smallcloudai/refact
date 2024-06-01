@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::sync::RwLock as StdRwLock;
+use tokenizers::Tokenizer;
+use std::sync::Arc;
 
 
 #[async_trait]
@@ -19,6 +22,7 @@ pub struct VecdbConstants {
     // constant in a sense it cannot be changed without creating a new db
     pub model_name: String,
     pub embedding_size: i32,
+    pub tokenizer: Arc<StdRwLock<Tokenizer>>,
     // pub vectorizer_n_ctx    -- TODO: add this constant
     pub endpoint_embeddings_template: String,
     pub endpoint_embeddings_style: String,

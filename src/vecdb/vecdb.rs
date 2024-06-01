@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use tokenizers::Tokenizer;
 use tokio::sync::{RwLock as ARwLock, RwLock};
 use tokio::sync::Mutex as AMutex;
 use tracing::{info, error};
@@ -20,11 +21,13 @@ use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstan
 
 fn vecdb_constants(
     caps: Arc<StdRwLock<crate::caps::CodeAssistantCaps>>,
+    tokenizer: Arc<StdRwLock<Tokenizer>>,
 ) -> VecdbConstants {
     let caps_locked = caps.read().unwrap();
     VecdbConstants {
         model_name: caps_locked.default_embeddings_model.clone(),
         embedding_size: caps_locked.size_embeddings.clone(),
+        tokenizer: tokenizer.clone(),
         endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
         endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
         cooldown_secs: 20,
@@ -69,16 +72,21 @@ async fn vecdb_test_request(
 }
 
 async fn create_vecdb(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     background_tasks: &mut BackgroundTasksHolder,
     constants: VecdbConstants,
 ) -> Result<(), String> {
     info!("vecdb: attempting to launch");
 
-    let (cache_dir, cmdline) = {
-        let gcx_locked = global_context.read().await;
-        (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone())
+    let (cache_dir, cmdline, caps_arc_maybe) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone(), gcx_locked.caps.clone())
+
     };
+    if caps_arc_maybe.is_none() {
+        return Err("no caps, will not start or reload vecdb".to_string());
+    }
+
     let base_dir: PathBuf = match cmdline.vecdb_forced_path.as_str() {
         "" => cache_dir,
         path => PathBuf::from(path),
@@ -108,18 +116,18 @@ async fn create_vecdb(
     }
     info!("vecdb: test request complete");
 
-    // Enqueue files before background task starts: workspace files (needs vec_db in global_context)
+    // Enqueue files before background task starts: workspace files (needs vec_db in gcx)
     let vec_db_arc = Arc::new(AMutex::new(Some(vec_db)));
     {
-        let mut gcx_locked = global_context.write().await;
+        let mut gcx_locked = gcx.write().await;
         gcx_locked.vec_db = vec_db_arc.clone();
     }
-    crate::files_in_workspace::enqueue_all_files_from_workspace_folders(global_context.clone(), true, true).await;
-    crate::files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(global_context.clone(), true, true).await;
+    crate::files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, true).await;
+    crate::files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, true).await;
 
     {
         let vec_db_locked = vec_db_arc.lock().await;
-        let tasks = vec_db_locked.as_ref().unwrap().vecdb_start_background_tasks(global_context.clone()).await;
+        let tasks = vec_db_locked.as_ref().unwrap().vecdb_start_background_tasks(gcx.clone()).await;
         background_tasks.extend(tasks);
     }
 
@@ -127,9 +135,9 @@ async fn create_vecdb(
 }
 
 async fn do_i_need_to_reload_vecdb(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
 ) -> (bool, Option<VecdbConstants>) {
-    let caps = match crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await {
+    let caps = match crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => caps,
         Err(e) => {
             // This branch makes caps error disappear, unless we print it right here:
@@ -137,14 +145,26 @@ async fn do_i_need_to_reload_vecdb(
             return (false, None)
         }
     };
-    let consts = vecdb_constants(caps);
+
+    let model_name = {
+        let caps_locked = caps.read().unwrap();
+        caps_locked.default_embeddings_model.clone()
+    };
+    let tokenizer_maybe = crate::cached_tokenizers::cached_tokenizer(
+        caps.clone(), gcx.clone(), model_name).await;
+    if tokenizer_maybe.is_err() {
+        error!("vecdb launch failed, embedding model tokenizer didn't load: {}", tokenizer_maybe.unwrap_err());
+        return (false, None);
+    }
+
+    let consts = vecdb_constants(caps.clone(), tokenizer_maybe.unwrap());
 
     if consts.model_name.is_empty() || consts.endpoint_embeddings_template.is_empty() {
         error!("vecdb launch failed: default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty()");
         return (false, None);
     }
 
-    match *global_context.write().await.vec_db.lock().await {
+    match *gcx.write().await.vec_db.lock().await {
         None => {}
         Some(ref db) => {
             if db.constants.model_name == consts.model_name &&
@@ -160,20 +180,20 @@ async fn do_i_need_to_reload_vecdb(
 }
 
 pub async fn vecdb_background_reload(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
 ) {
-    let cmd_line = global_context.read().await.cmdline.clone();
+    let cmd_line = gcx.read().await.cmdline.clone();
     if !cmd_line.vecdb {
         return;
     }
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
-        let (need_reload, consts) = do_i_need_to_reload_vecdb(global_context.clone()).await;
+        let (need_reload, consts) = do_i_need_to_reload_vecdb(gcx.clone()).await;
         if need_reload && consts.is_some() {
             background_tasks.abort().await;
             background_tasks = BackgroundTasksHolder::new(vec![]);
             match create_vecdb(
-                global_context.clone(),
+                gcx.clone(),
                 &mut background_tasks,
                 consts.unwrap(),
             ).await {
@@ -181,7 +201,7 @@ pub async fn vecdb_background_reload(
                 }
                 Err(err) => {
                     error!("vecdb: init failed: {}", err);
-                    // global_context.vec_db stays None, the rest of the system continues working
+                    // gcx.vec_db stays None, the rest of the system continues working
                 }
             }
         }
@@ -214,9 +234,12 @@ impl VecDb {
         })
     }
 
-    pub async fn vecdb_start_background_tasks(&self, global_context: Arc<RwLock<GlobalContext>>) -> Vec<JoinHandle<()>> {
+    pub async fn vecdb_start_background_tasks(
+        &self,
+        gcx: Arc<RwLock<GlobalContext>>,
+    ) -> Vec<JoinHandle<()>> {
         info!("vecdb: start_background_tasks");
-        return self.vectorizer_service.lock().await.vecdb_start_background_tasks(self.vecdb_emb_client.clone(), global_context.clone()).await;
+        return self.vectorizer_service.lock().await.vecdb_start_background_tasks(self.vecdb_emb_client.clone(), gcx.clone(), self.constants.tokenizer.clone()).await;
     }
 
     pub async fn vectorizer_enqueue_files(&self, documents: &Vec<Document>, force: bool) {
