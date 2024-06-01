@@ -268,6 +268,7 @@ pub const KNOWN_MODELS: &str = r####"
     "tokenizer_rewrite_path": {
         "Refact/1.6B": "smallcloudai/Refact-1_6B-fim",
         "starcoder2/3b": "bigcode/starcoder2-3b",
+        "text-embedding-3-small": "Xenova/text-embedding-ada-002",
         "gpt-3.5-turbo":          "Xenova/gpt-3.5-turbo-16k",
         "gpt-3.5-turbo-1106":     "Xenova/gpt-3.5-turbo-16k",
         "gpt-3.5-turbo-0125":     "Xenova/gpt-3.5-turbo-16k",
